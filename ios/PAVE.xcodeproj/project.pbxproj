@@ -1,0 +1,637 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		15C5E62E401984801CF64CF7 /* PaveSplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C616F072C4F978843892A158 /* PaveSplashView.swift */; };
+		2F5867C90FE11BC4868CF9B5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 86B0195960554A0DF963D9CA /* Assets.xcassets */; };
+		7A391566B86A5E8D9049DED1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 86B0195960554A0DF963D9CA /* Assets.xcassets */; };
+		A0337E364B15F819405DA6C8 /* PAVEWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 0AB30166B28926E8F8E28BC1 /* PAVEWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		C5F838A8F5389AA439976568 /* PAVECore in Frameworks */ = {isa = PBXBuildFile; productRef = BFAAF27B879F677ADF44BCF9 /* PAVECore */; };
+		CFC885971A785DDF39827BE1 /* PaveSplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C616F072C4F978843892A158 /* PaveSplashView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		6018AECCFCBD06B4E4A86A30 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 71AED433D8B1145C3FBEFBD9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C2529D88175B34558C279909;
+			remoteInfo = PAVE;
+		};
+		8EBC8E1CC728DBC92768052E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 71AED433D8B1145C3FBEFBD9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 03100814D1E30C75E6E29C3E;
+			remoteInfo = PAVEWatch;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		70D612AE2A55161182FBFF44 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				A0337E364B15F819405DA6C8 /* PAVEWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		0AB30166B28926E8F8E28BC1 /* PAVEWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PAVEWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2BCD023CC7FE6F72343B2EF5 /* PAVE.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PAVE.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		388493A3B72FF59303AF7D64 /* PAVECore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PAVECore; path = PAVECore; sourceTree = SOURCE_ROOT; };
+		588F06E32435AB0B31641151 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
+		86B0195960554A0DF963D9CA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		C616F072C4F978843892A158 /* PaveSplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaveSplashView.swift; sourceTree = "<group>"; };
+		DFFF2974A4E35CB11736629D /* PAVETests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PAVETests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		1AF1FB6D053BF7364CA695C0 /* PAVE */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = PAVE;
+			sourceTree = "<group>";
+		};
+		3092C5F1239EAECDD2F0C4E8 /* PAVETests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = PAVETests;
+			sourceTree = "<group>";
+		};
+		886F5A46B9FACFA3C37C80C0 /* PAVEWatch */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = PAVEWatch;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		E5845F2A18313E98CF707AB2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C5F838A8F5389AA439976568 /* PAVECore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		1CAD95A5663ADFCF3BE678BF /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				2BCD023CC7FE6F72343B2EF5 /* PAVE.app */,
+				DFFF2974A4E35CB11736629D /* PAVETests.xctest */,
+				0AB30166B28926E8F8E28BC1 /* PAVEWatch.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		356C90FA62F3E8823ADBEB2E = {
+			isa = PBXGroup;
+			children = (
+				6FA33EC0372C0F9030B1B46C /* Config */,
+				7E4A699175D5C402B25348ED /* Packages */,
+				1AF1FB6D053BF7364CA695C0 /* PAVE */,
+				3092C5F1239EAECDD2F0C4E8 /* PAVETests */,
+				886F5A46B9FACFA3C37C80C0 /* PAVEWatch */,
+				520440C0324ACF7F05026797 /* Shared */,
+				1CAD95A5663ADFCF3BE678BF /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		520440C0324ACF7F05026797 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				86B0195960554A0DF963D9CA /* Assets.xcassets */,
+				C616F072C4F978843892A158 /* PaveSplashView.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		6FA33EC0372C0F9030B1B46C /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				588F06E32435AB0B31641151 /* Base.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		7E4A699175D5C402B25348ED /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				388493A3B72FF59303AF7D64 /* PAVECore */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		03100814D1E30C75E6E29C3E /* PAVEWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C11F00CF849F1E6508CD59EC /* Build configuration list for PBXNativeTarget "PAVEWatch" */;
+			buildPhases = (
+				99370690E1A6F7516DB98A72 /* Sources */,
+				7EB7C2F9B4A03B959A729435 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				886F5A46B9FACFA3C37C80C0 /* PAVEWatch */,
+			);
+			name = PAVEWatch;
+			packageProductDependencies = (
+			);
+			productName = PAVEWatch;
+			productReference = 0AB30166B28926E8F8E28BC1 /* PAVEWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
+		1DAADB4DE94DB9689D0E0486 /* PAVETests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2F70EB38B45AF2223F7B71EB /* Build configuration list for PBXNativeTarget "PAVETests" */;
+			buildPhases = (
+				99D0D202AECCF6CDC275E247 /* Sources */,
+				0D82D002AFD0AE7E9BB36106 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4DE7AB1140DB7223A2B38E60 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				3092C5F1239EAECDD2F0C4E8 /* PAVETests */,
+			);
+			name = PAVETests;
+			packageProductDependencies = (
+			);
+			productName = PAVETests;
+			productReference = DFFF2974A4E35CB11736629D /* PAVETests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		C2529D88175B34558C279909 /* PAVE */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6BABC51BE9BDD5620CF386AF /* Build configuration list for PBXNativeTarget "PAVE" */;
+			buildPhases = (
+				650ACD5430C05B7BF5282C9C /* Sources */,
+				CD94CBF747C83D3FE9A66CAA /* Resources */,
+				E5845F2A18313E98CF707AB2 /* Frameworks */,
+				70D612AE2A55161182FBFF44 /* Embed Watch Content */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DB55EC5F8735DDDC74B6ECF1 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				1AF1FB6D053BF7364CA695C0 /* PAVE */,
+			);
+			name = PAVE;
+			packageProductDependencies = (
+				BFAAF27B879F677ADF44BCF9 /* PAVECore */,
+			);
+			productName = PAVE;
+			productReference = 2BCD023CC7FE6F72343B2EF5 /* PAVE.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		71AED433D8B1145C3FBEFBD9 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					03100814D1E30C75E6E29C3E = {
+						ProvisioningStyle = Automatic;
+					};
+					1DAADB4DE94DB9689D0E0486 = {
+						ProvisioningStyle = Automatic;
+					};
+					C2529D88175B34558C279909 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 3582AA2E248C1ADFFC33146C /* Build configuration list for PBXProject "PAVE" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 356C90FA62F3E8823ADBEB2E;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				2A8060D0EDD37D0CAC115D7B /* XCLocalSwiftPackageReference "PAVECore" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 1CAD95A5663ADFCF3BE678BF /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				C2529D88175B34558C279909 /* PAVE */,
+				03100814D1E30C75E6E29C3E /* PAVEWatch */,
+				1DAADB4DE94DB9689D0E0486 /* PAVETests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		0D82D002AFD0AE7E9BB36106 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7EB7C2F9B4A03B959A729435 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7A391566B86A5E8D9049DED1 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CD94CBF747C83D3FE9A66CAA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2F5867C90FE11BC4868CF9B5 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		650ACD5430C05B7BF5282C9C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				15C5E62E401984801CF64CF7 /* PaveSplashView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		99370690E1A6F7516DB98A72 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CFC885971A785DDF39827BE1 /* PaveSplashView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		99D0D202AECCF6CDC275E247 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		4DE7AB1140DB7223A2B38E60 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C2529D88175B34558C279909 /* PAVE */;
+			targetProxy = 6018AECCFCBD06B4E4A86A30 /* PBXContainerItemProxy */;
+		};
+		DB55EC5F8735DDDC74B6ECF1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 03100814D1E30C75E6E29C3E /* PAVEWatch */;
+			targetProxy = 8EBC8E1CC728DBC92768052E /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		1AAFCC591ABC243CBAA494FD /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 588F06E32435AB0B31641151 /* Base.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS = YES;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
+		58EF6106E1342AB3B0824666 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PAVE;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_IDENTIFIER)";
+				PRODUCT_NAME = PAVE;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		72B0E0A9500598FD7686278F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_IDENTIFIER).tests";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PAVE.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PAVE";
+			};
+			name = Debug;
+		};
+		A0E226AF8ECEFAC3979A3B79 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = PAVE;
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "$(APP_BUNDLE_IDENTIFIER)";
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_IDENTIFIER).watchkitapp";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Debug;
+		};
+		B79CFA034DD3356F4E375E35 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 588F06E32435AB0B31641151 /* Base.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS = YES;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+		DA1D83B3F087296EE02DCE4B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_IDENTIFIER).tests";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PAVE.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PAVE";
+			};
+			name = Release;
+		};
+		DD56819F940C2A97136A05C9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PAVE;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_IDENTIFIER)";
+				PRODUCT_NAME = PAVE;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		E9D19431734F0461E773CFFA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = PAVE;
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "$(APP_BUNDLE_IDENTIFIER)";
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_IDENTIFIER).watchkitapp";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2F70EB38B45AF2223F7B71EB /* Build configuration list for PBXNativeTarget "PAVETests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				72B0E0A9500598FD7686278F /* Debug */,
+				DA1D83B3F087296EE02DCE4B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		3582AA2E248C1ADFFC33146C /* Build configuration list for PBXProject "PAVE" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B79CFA034DD3356F4E375E35 /* Debug */,
+				1AAFCC591ABC243CBAA494FD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		6BABC51BE9BDD5620CF386AF /* Build configuration list for PBXNativeTarget "PAVE" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				58EF6106E1342AB3B0824666 /* Debug */,
+				DD56819F940C2A97136A05C9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C11F00CF849F1E6508CD59EC /* Build configuration list for PBXNativeTarget "PAVEWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A0E226AF8ECEFAC3979A3B79 /* Debug */,
+				E9D19431734F0461E773CFFA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		2A8060D0EDD37D0CAC115D7B /* XCLocalSwiftPackageReference "PAVECore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = PAVECore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		BFAAF27B879F677ADF44BCF9 /* PAVECore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PAVECore;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 71AED433D8B1145C3FBEFBD9 /* Project object */;
+}
