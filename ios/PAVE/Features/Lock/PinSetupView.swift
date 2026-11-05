@@ -74,7 +74,7 @@ struct PinSetupView: View {
             if let errorMessage {
                 PaveInlineError(message: errorMessage)
             }
-            PavePrimaryButton(title: "\(kind?.name ?? "Biometrie") gebruiken", loadingTitle: "Controleren…", isLoading: isSubmitting) {
+            PavePrimaryButton(title: "\(kind?.name ?? "Biometrie") gebruiken", loadingTitle: "Bezig met controleren...", isLoading: isSubmitting) {
                 Task {
                     isSubmitting = true
                     defer { isSubmitting = false }

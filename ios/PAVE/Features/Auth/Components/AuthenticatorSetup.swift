@@ -57,7 +57,7 @@ struct OtherDeviceSetupCard: View {
 
             if let secret {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Of vul deze instelsleutel in")
+                    Text("Lukt scannen niet? Vul dan deze instelsleutel in:")
                         .textStyle(.label)
                         .foregroundStyle(Color.ink)
                     HStack(spacing: 8) {
@@ -124,7 +124,7 @@ struct SetupPreviewPlaceholder: View {
             .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(isLoading ? "Instellen voorbereiden…" : "Voorbeeld")
+                Text(isLoading ? "QR-code laden..." : "Voorbeeld")
                     .textStyle(.label)
                     .foregroundStyle(Color.brandGreen)
                 if !isLoading {

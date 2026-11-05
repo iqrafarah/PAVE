@@ -54,7 +54,7 @@ private struct SpinningIcon: View {
 #Preview {
     VStack(spacing: 16) {
         PavePrimaryButton(title: "Inloggen") {}
-        PavePrimaryButton(title: "Inloggen", loadingTitle: "Inloggen…", isLoading: true) {}
+        PavePrimaryButton(title: "Inloggen", loadingTitle: "Bezig met inloggen...", isLoading: true) {}
     }
     .padding(32)
     .background(Color.canvas)

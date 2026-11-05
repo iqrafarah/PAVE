@@ -56,6 +56,7 @@ Testen kan in Xcode via Device Hub (Window, Device Hub): kies de iPhone Duo en z
 - De mappen `PAVE/`, `PAVEWatch/` en `PAVETests/` zijn gesynchroniseerd met Xcode: een bestand dat je in Finder of Xcode toevoegt, hoort automatisch bij het project.
 - Werk zoveel mogelijk in je eigen feature-map om merge-conflicten te voorkomen.
 - Alle teksten die de gebruiker ziet zijn Nederlands, ook als het Figma-ontwerp Engels is. Code en comments blijven Engels.
+- **De teksten van de inlogflow zijn precies die van web, en web is leidend.** Verandert een tekst op web (`web/app/utils/messages.ts`, `passwordRules.ts` en de pagina's), pas hem dan ook op iOS aan. De foutmeldingen staan op één plek: `PAVECore/Sources/PAVECore/Auth/AuthMessages.swift`. `AuthMessagesTests` leest de webbestanden en faalt zodra een tekst verschilt.
 - Mockdata die het web-team ook gebruikt, komt in `../shared/`.
 - Zie `../Conventions.md` voor naamgeving en Git-afspraken.
 

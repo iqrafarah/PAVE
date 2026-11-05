@@ -23,7 +23,7 @@ struct VerificationView: View {
                 title: "Bevestig dat jij het bent",
                 message: purpose == .signIn
                     ? "Open je authenticator-app en vul de code van 6 cijfers voor je PAVE-account in."
-                    : "Voor je account staat tweestapsverificatie aan. Vul de code uit je authenticator-app in, dan kies je daarna een nieuw wachtwoord."
+                    : "Voor je account staat tweestapsverificatie aan. Vul de code uit je authenticator-app in. Daarna kies je een nieuw wachtwoord."
             )
         } content: {
             VStack(alignment: .leading, spacing: 24) {
@@ -32,14 +32,14 @@ struct VerificationView: View {
 
                 PavePrimaryButton(
                     title: error == nil ? "Bevestigen" : "Opnieuw proberen",
-                    loadingTitle: "Controleren…",
+                    loadingTitle: "Bezig met controleren...",
                     isLoading: isSubmitting,
                     action: submit
                 )
 
                 PaveNotice(
                     title: "Gebruik je authenticator-app",
-                    message: "Je code komt uit je authenticator-app, niet via e-mail of sms. Kun je niet bij de app? Neem contact op met de IT-support."
+                    message: SupportText.sentence("Je code komt uit je authenticator-app, niet via e-mail of sms. Kun je niet bij de app? Neem contact op via ")
                 )
 
                 AuthReturnButton(action: flow.returnToLogin)
@@ -49,11 +49,7 @@ struct VerificationView: View {
     }
 
     private var errorMessage: String? {
-        switch error {
-        case nil: nil
-        case .invalidCode: "Deze code klopt niet of is verlopen. Gebruik de nieuwste code uit je authenticator-app en probeer het opnieuw."
-        default: "We konden je code niet controleren. Controleer je internetverbinding en probeer het opnieuw."
-        }
+        error?.message
     }
 
     private func submit() {

@@ -6,7 +6,7 @@ struct PasswordRequirementsList: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Je wachtwoord moet bevatten:")
+            Text(PasswordRequirement.heading)
                 .textStyle(.eyebrow)
                 .foregroundStyle(Color.brandGreen)
 
@@ -30,16 +30,6 @@ struct PasswordRequirementsList: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.surfaceTint, in: .rect(cornerRadius: 12))
         .animation(.easeOut(duration: 0.15), value: password)
-    }
-}
-
-private extension PasswordRequirement {
-    var title: String {
-        switch self {
-        case .minimumLength: "Minstens \(Self.minimumCharacterCount) tekens"
-        case .mixedCase: "Hoofdletters en kleine letters"
-        case .numberAndSymbol: "Minstens één cijfer en één symbool"
-        }
     }
 }
 

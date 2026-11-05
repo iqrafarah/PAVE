@@ -4,8 +4,8 @@ struct VerificationCodeField: View {
     static let length = 6
 
     @Binding var code: String
-    var title = "Verificatiecode van 6 cijfers"
-    var hint = "Vul de code in die je authenticator-app laat zien."
+    var title = "Code van 6 cijfers"
+    var hint = "Vul de code in die je authenticator-app nu laat zien."
     var errorMessage: String?
     var isFocused: FocusState<Bool>.Binding
 

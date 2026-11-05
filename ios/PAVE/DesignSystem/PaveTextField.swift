@@ -98,7 +98,7 @@ struct PaveTextField<Field: Hashable>: View {
                     .resizable()
                     .frame(width: 20, height: 20)
                     .accessibilityHidden(true)
-                Text(isRevealed ? "Verberg" : "Toon")
+                Text(isRevealed ? "Verbergen" : "Tonen")
                     .textStyle(.eyebrow)
                     .foregroundStyle(Color.brandGreen)
             }
@@ -107,7 +107,7 @@ struct PaveTextField<Field: Hashable>: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(isRevealed ? "Verberg wachtwoord" : "Toon wachtwoord")
+        .accessibilityLabel(isRevealed ? "Wachtwoord verbergen" : "Wachtwoord tonen")
     }
 
     private var borderColor: Color {
@@ -145,7 +145,7 @@ struct PaveInlineError: View {
     @Previewable @FocusState var focus: Int?
 
     VStack(spacing: 20) {
-        PaveTextField(label: "E-mailadres", placeholder: "E-mailadres van je organisatie", text: $email, kind: .email, focus: $focus, field: 0)
+        PaveTextField(label: "E-mailadres", placeholder: "E-mailadres", text: $email, kind: .email, focus: $focus, field: 0)
         PaveTextField(label: "Wachtwoord", placeholder: "Vul je wachtwoord in", text: $password, kind: .password, focus: $focus, field: 1, errorMessage: "De wachtwoorden zijn niet hetzelfde. Vul je nieuwe wachtwoord opnieuw in.")
     }
     .padding(32)

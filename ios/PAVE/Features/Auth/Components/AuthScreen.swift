@@ -137,10 +137,10 @@ struct AuthLogo: View {
 struct AuthFooter: View {
     var body: some View {
         VStack(spacing: 6) {
-            Text("Hulp nodig? Neem contact op met de IT-support van je organisatie.")
+            Text(SupportText.sentence("Hulp nodig? Neem contact op via "))
                 .textStyle(.footnote)
                 .multilineTextAlignment(.center)
-            Text("Jouw ontwikkeling. Jouw mogelijkheden.")
+            Text("Jouw voortgang. Jouw mogelijkheden.")
                 .textStyle(.caption)
         }
         .foregroundStyle(Color.inkMuted)

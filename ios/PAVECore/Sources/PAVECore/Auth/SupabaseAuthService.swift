@@ -127,12 +127,13 @@ public struct SupabaseAuthService: AuthService {
     }
 
     static func authError(for error: any Error) -> AuthError {
+        if error is URLError { return .noConnection }
         guard let supabaseError = error as? Auth.AuthError else { return .unavailable }
         switch supabaseError.errorCode {
         case .invalidCredentials:
             return .invalidCredentials
-        case .emailNotConfirmed, .userBanned:
-            return .accountNotActive
+        case .emailNotConfirmed:
+            return .emailNotConfirmed
         case .mfaVerificationFailed, .mfaVerificationRejected, .mfaChallengeExpired:
             return .invalidCode
         case .weakPassword:
@@ -140,14 +141,19 @@ public struct SupabaseAuthService: AuthService {
         case .samePassword:
             return .samePassword
         case .otpExpired:
-            return .invalidCode
+            return .invalidEmailCode
         case .flowStateExpired, .badCodeVerifier, .sessionNotFound:
             return .resetSessionExpired
-        case .overEmailSendRateLimit, .overRequestRateLimit:
-            return .rateLimited
+        case .overEmailSendRateLimit:
+            return .requestedTooSoon
+        case .overRequestRateLimit:
+            return .tooManyAttempts
         case .insufficientAAL:
             return .insufficientAssurance
         default:
+            if case .api(_, _, _, let response) = supabaseError, response.statusCode == 429 {
+                return .tooManyAttempts
+            }
             return .unavailable
         }
     }
