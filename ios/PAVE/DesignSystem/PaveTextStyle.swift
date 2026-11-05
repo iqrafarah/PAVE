@@ -13,19 +13,18 @@ enum PaveTextStyle {
     case caption
     case code
     case tag
-    case keypad
 
     fileprivate var fontName: String {
         switch self {
         case .title, .eyebrow, .label, .button, .calloutTitle, .tag: "InterVariable-SemiBold"
-        case .link, .keypad: "InterVariable-Medium"
+        case .link: "InterVariable-Medium"
         case .lead, .input, .footnote, .caption, .code: "InterVariable"
         }
     }
 
     fileprivate var size: CGFloat {
         switch self {
-        case .title, .keypad: 28
+        case .title: 28
         case .code: 24
         case .button: 16
         case .lead, .input: 15
@@ -38,7 +37,7 @@ enum PaveTextStyle {
 
     fileprivate var relativeTo: Font.TextStyle {
         switch self {
-        case .title, .keypad: .title
+        case .title: .title
         case .code: .title2
         case .button: .headline
         case .lead, .input: .body

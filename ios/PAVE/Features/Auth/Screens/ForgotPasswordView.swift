@@ -14,14 +14,14 @@ struct ForgotPasswordView: View {
 
     var body: some View {
         AuthScreen {
+            AuthIntro(
+                emblem: .iconMail,
+                eyebrow: "Wachtwoord herstellen",
+                title: "Wachtwoord vergeten?",
+                message: "Vul het e-mailadres van je organisatie in. We sturen je een link om een nieuw wachtwoord in te stellen."
+            )
+        } content: {
             VStack(alignment: .leading, spacing: 24) {
-                AuthIntro(
-                    emblem: .iconMail,
-                    eyebrow: "Wachtwoord herstellen",
-                    title: "Wachtwoord vergeten?",
-                    message: "Vul het e-mailadres van je organisatie in. We sturen je een link om een nieuw wachtwoord in te stellen."
-                )
-
                 PaveTextField(
                     label: "E-mailadres",
                     placeholder: "E-mailadres van je organisatie",
@@ -76,14 +76,14 @@ struct ResetEmailSentView: View {
 
     var body: some View {
         AuthScreen {
+            AuthIntro(
+                emblem: .iconMailOpen,
+                eyebrow: "Wachtwoord herstellen",
+                title: "Kijk in je inbox",
+                message: "Als er een account bestaat voor \(email), sturen we een link om een nieuw wachtwoord in te stellen."
+            )
+        } content: {
             VStack(alignment: .leading, spacing: 24) {
-                AuthIntro(
-                    emblem: .iconMailOpen,
-                    eyebrow: "Wachtwoord herstellen",
-                    title: "Kijk in je inbox",
-                    message: "Als er een account bestaat voor \(email), sturen we een link om een nieuw wachtwoord in te stellen."
-                )
-
                 if error == nil {
                     PaveNotice(
                         title: "Geen e-mail ontvangen?",

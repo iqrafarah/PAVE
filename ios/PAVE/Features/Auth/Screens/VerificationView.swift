@@ -10,14 +10,14 @@ struct VerificationView: View {
 
     var body: some View {
         AuthScreen {
+            AuthIntro(
+                emblem: .iconShieldCheck,
+                eyebrow: "Tweestapsverificatie",
+                title: "Bevestig dat jij het bent",
+                message: "Open je authenticator-app en vul de code van 6 cijfers voor je PAVE-account in."
+            )
+        } content: {
             VStack(alignment: .leading, spacing: 24) {
-                AuthIntro(
-                    emblem: .iconShieldCheck,
-                    eyebrow: "Tweestapsverificatie",
-                    title: "Bevestig dat jij het bent",
-                    message: "Open je authenticator-app en vul de code van 6 cijfers voor je PAVE-account in."
-                )
-
                 VerificationCodeField(code: $code, errorMessage: errorMessage, isFocused: $isCodeFocused)
                     .onChange(of: code) { error = nil }
 

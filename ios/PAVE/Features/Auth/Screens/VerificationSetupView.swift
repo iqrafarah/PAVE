@@ -19,13 +19,13 @@ struct VerificationSetupView: View {
 
     var body: some View {
         AuthScreen {
+            AuthIntro(
+                eyebrow: "Eerste keer instellen",
+                title: "Beveilig je PAVE-account",
+                message: "Tweestapsverificatie is verplicht. Zo blijven je persoonlijke gegevens, resultaten en certificaten veilig."
+            )
+        } content: {
             VStack(alignment: .leading, spacing: 24) {
-                AuthIntro(
-                    eyebrow: "Eerste keer instellen",
-                    title: "Beveilig je PAVE-account",
-                    message: "Tweestapsverificatie is verplicht. Zo blijven je persoonlijke gegevens, resultaten en certificaten veilig."
-                )
-
                 if setupFailed {
                     PaveNotice(
                         title: "Het instellen kon niet starten",
@@ -38,13 +38,13 @@ struct VerificationSetupView: View {
                     SetupStepRow(
                         number: 1,
                         title: "Voeg PAVE toe aan je codes",
-                        message: "Je \(deviceName) kan de code van 6 cijfers voor je maken. Kies in Wachtwoorden je PAVE-inlog, of voeg een nieuwe toe."
+                        message: "Je toestel kan de code van 6 cijfers voor je maken. Kies in Wachtwoorden je PAVE-inlog, of voeg een nieuwe toe."
                     )
                     addToThisDevice
                     SetupStepRow(
                         number: 2,
                         title: "Vul de code in",
-                        message: "Kom terug naar PAVE en vul de code van 6 cijfers in. Je \(deviceName) stelt hem misschien boven het toetsenbord voor."
+                        message: "Kom terug naar PAVE en vul de code van 6 cijfers in. Je toestel stelt hem misschien boven het toetsenbord voor."
                     )
                 }
 
@@ -89,7 +89,7 @@ struct VerificationSetupView: View {
     @ViewBuilder
     private var addToThisDevice: some View {
         if let setupURI = enrollment?.setupURI {
-            PaveSecondaryButton(title: "Instellen op deze \(deviceName)", icon: .iconShieldCheck) {
+            PaveSecondaryButton(title: "Instellen op dit toestel", icon: .iconShieldCheck) {
                 openURL(setupURI) { accepted in
                     didOpenAuthenticator = accepted
                     noAuthenticatorFound = !accepted
@@ -137,10 +137,6 @@ struct VerificationSetupView: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-    }
-
-    private var deviceName: String {
-        UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
     }
 
     private var errorMessage: String? {

@@ -17,13 +17,13 @@ struct NewPasswordView: View {
 
     var body: some View {
         AuthScreen {
+            AuthIntro(
+                eyebrow: "Wachtwoord herstellen",
+                title: "Kies een nieuw wachtwoord",
+                message: "Kies een sterk wachtwoord dat je nergens anders gebruikt."
+            )
+        } content: {
             VStack(alignment: .leading, spacing: 24) {
-                AuthIntro(
-                    eyebrow: "Wachtwoord herstellen",
-                    title: "Kies een nieuw wachtwoord",
-                    message: "Kies een sterk wachtwoord dat je nergens anders gebruikt."
-                )
-
                 PaveTextField(
                     label: "Nieuw wachtwoord",
                     placeholder: "Vul een nieuw wachtwoord in",
