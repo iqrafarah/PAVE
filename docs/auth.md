@@ -4,7 +4,7 @@ Web and iOS use Supabase Auth with the same rules. A change to this file is a sh
 
 ## Sign in
 
-1. The user signs in with the email and password supplied by their organization (`signInWithPassword`). There is no self sign-up.
+1. The user signs in with their email and password (`signInWithPassword`). Accounts are created by an admin in the Supabase dashboard; there is no self sign-up. Users who need help contact PAVE-support (contact@pave.com).
 2. Two-step verification with an authenticator app (TOTP) is mandatory for every user. After the password step the session is `aal1`; only an `aal2` session may use the app.
 
 ## Two-step verification (TOTP)
@@ -27,49 +27,26 @@ Rules:
 
 ## Forgot password
 
-A password reset uses the email address and a code from the authenticator app. **No email is sent.** Users without a verified authenticator cannot reset their password themselves and contact IT support.
+A reset needs a 6-digit code sent by email and, if the account has a verified authenticator, a code from the authenticator app. Supabase only allows a password change at `aal2` for accounts with a verified authenticator, so the email code alone is not enough for them.
 
-### Step 1: verify (`verify-password-reset-code`)
+1. The user enters their email. Call `resetPasswordForEmail(email)` without `redirectTo`. Always show the same message, whether or not the email has an account: "Als er een account bestaat voor dit e-mailadres, hebben we een code gestuurd."
+2. The user types the 6-digit code from the email. Call `verifyOtp({ email, token, type: 'recovery' })`. The session is now `aal1`.
+3. Check the factors with `mfa.listFactors()`:
+   - verified TOTP factor: show the verify screen and confirm the authenticator code with `mfa.challengeAndVerify`. The session is now `aal2`.
+   - no verified factor: go straight to step 4 (`aal2` is not possible without a factor).
+4. The user chooses a new password (twice), checked against the password rules below. Call `updateUser({ password })`.
+5. Web continues to the app. iOS signs out and shows "Wachtwoord gewijzigd".
 
-The user enters their email and the 6-digit authenticator code. The app calls the Edge Function with `{ email, code }`. The user is not logged in.
+Error codes to handle:
 
-The function blocks the email after 5 failed attempts in 15 minutes, reads the user's verified TOTP secret and checks the code (30-second steps, 1 step clock drift allowed). If correct, it returns a one-time reset token: `{ "resetToken": "..." }`. The token is valid for 10 minutes and works once. Only its SHA-256 hash is stored.
-
-Keep the token in memory only (never in the URL, storage or logs).
-
-### Step 2: new password (`reset-password`)
-
-The user chooses a new password (twice). The app calls the Edge Function with `{ resetToken, password }`. The function checks the password rules, uses up the token, sets the password and revokes all sessions of the user (signed out on every device). Then show "Wachtwoord gewijzigd".
-
-### Responses
-
-Failures return JSON `{ "error": "<code>" }`.
-
-| Function | Status | `error` | Meaning |
-|----------|--------|---------|---------|
-| verify | 200 | – | `{ "resetToken": "..." }` |
-| verify | 400 | `invalid_credentials` | Unknown email, no authenticator, or wrong code. Deliberately the same, so nobody can find out which emails have an account |
-| verify | 429 | `too_many_attempts` | Too many failed attempts, wait 15 minutes |
-| reset | 200 | – | `{ "ok": true }` |
-| reset | 400 | `weak_password` | Password does not meet the rules (the token is not used up) |
-| reset | 400 | `invalid_token` | Token missing, expired or already used. Start again at step 1 |
-| both | 500 | `server_error` | Something went wrong on the server |
-
-Security note: the email address is not secret, so this reset is only as strong as the user's phone. Anyone with the unlocked phone can reset the password. This was a deliberate product decision.
-
-### Files and deploy
-
-- Edge Functions: `shared/supabase/functions/verify-password-reset-code/`, `shared/supabase/functions/reset-password/` (shared helpers in `_shared/`)
-- Migration (attempt counter, reset tokens, helper functions): `shared/supabase/migrations/20261105130000_password_reset_with_authenticator.sql`
-
-After the migration is applied:
-
-```bash
-supabase functions deploy verify-password-reset-code --no-verify-jwt
-supabase functions deploy reset-password --no-verify-jwt
-```
-
-`--no-verify-jwt` is needed because the user is not logged in when they reset their password.
+| Code | When | Message |
+|------|------|---------|
+| `over_email_send_rate_limit` | A new email code was requested within 60 seconds | "Je hebt net al een code aangevraagd. Wacht 60 seconden en probeer het opnieuw." |
+| `otp_expired` | Wrong or expired email code | "Deze code klopt niet of is verlopen. Vraag een nieuwe code aan." |
+| `mfa_verification_failed` | Wrong or expired authenticator code | "Deze code klopt niet of is verlopen. Gebruik de nieuwste code uit je authenticator-app en probeer het opnieuw." |
+| `insufficient_aal` | Password change without `aal2` on an account with an authenticator | "Bevestig eerst met een code uit je authenticator-app dat jij het bent." |
+| `same_password` | New password equals the current one | "Dit is je huidige wachtwoord. Kies een ander wachtwoord." |
+| `weak_password` | Password does not meet the rules | "Je wachtwoord voldoet nog niet aan alle eisen." |
 
 ## Password rules
 
@@ -88,11 +65,13 @@ These are shared settings. Change them only after agreeing with both teams.
 | MFA TOTP | Authentication → Multi-Factor | Enabled |
 | Minimum password length | Authentication → Providers → Email | 12 |
 | Password requirements | Authentication → Providers → Email | Lowercase, uppercase letters, digits and symbols |
-| SMTP | Authentication → SMTP Settings | Own SMTP server before real users (needed for the sign-up confirmation email; the built-in sender is heavily rate limited) |
+| Email OTP length | Authentication → Providers → Email | 6 |
+| Reset Password email template | Authentication → Email Templates → Reset Password | Shows the code `{{ .Token }}`, no link |
+| SMTP | Authentication → SMTP Settings | Own SMTP server before real users (needed for the reset code and the sign-up confirmation email; the built-in sender is heavily rate limited). The sender address must be on a domain verified with the SMTP provider |
 
 ## Lost authenticator app
 
-The user contacts their organization's IT support. An admin removes the user's TOTP factor in the Supabase dashboard (Authentication → Users → user → MFA factors). At the next sign-in the user goes through the setup again.
+The user contacts PAVE-support (contact@pave.com). An admin removes the user's TOTP factor in the Supabase dashboard (Authentication → Users → user → MFA factors). At the next sign-in the user goes through the setup again.
 
 ## Enforcement
 
