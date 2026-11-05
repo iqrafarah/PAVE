@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AuthReturnButton: View {
-    var title = "Back to login"
+    var title = "Terug naar inloggen"
     let action: () -> Void
 
     var body: some View {

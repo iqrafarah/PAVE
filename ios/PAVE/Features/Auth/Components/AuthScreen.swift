@@ -119,11 +119,11 @@ struct AuthFooter: View {
 
     var body: some View {
         VStack(spacing: 6) {
-            Text("Need help? Contact your organization’s IT support.")
+            Text("Hulp nodig? Neem contact op met de IT-support van je organisatie.")
                 .textStyle(.footnote)
                 .multilineTextAlignment(.center)
             if showsTagline {
-                Text("Your progress. Your possibilities.")
+                Text("Jouw ontwikkeling. Jouw mogelijkheden.")
                     .textStyle(.caption)
             }
         }
@@ -137,7 +137,7 @@ struct AuthBrandPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             AuthLogo(width: 220)
-            Text("Your progress.\nYour possibilities.")
+            Text("Jouw ontwikkeling.\nJouw mogelijkheden.")
                 .textStyle(.title)
                 .foregroundStyle(Color.brandGreen)
         }
@@ -194,7 +194,7 @@ private extension View {
 
 #Preview("iPhone") {
     AuthScreen {
-        Text("Content")
+        Text("Inhoud")
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

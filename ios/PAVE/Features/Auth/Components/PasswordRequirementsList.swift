@@ -6,7 +6,7 @@ struct PasswordRequirementsList: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Your password needs:")
+            Text("Je wachtwoord moet bevatten:")
                 .textStyle(.eyebrow)
                 .foregroundStyle(Color.brandGreen)
 
@@ -23,7 +23,7 @@ struct PasswordRequirementsList: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .accessibilityElement(children: .combine)
-                .accessibilityValue(isMet ? "Met" : "Not met")
+                .accessibilityValue(isMet ? "Voldaan" : "Niet voldaan")
             }
         }
         .padding(16)
@@ -36,9 +36,9 @@ struct PasswordRequirementsList: View {
 private extension PasswordRequirement {
     var title: String {
         switch self {
-        case .minimumLength: "At least \(Self.minimumCharacterCount) characters"
-        case .mixedCase: "Uppercase and lowercase letters"
-        case .numberAndSymbol: "At least one number and one symbol"
+        case .minimumLength: "Minstens \(Self.minimumCharacterCount) tekens"
+        case .mixedCase: "Hoofdletters en kleine letters"
+        case .numberAndSymbol: "Minstens één cijfer en één symbool"
         }
     }
 }

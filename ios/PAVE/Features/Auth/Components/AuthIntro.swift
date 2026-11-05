@@ -36,9 +36,9 @@ struct AuthIntro: View {
 #Preview {
     AuthIntro(
         emblem: .iconShieldCheck,
-        eyebrow: "Two-step verification",
-        title: "Verify your identity",
-        message: "Open your authenticator app and enter the 6-digit code for your PAVE account."
+        eyebrow: "Tweestapsverificatie",
+        title: "Bevestig dat jij het bent",
+        message: "Open je authenticator-app en vul de code van 6 cijfers voor je PAVE-account in."
     )
     .padding(32)
 }

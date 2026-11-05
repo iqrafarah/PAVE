@@ -19,14 +19,14 @@ struct NewPasswordView: View {
         AuthScreen {
             VStack(alignment: .leading, spacing: 24) {
                 AuthIntro(
-                    eyebrow: "Password recovery",
-                    title: "Create a new password",
-                    message: "Choose a strong password that you don’t use for other accounts."
+                    eyebrow: "Wachtwoord herstellen",
+                    title: "Kies een nieuw wachtwoord",
+                    message: "Kies een sterk wachtwoord dat je nergens anders gebruikt."
                 )
 
                 PaveTextField(
-                    label: "New password",
-                    placeholder: "Enter a new password",
+                    label: "Nieuw wachtwoord",
+                    placeholder: "Vul een nieuw wachtwoord in",
                     text: $password,
                     kind: .newPassword,
                     focus: $focus,
@@ -40,8 +40,8 @@ struct NewPasswordView: View {
                 PasswordRequirementsList(password: password)
 
                 PaveTextField(
-                    label: "Confirm new password",
-                    placeholder: "Re-enter your new password",
+                    label: "Herhaal je nieuwe wachtwoord",
+                    placeholder: "Vul je nieuwe wachtwoord nog een keer in",
                     text: $confirmation,
                     kind: .newPassword,
                     focus: $focus,
@@ -52,7 +52,7 @@ struct NewPasswordView: View {
                 .onSubmit(submit)
                 .onChange(of: confirmation) { confirmationError = nil }
 
-                PavePrimaryButton(title: "Save new password", loadingTitle: "Saving…", isLoading: isSubmitting, action: submit)
+                PavePrimaryButton(title: "Wachtwoord opslaan", loadingTitle: "Opslaan…", isLoading: isSubmitting, action: submit)
 
                 AuthReturnButton(action: flow.returnToLogin)
             }
@@ -63,12 +63,12 @@ struct NewPasswordView: View {
     private func submit() {
         guard !isSubmitting else { return }
         guard PasswordRequirement.allMet(by: password) else {
-            passwordError = "Your password doesn’t meet all the requirements yet."
+            passwordError = "Je wachtwoord voldoet nog niet aan alle eisen."
             focus = .password
             return
         }
         guard password == confirmation else {
-            confirmationError = "Passwords don’t match. Re-enter your new password."
+            confirmationError = "De wachtwoorden zijn niet hetzelfde. Vul je nieuwe wachtwoord opnieuw in."
             focus = .confirmation
             return
         }
@@ -80,9 +80,9 @@ struct NewPasswordView: View {
                 try await flow.updatePassword(password)
             } catch {
                 passwordError = switch AuthError(error) {
-                case .weakPassword: "Your password doesn’t meet all the requirements yet."
-                case .invalidResetLink: "This reset link has expired. Go back to login and request a new one."
-                default: "We couldn’t save your password. Check your internet connection and try again."
+                case .weakPassword: "Je wachtwoord voldoet nog niet aan alle eisen."
+                case .invalidResetLink: "Deze link is verlopen. Ga terug naar inloggen en vraag een nieuwe aan."
+                default: "We konden je wachtwoord niet opslaan. Controleer je internetverbinding en probeer het opnieuw."
                 }
             }
         }

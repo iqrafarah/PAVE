@@ -17,27 +17,27 @@ struct ForgotPasswordView: View {
             VStack(alignment: .leading, spacing: 24) {
                 AuthIntro(
                     emblem: .iconMail,
-                    eyebrow: "Password recovery",
-                    title: "Forgot your password?",
-                    message: "Enter your organization email and we’ll send you a link to reset your password."
+                    eyebrow: "Wachtwoord herstellen",
+                    title: "Wachtwoord vergeten?",
+                    message: "Vul het e-mailadres van je organisatie in. We sturen je een link om een nieuw wachtwoord in te stellen."
                 )
 
                 PaveTextField(
-                    label: "Email address",
-                    placeholder: "Your organization email",
+                    label: "E-mailadres",
+                    placeholder: "E-mailadres van je organisatie",
                     text: $email,
                     kind: .email,
                     focus: $focus,
                     field: .email,
-                    errorMessage: error == nil ? nil : "We couldn’t send the link. Check your internet connection and try again."
+                    errorMessage: error == nil ? nil : "We konden de link niet versturen. Controleer je internetverbinding en probeer het opnieuw."
                 )
                 .submitLabel(.send)
                 .onSubmit(submit)
                 .disabled(isSubmitting)
 
-                PavePrimaryButton(title: "Send reset link", loadingTitle: "Sending…", isLoading: isSubmitting, action: submit)
+                PavePrimaryButton(title: "Link versturen", loadingTitle: "Versturen…", isLoading: isSubmitting, action: submit)
 
-                Text("Use the email linked to your organization-provided PAVE account.")
+                Text("Gebruik het e-mailadres van het PAVE-account dat je van je organisatie hebt gekregen.")
                     .textStyle(.footnote)
                     .foregroundStyle(Color.inkMuted)
 
@@ -79,27 +79,27 @@ struct ResetEmailSentView: View {
             VStack(alignment: .leading, spacing: 24) {
                 AuthIntro(
                     emblem: .iconMailOpen,
-                    eyebrow: "Password recovery",
-                    title: "Check your inbox",
-                    message: "If an account exists for \(email), we’ll send a password reset link."
+                    eyebrow: "Wachtwoord herstellen",
+                    title: "Kijk in je inbox",
+                    message: "Als er een account bestaat voor \(email), sturen we een link om een nieuw wachtwoord in te stellen."
                 )
 
                 if error == nil {
                     PaveNotice(
-                        title: "Can’t find the email?",
-                        message: "Allow a few minutes and check your spam or junk folder. If it still hasn’t arrived, request another link."
+                        title: "Geen e-mail ontvangen?",
+                        message: "Wacht een paar minuten en kijk in je map met spam of ongewenste e-mail. Nog niets? Vraag een nieuwe link aan."
                     )
                 } else {
                     PaveNotice(
-                        title: "We couldn’t send a new link",
-                        message: "Check your internet connection and try again.",
+                        title: "We konden geen nieuwe link versturen",
+                        message: "Controleer je internetverbinding en probeer het opnieuw.",
                         tone: .critical
                     )
                 }
 
-                PavePrimaryButton(title: "Resend reset link", loadingTitle: "Sending…", isLoading: isSubmitting, action: resend)
+                PavePrimaryButton(title: "Link opnieuw versturen", loadingTitle: "Versturen…", isLoading: isSubmitting, action: resend)
 
-                Text("For your privacy, we don’t confirm whether an email address has a PAVE account.")
+                Text("Voor je privacy laten we niet weten of een e-mailadres een PAVE-account heeft.")
                     .textStyle(.footnote)
                     .foregroundStyle(Color.inkMuted)
 
@@ -123,14 +123,14 @@ struct ResetEmailSentView: View {
     }
 }
 
-#Preview("Forgot password") {
+#Preview("Wachtwoord vergeten") {
     NavigationStack {
         ForgotPasswordView()
     }
     .environment(AuthFlow(service: MockAuthService()) { _ in })
 }
 
-#Preview("Email sent") {
+#Preview("E-mail verstuurd") {
     NavigationStack {
         ResetEmailSentView(email: "ravi@student.example.edu")
     }

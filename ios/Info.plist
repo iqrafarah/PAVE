@@ -14,7 +14,7 @@
 		</dict>
 	</array>
 	<key>NSFaceIDUsageDescription</key>
-	<string>PAVE uses Face ID to unlock the app, so you don’t have to type your PIN.</string>
+	<string>PAVE gebruikt Face ID om de app te ontgrendelen, zodat je je pincode niet hoeft in te typen.</string>
 	<key>SupabasePublishableKey</key>
 	<string>$(SUPABASE_PUBLISHABLE_KEY)</string>
 	<key>SupabaseURL</key>

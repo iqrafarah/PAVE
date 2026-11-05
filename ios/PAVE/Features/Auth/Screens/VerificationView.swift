@@ -13,24 +13,24 @@ struct VerificationView: View {
             VStack(alignment: .leading, spacing: 24) {
                 AuthIntro(
                     emblem: .iconShieldCheck,
-                    eyebrow: "Two-step verification",
-                    title: "Verify your identity",
-                    message: "Open your authenticator app and enter the 6-digit code for your PAVE account."
+                    eyebrow: "Tweestapsverificatie",
+                    title: "Bevestig dat jij het bent",
+                    message: "Open je authenticator-app en vul de code van 6 cijfers voor je PAVE-account in."
                 )
 
                 VerificationCodeField(code: $code, errorMessage: errorMessage, isFocused: $isCodeFocused)
                     .onChange(of: code) { error = nil }
 
                 PavePrimaryButton(
-                    title: error == nil ? "Verify" : "Try again",
-                    loadingTitle: "Verifying…",
+                    title: error == nil ? "Bevestigen" : "Opnieuw proberen",
+                    loadingTitle: "Controleren…",
                     isLoading: isSubmitting,
                     action: submit
                 )
 
                 PaveNotice(
-                    title: "Use your authenticator app",
-                    message: "Your code comes from your authenticator app, not by email or SMS. Can’t access the app? Contact IT support."
+                    title: "Gebruik je authenticator-app",
+                    message: "Je code komt uit je authenticator-app, niet via e-mail of sms. Kun je niet bij de app? Neem contact op met de IT-support."
                 )
 
                 AuthReturnButton(action: flow.returnToLogin)
@@ -42,8 +42,8 @@ struct VerificationView: View {
     private var errorMessage: String? {
         switch error {
         case nil: nil
-        case .invalidCode: "This code is invalid or has expired. Use the latest code in your authenticator app and try again."
-        default: "We couldn’t check your code. Check your internet connection and try again."
+        case .invalidCode: "Deze code klopt niet of is verlopen. Gebruik de nieuwste code uit je authenticator-app en probeer het opnieuw."
+        default: "We konden je code niet controleren. Controleer je internetverbinding en probeer het opnieuw."
         }
     }
 

@@ -88,14 +88,14 @@ final class AppState {
     @discardableResult
     func unlockWithBiometrics() async -> Bool {
         guard phase == .locked, canUnlockWithBiometrics else { return false }
-        guard await biometrics.authenticate(reason: "Unlock PAVE") else { return false }
+        guard await biometrics.authenticate(reason: "Ontgrendel PAVE") else { return false }
         guard phase == .locked else { return false }
         phase = .main
         return true
     }
 
     func authenticateForBiometricSetup() async -> Bool {
-        await biometrics.authenticate(reason: "Turn on quick unlock for PAVE")
+        await biometrics.authenticate(reason: "Zet snel ontgrendelen aan voor PAVE")
     }
 
     func signOut() {
