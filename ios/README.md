@@ -7,10 +7,11 @@ SwiftUI-app voor PAVE. Open `PAVE.xcodeproj` in Xcode 26 of nieuwer. Minimale ve
 ```
 PAVE/
   App/          PAVEApp, AppState (loading → login → main), RootView
+  DesignSystem/ Herbruikbare UI: tekststijlen, knop, tekstveld, melding
   Features/     Eén map per feature van het takenbord
     Loading/
-    Auth/
-  Resources/    AppIcon.icon (Icon Composer)
+    Auth/       AuthFlow (navigatie + logica), Screens/, Components/
+  Resources/    AppIcon.icon, Assets.xcassets (iconen), Fonts/ (Inter)
 PAVEWatch/      Apple Watch-app (spraakbot, geen volledige interface)
 Shared/         UI en assets voor iPhone en Watch (kleuren, logo-letters, laadscherm)
 PAVETests/      Swift Testing
@@ -53,3 +54,41 @@ Met een gratis Apple-account verloopt de app na 7 dagen en moet je hem opnieuw i
 ## Apple Watch
 
 De Watch-app (`PAVEWatch/`) is een spraakbot voor snelle vragen en handsfree bedienen. Hij krijgt geen volledige interface. Nu bevat hij alleen het laadscherm en een tijdelijk Ayla-scherm. De Watch-app zit in de iPhone-app: een iPhone-build installeert hem op de gekoppelde Watch. Kies in Xcode het scheme `PAVEWatch` om hem los te draaien. Bundle-id: `<jouw APP_BUNDLE_IDENTIFIER>.watchkitapp`.
+
+## Inloggen
+
+De inlogflow staat in `PAVE/Features/Auth/`. De schermen praten nooit direct met een server, maar met het protocol `AuthService` in `PAVECore`. Er zijn twee implementaties:
+
+- `SupabaseAuthService`: de echte inlog via Supabase (`supabase-swift`, product `Auth`).
+- `MockAuthService`: demo-accounts zonder internet.
+
+`AuthServiceFactory` kiest automatisch: staan `SUPABASE_URL` en `SUPABASE_PUBLISHABLE_KEY` in `Config/Local.xcconfig`, dan Supabase, anders de mock. Zie `Config/Local.xcconfig.example`; het zijn dezelfde waarden als in `web/.env`.
+
+**Accounts worden nooit in de app aangemaakt.** Gebruikers krijgen hun account van de organisatie. De app kan alleen inloggen, tweestapsverificatie instellen en het wachtwoord resetten. Registreren staat in Supabase uit.
+
+### Supabase-instellingen
+
+- Authentication, Sign In / Providers: "Allow new users to sign up" staat uit.
+- Authentication, URL Configuration: `pave://reset-password` staat bij de redirect-URL's.
+- Authentication, Multi-Factor: TOTP staat aan.
+- Testaccounts maak je in Authentication, Users met "Auto Confirm User".
+
+### Demo-accounts (mock)
+
+| Account | Wachtwoord | Wat gebeurt er |
+| --- | --- | --- |
+| `ravi@student.example.edu` | `PaveDemo!2026` | Vraagt de verificatiecode |
+| `new@student.example.edu` | `PaveDemo!2026` | Start de eerste instelling van tweestapsverificatie |
+
+De verificatiecode is altijd `123456`. Een resetlink test je in de simulator met `xcrun simctl openurl booted pave://reset-password`.
+
+## PIN en Face ID
+
+Na het inloggen maak je een PIN van 6 cijfers aan. Start je de app later opnieuw terwijl je nog bent ingelogd, dan vraagt PAVE eerst om die PIN. Je kunt ook Face ID of Touch ID aanzetten om sneller te ontgrendelen.
+
+- De logica staat in `PAVECore/Sources/PAVECore/Lock/` (`PinVault`, `PinPolicy`). De PIN wordt nooit zelf bewaard: alleen een hash met een willekeurige salt (PBKDF2), in de Keychain van deze iPhone (`WhenUnlockedThisDeviceOnly`).
+- Een PIN met herhaalde of oplopende cijfers (bijv. `000000`, `123456`) wordt geweigerd.
+- Na 5 foute pogingen word je uitgelogd en moet je opnieuw inloggen met wachtwoord en code. Dat geldt ook bij "Forgot PIN?".
+- De PIN hoort bij één account op dit toestel. Uitloggen bewaart hem: log je opnieuw in met hetzelfde account, dan hoef je geen nieuwe PIN te maken. Logt iemand anders in, dan wordt de oude PIN gewist en maakt die een eigen PIN aan. "Forgot PIN?" en 5 foute pogingen wissen de PIN wel.
+- Face ID/Touch ID zit in `AppState` via `BiometricAuthenticating`. De app opent hem alleen als je dat tijdens het instellen hebt aangezet.
+- Het slot komt bij het opstarten van de app. Terug uit de achtergrond vraagt hij nog niet opnieuw om de PIN.

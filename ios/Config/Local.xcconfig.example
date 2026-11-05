@@ -2,3 +2,8 @@
 DEVELOPMENT_TEAM = YOUR_TEAM_ID
 // Only needed when the default bundle identifier is already taken by another Apple account:
 // APP_BUNDLE_IDENTIFIER = nl.fontys.pave.yourname
+
+// Supabase (same values as web/.env). Leave empty to use the demo accounts.
+// Write "https:/$()/" instead of "https://", because xcconfig treats "//" as a comment.
+SUPABASE_URL = https:/$()/your-project.supabase.co
+SUPABASE_PUBLISHABLE_KEY = sb_publishable_...

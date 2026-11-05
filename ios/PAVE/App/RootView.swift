@@ -9,7 +9,11 @@ struct RootView: View {
             case .loading:
                 LoadingView()
             case .signedOut:
-                LoginView()
+                AuthFlowView(service: appState.authService, onSignedIn: appState.signIn(accountID:))
+            case .pinSetup:
+                PinSetupView()
+            case .locked:
+                PinLockView()
             case .main:
                 ContentUnavailableView {
                     Label("Home", systemImage: "house")
