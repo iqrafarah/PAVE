@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens from Figma. Add every color, font and spacing value here
+ * and use it through Tailwind classes (for example bg-brand, text-muted).
+ * Values below are estimated from a screenshot: replace them with the exact Figma values.
+ */
+@theme {
+    --color-brand: #3f5d4e;
+    --color-brand-soft: #c5ccc9;
+    --color-ink: #1f2421;
+    --color-muted: #666d69;
+    --color-line: #d9dedb;
+    --color-surface: #f9f9f9;
+    --color-tint: #e8ede9;
+    --color-danger: #b42318;
+    --container-card: 34.5rem;
+}
