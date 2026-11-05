@@ -14,9 +14,6 @@ struct AuthFlowView: View {
                 .navigationDestination(for: AuthRoute.self, destination: screen)
         }
         .environment(flow)
-        .onOpenURL { url in
-            Task { await flow.openPasswordResetLink(url) }
-        }
     }
 
     @ViewBuilder
@@ -30,8 +27,10 @@ struct AuthFlowView: View {
             VerificationSetupCompleteView()
         case .forgotPassword:
             ForgotPasswordView()
-        case .resetEmailSent(let email):
-            ResetEmailSentView(email: email)
+        case .resetCode(let email):
+            ResetCodeView(email: email)
+        case .resetVerification:
+            VerificationView(purpose: .passwordReset)
         case .newPassword:
             NewPasswordView()
         case .passwordResetComplete:

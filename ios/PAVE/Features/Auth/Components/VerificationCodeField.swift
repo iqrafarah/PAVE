@@ -4,6 +4,8 @@ struct VerificationCodeField: View {
     static let length = 6
 
     @Binding var code: String
+    var title = "Verificatiecode van 6 cijfers"
+    var hint = "Vul de code in die je authenticator-app laat zien."
     var errorMessage: String?
     var isFocused: FocusState<Bool>.Binding
 
@@ -11,11 +13,11 @@ struct VerificationCodeField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Verificatiecode van 6 cijfers")
+            Text(title)
                 .textStyle(.label)
                 .foregroundStyle(Color.ink)
 
-            TextField("Verificatiecode van 6 cijfers", text: $code, prompt: Text("000000").foregroundStyle(Color.inkMuted))
+            TextField(title, text: $code, prompt: Text("000000").foregroundStyle(Color.inkMuted))
                 .textStyle(.code)
                 .tracking(8)
                 .foregroundStyle(Color.ink)
@@ -43,7 +45,7 @@ struct VerificationCodeField: View {
                 }
                 .animation(.easeOut(duration: 0.15), value: isFocused.wrappedValue)
 
-            Text(errorMessage ?? "Vul de code in die je authenticator-app laat zien.")
+            Text(errorMessage ?? hint)
                 .textStyle(.footnote)
                 .foregroundStyle(isInvalid ? Color.critical : .inkMuted)
         }

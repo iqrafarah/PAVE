@@ -10,6 +10,8 @@ public actor MockAuthService: AuthService {
     private var passwords: [String: String]
     private var accountsWithVerification: Set<String>
     private var currentAccount: String?
+    private var resetAccount: String?
+    private var resetVerified = false
 
     public init(delay: Duration = .seconds(1)) {
         self.delay = delay
@@ -30,7 +32,10 @@ public actor MockAuthService: AuthService {
 
     public func verify(code: String) async throws {
         try await simulateNetwork()
-        guard currentAccount != nil, code == Self.demoCode else { throw AuthError.invalidCode }
+        guard currentAccount != nil || resetAccount != nil, code == Self.demoCode else { throw AuthError.invalidCode }
+        if resetAccount != nil {
+            resetVerified = true
+        }
     }
 
     public func startVerificationSetup() async throws -> VerificationEnrollment {
@@ -49,21 +54,30 @@ public actor MockAuthService: AuthService {
         try await simulateNetwork()
     }
 
-    public func openPasswordResetLink(_ url: URL) async throws {
-        guard url.host() == "reset-password" else { throw AuthError.invalidResetLink }
-        currentAccount = Self.verifiedAccount
+    public func verifyPasswordResetCode(email: String, code: String) async throws -> PasswordResetOutcome {
+        try await simulateNetwork()
+        let account = Self.normalized(email)
+        guard passwords[account] != nil, code == Self.demoCode else { throw AuthError.invalidCode }
+        resetAccount = account
+        resetVerified = false
+        return accountsWithVerification.contains(account) ? .needsVerification : .readyForNewPassword
     }
 
     public func updatePassword(_ newPassword: String) async throws {
         try await simulateNetwork()
-        guard let account = currentAccount else { throw AuthError.invalidResetLink }
+        guard let account = resetAccount else { throw AuthError.resetSessionExpired }
+        guard !accountsWithVerification.contains(account) || resetVerified else { throw AuthError.insufficientAssurance }
         guard PasswordRequirement.allMet(by: newPassword) else { throw AuthError.weakPassword }
+        guard passwords[account] != newPassword else { throw AuthError.samePassword }
         passwords[account] = newPassword
-        currentAccount = nil
+        resetAccount = nil
+        resetVerified = false
     }
 
     public func signOut() async {
         currentAccount = nil
+        resetAccount = nil
+        resetVerified = false
     }
 
     public func accountID() async -> String? {
