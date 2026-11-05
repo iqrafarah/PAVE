@@ -1,49 +1,213 @@
 import Foundation
+import PAVECore
 import Testing
 @testable import PAVE
 
 @MainActor
 struct AppStateTests {
+    private struct StubBiometrics: BiometricAuthenticating {
+        var kind: BiometricKind? = .faceID
+        var succeeds = true
+
+        func authenticate(reason: String) async -> Bool { succeeds }
+    }
+
     private let defaults = UserDefaults(suiteName: "AppStateTests-\(UUID().uuidString)")!
+    private let storage = InMemoryPinStorage()
+    private let pin = "482916"
+    private let ravi = "ravi-account"
+    private let gianna = "gianna-account"
+
+    private func makeState(biometrics: StubBiometrics = StubBiometrics()) -> AppState {
+        AppState(defaults: defaults, pinVault: PinVault(storage: storage), biometrics: biometrics)
+    }
+
+    private func signedInState() throws -> AppState {
+        let state = makeState()
+        state.finishLoading()
+        state.signIn(accountID: ravi)
+        try state.completePinSetup(pin: pin, useBiometrics: false)
+        return state
+    }
 
     @Test func startsInLoading() {
-        #expect(AppState(defaults: defaults).phase == .loading)
+        #expect(makeState().phase == .loading)
     }
 
     @Test func newUserGoesFromLoadingToLogin() {
-        let state = AppState(defaults: defaults)
+        let state = makeState()
         state.finishLoading()
         #expect(state.phase == .signedOut)
     }
 
-    @Test func signInOpensMainAndIsRemembered() {
-        let state = AppState(defaults: defaults)
+    @Test func signInRequiresCreatingAPin() throws {
+        let state = makeState()
         state.finishLoading()
-        state.signIn()
+        state.signIn(accountID: ravi)
+        #expect(state.phase == .pinSetup)
+
+        try state.completePinSetup(pin: pin, useBiometrics: false)
         #expect(state.phase == .main)
-
-        let relaunched = AppState(defaults: defaults)
-        #expect(relaunched.phase == .loading)
-        relaunched.finishLoading()
-        #expect(relaunched.phase == .main)
     }
 
-    @Test func signOutIsRememberedOnRelaunch() {
-        let state = AppState(defaults: defaults)
+    @Test func weakPinIsRejectedDuringSetup() {
+        let state = makeState()
         state.finishLoading()
-        state.signIn()
-        state.signOut()
-        #expect(state.phase == .signedOut)
-
-        let relaunched = AppState(defaults: defaults)
-        relaunched.finishLoading()
-        #expect(relaunched.phase == .signedOut)
+        state.signIn(accountID: ravi)
+        #expect(throws: PinVaultError.unacceptablePin) {
+            try state.completePinSetup(pin: "123456", useBiometrics: false)
+        }
+        #expect(state.phase == .pinSetup)
     }
 
     @Test func cannotSignInWhileLoading() {
-        let state = AppState(defaults: defaults)
-        state.signIn()
+        let state = makeState()
+        state.signIn(accountID: ravi)
         #expect(state.phase == .loading)
         #expect(!state.isSignedIn)
+    }
+
+    @Test func relaunchAsksForThePin() throws {
+        _ = try signedInState()
+
+        let relaunched = makeState()
+        #expect(relaunched.phase == .loading)
+        relaunched.finishLoading()
+        #expect(relaunched.phase == .locked)
+    }
+
+    @Test func relaunchWithoutPinAsksToCreateOne() {
+        let state = makeState()
+        state.finishLoading()
+        state.signIn(accountID: ravi)
+
+        let relaunched = makeState()
+        relaunched.finishLoading()
+        #expect(relaunched.phase == .pinSetup)
+    }
+
+    @Test func correctPinUnlocks() throws {
+        _ = try signedInState()
+        let relaunched = makeState()
+        relaunched.finishLoading()
+
+        #expect(relaunched.unlock(with: pin) == .correct)
+        #expect(relaunched.phase == .main)
+    }
+
+    @Test func wrongPinStaysLocked() throws {
+        _ = try signedInState()
+        let relaunched = makeState()
+        relaunched.finishLoading()
+
+        #expect(relaunched.unlock(with: "000001") == .incorrect(attemptsRemaining: 4))
+        #expect(relaunched.phase == .locked)
+    }
+
+    @Test func tooManyWrongPinsSignOut() throws {
+        _ = try signedInState()
+        let relaunched = makeState()
+        relaunched.finishLoading()
+
+        for _ in 0..<4 { _ = relaunched.unlock(with: "000001") }
+        #expect(relaunched.unlock(with: "000001") == .lockedOut)
+        #expect(relaunched.phase == .signedOut)
+        #expect(!relaunched.isSignedIn)
+    }
+
+    @Test func biometricsUnlockOnlyWhenEnabled() async throws {
+        let state = makeState()
+        state.finishLoading()
+        state.signIn(accountID: ravi)
+        try state.completePinSetup(pin: pin, useBiometrics: true)
+
+        let relaunched = makeState()
+        relaunched.finishLoading()
+        #expect(relaunched.canUnlockWithBiometrics)
+        #expect(await relaunched.unlockWithBiometrics())
+        #expect(relaunched.phase == .main)
+    }
+
+    @Test func failedBiometricsStayLocked() async throws {
+        let state = makeState()
+        state.finishLoading()
+        state.signIn(accountID: ravi)
+        try state.completePinSetup(pin: pin, useBiometrics: true)
+
+        let relaunched = makeState(biometrics: StubBiometrics(succeeds: false))
+        relaunched.finishLoading()
+        #expect(await !relaunched.unlockWithBiometrics())
+        #expect(relaunched.phase == .locked)
+    }
+
+    @Test func biometricsDoNotUnlockWhenNotEnabled() async throws {
+        _ = try signedInState()
+        let relaunched = makeState()
+        relaunched.finishLoading()
+        #expect(!relaunched.canUnlockWithBiometrics)
+        #expect(await !relaunched.unlockWithBiometrics())
+        #expect(relaunched.phase == .locked)
+    }
+
+    @Test func signOutKeepsThePinForTheSameAccount() throws {
+        let state = try signedInState()
+        state.signOut()
+        #expect(state.phase == .signedOut)
+
+        let relaunched = makeState()
+        relaunched.finishLoading()
+        #expect(relaunched.phase == .signedOut)
+
+        relaunched.signIn(accountID: ravi)
+        #expect(relaunched.phase == .main)
+
+        let nextLaunch = makeState()
+        nextLaunch.finishLoading()
+        #expect(nextLaunch.unlock(with: pin) == .correct)
+    }
+
+    @Test func anotherAccountMustCreateItsOwnPin() throws {
+        let state = try signedInState()
+        state.signOut()
+
+        state.signIn(accountID: gianna)
+        #expect(state.phase == .pinSetup)
+
+        try state.completePinSetup(pin: "908172", useBiometrics: false)
+        let relaunched = makeState()
+        relaunched.finishLoading()
+        #expect(relaunched.unlock(with: pin) == .incorrect(attemptsRemaining: 4))
+        #expect(relaunched.unlock(with: "908172") == .correct)
+    }
+
+    @Test func unknownAccountMustCreateAPin() throws {
+        let state = try signedInState()
+        state.signOut()
+
+        state.signIn(accountID: nil)
+        #expect(state.phase == .pinSetup)
+    }
+
+    @Test func forgottenPinRequiresANewOneAfterSignIn() throws {
+        let state = try signedInState()
+        let relaunched = makeState()
+        relaunched.finishLoading()
+        relaunched.forgetPin()
+        #expect(relaunched.phase == .signedOut)
+
+        relaunched.signIn(accountID: ravi)
+        #expect(relaunched.phase == .pinSetup)
+        _ = state
+    }
+
+    @Test func lockoutRequiresANewPinAfterSignIn() throws {
+        _ = try signedInState()
+        let relaunched = makeState()
+        relaunched.finishLoading()
+        for _ in 0..<5 { _ = relaunched.unlock(with: "000001") }
+        #expect(relaunched.phase == .signedOut)
+
+        relaunched.signIn(accountID: ravi)
+        #expect(relaunched.phase == .pinSetup)
     }
 }
