@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// The empty chat: greeting, explanation and three starters.
 struct AylaWelcome: View {
     let firstName: String?
     var isAvailable = true
@@ -9,12 +10,13 @@ struct AylaWelcome: View {
         let icon: ImageResource
         let title: String
         let question: String
+        let width: CGFloat
     }
 
     private static let starters = [
-        Starter(icon: .iconFolder, title: "Kluis", question: "Wat kan ik allemaal in mijn kluis bewaren?"),
-        Starter(icon: .iconMap, title: "Plan", question: "Kun je me helpen een ontwikkelplan te maken?"),
-        Starter(icon: .iconPerson, title: "Profiel", question: "Hoe maak ik een profiel om met een werkgever te delen?"),
+        Starter(icon: .iconFolder, title: "Kluis", question: "Wat kan ik allemaal in mijn kluis bewaren?", width: 96),
+        Starter(icon: .iconMap, title: "Plan", question: "Kun je me helpen een ontwikkelplan te maken?", width: 93),
+        Starter(icon: .iconPerson, title: "Profiel", question: "Hoe maak ik een profiel om met een werkgever te delen?", width: 99),
     ]
 
     private var title: String {
@@ -22,38 +24,38 @@ struct AylaWelcome: View {
     }
 
     var body: some View {
-        VStack(spacing: 30) {
-            VStack(spacing: 30) {
-                HStack(alignment: .top, spacing: 12) {
-                    AylaMark(count: 5, size: 6)
-                        .padding(.top, 2)
+        VStack(spacing: 0) {
+            HStack(alignment: .top, spacing: 10) {
+                AylaMark(count: 5, size: 6)
+                MaxWidthLayout(maxWidth: 289) {
                     Text(title)
                         .textStyle(.welcomeTitle)
                         .foregroundStyle(Color.ink)
                         .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .accessibilityElement(children: .combine)
-                .accessibilityAddTraits(.isHeader)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
 
+            MaxWidthLayout(maxWidth: 313) {
                 Text(isAvailable ? "Ontdek kansen, krijg persoonlijk advies en werk met AI direct in jouw PAVE-omgeving. Van je kluis en ontwikkelplan tot vacatures en sollicitaties." : AylaMessages.notAvailableInDemo)
                     .textStyle(.bodyMedium)
                     .foregroundStyle(Color.inkMuted)
                     .multilineTextAlignment(.center)
-                    .frame(maxWidth: 320)
-                    .fixedSize(horizontal: false, vertical: true)
             }
+            .padding(.top, 16)
 
             if isAvailable {
-                HStack(spacing: 15) {
+                HStack(spacing: 14.5) {
                     ForEach(Self.starters, id: \.title) { starter in
-                        PaveChip(icon: starter.icon, title: starter.title) { onStarter(starter.question) }
+                        PaveChip(icon: starter.icon, title: starter.title, width: starter.width) { onStarter(starter.question) }
                             .accessibilityHint(starter.question)
                     }
                 }
+                .padding(.top, 26)
             }
         }
-        .padding(.horizontal, 32)
+        .padding(.horizontal, 24)
     }
 }
 

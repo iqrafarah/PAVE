@@ -1,11 +1,17 @@
 import SwiftUI
 
+struct AylaChoice: Identifiable, Equatable {
+    let id: String
+    let label: String
+}
+
+/// Two or three answers from Ayla's question, shown in place of the text field.
 struct AylaChoiceBar: View {
     let choices: [AylaChoice]
     let onChoose: (AylaChoice) -> Void
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 3.2) {
             ForEach(choices) { choice in
                 Button {
                     onChoose(choice)
@@ -23,18 +29,14 @@ struct AylaChoiceBar: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(8)
-        .background(Color.surfaceTint, in: .rect(cornerRadius: 35))
+        .padding(8.15)
+        .background(Color.surfaceTint, in: .capsule)
     }
-}
-
-struct AylaChoice: Identifiable, Equatable {
-    let id: String
-    let label: String
 }
 
 #Preview {
     AylaChoiceBar(choices: [.init(id: "y", label: "Ja"), .init(id: "n", label: "Nee")]) { _ in }
-        .padding(24)
+        .padding(.leading, 21)
+        .padding(.trailing, 22)
         .background(Color.canvas)
 }

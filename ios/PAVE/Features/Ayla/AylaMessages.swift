@@ -5,4 +5,6 @@ enum AylaMessages {
     static let conversationGone = "Dit gesprek bestaat niet meer. Begin een nieuw gesprek."
     static let unavailable = "Ayla kon nu geen antwoord geven. Probeer het zo opnieuw."
     static let notAvailableInDemo = "Ayla werkt alleen als je met je eigen PAVE-account bent ingelogd."
+    static let speechNotAllowed = "Geef PAVE toegang tot je microfoon en spraakherkenning in Instellingen om je vraag in te spreken."
+    static let speechUnavailable = "Inspreken werkt nu niet. Typ je vraag maar."
 }

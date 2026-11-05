@@ -41,7 +41,7 @@ final class AylaChatModel {
 
     /// Choices from Ayla's last reply, shown instead of the text field.
     var pendingQuestion: AylaReply.Question? {
-        guard phase == .idle, let last = entries.last, last.role == .ayla else { return nil }
+        guard phase != .thinking, let last = entries.last, last.role == .ayla else { return nil }
         return last.reply?.question
     }
 
@@ -77,13 +77,9 @@ final class AylaChatModel {
                 await refreshConversations()
             } catch {
                 phase = .failed(Self.message(for: AylaError(error)))
+                if draft.isEmpty { draft = text }
             }
         }
-    }
-
-    func retry() {
-        guard let lastQuestion else { return }
-        send(lastQuestion)
     }
 
     func newConversation() {

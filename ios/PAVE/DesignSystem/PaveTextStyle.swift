@@ -22,11 +22,13 @@ enum PaveTextStyle {
     case status
     case choice
     case gapChip
+    case tileTitle
+    case tileCount
 
     fileprivate var fontName: String {
         switch self {
         case .title, .eyebrow, .label, .button, .calloutTitle, .tag, .aylaTitle, .bubble, .choice, .gapChip: "InterVariable-SemiBold"
-        case .link, .bodyMedium, .meta: "InterVariable-Medium"
+        case .link, .bodyMedium, .meta, .tileTitle, .tileCount: "InterVariable-Medium"
         case .status: "InterVariable-Bold"
         case .welcomeTitle, .chip: "Sora-Regular_SemiBold"
         case .lead, .input, .footnote, .caption, .code: "InterVariable"
@@ -38,7 +40,8 @@ enum PaveTextStyle {
         case .aylaTitle, .welcomeTitle: 30
         case .choice: 18
         case .bubble: 16
-        case .bodyMedium, .status: 14
+        case .tileTitle: 15
+        case .bodyMedium, .status, .tileCount: 14
         case .chip, .meta, .gapChip: 12
         case .title: 28
         case .code: 24
@@ -56,7 +59,7 @@ enum PaveTextStyle {
         case .aylaTitle, .welcomeTitle: .largeTitle
         case .choice: .headline
         case .bubble: .body
-        case .bodyMedium, .status: .subheadline
+        case .bodyMedium, .status, .tileTitle, .tileCount: .subheadline
         case .chip, .meta, .gapChip: .caption
         case .title: .title
         case .code: .title2
@@ -74,8 +77,6 @@ enum PaveTextStyle {
         case .title: 1.25
         case .lead, .footnote, .caption: 1.5
         case .calloutTitle: 1.4
-        case .bubble, .bodyMedium: 1.3
-        case .welcomeTitle: 1.25
         default: nil
         }
     }

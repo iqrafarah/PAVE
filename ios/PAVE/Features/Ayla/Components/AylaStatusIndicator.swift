@@ -12,7 +12,7 @@ struct AylaStatusIndicator: View {
     let message: String
 
     var body: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 12) {
             Group {
                 switch state {
                 case .thinking: AylaThinkingBlocks()

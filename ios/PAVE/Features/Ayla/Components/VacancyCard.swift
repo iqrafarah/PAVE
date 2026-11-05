@@ -1,46 +1,55 @@
 import PAVECore
 import SwiftUI
 
+/// A vacancy in Ayla's results (Figma frame "Vacatures"). Tapping it opens the vacancy, if it has a link.
 struct VacancyCard: View {
     let vacancy: Vacancy
+    var tint = Color.cardTintRose
 
-    private static let tints: [Color] = [.cardTintRose, .cardTintGreen, .cardTintLavender, .cardTintApricot, .cardTintLime]
-
-    private var tint: Color {
-        let sum = vacancy.company.unicodeScalars.reduce(0) { $0 + Int($1.value) }
-        return Self.tints[sum % Self.tints.count]
-    }
+    /// The tints in the order Figma uses them for a list of cards.
+    static let tints: [Color] = [.cardTintRose, .cardTintGreen, .cardTintLavender, .cardTintApricot, .cardTintLime]
 
     var body: some View {
+        if let url = vacancy.url {
+            Link(destination: url) { content }
+                .buttonStyle(.plain)
+                .accessibilityHint("Opent de vacature")
+        } else {
+            content
+        }
+    }
+
+    private var content: some View {
         HStack(alignment: .top, spacing: 12) {
             CompanyMonogram(name: vacancy.company)
-            VStack(alignment: .leading, spacing: 8) {
+                .padding(.top, 11)
+            VStack(alignment: .leading, spacing: 0) {
                 Text(vacancy.title)
                     .textStyle(.bubble)
                     .foregroundStyle(Color.ink)
-                    .padding(.top, 5)
-                    .padding(.bottom, 4)
                     .fixedSize(horizontal: false, vertical: true)
-                meta(.iconBuilding, [vacancy.company, vacancy.city].compactMap(\.self).joined(separator: " - "))
-                if let employment = employmentText {
-                    meta(.iconBriefcase, employment)
+                    .padding(.top, 16)
+                VStack(alignment: .leading, spacing: 9) {
+                    meta(.iconBuilding, [vacancy.company, vacancy.city].compactMap(\.self).joined(separator: " - "))
+                    if let employment = employmentText {
+                        meta(.iconBriefcase, employment)
+                    }
+                    if let salary = vacancy.salary {
+                        meta(.iconEuro, Self.salaryText(salary))
+                    }
                 }
-                if let salary = vacancy.salary {
-                    meta(.iconEuro, Self.salaryText(salary))
-                }
+                .padding(.top, 13.6)
                 if !vacancy.skillGap.isEmpty {
                     skillGap
+                        .padding(.top, 14)
                 }
-                footer
             }
+            .padding(.trailing, 18)
+            .padding(.bottom, 17)
         }
         .padding(.leading, 13)
-        .padding(.trailing, 16)
-        .padding(.vertical, 11)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            LinearGradient(stops: [.init(color: tint, location: 0), .init(color: .white, location: 0.55)], startPoint: .topLeading, endPoint: .bottomTrailing)
-        }
+        .background { FigmaCardGradient(tint: tint, start: UnitPoint(x: 0.97, y: 1.08), end: UnitPoint(x: 0.03, y: -0.08)) }
         .clipShape(.rect(cornerRadius: 17))
         .overlay {
             RoundedRectangle(cornerRadius: 17).strokeBorder(Color.cardBorder, lineWidth: 1)
@@ -58,11 +67,11 @@ struct VacancyCard: View {
 
     private func meta(_ icon: ImageResource, _ text: String) -> some View {
         PaveIconLabel(icon: icon, text: text)
-            .padding(.leading, 5)
+            .padding(.leading, 4.5)
     }
 
     private var skillGap: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 9) {
             Text("Skill-gap:")
                 .textStyle(.label)
                 .foregroundStyle(Color.ink)
@@ -80,26 +89,6 @@ struct VacancyCard: View {
                 .background(Color.surfaceTint, in: .rect(cornerRadius: 7))
             }
         }
-        .padding(.top, 12)
-    }
-
-    @ViewBuilder
-    private var footer: some View {
-        HStack {
-            Text(vacancy.source == .adzuna ? "Via Adzuna" : "Voorbeeldvacature")
-                .textStyle(.caption)
-                .foregroundStyle(Color.inkMuted)
-            Spacer()
-            if let url = vacancy.url {
-                Link(destination: url) {
-                    Text("Bekijk vacature")
-                        .textStyle(.gapChip)
-                        .foregroundStyle(Color.brandGreen)
-                        .frame(minHeight: 44)
-                }
-            }
-        }
-        .padding(.top, 2)
     }
 
     static func salaryText(_ salary: Vacancy.Salary) -> String {
@@ -113,8 +102,9 @@ struct VacancyCard: View {
 #Preview {
     VacancyCard(vacancy: Vacancy(
         id: "1", title: "IT-coördinator", company: "Voorbeeld BV", city: "Eindhoven", employment: .fullTime,
-        salary: .init(min: 33600, max: 40800, period: .year, isEstimate: true), url: URL(string: "https://www.adzuna.nl"), source: .adzuna,
-        skillGap: [.init(skill: "IT-infrastructuur", requirement: "Kennis van netwerken")]
+        salary: .init(min: 33600, max: 40800, period: .year, isEstimate: false), url: URL(string: "https://www.adzuna.nl"), source: .adzuna,
+        skillGap: [.init(skill: "IT-infrastructuur kennis", requirement: "Kennis van netwerken")]
     ))
-    .padding()
+    .padding(.leading, 26)
+    .padding(.trailing, 25)
 }

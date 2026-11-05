@@ -4,19 +4,22 @@ import SwiftUI
 struct PaveChip: View {
     let icon: ImageResource
     let title: String
+    /// Figma gives each chip a fixed width; without it the chip is as wide as its content.
+    var width: CGFloat?
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 Image(icon)
                     .accessibilityHidden(true)
                 Text(title)
                     .textStyle(.chip)
                     .foregroundStyle(Color.ink)
             }
-            .padding(.horizontal, 18)
-            .frame(minHeight: 43)
+            .padding(.leading, 19)
+            .padding(.trailing, 18)
+            .frame(minWidth: width, minHeight: 43, alignment: .leading)
             .background(Color.surfaceTint, in: .rect(cornerRadius: 14))
             .contentShape(.rect(cornerRadius: 14))
         }

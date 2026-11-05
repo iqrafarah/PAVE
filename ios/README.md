@@ -146,11 +146,27 @@ Na het inloggen maak je een PIN van 6 cijfers aan. Start je de app later opnieuw
 
 ## Ayla
 
-Na het ontgrendelen opent de chat met Ayla (`PAVE/Features/Ayla`). Ayla zelf draait op de server: de Edge Function `ayla` in `shared/supabase/functions/ayla`. De app bevat geen prompt en geen sleutels. Zie `docs/ayla.md`.
+Na het ontgrendelen opent Ayla (`PAVE/Features/Ayla`). Ayla zelf draait op de server: de Edge Function `ayla` in `shared/supabase/functions/ayla`. De app bevat geen prompt en geen sleutels. Zie `docs/ayla.md`.
 
+- `AylaRootView`: een `NavigationSplitView` met je gesprekken als zijbalk en de chat (`AylaChatScreen`) ernaast.
 - `SupabaseAylaService` (PAVECore) stuurt je vraag met je eigen sessie naar de functie en leest je gesprekken uit `ayla_conversations` en `ayla_messages`.
 - Met de demo-inlog (`MockAuthService`) is er geen Ayla: de chat zegt dat je met je eigen account moet inloggen. Er is geen nep-Ayla.
-- Het scherm volgt de Figma-ontwerpen: welkom met Kluis/Plan/Profiel, berichten, Ja/Nee-keuzes in plaats van het invoerveld, vacaturekaarten, en de pixelblokjes bij denken (groen) en bij een fout (rood, ze vallen om).
+- Het scherm is 1:1 nagebouwd van de Figma-frames (440 × 956) en daarnaast gemeten. De maten staan in de componenten.
+- Microfoon: spraak wordt op het toestel omgezet naar tekst (Nederlands, `SpeechDictation`). Alleen de tekst gaat naar Ayla. De plus opent snelle vragen.
 - Meldingen van Ayla hebben (nog) geen webversie; ze staan in `AylaMessages`.
-- Smal: één kolom. Breed en staand: de chat in het midden. Duo uitgeklapt en iPad liggend: links je gesprekken, rechts de chat, niets in de vouw.
-- Nog niet gebouwd: de plus (bijlage) en de microfoon uit Figma, de kluiskeuze ("2 gegevens geselecteerd") en de skill-gap op basis van je kluis. Daarvoor is eerst de kluis nodig.
+
+### Per toestel
+
+| Toestel | Gesprekken | Vacatures |
+| --- | --- | --- |
+| iPhone, Duo dichtgeklapt | Achter de menuknop | Paneel van onderen, het invoerveld zweeft erover |
+| Duo opengeklapt, iPad | Zijbalk naast de chat (menuknop toont of verbergt hem) | Kolom rechts naast de chat (`inspector`) |
+| Duo half gevouwen | Zijbalk en chat elk aan één kant van de vouw | Kolom rechts |
+
+- **Knoppen in de balk aan de zijkant (Duo):** de menuknop en "nieuw gesprek" zijn gewone toolbarknoppen. Dan zet iOS ze op de Duo verticaal onder de statusbalk. Eigen knoppen of `sharedBackgroundVisibility(.hidden)` houden ze horizontaal, dus dat niet doen.
+- Achtergronden (header, paneel) lopen door tot de rand; inhoud blijft binnen de veilige zone, die op de Duo aan één kant breder kan zijn.
+
+### Nog niet in de app
+
+- De kluiskeuze uit Figma ("Alle items", kaarten met vinkjes, "Verder") en de kaart "2 gegevens geselecteerd" zijn gebouwd (`VaultSelectionList`, `VaultSelectionBar`, `ChatAttachmentCard`), maar alleen te zien in de Xcode-voorbeelden. Ze gaan aan zodra de kluis bestaat.
+- Bedrijfslogo's: Adzuna levert die niet, dus de kaarten tonen de eerste letter van het bedrijf.

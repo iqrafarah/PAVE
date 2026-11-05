@@ -41,7 +41,7 @@ struct AylaChatModelTests {
         #expect(ayla.requests.allSatisfy { $0.device == .phone })
     }
 
-    @Test func aFailureShowsAMessageAndRetryDoesNotRepeatTheQuestion() async {
+    @Test func aFailurePutsTheQuestionBackAndSendingAgainDoesNotRepeatIt() async {
         let ayla = FakeAyla()
         ayla.replies = [.failure(.noConnection), .success(AylaReply(id: "r", conversationId: "c", text: "Daar ben ik"))]
         let model = AylaChatModel(service: ayla)
@@ -49,8 +49,9 @@ struct AylaChatModelTests {
         model.send("Ben je er?")
         await waitUntilIdle(model)
         #expect(model.phase == .failed(AylaMessages.noConnection))
+        #expect(model.draft == "Ben je er?")
 
-        model.retry()
+        model.send(model.draft)
         await waitUntilIdle(model)
         #expect(model.entries.map(\.text) == ["Ben je er?", "Daar ben ik"])
         #expect(model.phase == .idle)

@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>PAVE gebruikt de microfoon zodat je je vraag aan Ayla kunt inspreken.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>PAVE zet wat je inspreekt op je toestel om in tekst, zodat Ayla je vraag kan lezen.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>PAVE gebruikt Face ID om de app te ontgrendelen, zodat je je pincode niet hoeft in te typen.</string>
 	<key>SupabasePublishableKey</key>

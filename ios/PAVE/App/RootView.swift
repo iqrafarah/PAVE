@@ -15,7 +15,7 @@ struct RootView: View {
             case .locked:
                 PinLockView()
             case .main:
-                AylaChatView(service: AylaServiceFactory.make(auth: appState.authService))
+                AylaRootView(service: AylaServiceFactory.make(auth: appState.authService))
             }
         }
         .animation(.easeInOut(duration: 0.4), value: appState.phase)
