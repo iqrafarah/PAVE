@@ -15,15 +15,7 @@ struct RootView: View {
             case .locked:
                 PinLockView()
             case .main:
-                ContentUnavailableView {
-                    Label("Home", systemImage: "house")
-                } description: {
-                    Text("Volgt in week 2.")
-                } actions: {
-                    Button("Uitloggen") {
-                        appState.signOut()
-                    }
-                }
+                AylaChatView(service: AylaServiceFactory.make(auth: appState.authService))
             }
         }
         .animation(.easeInOut(duration: 0.4), value: appState.phase)

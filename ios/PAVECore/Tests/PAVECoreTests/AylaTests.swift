@@ -162,3 +162,39 @@ private final class StubProtocol: URLProtocol, @unchecked Sendable {
 
     override func stopLoading() {}
 }
+
+extension SupabaseAylaServiceTests {
+    @Test func conversationsAreReadWithTheUsersSession() async throws {
+        let rows = #"[{"id":"c1","title":"Banen zoeken","updated_at":"2026-11-05T22:13:55.123456+00:00"}]"#
+        let captured = Captured()
+        let ayla = service { urlRequest in
+            captured.request = urlRequest
+            return (200, Data(rows.utf8))
+        }
+        let conversations = try await ayla.conversations()
+        #expect(conversations.map(\.title) == ["Banen zoeken"])
+        #expect(conversations.first?.updatedAt != .distantPast)
+        let url = try #require(captured.request?.url?.absoluteString)
+        #expect(url.hasPrefix("https://example.supabase.co/rest/v1/ayla_conversations?"))
+        #expect(url.contains("order=updated_at.desc"))
+        #expect(captured.request?.value(forHTTPHeaderField: "Authorization") == "Bearer token")
+    }
+
+    @Test func storedMessagesKeepTheirCards() async throws {
+        let rows = #"""
+        [{"id":"m1","role":"user","text":"Hoi","reply":null},
+         {"id":"m2","role":"ayla","text":"Hallo","reply":{"version":1,"id":"r","conversationId":"c","text":"Hallo","blocks":[{"type":"vacancies","items":[]}],"usedData":[]}}]
+        """#
+        let ayla = service { _ in (200, Data(rows.utf8)) }
+        let messages = try await ayla.messages(in: "c")
+        #expect(messages.map(\.role) == [.user, .ayla])
+        #expect(messages.last?.reply?.blocks == [.vacancies([])])
+    }
+
+    @Test func theUserIdComesFromTheSessionToken() {
+        let payload = Data(#"{"sub":"7a1d6c1e-2f4b-4c8e-9d3a-1b2c3d4e5f60","aal":"aal2"}"#.utf8).base64EncodedString()
+            .replacingOccurrences(of: "=", with: "")
+        #expect(SupabaseAylaService.subject(of: "x.\(payload).y") == "7a1d6c1e-2f4b-4c8e-9d3a-1b2c3d4e5f60")
+        #expect(SupabaseAylaService.subject(of: "not-a-token") == nil)
+    }
+}

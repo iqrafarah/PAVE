@@ -1,6 +1,6 @@
 # Ayla
 
-> **Status: first version built, not deployed.** The brain is the Supabase Edge Function in `shared/supabase/functions/ayla`, the contract is in `shared/ayla`, and iOS calls it through `SupabaseAylaService` in PAVECore. Talking, conversations and vacancy search work; the vault, consent, memory and proposals are not built yet. A change to this file is a shared change (see `Conventions.md`).
+> **Status: first version live on the shared project (2026-11-05).** The brain is the Supabase Edge Function in `shared/supabase/functions/ayla`, the contract is in `shared/ayla`, and iOS has the chat screen (`ios/PAVE/Features/Ayla`), which calls it through `SupabaseAylaService` in PAVECore. Talking, conversations and vacancy search work; the vault, consent, memory and proposals are not built yet. A change to this file is a shared change (see `Conventions.md`).
 
 ## The idea
 

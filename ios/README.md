@@ -126,3 +126,14 @@ Na het inloggen maak je een PIN van 6 cijfers aan. Start je de app later opnieuw
 - De PIN hoort bij één account op dit toestel. Uitloggen bewaart hem: log je opnieuw in met hetzelfde account, dan hoef je geen nieuwe PIN te maken. Logt iemand anders in, dan wordt de oude PIN gewist en maakt die een eigen PIN aan. ""Pincode vergeten?" en 5 foute pogingen wissen de PIN wel.
 - Face ID/Touch ID zit in `AppState` via `BiometricAuthenticating`. De app opent hem alleen als je dat tijdens het instellen hebt aangezet.
 - Het slot komt bij het opstarten van de app. Terug uit de achtergrond vraagt hij nog niet opnieuw om de PIN.
+
+## Ayla
+
+Na het ontgrendelen opent de chat met Ayla (`PAVE/Features/Ayla`). Ayla zelf draait op de server: de Edge Function `ayla` in `shared/supabase/functions/ayla`. De app bevat geen prompt en geen sleutels. Zie `docs/ayla.md`.
+
+- `SupabaseAylaService` (PAVECore) stuurt je vraag met je eigen sessie naar de functie en leest je gesprekken uit `ayla_conversations` en `ayla_messages`.
+- Met de demo-inlog (`MockAuthService`) is er geen Ayla: de chat zegt dat je met je eigen account moet inloggen. Er is geen nep-Ayla.
+- Het scherm volgt de Figma-ontwerpen: welkom met Kluis/Plan/Profiel, berichten, Ja/Nee-keuzes in plaats van het invoerveld, vacaturekaarten, en de pixelblokjes bij denken (groen) en bij een fout (rood, ze vallen om).
+- Meldingen van Ayla hebben (nog) geen webversie; ze staan in `AylaMessages`.
+- Smal: één kolom. Breed en staand: de chat in het midden. Duo uitgeklapt en iPad liggend: links je gesprekken, rechts de chat, niets in de vouw.
+- Nog niet gebouwd: de plus (bijlage) en de microfoon uit Figma, de kluiskeuze ("2 gegevens geselecteerd") en de skill-gap op basis van je kluis. Daarvoor is eerst de kluis nodig.
