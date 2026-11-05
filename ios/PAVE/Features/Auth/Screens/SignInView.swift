@@ -19,9 +19,9 @@ struct SignInView: View {
         AuthScreen {
             VStack(alignment: .leading, spacing: 24) {
                 AuthIntro(
-                    eyebrow: "Sign in",
-                    title: "Welcome to PAVE",
-                    message: "Sign in to continue building your personal portfolio."
+                    eyebrow: "Inloggen",
+                    title: "Welkom bij PAVE",
+                    message: "Log in om verder te werken aan je persoonlijke portfolio."
                 )
 
                 if let error {
@@ -34,9 +34,9 @@ struct SignInView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 12) {
-                    PavePrimaryButton(title: "Sign in", loadingTitle: "Signing in…", isLoading: isSubmitting, action: submit)
+                    PavePrimaryButton(title: "Inloggen", loadingTitle: "Inloggen…", isLoading: isSubmitting, action: submit)
                     if isSubmitting {
-                        Text("Checking your details securely. Please wait — this may take a moment.")
+                        Text("We controleren je gegevens veilig. Een moment geduld.")
                             .textStyle(.footnote)
                             .foregroundStyle(Color.inkMuted)
                     }
@@ -59,8 +59,8 @@ struct SignInView: View {
     private var fields: some View {
         VStack(alignment: .leading, spacing: 20) {
             PaveTextField(
-                label: "Email address",
-                placeholder: "Your organization email",
+                label: "E-mailadres",
+                placeholder: "E-mailadres van je organisatie",
                 text: $email,
                 kind: .email,
                 focus: $focus,
@@ -70,8 +70,8 @@ struct SignInView: View {
             .onSubmit { focus = .password }
 
             PaveTextField(
-                label: "Password",
-                placeholder: "Enter your password",
+                label: "Wachtwoord",
+                placeholder: "Vul je wachtwoord in",
                 text: $password,
                 kind: .password,
                 focus: $focus,
@@ -80,7 +80,7 @@ struct SignInView: View {
             .submitLabel(.go)
             .onSubmit(submit)
 
-            Button("Forgot password?", action: flow.showForgotPassword)
+            Button("Wachtwoord vergeten?", action: flow.showForgotPassword)
                 .textStyle(.link)
                 .foregroundStyle(isSubmitting ? Color.inkMuted : .brandGreen)
                 .frame(maxWidth: .infinity, minHeight: 44, alignment: .trailing)
@@ -97,14 +97,14 @@ struct SignInView: View {
                     .resizable()
                     .frame(width: 22, height: 22)
                     .accessibilityHidden(true)
-                Text("Two-step verification is required. After your password, enter a code from your authenticator app.")
+                Text("Tweestapsverificatie is verplicht. Na je wachtwoord vul je een code in uit je authenticator-app.")
                     .textStyle(.footnote)
                     .foregroundStyle(Color.ink)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             PaveNotice(
-                title: "Your account is provided",
-                message: "Use the account supplied by your organization. If you don’t have your details, contact IT support."
+                title: "Je account krijg je van je organisatie",
+                message: "Gebruik het account dat je van je organisatie hebt gekregen. Heb je je gegevens niet? Neem contact op met de IT-support."
             )
         }
     }
@@ -113,20 +113,20 @@ struct SignInView: View {
     private func errorNotice(for error: AuthError) -> some View {
         if error == .invalidCredentials {
             PaveNotice(
-                title: "We couldn’t sign you in",
-                message: "Your email or password is incorrect. Check your details and try again, or reset your password below.",
+                title: "Inloggen is niet gelukt",
+                message: "Je e-mailadres of wachtwoord klopt niet. Controleer je gegevens en probeer het opnieuw, of stel hieronder een nieuw wachtwoord in.",
                 tone: .critical
             )
         } else if error == .accountNotActive {
             PaveNotice(
-                title: "Your account isn’t active yet",
-                message: "Your account hasn’t been confirmed or has been paused. Contact your organization’s IT support.",
+                title: "Je account is nog niet actief",
+                message: "Je account is nog niet bevestigd of tijdelijk geblokkeerd. Neem contact op met de IT-support van je organisatie.",
                 tone: .critical
             )
         } else {
             PaveNotice(
-                title: "Something went wrong",
-                message: "We couldn’t reach PAVE. Check your internet connection and try again.",
+                title: "Er ging iets mis",
+                message: "We konden PAVE niet bereiken. Controleer je internetverbinding en probeer het opnieuw.",
                 tone: .critical
             )
         }

@@ -11,11 +11,11 @@ struct VerificationCodeField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("6-digit verification code")
+            Text("Verificatiecode van 6 cijfers")
                 .textStyle(.label)
                 .foregroundStyle(Color.ink)
 
-            TextField("6-digit verification code", text: $code, prompt: Text("000000").foregroundStyle(Color.inkMuted))
+            TextField("Verificatiecode van 6 cijfers", text: $code, prompt: Text("000000").foregroundStyle(Color.inkMuted))
                 .textStyle(.code)
                 .tracking(8)
                 .foregroundStyle(Color.ink)
@@ -43,7 +43,7 @@ struct VerificationCodeField: View {
                 }
                 .animation(.easeOut(duration: 0.15), value: isFocused.wrappedValue)
 
-            Text(errorMessage ?? "Enter the code shown in your authenticator app.")
+            Text(errorMessage ?? "Vul de code in die je authenticator-app laat zien.")
                 .textStyle(.footnote)
                 .foregroundStyle(isInvalid ? Color.critical : .inkMuted)
         }

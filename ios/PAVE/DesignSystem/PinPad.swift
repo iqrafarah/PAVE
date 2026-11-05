@@ -55,8 +55,8 @@ struct PinDots: View {
         }
         .animation(.easeOut(duration: 0.12), value: filled)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("PIN")
-        .accessibilityValue("\(filled) of \(PinPolicy.length) digits entered")
+        .accessibilityLabel("Pincode")
+        .accessibilityValue("\(filled) van \(PinPolicy.length) cijfers ingevuld")
     }
 
     private var tint: Color {
@@ -107,7 +107,7 @@ struct PinKeypad: View {
                 .foregroundStyle(Color.ink)
         }
         .buttonStyle(KeyStyle(size: keySize, filled: false))
-        .accessibilityLabel("Delete")
+        .accessibilityLabel("Verwijder")
     }
 
     @ViewBuilder
@@ -119,7 +119,7 @@ struct PinKeypad: View {
                     .foregroundStyle(Color.brandGreen)
             }
             .buttonStyle(KeyStyle(size: keySize, filled: false))
-            .accessibilityLabel("Unlock with \(biometricKind.name)")
+            .accessibilityLabel("Ontgrendel met \(biometricKind.name)")
         } else {
             Color.clear.frame(width: keySize, height: keySize)
         }

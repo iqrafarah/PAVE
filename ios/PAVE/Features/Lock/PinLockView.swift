@@ -14,9 +14,9 @@ struct PinLockView: View {
     var body: some View {
         PinScreen(
             emblem: .iconShieldCheck,
-            eyebrow: "Welcome back",
-            title: "Enter your PIN",
-            message: "Enter your 6-digit PIN to open PAVE."
+            eyebrow: "Welkom terug",
+            title: "Vul je pincode in",
+            message: "Vul je pincode van 6 cijfers in om PAVE te openen."
         ) { keySize in
             PinPad(
                 digits: $digits,
@@ -31,7 +31,7 @@ struct PinLockView: View {
         } accessory: {
             VStack(spacing: 0) {
                 PinErrorSlot(message: errorMessage)
-                Button("Forgot PIN?") { showsForgotPin = true }
+                Button("Pincode vergeten?") { showsForgotPin = true }
                     .textStyle(.link)
                     .foregroundStyle(Color.brandGreen)
                     .frame(maxWidth: .infinity, minHeight: 44)
@@ -39,11 +39,11 @@ struct PinLockView: View {
             }
             .animation(.easeOut(duration: 0.2), value: errorMessage)
         }
-        .confirmationDialog("Forgot your PIN?", isPresented: $showsForgotPin, titleVisibility: .visible) {
-            Button("Sign out", role: .destructive) { appState.forgetPin() }
-            Button("Cancel", role: .cancel) {}
+        .confirmationDialog("Pincode vergeten?", isPresented: $showsForgotPin, titleVisibility: .visible) {
+            Button("Uitloggen", role: .destructive) { appState.forgetPin() }
+            Button("Annuleer", role: .cancel) {}
         } message: {
-            Text("You’ll be signed out. Sign in again with your password and verification code, then create a new PIN.")
+            Text("Je wordt uitgelogd. Log opnieuw in met je wachtwoord en verificatiecode en kies daarna een nieuwe pincode.")
         }
         .task {
             guard !didOfferBiometrics else { return }
@@ -58,7 +58,7 @@ struct PinLockView: View {
         case .correct, .lockedOut:
             break
         case .incorrect(let remaining):
-            let message = remaining == 1 ? "Incorrect PIN. 1 attempt left." : "Incorrect PIN. \(remaining) attempts left."
+            let message = remaining == 1 ? "Onjuiste pincode. Nog 1 poging." : "Onjuiste pincode. Nog \(remaining) pogingen."
             errorMessage = message
             shakes += 1
             AccessibilityNotification.Announcement(message).post()

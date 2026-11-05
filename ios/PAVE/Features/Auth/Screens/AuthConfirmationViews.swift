@@ -9,15 +9,15 @@ struct VerificationSetupCompleteView: View {
             VStack(alignment: .leading, spacing: 24) {
                 AuthIntro(
                     emblem: .iconCheckCircle,
-                    eyebrow: "Setup complete",
-                    title: "You’re all set",
-                    message: "Two-step verification is now enabled for your PAVE account."
+                    eyebrow: "Instellen gelukt",
+                    title: "Je bent klaar",
+                    message: "Tweestapsverificatie staat nu aan voor je PAVE-account."
                 )
                 PaveNotice(
-                    title: "Your portfolio has extra protection",
-                    message: "Next time you sign in, use your password and a code from your authenticator app. Keep the app on your phone."
+                    title: "Je portfolio is extra beveiligd",
+                    message: "Log je de volgende keer in, gebruik dan je wachtwoord en een code uit je authenticator-app. Houd de app op je telefoon."
                 )
-                PavePrimaryButton(title: "Continue to PAVE", action: flow.finishVerificationSetup)
+                PavePrimaryButton(title: "Verder naar PAVE", action: flow.finishVerificationSetup)
             }
         }
         .navigationBarBackButtonHidden()
@@ -32,29 +32,29 @@ struct PasswordResetCompleteView: View {
             VStack(alignment: .leading, spacing: 24) {
                 AuthIntro(
                     emblem: .iconCheckCircle,
-                    eyebrow: "Password recovery complete",
-                    title: "Password updated",
-                    message: "Your new password is saved. You can now sign in to PAVE with it."
+                    eyebrow: "Wachtwoord hersteld",
+                    title: "Wachtwoord gewijzigd",
+                    message: "Je nieuwe wachtwoord is opgeslagen. Je kunt er nu mee inloggen bij PAVE."
                 )
                 PaveNotice(
-                    title: "Two-step verification is still enabled",
-                    message: "Resetting your password doesn’t change your extra protection. Keep your authenticator app ready when you sign in."
+                    title: "Tweestapsverificatie staat nog steeds aan",
+                    message: "Je extra beveiliging blijft gewoon staan. Houd je authenticator-app bij de hand als je inlogt."
                 )
-                PavePrimaryButton(title: "Return to login", action: flow.returnToLogin)
+                PavePrimaryButton(title: "Terug naar inloggen", action: flow.returnToLogin)
             }
         }
         .navigationBarBackButtonHidden()
     }
 }
 
-#Preview("Setup complete") {
+#Preview("Instellen gelukt") {
     NavigationStack {
         VerificationSetupCompleteView()
     }
     .environment(AuthFlow(service: MockAuthService()) { _ in })
 }
 
-#Preview("Password updated") {
+#Preview("Wachtwoord gewijzigd") {
     NavigationStack {
         PasswordResetCompleteView()
     }

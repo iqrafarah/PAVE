@@ -21,15 +21,15 @@ struct VerificationSetupView: View {
         AuthScreen {
             VStack(alignment: .leading, spacing: 24) {
                 AuthIntro(
-                    eyebrow: "First-time setup",
-                    title: "Protect your PAVE account",
-                    message: "Two-step verification is mandatory to keep your personal information, achievements and certificates safe."
+                    eyebrow: "Eerste keer instellen",
+                    title: "Beveilig je PAVE-account",
+                    message: "Tweestapsverificatie is verplicht. Zo blijven je persoonlijke gegevens, resultaten en certificaten veilig."
                 )
 
                 if setupFailed {
                     PaveNotice(
-                        title: "We couldn’t start the setup",
-                        message: "Go back to login and sign in again. If this keeps happening, contact IT support.",
+                        title: "Het instellen kon niet starten",
+                        message: "Ga terug naar inloggen en log opnieuw in. Blijft dit gebeuren? Neem contact op met de IT-support.",
                         tone: .critical
                     )
                 }
@@ -37,14 +37,14 @@ struct VerificationSetupView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     SetupStepRow(
                         number: 1,
-                        title: "Add PAVE to your codes",
-                        message: "Your \(deviceName) can create the 6-digit code for you. In Passwords, choose the PAVE login you just saved, or add a new one."
+                        title: "Voeg PAVE toe aan je codes",
+                        message: "Je \(deviceName) kan de code van 6 cijfers voor je maken. Kies in Wachtwoorden je PAVE-inlog, of voeg een nieuwe toe."
                     )
                     addToThisDevice
                     SetupStepRow(
                         number: 2,
-                        title: "Enter the code",
-                        message: "Come back here and enter the 6-digit code. Your \(deviceName) may suggest it above the keyboard."
+                        title: "Vul de code in",
+                        message: "Kom terug naar PAVE en vul de code van 6 cijfers in. Je \(deviceName) stelt hem misschien boven het toetsenbord voor."
                     )
                 }
 
@@ -52,8 +52,8 @@ struct VerificationSetupView: View {
                     .onChange(of: code) { error = nil }
 
                 PavePrimaryButton(
-                    title: "Confirm setup",
-                    loadingTitle: "Confirming…",
+                    title: "Instellen afronden",
+                    loadingTitle: "Afronden…",
                     isLoading: isSubmitting,
                     action: submit
                 )
@@ -62,7 +62,7 @@ struct VerificationSetupView: View {
                     otherDevice(setupURI: setupURI)
                 }
 
-                Text("Can’t set up two-step verification? Contact your organization’s IT support for help.")
+                Text("Lukt het instellen niet? Neem contact op met de IT-support van je organisatie.")
                     .textStyle(.footnote)
                     .foregroundStyle(Color.inkMuted)
 
@@ -89,7 +89,7 @@ struct VerificationSetupView: View {
     @ViewBuilder
     private var addToThisDevice: some View {
         if let setupURI = enrollment?.setupURI {
-            PaveSecondaryButton(title: "Set up on this \(deviceName)", icon: .iconShieldCheck) {
+            PaveSecondaryButton(title: "Instellen op deze \(deviceName)", icon: .iconShieldCheck) {
                 openURL(setupURI) { accepted in
                     didOpenAuthenticator = accepted
                     noAuthenticatorFound = !accepted
@@ -100,8 +100,8 @@ struct VerificationSetupView: View {
             }
             if noAuthenticatorFound {
                 PaveNotice(
-                    title: "No app found to store the code",
-                    message: "Use the setup key or another device below, or install an authenticator app first.",
+                    title: "Geen app gevonden voor de code",
+                    message: "Gebruik hieronder de instelsleutel of een ander apparaat, of installeer eerst een authenticator-app.",
                     tone: .critical
                 )
             }
@@ -116,7 +116,7 @@ struct VerificationSetupView: View {
                 showsOtherDevice.toggle()
             } label: {
                 HStack {
-                    Text("Use another device instead")
+                    Text("Een ander apparaat gebruiken")
                         .textStyle(.link)
                         .foregroundStyle(Color.brandGreen)
                     Spacer()
@@ -130,7 +130,7 @@ struct VerificationSetupView: View {
                 .contentShape(.rect)
             }
             .buttonStyle(.plain)
-            .accessibilityValue(showsOtherDevice ? "Expanded" : "Collapsed")
+            .accessibilityValue(showsOtherDevice ? "Uitgeklapt" : "Ingeklapt")
 
             if showsOtherDevice {
                 OtherDeviceSetupCard(setupURI: setupURI, secret: enrollment?.secret)
@@ -146,8 +146,8 @@ struct VerificationSetupView: View {
     private var errorMessage: String? {
         switch error {
         case nil: nil
-        case .invalidCode: "This code is invalid or has expired. Use the latest code and try again."
-        default: "We couldn’t finish the setup. Check your internet connection and try again."
+        case .invalidCode: "Deze code klopt niet of is verlopen. Gebruik de nieuwste code en probeer het opnieuw."
+        default: "We konden het instellen niet afronden. Controleer je internetverbinding en probeer het opnieuw."
         }
     }
 
