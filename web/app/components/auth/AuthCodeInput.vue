@@ -16,11 +16,20 @@ const hasError = computed(() => Boolean(props.error));
 const describedBy = computed(() => (hasError.value ? errorId.value : hintId.value));
 const borderClass = computed(() => (hasError.value ? 'border-danger' : 'border-line'));
 
-function handleInput(event: Event) {
-  const input = event.target as HTMLInputElement;
-  const digits = input.value.replace(NON_DIGITS, '').slice(0, CODE_LENGTH);
+function setDigits(input: HTMLInputElement, text: string) {
+  const digits = text.replace(NON_DIGITS, '').slice(0, CODE_LENGTH);
   input.value = digits;
   code.value = digits;
+}
+
+function handleInput(event: Event) {
+  const input = event.target as HTMLInputElement;
+  setDigits(input, input.value);
+}
+
+function handlePaste(event: ClipboardEvent) {
+  const pastedText = event.clipboardData?.getData('text') ?? '';
+  setDigits(event.target as HTMLInputElement, pastedText);
 }
 </script>
 
@@ -44,6 +53,7 @@ function handleInput(event: Event) {
       :class="borderClass"
       class="mt-2 h-13 w-full rounded-lg border px-3.5 text-lg tracking-code text-ink placeholder:text-muted focus-visible:outline-2 focus-visible:outline-brand"
       @input="handleInput"
+      @paste.prevent="handlePaste"
     />
     <p v-if="hasError" :id="errorId" role="alert" class="mt-2 text-sm text-danger">
       {{ error }}

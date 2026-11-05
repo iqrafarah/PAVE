@@ -60,7 +60,7 @@ async function handleCodeSubmit() {
 
 function getPathAfterResetCode(status: MfaStatus | null) {
   if (status === 'needs-setup') return SET_PASSWORD_PATH;
-  return { path: MFA_VERIFY_PATH, query: { next: SET_PASSWORD_PATH } };
+  return MFA_VERIFY_PATH;
 }
 </script>
 

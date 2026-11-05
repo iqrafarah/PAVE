@@ -1,7 +1,8 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'auth' });
 
-const { updatePassword, signOut } = useAuth();
+const { isPasswordReset, updatePassword, finishPasswordReset, signOut } =
+  useAuth();
 
 const password = ref('');
 const confirmation = ref('');
@@ -32,7 +33,17 @@ async function handleSubmit() {
     passwordError.value = getAuthErrorMessage(error);
     return;
   }
-  await navigateTo(HOME_PATH);
+  await goToNextStep();
+}
+
+async function goToNextStep() {
+  if (!isPasswordReset.value) {
+    await navigateTo(HOME_PATH);
+    return;
+  }
+  // The password is already saved. If signing out fails here, the button on the next page signs out again.
+  await finishPasswordReset();
+  await navigateTo(PASSWORD_UPDATED_PATH);
 }
 </script>
 

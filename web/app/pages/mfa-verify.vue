@@ -1,15 +1,13 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'auth' });
 
-const route = useRoute();
-const { signOut } = useAuth();
+const { isPasswordReset, signOut } = useAuth();
 const { verifyCode } = useMfa();
 
 const code = ref('');
 const errorMessage = ref('');
 const isVerifying = ref(false);
 
-const isPasswordReset = computed(() => route.query.next === SET_PASSWORD_PATH);
 const eyebrow = computed(() =>
   isPasswordReset.value ? 'Wachtwoord herstellen' : 'Tweestapsverificatie',
 );
