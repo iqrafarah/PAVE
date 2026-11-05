@@ -1,15 +1,10 @@
 <script setup lang="ts">
+import type { MfaStatus } from '~/utils/mfaRoutes';
+
 definePageMeta({ layout: 'auth' });
 
-const RATE_LIMIT_STATUS = 429;
-const RATE_LIMIT_MESSAGE =
-  'You requested a code very recently. Wait 60 seconds and try again.';
-const SEND_ERROR_MESSAGE =
-  'We could not send the code. Try again later or contact IT support.';
-const INVALID_CODE_MESSAGE =
-  'This code is invalid or has expired. Check the code or request a new one.';
-
 const { sendPasswordResetCode, verifyPasswordResetCode } = useAuth();
+const { getMfaStatus } = useMfa();
 
 const email = ref('');
 const code = ref('');
@@ -19,19 +14,11 @@ const sendError = ref('');
 const codeError = ref('');
 const resendMessage = ref('');
 
-const sentDescription = computed(
-  () =>
-    `If an account exists for ${email.value}, we sent a code to reset your password.`,
-);
 const verifyButtonLabel = computed(() => {
-  if (isBusy.value) return 'Checking...';
-  if (codeError.value) return 'Try again';
-  return 'Verify code';
+  if (isBusy.value) return 'Bezig met controleren...';
+  if (codeError.value) return 'Opnieuw proberen';
+  return 'Code bevestigen';
 });
-
-function getSendErrorMessage(status?: number) {
-  return status === RATE_LIMIT_STATUS ? RATE_LIMIT_MESSAGE : SEND_ERROR_MESSAGE;
-}
 
 async function sendCode() {
   sendError.value = '';
@@ -41,8 +28,7 @@ async function sendCode() {
 
   if (!error) return true;
 
-  if (import.meta.dev) console.error('Sending reset code failed', error);
-  sendError.value = getSendErrorMessage(error.status);
+  sendError.value = getAuthErrorMessage(error);
   return false;
 }
 
@@ -53,29 +39,37 @@ async function handleEmailSubmit() {
 async function handleResend() {
   resendMessage.value = '';
   const isSent = await sendCode();
-  if (isSent) resendMessage.value = 'We sent a new code.';
+  if (isSent) resendMessage.value = 'We hebben een nieuwe code gestuurd.';
 }
 
 async function handleCodeSubmit() {
   codeError.value = '';
   isBusy.value = true;
   const { error } = await verifyPasswordResetCode(email.value, code.value);
-  isBusy.value = false;
-
   if (error) {
-    codeError.value = INVALID_CODE_MESSAGE;
+    isBusy.value = false;
+    codeError.value = getAuthErrorMessage(error);
+    code.value = '';
     return;
   }
-  await navigateTo('/set-password');
+
+  const { data: status } = await getMfaStatus();
+  await navigateTo(getPathAfterResetCode(status));
+  isBusy.value = false;
+}
+
+function getPathAfterResetCode(status: MfaStatus | null) {
+  if (status === 'needs-setup') return SET_PASSWORD_PATH;
+  return { path: MFA_VERIFY_PATH, query: { next: SET_PASSWORD_PATH } };
 }
 </script>
 
 <template>
   <AuthCard
     v-if="!isCodeSent"
-    eyebrow="Password recovery"
-    title="Forgot your password?"
-    description="Enter your organization email and we’ll send you a code to reset your password."
+    eyebrow="Wachtwoord herstellen"
+    title="Wachtwoord vergeten?"
+    description="Vul je e-mailadres in. Dan sturen we je een code om een nieuw wachtwoord te kiezen."
   >
     <template #icon>
       <svg
@@ -100,22 +94,18 @@ async function handleCodeSubmit() {
         {{ sendError }}
       </p>
       <AuthPrimaryButton type="submit" :disabled="isBusy">
-        {{ isBusy ? 'Sending...' : 'Send code' }}
+        {{ isBusy ? 'Bezig met versturen...' : 'Code versturen' }}
       </AuthPrimaryButton>
     </form>
-
-    <p class="mt-4 text-sm text-muted">
-      Use the email linked to your organization-provided PAVE account.
-    </p>
 
     <AuthBackToLogin @click="navigateTo('/login')" />
   </AuthCard>
 
   <AuthCard
     v-else
-    eyebrow="Password recovery"
-    title="Check your inbox"
-    :description="sentDescription"
+    eyebrow="Wachtwoord herstellen"
+    title="Check je inbox"
+    :description="RESET_REQUESTED_MESSAGE"
   >
     <template #icon>
       <svg
@@ -138,7 +128,7 @@ async function handleCodeSubmit() {
       <AuthCodeInput
         id="reset-code"
         v-model="code"
-        hint="Enter the code from the email."
+        hint="Vul de code uit de e-mail in."
         :error="codeError"
       />
       <AuthPrimaryButton type="submit" :disabled="isBusy">
@@ -146,9 +136,9 @@ async function handleCodeSubmit() {
       </AuthPrimaryButton>
     </form>
 
-    <AuthInfoBox title="Can’t find the email?">
-      Allow a few minutes and check your spam or junk folder. If it still hasn’t
-      arrived, request a new code.
+    <AuthInfoBox title="Geen e-mail gekregen?">
+      Wacht een paar minuten en kijk ook in je map met spam of ongewenste
+      e-mail. Nog steeds niets? Vraag een nieuwe code aan.
     </AuthInfoBox>
 
     <button
@@ -157,7 +147,7 @@ async function handleCodeSubmit() {
       class="mt-4 text-sm font-medium text-brand underline focus-visible:outline-2 focus-visible:outline-brand disabled:opacity-60"
       @click="handleResend"
     >
-      Send a new code
+      Nieuwe code versturen
     </button>
     <p v-if="resendMessage" role="status" class="mt-2 text-sm text-brand">
       {{ resendMessage }}
@@ -167,8 +157,8 @@ async function handleCodeSubmit() {
     </p>
 
     <p class="mt-4 text-sm text-muted">
-      For your privacy, we don’t confirm whether an email address has a PAVE
-      account.
+      We laten nooit zien of een e-mailadres een PAVE-account heeft. Zo blijven
+      je gegevens veilig.
     </p>
 
     <AuthBackToLogin @click="navigateTo('/login')" />

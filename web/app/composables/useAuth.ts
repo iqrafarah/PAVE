@@ -23,7 +23,7 @@ export function useAuth() {
   }
 
   async function signOut() {
-    const { error } = await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut({ scope: 'local' });
     if (!error) await navigateTo('/login');
     return { error };
   }

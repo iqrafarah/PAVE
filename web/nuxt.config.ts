@@ -7,7 +7,7 @@ export default defineNuxtConfig({
   modules: ['@nuxtjs/supabase'],
   app: {
     head: {
-      htmlAttrs: { lang: 'en' },
+      htmlAttrs: { lang: 'nl' },
     },
   },
   css: ['~/assets/css/main.css'],

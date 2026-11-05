@@ -17,10 +17,10 @@ export function getPasswordRules(password: string): PasswordRule[] {
 
   return [
     {
-      label: `At least ${MIN_PASSWORD_LENGTH} characters`,
+      label: `Minimaal ${MIN_PASSWORD_LENGTH} tekens`,
       isMet: password.length >= MIN_PASSWORD_LENGTH,
     },
-    { label: 'Uppercase and lowercase letters', isMet: hasUpperAndLowercase },
-    { label: 'At least one number and one symbol', isMet: hasDigitAndSymbol },
+    { label: 'Hoofdletters en kleine letters', isMet: hasUpperAndLowercase },
+    { label: 'Minimaal één cijfer en één symbool', isMet: hasDigitAndSymbol },
   ];
 }

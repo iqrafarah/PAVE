@@ -27,7 +27,7 @@ function handleInput(event: Event) {
 <template>
   <div class="mt-8">
     <label :for="id" class="block text-sm font-medium text-ink">
-      {{ CODE_LENGTH }}-digit code
+      Code van {{ CODE_LENGTH }} cijfers
     </label>
     <input
       :id="id"
