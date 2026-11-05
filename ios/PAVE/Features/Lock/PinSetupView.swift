@@ -48,7 +48,6 @@ struct PinSetupView: View {
                 biometricsIntro
             } content: {
                 biometricsOffer(pin: pin)
-                    .animation(.easeOut(duration: 0.2), value: errorMessage)
             }
         }
     }
@@ -71,9 +70,6 @@ struct PinSetupView: View {
     private func biometricsOffer(pin: String) -> some View {
         let kind = appState.biometricKind
         VStack(alignment: .leading, spacing: 24) {
-            if let errorMessage {
-                PaveInlineError(message: errorMessage)
-            }
             PavePrimaryButton(title: "\(kind?.name ?? "Biometrie") gebruiken", loadingTitle: "Bezig met controleren...", isLoading: isSubmitting) {
                 Task {
                     isSubmitting = true
@@ -92,13 +88,13 @@ struct PinSetupView: View {
         switch step {
         case .create:
             guard PinPolicy.isAcceptable(pin) else {
-                fail("Kies een pincode die moeilijker te raden is, zonder herhaalde of oplopende cijfers.")
+                fail(PinMessages.tooEasy)
                 return
             }
             reset(to: .confirm(first: pin))
         case .confirm(let first):
             guard pin == first else {
-                fail("De pincodes zijn niet hetzelfde. Begin opnieuw.", then: .create)
+                fail(PinMessages.differ, then: .create)
                 return
             }
             if appState.biometricKind != nil {
@@ -116,7 +112,7 @@ struct PinSetupView: View {
             try appState.completePinSetup(pin: pin, useBiometrics: useBiometrics)
         } catch {
             reset(to: .create)
-            errorMessage = "We konden je pincode niet opslaan. Probeer het opnieuw."
+            errorMessage = PinMessages.notSaved
         }
     }
 

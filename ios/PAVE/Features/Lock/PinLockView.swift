@@ -58,7 +58,7 @@ struct PinLockView: View {
         case .correct, .lockedOut:
             break
         case .incorrect(let remaining):
-            let message = remaining == 1 ? "Onjuiste pincode. Nog 1 poging." : "Onjuiste pincode. Nog \(remaining) pogingen."
+            let message = PinMessages.incorrect(attemptsRemaining: remaining)
             errorMessage = message
             shakes += 1
             AccessibilityNotification.Announcement(message).post()

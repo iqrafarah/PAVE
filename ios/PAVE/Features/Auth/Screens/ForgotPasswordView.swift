@@ -29,7 +29,8 @@ struct ForgotPasswordView: View {
                     kind: .email,
                     focus: $focus,
                     field: .email,
-                    errorMessage: sendErrorMessage
+                    errorMessage: sendErrorMessage,
+                    reservedErrors: AuthError.allMessages
                 )
                 .submitLabel(.send)
                 .onSubmit(submit)

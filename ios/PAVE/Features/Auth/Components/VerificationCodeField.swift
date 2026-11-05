@@ -1,3 +1,4 @@
+import PAVECore
 import SwiftUI
 
 struct VerificationCodeField: View {
@@ -7,6 +8,7 @@ struct VerificationCodeField: View {
     var title = "Code van 6 cijfers"
     var hint = "Vul de code in die je authenticator-app nu laat zien."
     var errorMessage: String?
+    var reservedErrors = AuthError.allMessages
     var isFocused: FocusState<Bool>.Binding
 
     private var isInvalid: Bool { errorMessage != nil }
@@ -45,9 +47,11 @@ struct VerificationCodeField: View {
                 }
                 .animation(.easeOut(duration: 0.15), value: isFocused.wrappedValue)
 
-            Text(errorMessage ?? hint)
-                .textStyle(.footnote)
-                .foregroundStyle(isInvalid ? Color.critical : .inkMuted)
+            MessageSlot(message: errorMessage ?? hint, reserving: [hint] + reservedErrors) { text in
+                Text(text)
+                    .textStyle(.footnote)
+                    .foregroundStyle(isInvalid ? Color.critical : .inkMuted)
+            }
         }
     }
 

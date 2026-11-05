@@ -24,18 +24,13 @@ struct SignInView: View {
             )
         } content: {
             VStack(alignment: .leading, spacing: 24) {
-                if let error {
-                    PaveNotice(message: error.message, tone: .critical)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
-                }
-
                 if isShowingCredentials {
                     fields
                 }
 
                 PavePrimaryButton(title: "Inloggen", loadingTitle: "Bezig met inloggen...", isLoading: isSubmitting, action: submit)
 
-                supportLine
+                supportOrError
             }
             .animation(.easeOut(duration: 0.2), value: error)
             .animation(.easeOut(duration: 0.2), value: isSubmitting)
@@ -81,6 +76,25 @@ struct SignInView: View {
         }
         .disabled(isSubmitting)
         .opacity(isSubmitting ? 0.62 : 1)
+    }
+
+    private var supportOrError: some View {
+        ZStack(alignment: .topLeading) {
+            Group {
+                supportLine
+                ForEach(AuthError.allMessages, id: \.self) { PaveNotice(message: $0, tone: .critical) }
+            }
+            .hidden()
+            .accessibilityHidden(true)
+
+            if let error {
+                PaveNotice(message: error.message, tone: .critical)
+                    .transition(.opacity)
+            } else {
+                supportLine
+                    .transition(.opacity)
+            }
+        }
     }
 
     private var supportLine: some View {

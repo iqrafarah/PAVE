@@ -35,7 +35,7 @@ public struct VerificationEnrollment: Equatable, Sendable {
     }
 }
 
-public enum AuthError: Error, Equatable, Sendable {
+public enum AuthError: Error, Equatable, Sendable, CaseIterable {
     case invalidCredentials
     case emailNotConfirmed
     case invalidCode

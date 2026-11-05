@@ -25,6 +25,9 @@ public enum AuthMessages {
 }
 
 extension AuthError {
+    /// Every text an error can show, so a screen can keep room for the longest one.
+    public static var allMessages: [String] { allCases.map(\.message) }
+
     /// Same mapping as `web/app/utils/authErrors.ts`.
     public var message: String {
         switch self {

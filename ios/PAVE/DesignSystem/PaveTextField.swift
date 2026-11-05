@@ -14,6 +14,7 @@ struct PaveTextField<Field: Hashable>: View {
     var focus: FocusState<Field?>.Binding
     let field: Field
     var errorMessage: String?
+    var reservedErrors: [String] = []
 
     @Environment(\.isEnabled) private var isEnabled
     @State private var isRevealed = false
@@ -56,8 +57,10 @@ struct PaveTextField<Field: Hashable>: View {
             .onTapGesture { focus.wrappedValue = field }
             .animation(.easeOut(duration: 0.15), value: isFocused)
 
-            if let errorMessage {
-                PaveInlineError(message: errorMessage)
+            if errorMessage != nil || !reservedErrors.isEmpty {
+                MessageSlot(message: errorMessage, reserving: reservedErrors) {
+                    PaveInlineError(message: $0)
+                }
             }
         }
     }

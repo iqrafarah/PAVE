@@ -9,6 +9,8 @@ struct ResetCodeView: View {
     @State private var isChecking = false
     @State private var isResending = false
     @State private var codeError: AuthError?
+    private static let resentMessage = "We hebben een nieuwe code gestuurd."
+
     @State private var resendError: AuthError?
     @State private var resendMessage: String?
     @FocusState private var isCodeFocused: Bool
@@ -53,13 +55,17 @@ struct ResetCodeView: View {
                     .buttonStyle(.plain)
                     .disabled(isResending || isChecking)
 
-                    if let resendMessage {
-                        Text(resendMessage)
-                            .textStyle(.footnote)
-                            .foregroundStyle(Color.brandGreen)
-                    }
-                    if let resendError {
-                        PaveInlineError(message: resendError.message)
+                    MessageSlot(
+                        message: resendError?.message ?? resendMessage,
+                        reserving: [Self.resentMessage] + AuthError.allMessages
+                    ) { text in
+                        if text == Self.resentMessage {
+                            Text(text)
+                                .textStyle(.footnote)
+                                .foregroundStyle(Color.brandGreen)
+                        } else {
+                            PaveInlineError(message: text)
+                        }
                     }
                 }
 
@@ -70,6 +76,7 @@ struct ResetCodeView: View {
                 AuthReturnButton(action: flow.returnToLogin)
             }
             .animation(.easeOut(duration: 0.2), value: resendMessage)
+            .animation(.easeOut(duration: 0.2), value: resendError)
         }
         .onAppear { isCodeFocused = true }
     }
@@ -104,7 +111,7 @@ struct ResetCodeView: View {
             defer { isResending = false }
             do {
                 try await flow.requestPasswordReset(email: email)
-                resendMessage = "We hebben een nieuwe code gestuurd."
+                resendMessage = Self.resentMessage
                 AccessibilityNotification.Announcement("We hebben een nieuwe code gestuurd.").post()
             } catch {
                 resendError = AuthError(error)

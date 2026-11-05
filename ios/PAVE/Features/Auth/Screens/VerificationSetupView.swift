@@ -26,10 +26,6 @@ struct VerificationSetupView: View {
             )
         } content: {
             VStack(alignment: .leading, spacing: 24) {
-                if setupFailed {
-                    PaveNotice(message: AuthMessages.setupCouldNotStart, tone: .critical)
-                }
-
                 VStack(alignment: .leading, spacing: 16) {
                     SetupStepRow(
                         number: 1,
@@ -44,7 +40,12 @@ struct VerificationSetupView: View {
                     )
                 }
 
-                VerificationCodeField(code: $code, errorMessage: errorMessage, isFocused: $isCodeFocused)
+                VerificationCodeField(
+                    code: $code,
+                    errorMessage: errorMessage,
+                    reservedErrors: [AuthMessages.setupCouldNotStart] + AuthError.allMessages,
+                    isFocused: $isCodeFocused
+                )
                     .onChange(of: code) { error = nil }
 
                 PavePrimaryButton(
@@ -136,7 +137,7 @@ struct VerificationSetupView: View {
     }
 
     private var errorMessage: String? {
-        error?.message
+        error?.message ?? (setupFailed ? AuthMessages.setupCouldNotStart : nil)
     }
 
     private func submit() {

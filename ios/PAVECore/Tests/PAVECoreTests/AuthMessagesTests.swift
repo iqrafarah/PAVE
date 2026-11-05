@@ -64,8 +64,7 @@ struct AuthMessagesTests {
     }
 
     @Test func everyErrorHasAMessage() {
-        let all: [AuthError] = [.invalidCredentials, .emailNotConfirmed, .invalidCode, .invalidEmailCode, .requestedTooSoon, .tooManyAttempts, .insufficientAssurance, .samePassword, .weakPassword, .resetSessionExpired, .noConnection, .unavailable]
-        for error in all {
+        for error in AuthError.allCases {
             #expect(!error.message.isEmpty)
         }
     }

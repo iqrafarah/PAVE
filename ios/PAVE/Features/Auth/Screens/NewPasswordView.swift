@@ -31,7 +31,8 @@ struct NewPasswordView: View {
                     kind: .newPassword,
                     focus: $focus,
                     field: .password,
-                    errorMessage: passwordError
+                    errorMessage: passwordError,
+                    reservedErrors: [AuthMessages.passwordRulesNotMet] + AuthError.allMessages
                 )
                 .submitLabel(.next)
                 .onSubmit { focus = .confirmation }
@@ -46,7 +47,8 @@ struct NewPasswordView: View {
                     kind: .newPassword,
                     focus: $focus,
                     field: .confirmation,
-                    errorMessage: confirmationError
+                    errorMessage: confirmationError,
+                    reservedErrors: [AuthMessages.passwordsDiffer]
                 )
                 .submitLabel(.done)
                 .onSubmit(submit)
