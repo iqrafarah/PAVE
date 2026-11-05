@@ -1,0 +1,5 @@
+APP_BUNDLE_IDENTIFIER = nl.fontys.pave
+SUPABASE_URL =
+SUPABASE_PUBLISHABLE_KEY =
+
+#include? "Local.xcconfig"
