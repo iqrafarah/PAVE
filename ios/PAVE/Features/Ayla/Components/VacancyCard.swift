@@ -4,13 +4,7 @@ import SwiftUI
 struct VacancyCard: View {
     let vacancy: Vacancy
 
-    private static let tints: [Color] = [
-        Color(red: 0xF7 / 255, green: 0xC8 / 255, blue: 0xCC / 255),
-        Color(red: 0xDD / 255, green: 0xEC / 255, blue: 0xCF / 255),
-        Color(red: 0xE7 / 255, green: 0xDD / 255, blue: 0xF7 / 255),
-        Color(red: 0xFF / 255, green: 0xE4 / 255, blue: 0xC1 / 255),
-        Color(red: 0xF0 / 255, green: 0xF9 / 255, blue: 0xCD / 255),
-    ]
+    private static let tints: [Color] = [.cardTintRose, .cardTintGreen, .cardTintLavender, .cardTintApricot, .cardTintLime]
 
     private var tint: Color {
         let sum = vacancy.company.unicodeScalars.reduce(0) { $0 + Int($1.value) }
@@ -19,7 +13,7 @@ struct VacancyCard: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            monogram
+            CompanyMonogram(name: vacancy.company)
             VStack(alignment: .leading, spacing: 8) {
                 Text(vacancy.title)
                     .textStyle(.bubble)
@@ -54,16 +48,6 @@ struct VacancyCard: View {
         .accessibilityElement(children: .combine)
     }
 
-    private var monogram: some View {
-        Text(vacancy.company.prefix(1).uppercased())
-            .font(.custom("InterVariable-Bold", size: 26, relativeTo: .title2))
-            .foregroundStyle(Color.brandGreen)
-            .frame(width: 64, height: 64)
-            .background(Color.white, in: .circle)
-            .overlay { Circle().strokeBorder(Color.cardBorder, lineWidth: 1) }
-            .accessibilityHidden(true)
-    }
-
     private var employmentText: String? {
         switch vacancy.employment {
         case .fullTime?: "Fulltime"
@@ -73,17 +57,8 @@ struct VacancyCard: View {
     }
 
     private func meta(_ icon: ImageResource, _ text: String) -> some View {
-        HStack(spacing: 9) {
-            Image(icon)
-                .renderingMode(.template)
-                .foregroundStyle(Color.inkMuted)
-                .frame(width: 17, height: 17)
-                .accessibilityHidden(true)
-            Text(text)
-                .textStyle(.meta)
-                .foregroundStyle(Color.inkMuted)
-        }
-        .padding(.leading, 5)
+        PaveIconLabel(icon: icon, text: text)
+            .padding(.leading, 5)
     }
 
     private var skillGap: some View {
@@ -135,38 +110,11 @@ struct VacancyCard: View {
     }
 }
 
-struct VacancyPanel: View {
-    let vacancies: [Vacancy]
-
-    var body: some View {
-        VStack(spacing: 18) {
-            Capsule()
-                .fill(Color(red: 0xE0 / 255, green: 0xE2 / 255, blue: 0xE2 / 255))
-                .frame(width: 52, height: 4)
-                .accessibilityHidden(true)
-            ForEach(vacancies) { vacancy in
-                VacancyCard(vacancy: vacancy)
-            }
-        }
-        .padding(.top, 12)
-        .padding(.horizontal, 26)
-        .padding(.bottom, 20)
-        .background {
-            UnevenRoundedRectangle(topLeadingRadius: 25, topTrailingRadius: 25)
-                .fill(Color.white)
-                .shadow(color: .black.opacity(0.25), radius: 0.7)
-        }
-    }
-}
-
 #Preview {
-    ScrollView {
-        VacancyPanel(vacancies: [
-            Vacancy(id: "1", title: "IT-coördinator", company: "Voorbeeld BV", city: "Eindhoven", employment: .fullTime,
-                    salary: .init(min: 33600, max: 40800, period: .year, isEstimate: true), url: URL(string: "https://www.adzuna.nl"), source: .adzuna,
-                    skillGap: [.init(skill: "IT-infrastructuur", requirement: "Kennis van netwerken")]),
-            Vacancy(id: "2", title: "Junior front-end developer", company: "Studio", city: "Rotterdam", employment: .partTime, source: .adzuna),
-        ])
-    }
-    .background(Color.canvas)
+    VacancyCard(vacancy: Vacancy(
+        id: "1", title: "IT-coördinator", company: "Voorbeeld BV", city: "Eindhoven", employment: .fullTime,
+        salary: .init(min: 33600, max: 40800, period: .year, isEstimate: true), url: URL(string: "https://www.adzuna.nl"), source: .adzuna,
+        skillGap: [.init(skill: "IT-infrastructuur", requirement: "Kennis van netwerken")]
+    ))
+    .padding()
 }

@@ -15,6 +15,8 @@ public enum AylaError: Error, Equatable, Sendable {
     case conversationNotFound
     case noConnection
     case unavailable
+
+    public init(_ error: any Error) { self = (error as? AylaError) ?? .unavailable }
 }
 
 /// Talks to the `ayla` Supabase Edge Function with the session of the signed-in user.

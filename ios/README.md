@@ -52,6 +52,23 @@ Testen kan in Xcode via Device Hub (Window, Device Hub): kies de iPhone Duo en z
 
 ## Afspraken
 
+### Componenten
+
+Een component in SwiftUI is een `View`, net als een `.vue`-bestand op web. Een scherm voegt kleinere componenten samen.
+
+- **Eén component per bestand**, met dezelfde naam (`ChatBubble` staat in `ChatBubble.swift`). Een klein datatype dat alleen bij dat component hoort, mag erbij (zoals `AylaChoice` bij `AylaChoiceBar`).
+- **Elk component heeft een `#Preview`**, zodat je het in Xcode los ziet, zonder de app te starten.
+- **Waar komt een component?**
+  - Bruikbaar in meer dan één onderdeel van de app (knoppen, invoervelden, chips, meldingen): `PAVE/DesignSystem/`, met `Pave` voor de naam (`PaveChip`, `PaveIconButton`).
+  - Alleen voor één onderdeel: `PAVE/Features/<Onderdeel>/Components/`.
+  - Een heel scherm: `PAVE/Features/<Onderdeel>/` (of `Screens/` bij veel schermen).
+  - Logica zonder scherm (versturen, opslaan, regels): een model naast het scherm (`AylaChatModel`), of `PAVECore` als de Watch of web het ook nodig heeft.
+- **Een component krijgt gegevens binnen en meldt acties terug**, zoals props en emits op web: `AylaComposer(text:onSend:)`. Het component praat zelf niet met de server.
+- **Geen losse kleurcodes of lettertypes in de code.** Kleuren staan in de asset-catalogus (`Color.brandGreen`, `Color.cardTintRose`), tekst gebruikt `.textStyle(...)` uit `PaveTextStyle.swift`. Een nieuwe kleur of tekststijl voeg je daar eerst toe.
+- **Teksten die een scherm vaker gebruikt of die meldingen zijn**, staan bij elkaar in een eigen bestand (`AuthMessages`, `AylaMessages`, `PinMessages`).
+
+### Overig
+
 - Na een wijziging in `PAVECore` gebruikt Xcode soms nog de oude versie. Kies dan Product, Clean Build Folder (⇧⌘K) en bouw opnieuw.
 - De mappen `PAVE/`, `PAVEWatch/` en `PAVETests/` zijn gesynchroniseerd met Xcode: een bestand dat je in Finder of Xcode toevoegt, hoort automatisch bij het project.
 - Werk zoveel mogelijk in je eigen feature-map om merge-conflicten te voorkomen.

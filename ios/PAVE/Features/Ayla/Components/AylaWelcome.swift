@@ -5,6 +5,18 @@ struct AylaWelcome: View {
     var isAvailable = true
     let onStarter: (String) -> Void
 
+    private struct Starter {
+        let icon: ImageResource
+        let title: String
+        let question: String
+    }
+
+    private static let starters = [
+        Starter(icon: .iconFolder, title: "Kluis", question: "Wat kan ik allemaal in mijn kluis bewaren?"),
+        Starter(icon: .iconMap, title: "Plan", question: "Kun je me helpen een ontwikkelplan te maken?"),
+        Starter(icon: .iconPerson, title: "Profiel", question: "Hoe maak ik een profiel om met een werkgever te delen?"),
+    ]
+
     private var title: String {
         if let firstName { "Wat wil je vandaag doen, \(firstName)" } else { "Wat wil je vandaag doen?" }
     }
@@ -34,33 +46,14 @@ struct AylaWelcome: View {
 
             if isAvailable {
                 HStack(spacing: 15) {
-                    starter(.iconFolder, "Kluis", question: "Wat kan ik allemaal in mijn kluis bewaren?")
-                    starter(.iconMap, "Plan", question: "Kun je me helpen een ontwikkelplan te maken?")
-                    starter(.iconPerson, "Profiel", question: "Hoe maak ik een profiel om met een werkgever te delen?")
+                    ForEach(Self.starters, id: \.title) { starter in
+                        PaveChip(icon: starter.icon, title: starter.title) { onStarter(starter.question) }
+                            .accessibilityHint(starter.question)
+                    }
                 }
             }
         }
         .padding(.horizontal, 32)
-    }
-
-    private func starter(_ icon: ImageResource, _ title: String, question: String) -> some View {
-        Button {
-            onStarter(question)
-        } label: {
-            HStack(spacing: 8) {
-                Image(icon)
-                    .accessibilityHidden(true)
-                Text(title)
-                    .textStyle(.chip)
-                    .foregroundStyle(Color.ink)
-            }
-            .padding(.horizontal, 18)
-            .frame(minHeight: 43)
-            .background(Color.surfaceTint, in: .rect(cornerRadius: 14))
-            .contentShape(.rect(cornerRadius: 14))
-        }
-        .buttonStyle(.plain)
-        .accessibilityHint(question)
     }
 }
 

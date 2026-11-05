@@ -128,17 +128,3 @@ final class AylaChatModel {
         }
     }
 }
-
-enum AylaMessages {
-    static let noConnection = "Ayla is niet bereikbaar. Controleer je internetverbinding en probeer het opnieuw."
-    static let signInAgain = "Je sessie is verlopen. Log opnieuw in om met Ayla te praten."
-    static let conversationGone = "Dit gesprek bestaat niet meer. Begin een nieuw gesprek."
-    static let unavailable = "Ayla kon nu geen antwoord geven. Probeer het zo opnieuw."
-    static let notAvailableInDemo = "Ayla werkt alleen als je met je eigen PAVE-account bent ingelogd."
-}
-
-extension AylaError {
-    init(_ error: any Error) {
-        self = (error as? AylaError) ?? .unavailable
-    }
-}
