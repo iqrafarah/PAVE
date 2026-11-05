@@ -35,8 +35,8 @@ struct PaveNotice: View {
 
 #Preview {
     VStack(spacing: 16) {
-        PaveNotice(title: "Your account is provided", message: "Use the account supplied by your organization.")
-        PaveNotice(title: "We couldn’t sign you in", message: "Your email or password is incorrect.", tone: .critical)
+        PaveNotice(title: "Je account krijg je van je organisatie", message: "Gebruik het account dat je van je organisatie hebt gekregen.")
+        PaveNotice(title: "Inloggen is niet gelukt", message: "Je e-mailadres of wachtwoord klopt niet.", tone: .critical)
     }
     .padding(32)
     .background(Color.canvas)

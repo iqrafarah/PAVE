@@ -39,6 +39,7 @@ Regels voor `PAVECore`:
 
 - De mappen `PAVE/`, `PAVEWatch/` en `PAVETests/` zijn gesynchroniseerd met Xcode: een bestand dat je in Finder of Xcode toevoegt, hoort automatisch bij het project.
 - Werk zoveel mogelijk in je eigen feature-map om merge-conflicten te voorkomen.
+- Alle teksten die de gebruiker ziet zijn Nederlands, ook als het Figma-ontwerp Engels is. Code en comments blijven Engels.
 - Mockdata die het web-team ook gebruikt, komt in `../shared/`.
 - Zie `../Conventions.md` voor naamgeving en Git-afspraken.
 

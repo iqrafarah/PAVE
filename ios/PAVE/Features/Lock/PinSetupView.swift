@@ -19,9 +19,9 @@ struct PinSetupView: View {
         case .create:
             PinScreen(
                 emblem: .iconShieldCheck,
-                eyebrow: "Secure your account",
-                title: "Create a PIN",
-                message: "You’ll use this PIN to open PAVE. Choose 6 digits that are hard to guess."
+                eyebrow: "Beveilig je account",
+                title: "Kies een pincode",
+                message: "Met deze pincode open je PAVE. Kies 6 cijfers die moeilijk te raden zijn."
             ) { keySize in
                 pad(keySize: keySize)
             } accessory: {
@@ -31,15 +31,15 @@ struct PinSetupView: View {
         case .confirm:
             PinScreen(
                 emblem: .iconShieldCheck,
-                eyebrow: "Secure your account",
-                title: "Confirm your PIN",
-                message: "Enter the same 6 digits once more."
+                eyebrow: "Beveilig je account",
+                title: "Herhaal je pincode",
+                message: "Vul dezelfde 6 cijfers nog een keer in."
             ) { keySize in
                 pad(keySize: keySize)
             } accessory: {
                 VStack(spacing: 0) {
                     PinErrorSlot(message: errorMessage)
-                    AuthReturnButton(title: "Start over") { reset(to: .create) }
+                    AuthReturnButton(title: "Opnieuw beginnen") { reset(to: .create) }
                 }
                 .animation(.easeOut(duration: 0.2), value: errorMessage)
             }
@@ -61,14 +61,14 @@ struct PinSetupView: View {
         let kind = appState.biometricKind
         VStack(alignment: .leading, spacing: 24) {
             AuthIntro(
-                eyebrow: "Quick unlock",
-                title: "Unlock with \(kind?.name ?? "biometrics")",
-                message: "Open PAVE with \(kind?.name ?? "biometrics") instead of typing your PIN. You can always use your PIN."
+                eyebrow: "Snel ontgrendelen",
+                title: "Ontgrendelen met \(kind?.name ?? "biometrie")",
+                message: "Open PAVE met \(kind?.name ?? "biometrie") in plaats van je pincode. Je pincode blijft altijd werken."
             )
             if let errorMessage {
                 PaveInlineError(message: errorMessage)
             }
-            PavePrimaryButton(title: "Use \(kind?.name ?? "biometrics")", loadingTitle: "Checking…", isLoading: isSubmitting) {
+            PavePrimaryButton(title: "\(kind?.name ?? "Biometrie") gebruiken", loadingTitle: "Controleren…", isLoading: isSubmitting) {
                 Task {
                     isSubmitting = true
                     defer { isSubmitting = false }
@@ -76,7 +76,7 @@ struct PinSetupView: View {
                     finish(pin: pin, useBiometrics: didAuthenticate)
                 }
             }
-            AuthReturnButton(title: "Not now") {
+            AuthReturnButton(title: "Niet nu") {
                 finish(pin: pin, useBiometrics: false)
             }
         }
@@ -86,13 +86,13 @@ struct PinSetupView: View {
         switch step {
         case .create:
             guard PinPolicy.isAcceptable(pin) else {
-                fail("Choose a PIN that’s harder to guess, without repeated or consecutive digits.")
+                fail("Kies een pincode die moeilijker te raden is, zonder herhaalde of oplopende cijfers.")
                 return
             }
             reset(to: .confirm(first: pin))
         case .confirm(let first):
             guard pin == first else {
-                fail("The PINs don’t match. Start again.", then: .create)
+                fail("De pincodes zijn niet hetzelfde. Begin opnieuw.", then: .create)
                 return
             }
             if appState.biometricKind != nil {
@@ -110,7 +110,7 @@ struct PinSetupView: View {
             try appState.completePinSetup(pin: pin, useBiometrics: useBiometrics)
         } catch {
             reset(to: .create)
-            errorMessage = "We couldn’t save your PIN. Try again."
+            errorMessage = "We konden je pincode niet opslaan. Probeer het opnieuw."
         }
     }
 

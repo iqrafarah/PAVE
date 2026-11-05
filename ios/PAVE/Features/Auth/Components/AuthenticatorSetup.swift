@@ -15,7 +15,7 @@ struct SetupStepRow: View {
                 .foregroundStyle(Color.brandGreen)
                 .frame(width: 28, height: 28)
                 .background(Color.surfaceTint, in: .circle)
-                .accessibilityLabel("Step \(number)")
+                .accessibilityLabel("Stap \(number)")
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
@@ -42,13 +42,13 @@ struct OtherDeviceSetupCard: View {
             HStack(alignment: .top, spacing: 16) {
                 QRCodeImage(content: setupURI.absoluteString)
                     .frame(width: 108, height: 108)
-                    .accessibilityLabel("QR code for your authenticator app")
+                    .accessibilityLabel("QR-code voor je authenticator-app")
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Scan with your other device")
+                    Text("Scan met je andere apparaat")
                         .textStyle(.label)
                         .foregroundStyle(Color.brandGreen)
-                    Text("Open your authenticator app, add an account and scan this code.")
+                    Text("Open je authenticator-app, voeg een account toe en scan deze code.")
                         .textStyle(.footnote)
                         .foregroundStyle(Color.ink)
                 }
@@ -57,7 +57,7 @@ struct OtherDeviceSetupCard: View {
 
             if let secret {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Or enter this setup key")
+                    Text("Of vul deze instelsleutel in")
                         .textStyle(.label)
                         .foregroundStyle(Color.ink)
                     HStack(spacing: 8) {
@@ -66,14 +66,14 @@ struct OtherDeviceSetupCard: View {
                             .foregroundStyle(Color.ink)
                             .textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                        Button(didCopy ? "Copied" : "Copy") {
+                        Button(didCopy ? "Gekopieerd" : "Kopieer") {
                             copy(secret)
                         }
                         .textStyle(.eyebrow)
                         .foregroundStyle(Color.brandGreen)
                         .frame(minWidth: 44, minHeight: 44)
                         .buttonStyle(.plain)
-                        .accessibilityLabel(didCopy ? "Setup key copied" : "Copy setup key")
+                        .accessibilityLabel(didCopy ? "Instelsleutel gekopieerd" : "Kopieer instelsleutel")
                     }
                     .padding(.leading, 12)
                     .padding(.trailing, 4)
@@ -107,7 +107,7 @@ struct SetupPreviewPlaceholder: View {
                     Image(.iconQrcode)
                         .resizable()
                         .frame(width: 44, height: 44)
-                    Text("PLACEHOLDER")
+                    Text("VOORBEELD")
                         .textStyle(.tag)
                         .foregroundStyle(Color.brandGreen)
                         .lineLimit(1)
@@ -124,11 +124,11 @@ struct SetupPreviewPlaceholder: View {
             .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(isLoading ? "Preparing your setup…" : "Setup preview")
+                Text(isLoading ? "Instellen voorbereiden…" : "Voorbeeld")
                     .textStyle(.label)
                     .foregroundStyle(Color.brandGreen)
                 if !isLoading {
-                    Text("Demo account. No real verification code is created.")
+                    Text("Demo-account. Er wordt geen echte verificatiecode gemaakt.")
                         .textStyle(.footnote)
                         .foregroundStyle(Color.ink)
                 }
@@ -171,7 +171,7 @@ private struct QRCodeImage: View {
 
 #Preview {
     VStack(spacing: 16) {
-        SetupStepRow(number: 1, title: "Add PAVE to your codes", message: "Your iPhone stores the code for you.")
+        SetupStepRow(number: 1, title: "Voeg PAVE toe aan je codes", message: "Je iPhone bewaart de code voor je.")
         OtherDeviceSetupCard(
             setupURI: URL(string: "otpauth://totp/PAVE:ravi?secret=JBSWY3DPEHPK3PXP&issuer=PAVE")!,
             secret: "JBSWY3DPEHPK3PXP"
