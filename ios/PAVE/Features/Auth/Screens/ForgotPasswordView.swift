@@ -14,14 +14,14 @@ struct ForgotPasswordView: View {
 
     var body: some View {
         AuthScreen {
+            AuthIntro(
+                emblem: .iconMail,
+                eyebrow: "Wachtwoord herstellen",
+                title: "Wachtwoord vergeten?",
+                message: "Vul het e-mailadres van je organisatie in. We sturen je een code om je wachtwoord te herstellen."
+            )
+        } content: {
             VStack(alignment: .leading, spacing: 24) {
-                AuthIntro(
-                    emblem: .iconMail,
-                    eyebrow: "Wachtwoord herstellen",
-                    title: "Wachtwoord vergeten?",
-                    message: "Vul het e-mailadres van je organisatie in. We sturen je een link om een nieuw wachtwoord in te stellen."
-                )
-
                 PaveTextField(
                     label: "E-mailadres",
                     placeholder: "E-mailadres van je organisatie",
@@ -29,13 +29,13 @@ struct ForgotPasswordView: View {
                     kind: .email,
                     focus: $focus,
                     field: .email,
-                    errorMessage: error == nil ? nil : "We konden de link niet versturen. Controleer je internetverbinding en probeer het opnieuw."
+                    errorMessage: sendErrorMessage
                 )
                 .submitLabel(.send)
                 .onSubmit(submit)
                 .disabled(isSubmitting)
 
-                PavePrimaryButton(title: "Link versturen", loadingTitle: "Versturen…", isLoading: isSubmitting, action: submit)
+                PavePrimaryButton(title: "Code versturen", loadingTitle: "Versturen…", isLoading: isSubmitting, action: submit)
 
                 Text("Gebruik het e-mailadres van het PAVE-account dat je van je organisatie hebt gekregen.")
                     .textStyle(.footnote)
@@ -44,6 +44,13 @@ struct ForgotPasswordView: View {
                 AuthReturnButton(action: flow.returnToLogin)
             }
         }
+    }
+
+    private var sendErrorMessage: String? {
+        guard let error else { return nil }
+        return error == .rateLimited
+            ? "Je hebt net al een code aangevraagd. Wacht 60 seconden en probeer het opnieuw."
+            : "We konden de code niet versturen. Probeer het later opnieuw of neem contact op met de IT-support."
     }
 
     private func submit() {
@@ -67,72 +74,9 @@ struct ForgotPasswordView: View {
     }
 }
 
-struct ResetEmailSentView: View {
-    let email: String
-
-    @Environment(AuthFlow.self) private var flow
-    @State private var isSubmitting = false
-    @State private var error: AuthError?
-
-    var body: some View {
-        AuthScreen {
-            VStack(alignment: .leading, spacing: 24) {
-                AuthIntro(
-                    emblem: .iconMailOpen,
-                    eyebrow: "Wachtwoord herstellen",
-                    title: "Kijk in je inbox",
-                    message: "Als er een account bestaat voor \(email), sturen we een link om een nieuw wachtwoord in te stellen."
-                )
-
-                if error == nil {
-                    PaveNotice(
-                        title: "Geen e-mail ontvangen?",
-                        message: "Wacht een paar minuten en kijk in je map met spam of ongewenste e-mail. Nog niets? Vraag een nieuwe link aan."
-                    )
-                } else {
-                    PaveNotice(
-                        title: "We konden geen nieuwe link versturen",
-                        message: "Controleer je internetverbinding en probeer het opnieuw.",
-                        tone: .critical
-                    )
-                }
-
-                PavePrimaryButton(title: "Link opnieuw versturen", loadingTitle: "Versturen…", isLoading: isSubmitting, action: resend)
-
-                Text("Voor je privacy laten we niet weten of een e-mailadres een PAVE-account heeft.")
-                    .textStyle(.footnote)
-                    .foregroundStyle(Color.inkMuted)
-
-                AuthReturnButton(action: flow.returnToLogin)
-            }
-        }
-    }
-
-    private func resend() {
-        guard !isSubmitting else { return }
-        Task {
-            isSubmitting = true
-            defer { isSubmitting = false }
-            do {
-                try await flow.requestPasswordReset(email: email)
-                error = nil
-            } catch {
-                self.error = AuthError(error)
-            }
-        }
-    }
-}
-
-#Preview("Wachtwoord vergeten") {
+#Preview {
     NavigationStack {
         ForgotPasswordView()
-    }
-    .environment(AuthFlow(service: MockAuthService()) { _ in })
-}
-
-#Preview("E-mail verstuurd") {
-    NavigationStack {
-        ResetEmailSentView(email: "ravi@student.example.edu")
     }
     .environment(AuthFlow(service: MockAuthService()) { _ in })
 }

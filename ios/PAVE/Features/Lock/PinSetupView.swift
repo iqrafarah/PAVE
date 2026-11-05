@@ -45,6 +45,8 @@ struct PinSetupView: View {
             }
         case .biometrics(let pin):
             AuthScreen {
+                biometricsIntro
+            } content: {
                 biometricsOffer(pin: pin)
                     .animation(.easeOut(duration: 0.2), value: errorMessage)
             }
@@ -56,15 +58,19 @@ struct PinSetupView: View {
             .disabled(isSubmitting)
     }
 
+    private var biometricsIntro: some View {
+        let name = appState.biometricKind?.name ?? "biometrie"
+        return AuthIntro(
+            eyebrow: "Snel ontgrendelen",
+            title: "Ontgrendelen met \(name)",
+            message: "Open PAVE met \(name) in plaats van je pincode. Je pincode blijft altijd werken."
+        )
+    }
+
     @ViewBuilder
     private func biometricsOffer(pin: String) -> some View {
         let kind = appState.biometricKind
         VStack(alignment: .leading, spacing: 24) {
-            AuthIntro(
-                eyebrow: "Snel ontgrendelen",
-                title: "Ontgrendelen met \(kind?.name ?? "biometrie")",
-                message: "Open PAVE met \(kind?.name ?? "biometrie") in plaats van je pincode. Je pincode blijft altijd werken."
-            )
             if let errorMessage {
                 PaveInlineError(message: errorMessage)
             }

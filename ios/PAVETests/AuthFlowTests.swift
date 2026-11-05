@@ -50,26 +50,46 @@ struct AuthFlowTests {
         #expect(flow.path.isEmpty)
     }
 
-    @Test func resendingResetLinkDoesNotStackScreens() async throws {
+    @Test func resendingResetCodeDoesNotStackScreens() async throws {
         flow.showForgotPassword()
         try await flow.requestPasswordReset(email: MockAuthService.verifiedAccount)
         try await flow.requestPasswordReset(email: MockAuthService.verifiedAccount)
-        #expect(flow.path == [.forgotPassword, .resetEmailSent(email: MockAuthService.verifiedAccount)])
+        #expect(flow.path == [.forgotPassword, .resetCode(email: MockAuthService.verifiedAccount)])
     }
 
-    @Test func resetLinkOpensNewPasswordAndFinishes() async throws {
-        await flow.openPasswordResetLink(URL(string: "pave://reset-password")!)
-        #expect(flow.path == [.newPassword])
+    @Test func resetWithTwoStepVerificationAsksForTheAuthenticatorCode() async throws {
+        flow.showForgotPassword()
+        try await flow.requestPasswordReset(email: MockAuthService.verifiedAccount)
+        try await flow.verifyPasswordResetCode(email: MockAuthService.verifiedAccount, code: MockAuthService.demoCode)
+        #expect(flow.path.last == .resetVerification)
+
+        try await flow.verifyForPasswordReset(code: MockAuthService.demoCode)
+        #expect(flow.path.last == .newPassword)
+        #expect(!spy.didSignIn)
 
         try await flow.updatePassword("BrightFuture!2026")
-        #expect(flow.path == [.newPassword, .passwordResetComplete])
+        #expect(flow.path.last == .passwordResetComplete)
+    }
+
+    @Test func resetCodeOpensNewPasswordAndFinishes() async throws {
+        flow.showForgotPassword()
+        try await flow.requestPasswordReset(email: MockAuthService.newAccount)
+        try await flow.verifyPasswordResetCode(email: MockAuthService.newAccount, code: MockAuthService.demoCode)
+        #expect(flow.path.last == .newPassword)
+
+        try await flow.updatePassword("BrightFuture!2026")
+        #expect(flow.path.last == .passwordResetComplete)
 
         flow.returnToLogin()
         #expect(flow.path.isEmpty)
     }
 
-    @Test func invalidLinkOffersNewResetRequest() async {
-        await flow.openPasswordResetLink(URL(string: "pave://something-else")!)
-        #expect(flow.path == [.forgotPassword])
+    @Test func wrongResetCodeStaysOnTheCodeScreen() async throws {
+        flow.showForgotPassword()
+        try await flow.requestPasswordReset(email: MockAuthService.verifiedAccount)
+        await #expect(throws: AuthError.invalidCode) {
+            try await flow.verifyPasswordResetCode(email: MockAuthService.verifiedAccount, code: "000000")
+        }
+        #expect(flow.path.last == .resetCode(email: MockAuthService.verifiedAccount))
     }
 }

@@ -6,13 +6,14 @@ struct VerificationSetupCompleteView: View {
 
     var body: some View {
         AuthScreen {
+            AuthIntro(
+                emblem: .iconCheckCircle,
+                eyebrow: "Instellen gelukt",
+                title: "Je bent klaar",
+                message: "Tweestapsverificatie staat nu aan voor je PAVE-account."
+            )
+        } content: {
             VStack(alignment: .leading, spacing: 24) {
-                AuthIntro(
-                    emblem: .iconCheckCircle,
-                    eyebrow: "Instellen gelukt",
-                    title: "Je bent klaar",
-                    message: "Tweestapsverificatie staat nu aan voor je PAVE-account."
-                )
                 PaveNotice(
                     title: "Je portfolio is extra beveiligd",
                     message: "Log je de volgende keer in, gebruik dan je wachtwoord en een code uit je authenticator-app. Houd de app op je telefoon."
@@ -29,13 +30,14 @@ struct PasswordResetCompleteView: View {
 
     var body: some View {
         AuthScreen {
+            AuthIntro(
+                emblem: .iconCheckCircle,
+                eyebrow: "Wachtwoord hersteld",
+                title: "Wachtwoord gewijzigd",
+                message: "Je nieuwe wachtwoord is opgeslagen. Je kunt er nu mee inloggen bij PAVE."
+            )
+        } content: {
             VStack(alignment: .leading, spacing: 24) {
-                AuthIntro(
-                    emblem: .iconCheckCircle,
-                    eyebrow: "Wachtwoord hersteld",
-                    title: "Wachtwoord gewijzigd",
-                    message: "Je nieuwe wachtwoord is opgeslagen. Je kunt er nu mee inloggen bij PAVE."
-                )
                 PaveNotice(
                     title: "Tweestapsverificatie staat nog steeds aan",
                     message: "Je extra beveiliging blijft gewoon staan. Houd je authenticator-app bij de hand als je inlogt."

@@ -41,7 +41,7 @@ private struct SecondaryButtonStyle: ButtonStyle {
 }
 
 #Preview {
-    PaveSecondaryButton(title: "Instellen op deze iPhone", icon: .iconShieldCheck) {}
+    PaveSecondaryButton(title: "Instellen op dit toestel", icon: .iconShieldCheck) {}
         .padding(32)
         .background(Color.canvas)
 }

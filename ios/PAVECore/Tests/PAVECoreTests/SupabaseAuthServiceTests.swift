@@ -11,10 +11,14 @@ struct SupabaseAuthServiceTests {
         (.mfaVerificationFailed, .invalidCode),
         (.mfaChallengeExpired, .invalidCode),
         (.weakPassword, .weakPassword),
-        (.samePassword, .weakPassword),
-        (.otpExpired, .invalidResetLink),
-        (.flowStateExpired, .invalidResetLink),
-        (.overRequestRateLimit, .unavailable),
+        (.samePassword, .samePassword),
+        (.otpExpired, .invalidCode),
+        (.flowStateExpired, .resetSessionExpired),
+        (.sessionNotFound, .resetSessionExpired),
+        (.overRequestRateLimit, .rateLimited),
+        (.overEmailSendRateLimit, .rateLimited),
+        (.insufficientAAL, .insufficientAssurance),
+        (.validationFailed, .unavailable),
     ])
     func mapsSupabaseErrors(code: ErrorCode, expected: PAVECore.AuthError) {
         let error = Auth.AuthError.api(
@@ -32,12 +36,5 @@ struct SupabaseAuthServiceTests {
 
     @Test func networkErrorsAreUnavailable() {
         #expect(SupabaseAuthService.authError(for: URLError(.notConnectedToInternet)) == .unavailable)
-    }
-
-    @Test func rejectsForeignResetLinks() async {
-        let service = SupabaseAuthService(projectURL: URL(string: "https://example.supabase.co")!, publishableKey: "test")
-        await #expect(throws: PAVECore.AuthError.invalidResetLink) {
-            try await service.openPasswordResetLink(URL(string: "https://evil.example.com/reset-password")!)
-        }
     }
 }

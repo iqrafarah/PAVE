@@ -3,8 +3,6 @@ import Foundation
 import OSLog
 
 public struct SupabaseAuthService: AuthService {
-    public static let passwordResetRedirect = URL(string: "pave://reset-password")!
-
     private static let logger = Logger(subsystem: "nl.fontys.pave", category: "auth")
 
     private let client: AuthClient
@@ -60,18 +58,15 @@ public struct SupabaseAuthService: AuthService {
 
     public func requestPasswordReset(email: String) async throws {
         try await mapErrors {
-            try await client.resetPasswordForEmail(Self.normalized(email), redirectTo: Self.passwordResetRedirect)
+            try await client.resetPasswordForEmail(Self.normalized(email))
         }
     }
 
-    public func openPasswordResetLink(_ url: URL) async throws {
-        guard url.scheme == Self.passwordResetRedirect.scheme, url.host() == Self.passwordResetRedirect.host() else {
-            throw AuthError.invalidResetLink
-        }
-        do {
-            try await client.session(from: url)
-        } catch {
-            throw AuthError.invalidResetLink
+    public func verifyPasswordResetCode(email: String, code: String) async throws -> PasswordResetOutcome {
+        try await mapErrors {
+            try await client.verifyOTP(email: Self.normalized(email), token: code, type: .recovery)
+            let hasVerifiedFactor = try await !verifiedFactors().isEmpty
+            return hasVerifiedFactor ? .needsVerification : .readyForNewPassword
         }
     }
 
@@ -140,10 +135,18 @@ public struct SupabaseAuthService: AuthService {
             return .accountNotActive
         case .mfaVerificationFailed, .mfaVerificationRejected, .mfaChallengeExpired:
             return .invalidCode
-        case .weakPassword, .samePassword:
+        case .weakPassword:
             return .weakPassword
-        case .otpExpired, .flowStateExpired, .badCodeVerifier, .sessionNotFound:
-            return .invalidResetLink
+        case .samePassword:
+            return .samePassword
+        case .otpExpired:
+            return .invalidCode
+        case .flowStateExpired, .badCodeVerifier, .sessionNotFound:
+            return .resetSessionExpired
+        case .overEmailSendRateLimit, .overRequestRateLimit:
+            return .rateLimited
+        case .insufficientAAL:
+            return .insufficientAssurance
         default:
             return .unavailable
         }

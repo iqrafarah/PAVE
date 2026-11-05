@@ -1,20 +1,44 @@
+import PAVECore
 import SwiftUI
 
-struct AuthScreen<Content: View>: View {
-    @ViewBuilder let content: Content
+struct AuthScreen<Intro: View, Content: View>: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    @State private var stableSize: CGSize = .zero
+
+    private let intro: Intro
+    private let content: Content
+
+    init(@ViewBuilder intro: () -> Intro, @ViewBuilder content: () -> Content) {
+        self.intro = intro()
+        self.content = content()
+    }
 
     var body: some View {
         GeometryReader { proxy in
-            switch AuthLayout(size: proxy.size) {
+            let mode = AdaptiveMode.resolve(
+                size: proxy.size,
+                stableSize: stableSize == .zero ? proxy.size : stableSize,
+                sizeClass: sizeClass,
+                fold: proxy.foldSplit()
+            )
+            switch mode {
             case .compact:
                 compactLayout(minHeight: proxy.size.height)
             case .card:
                 cardLayout(minHeight: proxy.size.height)
-            case .split:
-                splitLayout(size: proxy.size)
+            case .split(let split):
+                splitLayout(split)
             }
         }
+        .trackingStableSize($stableSize)
         .toolbarVisibility(.hidden, for: .navigationBar)
+    }
+
+    private var stacked: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            intro
+            content
+        }
     }
 
     private func compactLayout(minHeight: CGFloat) -> some View {
@@ -25,7 +49,7 @@ struct AuthScreen<Content: View>: View {
                     .padding(.horizontal, 32)
                     .padding(.top, 16)
                     .padding(.bottom, 24)
-                content
+                stacked
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 32)
                     .padding(.top, 24)
@@ -46,7 +70,7 @@ struct AuthScreen<Content: View>: View {
                 Spacer(minLength: 48)
                 VStack(alignment: .leading, spacing: 32) {
                     AuthLogo()
-                    content
+                    stacked
                 }
                 .padding(40)
                 .frame(maxWidth: 520)
@@ -63,42 +87,38 @@ struct AuthScreen<Content: View>: View {
         .background { PaveCornerGradient() }
     }
 
-    private func splitLayout(size: CGSize) -> some View {
-        HStack(spacing: 0) {
-            AuthBrandPanel()
-                .frame(width: size.width * 0.42)
-
+    private func splitLayout(_ split: FoldSplit) -> some View {
+        SplitPanes(split: split) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    AuthLogo()
+                        .padding(.top, 8)
+                    Spacer(minLength: 24)
+                    intro
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 24)
+                }
+                .padding(.vertical, 24)
+                .padding(.horizontal, 24)
+                .frame(maxWidth: .infinity, minHeight: split.first.height, alignment: .leading)
+            }
+            .authScrollBehavior()
+        } second: {
             ScrollView {
                 VStack(spacing: 0) {
-                    Spacer(minLength: 48)
+                    Spacer(minLength: 0)
                     content
                         .frame(maxWidth: 440)
                         .fixedSize(horizontal: false, vertical: true)
-                        .padding(.horizontal, 48)
-                    Spacer(minLength: 24)
-                    AuthFooter(showsTagline: false)
+                    Spacer(minLength: 0)
                 }
-                .frame(maxWidth: .infinity, minHeight: size.height)
+                .padding(.vertical, 24)
+                .padding(.horizontal, 24)
+                .frame(maxWidth: .infinity, minHeight: split.second.height)
             }
             .authScrollBehavior()
-            .background(Color.canvas.ignoresSafeArea())
         }
-    }
-}
-
-private enum AuthLayout {
-    case compact
-    case card
-    case split
-
-    init(size: CGSize) {
-        if size.width >= 1000 && size.width > size.height {
-            self = .split
-        } else if size.width >= 600 {
-            self = .card
-        } else {
-            self = .compact
-        }
+        .background { PaveCornerGradient() }
     }
 }
 
@@ -115,35 +135,18 @@ struct AuthLogo: View {
 }
 
 struct AuthFooter: View {
-    var showsTagline = true
-
     var body: some View {
         VStack(spacing: 6) {
             Text("Hulp nodig? Neem contact op met de IT-support van je organisatie.")
                 .textStyle(.footnote)
                 .multilineTextAlignment(.center)
-            if showsTagline {
-                Text("Jouw ontwikkeling. Jouw mogelijkheden.")
-                    .textStyle(.caption)
-            }
+            Text("Jouw ontwikkeling. Jouw mogelijkheden.")
+                .textStyle(.caption)
         }
         .foregroundStyle(Color.inkMuted)
+        .fixedSize(horizontal: false, vertical: true)
         .padding(.horizontal, 32)
         .padding(.vertical, 28)
-    }
-}
-
-struct AuthBrandPanel: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            AuthLogo(width: 220)
-            Text("Jouw ontwikkeling.\nJouw mogelijkheden.")
-                .textStyle(.title)
-                .foregroundStyle(Color.brandGreen)
-        }
-        .padding(56)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .background { PaveCornerGradient() }
     }
 }
 
@@ -194,6 +197,8 @@ private extension View {
 
 #Preview("iPhone") {
     AuthScreen {
+        AuthIntro(eyebrow: "Inloggen", title: "Welkom bij PAVE")
+    } content: {
         Text("Inhoud")
             .frame(maxWidth: .infinity, alignment: .leading)
     }

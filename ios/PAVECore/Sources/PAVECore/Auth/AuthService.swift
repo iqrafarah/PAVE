@@ -6,7 +6,7 @@ public protocol AuthService: Sendable {
     func startVerificationSetup() async throws -> VerificationEnrollment
     func confirmVerificationSetup(code: String) async throws
     func requestPasswordReset(email: String) async throws
-    func openPasswordResetLink(_ url: URL) async throws
+    func verifyPasswordResetCode(email: String, code: String) async throws -> PasswordResetOutcome
     func updatePassword(_ newPassword: String) async throws
     func signOut() async
     func accountID() async -> String?
@@ -15,6 +15,12 @@ public protocol AuthService: Sendable {
 public enum SignInOutcome: Equatable, Sendable {
     case needsVerification
     case needsVerificationSetup
+}
+
+public enum PasswordResetOutcome: Equatable, Sendable {
+    case readyForNewPassword
+    /// The account has two-step verification: the authenticator code is needed before the password can change.
+    case needsVerification
 }
 
 public struct VerificationEnrollment: Equatable, Sendable {
@@ -33,8 +39,11 @@ public enum AuthError: Error, Equatable, Sendable {
     case invalidCredentials
     case accountNotActive
     case invalidCode
-    case invalidResetLink
+    case resetSessionExpired
     case weakPassword
+    case samePassword
+    case rateLimited
+    case insufficientAssurance
     case unavailable
 
     public init(_ error: any Error) {

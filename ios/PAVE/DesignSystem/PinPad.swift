@@ -92,7 +92,7 @@ struct PinKeypad: View {
     private func digitKey(_ digit: Int) -> some View {
         Button { onDigit(digit) } label: {
             Text("\(digit)")
-                .textStyle(.keypad)
+                .font(.custom("InterVariable-Medium", fixedSize: keySize * 0.38))
                 .foregroundStyle(Color.ink)
                 .minimumScaleFactor(0.5)
                 .lineLimit(1)
@@ -103,7 +103,7 @@ struct PinKeypad: View {
     private var deleteKey: some View {
         Button(action: onDelete) {
             Image(systemName: "delete.backward")
-                .font(.title3)
+                .font(.system(size: keySize * 0.3))
                 .foregroundStyle(Color.ink)
         }
         .buttonStyle(KeyStyle(size: keySize, filled: false))
@@ -115,7 +115,7 @@ struct PinKeypad: View {
         if let biometricKind, let onBiometric {
             Button(action: onBiometric) {
                 Image(systemName: biometricKind.symbolName)
-                    .font(.title2)
+                    .font(.system(size: keySize * 0.38))
                     .foregroundStyle(Color.brandGreen)
             }
             .buttonStyle(KeyStyle(size: keySize, filled: false))

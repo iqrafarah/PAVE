@@ -1,3 +1,4 @@
+import PAVECore
 import SwiftUI
 
 struct PinScreen<Pad: View, Accessory: View>: View {
@@ -8,94 +9,145 @@ struct PinScreen<Pad: View, Accessory: View>: View {
     @ViewBuilder let pad: (CGFloat) -> Pad
     @ViewBuilder let accessory: () -> Accessory
 
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    @State private var chromeHeight: CGFloat = 320
+    @State private var stableSize: CGSize = .zero
+
     var body: some View {
         GeometryReader { proxy in
-            switch PinScreenLayout(size: proxy.size) {
+            let mode = AdaptiveMode.resolve(
+                size: proxy.size,
+                stableSize: stableSize == .zero ? proxy.size : stableSize,
+                sizeClass: sizeClass,
+                fold: proxy.foldSplit()
+            )
+            switch mode {
             case .compact:
-                content(showsLogo: true)
+                column(size: proxy.size)
                     .background { AuthTopAtmosphere() }
-            case .wide:
-                content(showsLogo: true)
+            case .card:
+                column(size: proxy.size)
                     .background { PaveCornerGradient() }
-            case .split:
-                HStack(spacing: 0) {
-                    AuthBrandPanel()
-                        .frame(width: proxy.size.width * 0.42)
-                    content(showsLogo: false)
-                        .background(Color.canvas.ignoresSafeArea())
-                }
+            case .split(let split):
+                panes(split)
+                    .background { PaveCornerGradient() }
             }
         }
+        .trackingStableSize($stableSize)
         .toolbarVisibility(.hidden, for: .navigationBar)
     }
 
-    private func content(showsLogo: Bool) -> some View {
-        ViewThatFits(in: .vertical) {
-            column(.init(keySize: 96, emblem: true, message: true, footer: true, spacing: 32), showsLogo)
-            column(.init(keySize: 84, emblem: true, message: true, footer: true, spacing: 28), showsLogo)
-            column(.init(keySize: 76, emblem: true, message: true, footer: true, spacing: 24), showsLogo)
-            column(.init(keySize: 68, emblem: false, message: true, footer: true, spacing: 24), showsLogo)
-            column(.init(keySize: 60, emblem: false, message: false, footer: true, spacing: 20), showsLogo)
-            column(.init(keySize: 52, emblem: false, message: false, footer: false, spacing: 16), showsLogo)
-            column(.init(keySize: 46, emblem: false, message: false, footer: false, spacing: 12), showsLogo)
-            ScrollView {
-                column(.init(keySize: 52, emblem: false, message: false, footer: true, spacing: 16), showsLogo)
-            }
-        }
-    }
+    private func column(size: CGSize) -> some View {
+        let gap: CGFloat = size.height >= 700 ? 40 : 24
+        let showsFooter = size.height >= 900
+        let contentWidth = min(size.width, 560) - 64
+        let reserved = 16 + gap + gap + 12 + 12
+        let keySize = PinPadMetrics.keySize(
+            fitting: CGSize(width: contentWidth, height: size.height - chromeHeight - reserved)
+        )
 
-    private func column(_ variant: Variant, _ showsLogo: Bool) -> some View {
-        VStack(spacing: 0) {
-            if showsLogo {
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
                 AuthLogo()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 32)
+                    .measuredChrome()
                     .padding(.top, 16)
-            }
-            Spacer(minLength: showsLogo ? variant.spacing : 0)
-            VStack(alignment: .leading, spacing: variant.spacing) {
-                AuthIntro(
-                    emblem: variant.emblem ? emblem : nil,
-                    eyebrow: eyebrow,
-                    title: title,
-                    message: variant.message ? message : nil
-                )
-                .fixedSize(horizontal: false, vertical: true)
-                pad(variant.keySize)
+                intro(showsEmblem: size.height >= 760, showsMessage: size.height >= 600)
+                    .measuredChrome()
+                    .padding(.top, gap)
+                pad(keySize)
                     .frame(maxWidth: .infinity)
+                    .padding(.top, gap)
                 accessory()
+                    .measuredChrome()
+                    .padding(.top, 12)
+                if showsFooter {
+                    AuthFooter()
+                        .measuredChrome()
+                }
             }
             .padding(.horizontal, 32)
-            Spacer(minLength: 0)
-            if variant.footer {
-                AuthFooter()
-            }
+            .padding(.bottom, 12)
+            .frame(maxWidth: 560)
+            .frame(maxWidth: .infinity, minHeight: size.height, alignment: .top)
         }
-        .frame(maxWidth: 440)
-        .frame(maxWidth: .infinity)
+        .scrollBounceBehavior(.basedOnSize)
+        .onPreferenceChange(ChromeHeightKey.self) { chromeHeight = $0 }
     }
 
-    private struct Variant {
-        let keySize: CGFloat
-        let emblem: Bool
-        let message: Bool
-        let footer: Bool
-        let spacing: CGFloat
+    private func panes(_ split: FoldSplit) -> some View {
+        SplitPanes(split: split) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    AuthLogo()
+                        .padding(.top, 8)
+                    Spacer(minLength: 24)
+                    intro(showsEmblem: split.first.height >= 520, showsMessage: true)
+                    accessory()
+                        .padding(.top, 16)
+                    Spacer(minLength: 24)
+                }
+                .padding(24)
+                .frame(maxWidth: .infinity, minHeight: split.first.height, alignment: .leading)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+        } second: {
+            let available = CGSize(width: split.second.width - 48, height: split.second.height - 48)
+            let keySize = PinPadMetrics.keySize(fitting: available, maximum: PinPadMetrics.landscapeMaximumKeySize)
+            ScrollView {
+                pad(keySize)
+                    .padding(24)
+                    .frame(maxWidth: .infinity, minHeight: split.second.height)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+        }
+    }
+
+    private func intro(showsEmblem: Bool, showsMessage: Bool) -> some View {
+        AuthIntro(
+            emblem: showsEmblem ? emblem : nil,
+            eyebrow: eyebrow,
+            title: title,
+            message: showsMessage ? message : nil
+        )
+        .fixedSize(horizontal: false, vertical: true)
     }
 }
 
-private enum PinScreenLayout {
-    case compact
-    case wide
-    case split
+enum PinPadMetrics {
+    static let minimumKeySize: CGFloat = 44
+    static let maximumKeySize: CGFloat = 104
+    static let landscapeMaximumKeySize: CGFloat = 76
+    static let dotsHeight: CGFloat = 14
 
-    init(size: CGSize) {
-        if size.width >= 1000 && size.width > size.height {
-            self = .split
-        } else if size.width >= 600 {
-            self = .wide
-        } else {
-            self = .compact
+    static func height(forKeySize key: CGFloat) -> CGFloat {
+        dotsHeight + key * 0.4 + key * 4 + key * 0.2 * 3
+    }
+
+    static func width(forKeySize key: CGFloat) -> CGFloat {
+        key * 3 + key * 0.26 * 2
+    }
+
+    static func keySize(fitting size: CGSize, maximum: CGFloat = maximumKeySize) -> CGFloat {
+        let byWidth = size.width / width(forKeySize: 1)
+        let byHeight = (size.height - dotsHeight) / (height(forKeySize: 1) - dotsHeight)
+        return min(max(min(byWidth, byHeight), minimumKeySize), maximum).rounded(.down)
+    }
+}
+
+private struct ChromeHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value += nextValue()
+    }
+}
+
+private extension View {
+    func measuredChrome() -> some View {
+        background {
+            GeometryReader { proxy in
+                Color.clear.preference(key: ChromeHeightKey.self, value: proxy.size.height)
+            }
         }
     }
 }

@@ -2,6 +2,13 @@ import PAVECore
 import SwiftUI
 
 struct VerificationView: View {
+    enum Purpose {
+        case signIn
+        case passwordReset
+    }
+
+    var purpose: Purpose = .signIn
+
     @Environment(AuthFlow.self) private var flow
     @State private var code = ""
     @State private var isSubmitting = false
@@ -10,14 +17,16 @@ struct VerificationView: View {
 
     var body: some View {
         AuthScreen {
+            AuthIntro(
+                emblem: .iconShieldCheck,
+                eyebrow: purpose == .signIn ? "Tweestapsverificatie" : "Wachtwoord herstellen",
+                title: "Bevestig dat jij het bent",
+                message: purpose == .signIn
+                    ? "Open je authenticator-app en vul de code van 6 cijfers voor je PAVE-account in."
+                    : "Voor je account staat tweestapsverificatie aan. Vul de code uit je authenticator-app in, dan kies je daarna een nieuw wachtwoord."
+            )
+        } content: {
             VStack(alignment: .leading, spacing: 24) {
-                AuthIntro(
-                    emblem: .iconShieldCheck,
-                    eyebrow: "Tweestapsverificatie",
-                    title: "Bevestig dat jij het bent",
-                    message: "Open je authenticator-app en vul de code van 6 cijfers voor je PAVE-account in."
-                )
-
                 VerificationCodeField(code: $code, errorMessage: errorMessage, isFocused: $isCodeFocused)
                     .onChange(of: code) { error = nil }
 
@@ -54,7 +63,12 @@ struct VerificationView: View {
             isSubmitting = true
             defer { isSubmitting = false }
             do {
-                try await flow.verify(code: code)
+                switch purpose {
+                case .signIn:
+                    try await flow.verify(code: code)
+                case .passwordReset:
+                    try await flow.verifyForPasswordReset(code: code)
+                }
             } catch {
                 self.error = AuthError(error)
             }

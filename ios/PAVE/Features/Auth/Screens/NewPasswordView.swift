@@ -17,13 +17,13 @@ struct NewPasswordView: View {
 
     var body: some View {
         AuthScreen {
+            AuthIntro(
+                eyebrow: "Wachtwoord herstellen",
+                title: "Kies een nieuw wachtwoord",
+                message: "Kies een sterk wachtwoord dat je nergens anders gebruikt."
+            )
+        } content: {
             VStack(alignment: .leading, spacing: 24) {
-                AuthIntro(
-                    eyebrow: "Wachtwoord herstellen",
-                    title: "Kies een nieuw wachtwoord",
-                    message: "Kies een sterk wachtwoord dat je nergens anders gebruikt."
-                )
-
                 PaveTextField(
                     label: "Nieuw wachtwoord",
                     placeholder: "Vul een nieuw wachtwoord in",
@@ -81,7 +81,9 @@ struct NewPasswordView: View {
             } catch {
                 passwordError = switch AuthError(error) {
                 case .weakPassword: "Je wachtwoord voldoet nog niet aan alle eisen."
-                case .invalidResetLink: "Deze link is verlopen. Ga terug naar inloggen en vraag een nieuwe aan."
+                case .samePassword: "Kies een wachtwoord dat anders is dan je huidige wachtwoord."
+                case .resetSessionExpired: "Je herstelsessie is verlopen. Ga terug naar inloggen en vraag een nieuwe code aan."
+                case .insufficientAssurance: "Bevestig eerst de code uit je authenticator-app. Ga terug naar inloggen en vraag een nieuwe code aan."
                 default: "We konden je wachtwoord niet opslaan. Controleer je internetverbinding en probeer het opnieuw."
                 }
             }

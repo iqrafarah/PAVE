@@ -17,13 +17,13 @@ struct SignInView: View {
 
     var body: some View {
         AuthScreen {
+            AuthIntro(
+                eyebrow: "Inloggen",
+                title: "Welkom bij PAVE",
+                message: "Log in om verder te werken aan je persoonlijke portfolio."
+            )
+        } content: {
             VStack(alignment: .leading, spacing: 24) {
-                AuthIntro(
-                    eyebrow: "Inloggen",
-                    title: "Welkom bij PAVE",
-                    message: "Log in om verder te werken aan je persoonlijke portfolio."
-                )
-
                 if let error {
                     errorNotice(for: error)
                         .transition(.opacity.combined(with: .move(edge: .top)))
