@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pave.example/ayla/reply.schema.json",
+  "title": "Ayla request and reply",
+  "description": "The contract between the Ayla brain on the server and every PAVE app (web, iPhone, Watch). See docs/ayla.md.",
+  "$defs": {
+    "category": {
+      "description": "A part of the vault Ayla may ask to use.",
+      "enum": ["diplomas", "certificates", "badges", "projects", "workExperience", "internships", "skills", "feedback", "reflections"]
+    },
+    "device": { "enum": ["watch", "phone", "web"] },
+    "request": {
+      "type": "object",
+      "required": ["text", "device", "input"],
+      "additionalProperties": false,
+      "properties": {
+        "conversationId": { "type": "string", "description": "Empty for a new conversation." },
+        "text": { "type": "string", "minLength": 1 },
+        "device": { "$ref": "#/$defs/device" },
+        "input": { "enum": ["voice", "text"] },
+        "context": {
+          "type": "object",
+          "description": "What the user has open. Only ids: the server reads the item itself, and only with consent.",
+          "required": ["screen"],
+          "additionalProperties": false,
+          "properties": {
+            "screen": { "$ref": "#/$defs/screen" },
+            "itemId": { "type": "string" }
+          }
+        }
+      }
+    },
+    "screen": {
+      "description": "A place in the app. Each app maps it to its own route.",
+      "enum": ["home", "chat", "vault", "vaultItem", "addEvidence", "plans", "vacancies", "profile", "settings"]
+    },
+    "choice": {
+      "type": "object",
+      "required": ["id", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string", "minLength": 1 }
+      }
+    },
+    "requirementLink": {
+      "type": "object",
+      "description": "A skill and the requirement of the vacancy it comes from, so the user can check it.",
+      "required": ["skill", "requirement"],
+      "additionalProperties": false,
+      "properties": {
+        "skill": { "type": "string" },
+        "requirement": { "type": "string" }
+      }
+    },
+    "vacancy": {
+      "type": "object",
+      "required": ["id", "title", "company", "source", "matches", "skillGap"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "company": { "type": "string" },
+        "city": { "type": "string" },
+        "employment": { "enum": ["fullTime", "partTime"] },
+        "salary": {
+          "type": "object",
+          "description": "Shown per month in the apps. An estimate is labelled as such.",
+          "required": ["min", "max", "period", "currency", "isEstimate"],
+          "additionalProperties": false,
+          "properties": {
+            "min": { "type": "number", "minimum": 0 },
+            "max": { "type": "number", "minimum": 0 },
+            "period": { "enum": ["month", "year"] },
+            "currency": { "const": "EUR" },
+            "isEstimate": { "type": "boolean" }
+          }
+        },
+        "logoUrl": { "type": "string", "format": "uri" },
+        "url": { "type": "string", "format": "uri" },
+        "source": { "enum": ["example", "adzuna"], "description": "\"example\" vacancies are fictional and must be labelled as examples." },
+        "matches": { "type": "array", "items": { "$ref": "#/$defs/requirementLink" } },
+        "skillGap": { "type": "array", "items": { "$ref": "#/$defs/requirementLink" } }
+      }
+    },
+    "block": {
+      "description": "A card the apps draw. Apps skip a type they do not know yet.",
+      "type": "object",
+      "required": ["type"],
+      "oneOf": [
+        {
+          "properties": {
+            "type": { "const": "vaultSelection" },
+            "categories": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["category", "count"],
+                "additionalProperties": false,
+                "properties": {
+                  "category": { "$ref": "#/$defs/category" },
+                  "count": { "type": "integer", "minimum": 0 }
+                }
+              }
+            }
+          },
+          "required": ["categories"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "type": { "const": "vacancies" },
+            "items": { "type": "array", "items": { "$ref": "#/$defs/vacancy" } }
+          },
+          "required": ["items"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "type": { "const": "skillSuggestions" },
+            "itemId": { "type": "string" },
+            "skills": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "reason"],
+                "additionalProperties": false,
+                "properties": { "name": { "type": "string" }, "reason": { "type": "string" } }
+              }
+            }
+          },
+          "required": ["itemId", "skills"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "type": { "const": "cv" },
+            "profile": { "type": "string" },
+            "experience": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["title", "organisation", "period"],
+                "additionalProperties": false,
+                "properties": {
+                  "title": { "type": "string" },
+                  "organisation": { "type": "string" },
+                  "period": { "type": "string" },
+                  "description": { "type": "string" }
+                }
+              }
+            },
+            "skills": { "type": "array", "items": { "type": "string" } }
+          },
+          "required": ["profile", "experience", "skills"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "reply": {
+      "type": "object",
+      "required": ["version", "id", "conversationId", "text", "blocks", "usedData"],
+      "additionalProperties": false,
+      "properties": {
+        "version": { "const": 1 },
+        "id": { "type": "string" },
+        "conversationId": { "type": "string" },
+        "text": { "type": "string", "minLength": 1, "description": "What Ayla says. On the Watch one or two sentences." },
+        "question": {
+          "type": "object",
+          "required": ["text", "choices"],
+          "additionalProperties": false,
+          "properties": {
+            "text": { "type": "string" },
+            "choices": { "type": "array", "minItems": 2, "maxItems": 3, "items": { "$ref": "#/$defs/choice" } }
+          }
+        },
+        "accessRequest": {
+          "type": "object",
+          "description": "Ayla asks to use parts of the vault for this task. The app asks the user; nothing is used before a grant.",
+          "required": ["id", "purpose", "categories"],
+          "additionalProperties": false,
+          "properties": {
+            "id": { "type": "string" },
+            "purpose": { "type": "string" },
+            "categories": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/category" } }
+          }
+        },
+        "proposedAction": {
+          "type": "object",
+          "description": "Something that changes data. It only happens after the user confirms.",
+          "required": ["id", "kind", "summary", "expiresAt"],
+          "additionalProperties": false,
+          "properties": {
+            "id": { "type": "string" },
+            "kind": { "enum": ["addVaultItem", "updatePlan", "draftProfile", "requestValidation"] },
+            "summary": { "type": "string" },
+            "expiresAt": { "type": "string", "format": "date-time" }
+          }
+        },
+        "blocks": { "type": "array", "items": { "$ref": "#/$defs/block" } },
+        "navigation": {
+          "type": "object",
+          "description": "Open a screen. Needs no confirmation because it changes nothing.",
+          "required": ["screen"],
+          "additionalProperties": false,
+          "properties": {
+            "screen": { "$ref": "#/$defs/screen" },
+            "itemId": { "type": "string" }
+          }
+        },
+        "usedData": {
+          "type": "array",
+          "description": "Set by the server: the categories this answer used. Always a subset of what the user allowed.",
+          "items": { "$ref": "#/$defs/category" }
+        }
+      }
+    }
+  },
+  "$ref": "#/$defs/reply"
+}

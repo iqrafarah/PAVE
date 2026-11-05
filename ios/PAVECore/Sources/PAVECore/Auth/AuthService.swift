@@ -10,6 +10,8 @@ public protocol AuthService: Sendable {
     func updatePassword(_ newPassword: String) async throws
     func signOut() async
     func accountID() async -> String?
+    /// The token of the current session, refreshed when needed. Used to call other Supabase services.
+    func accessToken() async -> String?
 }
 
 public enum SignInOutcome: Equatable, Sendable {

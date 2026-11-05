@@ -84,6 +84,10 @@ public actor MockAuthService: AuthService {
         currentAccount
     }
 
+    public func accessToken() async -> String? {
+        nil
+    }
+
     private func simulateNetwork() async throws {
         if delay > .zero {
             try await Task.sleep(for: delay)

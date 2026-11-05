@@ -85,6 +85,10 @@ public struct SupabaseAuthService: AuthService {
         client.currentUser?.id.uuidString
     }
 
+    public func accessToken() async -> String? {
+        try? await client.session.accessToken
+    }
+
     private func mapErrors<Value>(
         function: StaticString = #function,
         _ operation: () async throws -> Value
