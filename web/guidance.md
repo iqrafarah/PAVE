@@ -156,4 +156,16 @@ Anything below that changes must be agreed with the iOS team before merging.
 4. Never bypass RLS, expose the service-role key, or create web-only database structures.
 5. Any database or contract change must come with the migration, the updated docs and the "Cross-platform impact" note, so the iOS team can update their Swift models.
 6. Write simple, easy-to-read code that follows "Readable code" in §3. Do not generate unnecessary comments, placeholder code or dead code.
-7. When something is unclear or conflicts with these rules, stop and ask instead of guessing.
+7. Write all interface text in Dutch following section 10 and `docs/ui-teksten.md`.
+8. When something is unclear or conflicts with these rules, stop and ask instead of guessing.
+
+## 10. Interface language and tone
+
+All text the user sees (labels, buttons, placeholders, errors, emails shown in the UI) is **Dutch**, in plain, friendly language. Code, comments and commits stay English.
+
+- The source of truth is `docs/ui-teksten.md`: tone rules, a glossary and standard messages shared with iOS. Read it before writing any UI text, and use the exact wording from it when the text already exists. Add new texts there in the same PR.
+- Address the user with "je/jij", never "u". Use everyday words and short sentences. No jargon, no corporate phrases.
+- PAVE is not an organization app. Never write "organisatie", "IT-support", "your organization's email" or similar. Say "e-mailadres" and refer to "PAVE-support" when the user needs help.
+- Error messages say what happened and what the user can do next. Never blame the user, and never reveal whether an email address has an account.
+- Do not scatter strings through templates when they repeat: keep repeated messages in one place (for example `app/utils/messages.ts`) so web and iOS stay in sync with `docs/ui-teksten.md`.
+- The Figma designs are in English. Translate them using the glossary instead of copying the English text.

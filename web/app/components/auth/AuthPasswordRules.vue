@@ -8,7 +8,7 @@ defineProps<{
 
 <template>
   <div class="mt-4 rounded-xl bg-tint p-4 text-sm text-ink">
-    <p class="font-semibold">Your password needs:</p>
+    <p class="font-semibold">Eisen voor je wachtwoord:</p>
     <ul class="mt-2 space-y-1">
       <li v-for="rule in rules" :key="rule.label" class="flex items-center gap-2">
         <svg
@@ -34,7 +34,7 @@ defineProps<{
           <circle cx="12" cy="12" r="8" />
         </svg>
         <span>{{ rule.label }}</span>
-        <span class="sr-only">{{ rule.isMet ? '(met)' : '(not met yet)' }}</span>
+        <span class="sr-only">{{ rule.isMet ? '(in orde)' : '(nog niet in orde)' }}</span>
       </li>
     </ul>
   </div>

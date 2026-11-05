@@ -14,7 +14,7 @@ const isVisible = ref(false);
 const errorId = computed(() => `${props.id}-error`);
 const hasError = computed(() => Boolean(props.error));
 const inputType = computed(() => (isVisible.value ? 'text' : 'password'));
-const toggleText = computed(() => (isVisible.value ? 'Hide' : 'Show'));
+const toggleText = computed(() => (isVisible.value ? 'Verbergen' : 'Tonen'));
 const borderClass = computed(() => (hasError.value ? 'border-danger' : 'border-line'));
 </script>
 
@@ -37,7 +37,7 @@ const borderClass = computed(() => (hasError.value ? 'border-danger' : 'border-l
       <button
         type="button"
         :aria-controls="id"
-        :aria-label="`${toggleText} password`"
+        :aria-label="`Wachtwoord ${toggleText.toLowerCase()}`"
         class="absolute right-3.5 top-1/2 flex -translate-y-1/2 items-center gap-2 text-sm font-medium text-ink focus-visible:outline-2 focus-visible:outline-brand"
         @click="isVisible = !isVisible"
       >

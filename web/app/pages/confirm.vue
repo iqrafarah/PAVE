@@ -4,11 +4,9 @@ import type { EmailLinkType } from '~/composables/useAuth';
 definePageMeta({ layout: 'auth' });
 
 const NEXT_PATH_BY_TYPE: Record<EmailLinkType, string> = {
-  invite: '/set-password',
-  email: '/',
+  invite: SET_PASSWORD_PATH,
+  email: HOME_PATH,
 };
-const INVALID_LINK_MESSAGE =
-  'This link is invalid or has expired. Request a new link or contact IT support.';
 
 const route = useRoute();
 const { verifyEmailLink } = useAuth();
@@ -40,14 +38,14 @@ onMounted(verifyLink);
 
 <template>
   <AuthCard
-    eyebrow="Email link"
-    title="Checking your link"
-    description="This only takes a moment."
+    eyebrow="E-maillink"
+    title="We controleren je link"
+    description="Dit duurt maar even."
   >
     <p v-if="errorMessage" role="alert" class="mt-6 text-sm text-danger">
       {{ errorMessage }}
     </p>
-    <p v-else role="status" class="mt-6 text-sm text-muted">Verifying...</p>
+    <p v-else role="status" class="mt-6 text-sm text-muted">Even geduld...</p>
 
     <AuthBackToLogin @click="navigateTo('/login')" />
   </AuthCard>

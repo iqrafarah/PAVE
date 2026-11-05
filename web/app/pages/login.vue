@@ -1,7 +1,12 @@
 <script setup lang="ts">
+import type { AuthErrorLike } from '~/utils/authErrors';
+
 definePageMeta({ layout: 'auth' });
 
-const { user, signIn, resendVerificationEmail } = useAuth();
+const EMAIL_NOT_CONFIRMED_CODE = 'email_not_confirmed';
+
+const { signIn, resendVerificationEmail } = useAuth();
+const { getMfaStatus } = useMfa();
 
 const email = ref('');
 const password = ref('');
@@ -10,14 +15,6 @@ const infoMessage = ref('');
 const isLoading = ref(false);
 const isEmailUnverified = ref(false);
 
-watch(
-  user,
-  () => {
-    if (user.value) navigateTo('/');
-  },
-  { immediate: true },
-);
-
 async function handleSubmit() {
   errorMessage.value = '';
   infoMessage.value = '';
@@ -25,31 +22,40 @@ async function handleSubmit() {
   isLoading.value = true;
 
   const { error } = await signIn(email.value, password.value);
-
-  isLoading.value = false;
-  if (!error) return;
-
-  if (error.code === 'email_not_confirmed') {
-    isEmailUnverified.value = true;
-    errorMessage.value = 'Please verify your email before signing in.';
+  if (error) {
+    isLoading.value = false;
+    showSignInError(error);
     return;
   }
-  errorMessage.value = 'Incorrect email or password.';
+
+  const { data: status } = await getMfaStatus();
+  await navigateTo(getMfaPath(status));
+  isLoading.value = false;
+}
+
+function showSignInError(error: AuthErrorLike) {
+  if (error.code === EMAIL_NOT_CONFIRMED_CODE) {
+    isEmailUnverified.value = true;
+    errorMessage.value =
+      'Bevestig eerst je e-mailadres. Kijk in je mail voor de bevestigingslink.';
+    return;
+  }
+  errorMessage.value = getAuthErrorMessage(error);
 }
 
 async function handleResend() {
   const { error } = await resendVerificationEmail(email.value);
   infoMessage.value = error
-    ? 'We could not send the email. Please try again later.'
-    : 'Verification email sent again.';
+    ? getAuthErrorMessage(error)
+    : 'We hebben de bevestigingsmail opnieuw verstuurd.';
 }
 </script>
 
 <template>
   <AuthCard
-    eyebrow="Sign in"
-    title="Welcome to PAVE"
-    description="Sign in to continue building your personal portfolio."
+    eyebrow="Inloggen"
+    title="Welkom bij PAVE"
+    description="Log in om verder te werken aan je persoonlijke portfolio."
   >
     <form class="mt-8" @submit.prevent="handleSubmit">
       <AuthEmailInput id="email" v-model="email" />
@@ -57,8 +63,8 @@ async function handleResend() {
         id="password"
         v-model="password"
         class="mt-5"
-        label="Password"
-        placeholder="Enter your password"
+        label="Wachtwoord"
+        placeholder="Vul je wachtwoord in"
         autocomplete="current-password"
       />
 
@@ -67,7 +73,7 @@ async function handleResend() {
           to="/forgot-password"
           class="text-sm font-medium text-brand focus-visible:outline-2 focus-visible:outline-brand"
         >
-          Forgot password?
+          Wachtwoord vergeten?
         </NuxtLink>
       </div>
 
@@ -79,7 +85,7 @@ async function handleResend() {
       </p>
 
       <AuthPrimaryButton type="submit" :disabled="isLoading">
-        {{ isLoading ? 'Signing in...' : 'Sign in' }}
+        {{ isLoading ? 'Bezig met inloggen...' : 'Inloggen' }}
       </AuthPrimaryButton>
 
       <button
@@ -88,13 +94,12 @@ async function handleResend() {
         class="mt-3 text-sm font-medium text-brand underline"
         @click="handleResend"
       >
-        Resend verification email
+        Bevestigingsmail opnieuw versturen
       </button>
     </form>
 
-    <AuthInfoBox title="Your account is provided">
-      Use the account supplied by your organization. If you don’t have your
-      details, contact IT support.
-    </AuthInfoBox>
+    <p class="mt-6 text-sm text-muted">
+      Heb je geen account of lukt inloggen niet? Mail naar <AuthSupportLink />.
+    </p>
   </AuthCard>
 </template>

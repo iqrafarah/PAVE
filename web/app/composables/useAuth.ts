@@ -3,9 +3,11 @@ export type EmailLinkType = 'invite' | 'email';
 export function useAuth() {
   const supabase = useSupabaseClient();
   const user = useSupabaseUser();
+  const isPasswordReset = useState('is-password-reset', () => false);
   const confirmUrl = `${useRequestURL().origin}/confirm`;
 
   async function signIn(email: string, password: string) {
+    isPasswordReset.value = false;
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -23,7 +25,8 @@ export function useAuth() {
   }
 
   async function signOut() {
-    const { error } = await supabase.auth.signOut();
+    isPasswordReset.value = false;
+    const { error } = await supabase.auth.signOut({ scope: 'local' });
     if (!error) await navigateTo('/login');
     return { error };
   }
@@ -39,6 +42,13 @@ export function useAuth() {
       token: code,
       type: 'recovery',
     });
+    if (!error) isPasswordReset.value = true;
+    return { error };
+  }
+
+  async function finishPasswordReset() {
+    isPasswordReset.value = false;
+    const { error } = await supabase.auth.signOut({ scope: 'local' });
     return { error };
   }
 
@@ -54,6 +64,7 @@ export function useAuth() {
 
   return {
     user,
+    isPasswordReset,
     signIn,
     resendVerificationEmail,
     signOut,
@@ -61,5 +72,6 @@ export function useAuth() {
     verifyPasswordResetCode,
     verifyEmailLink,
     updatePassword,
+    finishPasswordReset,
   };
 }

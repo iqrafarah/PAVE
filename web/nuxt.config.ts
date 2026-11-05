@@ -7,7 +7,7 @@ export default defineNuxtConfig({
   modules: ['@nuxtjs/supabase'],
   app: {
     head: {
-      htmlAttrs: { lang: 'en' },
+      htmlAttrs: { lang: 'nl' },
     },
   },
   css: ['~/assets/css/main.css'],
@@ -18,7 +18,7 @@ export default defineNuxtConfig({
     redirectOptions: {
       login: '/login',
       callback: '/confirm',
-      exclude: ['/forgot-password'],
+      exclude: ['/forgot-password', '/password-updated'],
     },
   },
 });
