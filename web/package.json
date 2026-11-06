@@ -10,8 +10,11 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "@heroicons/vue": "^2.2.0",
     "@nuxtjs/supabase": "^2.1.0",
     "@tailwindcss/vite": "^4.3.4",
+    "hero": "^0.0.0",
+    "icons": "^1.0.0",
     "nuxt": "^4.6.3",
     "tailwindcss": "^4.3.4",
     "vue": "^3.5.44",
