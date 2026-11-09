@@ -9,5 +9,6 @@ struct PAVEApp: App {
             RootView()
                 .environment(appState)
         }
+        .commands { PaveCommands() }
     }
 }

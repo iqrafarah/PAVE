@@ -7,15 +7,38 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		065F48BE8B44293C4E61D3EA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 86B0195960554A0DF963D9CA /* Assets.xcassets */; };
 		15C5E62E401984801CF64CF7 /* PaveSplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C616F072C4F978843892A158 /* PaveSplashView.swift */; };
+		175A4414E0270FCA6C4A444D /* PixelWaveIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BFEE001DD9C244F3F78FC55 /* PixelWaveIcon.swift */; };
 		2F5867C90FE11BC4868CF9B5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 86B0195960554A0DF963D9CA /* Assets.xcassets */; };
+		3DFCBACB57D61D95821FBF99 /* InterVariable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 973322EAB88C92C7FE97EB1A /* InterVariable.ttf */; };
+		3FDF1D0DFA6D4AF5988BCD75 /* PaveMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D477CAD46D6EF8EA4CDA6DA /* PaveMark.swift */; };
+		49EFD109A86F24069DCB17F1 /* SoraVariable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 4CD8EEF18ACF0AFD55BD5D7A /* SoraVariable.ttf */; };
+		50B12F6727C06B449ED98A63 /* InterVariable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 973322EAB88C92C7FE97EB1A /* InterVariable.ttf */; };
+		67AD7CD53E595390E5886AFE /* PaveLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F45E22CC61793519D0C27E5 /* PaveLink.swift */; };
+		695EA72A4FD40CDB4AD67BF0 /* PAVEWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D968A6FFC0E05337390C0CF4 /* PAVEWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		7A391566B86A5E8D9049DED1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 86B0195960554A0DF963D9CA /* Assets.xcassets */; };
+		8117675A203817C722CF1439 /* Inter-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 89B1896BB53A1F4216CBA41C /* Inter-OFL.txt */; };
+		8F1F9E217D3A295C14EE0619 /* Sora-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 21DFCA90681B57EE7EB6D389 /* Sora-OFL.txt */; };
+		970F10A12754B9885479695E /* PaveLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F45E22CC61793519D0C27E5 /* PaveLink.swift */; };
+		98E635EA69087DC3097BE8A3 /* PaveMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D477CAD46D6EF8EA4CDA6DA /* PaveMark.swift */; };
 		A0337E364B15F819405DA6C8 /* PAVEWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 0AB30166B28926E8F8E28BC1 /* PAVEWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A0B2F39AFB4C5535F3FE5172 /* SoraVariable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 4CD8EEF18ACF0AFD55BD5D7A /* SoraVariable.ttf */; };
+		A650AACB9495333BC3055FC2 /* PaveIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BB8E50CBECFA7C43BD0172C /* PaveIntents.swift */; };
 		C5F838A8F5389AA439976568 /* PAVECore in Frameworks */ = {isa = PBXBuildFile; productRef = BFAAF27B879F677ADF44BCF9 /* PAVECore */; };
 		CFC885971A785DDF39827BE1 /* PaveSplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C616F072C4F978843892A158 /* PaveSplashView.swift */; };
+		D9A415E95E5DBF60221A8B8D /* PaveIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BB8E50CBECFA7C43BD0172C /* PaveIntents.swift */; };
+		E6583B2779788EDAA6A29D7C /* PixelWaveIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BFEE001DD9C244F3F78FC55 /* PixelWaveIcon.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		4A6C9B4C154C72D1F4E2BF66 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 71AED433D8B1145C3FBEFBD9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B6309C25B9FA4663C02F5F25;
+			remoteInfo = PAVEWidgets;
+		};
 		6018AECCFCBD06B4E4A86A30 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 71AED433D8B1145C3FBEFBD9 /* Project object */;
@@ -44,19 +67,45 @@
 			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		71A6EB04BCF246F5355434E7 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				695EA72A4FD40CDB4AD67BF0 /* PAVEWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		0AB30166B28926E8F8E28BC1 /* PAVEWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PAVEWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		21DFCA90681B57EE7EB6D389 /* Sora-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Sora-OFL.txt"; sourceTree = "<group>"; };
 		2BCD023CC7FE6F72343B2EF5 /* PAVE.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PAVE.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2F45E22CC61793519D0C27E5 /* PaveLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaveLink.swift; sourceTree = "<group>"; };
 		388493A3B72FF59303AF7D64 /* PAVECore */ = {isa = PBXFileReference; lastKnownFileType = folder; path = PAVECore; sourceTree = SOURCE_ROOT; };
+		3BFEE001DD9C244F3F78FC55 /* PixelWaveIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelWaveIcon.swift; sourceTree = "<group>"; };
+		3D477CAD46D6EF8EA4CDA6DA /* PaveMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaveMark.swift; sourceTree = "<group>"; };
+		4BB8E50CBECFA7C43BD0172C /* PaveIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaveIntents.swift; sourceTree = "<group>"; };
+		4CD8EEF18ACF0AFD55BD5D7A /* SoraVariable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = SoraVariable.ttf; sourceTree = "<group>"; };
 		588F06E32435AB0B31641151 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		86B0195960554A0DF963D9CA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		89B1896BB53A1F4216CBA41C /* Inter-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Inter-OFL.txt"; sourceTree = "<group>"; };
+		973322EAB88C92C7FE97EB1A /* InterVariable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = InterVariable.ttf; sourceTree = "<group>"; };
+		BF1D741B8FA937E5AA513AA9 /* PAVEWidgets-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "PAVEWidgets-Info.plist"; sourceTree = "<group>"; };
 		C616F072C4F978843892A158 /* PaveSplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaveSplashView.swift; sourceTree = "<group>"; };
+		D968A6FFC0E05337390C0CF4 /* PAVEWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PAVEWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		DFFF2974A4E35CB11736629D /* PAVETests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PAVETests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		11C0FD9E2AB1B3C51F839A0D /* PAVEWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = PAVEWidgets;
+			sourceTree = "<group>";
+		};
 		1AF1FB6D053BF7364CA695C0 /* PAVE */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = PAVE;
@@ -75,6 +124,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		9B3BD1B669B2CA48A71F4F37 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		E5845F2A18313E98CF707AB2 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -86,12 +142,24 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		018689A9B8E2869F2461E8D0 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				89B1896BB53A1F4216CBA41C /* Inter-OFL.txt */,
+				973322EAB88C92C7FE97EB1A /* InterVariable.ttf */,
+				21DFCA90681B57EE7EB6D389 /* Sora-OFL.txt */,
+				4CD8EEF18ACF0AFD55BD5D7A /* SoraVariable.ttf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
 		1CAD95A5663ADFCF3BE678BF /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				2BCD023CC7FE6F72343B2EF5 /* PAVE.app */,
 				DFFF2974A4E35CB11736629D /* PAVETests.xctest */,
 				0AB30166B28926E8F8E28BC1 /* PAVEWatch.app */,
+				D968A6FFC0E05337390C0CF4 /* PAVEWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -104,6 +172,7 @@
 				1AF1FB6D053BF7364CA695C0 /* PAVE */,
 				3092C5F1239EAECDD2F0C4E8 /* PAVETests */,
 				886F5A46B9FACFA3C37C80C0 /* PAVEWatch */,
+				11C0FD9E2AB1B3C51F839A0D /* PAVEWidgets */,
 				520440C0324ACF7F05026797 /* Shared */,
 				1CAD95A5663ADFCF3BE678BF /* Products */,
 			);
@@ -113,7 +182,12 @@
 			isa = PBXGroup;
 			children = (
 				86B0195960554A0DF963D9CA /* Assets.xcassets */,
+				018689A9B8E2869F2461E8D0 /* Fonts */,
+				4BB8E50CBECFA7C43BD0172C /* PaveIntents.swift */,
+				2F45E22CC61793519D0C27E5 /* PaveLink.swift */,
+				3D477CAD46D6EF8EA4CDA6DA /* PaveMark.swift */,
 				C616F072C4F978843892A158 /* PaveSplashView.swift */,
+				3BFEE001DD9C244F3F78FC55 /* PixelWaveIcon.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -122,6 +196,7 @@
 			isa = PBXGroup;
 			children = (
 				588F06E32435AB0B31641151 /* Base.xcconfig */,
+				BF1D741B8FA937E5AA513AA9 /* PAVEWidgets-Info.plist */,
 			);
 			path = Config;
 			sourceTree = "<group>";
@@ -180,6 +255,28 @@
 			productReference = DFFF2974A4E35CB11736629D /* PAVETests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		B6309C25B9FA4663C02F5F25 /* PAVEWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C40591607D635DE57C6DCF62 /* Build configuration list for PBXNativeTarget "PAVEWidgets" */;
+			buildPhases = (
+				EFCAFB31BB4F07DFBA64C8F5 /* Sources */,
+				18EA816D9344DBB8E51649B4 /* Resources */,
+				9B3BD1B669B2CA48A71F4F37 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				11C0FD9E2AB1B3C51F839A0D /* PAVEWidgets */,
+			);
+			name = PAVEWidgets;
+			packageProductDependencies = (
+			);
+			productName = PAVEWidgets;
+			productReference = D968A6FFC0E05337390C0CF4 /* PAVEWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		C2529D88175B34558C279909 /* PAVE */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 6BABC51BE9BDD5620CF386AF /* Build configuration list for PBXNativeTarget "PAVE" */;
@@ -188,11 +285,13 @@
 				CD94CBF747C83D3FE9A66CAA /* Resources */,
 				E5845F2A18313E98CF707AB2 /* Frameworks */,
 				70D612AE2A55161182FBFF44 /* Embed Watch Content */,
+				71A6EB04BCF246F5355434E7 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				DB55EC5F8735DDDC74B6ECF1 /* PBXTargetDependency */,
+				757C39B21CE1B7572784F3CF /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				1AF1FB6D053BF7364CA695C0 /* PAVE */,
@@ -220,17 +319,20 @@
 					1DAADB4DE94DB9689D0E0486 = {
 						ProvisioningStyle = Automatic;
 					};
+					B6309C25B9FA4663C02F5F25 = {
+						ProvisioningStyle = Automatic;
+					};
 					C2529D88175B34558C279909 = {
 						ProvisioningStyle = Automatic;
 					};
 				};
 			};
 			buildConfigurationList = 3582AA2E248C1ADFFC33146C /* Build configuration list for PBXProject "PAVE" */;
-			developmentRegion = en;
+			developmentRegion = nl;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				Base,
-				en,
+				nl,
 			);
 			mainGroup = 356C90FA62F3E8823ADBEB2E;
 			minimizedProjectReferenceProxies = 1;
@@ -245,6 +347,7 @@
 				C2529D88175B34558C279909 /* PAVE */,
 				03100814D1E30C75E6E29C3E /* PAVEWatch */,
 				1DAADB4DE94DB9689D0E0486 /* PAVETests */,
+				B6309C25B9FA4663C02F5F25 /* PAVEWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -254,6 +357,16 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		18EA816D9344DBB8E51649B4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				065F48BE8B44293C4E61D3EA /* Assets.xcassets in Resources */,
+				50B12F6727C06B449ED98A63 /* InterVariable.ttf in Resources */,
+				49EFD109A86F24069DCB17F1 /* SoraVariable.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -270,6 +383,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				2F5867C90FE11BC4868CF9B5 /* Assets.xcassets in Resources */,
+				3DFCBACB57D61D95821FBF99 /* InterVariable.ttf in Resources */,
+				A0B2F39AFB4C5535F3FE5172 /* SoraVariable.ttf in Resources */,
+				8117675A203817C722CF1439 /* Inter-OFL.txt in Resources */,
+				8F1F9E217D3A295C14EE0619 /* Sora-OFL.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -281,6 +398,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				15C5E62E401984801CF64CF7 /* PaveSplashView.swift in Sources */,
+				3FDF1D0DFA6D4AF5988BCD75 /* PaveMark.swift in Sources */,
+				175A4414E0270FCA6C4A444D /* PixelWaveIcon.swift in Sources */,
+				970F10A12754B9885479695E /* PaveLink.swift in Sources */,
+				A650AACB9495333BC3055FC2 /* PaveIntents.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -299,6 +420,17 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		EFCAFB31BB4F07DFBA64C8F5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				98E635EA69087DC3097BE8A3 /* PaveMark.swift in Sources */,
+				E6583B2779788EDAA6A29D7C /* PixelWaveIcon.swift in Sources */,
+				67AD7CD53E595390E5886AFE /* PaveLink.swift in Sources */,
+				D9A415E95E5DBF60221A8B8D /* PaveIntents.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -306,6 +438,11 @@
 			isa = PBXTargetDependency;
 			target = C2529D88175B34558C279909 /* PAVE */;
 			targetProxy = 6018AECCFCBD06B4E4A86A30 /* PBXContainerItemProxy */;
+		};
+		757C39B21CE1B7572784F3CF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B6309C25B9FA4663C02F5F25 /* PAVEWidgets */;
+			targetProxy = 4A6C9B4C154C72D1F4E2BF66 /* PBXContainerItemProxy */;
 		};
 		DB55EC5F8735DDDC74B6ECF1 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -315,6 +452,50 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		116D53F8885F618983957D09 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/PAVEWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = PAVE;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_IDENTIFIER).widgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		1A4ED86DF5D11D44B78C688B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/PAVEWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = PAVE;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_IDENTIFIER).widgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		1AAFCC591ABC243CBAA494FD /* Release */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 588F06E32435AB0B31641151 /* Base.xcconfig */;
@@ -605,6 +786,15 @@
 			buildConfigurations = (
 				A0E226AF8ECEFAC3979A3B79 /* Debug */,
 				E9D19431734F0461E773CFFA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C40591607D635DE57C6DCF62 /* Build configuration list for PBXNativeTarget "PAVEWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				116D53F8885F618983957D09 /* Debug */,
+				1A4ED86DF5D11D44B78C688B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

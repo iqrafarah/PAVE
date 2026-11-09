@@ -4,6 +4,17 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>nl.fontys.pave</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>pave</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSFaceIDUsageDescription</key>
 	<string>PAVE gebruikt Face ID om de app te ontgrendelen, zodat je je pincode niet hoeft in te typen.</string>
 	<key>NSMicrophoneUsageDescription</key>

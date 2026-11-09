@@ -36,6 +36,8 @@ struct AylaChatList: View {
     @State private var renaming: AylaConversation?
     @State private var newTitle = ""
     @State private var selection = Set<String>()
+    @FocusState private var isSearchFocused: Bool
+    @Environment(\.chatSearchRequestedAt) private var searchRequestedAt
 
     private var isSearching: Bool { !search.trimmingCharacters(in: .whitespaces).isEmpty }
 
@@ -67,7 +69,7 @@ struct AylaChatList: View {
     var body: some View {
         List(selection: $selection) {
             if !isSelecting {
-                PaveSearchField(text: $search, prompt: "Zoeken in chats")
+                PaveSearchField(text: $search, prompt: "Zoeken in chats", isFocused: $isSearchFocused)
                     .padding(.bottom, 8)
                     .plainRow()
                     .selectionDisabled()
@@ -101,6 +103,12 @@ struct AylaChatList: View {
         .scrollDismissesKeyboard(.interactively)
         .environment(\.editMode, .constant(isSelecting ? .active : .inactive))
         .refreshable { await actions.refresh() }
+        // Asked for with ⌘K: only a fresh request, not one from earlier.
+        .task(id: searchRequestedAt) {
+            guard let searchRequestedAt, Date.now.timeIntervalSince(searchRequestedAt) < 2, !isSelecting else { return }
+            try? await Task.sleep(for: .milliseconds(300))
+            isSearchFocused = true
+        }
         .safeAreaInset(edge: .bottom, spacing: 12) {
             VStack(spacing: 10) {
                 if pendingDeletion > 0 {

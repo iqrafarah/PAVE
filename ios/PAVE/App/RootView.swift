@@ -24,6 +24,9 @@ struct RootView: View {
         .onContinueUserActivity(CSSearchableItemActionType) { activity in
             appState.conversationToOpen = AylaSpotlight.conversationID(in: activity)
         }
+        .onOpenURL { url in
+            appState.link = PaveLink(url: url)
+        }
     }
 }
 

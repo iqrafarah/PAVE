@@ -17,6 +17,8 @@ final class AppState {
     private(set) var phase: AppPhase = .loading
     /// A chat someone tapped in the iPhone's search; opened once the app is unlocked.
     var conversationToOpen: String?
+    /// Something asked from outside the app (Siri, a widget, Control Center); done once the app is unlocked.
+    var link: PaveLink?
     let authService: any AuthService
     private let pinVault: PinVault
     private let biometrics: any BiometricAuthenticating
@@ -33,6 +35,7 @@ final class AppState {
         self.authService = authService
         self.pinVault = pinVault
         self.biometrics = biometrics
+        PaveLinkInbox.receive = { [weak self] link in self?.link = link }
     }
 
     var isSignedIn: Bool {
@@ -103,7 +106,9 @@ final class AppState {
     func signOut() {
         defaults.set(false, forKey: Self.signedInKey)
         AylaSpotlight.forget(in: defaults)
+        AylaDrafts.forget(in: defaults)
         conversationToOpen = nil
+        link = nil
         phase = .signedOut
         Task { await authService.signOut() }
     }

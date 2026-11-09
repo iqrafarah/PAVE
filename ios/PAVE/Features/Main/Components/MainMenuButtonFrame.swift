@@ -7,3 +7,8 @@ extension EnvironmentValues {
     /// The open menu has taken the chat button's place (outer display of iPhone Duo).
     @Entry var hidesChatsButton = false
 }
+
+extension EnvironmentValues {
+    /// When "Zoeken in chats" was asked for with the keyboard; the search field of the chats takes the keyboard.
+    @Entry var chatSearchRequestedAt: Date?
+}

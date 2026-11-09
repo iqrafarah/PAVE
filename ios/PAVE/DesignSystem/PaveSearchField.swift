@@ -4,6 +4,7 @@ import SwiftUI
 struct PaveSearchField: View {
     @Binding var text: String
     let prompt: String
+    var isFocused: FocusState<Bool>.Binding?
 
     var body: some View {
         HStack(spacing: 13) {
@@ -16,6 +17,7 @@ struct PaveSearchField: View {
                 .foregroundStyle(Color.ink)
                 .autocorrectionDisabled()
                 .submitLabel(.search)
+                .focused(isFocused)
             if !text.isEmpty {
                 Button {
                     text = ""
@@ -45,4 +47,11 @@ struct PaveSearchField: View {
     PaveSearchField(text: $text, prompt: "Zoeken")
         .padding()
         .background(Color.canvas)
+}
+
+private extension View {
+    @ViewBuilder
+    func focused(_ binding: FocusState<Bool>.Binding?) -> some View {
+        if let binding { focused(binding) } else { self }
+    }
 }
