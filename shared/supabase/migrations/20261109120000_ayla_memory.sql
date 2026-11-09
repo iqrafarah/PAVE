@@ -1,9 +1,8 @@
 -- What Ayla remembers about someone, shared by web, iPhone and Watch (see docs/ayla.md, "Memory").
--- Nothing goes in by itself: Ayla only suggests a note in her reply (`memory`), and the app saves it after the user
+-- Nothing goes in by itself: Ayla only suggests notes in her reply (`memories`), and the app saves them after the user
 -- taps "Onthouden", or the user writes one themselves. The user sees, changes and deletes every note in
 -- "Wat Ayla over je weet".
--- Not applied yet: agree with the web team first, then run it in the SQL Editor.
--- Until this runs, the Ayla function remembers nothing and the apps say the memory is not available yet.
+-- Applied on 2026-11-09. Without it, the Ayla function remembers nothing and the apps say the memory is not available yet.
 
 create table public.ayla_memories (
   id uuid primary key default gen_random_uuid(),
