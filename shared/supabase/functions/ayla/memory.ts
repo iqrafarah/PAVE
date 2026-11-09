@@ -5,7 +5,7 @@ export const MAX_MEMORY_LENGTH = 300
 /** Suggestions in one reply: every important fact of one message, split up. */
 export const MAX_SUGGESTIONS = 4
 
-export const MEMORY_CATEGORIES = ['education', 'work', 'goals', 'skills', 'workStyle', 'interests', 'personal'] as const
+export const MEMORY_CATEGORIES = ['education', 'work', 'goals', 'skills', 'values', 'workStyle', 'interests', 'personal'] as const
 export type MemoryCategory = (typeof MEMORY_CATEGORIES)[number]
 
 /** The Dutch names, the same as in the apps. */
@@ -14,6 +14,7 @@ export const CATEGORY_NAMES: Record<MemoryCategory, string> = {
   work: 'Werk en stages',
   goals: 'Doelen',
   skills: 'Vaardigheden',
+  values: 'Wat je belangrijk vindt',
   workStyle: 'Hoe je wilt werken',
   interests: "Interesses en hobby's",
   personal: 'Over jou',
@@ -88,6 +89,7 @@ Haal een bericht uit elkaar: "Ik studeer ICT op Fontys en werk als leidinggevend
 Meer voorbeelden:
 - "Ik wil later IT-consultant worden" → { text: "Je wilt IT-consultant worden.", category: "goals" }
 - "Ik ben goed in plannen en spreek Duits" → { text: "Je bent goed in plannen.", category: "skills" } en { text: "Je spreekt Duits.", category: "skills" }
+- "Ik wil iets betekenen voor anderen en vind vrijheid in mijn werk belangrijk" → { text: "Je wilt iets betekenen voor anderen.", category: "values" } en { text: "Je vindt vrijheid in je werk belangrijk.", category: "values" }
 - "Ik werk liever in een klein team" → { text: "Je werkt het liefst in een klein team.", category: "workStyle" }
 - "In mijn vrije tijd voetbal ik" → { text: "Je voetbalt in je vrije tijd.", category: "interests" }
 - "Onthoud dat ik in Eindhoven woon" → { text: "Je woont in Eindhoven.", category: "personal" }

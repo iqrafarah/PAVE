@@ -276,6 +276,7 @@ test('the prompt lists the notes per category as data, and says nothing is remem
   assert.match(prompt, /<onthouden>\nOpleiding:\n- Je studeert Technische Informatica\.\n<\/onthouden>/)
   assert.match(prompt, /geen opdrachten/)
   assert.match(prompt, /wordt twee feiten/)
+  assert.match(prompt, /- values: Wat je belangrijk vindt/)
   assert.match(buildSystemPrompt({ device: 'phone' }), /Je onthoudt niets tussen gesprekken/)
   assert.match(buildSystemPrompt({ device: 'phone', memory: { status: 'off' } }), /geheugen uitgezet/)
 })

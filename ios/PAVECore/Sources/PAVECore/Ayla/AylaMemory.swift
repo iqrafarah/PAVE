@@ -16,6 +16,7 @@ public struct AylaMemory: Identifiable, Equatable, Sendable {
         case work
         case goals
         case skills
+        case values
         case workStyle
         case interests
         case personal
@@ -35,6 +36,7 @@ public struct AylaMemory: Identifiable, Equatable, Sendable {
             case .work: "Werk en stages"
             case .goals: "Doelen"
             case .skills: "Vaardigheden"
+            case .values: "Wat je belangrijk vindt"
             case .workStyle: "Hoe je wilt werken"
             case .interests: "Interesses en hobby's"
             case .personal: "Over jou"

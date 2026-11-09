@@ -378,6 +378,11 @@ extension SupabaseAylaServiceTests {
         #expect(memory.category == .personal)
     }
 
+    @Test func categoriesMatchTheAylaFunction() {
+        #expect(AylaMemory.Category.allCases.map(\.rawValue) == ["education", "work", "goals", "skills", "values", "workStyle", "interests", "personal"])
+        #expect(AylaMemory.Category(code: "values").title == "Wat je belangrijk vindt")
+    }
+
     @Test func notesAreGroupedByCategory() {
         let memories = AylaMemories(notes: [
             AylaMemory(id: "1", text: "Je voetbalt.", category: .interests, source: .ayla, createdAt: .now),

@@ -10,8 +10,8 @@
     },
     "device": { "enum": ["watch", "phone", "web"] },
     "memoryCategory": {
-      "description": "Where a note about the user belongs. The apps show it as Opleiding, Werk en stages, Doelen, Vaardigheden, Hoe je wilt werken, Interesses en hobby's or Over jou.",
-      "enum": ["education", "work", "goals", "skills", "workStyle", "interests", "personal"]
+      "description": "Where a note about the user belongs. The apps show it as Opleiding, Werk en stages, Doelen, Vaardigheden, Wat je belangrijk vindt, Hoe je wilt werken, Interesses en hobby's or Over jou.",
+      "enum": ["education", "work", "goals", "skills", "values", "workStyle", "interests", "personal"]
     },
     "request": {
       "type": "object",
