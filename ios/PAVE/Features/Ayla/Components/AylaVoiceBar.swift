@@ -44,7 +44,7 @@ struct AylaVoiceBar: View {
                         Image(.iconSend)
                             .frame(width: 30, height: 30)
                             .background(Color.brandGreen, in: .circle)
-                            .frame(width: 30, height: 53)
+                            .frame(width: AylaComposer.roundButtonWidth, height: 53)
                             .contentShape(.rect)
                     }
                     .buttonStyle(.pave)
@@ -53,8 +53,10 @@ struct AylaVoiceBar: View {
                 }
             }
             .padding(.leading, 4.5)
-            .padding(.trailing, canSend ? 11 : 16)
+            .padding(.trailing, canSend ? 7 : 16)
             .frame(minHeight: 53)
+            .contentShape(.rect)
+            .onTapGesture { isFocused.wrappedValue = true }
             .glassEffect(.clear, in: .rect(cornerRadius: 26.5))
             .matchedFrame("field", in: morph)
 

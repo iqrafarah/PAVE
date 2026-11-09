@@ -20,6 +20,7 @@ struct PaveOfflineNotice: View {
         .padding(.vertical, 9)
         .glassEffect(.regular, in: .capsule)
         .accessibilityElement(children: .combine)
+        .onAppear { AccessibilityNotification.Announcement(message).post() }
     }
 }
 

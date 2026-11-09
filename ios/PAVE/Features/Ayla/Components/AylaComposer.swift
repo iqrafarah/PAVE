@@ -29,6 +29,9 @@ struct AylaComposer: View {
     /// Lets the field shrink into the voice bar's field when a spoken conversation starts, and grow back.
     var morph: Namespace.ID?
 
+    /// The round buttons are 30 pt; their hit area is 38 wide and 53 high, with the circle where Figma has it.
+    static let roundButtonWidth: CGFloat = 38
+
     private var canSend: Bool {
         isEnabled && isOnline && !isAnswering && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
@@ -87,13 +90,13 @@ struct AylaComposer: View {
                 Image(.iconMicrophone)
                     .renderingMode(.template)
                     .foregroundStyle(isListening ? Color.brandGreen : .ink)
-                    .frame(width: 28, height: 53)
+                    .frame(width: 31, height: 53)
+                    .padding(.leading, 13)
                     .contentShape(.rect)
             }
             .buttonStyle(.pave)
             .disabled(!isEnabled)
             .accessibilityLabel(isListening ? "Stop met inspreken" : "Inspreken")
-            .padding(.trailing, 5.5)
 
             if isAnswering, let onStop {
                 Button(action: onStop) {
@@ -105,7 +108,7 @@ struct AylaComposer: View {
                         .frame(width: 30, height: 30)
                         .background(Color.brandGreen, in: .circle)
                         .shadow(color: .black.opacity(0.25), radius: 2)
-                        .frame(width: 30, height: 53)
+                        .frame(width: Self.roundButtonWidth, height: 53)
                         .contentShape(.rect)
                 }
                 .buttonStyle(.pave)
@@ -117,7 +120,7 @@ struct AylaComposer: View {
                         .frame(width: 30, height: 30)
                         .background(Color.brandGreen, in: .circle)
                         .shadow(color: .black.opacity(0.25), radius: 2)
-                        .frame(width: 30, height: 53)
+                        .frame(width: Self.roundButtonWidth, height: 53)
                         .contentShape(.rect)
                 }
                 .buttonStyle(.pave)
@@ -131,18 +134,22 @@ struct AylaComposer: View {
                         .frame(width: 30, height: 30)
                         .background(Color.brandGreen, in: .circle)
                         .shadow(color: .black.opacity(0.25), radius: 2)
-                        .frame(width: 30, height: 53)
+                        .frame(width: Self.roundButtonWidth, height: 53)
                         .contentShape(.rect)
                 }
                 .buttonStyle(.pave)
+                .disabled(!isOnline)
                 .opacity(isOnline ? 1 : 0.4)
                 .accessibilityLabel("Versturen")
                 .accessibilityHint(isOnline ? "" : "Je bent offline")
             }
         }
         .padding(.leading, 4.5)
-        .padding(.trailing, 11)
+        .padding(.trailing, 7)
         .frame(minHeight: 53)
+        // Tapping anywhere in the field, also next to the text or on Ayla's mark, puts the cursor in it.
+        .contentShape(.rect)
+        .onTapGesture { if isEnabled { isFocused.wrappedValue = true } }
     }
 
     private func send() {

@@ -17,7 +17,7 @@ struct AylaAttachMenu: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 11.5) {
+        VStack(alignment: .leading, spacing: 4.5) {
             AylaAttachMenuRow(icon: .iconFolder, title: "Item toevoegen", note: "Je kluis is nog leeg")
             AylaAttachMenuRow(icon: .iconMap, title: "Plan toevoegen", note: "Je hebt nog geen plan")
             AylaAttachMenuRow(icon: .iconPaperclip, title: "Bestand toevoegen", action: onAddFile)

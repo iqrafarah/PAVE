@@ -661,6 +661,7 @@ struct AylaChatScreen: View {
             .overlay(alignment: .bottomLeading) {
                 if isAttachMenuOpen {
                     AylaAttachMenu(onAddFile: { chooseFile() }, onScan: scanAction, onPaste: { addPasted() })
+                            .accessibilityAction(.escape) { isAttachMenuOpen = false }
                         .transition(reduceMotion ? .opacity : .scale(scale: 0.3, anchor: .bottomLeading).combined(with: .opacity))
                 }
             }
@@ -762,6 +763,7 @@ struct AylaChatScreen: View {
                 .overlay(alignment: .bottomLeading) {
                     if isAttachMenuOpen {
                         AylaAttachMenu(onAddFile: { chooseFile() }, onScan: scanAction, onPaste: { addPasted() })
+                            .accessibilityAction(.escape) { isAttachMenuOpen = false }
                             .transition(reduceMotion ? .opacity : .scale(scale: 0.3, anchor: .bottomLeading).combined(with: .opacity))
                     }
                 }

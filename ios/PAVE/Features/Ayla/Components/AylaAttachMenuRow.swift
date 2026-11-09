@@ -37,11 +37,13 @@ struct AylaAttachMenuRow: View {
                     }
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             .contentShape(.rect)
         }
         .buttonStyle(.pave)
         .disabled(action == nil)
+        // What cannot be used yet looks it, so a tap that does nothing is no surprise.
+        .opacity(action == nil ? 0.55 : 1)
         .accessibilityElement(children: .combine)
     }
 }

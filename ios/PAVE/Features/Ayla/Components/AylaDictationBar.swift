@@ -53,14 +53,14 @@ struct AylaDictationBar: View {
                         .frame(width: 30, height: 30)
                         .background(Color.brandGreen, in: .circle)
                         .shadow(color: .black.opacity(0.25), radius: 2)
-                        .frame(width: 30, height: 53)
+                        .frame(width: AylaComposer.roundButtonWidth, height: 53)
                         .contentShape(.rect)
                 }
                 .buttonStyle(.pave)
                 .accessibilityLabel("Klaar, tekst bewaren")
             }
             .padding(.leading, 4.5)
-            .padding(.trailing, 11)
+            .padding(.trailing, 7)
         }
         .glassEffect(.clear, in: .rect(cornerRadius: 25))
     }

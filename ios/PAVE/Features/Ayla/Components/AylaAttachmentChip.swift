@@ -24,8 +24,10 @@ struct AylaAttachmentChip: View {
                         .frame(width: 9, height: 9)
                         .rotationEffect(.degrees(45))
                         .foregroundStyle(Color.inkMuted)
-                        .frame(width: 28, height: 32)
+                        .frame(width: 36, height: 44)
                         .contentShape(.rect)
+                        // 44 high to tap, without making the chip taller.
+                        .padding(.vertical, -6)
                 }
                 .buttonStyle(.pave)
                 .accessibilityLabel("\(name) weghalen")
