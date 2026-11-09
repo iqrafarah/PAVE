@@ -8,6 +8,8 @@ struct AylaComposer: View {
     @Binding var text: String
     var attachments: [AylaAttachment] = []
     var isEnabled = true
+    /// Offline you can keep typing, but sending waits until there is a connection again.
+    var isOnline = true
     var isListening = false
     var placeholderColor = Color.inkMuted.opacity(0.41)
     /// Over the white panel the field is almost white (Figma), elsewhere it is clear glass.
@@ -25,7 +27,7 @@ struct AylaComposer: View {
     var morph: Namespace.ID?
 
     private var canSend: Bool {
-        isEnabled && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        isEnabled && isOnline && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private var showsVoiceButton: Bool {
@@ -100,7 +102,8 @@ struct AylaComposer: View {
                         .contentShape(.rect)
                 }
                 .buttonStyle(.pave)
-                .disabled(!isEnabled)
+                .disabled(!isEnabled || !isOnline)
+                .opacity(isOnline ? 1 : 0.4)
                 .accessibilityLabel("Praat met Ayla")
                 .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { onVoiceButtonFrame?($0) }
             } else {
@@ -113,7 +116,9 @@ struct AylaComposer: View {
                         .contentShape(.rect)
                 }
                 .buttonStyle(.pave)
+                .opacity(isOnline ? 1 : 0.4)
                 .accessibilityLabel("Versturen")
+                .accessibilityHint(isOnline ? "" : "Je bent offline")
             }
         }
         .padding(.leading, 4.5)

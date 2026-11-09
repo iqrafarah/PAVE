@@ -43,6 +43,7 @@ final class AylaVoiceSession {
     private var usesDeviceVoice = false
     private var cues: [AylaVoiceCue] = []
     private var answerLength = 0
+    private var spokenText = ""
     /// Every start and stop counts, so a start that was stopped halfway does not carry on.
     private var attempt = 0
     /// Starting and stopping the audio takes a moment, so it runs off the main thread (the intro keeps moving),
@@ -159,6 +160,13 @@ final class AylaVoiceSession {
         }
     }
 
+    /// The sentence Ayla is saying at `date`, for the captions.
+    func spokenSentence(at date: Date) -> String? {
+        guard state == .speaking, let speakingSince else { return nil }
+        let position = Int(date.timeIntervalSince(speakingSince) * Self.charactersPerSecond)
+        return AylaCaptions.sentence(in: spokenText, at: position)
+    }
+
     /// The icon the orb shows at `date`, while Ayla talks about a part of PAVE.
     func icon(at date: Date) -> AylaVoiceIcon? {
         guard state == .speaking, let speakingSince else { return nil }
@@ -265,6 +273,7 @@ final class AylaVoiceSession {
         heard = ""
         cues = AylaVoiceCue.cues(in: text)
         answerLength = text.count
+        spokenText = text
         usesDeviceVoice = false
         audio.beginSpeech()
 

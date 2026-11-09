@@ -46,21 +46,38 @@ final class AylaChatModel {
     @ObservationIgnored private var refreshAgain = false
     private let undoWindow: Duration
     private(set) var isLoadingConversation = false
-    var draft = ""
+    /// Kept per chat (`AylaDrafts`), so a half-typed message waits for you in its own chat.
+    var draft = "" {
+        didSet { drafts.save(draft, for: conversationID) }
+    }
+    /// Asked from outside the chat (a keyboard shortcut, Siri, a widget): start talking once the chat is on screen.
+    var wantsToTalk = false
     /// Files added with the plus button, sent with the next message.
     private(set) var attachments: [AylaAttachment] = []
 
     let service: (any AylaService)?
     private let nameWait: Duration
+    private let drafts: AylaDrafts
     private var lastQuestion: String?
+    /// The files sent with the last question, so it can be asked again with them.
+    @ObservationIgnored private var lastFiles: [AylaAttachment] = []
+    /// The last question and answer are being removed on the server; the next question waits for that.
+    @ObservationIgnored private var removal: Task<Bool, Never>?
 
     /// `nameWait`: how long the welcome waits for the name; after that it shows without it.
     /// `undoWindow`: how long a deleted conversation can be brought back before it is really deleted.
-    init(service: (any AylaService)?, nameWait: Duration = .seconds(1.5), undoWindow: Duration = .seconds(5)) {
+    init(
+        service: (any AylaService)?,
+        drafts: AylaDrafts = AylaDrafts(),
+        nameWait: Duration = .seconds(1.5),
+        undoWindow: Duration = .seconds(5)
+    ) {
         self.service = service
+        self.drafts = drafts
         self.nameWait = nameWait
         self.undoWindow = undoWindow
         isGreetingReady = service == nil
+        draft = drafts[nil]
     }
 
     var isAvailable: Bool { service != nil }
@@ -73,6 +90,16 @@ final class AylaChatModel {
 
     var lastAylaEntryID: String? {
         entries.last { $0.role == .ayla }?.id
+    }
+
+    /// The last question can be asked again or changed: it has an answer and is saved in a conversation.
+    var canRedoLastTurn: Bool {
+        guard phase == .idle, conversationID != nil, entries.count >= 2 else { return false }
+        return entries[entries.count - 1].role == .ayla && entries[entries.count - 2].role == .user
+    }
+
+    var lastQuestionID: String? {
+        canRedoLastTurn ? entries[entries.count - 2].id : nil
     }
 
     func start() async {
@@ -125,6 +152,7 @@ final class AylaChatModel {
             entries.append(Entry(id: UUID().uuidString, role: .user, text: text, attachments: files.map(\.name)))
         }
         lastQuestion = text
+        lastFiles = files
         phase = .thinking
         let request = AylaRequest(conversationId: conversationID, text: text, device: .phone, input: input, attachments: files)
         return Turn(service: service, request: request, text: text, files: files)
@@ -132,6 +160,14 @@ final class AylaChatModel {
 
     @discardableResult
     private func complete(_ turn: Turn) async -> AylaReply? {
+        if let removal {
+            self.removal = nil
+            guard await removal.value else {
+                phase = .failed(AylaMessages.redoFailed)
+                if draft.isEmpty { draft = turn.text }
+                return nil
+            }
+        }
         do {
             let reply = try await turn.service.send(turn.request)
             conversationID = reply.conversationId
@@ -160,13 +196,60 @@ final class AylaChatModel {
         attachments.removeAll { $0.name == file.name }
     }
 
+    /// Ayla answers the last question again, as if it was asked for the first time.
+    func askAgain() {
+        guard canRedoLastTurn, let service, let conversationID else { return }
+        let question = entries[entries.count - 2]
+        let answer = entries.removeLast()
+        let files = question.attachments == lastFiles.map(\.name) ? lastFiles : []
+        lastQuestion = question.text
+        phase = .thinking
+        Task {
+            do {
+                try await service.removeLastTurn(in: conversationID)
+            } catch {
+                entries.append(answer)
+                phase = .failed(AylaMessages.redoFailed)
+                return
+            }
+            let request = AylaRequest(conversationId: conversationID, text: question.text, device: .phone, input: .text, attachments: files)
+            await complete(Turn(service: service, request: request, text: question.text, files: files))
+        }
+    }
+
+    /// Takes the last question and its answer away and puts the question back in the text field, to change it.
+    func editLastQuestion() {
+        guard canRedoLastTurn, let service, let conversationID else { return }
+        let turn = Array(entries.suffix(2))
+        let question = turn[0]
+        let draftBefore = draft
+        entries.removeLast(2)
+        draft = question.text
+        if question.attachments == lastFiles.map(\.name) { attachments = lastFiles }
+        removal = Task {
+            do {
+                try await service.removeLastTurn(in: conversationID)
+                return true
+            } catch {
+                guard self.conversationID == conversationID, phase == .idle else { return false }
+                entries += turn
+                draft = draftBefore
+                attachments = []
+                phase = .failed(AylaMessages.redoFailed)
+                removal = nil
+                return false
+            }
+        }
+    }
+
     func newConversation() {
         guard phase != .thinking else { return }
         entries = []
         conversationID = nil
         lastQuestion = nil
+        removal = nil
         phase = .idle
-        draft = ""
+        draft = drafts[nil]
         attachments = []
     }
 
@@ -181,7 +264,10 @@ final class AylaChatModel {
             }
             conversationID = conversation.id
             lastQuestion = nil
+            removal = nil
             phase = .idle
+            draft = drafts[conversation.id]
+            attachments = []
         } catch {
             phase = .failed(Self.message(for: AylaError(error)))
         }
@@ -302,6 +388,7 @@ final class AylaChatModel {
         deletionTask = nil
         let conversations = pendingDeletion
         pendingDeletion = []
+        drafts.remove(conversations.map(\.id))
         Task {
             var failed: [AylaConversation] = []
             for conversation in conversations {
@@ -350,7 +437,7 @@ final class AylaChatModel {
         case .noConnection: AylaMessages.noConnection
         case .notSignedIn, .insufficientAssurance: AylaMessages.signInAgain
         case .conversationNotFound: AylaMessages.conversationGone
-        case .unavailable: AylaMessages.unavailable
+        case .unavailable, .notSetUp: AylaMessages.unavailable
         }
     }
 }

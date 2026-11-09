@@ -14,6 +14,11 @@ enum AylaMessages {
     static let chatsUnavailable = "Je chats konden niet worden geladen. Controleer je internetverbinding en probeer het opnieuw."
     static let renameFailed = "De naam kon niet worden aangepast. Probeer het opnieuw."
     static let deleteFailed = "Het gesprek kon niet worden verwijderd. Probeer het opnieuw."
+    static let redoFailed = "Dat lukte niet. Controleer je internetverbinding en probeer het opnieuw."
+    static let offline = "Je bent offline. Wat je typt blijft staan tot je weer verbinding hebt."
+    static let memorySaveFailed = "Opslaan lukte niet. Controleer je internetverbinding en probeer het opnieuw."
+    static let memoryForgetFailed = "Wissen lukte niet. Controleer je internetverbinding en probeer het opnieuw."
+    static let memoryNotSetUp = "Het geheugen van Ayla staat nog niet aan in PAVE. Zodra het er is, zie je hier alles wat Ayla over je onthoudt."
     static let pinFailed = "Vastzetten lukte niet. Probeer het opnieuw."
     static let tooManyFiles = "Je kunt \(AylaAttachment.maxCount) bestanden tegelijk toevoegen."
 }

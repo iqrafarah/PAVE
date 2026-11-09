@@ -59,6 +59,21 @@ struct AylaChatScreen: View {
     @State private var isChoosingFile = false
     @State private var fileProblem: String?
     @FocusState private var isComposerFocused: Bool
+    @State private var readAloud = AylaReadAloud()
+    @Environment(AylaMemoryModel.self) private var memory
+    @State private var showsMemory = false
+    @State private var selectingText: SelectableText?
+    /// Scrolled up far enough that the newest message is out of view.
+    @State private var isAwayFromBottom = false
+    /// The offline line above the text field; the conversation makes room for it, so it never covers a message.
+    @State private var offlineNoticeHeight: CGFloat = 0
+    @AppStorage(AylaCaptionsSetting.key) private var captionsChoice: Bool?
+    private let connection = PaveConnection.shared
+
+    private struct SelectableText: Identifiable {
+        let id: String
+        let text: String
+    }
 
     private var openVacancies: [Vacancy]? {
         guard let openVacanciesID, let entry = model.entries.first(where: { $0.id == openVacanciesID }) else { return nil }
@@ -87,7 +102,7 @@ struct AylaChatScreen: View {
 
                 content(
                     height: proxy.size.height,
-                    bottomMargin: showsSheet ? sheetHeight - proxy.safeAreaInsets.bottom : bottomBarHeight + bottomGap
+                    bottomMargin: showsSheet ? sheetHeight - proxy.safeAreaInsets.bottom : bottomBarHeight + bottomGap + offlineNoticeHeight
                 )
 
                 if isAttachMenuOpen {
@@ -115,6 +130,8 @@ struct AylaChatScreen: View {
 
                 bottomBar(placeholder: placeholderColor(sheetOpen: showsSheet), isOverPanel: showsSheet)
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { bottomBarHeight = $0 }
+                    // Above the bar, so the bar itself never changes height and nothing jumps.
+                    .overlay(alignment: .top) { aboveBottomBar(isOverPanel: showsSheet) }
             }
             .overlay { orbLayer }
         }
@@ -137,6 +154,7 @@ struct AylaChatScreen: View {
         }
         .onChange(of: model.conversationID) { old, _ in
             dictation.stop()
+            readAloud.stop()
             isAttachMenuOpen = false
             // The first spoken question gives the conversation its id; only another conversation ends the voice.
             if old != nil { voice?.stop() }
@@ -147,7 +165,46 @@ struct AylaChatScreen: View {
         }
         .transform(voiceReactions)
         .transform(prompts)
-        .onDisappear { voice?.stop() }
+        .onDisappear {
+            voice?.stop()
+            readAloud.stop()
+        }
+        .sheet(item: $selectingText) { ChatTextSelection(text: $0.text) }
+        .sheet(isPresented: $showsMemory) {
+            NavigationStack {
+                AylaMemoryScreen { showsMemory = false }
+            }
+        }
+        .onChange(of: model.wantsToTalk, initial: true) { _, wants in
+            guard wants else { return }
+            model.wantsToTalk = false
+            guard voiceAction != nil, !isTalking, connection.isOnline else { return }
+            // A moment after the chat appears, so you see the orb come out of the button.
+            Task {
+                try? await Task.sleep(for: .milliseconds(400))
+                if !isTalking { startVoice() }
+            }
+        }
+    }
+
+    /// The button back to the newest message, and the line that says you are offline.
+    private func aboveBottomBar(isOverPanel: Bool) -> some View {
+        VStack(spacing: 10) {
+            if isAwayFromBottom, !isTalking, !isOverPanel, !model.entries.isEmpty {
+                ChatScrollDownButton { scrollToBottom() }
+                    .transition(.scale(scale: 0.6).combined(with: .opacity))
+            }
+            if !connection.isOnline, !isTalking, model.phase == .idle {
+                PaveOfflineNotice(message: AylaMessages.offline)
+                    .padding(.horizontal, 24)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height + 10 } action: { offlineNoticeHeight = $0 }
+                    .onDisappear { offlineNoticeHeight = 0 }
+                    .transition(.opacity)
+            }
+        }
+        .alignmentGuide(.top) { $0[.bottom] + 10 }
+        .animation(.easeOut(duration: 0.2), value: isAwayFromBottom)
+        .animation(.easeOut(duration: 0.25), value: connection.isOnline)
     }
 
     /// The alerts and the file picker. Apart from `body`, so the compiler can keep up.
@@ -221,12 +278,16 @@ struct AylaChatScreen: View {
                 .allowsHitTesting(!isTalking || orbMotion.isLow)
 
             if let voice, isTalking {
-                AylaVoiceStage(
-                    caption: stageCaption(voice),
-                    motion: orbMotion,
-                    onOrbFrame: { place(.center, at: $0) },
-                    onCaptionFrame: { captionFrame = $0 }
-                )
+                // With captions on, the line follows Ayla sentence by sentence.
+                TimelineView(.periodic(from: .now, by: showsCaptions ? 0.25 : 3600)) { context in
+                    AylaVoiceStage(
+                        caption: stageCaption(voice, at: context.date),
+                        motion: orbMotion,
+                        isCaptioned: showsCaptions,
+                        onOrbFrame: { place(.center, at: $0) },
+                        onCaptionFrame: { captionFrame = $0 }
+                    )
+                }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 // The whole middle can be dragged, not only the orb itself.
                 .contentShape(.rect)
@@ -292,9 +353,15 @@ struct AylaChatScreen: View {
         .defaultScrollAnchor(.bottom, for: .alignment)
         .defaultScrollAnchor(.bottom, for: .sizeChanges)
         .scrollDismissesKeyboard(.interactively)
+        .onScrollGeometryChange(for: Bool.self) { geometry in
+            geometry.contentSize.height - geometry.visibleRect.maxY > 160
+        } action: { _, isAway in
+            isAwayFromBottom = isAway
+        }
         .onChange(of: model.entries.count) { scrollToBottom() }
         .onChange(of: openVacanciesID) { scrollToBottom() }
         .onChange(of: bottomBarHeight) { scrollToBottom() }
+        .onChange(of: offlineNoticeHeight) { if !isAwayFromBottom { scrollToBottom() } }
     }
 
     @ViewBuilder
@@ -305,12 +372,16 @@ struct AylaChatScreen: View {
                 ForEach(entry.attachments, id: \.self) { name in
                     AylaAttachmentChip(name: name)
                 }
-                ChatBubble(text: entry.text, speaker: .user)
+                ChatBubble(text: entry.text, speaker: .user, actions: actions(for: entry))
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
         case .ayla:
             VStack(alignment: .leading, spacing: 12) {
-                ChatBubble(text: entry.text, speaker: .ayla(showsMark: entry.id == model.lastAylaEntryID && !isFailed))
+                ChatBubble(
+                    text: entry.text,
+                    speaker: .ayla(showsMark: entry.id == model.lastAylaEntryID && !isFailed),
+                    actions: actions(for: entry)
+                )
                 if let question = entry.reply?.question, !question.text.isEmpty {
                     ChatBubble(text: question.text, speaker: .ayla(showsMark: false))
                 }
@@ -319,6 +390,9 @@ struct AylaChatScreen: View {
                         .textStyle(.caption)
                         .foregroundStyle(Color.inkMuted)
                         .padding(.leading, 4)
+                }
+                if let reply = entry.reply, let suggestion = reply.memory {
+                    memoryCard(suggestion, in: reply, isLast: entry.id == model.lastAylaEntryID)
                 }
                 let vacancies = Self.vacancies(in: entry)
                 if !vacancies.isEmpty {
@@ -334,14 +408,74 @@ struct AylaChatScreen: View {
         }
     }
 
+    /// Ayla suggests remembering something: you decide, on the newest answer. On older answers only a kept note
+    /// shows, so a question you passed by does not keep coming back.
+    @ViewBuilder
+    private func memoryCard(_ suggestion: AylaReply.MemorySuggestion, in reply: AylaReply, isLast: Bool) -> some View {
+        let decision = memory.decision(for: reply)
+        if decision == .saved || isLast {
+            AylaMemoryCard(
+                suggestion: suggestion,
+                decision: decision,
+                onKeep: { memory.accept(suggestion, replyID: reply.id, conversationID: model.conversationID) },
+                onDecline: { memory.decline(replyID: reply.id) },
+                onShowMemory: { showsMemory = true }
+            )
+            .padding(.top, 3)
+            .transition(.opacity)
+        }
+    }
+
+    /// What you can do with a message when you press and hold it, as in ChatGPT and Messages.
+    private func actions(for entry: AylaChatModel.Entry) -> [ChatBubble.Action] {
+        var actions: [ChatBubble.Action] = [
+            .init(title: "Kopiëren", systemImage: "doc.on.doc.fill") { UIPasteboard.general.string = entry.text },
+            .init(title: "Tekst selecteren", systemImage: "text.alignleft") {
+                selectingText = SelectableText(id: entry.id, text: entry.text)
+            },
+        ]
+        switch entry.role {
+        case .ayla:
+            let isReading = readAloud.playingID == entry.id
+            actions.append(.init(title: isReading ? "Stop met voorlezen" : "Voorlezen", systemImage: isReading ? "stop.fill" : "speaker.wave.2.fill") {
+                readAloud.toggle(id: entry.id, text: entry.text, service: model.service)
+            })
+            if entry.id == model.entries.last?.id, model.canRedoLastTurn, connection.isOnline, !isVoiceActive {
+                actions.append(.init(title: "Nieuw antwoord", systemImage: "arrow.clockwise.circle.fill") {
+                    readAloud.stop()
+                    model.askAgain()
+                })
+            }
+        case .user:
+            if entry.id == model.lastQuestionID, connection.isOnline, !isVoiceActive {
+                actions.append(.init(title: "Aanpassen", systemImage: "pencil") {
+                    readAloud.stop()
+                    model.editLastQuestion()
+                    isComposerFocused = true
+                })
+            }
+        }
+        return actions
+    }
+
     /// What the spoken conversation reacts to: the orb's haptics, the orb changing place, and the conversation
     /// ending by itself. Apart from `body`, so the compiler can keep up.
     private func voiceReactions(_ content: some View) -> some View {
         content
             // Your message is sent: a firm tap. Ayla's answer comes in: a soft one. Opening an old chat is neither.
             .onChange(of: model.entries.count) { old, new in
-                guard new == old + 1, let last = model.entries.last else { return }
+                guard new == old + 1, let last = model.entries.last, !isVoiceActive else { return }
                 PaveHaptics.tap(last.role == .user ? .medium : .soft)
+            }
+            // While talking every turn is felt, so you know without looking: your question goes (firm), Ayla starts
+            // talking (soft), and it is your turn again (light).
+            .onChange(of: voice?.state) { old, new in
+                switch (old, new) {
+                case (.listening, .thinking): PaveHaptics.tap(.medium)
+                case (.thinking, .speaking): PaveHaptics.tap(.soft)
+                case (.speaking, .listening): PaveHaptics.tap(.light)
+                default: break
+                }
             }
             .onChange(of: model.phase) { _, phase in
                 if case .failed = phase { PaveHaptics.error() }
@@ -491,8 +625,11 @@ struct AylaChatScreen: View {
     }
 
     /// The one line under the full-screen orb: what you say, Ayla's answer, or a hint while nothing is happening.
-    private func stageCaption(_ voice: AylaVoiceSession) -> AylaVoiceCaption {
+    private func stageCaption(_ voice: AylaVoiceSession, at date: Date) -> AylaVoiceCaption {
         if !voice.heard.isEmpty { return .init(text: voice.heard, kind: .heard) }
+        if showsCaptions, let sentence = voice.spokenSentence(at: date) {
+            return .init(text: sentence, kind: .answer)
+        }
         if voice.state == .speaking, let answer = model.entries.last(where: { $0.role == .ayla })?.text, !answer.isEmpty {
             return .init(text: answer, kind: .answer)
         }
@@ -557,6 +694,7 @@ struct AylaChatScreen: View {
                     text: $model.draft,
                     attachments: model.attachments,
                     isEnabled: model.isAvailable && model.phase != .thinking,
+                    isOnline: connection.isOnline,
                     isListening: dictation.isListening,
                     placeholderColor: placeholder,
                     isOverPanel: isOverPanel,
@@ -622,11 +760,14 @@ struct AylaChatScreen: View {
     }
 
     private func send() {
+        guard connection.isOnline else { return }
         dictation.stop()
         model.send(model.draft)
     }
 
     private var isVoiceActive: Bool { voice?.isActive == true }
+
+    private var showsCaptions: Bool { AylaCaptionsSetting.isOn(captionsChoice) }
 
     private enum OrbPlace {
         /// Large in the middle.
@@ -734,6 +875,7 @@ struct AylaChatScreen: View {
     /// into place, after which the field around the orb rolls out.
     private func startVoice() {
         dictation.stop()
+        readAloud.stop()
         isComposerFocused = false
         isAttachMenuOpen = false
         let session = voice ?? AylaVoiceSession(model: model)

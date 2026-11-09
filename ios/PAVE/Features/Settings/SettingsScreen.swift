@@ -8,6 +8,8 @@ struct SettingsScreen: View {
 
     @State private var confirmsSignOut = false
     @AppStorage(AylaSpotlight.settingKey) private var chatsInSpotlight = false
+    @AppStorage(AylaCaptionsSetting.key) private var captionsChoice: Bool?
+    @Environment(AylaMemoryModel.self) private var memory
 
     var body: some View {
         NavigationStack {
@@ -37,6 +39,37 @@ struct SettingsScreen: View {
                             Text("Je pincode blijft op dit toestel bewaard.")
                         }
 
+                    Text("Ayla")
+                        .textStyle(.bodyMedium)
+                        .foregroundStyle(Color.inkMuted)
+                        .padding(.leading, 8)
+                        .padding(.top, 20)
+                        .accessibilityAddTraits(.isHeader)
+
+                    NavigationLink {
+                        AylaMemoryScreen()
+                    } label: {
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Wat Ayla over je weet")
+                                    .textStyle(.listTitle)
+                                    .foregroundStyle(Color.ink)
+                                Text(memorySummary)
+                                    .textStyle(.caption)
+                                    .foregroundStyle(Color.inkMuted)
+                            }
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(Color.inkMuted)
+                                .accessibilityHidden(true)
+                        }
+                        .padding(12)
+                        .background(Color.white, in: .rect(cornerRadius: 14))
+                        .contentShape(.rect)
+                    }
+                    .buttonStyle(.pave)
+
                     Text("Privacy")
                         .textStyle(.bodyMedium)
                         .foregroundStyle(Color.inkMuted)
@@ -57,6 +90,27 @@ struct SettingsScreen: View {
                     }
                     .padding(12)
                     .background(Color.white, in: .rect(cornerRadius: 14))
+
+                    Text("Toegankelijkheid")
+                        .textStyle(.bodyMedium)
+                        .foregroundStyle(Color.inkMuted)
+                        .padding(.leading, 8)
+                        .padding(.top, 20)
+                        .accessibilityAddTraits(.isHeader)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Toggle(isOn: captions) {
+                            Text("Ondertitels bij praten met Ayla")
+                                .textStyle(.listTitle)
+                                .foregroundStyle(Color.ink)
+                        }
+                        .tint(.brandGreen)
+                        Text("Je leest zin voor zin mee met wat Ayla zegt. Staat standaard aan als je ondertiteling in de toegankelijkheidsinstellingen van je iPhone hebt aangezet.")
+                            .textStyle(.caption)
+                            .foregroundStyle(Color.inkMuted)
+                    }
+                    .padding(12)
+                    .background(Color.white, in: .rect(cornerRadius: 14))
                 }
                 .padding(.horizontal, 23)
                 .padding(.top, 32)
@@ -67,8 +121,24 @@ struct SettingsScreen: View {
             .mainScreenToolbar("Instellingen", onShowMenu: onShowMenu)
         }
     }
+
+    private var memorySummary: String {
+        switch memory.state {
+        case .ready:
+            guard memory.memories.isEnabled else { return "Uit: Ayla onthoudt niets" }
+            let count = memory.notes.count
+            return count == 0 ? "Ayla onthoudt nog niets" : count == 1 ? "Ayla onthoudt 1 ding" : "Ayla onthoudt \(count) dingen"
+        case .notSetUp: return "Nog niet beschikbaar"
+        default: return "Bekijk, pas aan of wis wat Ayla onthoudt"
+        }
+    }
+
+    private var captions: Binding<Bool> {
+        Binding(get: { AylaCaptionsSetting.isOn(captionsChoice) }, set: { captionsChoice = $0 })
+    }
 }
 
 #Preview {
     SettingsScreen(name: "Daaf", onShowMenu: {}, onSignOut: {})
+        .environment(AylaMemoryModel(service: nil))
 }
