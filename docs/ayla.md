@@ -177,6 +177,7 @@ Only text leaves the device: the user's voice never does. The text of Ayla's ans
 | `ayla-voice/` | Reads one answer out loud and streams the audio (pcm16, 24 kHz, mono) |
 | `migrations/…_ayla_conversations.sql` | `ayla_conversations` and `ayla_messages` with row level security; both are in the Realtime publication |
 | `migrations/…_ayla_conversation_pins.sql` | `pinned_at` for "Vastgezet". Until it runs, the apps hide pinning |
+| `ayla/memory.ts`, `migrations/…_ayla_memory.sql` | What Ayla remembers (see "Memory"). Until the migration runs, Ayla remembers nothing |
 
 The existing policy "Own conversations" (`for all`) already allows renaming and deleting your own conversations; deleting removes the messages too (`on delete cascade`). No extra database change is needed for that.
 
@@ -189,6 +190,22 @@ Details and the reasons behind each choice are in `ios/README.md` (section Ayla)
 - **Voice mode:** speech is recognised on the phone in Dutch and sent as text after 1.2 seconds of silence; the answer is read out by `ayla-voice` while it streams in; echo cancellation lets you interrupt Ayla. The pixel orb can be dragged between full screen and the conversation, as in ChatGPT.
 - **Chats:** grouped by date (Vastgezet, Vandaag, Gisteren, Afgelopen 7 dagen, Afgelopen 30 dagen, Eerder), swipe to pin, rename or delete, delete with a few seconds to undo, select several, search in titles and in messages, live updates, and an opt-in (off by default) to put chat titles in the iPhone's own search.
 - **Menu:** laid out like ChatGPT, a sidebar on iPad and the open iPhone Duo held sideways, and a layout around the fold of a partly folded iPhone Duo.
+- **Messages:** press and hold to copy, select text, have Ayla read it out, get a new answer to the last question, or change your last question. The last two first remove the last question and answer from `ayla_messages` (`removeLastTurn`, allowed by the policy "Delete own messages"), so Ayla does not see the old answer in the history.
+- **Around the chat:** a half-typed message is kept per chat on the device, a button jumps back to the newest message, and offline the app says so calmly instead of failing.
+- **Voice mode:** a haptic at every turn, and optional captions that follow Ayla sentence by sentence.
+- **Memory:** "Zal ik dit onthouden?" under a reply, and "Wat Ayla over je weet" in Settings (see "Memory").
+- **Outside the app:** Siri and Shortcuts phrases, the Action button, Control Center buttons and widgets start a voice conversation or a new chat. They only open the app (behind the PIN), never show anything from it.
+
+## Memory ("Wat Ayla over je weet")
+
+Ayla remembers things across conversations, but only what the user kept. This follows the product rule that Ayla asks before anything is stored.
+
+- **Suggest, then confirm.** When the user tells something lasting that helps with learning or work (a study, an internship or job, a goal, how they like to work), Ayla adds `memory: { text }` to her reply: one short line in the "je" form, at most one per reply. The app shows "Zal ik dit onthouden?" with Onthouden and "Nee, niet nodig". Only Onthouden saves it, with the user's own session, into `ayla_memories` (`source = 'ayla'`). Ayla's text never claims she remembered something.
+- **Never suggested:** health, religion, politics, sexuality, origin, money, passwords, or anything about other people (the prompt layer in `ayla/memory.ts`), nor a note she already has (`cleanMemory`).
+- **Used in every conversation**, on every device: `index.ts` reads the newest 40 notes and the setting with the user's session (`loadMemory`) and lists them in the prompt between `<onthouden>` tags, as data and never as instructions.
+- **The user is in charge** ("Wat Ayla over je weet" in Settings): see every note with where it came from and when, change it, delete it, write one yourself (`source = 'user'`), forget everything, or turn the memory off (`ayla_settings.memory_enabled`). Off: Ayla uses none of the notes and suggests nothing; the notes stay until the user deletes them. Without a settings row the memory is on, which is safe because nothing is stored without a tap.
+- **Not applied yet:** `migrations/20261109120000_ayla_memory.sql` (`ayla_memories`, `ayla_settings`, row level security, two-step verification). Until it runs, the function remembers nothing and never suggests (the query fails, `status: 'unavailable'`), and the apps say the memory is not available yet (PostgREST `PGRST205` becomes `AylaError.notSetUp` on iOS).
+- **Web:** show the same card under a reply with `memory`, insert into `ayla_memories` (`text`, `source: 'ayla'`, `conversation_id`) on confirm, and offer the same "Wat Ayla over je weet" page. The tables, rules and texts are shared, so the web needs no server change.
 
 ## Calling Ayla from the web
 
@@ -259,7 +276,7 @@ Not reused: the pixel orb and icons, the audience questions with QR code, the de
 
 ## Open questions
 
-1. How many notes can Ayla remember, and which ones go into the prompt (only the relevant ones)?
+1. Ayla now uses the newest 40 notes. Do we need to pick only the relevant ones once people have many?
 3. Which proposed actions exist first (vault item, plan, profile draft, validation request)?
    Are we allowed to store or show the full text of a vacancy from Adzuna or an employer? (Check the terms before building it.)
 4. What does Ayla do when someone is struggling (stress, hopelessness)? Notes about "doubts and feelings" make this important: she must recognise it and point to real help, not play therapist.

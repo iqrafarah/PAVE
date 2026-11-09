@@ -19,9 +19,11 @@ PAVE/
     Profile/    Profiel (nu nog leeg: delen bestaat nog niet)
     Settings/   Instellingen: je account en uitloggen
     Notifications/ Meldingen (nu nog leeg)
-  Resources/    AppIcon.icon, Assets.xcassets (iconen), Fonts/ (Inter)
+  Resources/    AppIcon.icon, Assets.xcassets (iconen)
 PAVEWatch/      Apple Watch-app (spraakbot, geen volledige interface)
-Shared/         UI en assets voor iPhone en Watch (kleuren, logo-letters, laadscherm)
+PAVEWidgets/    Widgets en knoppen voor het Bedieningspaneel (WidgetKit-extensie)
+Shared/         Wat iPhone, Watch en widgets delen: kleuren, logo-letters, laadscherm, de PAVE-slash, fonts (Inter, Sora),
+                de links naar de app (`PaveLink`) en de opdrachten voor Siri (`PaveIntents`)
 PAVETests/      Swift Testing
 PAVECore/       Gedeelde logica voor iPhone en Watch (zonder UI): Auth/, Lock/, Layout/
 ```
@@ -175,6 +177,11 @@ Na het ontgrendelen opent `MainView` (`PAVE/Features/Main`) met Ayla. Ayla zelf 
   - **Laden:** omlaag trekken ververst; aan het eind laden oudere chats per 50. Tijdens het eerste laden staan grijze rijen in de vorm van echte chats; lukt laden niet, dan staat er een melding met "Opnieuw proberen"; zonder chats een lege staat.
   - **Nieuw gesprek:** onderin, binnen bereik van je duim (iPhone), of rechtsboven in de kolom met chats (brede schermen). De terugknop linksboven brengt je terug naar het gesprek.
   - Hernoemen en verwijderen vallen onder de bestaande beveiligingsregel "Own conversations"; er is geen databasewijziging voor nodig. Vastzetten werkt pas als de migratie `20261106120000_ayla_conversation_pins.sql` is gedraaid; tot dan verbergt de app die optie (`AylaConversationList.canPin`).
+- **Een bericht vasthouden** (`ChatBubble.actions`), zoals in ChatGPT en Berichten: Kopiëren, Tekst selecteren (een blad met alleen dat bericht, waarin je een stuk kunt selecteren) en bij Ayla Voorlezen (in haar eigen stem van `ayla-voice`, met de iPhone-stem als die niet lukt; `AylaReadAloud`). Bij het laatste antwoord: Nieuw antwoord; bij je laatste vraag: Aanpassen (de vraag gaat terug in het tekstveld). Beide halen eerst je laatste vraag en Ayla's antwoord uit de database (`removeLastTurn`, onder de bestaande regel "Delete own messages"), zodat Ayla het oude antwoord niet meer in het gesprek ziet. Een nieuwe vraag wacht tot dat gelukt is. Lukt het niet, dan komt alles terug met een melding. Alleen de laatste beurt, zoals bij ChatGPT op de iPhone. VoiceOver heeft dezelfde acties.
+- **Geheugen** (`AylaMemoryModel`, `AylaMemoryCard`, `AylaMemoryScreen`): Ayla onthoudt alleen wat jij goedkeurt. Vertel je iets blijvends (opleiding, stage, doel), dan staat onder haar antwoord "Zal ik dit onthouden?" met Onthouden en "Nee, niet nodig". Pas na Onthouden slaat de app het op (`ayla_memories`), daarna staat er "Onthouden · Bekijk wat Ayla weet". Alleen bij het nieuwste antwoord: een vraag waar je langs ging, komt niet terug. In Instellingen onder Ayla staat "Wat Ayla over je weet": alles wat ze onthoudt met waar het vandaan komt, vegen om aan te passen of te vergeten, zelf iets toevoegen (+), alles vergeten en het geheugen uitzetten. Zolang de migratie `20261109120000_ayla_memory.sql` niet gedraaid is, zegt het scherm eerlijk dat het geheugen nog niet beschikbaar is. Zie `docs/ayla.md`, Memory.
+- **Naar het nieuwste bericht:** scroll je een stuk omhoog, dan verschijnt boven het tekstveld een klein glazen rondje met een pijl (`ChatScrollDownButton`).
+- **Wat je half typte blijft staan** (`AylaDrafts`): per chat, ook na het sluiten van de app. Alleen op dit toestel, weg bij uitloggen of als je de chat verwijdert.
+- **Offline** (`PaveConnection`, `PaveOfflineNotice`): zonder verbinding staat boven het tekstveld rustig "Je bent offline. Wat je typt blijft staan tot je weer verbinding hebt." Typen kan, versturen en praten wachten. Het gesprek schuift op, zodat de melding nooit een bericht bedekt. Komt de verbinding terug, dan ververst de lijst met chats.
 - **Toetsenbord:** tik naast het tekstveld (in het gesprek of het welkom) en het toetsenbord gaat dicht, zoals in Berichten en ChatGPT; omlaag vegen in het gesprek kan ook. Een knop in het gesprek (een starter, een vacaturekaart) werkt met dezelfde tik gewoon.
 - **Plusje:** voegt iets toe aan je bericht, zoals bij ChatGPT of Claude: een item uit je kluis, een plan of een bestand. Kluis en plan zijn nog leeg, dus die regels zeggen waarom ze nog niet kunnen. Een bestand (pdf, foto of tekst) wordt op het toestel gelezen (`AttachmentReader`: PDFKit, Vision); alleen de tekst gaat met dat ene bericht mee naar Ayla en wordt niet bewaard. Maximaal 3 bestanden.
 - `SupabaseAylaService` (PAVECore) stuurt je vraag met je eigen sessie naar de functie en leest je gesprekken uit `ayla_conversations` en `ayla_messages`.
@@ -202,7 +209,20 @@ Zoals de spraakmodus van ChatGPT en Claude, met de pixel-orb uit de spraakdemo (
 - **Niets mag haperen:** de audio-engine en de spraakherkenner starten buiten de main thread (`AylaVoiceSession.queueAudio`, `VoiceRecognizer.reserve`/`begin`). Op de main thread hielden ze de intro eerst een halve seconde stil.
 - **Van invoerveld naar spraakbalk:** de balken wisselen niet, ze versmelten. Het invoerveld krimpt tot het veld van de spraakbalk (`matchedFrame`, een gedeeld frame) en de dempknop en stopknop schuiven er verend uit; bij stoppen groeit het veld weer terug. Dat gebeurt meteen bij de tik (`isTalking`, in een animatie), niet pas als de spraaksessie klaar is met starten. De automatische morph van Liquid Glass (`glassEffectID`) werkte hier niet tussen twee losse balken.
 - **Niets springt:** tijdens het praten blijft de ruimte onder het gesprek gelijk (de extra ruimte voor "Ayla denkt na" hoort alleen bij typen), anders schoof de orb bij het nadenken 17 punten omhoog.
+- **Elke beurt voelbaar:** je vraag gaat weg (stevige tik), Ayla begint te praten (zachte tik), jij bent weer aan de beurt (lichte tik). Zo weet je zonder te kijken waar het gesprek is.
+- **Ondertitels** (Instellingen → Toegankelijkheid): de regel onder de orb volgt Ayla zin voor zin, in een grotere letter. Staat standaard aan als ondertiteling aanstaat in de toegankelijkheidsinstellingen van de iPhone. De stem geeft geen tijden door, dus de app schat waar Ayla is, net als bij de iconen in de orb (`AylaCaptions`, 15 tekens per seconde).
 - **Spraakbalk** (`AylaVoiceBar`), zoals de spraakmodus van ChatGPT: links een glazen veld met het plusje en "Vraag het aan Ayla" (getypt antwoordt Ayla ook hardop, `send(typed:)`), dan een ronde knop om te dempen en een groene ronde knop met ✕ om te stoppen. De spraakmodus stopt ook als je de app verlaat (naar de achtergrond; niet bij "even inactief", want dat gebeurt ook bij de toestemmingsvragen bij de eerste start) of een ander gesprek opent. Tijdens het praten blijft de denk-gloed onderin het scherm weg: de orb laat al zien dat Ayla nadenkt.
+
+### Buiten de app: Siri, widgets, Bedieningspaneel en sneltoetsen
+
+Alles hieronder opent alleen de app. PAVE vraagt dus eerst je pincode of Face ID en laat buiten de app niets van je zien.
+
+- **Siri, Opdrachten, Spotlight en de Actieknop** (`PaveAppShortcuts`): "Praat met Ayla in PAVE" begint een nieuw gesprek waarin Ayla meteen luistert; "Nieuw gesprek in PAVE" opent een lege chat. Ze staan zonder instellen in de Opdrachten-app en zijn te kiezen voor de Actieknop. De opdrachten (`PaveIntents`) brengen de app naar voren en geven het verzoek door via `PaveLinkInbox`; `AppState.link` bewaart het tot de app ontgrendeld is. Vanuit de widget-extensie lukte het openen van een link niet ("Couldn't find shortcut"), daarom draaien ze in de app zelf.
+- **Widgets** (`PAVEWidgets`): klein (praat met Ayla), middel (praten of een nieuw gesprek) en voor het toegangsscherm (rond en rechthoekig). In de stijl van het laadscherm. Ze tonen geen chats of naam, omdat ze zichtbaar zijn zonder de iPhone te ontgrendelen.
+- **Bedieningspaneel** (`AylaControls`): de knoppen "Praat met Ayla" en "Nieuw gesprek met Ayla", ook te zetten op het toegangsscherm of onder de Actieknop.
+- **Links:** `pave://ayla/praat-met-ayla` en `pave://ayla/nieuw-gesprek` (`PaveLink`). Testen: `xcrun simctl openurl booted pave://ayla/praat-met-ayla`.
+- **Sneltoetsen** (`PaveCommands`), voor iPad en de Duo met een toetsenbord, in de menubalk en in het overzicht als je ⌘ ingedrukt houdt: ⌘N nieuw gesprek, ⌘K zoeken in chats (het zoekveld krijgt meteen het toetsenbord), ⇧⌘V praat met Ayla, ⌃⌘S menu tonen of verbergen (in plaats van de knop van iOS zelf, anders crasht de app op een dubbele sneltoets) en ⌘, Instellingen.
+- **Taal:** de ontwikkeltaal van het project is Nederlands (`developmentRegion = nl`), zodat ook de teksten van iOS zelf in de app Nederlands zijn (zoals "Kopiëren" en de menubalk) en Siri de Nederlandse zinnen herkent.
 
 ### Per toestel
 
