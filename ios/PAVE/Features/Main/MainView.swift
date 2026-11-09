@@ -89,7 +89,10 @@ struct MainView: View {
         .onChange(of: hasSidebar) { isMenuOpen = false }
         // A deleted chat that could still be brought back is really deleted when the app goes away.
         .onChange(of: scenePhase) { _, phase in
-            if phase == .background { model.commitPendingDeletion() }
+            if phase == .background {
+                model.commitPendingDeletion()
+                memory.commitPendingForget()
+            }
         }
         .onChange(of: model.conversationList, initial: true) { _, list in
             if chatsInSpotlight { AylaSpotlight.update(list) }

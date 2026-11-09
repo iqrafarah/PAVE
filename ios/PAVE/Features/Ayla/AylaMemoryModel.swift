@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import PAVECore
+import SwiftUI
 
 /// What Ayla remembers about you, for "Wat Ayla over je weet" and the "Zal ik dit onthouden?" card in the chat.
 /// Nothing is saved by itself: a suggestion from Ayla is saved only when you tap "Onthouden".
@@ -32,10 +33,17 @@ final class AylaMemoryModel {
     /// Saving, changing or deleting did not work; the screen shows it.
     var problem: String?
 
-    private let service: (any AylaService)?
+    /// A note that was just forgotten and can still be brought back (`undoForget`).
+    private(set) var pendingForget: AylaMemory?
+    @ObservationIgnored private var forgetTask: Task<Void, Never>?
+    @ObservationIgnored private var pendingIndex = 0
 
-    init(service: (any AylaService)?) {
+    private let service: (any AylaService)?
+    private let undoWindow: Duration
+
+    init(service: (any AylaService)?, undoWindow: Duration = .seconds(5)) {
         self.service = service
+        self.undoWindow = undoWindow
         if service == nil { state = .unavailable }
     }
 
@@ -91,6 +99,7 @@ final class AylaMemoryModel {
                 }
             }
             decisions[replyID] = failed ? .failed : .saved
+            if !failed { AccessibilityNotification.Announcement("Onthouden").post() }
         }
     }
 
@@ -126,9 +135,37 @@ final class AylaMemoryModel {
         }
     }
 
+    /// Takes the note away at once; it is really forgotten after `undoWindow`, unless `undoForget` brings it back
+    /// first, as with deleting a chat.
     func forget(_ memory: AylaMemory) {
-        guard let service, let index = memories.notes.firstIndex(where: { $0.id == memory.id }) else { return }
+        guard service != nil, let index = memories.notes.firstIndex(where: { $0.id == memory.id }) else { return }
+        commitPendingForget()
         memories.notes.remove(at: index)
+        pendingForget = memory
+        pendingIndex = index
+        let wait = undoWindow
+        forgetTask = Task { [weak self] in
+            try? await Task.sleep(for: wait)
+            guard !Task.isCancelled else { return }
+            self?.commitPendingForget()
+        }
+    }
+
+    func undoForget() {
+        forgetTask?.cancel()
+        forgetTask = nil
+        guard let memory = pendingForget else { return }
+        pendingForget = nil
+        memories.notes.insert(memory, at: min(pendingIndex, memories.notes.count))
+    }
+
+    /// Forgets the pending note now, for instance when another one is forgotten or the screen closes.
+    func commitPendingForget() {
+        forgetTask?.cancel()
+        forgetTask = nil
+        guard let service, let memory = pendingForget else { return }
+        pendingForget = nil
+        let index = pendingIndex
         Task {
             do {
                 try await service.forgetMemory(id: memory.id)

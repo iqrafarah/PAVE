@@ -17,7 +17,7 @@ struct AylaMemoryEditor: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Bijvoorbeeld: Je wilt werken in de zorg-ICT.", text: $text, axis: .vertical)
+                    TextField("Bijvoorbeeld: Je wilt werken in de zorg-ICT…", text: $text, axis: .vertical)
                         .textStyle(.bodyMedium)
                         .lineLimit(2...6)
                         .focused($isFocused)

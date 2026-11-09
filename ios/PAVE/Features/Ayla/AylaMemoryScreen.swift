@@ -1,14 +1,14 @@
 import PAVECore
 import SwiftUI
 
-/// "Wat Ayla over je weet": everything Ayla remembers about you, as in the memory settings of ChatGPT, but you also
-/// decide what goes in. Change or delete a note, write one yourself, forget everything, or turn the memory off.
+/// "Wat Ayla over je weet": everything Ayla remembers about you, in a folder per category (the tiles of the vault in
+/// Figma). Unlike the memory of ChatGPT, you also decide what goes in. Open a folder to change or forget a note, write
+/// one yourself, forget everything, or turn the memory off.
 struct AylaMemoryScreen: View {
     /// Shown from the chat in a sheet: then there is a "Klaar" button.
     var onDone: (() -> Void)?
 
     @Environment(AylaMemoryModel.self) private var memory
-    @State private var editing: AylaMemory?
     @State private var isAdding = false
     @State private var confirmsForgetAll = false
 
@@ -18,15 +18,11 @@ struct AylaMemoryScreen: View {
             .navigationTitle("Wat Ayla over je weet")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbar }
-            .task { await memory.load() }
+            // Only the first time: coming back from a folder must not bring back a note that is still being forgotten.
+            .task { if memory.state != .ready { await memory.load() } }
             .sheet(isPresented: $isAdding) {
                 AylaMemoryEditor(title: "Iets toevoegen", text: "", category: .personal) { text, category in
                     memory.add(text, category: category)
-                }
-            }
-            .sheet(item: $editing) { note in
-                AylaMemoryEditor(title: "Aanpassen", text: note.text, category: note.category) { text, category in
-                    memory.update(note, to: text, category: category)
                 }
             }
             .alert("Wat Ayla over je weet", isPresented: problemBinding) {
@@ -68,107 +64,69 @@ struct AylaMemoryScreen: View {
         }
     }
 
+    /// The switch, the folders (all categories, so you can also add to an empty one) and "Alles vergeten".
     private var list: some View {
-        List {
-            Section {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
                 Toggle(isOn: enabledBinding) {
                     Text("Ayla mag dingen onthouden")
                         .textStyle(.listTitle)
                         .foregroundStyle(Color.ink)
                 }
                 .tint(.brandGreen)
-                .listRowBackground(Color.white)
-            } footer: {
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color.white, in: .rect(cornerRadius: 16))
                 Text(memory.memories.isEnabled
                     ? "Ayla stelt voor wat ze onthoudt en jij beslist. Ze gebruikt het in je gesprekken op je iPhone, het web en je Apple Watch."
-                    : "Ayla gebruikt niets van hieronder en stelt niets voor. Wat er staat, blijft bewaard tot je het wist.")
+                    : "Ayla gebruikt niets uit deze mappen en stelt niets voor. Wat erin staat, blijft bewaard tot je het wist.")
                     .textStyle(.caption)
                     .foregroundStyle(Color.inkMuted)
-            }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
 
-            if memory.notes.isEmpty {
-                Section {
+                if memory.notes.isEmpty {
                     Text("Ayla onthoudt nog niets over je. Vertel je in een gesprek iets wat later handig is, zoals je opleiding of een doel, dan vraagt ze of ze het mag onthouden. Je kunt ook zelf iets toevoegen.")
                         .textStyle(.bodyMedium)
                         .foregroundStyle(Color.inkMuted)
-                        .padding(.vertical, 6)
-                        .listRowBackground(Color.white)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 24)
                 }
-            } else {
-                ForEach(memory.memories.byCategory, id: \.category) { group in
-                    Section {
-                        ForEach(group.notes) { note in
-                            row(note)
+
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 10)], spacing: 10) {
+                    ForEach(AylaMemory.Category.allCases, id: \.self) { category in
+                        NavigationLink {
+                            AylaMemoryFolderScreen(category: category)
+                        } label: {
+                            AylaMemoryFolder(category: category, count: memory.notes.count { $0.category == category })
                         }
-                    } header: {
-                        Text(group.category.title)
-                            .textStyle(.bodyMedium)
-                            .foregroundStyle(Color.inkMuted)
+                        .buttonStyle(.pave)
                     }
                 }
-            }
+                .padding(.top, 24)
 
-            if !memory.notes.isEmpty {
-                Section {
-                    Button(role: .destructive) {
+                if !memory.notes.isEmpty {
+                    Button {
                         confirmsForgetAll = true
                     } label: {
                         Text("Alles vergeten")
                             .textStyle(.listTitle)
                             .foregroundStyle(Color.criticalInk)
+                            .frame(maxWidth: .infinity, minHeight: 50)
+                            .background(Color.white, in: .rect(cornerRadius: 16))
                     }
-                    .listRowBackground(Color.white)
+                    .buttonStyle(.pave)
+                    .padding(.top, 24)
                 }
             }
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
+            .padding(.bottom, 32)
+            .frame(maxWidth: 640)
+            .frame(maxWidth: .infinity)
         }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
         .refreshable { await memory.load() }
         .animation(.snappy, value: memory.notes)
-    }
-
-    private func row(_ note: AylaMemory) -> some View {
-        Button {
-            edit(note)
-        } label: {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(note.text)
-                    .textStyle(.bodyMedium)
-                    .foregroundStyle(memory.memories.isEnabled ? Color.ink : .inkMuted)
-                    .multilineTextAlignment(.leading)
-                Text("\(note.source == .ayla ? "Voorgesteld door Ayla" : "Zelf toegevoegd") · \(note.createdAt.formatted(.dateTime.day().month(.abbreviated)))")
-                    .textStyle(.caption)
-                    .foregroundStyle(Color.inkMuted)
-            }
-            .padding(.vertical, 4)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(.rect)
-        }
-        .buttonStyle(.plain)
-        .listRowBackground(Color.white)
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(role: .destructive) {
-                PaveHaptics.tap(.medium)
-                memory.forget(note)
-            } label: {
-                Label("Vergeten", systemImage: "trash.fill")
-            }
-            .tint(.red)
-            Button {
-                edit(note)
-            } label: {
-                Label("Aanpassen", systemImage: "pencil")
-            }
-            .tint(.brandGreen)
-        }
-        .contextMenu {
-            Button { edit(note) } label: { Label("Aanpassen", systemImage: "pencil") }
-            Button(role: .destructive) { memory.forget(note) } label: { Label("Vergeten", systemImage: "trash.fill") }
-        }
-        .accessibilityActions {
-            Button("Aanpassen") { edit(note) }
-            Button("Vergeten") { memory.forget(note) }
-        }
     }
 
     private func centered(title: String, message: String) -> some View {
@@ -194,10 +152,6 @@ struct AylaMemoryScreen: View {
                 Button("Klaar", action: onDone)
             }
         }
-    }
-
-    private func edit(_ note: AylaMemory) {
-        editing = note
     }
 
     private var enabledBinding: Binding<Bool> {

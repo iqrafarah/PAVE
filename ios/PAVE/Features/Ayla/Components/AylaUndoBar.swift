@@ -1,12 +1,17 @@
 import SwiftUI
 
-/// Shown for a few seconds after deleting chats, as in Gmail: what happened, and a way back.
+/// Shown for a few seconds after deleting chats or forgetting a note, as in Gmail: what happened, and a way back.
 struct AylaUndoBar: View {
-    let count: Int
+    let message: String
     let onUndo: () -> Void
 
-    private var message: String {
-        count == 1 ? "Chat verwijderd" : "\(count) chats verwijderd"
+    init(message: String, onUndo: @escaping () -> Void) {
+        self.message = message
+        self.onUndo = onUndo
+    }
+
+    init(count: Int, onUndo: @escaping () -> Void) {
+        self.init(message: count == 1 ? "Chat verwijderd" : "\(count) chats verwijderd", onUndo: onUndo)
     }
 
     var body: some View {

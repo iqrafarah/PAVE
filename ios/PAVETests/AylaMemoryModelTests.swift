@@ -140,7 +140,7 @@ struct AylaMemoryModelTests {
         let fake = FakeMemory()
         let note = AylaMemory(id: "m1", text: "Je studeert ICT.", source: .user, createdAt: .now)
         fake.stored = AylaMemories(notes: [note])
-        let memory = AylaMemoryModel(service: fake)
+        let memory = AylaMemoryModel(service: fake, undoWindow: .milliseconds(10))
         await memory.load()
         fake.fails = true
 
@@ -150,6 +150,35 @@ struct AylaMemoryModelTests {
 
         #expect(memory.notes == [note])
         #expect(memory.problem == AylaMessages.memoryForgetFailed)
+    }
+
+    @Test func aForgottenNoteCanBeBroughtBackForAMoment() async throws {
+        let fake = FakeMemory()
+        let note = AylaMemory(id: "m1", text: "Je studeert ICT.", source: .user, createdAt: .now)
+        fake.stored = AylaMemories(notes: [note])
+        let memory = AylaMemoryModel(service: fake, undoWindow: .seconds(5))
+        await memory.load()
+
+        memory.forget(note)
+        #expect(memory.notes.isEmpty)
+        #expect(memory.pendingForget == note)
+        memory.undoForget()
+        try await Task.sleep(for: .milliseconds(30))
+
+        #expect(memory.notes == [note])
+        #expect(fake.forgotten.isEmpty)
+    }
+
+    @Test func aForgottenNoteIsReallyForgottenAfterTheWindow() async {
+        let fake = FakeMemory()
+        let note = AylaMemory(id: "m1", text: "Je studeert ICT.", source: .user, createdAt: .now)
+        fake.stored = AylaMemories(notes: [note])
+        let memory = AylaMemoryModel(service: fake, undoWindow: .milliseconds(10))
+        await memory.load()
+        memory.forget(note)
+        await waitFor { !fake.forgotten.isEmpty }
+        #expect(fake.forgotten == ["m1"])
+        #expect(memory.pendingForget == nil)
     }
 
     @Test func withoutTheTablesTheScreenSaysSo() async {
