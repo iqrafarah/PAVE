@@ -142,7 +142,8 @@ struct AylaMemoryScreen: View {
                 Button {
                     isAdding = true
                 } label: {
-                    Image(systemName: "plus")
+                    Image(.iconPlus)
+                        .renderingMode(.template)
                 }
                 .accessibilityLabel("Iets toevoegen")
             }

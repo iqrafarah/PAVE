@@ -102,8 +102,10 @@ struct PinKeypad: View {
 
     private var deleteKey: some View {
         Button(action: onDelete) {
-            Image(systemName: "delete.backward.fill")
-                .font(.system(size: keySize * 0.3))
+            Image(.iconBackspace)
+                .resizable()
+                .scaledToFit()
+                .frame(width: keySize * 0.36, height: keySize * 0.36)
                 .foregroundStyle(Color.ink)
         }
         .buttonStyle(KeyStyle(size: keySize, filled: false))

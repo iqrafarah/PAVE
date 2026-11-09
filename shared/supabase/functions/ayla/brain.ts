@@ -13,6 +13,10 @@ export interface BrainInput {
   firstName?: string
   /** What the user let Ayla remember. Missing means Ayla remembers nothing. */
   memory?: Memory
+  /** Called with the text of the answer so far, while the model writes it. */
+  onText?: (text: string) => void
+  /** Stops the answer, for instance when the user taps stop. */
+  signal?: AbortSignal
   /** Called with a short title for a new conversation, when the model gives one. */
   onTitle?: (title: string) => void
 }
@@ -48,7 +52,20 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
     { role: 'user', content: withAttachments(request) },
   ]
 
-  let output = parseOutput((await deps.complete(messages)).content)
+  let lastText = ''
+  const options = {
+    signal: input.signal,
+    onContent: input.onText
+      ? (content: string) => {
+        const text = stripMarkdown(partialText(content))
+        if (text && text !== lastText) {
+          lastText = text
+          input.onText?.(text)
+        }
+      }
+      : undefined,
+  }
+  let output = parseOutput((await deps.complete(messages, options)).content)
   // The first answer heard what the user said; the second one only talks about the vacancies.
   const heard = cleanMemories(output.memories, memory)
   const firstUsed = usedNotes(output.usedMemories, memory)
@@ -60,7 +77,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
     const { what, where } = output.vacancySearch
     const found = await search(deps.searchVacancies, what, where)
     messages.push({ role: 'assistant', content: JSON.stringify(output) }, { role: 'system', content: describeSearch(found) })
-    output = parseOutput((await deps.complete(messages)).content)
+    output = parseOutput((await deps.complete(messages, options)).content)
     if (found.status === 'ok' && found.items.length && request.device !== 'watch') {
       blocks.push({ type: 'vacancies', items: found.items.map((f) => f.vacancy) })
     }
@@ -74,6 +91,36 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   const used = laterUsed.length ? laterUsed : firstUsed
   if (used.length) reply.usedMemories = used
   return reply
+}
+
+/**
+ * The text field of an answer that is still being written: the model writes JSON, and `text` comes first. An escape
+ * cut in half at the end waits for the next piece.
+ */
+export function partialText(json: string): string {
+  const start = json.match(/"text"\s*:\s*"/)
+  if (!start || start.index === undefined) return ''
+  let text = ''
+  for (let i = start.index + start[0].length; i < json.length; i++) {
+    const char = json[i]
+    if (char === '"') return text
+    if (char !== '\\') {
+      text += char
+      continue
+    }
+    const next = json[i + 1]
+    if (next === undefined) return text
+    if (next === 'u') {
+      const hex = json.slice(i + 2, i + 6)
+      if (hex.length < 4) return text
+      text += String.fromCharCode(parseInt(hex, 16))
+      i += 5
+      continue
+    }
+    text += { n: '\n', t: '\t', r: '', b: '', f: '' }[next] ?? next
+    i += 1
+  }
+  return text
 }
 
 /** The question plus the text of the files the user added, marked so the model treats it as data. */

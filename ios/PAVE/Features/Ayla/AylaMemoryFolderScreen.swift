@@ -48,7 +48,8 @@ struct AylaMemoryFolderScreen: View {
                 Button {
                     isAdding = true
                 } label: {
-                    Image(systemName: "plus")
+                    Image(.iconPlus)
+                        .renderingMode(.template)
                 }
                 .accessibilityLabel("Iets toevoegen aan \(category.title)")
             }
@@ -108,19 +109,19 @@ struct AylaMemoryFolderScreen: View {
                 PaveHaptics.tap(.medium)
                 memory.forget(note)
             } label: {
-                Label("Vergeten", systemImage: "trash.fill")
+                Label("Vergeten", image: .iconTrash)
             }
             .tint(.red)
             Button {
                 editing = note
             } label: {
-                Label("Aanpassen", systemImage: "pencil")
+                Label("Aanpassen", image: .iconPencil)
             }
             .tint(.brandGreen)
         }
         .contextMenu {
-            Button { editing = note } label: { Label("Aanpassen", systemImage: "pencil") }
-            Button(role: .destructive) { memory.forget(note) } label: { Label("Vergeten", systemImage: "trash.fill") }
+            Button { editing = note } label: { Label("Aanpassen", image: .iconPencil) }
+            Button(role: .destructive) { memory.forget(note) } label: { Label("Vergeten", image: .iconTrash) }
         }
         .accessibilityActions {
             Button("Aanpassen") { editing = note }

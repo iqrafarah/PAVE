@@ -27,8 +27,8 @@ struct MainBellButton: View {
     @ViewBuilder
     private var bell: some View {
         if isPlain {
-            Image(systemName: "bell.fill")
-                .font(.system(size: 17, weight: .medium))
+            Image(.iconBell)
+                .renderingMode(.template)
                 .foregroundStyle(isSelected ? Color.brandGreen : Color.ink)
                 .frame(width: 44, height: 44)
         } else {

@@ -180,14 +180,14 @@ struct AylaChatList: View {
             Button(role: .destructive) {
                 delete([conversation])
             } label: {
-                Label("Verwijderen", systemImage: "trash.fill")
+                Label("Verwijderen", image: .iconTrash)
             }
             // Red, not the app's green tint.
             .tint(.red)
             Button {
                 startRenaming(conversation)
             } label: {
-                Label("Naam wijzigen", systemImage: "pencil")
+                Label("Naam wijzigen", image: .iconPencil)
             }
             .tint(.inkMuted)
         }
@@ -206,7 +206,7 @@ struct AylaChatList: View {
         Button {
             startRenaming(conversation)
         } label: {
-            Label("Naam wijzigen", systemImage: "pencil")
+            Label("Naam wijzigen", image: .iconPencil)
         }
         if list.canPin {
             Button {
@@ -219,12 +219,12 @@ struct AylaChatList: View {
             isSelecting = true
             selection = [conversation.id]
         } label: {
-            Label("Selecteren", systemImage: "checkmark.circle.fill")
+            Label("Selecteren", image: .iconCheckCircle)
         }
         Button(role: .destructive) {
             delete([conversation])
         } label: {
-            Label("Verwijderen", systemImage: "trash.fill")
+            Label("Verwijderen", image: .iconTrash)
         }
     }
 
@@ -251,7 +251,7 @@ struct AylaChatList: View {
                 delete(chosen)
                 isSelecting = false
             } label: {
-                Label(chosen.count > 1 ? "Verwijder \(chosen.count)" : "Verwijderen", systemImage: "trash.fill")
+                Label(chosen.count > 1 ? "Verwijder \(chosen.count)" : "Verwijderen", image: .iconTrash)
                     .textStyle(.action)
                     .frame(maxWidth: .infinity, minHeight: 50)
                     .contentShape(.capsule)

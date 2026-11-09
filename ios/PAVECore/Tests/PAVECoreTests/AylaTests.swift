@@ -340,6 +340,34 @@ extension SupabaseAylaServiceTests {
         #expect(captured.requests.allSatisfy { $0.httpMethod == "GET" })
     }
 
+    @Test func theAnswerStreamsWhileItIsWritten() async throws {
+        let body = [
+            #"event: start"#, #"data: {"conversationId":"c9"}"#, "",
+            #"event: text"#, #"data: {"text":"Hoi"}"#, "",
+            #"event: text"#, #"data: {"text":"Hoi Daaf"}"#, "",
+            #"event: reply"#, #"data: {"version":1,"id":"r","conversationId":"c9","text":"Hoi Daaf","blocks":[],"usedData":[]}"#, "",
+        ].joined(separator: "\n")
+        let captured = Captured()
+        let ayla = service { urlRequest in
+            captured.request = urlRequest
+            return (200, Data(body.utf8))
+        }
+        var events: [AylaStreamEvent] = []
+        for try await event in ayla.stream(AylaRequest(text: "Hoi", device: .phone, input: .text)) { events.append(event) }
+        #expect(events.count == 4)
+        #expect(events.first == .started(conversationID: "c9"))
+        #expect(events[2] == .text("Hoi Daaf"))
+        if case .reply(let reply) = events.last { #expect(reply.text == "Hoi Daaf") } else { Issue.record("no reply") }
+        #expect(captured.request?.value(forHTTPHeaderField: "Accept") == "text/event-stream")
+    }
+
+    @Test func aStreamWithoutAReplyFails() async {
+        let ayla = service { _ in (200, Data("event: start\ndata: {\"conversationId\":\"c9\"}\n\nevent: error\ndata: {\"error\":\"unavailable\"}\n\n".utf8)) }
+        await #expect(throws: AylaError.unavailable) {
+            for try await _ in ayla.stream(AylaRequest(text: "Hoi", device: .phone, input: .text)) {}
+        }
+    }
+
     @Test func memoriesAndTheSettingAreReadTogether() async throws {
         let ayla = service { urlRequest in
             if urlRequest.url!.path().hasSuffix("ayla_settings") { return (200, Data(#"[{"memory_enabled":false}]"#.utf8)) }

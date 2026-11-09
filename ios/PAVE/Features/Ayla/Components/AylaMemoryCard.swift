@@ -177,7 +177,11 @@ struct AylaMemoryCard: View {
     private var done: some View {
         Button(action: onShowMemory) {
             HStack(spacing: 6) {
-                Image(systemName: "checkmark.circle.fill")
+                Image(.iconCheckCircle)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 14, height: 14)
                     .accessibilityHidden(true)
                 Text(didUpdate ? "Bijgewerkt" : "Onthouden")
                 Text("·").accessibilityHidden(true)

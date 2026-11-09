@@ -10,6 +10,9 @@ struct AylaComposer: View {
     var isEnabled = true
     /// Offline you can keep typing, but sending waits until there is a connection again.
     var isOnline = true
+    /// Ayla is thinking or writing: the send button becomes a stop button, as in ChatGPT.
+    var isAnswering = false
+    var onStop: (() -> Void)?
     var isListening = false
     var placeholderColor = Color.inkMuted.opacity(0.41)
     /// Over the white panel the field is almost white (Figma), elsewhere it is clear glass.
@@ -27,7 +30,7 @@ struct AylaComposer: View {
     var morph: Namespace.ID?
 
     private var canSend: Bool {
-        isEnabled && isOnline && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        isEnabled && isOnline && !isAnswering && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private var showsVoiceButton: Bool {
@@ -92,7 +95,23 @@ struct AylaComposer: View {
             .accessibilityLabel(isListening ? "Stop met inspreken" : "Inspreken")
             .padding(.trailing, 5.5)
 
-            if showsVoiceButton, let onVoice {
+            if isAnswering, let onStop {
+                Button(action: onStop) {
+                    Image(.iconStop)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 13, height: 13)
+                        .foregroundStyle(Color.white)
+                        .frame(width: 30, height: 30)
+                        .background(Color.brandGreen, in: .circle)
+                        .shadow(color: .black.opacity(0.25), radius: 2)
+                        .frame(width: 30, height: 53)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.pave)
+                .accessibilityLabel("Stop Ayla")
+                .transition(.scale(scale: 0.6).combined(with: .opacity))
+            } else if showsVoiceButton, let onVoice {
                 Button(action: onVoice) {
                     PixelWaveIcon()
                         .frame(width: 30, height: 30)

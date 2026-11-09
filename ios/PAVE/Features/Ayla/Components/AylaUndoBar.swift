@@ -16,7 +16,10 @@ struct AylaUndoBar: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: "trash.fill")
+            Image(.iconTrash)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 18, height: 18)
                 .foregroundStyle(Color.inkMuted)
                 .accessibilityHidden(true)
             Text(message)

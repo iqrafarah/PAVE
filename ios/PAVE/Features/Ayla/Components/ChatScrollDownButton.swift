@@ -10,8 +10,10 @@ struct ChatScrollDownButton: View {
             PaveHaptics.tap(.light)
             action()
         } label: {
-            Image(systemName: "arrow.down")
-                .font(.system(size: 14, weight: .bold))
+            Image(.iconArrowDown)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 16, height: 16)
                 .foregroundStyle(Color.ink)
                 .frame(width: 36, height: 36)
                 .contentShape(.circle)

@@ -7,10 +7,13 @@ struct AylaChatsMoreMenu: View {
     var body: some View {
         Menu {
             Button(action: onSelect) {
-                Label("Selecteren", systemImage: "checkmark.circle.fill")
+                Label("Selecteren", image: .iconCheckCircle)
             }
         } label: {
-            Image(systemName: "ellipsis")
+            Image(.iconEllipsis)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 22, height: 22)
         }
         .simultaneousGesture(TapGesture().onEnded { PaveHaptics.tap(.light) })
         .accessibilityLabel("Meer opties")

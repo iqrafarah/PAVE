@@ -112,8 +112,10 @@ struct MainMenuDrawer: View {
     private func sideButtons(menuButton: CGRect, size: CGSize, insets: EdgeInsets) -> some View {
         ZStack(alignment: .topLeading) {
             Button(action: close) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 17, weight: .semibold))
+                Image(.iconXMark)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 20, height: 20)
                     .foregroundStyle(Color.ink)
                     .frame(width: Self.buttonSize, height: Self.buttonSize)
                     .contentShape(.circle)

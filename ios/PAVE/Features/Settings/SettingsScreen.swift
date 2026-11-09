@@ -60,8 +60,8 @@ struct SettingsScreen: View {
                                     .foregroundStyle(Color.inkMuted)
                             }
                             Spacer(minLength: 0)
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 13, weight: .semibold))
+                            Image(.iconChevronRight)
+                                .renderingMode(.template)
                                 .foregroundStyle(Color.inkMuted)
                                 .accessibilityHidden(true)
                         }

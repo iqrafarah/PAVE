@@ -7,6 +7,8 @@ final class AylaChatModel {
     enum Phase: Equatable {
         case idle
         case thinking
+        /// Ayla's answer is coming in, word by word.
+        case writing
         case failed(String)
     }
 
@@ -18,7 +20,7 @@ final class AylaChatModel {
 
         let id: String
         let role: Role
-        let text: String
+        var text: String
         var reply: AylaReply?
         var attachments: [String] = []
         var sentAt: Date = .now
@@ -64,6 +66,7 @@ final class AylaChatModel {
     @ObservationIgnored private var lastFiles: [AylaAttachment] = []
     /// The last question and answer are being removed on the server; the next question waits for that.
     @ObservationIgnored private var removal: Task<Bool, Never>?
+    @ObservationIgnored private var answerTask: Task<Void, Never>?
 
     /// `nameWait`: how long the welcome waits for the name; after that it shows without it.
     /// `undoWindow`: how long a deleted conversation can be brought back before it is really deleted.
@@ -85,7 +88,7 @@ final class AylaChatModel {
 
     /// Choices from Ayla's last reply, shown instead of the text field.
     var pendingQuestion: AylaReply.Question? {
-        guard phase != .thinking, let last = entries.last, last.role == .ayla else { return nil }
+        guard !isAnswering, let last = entries.last, last.role == .ayla else { return nil }
         return last.reply?.question
     }
 
@@ -121,9 +124,17 @@ final class AylaChatModel {
         await refreshConversations()
     }
 
+    /// Ayla is thinking or writing; the send button is a stop button meanwhile.
+    var isAnswering: Bool { phase == .thinking || phase == .writing }
+
     func send(_ text: String) {
         guard let turn = prepare(text, input: .text) else { return }
-        Task { await complete(turn) }
+        answerTask = Task { await stream(turn) }
+    }
+
+    /// Stops Ayla: what she wrote so far stays, as in ChatGPT, and is saved by the server too.
+    func stopAnswer() {
+        answerTask?.cancel()
     }
 
     /// Sends a question and waits for Ayla's answer, for the voice conversation. Nil when it failed;
@@ -143,7 +154,7 @@ final class AylaChatModel {
     /// Shows the question at once and returns what to send, or nil when nothing can be sent now.
     private func prepare(_ text: String, input: AylaInput) -> Turn? {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let service, !text.isEmpty, phase != .thinking else { return nil }
+        guard let service, !text.isEmpty, !isAnswering else { return nil }
         let files = attachments
         draft = ""
         attachments = []
@@ -157,6 +168,59 @@ final class AylaChatModel {
         phase = .thinking
         let request = AylaRequest(conversationId: conversationID, text: text, device: .phone, input: input, attachments: files)
         return Turn(service: service, request: request, text: text, files: files)
+    }
+
+    /// The answer while it is written. The words grow in a message of their own, which becomes the real answer once
+    /// it is complete.
+    private func stream(_ turn: Turn) async {
+        if let removal {
+            self.removal = nil
+            guard await removal.value else {
+                phase = .failed(AylaMessages.redoFailed)
+                if draft.isEmpty { draft = turn.text }
+                return
+            }
+        }
+        var writingIndex: Int?
+        do {
+            for try await event in turn.service.stream(turn.request) {
+                switch event {
+                case .started(let id):
+                    conversationID = id
+                case .text(let text):
+                    if let writingIndex, entries.indices.contains(writingIndex) {
+                        entries[writingIndex].text = text
+                    } else {
+                        entries.append(Entry(id: "writing-\(UUID().uuidString)", role: .ayla, text: text))
+                        writingIndex = entries.count - 1
+                        phase = .writing
+                    }
+                case .reply(let reply):
+                    conversationID = reply.conversationId
+                    let entry = Entry(id: reply.id, role: .ayla, text: reply.text, reply: reply)
+                    if let writingIndex, entries.indices.contains(writingIndex) {
+                        entries[writingIndex] = entry
+                    } else {
+                        entries.append(entry)
+                    }
+                    phase = .idle
+                }
+            }
+            if Task.isCancelled { phase = .idle }
+            answerTask = nil
+            await refreshConversations()
+        } catch {
+            answerTask = nil
+            if Task.isCancelled || error is CancellationError {
+                phase = .idle
+                await refreshConversations()
+                return
+            }
+            if let writingIndex, entries.indices.contains(writingIndex) { entries.remove(at: writingIndex) }
+            phase = .failed(Self.message(for: AylaError(error)))
+            if draft.isEmpty { draft = turn.text }
+            if attachments.isEmpty { attachments = turn.files }
+        }
     }
 
     @discardableResult
@@ -205,7 +269,7 @@ final class AylaChatModel {
         let files = question.attachments == lastFiles.map(\.name) ? lastFiles : []
         lastQuestion = question.text
         phase = .thinking
-        Task {
+        answerTask = Task {
             do {
                 try await service.removeLastTurn(in: conversationID)
             } catch {
@@ -214,7 +278,7 @@ final class AylaChatModel {
                 return
             }
             let request = AylaRequest(conversationId: conversationID, text: question.text, device: .phone, input: .text, attachments: files)
-            await complete(Turn(service: service, request: request, text: question.text, files: files))
+            await stream(Turn(service: service, request: request, text: question.text, files: files))
         }
     }
 
@@ -244,7 +308,7 @@ final class AylaChatModel {
     }
 
     func newConversation() {
-        guard phase != .thinking else { return }
+        guard !isAnswering else { return }
         entries = []
         conversationID = nil
         lastQuestion = nil
@@ -255,7 +319,7 @@ final class AylaChatModel {
     }
 
     func open(_ conversation: AylaConversation) async {
-        guard let service, phase != .thinking else { return }
+        guard let service, !isAnswering else { return }
         isLoadingConversation = true
         defer { isLoadingConversation = false }
         do {

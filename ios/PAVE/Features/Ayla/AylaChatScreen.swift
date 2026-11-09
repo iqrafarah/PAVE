@@ -476,26 +476,26 @@ struct AylaChatScreen: View {
     /// What you can do with a message when you press and hold it, as in ChatGPT and Messages.
     private func actions(for entry: AylaChatModel.Entry) -> [ChatBubble.Action] {
         var actions: [ChatBubble.Action] = [
-            .init(title: "Kopiëren", systemImage: "doc.on.doc.fill") { UIPasteboard.general.string = entry.text },
-            .init(title: "Tekst selecteren", systemImage: "text.alignleft") {
+            .init(title: "Kopiëren", icon: .iconDocumentDuplicate) { UIPasteboard.general.string = entry.text },
+            .init(title: "Tekst selecteren", icon: .iconDocumentText) {
                 selectingText = SelectableText(id: entry.id, text: entry.text)
             },
         ]
         switch entry.role {
         case .ayla:
             let isReading = readAloud.playingID == entry.id
-            actions.append(.init(title: isReading ? "Stop met voorlezen" : "Voorlezen", systemImage: isReading ? "stop.fill" : "speaker.wave.2.fill") {
+            actions.append(.init(title: isReading ? "Stop met voorlezen" : "Voorlezen", icon: isReading ? .iconStop : .iconSpeakerWave) {
                 readAloud.toggle(id: entry.id, text: entry.text, service: model.service)
             })
             if entry.id == model.entries.last?.id, model.canRedoLastTurn, connection.isOnline, !isVoiceActive {
-                actions.append(.init(title: "Nieuw antwoord", systemImage: "arrow.clockwise.circle.fill") {
+                actions.append(.init(title: "Nieuw antwoord", icon: .iconArrowPath) {
                     readAloud.stop()
                     model.askAgain()
                 })
             }
         case .user:
             if entry.id == model.lastQuestionID, connection.isOnline, !isVoiceActive {
-                actions.append(.init(title: "Aanpassen", systemImage: "pencil") {
+                actions.append(.init(title: "Aanpassen", icon: .iconPencil) {
                     readAloud.stop()
                     model.editLastQuestion()
                     isComposerFocused = true
@@ -660,7 +660,7 @@ struct AylaChatScreen: View {
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { voiceBarHeight = $0 }
             .overlay(alignment: .bottomLeading) {
                 if isAttachMenuOpen {
-                    AylaAttachMenu(onAddFile: { chooseFile() }, onScan: scanAction, onPaste: { addPasted($0) })
+                    AylaAttachMenu(onAddFile: { chooseFile() }, onScan: scanAction, onPaste: { addPasted() })
                         .transition(reduceMotion ? .opacity : .scale(scale: 0.3, anchor: .bottomLeading).combined(with: .opacity))
                 }
             }
@@ -720,7 +720,7 @@ struct AylaChatScreen: View {
                     .padding(.horizontal, 32)
                     .padding(.bottom, model.pendingQuestion == nil ? 41 : 35.7)
                     .transition(.opacity)
-            case .idle:
+            case .idle, .writing:
                 EmptyView()
             }
 
@@ -740,8 +740,13 @@ struct AylaChatScreen: View {
                 AylaComposer(
                     text: $model.draft,
                     attachments: model.attachments,
-                    isEnabled: model.isAvailable && model.phase != .thinking,
+                    isEnabled: model.isAvailable,
                     isOnline: connection.isOnline,
+                    isAnswering: model.isAnswering,
+                    onStop: {
+                        PaveHaptics.tap(.medium)
+                        model.stopAnswer()
+                    },
                     isListening: dictation.isListening,
                     placeholderColor: placeholder,
                     isOverPanel: isOverPanel,
@@ -756,7 +761,7 @@ struct AylaChatScreen: View {
                 )
                 .overlay(alignment: .bottomLeading) {
                     if isAttachMenuOpen {
-                        AylaAttachMenu(onAddFile: { chooseFile() }, onScan: scanAction, onPaste: { addPasted($0) })
+                        AylaAttachMenu(onAddFile: { chooseFile() }, onScan: scanAction, onPaste: { addPasted() })
                             .transition(reduceMotion ? .opacity : .scale(scale: 0.3, anchor: .bottomLeading).combined(with: .opacity))
                     }
                 }
@@ -772,7 +777,7 @@ struct AylaChatScreen: View {
     private var bottomGap: CGFloat {
         if isVoiceActive { return 12 }
         return switch model.phase {
-        case .idle: 12
+        case .idle, .writing: 12
         case .thinking: 47
         case .failed: 41
         }
@@ -780,14 +785,14 @@ struct AylaChatScreen: View {
 
     private func placeholderColor(sheetOpen: Bool) -> Color {
         if sheetOpen { return Color.black.opacity(0.41) }
-        return model.phase == .idle ? Color.inkMuted.opacity(0.41) : Color.white.opacity(0.41)
+        return model.phase == .idle || model.phase == .writing ? Color.inkMuted.opacity(0.41) : Color.white.opacity(0.41)
     }
 
     @ViewBuilder
     /// While talking, the orb and its field already show that Ayla is thinking, so the glow at the bottom stays away.
     private var background: some View {
         switch isVoiceActive ? .idle : model.phase {
-        case .idle:
+        case .idle, .writing:
             Color.canvas
         case .thinking:
             LinearGradient(stops: [.init(color: .canvas, location: 0.658), .init(color: .thinkingGlow, location: 1)], startPoint: .top, endPoint: .bottom)
@@ -1044,9 +1049,32 @@ struct AylaChatScreen: View {
         }
     }
 
-    private func addPasted(_ providers: [NSItemProvider]) {
+    private func addPasted() {
         isAttachMenuOpen = false
-        addProviders(providers)
+        guard model.attachments.count < AylaAttachment.maxCount else {
+            fileProblem = AylaMessages.tooManyFiles
+            return
+        }
+        let url: URL
+        do {
+            url = try AttachmentReader.clipboardFile()
+        } catch AttachmentReader.Failure.refused {
+            fileProblem = AylaMessages.pasteRefused
+            return
+        } catch {
+            fileProblem = AylaMessages.fileUnreadable
+            return
+        }
+        let model = model
+        Task {
+            defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+            if let file = try? await AttachmentReader.read(url) {
+                model.attach(file)
+                PaveHaptics.tap(.light)
+            } else {
+                fileProblem = AylaMessages.fileUnreadable
+            }
+        }
     }
 
     /// Files dragged in or pasted: read on the device, like a chosen file.

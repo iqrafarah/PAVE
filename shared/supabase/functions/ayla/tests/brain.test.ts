@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { test } from 'node:test'
-import { answer, cleanTitle, titleFrom, withAttachments } from '../brain.ts'
+import { answer, cleanTitle, partialText, titleFrom, withAttachments } from '../brain.ts'
 import { parseRequest } from '../contract.ts'
 import { openRouterCompletion } from '../openrouter.ts'
 import { buildSystemPrompt } from '../prompt.ts'
@@ -335,4 +335,60 @@ test('the notes an answer leans on go with the reply, by their numbers', async (
   assert.match(fake.calls[0][0].content, /- \[1\] Je studeert ICT aan Fontys\./)
   const off = await answer({ request, conversationId: 'conv', history: [], memory: { status: 'off' } }, { complete: model(say('Oké.', { usedMemories: [1] })).complete, newId: ids() })
   assert.equal(off.usedMemories, undefined)
+})
+
+test('the text of an answer that is still being written is read from the half JSON', () => {
+  assert.equal(partialText('{"text":"Hoi Daaf, '), 'Hoi Daaf, ')
+  assert.equal(partialText('{"text":"Zeg \\"ja\\" of\\nnee", "question'), 'Zeg "ja" of\nnee')
+  assert.equal(partialText('{"text":"Caf\\u00e9 en \\'), 'Café en ')
+  assert.equal(partialText('{"text":"Half \\u00'), 'Half ')
+  assert.equal(partialText('{"question":null'), '')
+})
+
+test('the answer can be watched while it is written', async () => {
+  const seen: string[] = []
+  const content = JSON.stringify(say('Hoi Daaf, fijn dat je er bent.'))
+  const complete = async (_messages: unknown, options?: { onContent?: (c: string) => void }) => {
+    for (let end = 10; end < content.length; end += 7) options?.onContent?.(content.slice(0, end))
+    return { model: 'fake', content }
+  }
+  const reply = await answer({ request, conversationId: 'conv', history: [], onText: (text) => seen.push(text) }, { complete, newId: ids() })
+  assert.equal(reply.text, 'Hoi Daaf, fijn dat je er bent.')
+  assert.ok(seen.length > 2)
+  assert.ok(seen.every((text, i) => i === 0 || text.length >= seen[i - 1].length))
+  assert.equal(seen.at(-1), 'Hoi Daaf, fijn dat je er bent.')
+})
+
+test('a streaming model hands over what it writes and the first writer wins', async () => {
+  const sse = (pieces: string[]) => new Response(new ReadableStream({
+    start(controller) {
+      const encoder = new TextEncoder()
+      for (const piece of pieces) controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: piece } }] })}\n\n`))
+      controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+      controller.close()
+    },
+  }))
+  const bodies: Record<string, unknown>[] = []
+  const fetchImpl = (async (_url: string, init: RequestInit) => {
+    bodies.push(JSON.parse(String(init.body)))
+    return sse(['{"text":"Hoi', ' Daaf"}'])
+  }) as typeof fetch
+  const complete = openRouterCompletion('key', {}, fetchImpl, ['a', 'b'], 10_000)
+  const seen: string[] = []
+  const result = await complete([{ role: 'user', content: 'Hoi' }], { onContent: (c) => seen.push(c) })
+  assert.equal(result.content, '{"text":"Hoi Daaf"}')
+  assert.deepEqual(seen, ['{"text":"Hoi', '{"text":"Hoi Daaf"}'])
+  assert.equal(bodies[0].stream, true)
+  assert.equal(bodies.length, 1)
+})
+
+test('stopping an answer stops the model', async () => {
+  const fetchImpl = ((_url: string, init: RequestInit) => new Promise((_resolve, reject) => {
+    init.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
+  })) as typeof fetch
+  const stop = new AbortController()
+  const complete = openRouterCompletion('key', {}, fetchImpl, ['a'], 10_000)
+  const pending = complete([{ role: 'user', content: 'Hoi' }], { onContent: () => {}, signal: stop.signal })
+  stop.abort()
+  await assert.rejects(pending, { name: 'AbortError' })
 })

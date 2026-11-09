@@ -1,6 +1,7 @@
 import Foundation
 import PAVECore
 import PDFKit
+import UIKit
 import UniformTypeIdentifiers
 import Vision
 
@@ -8,6 +9,8 @@ import Vision
 nonisolated enum AttachmentReader {
     enum Failure: Error {
         case unreadable
+        /// There is something on the clipboard, but iOS did not hand it over (pasting was not allowed).
+        case refused
     }
 
     static let contentTypes: [UTType] = [.pdf, .image, .plainText, .text]
@@ -41,29 +44,50 @@ nonisolated enum AttachmentReader {
             throw Failure.unreadable
         }
         let suggestedName = provider.suggestedName
-        let copy: URL = try await withCheckedThrowingContinuation { continuation in
-            _ = provider.loadFileRepresentation(for: type, openInPlace: false) { url, _, error in
-                guard let url else {
+        // The concrete kind (png, jpeg, pdf): iOS cannot load a clipboard image as just "an image".
+        // The clipboard also offers an internal UIKit kind first, which cannot be loaded as a file.
+        let concrete = provider.registeredContentTypes.first { $0.conforms(to: type) && $0.preferredFilenameExtension != nil } ?? type
+        // A clipboard image often exists only as data, not as a file, so the data is written to a file of our own,
+        // with the extension of its kind, so it can be read.
+        let data: Data = try await withCheckedThrowingContinuation { continuation in
+            _ = provider.loadDataRepresentation(for: concrete) { data, error in
+                if let data {
+                    continuation.resume(returning: data)
+                } else {
                     continuation.resume(throwing: error ?? Failure.unreadable)
-                    return
-                }
-                // A pasted image has no name of its own, only a random one; then it gets a plain one.
-                let plain = type.conforms(to: .image) ? "Geplakte afbeelding" : type.conforms(to: .pdf) ? "Geplakt document" : "Geplakte tekst"
-                let name = "\(suggestedName ?? plain).\(url.pathExtension)"
-                let target = FileManager.default.temporaryDirectory
-                    .appending(path: UUID().uuidString, directoryHint: .isDirectory)
-                    .appending(path: name)
-                do {
-                    try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
-                    try FileManager.default.copyItem(at: url, to: target)
-                    continuation.resume(returning: target)
-                } catch {
-                    continuation.resume(throwing: error)
                 }
             }
         }
+        let plain = type.conforms(to: .image) ? "Geplakte afbeelding" : type.conforms(to: .pdf) ? "Geplakt document" : "Geplakte tekst"
+        let fileExtension = concrete.preferredFilenameExtension ?? type.preferredFilenameExtension ?? "png"
+        let copy = FileManager.default.temporaryDirectory
+            .appending(path: UUID().uuidString, directoryHint: .isDirectory)
+            .appending(path: "\(suggestedName ?? plain).\(fileExtension)")
+        try FileManager.default.createDirectory(at: copy.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try data.write(to: copy)
         defer { try? FileManager.default.removeItem(at: copy.deletingLastPathComponent()) }
         return try await read(copy)
+    }
+
+    /// A photo or pdf from the clipboard, written to a file of our own so it can be read like any other.
+    /// Reading the clipboard is what iOS may ask permission for ("PAVE wil plakken").
+    @MainActor
+    static func clipboardFile() throws -> URL {
+        let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        if let pdf = UIPasteboard.general.data(forPasteboardType: UTType.pdf.identifier) {
+            let url = folder.appending(path: "Geplakt document.pdf")
+            try pdf.write(to: url)
+            return url
+        }
+        if let image = UIPasteboard.general.image, let png = image.pngData() {
+            let url = folder.appending(path: "Geplakte afbeelding.png")
+            try png.write(to: url)
+            return url
+        }
+        try? FileManager.default.removeItem(at: folder)
+        let hasFile = UIPasteboard.general.hasImages || UIPasteboard.general.contains(pasteboardTypes: [UTType.pdf.identifier])
+        throw hasFile ? Failure.refused : Failure.unreadable
     }
 
     /// The pages of a scanned document, read on the device into one attachment.

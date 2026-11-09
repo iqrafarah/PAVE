@@ -8,8 +8,11 @@ struct AylaMemoryFolder: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Image(systemName: category.symbol)
-                .font(.system(size: 17, weight: .semibold))
+            Image(category.icon)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 20, height: 20)
                 .foregroundStyle(Color.brandGreen)
                 .frame(width: 40, height: 40)
                 .background(category.tint, in: .rect(cornerRadius: 12))

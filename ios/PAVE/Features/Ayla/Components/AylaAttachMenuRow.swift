@@ -14,21 +14,15 @@ struct AylaAttachMenuRow: View {
         self.action = action
     }
 
-    /// With a filled SF Symbol, for what the Figma icons do not cover.
-    init(symbol: String, title: String, note: String? = nil, action: (() -> Void)? = nil) {
-        image = Image(systemName: symbol)
-        self.title = title
-        self.note = note
-        self.action = action
-    }
-
     var body: some View {
         Button {
             action?()
         } label: {
             HStack(spacing: 6) {
                 image
-                    .font(.system(size: 16, weight: .semibold))
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 18, height: 18)
                     .foregroundStyle(Color.ink)
                     .frame(width: 37, height: 37)
                     .background(Color.white.opacity(0.7), in: .circle)

@@ -6,8 +6,10 @@ struct PaveOfflineNotice: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Image(systemName: "wifi.slash")
-                .font(.system(size: 13, weight: .semibold))
+            Image(.iconSignalSlash)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 14, height: 14)
                 .accessibilityHidden(true)
             Text(message)
                 .textStyle(.caption)

@@ -9,7 +9,7 @@ struct ChatBubble: View {
     /// Something to do with the message, in the menu that opens when you press and hold it.
     struct Action: Identifiable {
         let title: String
-        let systemImage: String
+        let icon: ImageResource
         let perform: () -> Void
 
         var id: String { title }
@@ -34,7 +34,7 @@ struct ChatBubble: View {
                             PaveHaptics.tap(.light)
                             action.perform()
                         } label: {
-                            Label(action.title, systemImage: action.systemImage)
+                            Label(action.title, image: action.icon)
                         }
                     }
                 }
@@ -75,7 +75,7 @@ struct ChatBubble: View {
         ChatBubble(
             text: "Ik ga je helpen zoeken! Welke gegevens mag ik hiervoor gebruiken?",
             speaker: .ayla(showsMark: true),
-            actions: [.init(title: "Kopiëren", systemImage: "doc.on.doc.fill") {}]
+            actions: [.init(title: "Kopiëren", icon: .iconDocumentDuplicate) {}]
         )
     }
     .padding(.leading, 32)

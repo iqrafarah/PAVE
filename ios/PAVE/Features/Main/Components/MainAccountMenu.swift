@@ -16,7 +16,7 @@ struct MainAccountMenu: View {
                 Text(name)
             }
             Button("Instellingen", image: .iconSettings, action: onSettings)
-            Button("Uitloggen", systemImage: "rectangle.portrait.and.arrow.right.fill", role: .destructive) {
+            Button("Uitloggen", image: .iconSignOut, role: .destructive) {
                 confirmsSignOut = true
             }
         } label: {

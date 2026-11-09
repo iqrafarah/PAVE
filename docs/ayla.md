@@ -210,6 +210,11 @@ Ayla remembers things across conversations, but only what the user kept. This fo
 - **Tables:** `migrations/20261109120000_ayla_memory.sql` (`ayla_memories`, `ayla_settings`, row level security, two-step verification), applied on 2026-11-09. Without it, the function remembers nothing and never suggests (the query fails, `status: 'unavailable'`), and the apps say the memory is not available yet (PostgREST `PGRST205` becomes `AylaError.notSetUp` on iOS).
 - **Web:** show the same card under a reply with `memories`, insert every ticked fact into `ayla_memories` (`text`, `category`, `source: 'ayla'`, `conversation_id`) on confirm, and offer the same "Wat Ayla over je weet" page. The tables, rules and texts are shared, so the web needs no server change.
 
+## Streaming and "Gebaseerd op"
+
+- **Streaming.** Send `Accept: text/event-stream` to `ayla` and the answer comes as server-sent events: `start` (`{ conversationId }`, before anything is written), `text` (`{ text }`, everything written so far), then `reply` (the whole reply) or `error`. Without that header nothing changes. Closing the connection stops the model; what was written so far is saved as Ayla's answer, as in ChatGPT. The function reads the `text` field out of the half-written JSON (`partialText`); the first model that starts writing answers and the others stop.
+- **`usedMemories`.** The notes are numbered in the prompt; the model returns the numbers it used and the server turns them into the notes (`usedNotes`). The apps show "Gebaseerd op" under the answer.
+
 ## Calling Ayla from the web
 
 The web uses the same two functions and the same tables, so a conversation started on the iPhone continues on the web. The user must be signed in with two-step verification (`aal2`), otherwise both functions answer `403 insufficient_aal`.

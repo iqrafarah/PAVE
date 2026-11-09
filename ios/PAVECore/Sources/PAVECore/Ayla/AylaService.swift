@@ -1,7 +1,19 @@
 import Foundation
 
+/// What comes in while Ayla writes her answer.
+public enum AylaStreamEvent: Equatable, Sendable {
+    /// The conversation the answer belongs to, before anything is written (also when you stop early).
+    case started(conversationID: String)
+    /// Everything she wrote so far.
+    case text(String)
+    /// The whole answer, with its cards and suggestions.
+    case reply(AylaReply)
+}
+
 public protocol AylaService: Sendable {
     func send(_ request: AylaRequest) async throws -> AylaReply
+    /// The answer while it is written. Cancelling the stream stops Ayla; what she wrote so far is kept.
+    func stream(_ request: AylaRequest) -> AsyncThrowingStream<AylaStreamEvent, any Error>
     /// The user's most recent conversations, at most `limit`, and whether they can be pinned.
     func conversations(limit: Int) async throws -> AylaConversationList
     func messages(in conversationID: String) async throws -> [AylaStoredMessage]
@@ -37,6 +49,21 @@ extension AylaService {
 
     public func conversations() async throws -> AylaConversationList {
         try await conversations(limit: Self.conversationPage)
+    }
+
+    /// Without streaming, the whole answer comes at once.
+    public func stream(_ request: AylaRequest) -> AsyncThrowingStream<AylaStreamEvent, any Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    continuation.yield(.reply(try await send(request)))
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
     }
 
     public func rename(_ title: String, conversationID: String) async throws { throw AylaError.unavailable }
@@ -99,6 +126,80 @@ public struct SupabaseAylaService: AylaService {
         self.publishableKey = publishableKey
         self.session = session
         self.accessToken = accessToken
+    }
+
+    public func stream(_ request: AylaRequest) -> AsyncThrowingStream<AylaStreamEvent, any Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    guard let token = await accessToken() else { throw AylaError.notSignedIn }
+                    var urlRequest = URLRequest(url: endpoint, timeoutInterval: 60)
+                    urlRequest.httpMethod = "POST"
+                    urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    urlRequest.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+                    urlRequest.setValue(publishableKey, forHTTPHeaderField: "apikey")
+                    urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                    urlRequest.httpBody = try AylaCoding.encoder.encode(request)
+
+                    let (bytes, response): (URLSession.AsyncBytes, URLResponse)
+                    do {
+                        (bytes, response) = try await session.bytes(for: urlRequest)
+                    } catch is URLError {
+                        throw AylaError.noConnection
+                    }
+                    switch (response as? HTTPURLResponse)?.statusCode ?? 0 {
+                    case 200: break
+                    case 401: throw AylaError.notSignedIn
+                    case 403: throw AylaError.insufficientAssurance
+                    case 404: throw AylaError.conversationNotFound
+                    default: throw AylaError.unavailable
+                    }
+
+                    var event = ""
+                    var finished = false
+                    do {
+                        for try await line in bytes.lines {
+                            if line.hasPrefix("event:") {
+                                event = line.dropFirst(6).trimmingCharacters(in: .whitespaces)
+                            } else if line.hasPrefix("data:"), let parsed = Self.streamEvent(event, data: Data(line.dropFirst(5).utf8)) {
+                                switch parsed {
+                                case .success(let streamEvent):
+                                    continuation.yield(streamEvent)
+                                    if case .reply = streamEvent { finished = true }
+                                case .failure(let error):
+                                    throw error
+                                }
+                            }
+                        }
+                    } catch is URLError {
+                        throw AylaError.noConnection
+                    }
+                    guard finished else { throw AylaError.unavailable }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    /// One server-sent event of the Ayla function: `start`, `text`, `reply` or `error`.
+    static func streamEvent(_ name: String, data: Data) -> Result<AylaStreamEvent, AylaError>? {
+        struct Start: Decodable { let conversationId: String }
+        struct Text: Decodable { let text: String }
+        switch name {
+        case "start":
+            return (try? JSONDecoder().decode(Start.self, from: data)).map { .success(.started(conversationID: $0.conversationId)) }
+        case "text":
+            return (try? JSONDecoder().decode(Text.self, from: data)).map { .success(.text($0.text)) }
+        case "reply":
+            return .some((try? AylaReply.decode(data)).map { .success(.reply($0)) } ?? .failure(.unavailable))
+        case "error":
+            return .failure(.unavailable)
+        default:
+            return nil
+        }
     }
 
     public func send(_ request: AylaRequest) async throws -> AylaReply {

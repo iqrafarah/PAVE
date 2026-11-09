@@ -3,11 +3,18 @@ import UniformTypeIdentifiers
 
 /// What the plus button adds to a message (Figma "iPhone 16 & 17 Pro Max - 2", in the current style).
 /// It grows out of the text field and covers its left side. Items from the vault and plans can be added
-/// once those exist; until then the rows say why not.
+/// once those exist; until then the rows say why not. "Plakken" only shows while a photo or pdf is on the clipboard.
 struct AylaAttachMenu: View {
     let onAddFile: () -> Void
     var onScan: (() -> Void)?
-    var onPaste: (([NSItemProvider]) -> Void)?
+    var onPaste: (() -> Void)?
+
+    @State private var canPaste = Self.clipboardHasFile
+
+    /// Asking whether there is something does not trigger the "allow paste" question; only reading it does.
+    private static var clipboardHasFile: Bool {
+        UIPasteboard.general.hasImages || UIPasteboard.general.contains(pasteboardTypes: [UTType.pdf.identifier])
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 11.5) {
@@ -15,17 +22,10 @@ struct AylaAttachMenu: View {
             AylaAttachMenuRow(icon: .iconMap, title: "Plan toevoegen", note: "Je hebt nog geen plan")
             AylaAttachMenuRow(icon: .iconPaperclip, title: "Bestand toevoegen", action: onAddFile)
             if let onScan {
-                AylaAttachMenuRow(symbol: "doc.viewfinder.fill", title: "Document scannen", action: onScan)
+                AylaAttachMenuRow(icon: .iconCamera, title: "Document scannen", action: onScan)
             }
-            if let onPaste {
-                // The system's own paste button: no "Allow paste?" question, because you tapped it yourself.
-                PasteButton(supportedContentTypes: [.pdf, .image]) { providers in
-                    onPaste(providers)
-                }
-                .labelStyle(.titleAndIcon)
-                .buttonBorderShape(.capsule)
-                .tint(.brandGreen)
-                .padding(.top, 2)
+            if canPaste, let onPaste {
+                AylaAttachMenuRow(icon: .iconClipboard, title: "Plakken", note: "Foto of pdf van je klembord", action: onPaste)
             }
         }
         .padding(.leading, 20)
@@ -34,11 +34,14 @@ struct AylaAttachMenu: View {
         .padding(.bottom, 21)
         .frame(width: 255, alignment: .leading)
         .glassEffect(.regular, in: .rect(cornerRadius: 25))
+        .onReceive(NotificationCenter.default.publisher(for: UIPasteboard.changedNotification)) { _ in
+            canPaste = Self.clipboardHasFile
+        }
     }
 }
 
 #Preview {
-    AylaAttachMenu(onAddFile: {}, onScan: {}, onPaste: { _ in })
+    AylaAttachMenu(onAddFile: {}, onScan: {}, onPaste: {})
         .padding()
         .background(Color.canvas)
 }

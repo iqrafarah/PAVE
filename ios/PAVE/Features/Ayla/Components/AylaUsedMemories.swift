@@ -46,8 +46,11 @@ struct AylaUsedMemories: View {
                 .foregroundStyle(Color.ink)
             ForEach(notes, id: \.self) { note in
                 HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: note.category.symbol)
-                        .font(.system(size: 11, weight: .semibold))
+                    Image(note.category.icon)
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 13, height: 13)
                         .foregroundStyle(Color.brandGreen)
                         .frame(width: 24, height: 24)
                         .background(note.category.tint, in: .rect(cornerRadius: 7))
