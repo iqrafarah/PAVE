@@ -1,5 +1,5 @@
 import { type AylaReply, type AylaRequest, type Block, type Screen, SCREENS } from './contract.ts'
-import { cleanMemories, type Memory, type MemorySuggestion } from './memory.ts'
+import { cleanMemories, type Memory, type MemorySuggestion, usedNotes } from './memory.ts'
 import type { ChatMessage, Complete } from './openrouter.ts'
 import { buildSystemPrompt } from './prompt.ts'
 import type { FoundVacancy, SearchVacancies } from './vacancies.ts'
@@ -35,6 +35,7 @@ interface ModelOutput {
   vacancySearch: { what: string; where: string } | null
   title: string | null
   memories: unknown
+  usedMemories: unknown
 }
 
 /** One turn of the conversation: the prompt in layers, the model, and a reply in the contract format. */
@@ -50,6 +51,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   let output = parseOutput((await deps.complete(messages)).content)
   // The first answer heard what the user said; the second one only talks about the vacancies.
   const heard = cleanMemories(output.memories, memory)
+  const firstUsed = usedNotes(output.usedMemories, memory)
   const title = cleanTitle(output.title)
   if (title && input.onTitle) input.onTitle(title)
   const blocks: Block[] = []
@@ -68,6 +70,9 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   const later = cleanMemories(output.memories, memory)
   const suggestions: MemorySuggestion[] = later.length ? later : heard
   if (suggestions.length) reply.memories = suggestions
+  const laterUsed = usedNotes(output.usedMemories, memory)
+  const used = laterUsed.length ? laterUsed : firstUsed
+  if (used.length) reply.usedMemories = used
   return reply
 }
 
@@ -113,9 +118,10 @@ function parseOutput(content: string): ModelOutput {
         : null,
       title: typeof json.title === 'string' ? json.title : null,
       memories: Array.isArray(json.memories) ? json.memories : [],
+      usedMemories: Array.isArray(json.usedMemories) ? json.usedMemories : [],
     }
   } catch {
-    return { text: content, question: null, navigation: null, vacancySearch: null, title: null, memories: [] }
+    return { text: content, question: null, navigation: null, vacancySearch: null, title: null, memories: [], usedMemories: [] }
   }
 }
 

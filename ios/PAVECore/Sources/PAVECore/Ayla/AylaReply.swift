@@ -75,6 +75,24 @@ public struct AylaReply: Codable, Equatable, Sendable {
     public var memories: [MemorySuggestion]?
     /// One suggestion, as the first version of the Ayla function sent it. Still read for older messages.
     public var memory: MemorySuggestion?
+    /// The notes about the user this answer leans on ("Gebaseerd op").
+    public var usedMemories: [UsedMemory]?
+
+    public struct UsedMemory: Codable, Equatable, Hashable, Sendable {
+        public var text: String
+        public var category: AylaMemory.Category
+
+        public init(text: String, category: AylaMemory.Category) {
+            self.text = text
+            self.category = category
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            text = try container.decode(String.self, forKey: .text)
+            category = (try? container.decode(AylaMemory.Category.self, forKey: .category)) ?? .personal
+        }
+    }
     public var usedData: [VaultCategory]
 
     /// A new fact to remember (`text`), and/or one of the user's notes it makes out of date (`replaces`, that note's
@@ -114,6 +132,7 @@ public struct AylaReply: Codable, Equatable, Sendable {
         navigation: Navigation? = nil,
         memories: [MemorySuggestion]? = nil,
         memory: MemorySuggestion? = nil,
+        usedMemories: [UsedMemory]? = nil,
         usedData: [VaultCategory] = []
     ) {
         self.version = Self.version
@@ -127,6 +146,7 @@ public struct AylaReply: Codable, Equatable, Sendable {
         self.navigation = navigation
         self.memories = memories
         self.memory = memory
+        self.usedMemories = usedMemories
         self.usedData = usedData
     }
 }

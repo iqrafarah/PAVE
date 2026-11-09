@@ -84,6 +84,7 @@ Antwoord altijd met JSON volgens het schema:
 - navigation: alleen als de gebruiker vraagt een onderdeel te openen ("open mijn kluis"). Kies screen uit: home, vault, addEvidence, plans, vacancies, profile, settings. Anders null.
 - vacancySearch: alleen als de gebruiker vacatures wil zien. Geef what (zoekwoorden, zonder persoonsgegevens) en where (plaats of "" voor heel Nederland). Anders null. Noem in text dan nog geen vacatures: die krijg je eerst te zien.
 - memories: de feiten die je voorstelt te onthouden (zie hierboven), elk apart met text (één korte zin in de je-vorm, of "" als je alleen iets weghaalt), category en replaces (de precieze tekst van een oude regel die niet meer klopt, anders null). Anders een lege lijst.
+- usedMemories: de nummers van de regels uit wat je onthoudt die je voor dit antwoord gebruikte, anders een lege lijst.
 - title: alleen als dit het eerste bericht van het gesprek is: een korte titel van 2 tot 5 woorden die zegt waar het gesprek over gaat, zoals "Softskills uitwerken" of "Cv verbeteren". Zonder aanhalingstekens en zonder punt. Anders null.
 `.trim()
 
@@ -111,7 +112,7 @@ export function buildSystemPrompt(input: PromptInput): string {
 export const MODEL_OUTPUT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['text', 'question', 'navigation', 'vacancySearch', 'title', 'memories'],
+  required: ['text', 'question', 'navigation', 'vacancySearch', 'title', 'memories', 'usedMemories'],
   properties: {
     text: { type: 'string' },
     question: {
@@ -138,6 +139,7 @@ export const MODEL_OUTPUT_SCHEMA = {
       properties: { screen: { type: 'string' } },
     },
     title: { type: ['string', 'null'] },
+    usedMemories: { type: 'array', items: { type: 'integer' } },
     memories: {
       type: 'array',
       items: {

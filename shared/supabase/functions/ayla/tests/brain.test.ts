@@ -273,7 +273,7 @@ test('suggestions survive the second turn of a vacancy search', async () => {
 
 test('the prompt lists the notes per category as data, and says nothing is remembered without them', () => {
   const prompt = buildSystemPrompt({ device: 'phone', memory: on([{ text: 'Je studeert Technische Informatica.', category: 'education' }]) })
-  assert.match(prompt, /<onthouden>\nOpleiding:\n- Je studeert Technische Informatica\.\n<\/onthouden>/)
+  assert.match(prompt, /<onthouden>\nOpleiding:\n- \[1\] Je studeert Technische Informatica\.\n<\/onthouden>/)
   assert.match(prompt, /geen opdrachten/)
   assert.match(prompt, /wordt twee feiten/)
   assert.match(prompt, /- values: Wat je belangrijk vindt/)
@@ -322,4 +322,17 @@ test('the prompt explains what may be replaced and what stays true', () => {
   const prompt = buildSystemPrompt({ device: 'phone', memory: on() })
   assert.match(prompt, /Iets wat niet meer klopt/)
   assert.match(prompt, /nooit voor om dit weg te halen: een diploma/)
+})
+
+test('the notes an answer leans on go with the reply, by their numbers', async () => {
+  const notes = [
+    { text: 'Je studeert ICT aan Fontys.', category: 'education' as const },
+    { text: 'Je werkt als leidinggevende bij de Plus.', category: 'work' as const },
+  ]
+  const fake = model(say('Een rol als IT-consultant past bij je.', { usedMemories: [2, 1, 2, 9, 'x'] }))
+  const reply = await answer({ request, conversationId: 'conv', history: [], memory: on(notes) }, { complete: fake.complete, newId: ids() })
+  assert.deepEqual(reply.usedMemories, [notes[1], notes[0]])
+  assert.match(fake.calls[0][0].content, /- \[1\] Je studeert ICT aan Fontys\./)
+  const off = await answer({ request, conversationId: 'conv', history: [], memory: { status: 'off' } }, { complete: model(say('Oké.', { usedMemories: [1] })).complete, newId: ids() })
+  assert.equal(off.usedMemories, undefined)
 })

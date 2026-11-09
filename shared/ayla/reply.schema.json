@@ -242,6 +242,20 @@
             }
           }
         },
+        "usedMemories": {
+          "type": "array",
+          "description": "Set by the server: the notes about the user (from ayla_memories) this answer leans on, so the apps can show what it is based on.",
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "required": ["text", "category"],
+            "additionalProperties": false,
+            "properties": {
+              "text": { "type": "string" },
+              "category": { "$ref": "#/$defs/memoryCategory" }
+            }
+          }
+        },
         "usedData": {
           "type": "array",
           "description": "Set by the server: the categories this answer used. Always a subset of what the user allowed.",

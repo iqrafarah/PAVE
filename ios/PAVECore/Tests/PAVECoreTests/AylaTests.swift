@@ -41,6 +41,12 @@ struct AylaReplyTests {
         #expect(removal.suggestedMemories == [.init(text: "", category: .work, replaces: "Je werkt bij de Plus.")])
     }
 
+    @Test(.enabled(if: AylaReplyTests.examplesAreAvailable))
+    func anAnswerSaysWhatItLeansOn() throws {
+        let reply = try AylaReply.decode(Data(contentsOf: Self.examples.appending(path: "09-used-memories.json")))
+        #expect(reply.usedMemories?.map(\.category) == [.education, .work])
+    }
+
     @Test func anOlderSingleSuggestionAndUnknownCategoriesStillRead() throws {
         let old = try AylaReply.decode(Data(#"{"version":1,"id":"r","conversationId":"c","text":"Top","memory":{"text":"Je woont in Eindhoven."},"blocks":[],"usedData":[]}"#.utf8))
         #expect(old.suggestedMemories == [.init(text: "Je woont in Eindhoven.", category: .personal)])

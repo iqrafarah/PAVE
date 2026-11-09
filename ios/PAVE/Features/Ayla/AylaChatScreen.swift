@@ -433,6 +433,10 @@ struct AylaChatScreen: View {
                         .foregroundStyle(Color.inkMuted)
                         .padding(.leading, 4)
                 }
+                if let used = entry.reply?.usedMemories, !used.isEmpty {
+                    AylaUsedMemories(notes: used) { showsMemory = true }
+                        .padding(.top, -4)
+                }
                 if let reply = entry.reply, !reply.suggestedMemories.isEmpty {
                     memoryCard(for: reply, isLast: entry.id == model.lastAylaEntryID)
                 }

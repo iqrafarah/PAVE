@@ -60,6 +60,8 @@ export interface AylaReply {
    * the exact text of the user's note; with an empty `text` only that). Nothing changes before the user confirms.
    */
   memories?: { text: string; category: MemoryCategory; replaces?: string }[]
+  /** The notes about the user this answer leans on, so the apps can show "Gebaseerd op". */
+  usedMemories?: { text: string; category: MemoryCategory }[]
   usedData: Category[]
 }
 
