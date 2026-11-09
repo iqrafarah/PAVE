@@ -54,6 +54,8 @@ export interface AylaReply {
   proposedAction?: { id: string; kind: 'addVaultItem' | 'updatePlan' | 'draftProfile' | 'requestValidation'; summary: string; expiresAt: string }
   blocks: Block[]
   navigation?: { screen: Screen; itemId?: string }
+  /** Ayla suggests remembering this. The apps save it only after the user confirms. */
+  memory?: { text: string }
   usedData: Category[]
 }
 

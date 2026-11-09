@@ -223,6 +223,15 @@
             "itemId": { "type": "string" }
           }
         },
+        "memory": {
+          "type": "object",
+          "description": "Ayla suggests remembering this about the user. The app saves it in ayla_memories only after the user confirms; nothing is remembered by itself.",
+          "required": ["text"],
+          "additionalProperties": false,
+          "properties": {
+            "text": { "type": "string", "minLength": 1, "maxLength": 300 }
+          }
+        },
         "usedData": {
           "type": "array",
           "description": "Set by the server: the categories this answer used. Always a subset of what the user allowed.",

@@ -1,4 +1,5 @@
 import { type AylaReply, type AylaRequest, type Block, type Screen, SCREENS } from './contract.ts'
+import { cleanMemory, type Memory } from './memory.ts'
 import type { ChatMessage, Complete } from './openrouter.ts'
 import { buildSystemPrompt } from './prompt.ts'
 import type { FoundVacancy, SearchVacancies } from './vacancies.ts'
@@ -10,6 +11,8 @@ export interface BrainInput {
   conversationId: string
   history: PastMessage[]
   firstName?: string
+  /** What the user let Ayla remember. Missing means Ayla remembers nothing. */
+  memory?: Memory
   /** Called with a short title for a new conversation, when the model gives one. */
   onTitle?: (title: string) => void
 }
@@ -31,18 +34,22 @@ interface ModelOutput {
   navigation: { screen: string } | null
   vacancySearch: { what: string; where: string } | null
   title: string | null
+  memory: string | null
 }
 
 /** One turn of the conversation: the prompt in layers, the model, and a reply in the contract format. */
 export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaReply> {
   const { request } = input
+  const memory: Memory = input.memory ?? { status: 'unavailable' }
   const messages: ChatMessage[] = [
-    { role: 'system', content: buildSystemPrompt({ device: request.device, input: request.input, firstName: input.firstName, context: request.context }) },
+    { role: 'system', content: buildSystemPrompt({ device: request.device, input: request.input, firstName: input.firstName, context: request.context, memory }) },
     ...input.history.slice(-HISTORY_LIMIT).map((m): ChatMessage => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text })),
     { role: 'user', content: withAttachments(request) },
   ]
 
   let output = parseOutput((await deps.complete(messages)).content)
+  // The first answer heard what the user said; the second one only talks about the vacancies.
+  const remember = cleanMemory(output.memory, memory)
   const title = cleanTitle(output.title)
   if (title && input.onTitle) input.onTitle(title)
   const blocks: Block[] = []
@@ -57,7 +64,10 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
     }
   }
 
-  return toReply(output, blocks, input.conversationId, deps.newId())
+  const reply = toReply(output, blocks, input.conversationId, deps.newId())
+  const suggestion = cleanMemory(output.memory, memory) ?? remember
+  if (suggestion) reply.memory = { text: suggestion }
+  return reply
 }
 
 /** The question plus the text of the files the user added, marked so the model treats it as data. */
@@ -101,9 +111,10 @@ function parseOutput(content: string): ModelOutput {
         ? { what: json.vacancySearch.what.trim(), where: String(json.vacancySearch.where ?? '').trim() }
         : null,
       title: typeof json.title === 'string' ? json.title : null,
+      memory: typeof json.memory === 'string' ? json.memory : null,
     }
   } catch {
-    return { text: content, question: null, navigation: null, vacancySearch: null, title: null }
+    return { text: content, question: null, navigation: null, vacancySearch: null, title: null, memory: null }
   }
 }
 

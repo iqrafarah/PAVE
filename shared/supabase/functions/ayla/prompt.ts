@@ -1,4 +1,5 @@
 import type { Device, Screen } from './contract.ts'
+import { type Memory, memoryPrompt } from './memory.ts'
 
 // Layer 1: who Ayla is and her rules. Adapted from the voice demo, without
 // the demo parts and without privacy claims that are not true for this setup.
@@ -82,6 +83,7 @@ Antwoord altijd met JSON volgens het schema:
 - question: alleen als je de gebruiker uit vaste keuzes laat kiezen, met 2 of 3 korte keuzes. Anders null.
 - navigation: alleen als de gebruiker vraagt een onderdeel te openen ("open mijn kluis"). Kies screen uit: home, vault, addEvidence, plans, vacancies, profile, settings. Anders null.
 - vacancySearch: alleen als de gebruiker vacatures wil zien. Geef what (zoekwoorden, zonder persoonsgegevens) en where (plaats of "" voor heel Nederland). Anders null. Noem in text dan nog geen vacatures: die krijg je eerst te zien.
+- memory: alleen als je voorstelt iets te onthouden (zie hierboven): één korte zin over de gebruiker in de je-vorm, zoals "Je hebt stage gelopen bij LiveWall." Anders null.
 - title: alleen als dit het eerste bericht van het gesprek is: een korte titel van 2 tot 5 woorden die zegt waar het gesprek over gaat, zoals "Softskills uitwerken" of "Cv verbeteren". Zonder aanhalingstekens en zonder punt. Anders null.
 `.trim()
 
@@ -90,13 +92,14 @@ export interface PromptInput {
   input?: 'voice' | 'text'
   firstName?: string
   context?: { screen: Screen }
+  memory?: Memory
 }
 
 // Layer 2b: the user talks and listens instead of reading.
 const VOICE_PROMPT = 'De gebruiker praat met je en hoort je antwoord. Antwoord in twee of drie korte, gesproken zinnen, zonder lijstjes. Noem hooguit drie dingen. Kaarten zoals vacatures ziet de gebruiker op het scherm: vat ze kort samen en lees ze niet op.'
 
 export function buildSystemPrompt(input: PromptInput): string {
-  const layers = [CORE_PROMPT, DEVICE_PROMPTS[input.device], DATA_PROMPT]
+  const layers = [CORE_PROMPT, DEVICE_PROMPTS[input.device], DATA_PROMPT, memoryPrompt(input.memory ?? { status: 'unavailable' })]
   if (input.input === 'voice' && input.device !== 'watch') layers.push(VOICE_PROMPT)
   if (input.firstName) layers.push(`De gebruiker heet ${input.firstName}.`)
   if (input.context) layers.push(`De gebruiker heeft nu ${SCREEN_NAMES[input.context.screen]} open.`)
@@ -108,7 +111,7 @@ export function buildSystemPrompt(input: PromptInput): string {
 export const MODEL_OUTPUT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['text', 'question', 'navigation', 'vacancySearch', 'title'],
+  required: ['text', 'question', 'navigation', 'vacancySearch', 'title', 'memory'],
   properties: {
     text: { type: 'string' },
     question: {
@@ -135,6 +138,7 @@ export const MODEL_OUTPUT_SCHEMA = {
       properties: { screen: { type: 'string' } },
     },
     title: { type: ['string', 'null'] },
+    memory: { type: ['string', 'null'] },
     vacancySearch: {
       type: ['object', 'null'],
       additionalProperties: false,

@@ -5,6 +5,7 @@ import { answer, cleanTitle, titleFrom, withAttachments } from '../brain.ts'
 import { parseRequest } from '../contract.ts'
 import { openRouterCompletion } from '../openrouter.ts'
 import { buildSystemPrompt } from '../prompt.ts'
+import { loadMemory } from '../memory.ts'
 import { toFoundVacancy } from '../vacancies.ts'
 
 const request = { text: 'Welke banen passen bij mij?', device: 'phone' as const, input: 'text' as const }
@@ -219,4 +220,59 @@ test('a spoken question gets a short spoken answer, but the Watch keeps its own 
   assert.match(buildSystemPrompt({ device: 'phone', input: 'voice' }), /praat met je en hoort je antwoord/)
   assert.doesNotMatch(buildSystemPrompt({ device: 'phone', input: 'text' }), /hoort je antwoord/)
   assert.doesNotMatch(buildSystemPrompt({ device: 'watch', input: 'voice' }), /hoort je antwoord/)
+})
+
+test('a suggested note goes with the reply only while the memory is on', async () => {
+  const note = say('Mooi, dat is waardevolle ervaring.', { memory: '"Je hebt stage gelopen bij LiveWall."' })
+  const on = await answer({ request, conversationId: 'conv', history: [], memory: { status: 'on', notes: [] } }, { complete: model(note).complete, newId: ids() })
+  assert.deepEqual(on.memory, { text: 'Je hebt stage gelopen bij LiveWall.' })
+  for (const memory of [{ status: 'off' as const }, { status: 'unavailable' as const }, undefined]) {
+    const reply = await answer({ request, conversationId: 'conv', history: [], memory }, { complete: model(note).complete, newId: ids() })
+    assert.equal(reply.memory, undefined)
+  }
+})
+
+test('a note Ayla already has is not suggested again', async () => {
+  const fake = model(say('Klopt!', { memory: 'je hebt stage gelopen bij LiveWall' }))
+  const reply = await answer(
+    { request, conversationId: 'conv', history: [], memory: { status: 'on', notes: ['Je hebt stage gelopen bij LiveWall.'] } },
+    { complete: fake.complete, newId: ids() },
+  )
+  assert.equal(reply.memory, undefined)
+})
+
+test('a note survives the second turn of a vacancy search', async () => {
+  const fake = model(
+    say('Ik zoek even.', { vacancySearch: { what: 'ICT', where: '' }, memory: 'Je zoekt werk in de ICT.' }),
+    say('Ik vond er twee.'),
+  )
+  const reply = await answer(
+    { request, conversationId: 'conv', history: [], memory: { status: 'on', notes: [] } },
+    { complete: fake.complete, newId: ids(), searchVacancies: async () => [] },
+  )
+  assert.deepEqual(reply.memory, { text: 'Je zoekt werk in de ICT.' })
+})
+
+test('the prompt lists the notes as data, and says nothing is remembered without them', () => {
+  const on = buildSystemPrompt({ device: 'phone', memory: { status: 'on', notes: ['Je studeert Technische Informatica.'] } })
+  assert.match(on, /<onthouden>\n- Je studeert Technische Informatica\.\n<\/onthouden>/)
+  assert.match(on, /geen opdrachten/)
+  assert.match(on, /Wat Ayla over je weet/)
+  assert.match(buildSystemPrompt({ device: 'phone' }), /Je onthoudt niets tussen gesprekken/)
+  assert.match(buildSystemPrompt({ device: 'phone', memory: { status: 'off' } }), /geheugen uitgezet/)
+})
+
+test('the memory is read with the users session and falls back when the tables are missing', async () => {
+  const supabase = (settings: unknown, notes: unknown, error: unknown = null) => ({
+    from: (table: string) => ({
+      select: () => ({
+        maybeSingle: async () => ({ data: table === 'ayla_settings' ? settings : null, error }),
+        order: () => ({ limit: async () => ({ data: notes, error }) }),
+      }),
+    }),
+  })
+  assert.deepEqual(await loadMemory(supabase(null, [{ text: 'Je studeert ICT.' }])), { status: 'on', notes: ['Je studeert ICT.'] })
+  assert.deepEqual(await loadMemory(supabase(null, [{ text: 'Nieuw' }, { text: 'Oud' }])), { status: 'on', notes: ['Oud', 'Nieuw'] })
+  assert.deepEqual(await loadMemory(supabase({ memory_enabled: false }, [{ text: 'x' }])), { status: 'off' })
+  assert.deepEqual(await loadMemory(supabase(null, null, { code: 'PGRST205' })), { status: 'unavailable' })
 })
