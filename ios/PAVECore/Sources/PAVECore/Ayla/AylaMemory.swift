@@ -38,6 +38,28 @@ public struct AylaMemory: Identifiable, Equatable, Sendable {
         }
         return plain(a) == plain(b)
     }
+
+    /// Small words that say nothing about the person. Keep in sync with STOP_WORDS in the Ayla function.
+    static let stopWords: Set<String> = [
+        "je", "jij", "jouw", "ik", "mijn", "me", "de", "het", "een", "en", "of", "bij", "als", "aan", "op", "in", "van",
+        "voor", "met", "naar", "om", "te", "dat", "die", "dit", "er", "is", "zijn", "ben", "bent", "wil", "wilt", "graag",
+        "nu", "ook",
+    ]
+
+    /// The words that carry the meaning, without capitals or accents.
+    static func meaningfulWords(_ text: String) -> Set<String> {
+        let plain = text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "nl_NL"))
+        let words = plain.lowercased().split { !($0.isASCII && ($0.isLetter || $0.isNumber)) }.map(String.init)
+        return Set(words.filter { $0.count > 1 && !stopWords.contains($0) })
+    }
+
+    /// This note already says what `suggestion` says, also in other words: nearly all of its meaningful words are in it.
+    public func covers(_ suggestion: String) -> Bool {
+        let words = Self.meaningfulWords(suggestion)
+        guard !words.isEmpty else { return true }
+        let known = Self.meaningfulWords(text)
+        return Double(words.filter(known.contains).count) / Double(words.count) >= 0.75
+    }
 }
 
 /// What Ayla remembers and whether the user lets her.
@@ -54,5 +76,10 @@ public struct AylaMemories: Equatable, Sendable {
 
     public func contains(_ text: String) -> Bool {
         notes.contains { AylaMemory.isSame($0.text, text) }
+    }
+
+    /// Ayla already knows this, maybe in other words.
+    public func knows(_ text: String) -> Bool {
+        notes.contains { $0.covers(text) }
     }
 }

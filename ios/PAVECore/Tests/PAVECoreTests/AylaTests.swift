@@ -377,6 +377,13 @@ extension SupabaseAylaServiceTests {
         #expect(request.value(forHTTPHeaderField: "Prefer") == "resolution=merge-duplicates,return=minimal")
     }
 
+    @Test func aFactInOtherWordsIsKnown() {
+        let memories = AylaMemories(notes: [AylaMemory(id: "m", text: "Je studeert ICT aan Fontys en werkt als leidinggevende bij de Plus.", source: .ayla, createdAt: .now)])
+        #expect(memories.knows("Je werkt als leidinggevende bij de PLUS."))
+        #expect(memories.knows("je studeert ICT op Fontys"))
+        #expect(!memories.knows("Je wilt IT-consultant worden."))
+    }
+
     @Test func notesAreTheSameWhateverTheCapitalsOrFullStop() {
         #expect(AylaMemory.isSame("Je studeert ICT.", "je studeert ict"))
         #expect(AylaMemory.clean("   ") == nil)

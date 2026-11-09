@@ -81,6 +81,15 @@ struct AylaMemoryModelTests {
         #expect(memory.decision(for: suggestion) == .saved)
     }
 
+    @Test func aFactAylaKnowsInOtherWordsIsNotAskedAgain() async {
+        let fake = FakeMemory()
+        fake.stored = AylaMemories(notes: [AylaMemory(id: "m1", text: "Je studeert ICT aan Fontys en werkt als leidinggevende bij de Plus.", source: .ayla, createdAt: .now)])
+        let memory = AylaMemoryModel(service: fake)
+        await memory.load()
+        let again = AylaReply(id: "r2", conversationId: "c2", text: "Top!", memory: .init(text: "Je werkt als leidinggevende bij de Plus."))
+        #expect(memory.decision(for: again) == .known)
+    }
+
     @Test func aFailedSaveCanBeTriedAgain() async {
         let fake = FakeMemory()
         fake.fails = true

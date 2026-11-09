@@ -62,7 +62,10 @@ Niet voorstellen:
 - Iets wat maar even geldt, zoals "Ik ben moe vandaag".
 - Iets wat hierboven al staat.
 - Iets over gezondheid, geloof, politiek, seksualiteit, afkomst, geld, wachtwoorden of andere mensen.
-Regels: hooguit één voorstel per antwoord, alleen wat de gebruiker zelf zei, en zeg in text nooit dat je het al hebt onthouden.
+Regels:
+- Eén feit per voorstel. Vertelt de gebruiker meer dingen tegelijk, stel dan het belangrijkste voor; de rest kan in een volgend antwoord.
+- Staat het feit hierboven al, ook in andere woorden, stel het dan niet voor.
+- Alleen wat de gebruiker zelf zei, en zeg in text nooit dat je het al hebt onthouden.
 `.trim()
 }
 
@@ -71,7 +74,27 @@ export function cleanMemory(raw: string | null | undefined, memory: Memory): str
   if (memory.status !== 'on') return null
   const text = (raw ?? '').replace(/\s+/g, ' ').trim().replace(/^["'“‘]+|["'”’]+$/g, '').trim()
   if (text.length < 3 || text.length > MAX_MEMORY_LENGTH) return null
-  const same = (a: string) => a.toLocaleLowerCase('nl').replace(/[.!?]+$/, '')
-  if (memory.notes.some((note) => same(note) === same(text))) return null
+  if (memory.notes.some((note) => covers(note, text))) return null
   return text
+}
+
+// Small words that say nothing about the person. Keep in sync with AylaMemory.stopWords on iOS.
+const STOP_WORDS = new Set([
+  'je', 'jij', 'jouw', 'ik', 'mijn', 'me', 'de', 'het', 'een', 'en', 'of', 'bij', 'als', 'aan', 'op', 'in', 'van', 'voor',
+  'met', 'naar', 'om', 'te', 'dat', 'die', 'dit', 'er', 'is', 'zijn', 'ben', 'bent', 'wil', 'wilt', 'graag', 'nu', 'ook',
+])
+
+/** The words that carry the meaning, without capitals or accents. */
+export function meaningfulWords(text: string): Set<string> {
+  const plain = text.toLocaleLowerCase('nl').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  return new Set(plain.split(/[^a-z0-9]+/).filter((word) => word.length > 1 && !STOP_WORDS.has(word)))
+}
+
+/** The note already says what the suggestion says, also in other words: nearly all of its meaningful words are in it. */
+export function covers(note: string, suggestion: string): boolean {
+  const words = meaningfulWords(suggestion)
+  if (!words.size) return true
+  const known = meaningfulWords(note)
+  const shared = [...words].filter((word) => known.has(word)).length
+  return shared / words.size >= 0.75
 }

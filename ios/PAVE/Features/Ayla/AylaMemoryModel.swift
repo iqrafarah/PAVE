@@ -22,6 +22,8 @@ final class AylaMemoryModel {
         case saved
         case declined
         case failed
+        /// Ayla already knows this in other words, so there is nothing to ask.
+        case known
     }
 
     private(set) var state = State.loading
@@ -55,7 +57,9 @@ final class AylaMemoryModel {
     /// when you open the conversation again later.
     func decision(for reply: AylaReply) -> Decision? {
         if let decision = decisions[reply.id] { return decision }
-        if let text = reply.memory?.text, memories.contains(text) { return .saved }
+        guard let text = reply.memory?.text else { return nil }
+        if memories.contains(text) { return .saved }
+        if memories.knows(text) { return .known }
         return nil
     }
 

@@ -276,3 +276,19 @@ test('the memory is read with the users session and falls back when the tables a
   assert.deepEqual(await loadMemory(supabase({ memory_enabled: false }, [{ text: 'x' }])), { status: 'off' })
   assert.deepEqual(await loadMemory(supabase(null, null, { code: 'PGRST205' })), { status: 'unavailable' })
 })
+
+test('a fact Ayla already has in other words is not suggested again', async () => {
+  const notes = ['Je studeert ICT aan Fontys en werkt als leidinggevende bij de Plus.']
+  for (const again of ['Je werkt als leidinggevende bij de PLUS.', 'je studeert ICT op Fontys']) {
+    const reply = await answer(
+      { request, conversationId: 'conv', history: [], memory: { status: 'on', notes } },
+      { complete: model(say('Top!', { memory: again })).complete, newId: ids() },
+    )
+    assert.equal(reply.memory, undefined, again)
+  }
+  const fresh = await answer(
+    { request, conversationId: 'conv', history: [], memory: { status: 'on', notes } },
+    { complete: model(say('Mooi!', { memory: 'Je wilt IT-consultant worden.' })).complete, newId: ids() },
+  )
+  assert.deepEqual(fresh.memory, { text: 'Je wilt IT-consultant worden.' })
+})

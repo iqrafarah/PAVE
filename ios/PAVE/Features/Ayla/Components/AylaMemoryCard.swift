@@ -14,7 +14,7 @@ struct AylaMemoryCard: View {
         switch decision {
         case .saved:
             saved
-        case .declined:
+        case .declined, .known:
             EmptyView()
         case nil, .saving, .failed:
             question
