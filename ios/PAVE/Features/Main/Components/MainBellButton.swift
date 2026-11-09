@@ -27,8 +27,11 @@ struct MainBellButton: View {
     @ViewBuilder
     private var bell: some View {
         if isPlain {
-            Image(.iconBell)
-                .renderingMode(.template)
+            // The Figma bell has its grey circle built in, so inside the glass capsule it is the plain Heroicon.
+            Image(.iconBellSolid)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 20, height: 20)
                 .foregroundStyle(isSelected ? Color.brandGreen : Color.ink)
                 .frame(width: 44, height: 44)
         } else {
