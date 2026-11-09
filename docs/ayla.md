@@ -1,6 +1,6 @@
 # Ayla
 
-> **Status: first version live on the shared project (2026-11-05).** The brain is the Supabase Edge Function in `shared/supabase/functions/ayla`, the contract is in `shared/ayla`, and iOS has the chat screen (`ios/PAVE/Features/Ayla`), which calls it through `SupabaseAylaService` in PAVECore. Talking, conversations and vacancy search work; the vault, consent, memory and proposals are not built yet. A change to this file is a shared change (see `Conventions.md`).
+> **Status (2026-11-09):** the brain (`shared/supabase/functions/ayla`) and Ayla's voice (`shared/supabase/functions/ayla-voice`) run on the shared Supabase project. The contract is in `shared/ayla`. iOS has the chat, voice mode and the list of chats (branch `feat/ios/ayla-voice-chats-and-menu`, see [What is built](#what-is-built-2026-11-09)). The web can use the same functions and tables today, see [Calling Ayla from the web](#calling-ayla-from-the-web). Not built yet: the vault, consent, memory and proposals. A change to this file is a shared change (see `Conventions.md`).
 
 ## The idea
 
@@ -142,7 +142,7 @@ A single place that builds the prompt, calls the model and returns a structured 
    - `navigation`: a screen to open, chosen from a fixed list the apps map to their own routes
    - `usedData`: which allowed sections were used, set by the server so it is always true
 
-Each message also carries `device`, `input` (voice or text) and optionally `context` (the open screen or item id).
+Each message also carries `device`, `input` (voice or text) and optionally `context` (the open screen or item id) and `attachments` (up to 3 files the user added with the plus button; the app reads their text on the device and sends only that text, which Ayla sees in that one message and which is not stored).
 
 ### Models (from the demo)
 
@@ -151,6 +151,93 @@ Each message also carries `device`, `input` (voice or text) and optionally `cont
 | Answers | `mistralai/mistral-medium-3.1` |
 | Fallback | `mistralai/mistral-small-3.2-24b-instruct`, `mistralai/mistral-large-2512` |
 | Voice | `openai/gpt-audio-mini`, voice `coral` |
+
+## Voice mode
+
+Like voice mode in ChatGPT and Claude: hands-free turns in the normal chat, with the pixel orb from the demo.
+
+1. The app recognises speech on the device (Dutch) and sends the question after 1.2 seconds of silence, with `input: "voice"`.
+2. `ayla` answers as usual; for spoken questions the prompt asks for two or three short spoken sentences.
+3. The app sends the answer text to `ayla-voice`, which streams Ayla's voice (pcm16, 24 kHz, mono) from `openai/gpt-audio-mini` (voice `coral`). The demo's stop rules keep the voice from talking past the text.
+4. The app plays the audio as it arrives and listens again. The user can interrupt by talking (echo cancellation keeps Ayla's own voice out of the microphone) or by tapping the orb.
+
+Only text leaves the device: the user's voice never does. The text of Ayla's answer goes to OpenAI through OpenRouter, so it may contain whatever the answer says (for example the user's name).
+
+## What is built (2026-11-09)
+
+### On the server
+
+| Part | What it does |
+| --- | --- |
+| `ayla/index.ts` | Checks the session (two-step verification required, else `insufficient_aal`), creates or finds the conversation, stores the question and the answer |
+| `ayla/prompt.ts` | The prompt in layers: core, device, data, output |
+| `ayla/openrouter.ts` | Mistral through OpenRouter; a second model starts when the first is slow |
+| `ayla/vacancies.ts` | Adzuna search; only search terms leave PAVE |
+| `ayla/brain.ts` | One turn: prompt, model, vacancies, reply in the contract format |
+| `ayla-voice/` | Reads one answer out loud and streams the audio (pcm16, 24 kHz, mono) |
+| `migrations/…_ayla_conversations.sql` | `ayla_conversations` and `ayla_messages` with row level security; both are in the Realtime publication |
+| `migrations/…_ayla_conversation_pins.sql` | `pinned_at` for "Vastgezet". Until it runs, the apps hide pinning |
+
+The existing policy "Own conversations" (`for all`) already allows renaming and deleting your own conversations; deleting removes the messages too (`on delete cascade`). No extra database change is needed for that.
+
+### On iOS
+
+Details and the reasons behind each choice are in `ios/README.md` (section Ayla).
+
+- **Client** (`ios/PAVECore`): `SupabaseAylaService` sends questions, reads, pins, renames, deletes and searches conversations, and streams the voice. Renaming and deleting ask for the changed row back (`Prefer: return=representation`): an empty answer means a policy refused it, and the app puts the chat back with a message. `AylaRealtime` listens to `ayla_conversations` over Supabase Realtime so the list updates by itself.
+- **Chat:** a welcome that types itself out, files read on the phone (only their text is sent, for that one message), dictation, vacancy cards in a sheet from below.
+- **Voice mode:** speech is recognised on the phone in Dutch and sent as text after 1.2 seconds of silence; the answer is read out by `ayla-voice` while it streams in; echo cancellation lets you interrupt Ayla. The pixel orb can be dragged between full screen and the conversation, as in ChatGPT.
+- **Chats:** grouped by date (Vastgezet, Vandaag, Gisteren, Afgelopen 7 dagen, Afgelopen 30 dagen, Eerder), swipe to pin, rename or delete, delete with a few seconds to undo, select several, search in titles and in messages, live updates, and an opt-in (off by default) to put chat titles in the iPhone's own search.
+- **Menu:** laid out like ChatGPT, a sidebar on iPad and the open iPhone Duo held sideways, and a layout around the fold of a partly folded iPhone Duo.
+
+## Calling Ayla from the web
+
+The web uses the same two functions and the same tables, so a conversation started on the iPhone continues on the web. The user must be signed in with two-step verification (`aal2`), otherwise both functions answer `403 insufficient_aal`.
+
+**Ask a question** (with `@nuxtjs/supabase`, which sends the session along):
+
+```ts
+const supabase = useSupabaseClient()
+const { data: reply, error } = await supabase.functions.invoke('ayla', {
+  body: {
+    text: 'Welke stages passen bij mij?',
+    device: 'web',
+    input: 'text',               // 'voice' when the question was spoken
+    conversationId,              // leave out for a new conversation
+    // context: { screen: 'vault', itemId }, attachments: [{ name, text }]  (optional)
+  },
+})
+// Keep reply.conversationId for the next question. Show reply.text, reply.question?.choices,
+// reply.blocks (type 'vacancies' for now) and open reply.navigation?.screen if it is set.
+```
+
+**Conversations and messages** come straight from the tables; row level security only returns the user's own:
+
+```ts
+await supabase.from('ayla_conversations').select('*').order('updated_at', { ascending: false }).limit(50)
+await supabase.from('ayla_messages').select('id,role,text,reply').eq('conversation_id', id).order('created_at')
+await supabase.from('ayla_conversations').update({ title }).eq('id', id).select('id')   // rename
+await supabase.from('ayla_conversations').update({ pinned_at: new Date().toISOString() }).eq('id', id) // pin (null to unpin)
+await supabase.from('ayla_conversations').delete().eq('id', id).select('id')           // delete, messages go along
+```
+
+Check that `select('id')` returned a row after renaming or deleting; an empty result means nothing changed.
+
+**Live updates:**
+
+```ts
+supabase
+  .channel('ayla-conversations')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'ayla_conversations', filter: `user_id=eq.${userId}` }, reload)
+  .subscribe()
+```
+
+**Voice on the web:**
+
+1. Recognise speech in the browser (Web Speech API, `lang = 'nl-NL'`) and send the text to `ayla` with `input: 'voice'`.
+2. Send the answer text to `ayla-voice` with `fetch` (a stream, so not `functions.invoke`): `POST {SUPABASE_URL}/functions/v1/ayla-voice` with `Authorization: Bearer <access_token>`, `apikey: <publishable key>` and `{ "text": answer }`.
+3. Read `response.body` piece by piece: raw pcm16, 24 kHz, mono. Turn each piece into `Float32` samples (divide by 32768) and play it with the Web Audio API (`AudioContext({ sampleRate: 24000 })`).
+4. An `OPTIONS` request to either function wakes it up without asking anything, so the first answer does not wait for a cold start.
 
 ## Privacy: things to be honest about
 
