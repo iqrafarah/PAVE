@@ -2,8 +2,8 @@ import Foundation
 
 /// Something Ayla remembers about the user, shared by web, iPhone and Watch (`ayla_memories`). Nothing is saved by
 /// itself: Ayla suggests a note in her reply (`AylaReply.memory`) and the user keeps it, or writes one themselves.
-public struct AylaMemory: Identifiable, Equatable, Sendable {
-    public enum Source: String, Sendable {
+public struct AylaMemory: Identifiable, Hashable, Sendable {
+    public enum Source: String, Hashable, Sendable {
         /// Suggested by Ayla and kept by the user.
         case ayla
         /// Written by the user.
@@ -120,6 +120,11 @@ public struct AylaMemories: Equatable, Sendable {
 
     public func contains(_ text: String) -> Bool {
         notes.contains { AylaMemory.isSame($0.text, text) }
+    }
+
+    /// The user's note with this text, as Ayla quoted it.
+    public func note(withText text: String) -> AylaMemory? {
+        notes.first { AylaMemory.isSame($0.text, text) }
     }
 
     /// Ayla already knows this, maybe in other words.

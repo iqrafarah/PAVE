@@ -59,7 +59,7 @@ struct AylaMemoryModelTests {
         #expect(memory.decision(for: suggestion) == nil)
         #expect(fake.saved.isEmpty)
 
-        memory.accept(suggestion.suggestedMemories, replyID: "r1", conversationID: "c1")
+        memory.accept(memory.changes(in: suggestion), replyID: "r1", conversationID: "c1")
         await waitFor { memory.decision(for: suggestion) == .saved }
 
         #expect(memory.decision(for: suggestion) == .saved)
@@ -99,9 +99,9 @@ struct AylaMemoryModelTests {
         let fake = FakeMemory()
         let memory = AylaMemoryModel(service: fake)
         await memory.load()
-        #expect(memory.pending(in: two).count == 2)
+        #expect(memory.changes(in: two).count == 2)
 
-        memory.accept(two.suggestedMemories, replyID: "r2", conversationID: "c1")
+        memory.accept(memory.changes(in: two), replyID: "r2", conversationID: "c1")
         await waitFor { memory.decision(for: two) == .saved }
 
         #expect(fake.saved.map(\.0) == ["Je studeert ICT aan Fontys.", "Je werkt als leidinggevende bij de Plus."])
@@ -112,7 +112,7 @@ struct AylaMemoryModelTests {
     @Test func onlyTheTickedFactsAreSaved() async {
         let fake = FakeMemory()
         let memory = AylaMemoryModel(service: fake)
-        memory.accept([two.suggestedMemories[1]], replyID: "r2", conversationID: "c1")
+        memory.accept([memory.changes(in: two)[1]], replyID: "r2", conversationID: "c1")
         await waitFor { memory.decision(for: two) == .saved }
         #expect(fake.saved.map(\.0) == ["Je werkt als leidinggevende bij de Plus."])
     }
@@ -122,15 +122,63 @@ struct AylaMemoryModelTests {
         fake.stored = AylaMemories(notes: [AylaMemory(id: "m1", text: "Je studeert ICT op Fontys.", category: .education, source: .ayla, createdAt: .now)])
         let memory = AylaMemoryModel(service: fake)
         await memory.load()
-        #expect(memory.pending(in: two).map(\.text) == ["Je werkt als leidinggevende bij de Plus."])
+        #expect(memory.changes(in: two).map(\.text) == ["Je werkt als leidinggevende bij de Plus."])
         #expect(memory.decision(for: two) == nil)
+    }
+
+    @Test func aNewJobCanReplaceTheOldOneOrLeaveItBe() async {
+        let fake = FakeMemory()
+        let old = AylaMemory(id: "plus", text: "Je werkt als leidinggevende bij de Plus.", category: .work, source: .ayla, createdAt: .now)
+        fake.stored = AylaMemories(notes: [old])
+        let memory = AylaMemoryModel(service: fake)
+        await memory.load()
+        let reply = AylaReply(id: "r5", conversationId: "c1", text: "Gefeliciteerd!", memories: [
+            .init(text: "Je werkt bij Albert Heijn.", category: .work, replaces: "je werkt als leidinggevende bij de plus"),
+        ])
+        let changes = memory.changes(in: reply)
+        #expect(changes.map(\.isRemoval) == [false, true])
+
+        memory.accept(changes, replyID: "r5", conversationID: "c1")
+        await waitFor { memory.decision(for: reply) == .saved }
+
+        #expect(fake.forgotten == ["plus"])
+        #expect(memory.notes.map(\.text) == ["Je werkt bij Albert Heijn."])
+    }
+
+    @Test func keepingTheOldJobLeavesItStanding() async {
+        let fake = FakeMemory()
+        let old = AylaMemory(id: "plus", text: "Je werkt als leidinggevende bij de Plus.", category: .work, source: .ayla, createdAt: .now)
+        fake.stored = AylaMemories(notes: [old])
+        let memory = AylaMemoryModel(service: fake)
+        await memory.load()
+        let reply = AylaReply(id: "r6", conversationId: "c1", text: "Leuk!", memories: [
+            .init(text: "Je werkt bij Albert Heijn.", category: .work, replaces: old.text),
+        ])
+
+        memory.accept(memory.changes(in: reply).filter { !$0.isRemoval }, replyID: "r6", conversationID: "c1")
+        await waitFor { memory.decision(for: reply) == .saved }
+
+        #expect(fake.forgotten.isEmpty)
+        #expect(Set(memory.notes.map(\.text)) == ["Je werkt bij Albert Heijn.", old.text])
+    }
+
+    @Test func sayingAJobIsOverOnlyOffersToTakeItAway() async {
+        let fake = FakeMemory()
+        let old = AylaMemory(id: "plus", text: "Je werkt als leidinggevende bij de Plus.", category: .work, source: .ayla, createdAt: .now)
+        fake.stored = AylaMemories(notes: [old])
+        let memory = AylaMemoryModel(service: fake)
+        await memory.load()
+        let reply = AylaReply(id: "r7", conversationId: "c1", text: "Oké.", memories: [.init(text: "", category: .work, replaces: old.text)])
+        #expect(memory.changes(in: reply).map(\.isRemoval) == [true])
+        memory.decline(replyID: "r7")
+        #expect(memory.notes == [old])
     }
 
     @Test func aFailedSaveCanBeTriedAgain() async {
         let fake = FakeMemory()
         fake.fails = true
         let memory = AylaMemoryModel(service: fake)
-        memory.accept(suggestion.suggestedMemories, replyID: "r1", conversationID: "c1")
+        memory.accept(memory.changes(in: suggestion), replyID: "r1", conversationID: "c1")
         await waitFor { memory.decision(for: suggestion) == .failed }
         #expect(memory.decision(for: suggestion) == .failed)
         #expect(memory.notes.isEmpty)

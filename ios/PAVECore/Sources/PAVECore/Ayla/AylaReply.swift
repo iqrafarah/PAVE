@@ -77,25 +77,30 @@ public struct AylaReply: Codable, Equatable, Sendable {
     public var memory: MemorySuggestion?
     public var usedData: [VaultCategory]
 
+    /// A new fact to remember (`text`), and/or one of the user's notes it makes out of date (`replaces`, that note's
+    /// exact text). An empty `text` with `replaces` only suggests taking the old note away.
     public struct MemorySuggestion: Codable, Equatable, Hashable, Sendable {
         public var text: String
         public var category: AylaMemory.Category
+        public var replaces: String?
 
-        public init(text: String, category: AylaMemory.Category = .personal) {
+        public init(text: String, category: AylaMemory.Category = .personal, replaces: String? = nil) {
             self.text = text
             self.category = category
+            self.replaces = replaces
         }
 
         public init(from decoder: any Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            text = try container.decode(String.self, forKey: .text)
+            text = (try? container.decode(String.self, forKey: .text)) ?? ""
             category = (try? container.decode(AylaMemory.Category.self, forKey: .category)) ?? .personal
+            replaces = try? container.decodeIfPresent(String.self, forKey: .replaces)
         }
     }
 
-    /// Everything Ayla suggests remembering in this reply.
+    /// Everything Ayla suggests remembering or taking away in this reply.
     public var suggestedMemories: [MemorySuggestion] {
-        memories ?? memory.map { [$0] } ?? []
+        (memories ?? memory.map { [$0] } ?? []).filter { !$0.text.isEmpty || $0.replaces != nil }
     }
 
     public init(

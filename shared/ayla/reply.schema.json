@@ -229,15 +229,16 @@
         },
         "memories": {
           "type": "array",
-          "description": "Ayla suggests remembering these facts about the user, one per item. The app saves them in ayla_memories only after the user confirms; nothing is remembered by itself.",
+          "description": "Ayla suggests remembering these facts about the user, one per item, and taking away notes they make out of date. The app changes ayla_memories only after the user confirms; nothing is remembered or forgotten by itself.",
           "maxItems": 4,
           "items": {
             "type": "object",
             "required": ["text", "category"],
             "additionalProperties": false,
             "properties": {
-              "text": { "type": "string", "minLength": 1, "maxLength": 300 },
-              "category": { "$ref": "#/$defs/memoryCategory" }
+              "text": { "type": "string", "maxLength": 300, "description": "The new fact. Empty when Ayla only suggests taking an old note away." },
+              "category": { "$ref": "#/$defs/memoryCategory" },
+              "replaces": { "type": "string", "minLength": 1, "description": "The exact text of one of the user's notes this makes out of date, such as a previous job. The user decides whether it goes; they may have both." }
             }
           }
         },

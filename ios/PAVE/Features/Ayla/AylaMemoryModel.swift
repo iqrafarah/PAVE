@@ -61,45 +61,89 @@ final class AylaMemoryModel {
         }
     }
 
+    /// One line on the card under Ayla's answer: a fact to keep, or an old note to take away.
+    struct Change: Hashable, Identifiable {
+        enum Kind: Hashable {
+            case keep
+            /// Take this note away; it is out of date because of what you told.
+            case remove(AylaMemory)
+        }
+
+        let suggestion: AylaReply.MemorySuggestion
+        let kind: Kind
+
+        var id: String {
+            switch kind {
+            case .keep: "keep-\(suggestion.text)"
+            case .remove(let note): "remove-\(note.id)"
+            }
+        }
+    }
+
     /// The card under Ayla's answer. Once you decided, the card makes room; kept notes stay recognisable, also when
     /// you open the conversation again later. Facts Ayla already knows in other words are left out.
     func decision(for reply: AylaReply) -> Decision? {
         if let decision = decisions[reply.id] { return decision }
         let suggestions = reply.suggestedMemories
         guard !suggestions.isEmpty else { return nil }
-        if suggestions.allSatisfy({ memories.contains($0.text) }) { return .saved }
-        if pending(in: reply).isEmpty { return .known }
-        return nil
+        guard changes(in: reply).isEmpty else { return nil }
+        let isDone = suggestions.allSatisfy { $0.text.isEmpty || memories.contains($0.text) }
+        return isDone ? .saved : .known
     }
 
-    /// The suggestions in a reply that Ayla does not know yet.
-    func pending(in reply: AylaReply) -> [AylaReply.MemorySuggestion] {
-        reply.suggestedMemories.filter { !memories.knows($0.text) }
+    /// The lines of a card being saved, so they stay put while the notes change underneath.
+    private var savingChanges: [String: [Change]] = [:]
+
+    /// What is still to decide in a reply: new facts Ayla does not know yet, and old notes that are still there.
+    func changes(in reply: AylaReply) -> [Change] {
+        if let saving = savingChanges[reply.id] { return saving }
+        return reply.suggestedMemories.flatMap { suggestion -> [Change] in
+            var changes: [Change] = []
+            if !suggestion.text.isEmpty, !memories.knows(suggestion.text) {
+                changes.append(Change(suggestion: suggestion, kind: .keep))
+            }
+            if let replaces = suggestion.replaces, let note = memories.note(withText: replaces) {
+                changes.append(Change(suggestion: suggestion, kind: .remove(note)))
+            }
+            return changes
+        }
     }
 
-    /// Saves the facts you kept ticked. When one fails, the card stays so you can try again.
-    func accept(_ suggestions: [AylaReply.MemorySuggestion], replyID: String, conversationID: String?) {
-        guard let service, !suggestions.isEmpty, decisions[replyID] != .saving else { return }
+    /// Does what you kept ticked: saves new facts first, then takes old notes away. When something fails, the card
+    /// stays so you can try again.
+    func accept(_ changes: [Change], replyID: String, conversationID: String?) {
+        guard let service, !changes.isEmpty, decisions[replyID] != .saving else { return }
         decisions[replyID] = .saving
+        savingChanges[replyID] = changes
         Task {
             var failed = false
-            for suggestion in suggestions where !memories.knows(suggestion.text) {
+            for change in changes where change.kind == .keep && !memories.knows(change.suggestion.text) {
                 do {
                     let memory = try await service.remember(
-                        suggestion.text, category: suggestion.category, source: .ayla, conversationID: conversationID
+                        change.suggestion.text, category: change.suggestion.category, source: .ayla, conversationID: conversationID
                     )
                     memories.notes.insert(memory, at: 0)
                     if state != .ready { state = .ready }
                 } catch AylaError.notSetUp {
                     failed = true
                     state = .notSetUp
-                    break
                 } catch {
                     failed = true
                 }
             }
+            for change in changes {
+                guard case .remove(let note) = change.kind, memories.notes.contains(where: { $0.id == note.id }) else { continue }
+                do {
+                    try await service.forgetMemory(id: note.id)
+                    memories.notes.removeAll { $0.id == note.id }
+                } catch {
+                    failed = true
+                }
+            }
+            savingChanges[replyID] = nil
             decisions[replyID] = failed ? .failed : .saved
-            if !failed { AccessibilityNotification.Announcement("Onthouden").post() }
+            let removes = changes.contains { if case .remove = $0.kind { true } else { false } }
+            if !failed { AccessibilityNotification.Announcement(removes ? "Bijgewerkt" : "Onthouden").post() }
         }
     }
 

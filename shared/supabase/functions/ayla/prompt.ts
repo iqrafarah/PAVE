@@ -83,7 +83,7 @@ Antwoord altijd met JSON volgens het schema:
 - question: alleen als je de gebruiker uit vaste keuzes laat kiezen, met 2 of 3 korte keuzes. Anders null.
 - navigation: alleen als de gebruiker vraagt een onderdeel te openen ("open mijn kluis"). Kies screen uit: home, vault, addEvidence, plans, vacancies, profile, settings. Anders null.
 - vacancySearch: alleen als de gebruiker vacatures wil zien. Geef what (zoekwoorden, zonder persoonsgegevens) en where (plaats of "" voor heel Nederland). Anders null. Noem in text dan nog geen vacatures: die krijg je eerst te zien.
-- memories: de feiten die je voorstelt te onthouden (zie hierboven), elk apart met text (één korte zin in de je-vorm) en category. Anders een lege lijst.
+- memories: de feiten die je voorstelt te onthouden (zie hierboven), elk apart met text (één korte zin in de je-vorm, of "" als je alleen iets weghaalt), category en replaces (de precieze tekst van een oude regel die niet meer klopt, anders null). Anders een lege lijst.
 - title: alleen als dit het eerste bericht van het gesprek is: een korte titel van 2 tot 5 woorden die zegt waar het gesprek over gaat, zoals "Softskills uitwerken" of "Cv verbeteren". Zonder aanhalingstekens en zonder punt. Anders null.
 `.trim()
 
@@ -143,8 +143,12 @@ export const MODEL_OUTPUT_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['text', 'category'],
-        properties: { text: { type: 'string' }, category: { type: 'string', enum: [...MEMORY_CATEGORIES] } },
+        required: ['text', 'category', 'replaces'],
+        properties: {
+          text: { type: 'string' },
+          category: { type: 'string', enum: [...MEMORY_CATEGORIES] },
+          replaces: { type: ['string', 'null'] },
+        },
       },
     },
     vacancySearch: {

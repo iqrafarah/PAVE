@@ -415,9 +415,10 @@ struct AylaChatScreen: View {
         let decision = memory.decision(for: reply)
         if decision == .saved || isLast {
             AylaMemoryCard(
-                suggestions: decision == .saving || decision == .failed ? reply.suggestedMemories : memory.pending(in: reply),
+                changes: memory.changes(in: reply),
+                didUpdate: reply.suggestedMemories.contains { $0.replaces != nil },
                 decision: decision,
-                onKeep: { memory.accept($0, replyID: reply.id, conversationID: model.conversationID) },
+                onConfirm: { memory.accept($0, replyID: reply.id, conversationID: model.conversationID) },
                 onDecline: { memory.decline(replyID: reply.id) },
                 onShowMemory: { showsMemory = true }
             )

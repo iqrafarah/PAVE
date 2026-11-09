@@ -55,8 +55,11 @@ export interface AylaReply {
   proposedAction?: { id: string; kind: 'addVaultItem' | 'updatePlan' | 'draftProfile' | 'requestValidation'; summary: string; expiresAt: string }
   blocks: Block[]
   navigation?: { screen: Screen; itemId?: string }
-  /** Ayla suggests remembering these facts, one per item. The apps save them only after the user confirms. */
-  memories?: { text: string; category: MemoryCategory }[]
+  /**
+   * Ayla suggests remembering these facts, one per item, and taking away notes they make out of date (`replaces`,
+   * the exact text of the user's note; with an empty `text` only that). Nothing changes before the user confirms.
+   */
+  memories?: { text: string; category: MemoryCategory; replaces?: string }[]
   usedData: Category[]
 }
 

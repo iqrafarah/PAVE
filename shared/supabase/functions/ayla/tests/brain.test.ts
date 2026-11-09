@@ -295,3 +295,31 @@ test('the memory is read with the users session and falls back when the tables a
   assert.deepEqual(await loadMemory(supabase({ memory_enabled: false }, [{ text: 'x' }])), { status: 'off' })
   assert.deepEqual(await loadMemory(supabase(null, null, { code: 'PGRST205' })), { status: 'unavailable' })
 })
+
+test('a new job can replace the old one, but only an existing note', async () => {
+  const notes = [{ text: 'Je werkt als leidinggevende bij de Plus.', category: 'work' as const }]
+  const output = say('Gefeliciteerd!', {
+    memories: [
+      { text: 'Je werkt bij Albert Heijn.', category: 'work', replaces: 'je werkt als leidinggevende bij de plus' },
+      { text: 'Je woont in Tilburg.', category: 'personal', replaces: 'Je woont in Eindhoven.' },
+    ],
+  })
+  const reply = await answer({ request, conversationId: 'conv', history: [], memory: on(notes) }, { complete: model(output).complete, newId: ids() })
+  assert.deepEqual(reply.memories, [
+    { text: 'Je werkt bij Albert Heijn.', category: 'work', replaces: 'Je werkt als leidinggevende bij de Plus.' },
+    { text: 'Je woont in Tilburg.', category: 'personal' },
+  ])
+})
+
+test('saying something is over only suggests taking the note away', async () => {
+  const notes = [{ text: 'Je werkt als leidinggevende bij de Plus.', category: 'work' as const }]
+  const output = say('Oké, duidelijk.', { memories: [{ text: '', category: 'work', replaces: 'Je werkt als leidinggevende bij de Plus.' }, { text: '', category: 'work', replaces: null }] })
+  const reply = await answer({ request, conversationId: 'conv', history: [], memory: on(notes) }, { complete: model(output).complete, newId: ids() })
+  assert.deepEqual(reply.memories, [{ text: '', category: 'work', replaces: 'Je werkt als leidinggevende bij de Plus.' }])
+})
+
+test('the prompt explains what may be replaced and what stays true', () => {
+  const prompt = buildSystemPrompt({ device: 'phone', memory: on() })
+  assert.match(prompt, /Iets wat niet meer klopt/)
+  assert.match(prompt, /nooit voor om dit weg te halen: een diploma/)
+})

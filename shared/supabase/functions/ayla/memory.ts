@@ -22,6 +22,12 @@ export const CATEGORY_NAMES: Record<MemoryCategory, string> = {
 
 export interface MemoryNote { text: string; category: MemoryCategory }
 
+/**
+ * A change Ayla suggests: a new fact (`text`), and/or an existing note it makes out of date (`replaces`, the note's
+ * exact text). An empty `text` with `replaces` only suggests taking the old note away.
+ */
+export interface MemorySuggestion { text: string; category: MemoryCategory; replaces?: string }
+
 /** `unavailable`: the tables are not there yet, so Ayla neither remembers nor suggests anything. */
 export type Memory = { status: 'on'; notes: MemoryNote[] } | { status: 'off' } | { status: 'unavailable' }
 
@@ -100,7 +106,15 @@ Niet voorstellen:
 - Iets wat maar even geldt, zoals "Ik ben moe vandaag".
 - Iets wat hierboven al staat, ook niet in andere woorden.
 - Iets over gezondheid, geloof, politiek, seksualiteit, afkomst, geld, wachtwoorden of andere mensen.
-Regels: één feit per regel in de je-vorm, hooguit ${MAX_SUGGESTIONS} per antwoord, alleen wat de gebruiker zelf zei, en zeg in text nooit dat je het al hebt onthouden.
+Regels: één feit per regel in de je-vorm, hooguit ${MAX_SUGGESTIONS} per antwoord, alleen wat de gebruiker zelf zei, en zeg in text nooit dat je het al hebt onthouden. Zet replaces op null, tenzij hieronder anders staat.
+
+## Iets wat niet meer klopt
+Maakt wat de gebruiker vertelt iets hierboven onwaar, zet dan in replaces precies de tekst van die oude regel. De gebruiker beslist of het weg mag, want iemand kan bijvoorbeeld twee banen tegelijk hebben.
+- "Ik werk nu bij Albert Heijn" terwijl er staat "Je werkt als leidinggevende bij de Plus." → { text: "Je werkt bij Albert Heijn.", category: "work", replaces: "Je werkt als leidinggevende bij de Plus." }
+- "Ik werk niet meer bij de Plus" → { text: "", category: "work", replaces: "Je werkt als leidinggevende bij de Plus." }
+- "Ik heb mijn diploma ICT gehaald" terwijl er staat "Je studeert ICT aan Fontys." → { text: "Je hebt je diploma ICT van Fontys.", category: "education", replaces: "Je studeert ICT aan Fontys." }
+- "Ik woon nu in Tilburg" terwijl er staat "Je woont in Eindhoven." → { text: "Je woont in Tilburg.", category: "personal", replaces: "Je woont in Eindhoven." }
+Alleen voor wat nu geldt: een huidige baan of functie, een opleiding die je nu volgt, waar je woont, een doel dat verandert. Stel nooit voor om dit weg te halen: een diploma of afgeronde opleiding, een stage of baan die al voorbij is, een vaardigheid of iets wat waar blijft.
 `.trim()
 }
 
@@ -114,21 +128,40 @@ function listByCategory(notes: MemoryNote[]): string {
     .join('\n')
 }
 
-/** The suggestions the apps can show: short lines in the "je" form, each one fact Ayla does not have yet. */
-export function cleanMemories(raw: unknown, memory: Memory): MemoryNote[] {
+/**
+ * The suggestions the apps can show: short lines in the "je" form, each one fact Ayla does not have yet, and old
+ * notes they make out of date. `replaces` is kept only when it is really one of the user's notes.
+ */
+export function cleanMemories(raw: unknown, memory: Memory): MemorySuggestion[] {
   if (memory.status !== 'on' || !Array.isArray(raw)) return []
-  const kept: MemoryNote[] = []
+  const kept: MemorySuggestion[] = []
   for (const item of raw) {
-    const value = item as { text?: unknown; category?: unknown }
-    if (typeof value?.text !== 'string') continue
-    const text = value.text.replace(/\s+/g, ' ').trim().replace(/^["'“‘]+|["'”’]+$/g, '').trim()
-    if (text.length < 3 || text.length > MAX_MEMORY_LENGTH) continue
-    const known = [...memory.notes.map((note) => note.text), ...kept.map((note) => note.text)]
-    if (known.some((note) => covers(note, text))) continue
-    kept.push({ text, category: toCategory(value.category) })
+    const value = item as { text?: unknown; category?: unknown; replaces?: unknown }
+    let text = typeof value?.text === 'string' ? tidy(value.text) : ''
+    if (text.length < 3 || text.length > MAX_MEMORY_LENGTH) text = ''
+    let replaces = matchNote(value?.replaces, memory.notes)
+    if (replaces && kept.some((suggestion) => suggestion.replaces === replaces)) replaces = undefined
+    const known = [...memory.notes.map((note) => note.text), ...kept.map((suggestion) => suggestion.text)].filter(Boolean)
+    if (text && known.some((note) => covers(note, text))) text = ''
+    if (!text && !replaces) continue
+    kept.push({ text, category: toCategory(value.category), ...(replaces ? { replaces } : {}) })
     if (kept.length === MAX_SUGGESTIONS) break
   }
   return kept
+}
+
+function tidy(text: string): string {
+  return text.replace(/\s+/g, ' ').trim().replace(/^["'“‘]+|["'”’]+$/g, '').trim()
+}
+
+/** The user's note the model meant, by its exact text or the same words. */
+function matchNote(raw: unknown, notes: MemoryNote[]): string | undefined {
+  if (typeof raw !== 'string' || !tidy(raw)) return undefined
+  const text = tidy(raw)
+  const plain = (value: string) => value.toLocaleLowerCase('nl').replace(/[.!?]+$/, '').trim()
+  const exact = notes.find((note) => plain(note.text) === plain(text))
+  if (exact) return exact.text
+  return notes.find((note) => covers(note.text, text) && covers(text, note.text))?.text
 }
 
 // Small words that say nothing about the person. Keep in sync with AylaMemory.stopWords on iOS.

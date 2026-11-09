@@ -1,5 +1,5 @@
 import { type AylaReply, type AylaRequest, type Block, type Screen, SCREENS } from './contract.ts'
-import { cleanMemories, type Memory, type MemoryNote } from './memory.ts'
+import { cleanMemories, type Memory, type MemorySuggestion } from './memory.ts'
 import type { ChatMessage, Complete } from './openrouter.ts'
 import { buildSystemPrompt } from './prompt.ts'
 import type { FoundVacancy, SearchVacancies } from './vacancies.ts'
@@ -66,7 +66,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
 
   const reply = toReply(output, blocks, input.conversationId, deps.newId())
   const later = cleanMemories(output.memories, memory)
-  const suggestions: MemoryNote[] = later.length ? later : heard
+  const suggestions: MemorySuggestion[] = later.length ? later : heard
   if (suggestions.length) reply.memories = suggestions
   return reply
 }

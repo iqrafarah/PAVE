@@ -33,6 +33,14 @@ struct AylaReplyTests {
         ])
     }
 
+    @Test(.enabled(if: AylaReplyTests.examplesAreAvailable))
+    func aSuggestionCanReplaceAnOldNote() throws {
+        let reply = try AylaReply.decode(Data(contentsOf: Self.examples.appending(path: "08-memory-replaces.json")))
+        #expect(reply.suggestedMemories.first?.replaces == "Je werkt als leidinggevende bij de Plus.")
+        let removal = try AylaReply.decode(Data(#"{"version":1,"id":"r","conversationId":"c","text":"Oké","memories":[{"text":"","category":"work","replaces":"Je werkt bij de Plus."},{"text":"","category":"work"}],"blocks":[],"usedData":[]}"#.utf8))
+        #expect(removal.suggestedMemories == [.init(text: "", category: .work, replaces: "Je werkt bij de Plus.")])
+    }
+
     @Test func anOlderSingleSuggestionAndUnknownCategoriesStillRead() throws {
         let old = try AylaReply.decode(Data(#"{"version":1,"id":"r","conversationId":"c","text":"Top","memory":{"text":"Je woont in Eindhoven."},"blocks":[],"usedData":[]}"#.utf8))
         #expect(old.suggestedMemories == [.init(text: "Je woont in Eindhoven.", category: .personal)])
