@@ -71,7 +71,17 @@ public struct AylaReply: Codable, Equatable, Sendable {
     public var proposedAction: ProposedAction?
     public var blocks: [AylaBlock]
     public var navigation: Navigation?
+    /// Ayla suggests remembering this; it is saved only after the user confirms (`AylaMemory`).
+    public var memory: MemorySuggestion?
     public var usedData: [VaultCategory]
+
+    public struct MemorySuggestion: Codable, Equatable, Sendable {
+        public var text: String
+
+        public init(text: String) {
+            self.text = text
+        }
+    }
 
     public init(
         id: String,
@@ -82,6 +92,7 @@ public struct AylaReply: Codable, Equatable, Sendable {
         proposedAction: ProposedAction? = nil,
         blocks: [AylaBlock] = [],
         navigation: Navigation? = nil,
+        memory: MemorySuggestion? = nil,
         usedData: [VaultCategory] = []
     ) {
         self.version = Self.version
@@ -93,6 +104,7 @@ public struct AylaReply: Codable, Equatable, Sendable {
         self.proposedAction = proposedAction
         self.blocks = blocks
         self.navigation = navigation
+        self.memory = memory
         self.usedData = usedData
     }
 }

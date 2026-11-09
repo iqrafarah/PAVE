@@ -9,6 +9,8 @@ public protocol AylaService: Sendable {
     func rename(_ title: String, conversationID: String) async throws
     /// Removes the conversation and its messages for good.
     func delete(conversationID: String) async throws
+    /// Removes the last question and Ayla's answer to it, so the question can be asked again or changed.
+    func removeLastTurn(in conversationID: String) async throws
     /// Messages in the user's conversations that contain `text`, the most recent first.
     func searchMessages(_ text: String) async throws -> [AylaSearchHit]
     /// Fires whenever the user's conversations change on the server, also from the web or the Watch.
@@ -19,6 +21,14 @@ public protocol AylaService: Sendable {
     func speech(for text: String) -> AsyncThrowingStream<Data, any Error>
     /// Wakes Ayla up on the server, so the first spoken answer does not wait for her to start.
     func warmUp() async
+    /// What Ayla remembers about the user, the newest first. `notSetUp` until the tables exist.
+    func memories() async throws -> AylaMemories
+    /// Saves a note the user kept or wrote.
+    func remember(_ text: String, source: AylaMemory.Source, conversationID: String?) async throws -> AylaMemory
+    func updateMemory(_ text: String, id: String) async throws
+    func forgetMemory(id: String) async throws
+    func forgetAllMemories() async throws
+    func setMemoryEnabled(_ isEnabled: Bool) async throws
 }
 
 extension AylaService {
@@ -31,6 +41,7 @@ extension AylaService {
 
     public func rename(_ title: String, conversationID: String) async throws { throw AylaError.unavailable }
     public func delete(conversationID: String) async throws { throw AylaError.unavailable }
+    public func removeLastTurn(in conversationID: String) async throws { throw AylaError.unavailable }
     public func searchMessages(_ text: String) async throws -> [AylaSearchHit] { [] }
     public func conversationChanges() -> AsyncStream<Void> { AsyncStream { $0.finish() } }
 
@@ -40,6 +51,15 @@ extension AylaService {
     }
 
     public func warmUp() async {}
+
+    public func memories() async throws -> AylaMemories { throw AylaError.notSetUp }
+    public func remember(_ text: String, source: AylaMemory.Source, conversationID: String?) async throws -> AylaMemory {
+        throw AylaError.notSetUp
+    }
+    public func updateMemory(_ text: String, id: String) async throws { throw AylaError.notSetUp }
+    public func forgetMemory(id: String) async throws { throw AylaError.notSetUp }
+    public func forgetAllMemories() async throws { throw AylaError.notSetUp }
+    public func setMemoryEnabled(_ isEnabled: Bool) async throws { throw AylaError.notSetUp }
 }
 
 public enum AylaError: Error, Equatable, Sendable {
@@ -48,6 +68,8 @@ public enum AylaError: Error, Equatable, Sendable {
     case conversationNotFound
     case noConnection
     case unavailable
+    /// This part is not in the database yet (the migration has not run).
+    case notSetUp
 
     public init(_ error: any Error) { self = (error as? AylaError) ?? .unavailable }
 }
@@ -219,6 +241,29 @@ public struct SupabaseAylaService: AylaService {
         try await expectRow(from: urlRequest)
     }
 
+    /// The server saves a question and its answer together, so they are the two newest messages. Only when that is
+    /// really so are they removed; the policy "Delete own messages" only allows the user's own.
+    public func removeLastTurn(in conversationID: String) async throws {
+        let rows: [TurnRow] = try await select(
+            "ayla_messages",
+            query: [
+                ("select", "id,role"), ("conversation_id", "eq.\(conversationID)"),
+                ("order", "created_at.desc"), ("limit", "2"),
+            ]
+        )
+        guard Set(rows.map(\.role)) == ["user", "ayla"] else { throw AylaError.conversationNotFound }
+        let urlRequest = try await authorized(
+            "ayla_messages",
+            query: [("id", "in.(\(rows.map(\.id).joined(separator: ",")))"), ("select", "id")],
+            method: "DELETE",
+            returning: true
+        )
+        let data = try await perform(urlRequest, accepting: [200])
+        guard let deleted = try? JSONDecoder().decode([IDRow].self, from: data), deleted.count == 2 else {
+            throw AylaError.unavailable
+        }
+    }
+
     /// Supabase answers "done" also when a security rule let nothing through; asking for the changed row back shows
     /// whether something really changed.
     private func expectRow(from urlRequest: URLRequest) async throws {
@@ -349,11 +394,88 @@ public struct SupabaseAylaService: AylaService {
         }
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         if statuses.contains(status) { return data }
+        if Self.isMissingTable(status: status, body: data) { throw AylaError.notSetUp }
         switch status {
         case 401: throw AylaError.notSignedIn
         case 403: throw AylaError.insufficientAssurance
         default: throw AylaError.unavailable
         }
+    }
+
+    /// PostgREST answers a table that does not exist with 404 and code PGRST205.
+    static func isMissingTable(status: Int, body: Data) -> Bool {
+        guard status == 404 || status == 400,
+              let error = try? JSONDecoder().decode(PostgrestError.self, from: body)
+        else { return false }
+        return error.code == "PGRST205" || error.code == "42P01"
+    }
+
+    // MARK: Memory
+
+    public func memories() async throws -> AylaMemories {
+        async let settings: [SettingsRow] = select("ayla_settings", query: [("select", "memory_enabled")])
+        async let rows: [MemoryRow] = select(
+            "ayla_memories",
+            query: [("select", "id,text,source,created_at"), ("order", "created_at.desc"), ("limit", "200")]
+        )
+        let (enabled, notes) = try await (settings.first?.memory_enabled ?? true, rows)
+        return AylaMemories(isEnabled: enabled, notes: notes.map(\.memory))
+    }
+
+    public func remember(_ text: String, source: AylaMemory.Source, conversationID: String?) async throws -> AylaMemory {
+        guard let text = AylaMemory.clean(text) else { throw AylaError.unavailable }
+        var body = ["text": text, "source": source.rawValue]
+        if let conversationID { body["conversation_id"] = conversationID }
+        let urlRequest = try await authorized(
+            "ayla_memories",
+            query: [("select", "id,text,source,created_at")],
+            method: "POST",
+            body: try JSONEncoder().encode(body),
+            returning: true
+        )
+        let data = try await perform(urlRequest, accepting: [201])
+        guard let row = try? JSONDecoder().decode([MemoryRow].self, from: data).first else { throw AylaError.unavailable }
+        return row.memory
+    }
+
+    public func updateMemory(_ text: String, id: String) async throws {
+        guard let text = AylaMemory.clean(text) else { throw AylaError.unavailable }
+        let urlRequest = try await authorized(
+            "ayla_memories",
+            query: [("id", "eq.\(id)"), ("select", "id")],
+            method: "PATCH",
+            body: try JSONSerialization.data(withJSONObject: ["text": text, "updated_at": Date.now.ISO8601Format()]),
+            returning: true
+        )
+        try await expectRow(from: urlRequest)
+    }
+
+    public func forgetMemory(id: String) async throws {
+        let urlRequest = try await authorized(
+            "ayla_memories",
+            query: [("id", "eq.\(id)"), ("select", "id")],
+            method: "DELETE",
+            returning: true
+        )
+        try await expectRow(from: urlRequest)
+    }
+
+    /// PostgREST deletes nothing without a filter; the security rules keep it to the user's own notes.
+    public func forgetAllMemories() async throws {
+        let urlRequest = try await authorized("ayla_memories", query: [("id", "not.is.null")], method: "DELETE")
+        _ = try await perform(urlRequest, accepting: [200, 204])
+    }
+
+    /// One row per user: written, or changed when it is already there.
+    public func setMemoryEnabled(_ isEnabled: Bool) async throws {
+        var urlRequest = try await authorized(
+            "ayla_settings",
+            query: [("on_conflict", "user_id")],
+            method: "POST",
+            body: try JSONSerialization.data(withJSONObject: ["memory_enabled": isEnabled, "updated_at": Date.now.ISO8601Format()])
+        )
+        urlRequest.setValue("resolution=merge-duplicates,return=minimal", forHTTPHeaderField: "Prefer")
+        _ = try await perform(urlRequest, accepting: [200, 201, 204])
     }
 
     static func date(from text: String) -> Date {
@@ -417,6 +539,35 @@ private struct SearchRow: Decodable {
         case conversationID = "conversation_id"
         case text
     }
+}
+
+private struct PostgrestError: Decodable {
+    let code: String?
+}
+
+private struct SettingsRow: Decodable {
+    let memory_enabled: Bool
+}
+
+private struct MemoryRow: Decodable {
+    let id: String
+    let text: String
+    let source: String
+    let created_at: String
+
+    var memory: AylaMemory {
+        AylaMemory(
+            id: id,
+            text: text,
+            source: AylaMemory.Source(rawValue: source) ?? .ayla,
+            createdAt: SupabaseAylaService.date(from: created_at)
+        )
+    }
+}
+
+private struct TurnRow: Decodable {
+    let id: String
+    let role: String
 }
 
 private struct MessageRow: Decodable {
