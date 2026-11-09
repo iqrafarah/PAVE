@@ -37,6 +37,11 @@ struct AylaVoiceBar: View {
                     .submitLabel(.send)
                     .focused(isFocused)
                     .onSubmit(send)
+                    .onChange(of: text) { old, new in
+                        guard new.hasSuffix("\n"), !old.hasSuffix("\n") else { return }
+                        text = String(new.dropLast())
+                        send()
+                    }
                     .padding(.vertical, 16)
 
                 if canSend {

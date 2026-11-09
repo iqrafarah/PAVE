@@ -338,7 +338,7 @@ struct AylaChatScreen: View {
     private func conversation(height: CGFloat, bottomMargin: CGFloat) -> some View {
         if model.entries.isEmpty, !model.isLoadingConversation {
             ScrollView {
-                AylaWelcome(firstName: model.firstName, isAvailable: model.isAvailable, isTyping: model.isGreetingReady, onStarter: model.send)
+                AylaWelcome(firstName: model.firstName, isAvailable: model.isAvailable, isTyping: model.isGreetingReady, onStarter: { send($0) })
                     .padding(.top, (height * 0.174).rounded())
                     .frame(maxWidth: .infinity)
                     // The orb falls apart right here during the outro; the welcome returns once its blocks are back in the button.
@@ -652,7 +652,10 @@ struct AylaChatScreen: View {
                 isMuted: voice.isMuted,
                 isFocused: $isComposerFocused,
                 onAdd: toggleAttachMenu,
-                onSend: { voice.send(typed: model.draft) },
+                onSend: {
+                    isComposerFocused = false
+                    voice.send(typed: model.draft)
+                },
                 onMute: voice.toggleMute,
                 onStop: stopVoice,
                 morph: barSpace
@@ -732,7 +735,7 @@ struct AylaChatScreen: View {
                     .transition(.opacity)
             } else if let question = model.pendingQuestion, question.choices.count >= 2 {
                 AylaChoiceBar(choices: question.choices.map { AylaChoice(id: $0.id, label: $0.label) }) { choice in
-                    model.send(choice.label)
+                    send(choice.label)
                 }
                 .padding(.leading, 21)
                 .padding(.trailing, 22)
@@ -755,7 +758,7 @@ struct AylaChatScreen: View {
                     onAdd: toggleAttachMenu,
                     onRemoveAttachment: model.removeAttachment,
                     onMicrophone: toggleDictation,
-                    onSend: send,
+                    onSend: { send() },
                     onVoice: voiceAction,
                     onVoiceButtonFrame: { voiceButtonFrame = $0 },
                     morph: barSpace
@@ -813,11 +816,14 @@ struct AylaChatScreen: View {
         Binding(get: { dictation.problem != nil }, set: { if !$0 { dictation.problem = nil } })
     }
 
-    private func send() {
+    /// Sending closes the keyboard, so Ayla's answer has the room, as in Messages.
+    private func send(_ text: String? = nil) {
         guard connection.isOnline else { return }
         dictation.stop()
-        model.send(model.draft)
+        isComposerFocused = false
+        model.send(text ?? model.draft)
     }
+
 
     private var isVoiceActive: Bool { voice?.isActive == true }
 

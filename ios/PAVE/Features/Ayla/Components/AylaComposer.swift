@@ -83,6 +83,12 @@ struct AylaComposer: View {
                 .submitLabel(.send)
                 .focused(isFocused)
                 .onSubmit(send)
+                // In a field that grows over several lines Return types a new line; the key says "Verstuur", so it sends.
+                .onChange(of: text) { old, new in
+                    guard new.hasSuffix("\n"), !old.hasSuffix("\n") else { return }
+                    text = String(new.dropLast())
+                    send()
+                }
                 .disabled(!isEnabled)
                 .padding(.vertical, 16)
 
