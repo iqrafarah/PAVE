@@ -1,3 +1,4 @@
+import CoreSpotlight
 import SwiftUI
 
 struct RootView: View {
@@ -15,10 +16,14 @@ struct RootView: View {
             case .locked:
                 PinLockView()
             case .main:
-                AylaRootView(service: AylaServiceFactory.make(auth: appState.authService))
+                MainView(service: AylaServiceFactory.make(auth: appState.authService))
             }
         }
         .animation(.easeInOut(duration: 0.4), value: appState.phase)
+        // Also while the app is locked: the chat opens once it is unlocked.
+        .onContinueUserActivity(CSSearchableItemActionType) { activity in
+            appState.conversationToOpen = AylaSpotlight.conversationID(in: activity)
+        }
     }
 }
 

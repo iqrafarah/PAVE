@@ -32,7 +32,7 @@ struct ChatAttachmentCard: View {
             .background(Color.white, in: .rect(cornerRadius: 18))
             .contentShape(.rect(cornerRadius: 18))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pave)
     }
 }
 

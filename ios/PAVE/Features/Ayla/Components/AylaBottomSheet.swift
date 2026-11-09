@@ -38,7 +38,7 @@ struct AylaBottomSheet<Content: View>: View {
                 .ignoresSafeArea(edges: [.bottom, .horizontal])
         }
         .overlay(alignment: .bottom) {
-            LinearGradient(colors: [.white.opacity(0), .white], startPoint: .top, endPoint: .bottom)
+            LinearGradient(stops: [.init(color: .white.opacity(0), location: 0), .init(color: .white, location: 0.45)], startPoint: .top, endPoint: .bottom)
                 .frame(height: bottomInset)
                 .allowsHitTesting(false)
                 .ignoresSafeArea(edges: .bottom)

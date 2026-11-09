@@ -1,9 +1,11 @@
 import SwiftUI
 
-/// The empty chat: greeting, explanation and three starters.
+/// The empty chat: greeting (typed out), explanation and three starters.
 struct AylaWelcome: View {
     let firstName: String?
     var isAvailable = true
+    /// The title types itself out once this is true.
+    var isTyping = true
     let onStarter: (String) -> Void
 
     private struct Starter {
@@ -25,17 +27,7 @@ struct AylaWelcome: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .top, spacing: 10) {
-                AylaMark(count: 5, size: 6)
-                MaxWidthLayout(maxWidth: 289) {
-                    Text(title)
-                        .textStyle(.welcomeTitle)
-                        .foregroundStyle(Color.ink)
-                        .multilineTextAlignment(.center)
-                }
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityAddTraits(.isHeader)
+            AylaTypingTitle(text: title, isTyping: isTyping)
 
             MaxWidthLayout(maxWidth: 313) {
                 Text(isAvailable ? "Ontdek kansen, krijg persoonlijk advies en werk met AI direct in jouw PAVE-omgeving. Van je kluis en ontwikkelplan tot vacatures en sollicitaties." : AylaMessages.notAvailableInDemo)

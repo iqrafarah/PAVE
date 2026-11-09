@@ -33,6 +33,9 @@ private struct PrimaryButtonStyle: ButtonStyle {
             .contentShape(.capsule)
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
             .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+            .onChange(of: configuration.isPressed) { _, isPressed in
+                if isPressed, !isLoading { PaveHaptics.tap(.medium) }
+            }
     }
 }
 

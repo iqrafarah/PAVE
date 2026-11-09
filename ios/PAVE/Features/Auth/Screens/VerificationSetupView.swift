@@ -126,7 +126,7 @@ struct VerificationSetupView: View {
                 .frame(minHeight: 44)
                 .contentShape(.rect)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pave)
             .accessibilityValue(showsOtherDevice ? "Uitgeklapt" : "Ingeklapt")
 
             if showsOtherDevice {

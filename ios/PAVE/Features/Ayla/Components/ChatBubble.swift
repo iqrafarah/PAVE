@@ -26,7 +26,7 @@ struct ChatBubble: View {
     private var bubble: some View {
         HStack(alignment: .top, spacing: 8.4) {
             if case .ayla(true) = speaker {
-                AylaMark()
+                PaveMark()
             }
             MaxWidthLayout(maxWidth: isUser ? 232 : 230) {
                 Text(text)

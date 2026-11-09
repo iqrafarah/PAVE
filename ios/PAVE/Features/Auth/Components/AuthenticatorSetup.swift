@@ -72,7 +72,7 @@ struct OtherDeviceSetupCard: View {
                         .textStyle(.eyebrow)
                         .foregroundStyle(Color.brandGreen)
                         .frame(minWidth: 44, minHeight: 44)
-                        .buttonStyle(.plain)
+                        .buttonStyle(.pave)
                         .accessibilityLabel(didCopy ? "Instelsleutel gekopieerd" : "Kopieer instelsleutel")
                     }
                     .padding(.leading, 12)

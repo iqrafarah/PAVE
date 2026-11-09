@@ -52,7 +52,7 @@ struct ResetCodeView: View {
                             .foregroundStyle(Color.brandGreen)
                             .frame(minHeight: 44, alignment: .leading)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.pave)
                     .disabled(isResending || isChecking)
 
                     MessageSlot(

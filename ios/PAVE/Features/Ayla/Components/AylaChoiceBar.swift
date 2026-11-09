@@ -26,7 +26,7 @@ struct AylaChoiceBar: View {
                         .background(Color.white, in: .rect(cornerRadius: 25))
                         .contentShape(.rect(cornerRadius: 25))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.pave)
             }
         }
         .padding(8.15)

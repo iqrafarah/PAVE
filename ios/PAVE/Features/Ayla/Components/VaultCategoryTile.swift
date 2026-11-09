@@ -28,7 +28,7 @@ struct VaultCategoryTile: View {
             .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(Color.cardBorder, lineWidth: 1) }
             .contentShape(.rect(cornerRadius: 12))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pave)
         .accessibilityAddTraits(isOn ? .isSelected : [])
     }
 }

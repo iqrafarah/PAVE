@@ -12,7 +12,7 @@ struct VacancyCard: View {
     var body: some View {
         if let url = vacancy.url {
             Link(destination: url) { content }
-                .buttonStyle(.plain)
+                .buttonStyle(.pave)
                 .accessibilityHint("Opent de vacature")
         } else {
             content

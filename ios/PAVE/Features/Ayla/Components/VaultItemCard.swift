@@ -39,7 +39,7 @@ struct VaultItemCard: View {
             .overlay { RoundedRectangle(cornerRadius: 17).strokeBorder(Color.cardBorder, lineWidth: 1) }
             .contentShape(.rect(cornerRadius: 17))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pave)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

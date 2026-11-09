@@ -1,37 +1,69 @@
+import PAVECore
 import SwiftUI
 
-/// The glass text field at the bottom: plus (quick questions), Ayla's mark, the text, microphone and send.
+/// The glass text field at the bottom: plus (add something to the message), Ayla's mark, the text,
+/// microphone (dictation) and send. With an empty field, send becomes the button to talk with Ayla
+/// (voice mode), as in ChatGPT and Claude. Added files show above the text.
 struct AylaComposer: View {
     @Binding var text: String
+    var attachments: [AylaAttachment] = []
     var isEnabled = true
     var isListening = false
     var placeholderColor = Color.inkMuted.opacity(0.41)
     /// Over the white panel the field is almost white (Figma), elsewhere it is clear glass.
     var isOverPanel = false
     var isFocused: FocusState<Bool>.Binding
-    let onQuickAction: (AylaQuickAction) -> Void
+    let onAdd: () -> Void
+    var onRemoveAttachment: (AylaAttachment) -> Void = { _ in }
     let onMicrophone: () -> Void
     let onSend: () -> Void
+    /// Starts a spoken conversation. Nil when voice is not available.
+    var onVoice: (() -> Void)?
+    /// Where the voice button is on screen, so the conversation's intro can come out of it.
+    var onVoiceButtonFrame: ((CGRect) -> Void)?
+    /// Lets the field shrink into the voice bar's field when a spoken conversation starts, and grow back.
+    var morph: Namespace.ID?
 
     private var canSend: Bool {
         isEnabled && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    private var showsVoiceButton: Bool {
+        onVoice != nil && text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && attachments.isEmpty
+    }
+
     var body: some View {
-        HStack(spacing: 0) {
-            Menu {
-                ForEach(AylaQuickAction.allCases) { action in
-                    Button(action.title) { onQuickAction(action) }
+        VStack(alignment: .leading, spacing: 0) {
+            if !attachments.isEmpty {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 8) {
+                        ForEach(attachments) { file in
+                            AylaAttachmentChip(name: file.name) { onRemoveAttachment(file) }
+                        }
+                    }
+                    .padding(.horizontal, 12)
                 }
-            } label: {
+                .scrollIndicators(.hidden)
+                .padding(.top, 10)
+            }
+            field
+        }
+        .glassEffect(isOverPanel ? .regular.tint(.white.opacity(0.8)) : .clear, in: .rect(cornerRadius: 25))
+        .matchedFrame("field", in: morph)
+    }
+
+    private var field: some View {
+        HStack(spacing: 0) {
+            Button(action: onAdd) {
                 Image(.iconPlus)
                     .frame(width: 44, height: 53)
                     .contentShape(.rect)
             }
+            .buttonStyle(.pave)
             .disabled(!isEnabled)
-            .accessibilityLabel("Snelle vragen")
+            .accessibilityLabel("Toevoegen aan je bericht")
 
-            AylaMark()
+            PaveMark()
                 .padding(.leading, 1.5)
                 .padding(.trailing, 9.4)
 
@@ -53,26 +85,40 @@ struct AylaComposer: View {
                     .frame(width: 28, height: 53)
                     .contentShape(.rect)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pave)
             .disabled(!isEnabled)
             .accessibilityLabel(isListening ? "Stop met inspreken" : "Inspreken")
             .padding(.trailing, 5.5)
 
-            Button(action: send) {
-                Image(.iconSend)
-                    .frame(width: 30, height: 30)
-                    .background(Color.brandGreen, in: .circle)
-                    .shadow(color: .black.opacity(0.25), radius: 2)
-                    .frame(width: 30, height: 53)
-                    .contentShape(.rect)
+            if showsVoiceButton, let onVoice {
+                Button(action: onVoice) {
+                    PixelWaveIcon()
+                        .frame(width: 30, height: 30)
+                        .background(Color.brandGreen, in: .circle)
+                        .shadow(color: .black.opacity(0.25), radius: 2)
+                        .frame(width: 30, height: 53)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.pave)
+                .disabled(!isEnabled)
+                .accessibilityLabel("Praat met Ayla")
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { onVoiceButtonFrame?($0) }
+            } else {
+                Button(action: send) {
+                    Image(.iconSend)
+                        .frame(width: 30, height: 30)
+                        .background(Color.brandGreen, in: .circle)
+                        .shadow(color: .black.opacity(0.25), radius: 2)
+                        .frame(width: 30, height: 53)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.pave)
+                .accessibilityLabel("Versturen")
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Versturen")
         }
         .padding(.leading, 4.5)
         .padding(.trailing, 11)
         .frame(minHeight: 53)
-        .glassEffect(isOverPanel ? .regular.tint(.white.opacity(0.8)) : .clear, in: .rect(cornerRadius: 25))
     }
 
     private func send() {
@@ -84,7 +130,10 @@ struct AylaComposer: View {
 #Preview {
     @Previewable @State var text = ""
     @Previewable @FocusState var focused: Bool
-    AylaComposer(text: $text, isFocused: $focused, onQuickAction: { _ in }, onMicrophone: {}, onSend: {})
+    VStack(spacing: 24) {
+        AylaComposer(text: $text, isFocused: $focused, onAdd: {}, onMicrophone: {}, onSend: {}, onVoice: {})
+        AylaComposer(text: $text, attachments: [AylaAttachment(name: "cv.pdf", text: "Stage")!], isFocused: $focused, onAdd: {}, onMicrophone: {}, onSend: {})
+    }
         .padding(.leading, 33)
         .padding(.trailing, 31)
         .frame(maxHeight: .infinity, alignment: .bottom)

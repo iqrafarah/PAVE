@@ -1,10 +1,12 @@
 import SwiftUI
 
-/// Ayla's pixel slash: squares that climb to the right, half a square at a time.
-struct AylaMark: View {
+/// PAVE's pixel slash, also Ayla's mark: squares that climb to the right, half a square at a time.
+struct PaveMark: View {
     var count = 4
     var size: CGFloat = 4.25
     var color = Color.brandGreen
+    /// How visible each square is; square 0 is the bottom one. Used to build the slash up square by square.
+    var squareOpacity: (Int) -> Double = { _ in 1 }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -12,6 +14,7 @@ struct AylaMark: View {
                 Rectangle()
                     .fill(color)
                     .frame(width: size, height: size)
+                    .opacity(squareOpacity(index))
                     .offset(x: CGFloat(index) * size / 2, y: CGFloat(count - 1 - index) * size)
             }
         }
@@ -22,9 +25,9 @@ struct AylaMark: View {
 
 #Preview {
     HStack(spacing: 24) {
-        AylaMark()
-        AylaMark(count: 5, size: 5.333)
-        AylaMark(count: 5, size: 6)
+        PaveMark()
+        PaveMark(count: 5, size: 5.333)
+        PaveMark(count: 5, size: 6)
     }
     .padding()
 }

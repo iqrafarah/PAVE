@@ -72,7 +72,7 @@ struct SignInView: View {
                 .textStyle(.link)
                 .foregroundStyle(isSubmitting ? Color.inkMuted : .brandGreen)
                 .frame(maxWidth: .infinity, minHeight: 44, alignment: .trailing)
-                .buttonStyle(.plain)
+                .buttonStyle(.pave)
         }
         .disabled(isSubmitting)
         .opacity(isSubmitting ? 0.62 : 1)

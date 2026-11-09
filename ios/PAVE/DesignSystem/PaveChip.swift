@@ -23,7 +23,7 @@ struct PaveChip: View {
             .background(Color.surfaceTint, in: .rect(cornerRadius: 14))
             .contentShape(.rect(cornerRadius: 14))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pave)
     }
 }
 

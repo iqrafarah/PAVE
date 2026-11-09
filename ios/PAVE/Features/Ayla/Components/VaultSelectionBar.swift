@@ -23,7 +23,7 @@ struct VaultSelectionBar: View {
                     .frame(minHeight: 44)
                     .contentShape(.capsule)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pave)
             .disabled(count == 0)
             .opacity(count == 0 ? 0.5 : 1)
         }

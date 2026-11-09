@@ -35,7 +35,7 @@ struct PinLockView: View {
                     .textStyle(.link)
                     .foregroundStyle(Color.brandGreen)
                     .frame(maxWidth: .infinity, minHeight: 44)
-                    .buttonStyle(.plain)
+                    .buttonStyle(.pave)
             }
             .animation(.easeOut(duration: 0.2), value: errorMessage)
         }

@@ -109,7 +109,7 @@ struct PaveTextField<Field: Hashable>: View {
             .frame(minHeight: 44)
             .contentShape(.rect)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pave)
         .accessibilityLabel(isRevealed ? "Wachtwoord verbergen" : "Wachtwoord tonen")
     }
 
