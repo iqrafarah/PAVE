@@ -10,16 +10,50 @@ public struct AylaMemory: Identifiable, Equatable, Sendable {
         case user
     }
 
+    /// Where a note belongs, so "Wat Ayla over je weet" can group them. The same codes as the Ayla function.
+    public enum Category: String, CaseIterable, Codable, Sendable {
+        case education
+        case work
+        case goals
+        case skills
+        case workStyle
+        case interests
+        case personal
+
+        /// An unknown or missing code counts as "Over jou".
+        public init(code: String?) {
+            self = code.flatMap(Category.init(rawValue:)) ?? .personal
+        }
+
+        public init(from decoder: any Decoder) throws {
+            self.init(code: try? decoder.singleValueContainer().decode(String.self))
+        }
+
+        public var title: String {
+            switch self {
+            case .education: "Opleiding"
+            case .work: "Werk en stages"
+            case .goals: "Doelen"
+            case .skills: "Vaardigheden"
+            case .workStyle: "Hoe je wilt werken"
+            case .interests: "Interesses en hobby's"
+            case .personal: "Over jou"
+            }
+        }
+    }
+
     public static let maxLength = 300
 
     public var id: String
     public var text: String
+    public var category: Category
     public var source: Source
     public var createdAt: Date
 
-    public init(id: String, text: String, source: Source, createdAt: Date) {
+    public init(id: String, text: String, category: Category = .personal, source: Source, createdAt: Date) {
         self.id = id
         self.text = text
+        self.category = category
         self.source = source
         self.createdAt = createdAt
     }
@@ -72,6 +106,14 @@ public struct AylaMemories: Equatable, Sendable {
     public init(isEnabled: Bool = true, notes: [AylaMemory] = []) {
         self.isEnabled = isEnabled
         self.notes = notes
+    }
+
+    /// The notes per category, in the order of `Category.allCases`, without empty ones.
+    public var byCategory: [(category: AylaMemory.Category, notes: [AylaMemory])] {
+        AylaMemory.Category.allCases.compactMap { category in
+            let inCategory = notes.filter { $0.category == category }
+            return inCategory.isEmpty ? nil : (category, inCategory)
+        }
     }
 
     public func contains(_ text: String) -> Bool {

@@ -1,5 +1,5 @@
 import { type AylaReply, type AylaRequest, type Block, type Screen, SCREENS } from './contract.ts'
-import { cleanMemory, type Memory } from './memory.ts'
+import { cleanMemories, type Memory, type MemoryNote } from './memory.ts'
 import type { ChatMessage, Complete } from './openrouter.ts'
 import { buildSystemPrompt } from './prompt.ts'
 import type { FoundVacancy, SearchVacancies } from './vacancies.ts'
@@ -34,7 +34,7 @@ interface ModelOutput {
   navigation: { screen: string } | null
   vacancySearch: { what: string; where: string } | null
   title: string | null
-  memory: string | null
+  memories: unknown
 }
 
 /** One turn of the conversation: the prompt in layers, the model, and a reply in the contract format. */
@@ -49,7 +49,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
 
   let output = parseOutput((await deps.complete(messages)).content)
   // The first answer heard what the user said; the second one only talks about the vacancies.
-  const remember = cleanMemory(output.memory, memory)
+  const heard = cleanMemories(output.memories, memory)
   const title = cleanTitle(output.title)
   if (title && input.onTitle) input.onTitle(title)
   const blocks: Block[] = []
@@ -65,8 +65,9 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   }
 
   const reply = toReply(output, blocks, input.conversationId, deps.newId())
-  const suggestion = cleanMemory(output.memory, memory) ?? remember
-  if (suggestion) reply.memory = { text: suggestion }
+  const later = cleanMemories(output.memories, memory)
+  const suggestions: MemoryNote[] = later.length ? later : heard
+  if (suggestions.length) reply.memories = suggestions
   return reply
 }
 
@@ -111,10 +112,10 @@ function parseOutput(content: string): ModelOutput {
         ? { what: json.vacancySearch.what.trim(), where: String(json.vacancySearch.where ?? '').trim() }
         : null,
       title: typeof json.title === 'string' ? json.title : null,
-      memory: typeof json.memory === 'string' ? json.memory : null,
+      memories: Array.isArray(json.memories) ? json.memories : [],
     }
   } catch {
-    return { text: content, question: null, navigation: null, vacancySearch: null, title: null, memory: null }
+    return { text: content, question: null, navigation: null, vacancySearch: null, title: null, memories: [] }
   }
 }
 

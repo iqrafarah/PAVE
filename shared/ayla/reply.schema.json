@@ -9,6 +9,10 @@
       "enum": ["diplomas", "certificates", "badges", "projects", "workExperience", "internships", "skills", "feedback", "reflections"]
     },
     "device": { "enum": ["watch", "phone", "web"] },
+    "memoryCategory": {
+      "description": "Where a note about the user belongs. The apps show it as Opleiding, Werk en stages, Doelen, Vaardigheden, Hoe je wilt werken, Interesses en hobby's or Over jou.",
+      "enum": ["education", "work", "goals", "skills", "workStyle", "interests", "personal"]
+    },
     "request": {
       "type": "object",
       "required": ["text", "device", "input"],
@@ -223,13 +227,18 @@
             "itemId": { "type": "string" }
           }
         },
-        "memory": {
-          "type": "object",
-          "description": "Ayla suggests remembering this about the user. The app saves it in ayla_memories only after the user confirms; nothing is remembered by itself.",
-          "required": ["text"],
-          "additionalProperties": false,
-          "properties": {
-            "text": { "type": "string", "minLength": 1, "maxLength": 300 }
+        "memories": {
+          "type": "array",
+          "description": "Ayla suggests remembering these facts about the user, one per item. The app saves them in ayla_memories only after the user confirms; nothing is remembered by itself.",
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "required": ["text", "category"],
+            "additionalProperties": false,
+            "properties": {
+              "text": { "type": "string", "minLength": 1, "maxLength": 300 },
+              "category": { "$ref": "#/$defs/memoryCategory" }
+            }
           }
         },
         "usedData": {

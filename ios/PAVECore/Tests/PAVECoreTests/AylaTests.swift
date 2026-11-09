@@ -27,7 +27,17 @@ struct AylaReplyTests {
     @Test(.enabled(if: AylaReplyTests.examplesAreAvailable))
     func memoryExampleCarriesTheSuggestion() throws {
         let reply = try AylaReply.decode(Data(contentsOf: Self.examples.appending(path: "07-memory.json")))
-        #expect(reply.memory?.text == "Je hebt stage gelopen bij LiveWall.")
+        #expect(reply.suggestedMemories == [
+            .init(text: "Je studeert ICT aan Fontys.", category: .education),
+            .init(text: "Je werkt als leidinggevende bij de Plus.", category: .work),
+        ])
+    }
+
+    @Test func anOlderSingleSuggestionAndUnknownCategoriesStillRead() throws {
+        let old = try AylaReply.decode(Data(#"{"version":1,"id":"r","conversationId":"c","text":"Top","memory":{"text":"Je woont in Eindhoven."},"blocks":[],"usedData":[]}"#.utf8))
+        #expect(old.suggestedMemories == [.init(text: "Je woont in Eindhoven.", category: .personal)])
+        let new = try AylaReply.decode(Data(#"{"version":1,"id":"r","conversationId":"c","text":"Top","memories":[{"text":"Je voetbalt.","category":"sport"}],"blocks":[],"usedData":[]}"#.utf8))
+        #expect(new.suggestedMemories.first?.category == .personal)
     }
 
     @Test(.enabled(if: AylaReplyTests.examplesAreAvailable))
@@ -319,12 +329,13 @@ extension SupabaseAylaServiceTests {
     @Test func memoriesAndTheSettingAreReadTogether() async throws {
         let ayla = service { urlRequest in
             if urlRequest.url!.path().hasSuffix("ayla_settings") { return (200, Data(#"[{"memory_enabled":false}]"#.utf8)) }
-            return (200, Data(#"[{"id":"m1","text":"Je studeert ICT.","source":"user","created_at":"2026-11-09T10:00:00+00:00"}]"#.utf8))
+            return (200, Data(#"[{"id":"m1","text":"Je studeert ICT.","source":"user","category":"education","created_at":"2026-11-09T10:00:00+00:00"}]"#.utf8))
         }
         let memories = try await ayla.memories()
         #expect(memories.isEnabled == false)
         #expect(memories.notes.map(\.text) == ["Je studeert ICT."])
         #expect(memories.notes.first?.source == .user)
+        #expect(memories.notes.first?.category == .education)
     }
 
     @Test func withoutASettingTheMemoryIsOn() async throws {
@@ -344,14 +355,35 @@ extension SupabaseAylaServiceTests {
             captured.request = urlRequest
             return (201, Data(#"[{"id":"m2","text":"Je hebt stage gelopen bij LiveWall.","source":"ayla","created_at":"2026-11-09T10:00:00+00:00"}]"#.utf8))
         }
-        let memory = try await ayla.remember("  Je hebt stage gelopen\nbij LiveWall. ", source: .ayla, conversationID: "c1")
+        let memory = try await ayla.remember("  Je hebt stage gelopen\nbij LiveWall. ", category: .work, source: .ayla, conversationID: "c1")
         #expect(memory.id == "m2")
         let request = try #require(captured.request)
         #expect(request.httpMethod == "POST")
         #expect(request.value(forHTTPHeaderField: "Prefer") == "return=representation")
         let body = try #require(request.bodyData)
         let json = try #require(try JSONSerialization.jsonObject(with: body) as? [String: String])
-        #expect(json == ["text": "Je hebt stage gelopen bij LiveWall.", "source": "ayla", "conversation_id": "c1"])
+        #expect(json == ["text": "Je hebt stage gelopen bij LiveWall.", "source": "ayla", "category": "work", "conversation_id": "c1"])
+    }
+
+    @Test func beforeTheCategoryColumnExistsANoteIsSavedWithoutIt() async throws {
+        let captured = CapturedList()
+        let ayla = service { urlRequest in
+            captured.append(urlRequest)
+            let body = String(decoding: urlRequest.bodyData ?? Data(), as: UTF8.self)
+            if body.contains("category") { return (400, Data(#"{"code":"PGRST204","message":"Could not find the 'category' column"}"#.utf8)) }
+            return (201, Data(#"[{"id":"m3","text":"Je voetbalt.","source":"ayla","created_at":"2026-11-09T10:00:00+00:00"}]"#.utf8))
+        }
+        let memory = try await ayla.remember("Je voetbalt.", category: .interests, source: .ayla, conversationID: nil)
+        #expect(captured.requests.count == 2)
+        #expect(memory.category == .personal)
+    }
+
+    @Test func notesAreGroupedByCategory() {
+        let memories = AylaMemories(notes: [
+            AylaMemory(id: "1", text: "Je voetbalt.", category: .interests, source: .ayla, createdAt: .now),
+            AylaMemory(id: "2", text: "Je studeert ICT.", category: .education, source: .ayla, createdAt: .now),
+        ])
+        #expect(memories.byCategory.map(\.category) == [.education, .interests])
     }
 
     @Test func forgettingEverythingDeletesOnlyWithAFilter() async throws {

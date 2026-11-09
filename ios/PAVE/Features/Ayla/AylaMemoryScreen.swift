@@ -10,7 +10,6 @@ struct AylaMemoryScreen: View {
     @Environment(AylaMemoryModel.self) private var memory
     @State private var editing: AylaMemory?
     @State private var isAdding = false
-    @State private var draft = ""
     @State private var confirmsForgetAll = false
 
     var body: some View {
@@ -20,22 +19,14 @@ struct AylaMemoryScreen: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbar }
             .task { await memory.load() }
-            .alert("Iets toevoegen", isPresented: $isAdding) {
-                TextField("Bijvoorbeeld: Ik wil werken in de zorg-ICT", text: $draft)
-                Button("Annuleren", role: .cancel) {}
-                Button("Bewaren") {
-                    PaveHaptics.success()
-                    memory.add(draft)
+            .sheet(isPresented: $isAdding) {
+                AylaMemoryEditor(title: "Iets toevoegen", text: "", category: .personal) { text, category in
+                    memory.add(text, category: category)
                 }
-            } message: {
-                Text("Ayla gebruikt dit in je gesprekken.")
             }
-            .alert("Aanpassen", isPresented: isEditing, presenting: editing) { note in
-                TextField("Wat Ayla onthoudt", text: $draft)
-                Button("Annuleren", role: .cancel) {}
-                Button("Bewaren") {
-                    PaveHaptics.success()
-                    memory.update(note, to: draft)
+            .sheet(item: $editing) { note in
+                AylaMemoryEditor(title: "Aanpassen", text: note.text, category: note.category) { text, category in
+                    memory.update(note, to: text, category: category)
                 }
             }
             .alert("Wat Ayla over je weet", isPresented: problemBinding) {
@@ -95,22 +86,26 @@ struct AylaMemoryScreen: View {
                     .foregroundStyle(Color.inkMuted)
             }
 
-            Section {
-                if memory.notes.isEmpty {
+            if memory.notes.isEmpty {
+                Section {
                     Text("Ayla onthoudt nog niets over je. Vertel je in een gesprek iets wat later handig is, zoals je opleiding of een doel, dan vraagt ze of ze het mag onthouden. Je kunt ook zelf iets toevoegen.")
                         .textStyle(.bodyMedium)
                         .foregroundStyle(Color.inkMuted)
                         .padding(.vertical, 6)
                         .listRowBackground(Color.white)
-                } else {
-                    ForEach(memory.notes) { note in
-                        row(note)
+                }
+            } else {
+                ForEach(memory.memories.byCategory, id: \.category) { group in
+                    Section {
+                        ForEach(group.notes) { note in
+                            row(note)
+                        }
+                    } header: {
+                        Text(group.category.title)
+                            .textStyle(.bodyMedium)
+                            .foregroundStyle(Color.inkMuted)
                     }
                 }
-            } header: {
-                Text(memory.notes.isEmpty ? "Onthouden" : "Onthouden (\(memory.notes.count))")
-                    .textStyle(.bodyMedium)
-                    .foregroundStyle(Color.inkMuted)
             }
 
             if !memory.notes.isEmpty {
@@ -187,7 +182,6 @@ struct AylaMemoryScreen: View {
         if memory.state == .ready {
             ToolbarItem(placement: .primaryAction) {
                 Button {
-                    draft = ""
                     isAdding = true
                 } label: {
                     Image(systemName: "plus")
@@ -203,12 +197,7 @@ struct AylaMemoryScreen: View {
     }
 
     private func edit(_ note: AylaMemory) {
-        draft = note.text
         editing = note
-    }
-
-    private var isEditing: Binding<Bool> {
-        Binding(get: { editing != nil }, set: { if !$0 { editing = nil } })
     }
 
     private var enabledBinding: Binding<Bool> {

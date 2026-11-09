@@ -391,8 +391,8 @@ struct AylaChatScreen: View {
                         .foregroundStyle(Color.inkMuted)
                         .padding(.leading, 4)
                 }
-                if let reply = entry.reply, let suggestion = reply.memory {
-                    memoryCard(suggestion, in: reply, isLast: entry.id == model.lastAylaEntryID)
+                if let reply = entry.reply, !reply.suggestedMemories.isEmpty {
+                    memoryCard(for: reply, isLast: entry.id == model.lastAylaEntryID)
                 }
                 let vacancies = Self.vacancies(in: entry)
                 if !vacancies.isEmpty {
@@ -411,13 +411,13 @@ struct AylaChatScreen: View {
     /// Ayla suggests remembering something: you decide, on the newest answer. On older answers only a kept note
     /// shows, so a question you passed by does not keep coming back.
     @ViewBuilder
-    private func memoryCard(_ suggestion: AylaReply.MemorySuggestion, in reply: AylaReply, isLast: Bool) -> some View {
+    private func memoryCard(for reply: AylaReply, isLast: Bool) -> some View {
         let decision = memory.decision(for: reply)
         if decision == .saved || isLast {
             AylaMemoryCard(
-                suggestion: suggestion,
+                suggestions: decision == .saving || decision == .failed ? reply.suggestedMemories : memory.pending(in: reply),
                 decision: decision,
-                onKeep: { memory.accept(suggestion, replyID: reply.id, conversationID: model.conversationID) },
+                onKeep: { memory.accept($0, replyID: reply.id, conversationID: model.conversationID) },
                 onDecline: { memory.decline(replyID: reply.id) },
                 onShowMemory: { showsMemory = true }
             )

@@ -1,4 +1,5 @@
 // The Ayla contract, see shared/ayla/reply.schema.json.
+import type { MemoryCategory } from './memory.ts'
 
 export const CATEGORIES = ['diplomas', 'certificates', 'badges', 'projects', 'workExperience', 'internships', 'skills', 'feedback', 'reflections'] as const
 export const SCREENS = ['home', 'chat', 'vault', 'vaultItem', 'addEvidence', 'plans', 'vacancies', 'profile', 'settings'] as const
@@ -54,8 +55,8 @@ export interface AylaReply {
   proposedAction?: { id: string; kind: 'addVaultItem' | 'updatePlan' | 'draftProfile' | 'requestValidation'; summary: string; expiresAt: string }
   blocks: Block[]
   navigation?: { screen: Screen; itemId?: string }
-  /** Ayla suggests remembering this. The apps save it only after the user confirms. */
-  memory?: { text: string }
+  /** Ayla suggests remembering these facts, one per item. The apps save them only after the user confirms. */
+  memories?: { text: string; category: MemoryCategory }[]
   usedData: Category[]
 }
 

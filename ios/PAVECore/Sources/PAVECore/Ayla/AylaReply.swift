@@ -71,16 +71,31 @@ public struct AylaReply: Codable, Equatable, Sendable {
     public var proposedAction: ProposedAction?
     public var blocks: [AylaBlock]
     public var navigation: Navigation?
-    /// Ayla suggests remembering this; it is saved only after the user confirms (`AylaMemory`).
+    /// Ayla suggests remembering these facts, one per item; they are saved only after the user confirms (`AylaMemory`).
+    public var memories: [MemorySuggestion]?
+    /// One suggestion, as the first version of the Ayla function sent it. Still read for older messages.
     public var memory: MemorySuggestion?
     public var usedData: [VaultCategory]
 
-    public struct MemorySuggestion: Codable, Equatable, Sendable {
+    public struct MemorySuggestion: Codable, Equatable, Hashable, Sendable {
         public var text: String
+        public var category: AylaMemory.Category
 
-        public init(text: String) {
+        public init(text: String, category: AylaMemory.Category = .personal) {
             self.text = text
+            self.category = category
         }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            text = try container.decode(String.self, forKey: .text)
+            category = (try? container.decode(AylaMemory.Category.self, forKey: .category)) ?? .personal
+        }
+    }
+
+    /// Everything Ayla suggests remembering in this reply.
+    public var suggestedMemories: [MemorySuggestion] {
+        memories ?? memory.map { [$0] } ?? []
     }
 
     public init(
@@ -92,6 +107,7 @@ public struct AylaReply: Codable, Equatable, Sendable {
         proposedAction: ProposedAction? = nil,
         blocks: [AylaBlock] = [],
         navigation: Navigation? = nil,
+        memories: [MemorySuggestion]? = nil,
         memory: MemorySuggestion? = nil,
         usedData: [VaultCategory] = []
     ) {
@@ -104,6 +120,7 @@ public struct AylaReply: Codable, Equatable, Sendable {
         self.proposedAction = proposedAction
         self.blocks = blocks
         self.navigation = navigation
+        self.memories = memories
         self.memory = memory
         self.usedData = usedData
     }

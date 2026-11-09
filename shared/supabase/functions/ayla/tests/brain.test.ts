@@ -5,7 +5,7 @@ import { answer, cleanTitle, titleFrom, withAttachments } from '../brain.ts'
 import { parseRequest } from '../contract.ts'
 import { openRouterCompletion } from '../openrouter.ts'
 import { buildSystemPrompt } from '../prompt.ts'
-import { loadMemory } from '../memory.ts'
+import { loadMemory, type MemoryCategory } from '../memory.ts'
 import { toFoundVacancy } from '../vacancies.ts'
 
 const request = { text: 'Welke banen passen bij mij?', device: 'phone' as const, input: 'text' as const }
@@ -222,42 +222,60 @@ test('a spoken question gets a short spoken answer, but the Watch keeps its own 
   assert.doesNotMatch(buildSystemPrompt({ device: 'watch', input: 'voice' }), /hoort je antwoord/)
 })
 
-test('a suggested note goes with the reply only while the memory is on', async () => {
-  const note = say('Mooi, dat is waardevolle ervaring.', { memory: '"Je hebt stage gelopen bij LiveWall."' })
-  const on = await answer({ request, conversationId: 'conv', history: [], memory: { status: 'on', notes: [] } }, { complete: model(note).complete, newId: ids() })
-  assert.deepEqual(on.memory, { text: 'Je hebt stage gelopen bij LiveWall.' })
+const on = (notes: { text: string; category: MemoryCategory }[] = []) => ({ status: 'on' as const, notes })
+const fact = (text: string, category = 'personal') => ({ text, category })
+
+test('every fact in a message becomes its own suggestion, with a category', async () => {
+  const output = say('Sterke combinatie!', { memories: [fact('Je studeert ICT aan Fontys.', 'education'), fact('"Je werkt als leidinggevende bij de Plus."', 'work')] })
+  const reply = await answer({ request, conversationId: 'conv', history: [], memory: on() }, { complete: model(output).complete, newId: ids() })
+  assert.deepEqual(reply.memories, [
+    { text: 'Je studeert ICT aan Fontys.', category: 'education' },
+    { text: 'Je werkt als leidinggevende bij de Plus.', category: 'work' },
+  ])
+})
+
+test('suggestions go with the reply only while the memory is on', async () => {
+  const output = say('Mooi.', { memories: [fact('Je hebt stage gelopen bij LiveWall.', 'work')] })
   for (const memory of [{ status: 'off' as const }, { status: 'unavailable' as const }, undefined]) {
-    const reply = await answer({ request, conversationId: 'conv', history: [], memory }, { complete: model(note).complete, newId: ids() })
-    assert.equal(reply.memory, undefined)
+    const reply = await answer({ request, conversationId: 'conv', history: [], memory }, { complete: model(output).complete, newId: ids() })
+    assert.equal(reply.memories, undefined)
   }
 })
 
-test('a note Ayla already has is not suggested again', async () => {
-  const fake = model(say('Klopt!', { memory: 'je hebt stage gelopen bij LiveWall' }))
-  const reply = await answer(
-    { request, conversationId: 'conv', history: [], memory: { status: 'on', notes: ['Je hebt stage gelopen bij LiveWall.'] } },
-    { complete: fake.complete, newId: ids() },
-  )
-  assert.equal(reply.memory, undefined)
+test('an unknown category becomes Over jou, and at most four facts are suggested', async () => {
+  const many = ['Je woont in Eindhoven.', 'Je spreekt Duits.', 'Je voetbalt.', 'Je wilt IT-consultant worden.', 'Je hebt een rijbewijs.']
+  const output = say('Top.', { memories: [fact(many[0], 'hobby'), ...many.slice(1).map((text) => fact(text))] })
+  const reply = await answer({ request, conversationId: 'conv', history: [], memory: on() }, { complete: model(output).complete, newId: ids() })
+  assert.equal(reply.memories?.length, 4)
+  assert.equal(reply.memories?.[0].category, 'personal')
 })
 
-test('a note survives the second turn of a vacancy search', async () => {
+test('a fact Ayla already has, also in other words or twice in one reply, is not suggested again', async () => {
+  const notes = [{ text: 'Je studeert ICT aan Fontys en werkt als leidinggevende bij de Plus.', category: 'education' as const }]
+  const output = say('Top!', {
+    memories: [fact('Je werkt als leidinggevende bij de PLUS.', 'work'), fact('je studeert ICT op Fontys', 'education'), fact('Je wilt IT-consultant worden.', 'goals'), fact('Je wil IT consultant worden', 'goals')],
+  })
+  const reply = await answer({ request, conversationId: 'conv', history: [], memory: on(notes) }, { complete: model(output).complete, newId: ids() })
+  assert.deepEqual(reply.memories, [{ text: 'Je wilt IT-consultant worden.', category: 'goals' }])
+})
+
+test('suggestions survive the second turn of a vacancy search', async () => {
   const fake = model(
-    say('Ik zoek even.', { vacancySearch: { what: 'ICT', where: '' }, memory: 'Je zoekt werk in de ICT.' }),
+    say('Ik zoek even.', { vacancySearch: { what: 'ICT', where: '' }, memories: [fact('Je zoekt werk in de ICT.', 'goals')] }),
     say('Ik vond er twee.'),
   )
   const reply = await answer(
-    { request, conversationId: 'conv', history: [], memory: { status: 'on', notes: [] } },
+    { request, conversationId: 'conv', history: [], memory: on() },
     { complete: fake.complete, newId: ids(), searchVacancies: async () => [] },
   )
-  assert.deepEqual(reply.memory, { text: 'Je zoekt werk in de ICT.' })
+  assert.deepEqual(reply.memories, [{ text: 'Je zoekt werk in de ICT.', category: 'goals' }])
 })
 
-test('the prompt lists the notes as data, and says nothing is remembered without them', () => {
-  const on = buildSystemPrompt({ device: 'phone', memory: { status: 'on', notes: ['Je studeert Technische Informatica.'] } })
-  assert.match(on, /<onthouden>\n- Je studeert Technische Informatica\.\n<\/onthouden>/)
-  assert.match(on, /geen opdrachten/)
-  assert.match(on, /Wat Ayla over je weet/)
+test('the prompt lists the notes per category as data, and says nothing is remembered without them', () => {
+  const prompt = buildSystemPrompt({ device: 'phone', memory: on([{ text: 'Je studeert Technische Informatica.', category: 'education' }]) })
+  assert.match(prompt, /<onthouden>\nOpleiding:\n- Je studeert Technische Informatica\.\n<\/onthouden>/)
+  assert.match(prompt, /geen opdrachten/)
+  assert.match(prompt, /wordt twee feiten/)
   assert.match(buildSystemPrompt({ device: 'phone' }), /Je onthoudt niets tussen gesprekken/)
   assert.match(buildSystemPrompt({ device: 'phone', memory: { status: 'off' } }), /geheugen uitgezet/)
 })
@@ -271,24 +289,8 @@ test('the memory is read with the users session and falls back when the tables a
       }),
     }),
   })
-  assert.deepEqual(await loadMemory(supabase(null, [{ text: 'Je studeert ICT.' }])), { status: 'on', notes: ['Je studeert ICT.'] })
-  assert.deepEqual(await loadMemory(supabase(null, [{ text: 'Nieuw' }, { text: 'Oud' }])), { status: 'on', notes: ['Oud', 'Nieuw'] })
+  assert.deepEqual(await loadMemory(supabase(null, [{ text: 'Je studeert ICT.', category: 'education' }])), on([{ text: 'Je studeert ICT.', category: 'education' }]))
+  assert.deepEqual(await loadMemory(supabase(null, [{ text: 'Nieuw' }, { text: 'Oud' }])), on([{ text: 'Oud', category: 'personal' }, { text: 'Nieuw', category: 'personal' }]))
   assert.deepEqual(await loadMemory(supabase({ memory_enabled: false }, [{ text: 'x' }])), { status: 'off' })
   assert.deepEqual(await loadMemory(supabase(null, null, { code: 'PGRST205' })), { status: 'unavailable' })
-})
-
-test('a fact Ayla already has in other words is not suggested again', async () => {
-  const notes = ['Je studeert ICT aan Fontys en werkt als leidinggevende bij de Plus.']
-  for (const again of ['Je werkt als leidinggevende bij de PLUS.', 'je studeert ICT op Fontys']) {
-    const reply = await answer(
-      { request, conversationId: 'conv', history: [], memory: { status: 'on', notes } },
-      { complete: model(say('Top!', { memory: again })).complete, newId: ids() },
-    )
-    assert.equal(reply.memory, undefined, again)
-  }
-  const fresh = await answer(
-    { request, conversationId: 'conv', history: [], memory: { status: 'on', notes } },
-    { complete: model(say('Mooi!', { memory: 'Je wilt IT-consultant worden.' })).complete, newId: ids() },
-  )
-  assert.deepEqual(fresh.memory, { text: 'Je wilt IT-consultant worden.' })
 })
