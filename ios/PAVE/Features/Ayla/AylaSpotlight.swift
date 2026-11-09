@@ -3,6 +3,18 @@ import PAVECore
 
 /// Puts the titles of your chats with Ayla in the iPhone's own search, only when you switch it on in Settings.
 /// Only titles, never what is in a chat. Switching it off, or signing out, takes them out again at once.
+/// Handoff: the chat you have open on one device shows on your others (the PAVE icon in the Dock or the app
+/// switcher), to continue right there. Only the conversation's id travels; the other device loads it with your
+/// account, behind its own PIN.
+enum AylaHandoff {
+    static let activityType = "nl.fontys.pave.conversation"
+    static let idKey = "conversationID"
+
+    static func conversationID(in activity: NSUserActivity) -> String? {
+        activity.userInfo?[idKey] as? String
+    }
+}
+
 enum AylaSpotlight {
     /// Off unless someone switches it on: chat titles can say something personal.
     static let settingKey = "chatsInSpotlight"

@@ -179,11 +179,44 @@ public struct AylaStoredMessage: Equatable, Sendable, Identifiable {
     public var role: Role
     public var text: String
     public var reply: AylaReply?
+    /// When it was sent; `distantPast` when unknown.
+    public var sentAt: Date
 
-    public init(id: String, role: Role, text: String, reply: AylaReply? = nil) {
+    public init(id: String, role: Role, text: String, reply: AylaReply? = nil, sentAt: Date = .distantPast) {
         self.id = id
         self.role = role
         self.text = text
         self.reply = reply
+        self.sentAt = sentAt
+    }
+}
+
+/// When the conversation shows a time between messages, as in Messages: above the first one, and after a pause.
+public enum AylaTimeline {
+    public static let pause: TimeInterval = 15 * 60
+
+    public static func showsTime(before date: Date, after previous: Date?) -> Bool {
+        guard date != .distantPast else { return false }
+        guard let previous, previous != .distantPast else { return true }
+        return date.timeIntervalSince(previous) >= pause
+    }
+
+    /// "Vandaag 14:02", "Gisteren 09:15", "Maandag 18:40" within a week, else "3 nov 14:02" (with the year when it is
+    /// another year).
+    public static func label(for date: Date, now: Date = .now, calendar: Calendar = .current) -> String {
+        let locale = Locale(identifier: "nl_NL")
+        let style = Date.FormatStyle(locale: locale, calendar: calendar, timeZone: calendar.timeZone)
+        let time = date.formatted(style.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits))
+        if calendar.isDate(date, inSameDayAs: now) { return "Vandaag \(time)" }
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: now), calendar.isDate(date, inSameDayAs: yesterday) {
+            return "Gisteren \(time)"
+        }
+        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: date), to: calendar.startOfDay(for: now)).day ?? 0
+        if days < 7 {
+            return date.formatted(style.weekday(.wide)).capitalized(with: locale) + " \(time)"
+        }
+        var day = style.day().month(.abbreviated)
+        if !calendar.isDate(date, equalTo: now, toGranularity: .year) { day = day.year() }
+        return date.formatted(day).replacingOccurrences(of: ".", with: "") + " \(time)"
     }
 }

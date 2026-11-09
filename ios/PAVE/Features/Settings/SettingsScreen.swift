@@ -9,6 +9,7 @@ struct SettingsScreen: View {
     @State private var confirmsSignOut = false
     @AppStorage(AylaSpotlight.settingKey) private var chatsInSpotlight = false
     @AppStorage(AylaCaptionsSetting.key) private var captionsChoice: Bool?
+    @AppStorage(AppState.lockAfterKey) private var lockAfter = AppState.defaultLockAfter
     @Environment(AylaMemoryModel.self) private var memory
 
     var body: some View {
@@ -76,6 +77,28 @@ struct SettingsScreen: View {
                         .padding(.leading, 8)
                         .padding(.top, 20)
                         .accessibilityAddTraits(.isHeader)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Opnieuw vergrendelen")
+                                .textStyle(.listTitle)
+                                .foregroundStyle(Color.ink)
+                            Spacer(minLength: 8)
+                            Picker("Opnieuw vergrendelen", selection: $lockAfter) {
+                                Text("Meteen").tag(0)
+                                Text("Na 1 minuut").tag(60)
+                                Text("Na 5 minuten").tag(300)
+                                Text("Na 15 minuten").tag(900)
+                            }
+                            .labelsHidden()
+                            .tint(.brandGreen)
+                        }
+                        Text("Ben je even weg uit PAVE, dan vraagt de app daarna weer om je pincode of Face ID. In de appwisselaar zie je alleen het PAVE-logo.")
+                            .textStyle(.caption)
+                            .foregroundStyle(Color.inkMuted)
+                    }
+                    .padding(12)
+                    .background(Color.white, in: .rect(cornerRadius: 14))
 
                     VStack(alignment: .leading, spacing: 8) {
                         Toggle(isOn: $chatsInSpotlight) {

@@ -100,18 +100,25 @@ struct MainView: View {
         .onChange(of: chatsInSpotlight) { _, isOn in
             if isOn { AylaSpotlight.update(model.conversationList) } else { AylaSpotlight.removeAll() }
         }
-        .onChange(of: appState.conversationToOpen, initial: true) { _, id in
-            guard let id else { return }
+        // Siri, a widget or the iPhone's search wait until the app is unlocked, so Ayla never starts listening behind
+        // the PIN screen.
+        .onChange(of: appState.conversationToOpen, initial: true) { handlePending() }
+        .onChange(of: appState.link, initial: true) { handlePending() }
+        .onChange(of: appState.isRelocked) { handlePending() }
+        .onChange(of: connection.isOnline) { _, isOnline in
+            if isOnline { Task { await model.refreshConversations() } }
+        }
+    }
+
+    private func handlePending() {
+        guard !appState.isRelocked else { return }
+        if let id = appState.conversationToOpen {
             appState.conversationToOpen = nil
             openFromSearch(id)
         }
-        .onChange(of: appState.link, initial: true) { _, link in
-            guard let link else { return }
+        if let link = appState.link {
             appState.link = nil
             follow(link)
-        }
-        .onChange(of: connection.isOnline) { _, isOnline in
-            if isOnline { Task { await model.refreshConversations() } }
         }
     }
 

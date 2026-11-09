@@ -15,6 +15,31 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>nl.fontys.pave.conversation</string>
+	</array>
+	<key>UIApplicationShortcutItems</key>
+	<array>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>praat-met-ayla</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Praat met Ayla</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>waveform</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>nieuw-gesprek</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Nieuw gesprek</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>bubble.left.fill</string>
+		</dict>
+	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>PAVE gebruikt de camera om een document te scannen, zoals een certificaat. De tekst wordt op je toestel gelezen; alleen die tekst gaat met je bericht naar Ayla.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>PAVE gebruikt Face ID om de app te ontgrendelen, zodat je je pincode niet hoeft in te typen.</string>
 	<key>NSMicrophoneUsageDescription</key>

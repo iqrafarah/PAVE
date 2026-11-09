@@ -62,6 +62,8 @@ struct AylaChatScreen: View {
     @State private var readAloud = AylaReadAloud()
     @Environment(AylaMemoryModel.self) private var memory
     @State private var showsMemory = false
+    @State private var isScanning = false
+    @State private var isDropTargeted = false
     @State private var selectingText: SelectableText?
     /// Scrolled up far enough that the newest message is out of view.
     @State private var isAwayFromBottom = false
@@ -170,6 +172,37 @@ struct AylaChatScreen: View {
             readAloud.stop()
         }
         .sheet(item: $selectingText) { ChatTextSelection(text: $0.text) }
+        // Handoff to your other devices, with only a general title: the chat's own title stays private.
+        .userActivity(AylaHandoff.activityType, isActive: model.conversationID != nil && !isVoiceActive) { activity in
+            guard let id = model.conversationID else { return }
+            activity.title = "Gesprek met Ayla"
+            activity.isEligibleForHandoff = true
+            activity.isEligibleForSearch = false
+            activity.isEligibleForPrediction = false
+            activity.addUserInfoEntries(from: [AylaHandoff.idKey: id])
+        }
+        .fullScreenCover(isPresented: $isScanning) {
+            DocumentScanner { pages in
+                isScanning = false
+                addScan(pages)
+            } onCancel: {
+                isScanning = false
+            }
+            .ignoresSafeArea()
+        }
+        // Drag a pdf, photo or text file in from Files, Photos or Safari (iPad, the open iPhone Duo).
+        .onDrop(of: AttachmentReader.contentTypes, isTargeted: $isDropTargeted) { providers in
+            guard model.isAvailable, !isTalking else { return false }
+            addProviders(providers)
+            return true
+        }
+        .overlay {
+            if isDropTargeted {
+                AylaDropTarget()
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.15), value: isDropTargeted)
         .sheet(isPresented: $showsMemory) {
             NavigationStack {
                 AylaMemoryScreen { showsMemory = false }
@@ -327,8 +360,17 @@ struct AylaChatScreen: View {
                 // Each row gets its spacing up front: a row that is on its way out (a new conversation) must not look
                 // up its neighbour in the list, which may already be empty.
                 ForEach(Self.rows(model.entries), id: \.entry.id) { row in
-                    entryView(row.entry)
-                        .padding(.top, row.spacing)
+                    VStack(spacing: 0) {
+                        if let time = row.time {
+                            Text(time)
+                                .textStyle(.caption)
+                                .foregroundStyle(Color.inkMuted)
+                                .frame(maxWidth: .infinity)
+                                .padding(.bottom, 12)
+                        }
+                        entryView(row.entry)
+                    }
+                    .padding(.top, row.spacing)
                 }
             }
             .padding(.leading, 32)
@@ -614,7 +656,7 @@ struct AylaChatScreen: View {
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { voiceBarHeight = $0 }
             .overlay(alignment: .bottomLeading) {
                 if isAttachMenuOpen {
-                    AylaAttachMenu(onAddFile: chooseFile)
+                    AylaAttachMenu(onAddFile: { chooseFile() }, onScan: scanAction, onPaste: { addPasted($0) })
                         .transition(reduceMotion ? .opacity : .scale(scale: 0.3, anchor: .bottomLeading).combined(with: .opacity))
                 }
             }
@@ -710,7 +752,7 @@ struct AylaChatScreen: View {
                 )
                 .overlay(alignment: .bottomLeading) {
                     if isAttachMenuOpen {
-                        AylaAttachMenu(onAddFile: chooseFile)
+                        AylaAttachMenu(onAddFile: { chooseFile() }, onScan: scanAction, onPaste: { addPasted($0) })
                             .transition(reduceMotion ? .opacity : .scale(scale: 0.3, anchor: .bottomLeading).combined(with: .opacity))
                     }
                 }
@@ -969,6 +1011,59 @@ struct AylaChatScreen: View {
         }
     }
 
+    /// Only where the device has a camera that can scan documents.
+    private var scanAction: (() -> Void)? {
+        guard DocumentScanner.isAvailable else { return nil }
+        return { scanDocument() }
+    }
+
+    private func scanDocument() {
+        isAttachMenuOpen = false
+        isScanning = true
+    }
+
+    private func addScan(_ pages: [CGImage]) {
+        guard !pages.isEmpty else { return }
+        let name = "Scan \(Date.now.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "nl_NL")))).pdf"
+        let model = model
+        Task {
+            guard model.attachments.count < AylaAttachment.maxCount else {
+                fileProblem = AylaMessages.tooManyFiles
+                return
+            }
+            if let file = try? await AttachmentReader.read(pages: pages, name: name) {
+                model.attach(file)
+                PaveHaptics.success()
+            } else {
+                fileProblem = AylaMessages.fileUnreadable
+            }
+        }
+    }
+
+    private func addPasted(_ providers: [NSItemProvider]) {
+        isAttachMenuOpen = false
+        addProviders(providers)
+    }
+
+    /// Files dragged in or pasted: read on the device, like a chosen file.
+    private func addProviders(_ providers: [NSItemProvider]) {
+        let model = model
+        Task {
+            for provider in providers {
+                guard model.attachments.count < AylaAttachment.maxCount else {
+                    fileProblem = AylaMessages.tooManyFiles
+                    return
+                }
+                if let file = try? await AttachmentReader.read(provider) {
+                    model.attach(file)
+                    PaveHaptics.tap(.light)
+                } else {
+                    fileProblem = AylaMessages.fileUnreadable
+                }
+            }
+        }
+    }
+
     private func scrollToBottom() {
         Task {
             await Task.yield()
@@ -1003,12 +1098,16 @@ struct AylaChatScreen: View {
         }
     }
 
-    /// The messages with the space above each one: more when the other side starts a turn.
-    private static func rows(_ entries: [AylaChatModel.Entry]) -> [(entry: AylaChatModel.Entry, spacing: CGFloat)] {
+    /// The messages with the space above each one (more when the other side starts a turn), and the time above the
+    /// first one and after a pause, as in Messages.
+    private static func rows(_ entries: [AylaChatModel.Entry]) -> [(entry: AylaChatModel.Entry, spacing: CGFloat, time: String?)] {
         entries.indices.map { index in
             let entry = entries[index]
-            guard index > 0 else { return (entry, 0) }
-            return (entry, entries[index - 1].role != entry.role ? 25 : 12)
+            let previous = index > 0 ? entries[index - 1] : nil
+            let time = AylaTimeline.showsTime(before: entry.sentAt, after: previous?.sentAt)
+                ? AylaTimeline.label(for: entry.sentAt) : nil
+            guard let previous else { return (entry, 0, time) }
+            return (entry, time != nil ? 28 : previous.role != entry.role ? 25 : 12, time)
         }
     }
 

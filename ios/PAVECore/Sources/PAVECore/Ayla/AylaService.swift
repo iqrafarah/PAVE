@@ -324,11 +324,14 @@ public struct SupabaseAylaService: AylaService {
     public func messages(in conversationID: String) async throws -> [AylaStoredMessage] {
         let rows: [MessageRow] = try await select(
             "ayla_messages",
-            query: [("select", "id,role,text,reply"), ("conversation_id", "eq.\(conversationID)"), ("order", "created_at.asc")]
+            query: [("select", "id,role,text,reply,created_at"), ("conversation_id", "eq.\(conversationID)"), ("order", "created_at.asc")]
         )
         return rows.compactMap { row in
             guard let role = AylaStoredMessage.Role(rawValue: row.role) else { return nil }
-            return AylaStoredMessage(id: row.id, role: role, text: row.text, reply: row.reply)
+            return AylaStoredMessage(
+                id: row.id, role: role, text: row.text, reply: row.reply,
+                sentAt: row.created_at.map(Self.date(from:)) ?? .distantPast
+            )
         }
     }
 
@@ -611,6 +614,7 @@ private struct MessageRow: Decodable {
     let role: String
     let text: String
     let reply: AylaReply?
+    let created_at: String?
 }
 
 private struct ProfileRow: Decodable {

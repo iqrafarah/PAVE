@@ -21,6 +21,7 @@ final class AylaChatModel {
         let text: String
         var reply: AylaReply?
         var attachments: [String] = []
+        var sentAt: Date = .now
     }
 
     private(set) var entries: [Entry] = []
@@ -260,7 +261,10 @@ final class AylaChatModel {
         do {
             let messages = try await service.messages(in: conversation.id)
             entries = messages.map { message in
-                Entry(id: message.id, role: message.role == .user ? .user : .ayla, text: message.text, reply: message.reply)
+                Entry(
+                    id: message.id, role: message.role == .user ? .user : .ayla, text: message.text, reply: message.reply,
+                    sentAt: message.sentAt
+                )
             }
             conversationID = conversation.id
             lastQuestion = nil

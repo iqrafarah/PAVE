@@ -429,6 +429,29 @@ extension SupabaseAylaServiceTests {
         #expect(!memories.knows("Je wilt IT-consultant worden."))
     }
 
+    @Test func timesShowAboveTheFirstMessageAndAfterAPause() {
+        let start = Date(timeIntervalSince1970: 1_000_000)
+        #expect(AylaTimeline.showsTime(before: start, after: nil))
+        #expect(!AylaTimeline.showsTime(before: start.addingTimeInterval(60), after: start))
+        #expect(AylaTimeline.showsTime(before: start.addingTimeInterval(20 * 60), after: start))
+        #expect(!AylaTimeline.showsTime(before: .distantPast, after: nil))
+    }
+
+    @Test func timeLabelsAreDutchAndRelative() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try #require(TimeZone(identifier: "Europe/Amsterdam"))
+        let now = try #require(calendar.date(from: DateComponents(year: 2026, month: 11, day: 9, hour: 15)))
+        func at(_ day: Int, _ month: Int = 11, _ year: Int = 2026) -> Date {
+            calendar.date(from: DateComponents(year: year, month: month, day: day, hour: 14, minute: 2))!
+        }
+        let label = { (date: Date) in AylaTimeline.label(for: date, now: now, calendar: calendar).replacingOccurrences(of: "\u{202F}", with: " ") }
+        #expect(label(at(9)) == "Vandaag 14:02")
+        #expect(label(at(8)) == "Gisteren 14:02")
+        #expect(label(at(5)) == "Donderdag 14:02")
+        #expect(label(at(1)) == "1 nov 14:02")
+        #expect(label(at(1, 11, 2025)) == "1 nov 2025 14:02")
+    }
+
     @Test func notesAreTheSameWhateverTheCapitalsOrFullStop() {
         #expect(AylaMemory.isSame("Je studeert ICT.", "je studeert ict"))
         #expect(AylaMemory.clean("   ") == nil)
