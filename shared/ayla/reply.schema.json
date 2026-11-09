@@ -27,6 +27,20 @@
             "screen": { "$ref": "#/$defs/screen" },
             "itemId": { "type": "string" }
           }
+        },
+        "attachments": {
+          "type": "array",
+          "description": "Files the user added to this message. The app reads the text on the device; the file itself is not sent and the text is not stored.",
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "required": ["name", "text"],
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+              "text": { "type": "string", "minLength": 1, "maxLength": 20000 }
+            }
+          }
         }
       }
     },

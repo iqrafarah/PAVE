@@ -8,12 +8,16 @@ export type Category = (typeof CATEGORIES)[number]
 export type Screen = (typeof SCREENS)[number]
 export type Device = (typeof DEVICES)[number]
 
+/** A file the user added to the message. The app reads the text on the device; the file itself is not sent. */
+export interface Attachment { name: string; text: string }
+
 export interface AylaRequest {
   conversationId?: string
   text: string
   device: Device
   input: 'voice' | 'text'
   context?: { screen: Screen; itemId?: string }
+  attachments?: Attachment[]
 }
 
 export interface Choice { id: string; label: string }
@@ -54,13 +58,16 @@ export interface AylaReply {
 }
 
 export const MAX_TEXT_LENGTH = 4000
+export const MAX_ATTACHMENTS = 3
+export const MAX_ATTACHMENT_LENGTH = 20000
+export const MAX_ATTACHMENT_NAME_LENGTH = 200
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /** Returns the request, or a reason why it is not valid. */
 export function parseRequest(body: unknown): AylaRequest | string {
   if (typeof body !== 'object' || body === null) return 'body must be an object'
   const b = body as Record<string, unknown>
-  const allowed = new Set(['conversationId', 'text', 'device', 'input', 'context'])
+  const allowed = new Set(['conversationId', 'text', 'device', 'input', 'context', 'attachments'])
   const extra = Object.keys(b).find((key) => !allowed.has(key))
   if (extra) return `unknown field ${extra}`
   if (typeof b.text !== 'string' || !b.text.trim()) return 'text is required'
@@ -77,11 +84,24 @@ export function parseRequest(body: unknown): AylaRequest | string {
     if (c.itemId !== undefined && typeof c.itemId !== 'string') return 'context is not valid'
     context = { screen: c.screen as Screen, ...(c.itemId ? { itemId: c.itemId as string } : {}) }
   }
+  let attachments: Attachment[] | undefined
+  if (b.attachments !== undefined) {
+    if (!Array.isArray(b.attachments) || b.attachments.length > MAX_ATTACHMENTS) return 'attachments are not valid'
+    attachments = []
+    for (const item of b.attachments) {
+      const a = item as Record<string, unknown>
+      if (typeof a !== 'object' || a === null) return 'attachments are not valid'
+      if (typeof a.name !== 'string' || !a.name.trim() || a.name.length > MAX_ATTACHMENT_NAME_LENGTH) return 'attachments are not valid'
+      if (typeof a.text !== 'string' || !a.text.trim() || a.text.length > MAX_ATTACHMENT_LENGTH) return 'attachments are not valid'
+      attachments.push({ name: a.name.trim(), text: a.text.trim() })
+    }
+  }
   return {
     text: b.text.trim(),
     device: b.device as Device,
     input: b.input,
     ...(b.conversationId ? { conversationId: b.conversationId as string } : {}),
     ...(context ? { context } : {}),
+    ...(attachments?.length ? { attachments } : {}),
   }
 }

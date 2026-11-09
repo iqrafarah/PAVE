@@ -10,6 +10,8 @@ export interface BrainInput {
   conversationId: string
   history: PastMessage[]
   firstName?: string
+  /** Called with a short title for a new conversation, when the model gives one. */
+  onTitle?: (title: string) => void
 }
 
 export interface BrainDeps {
@@ -28,18 +30,21 @@ interface ModelOutput {
   question: { text: string; choices: { id: string; label: string }[] } | null
   navigation: { screen: string } | null
   vacancySearch: { what: string; where: string } | null
+  title: string | null
 }
 
 /** One turn of the conversation: the prompt in layers, the model, and a reply in the contract format. */
 export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaReply> {
   const { request } = input
   const messages: ChatMessage[] = [
-    { role: 'system', content: buildSystemPrompt({ device: request.device, firstName: input.firstName, context: request.context }) },
+    { role: 'system', content: buildSystemPrompt({ device: request.device, input: request.input, firstName: input.firstName, context: request.context }) },
     ...input.history.slice(-HISTORY_LIMIT).map((m): ChatMessage => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text })),
-    { role: 'user', content: request.text },
+    { role: 'user', content: withAttachments(request) },
   ]
 
   let output = parseOutput((await deps.complete(messages)).content)
+  const title = cleanTitle(output.title)
+  if (title && input.onTitle) input.onTitle(title)
   const blocks: Block[] = []
 
   if (output.vacancySearch) {
@@ -53,6 +58,13 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   }
 
   return toReply(output, blocks, input.conversationId, deps.newId())
+}
+
+/** The question plus the text of the files the user added, marked so the model treats it as data. */
+export function withAttachments(request: AylaRequest): string {
+  if (!request.attachments?.length) return request.text
+  const files = request.attachments.map((file) => `<bijlage naam="${file.name.replaceAll('"', "'")}">\n${file.text}\n</bijlage>`)
+  return [request.text, ...files].join('\n\n')
 }
 
 type SearchResult = { status: 'ok'; items: FoundVacancy[] } | { status: 'unavailable' } | { status: 'failed' }
@@ -88,10 +100,32 @@ function parseOutput(content: string): ModelOutput {
       vacancySearch: json.vacancySearch && typeof json.vacancySearch.what === 'string' && json.vacancySearch.what.trim()
         ? { what: json.vacancySearch.what.trim(), where: String(json.vacancySearch.where ?? '').trim() }
         : null,
+      title: typeof json.title === 'string' ? json.title : null,
     }
   } catch {
-    return { text: content, question: null, navigation: null, vacancySearch: null }
+    return { text: content, question: null, navigation: null, vacancySearch: null, title: null }
   }
+}
+
+const MAX_TITLE_LENGTH = 60
+
+/** A title the list can show in full: one line, no quotes or closing period, cut at a whole word. */
+export function cleanTitle(raw: string | null | undefined): string | null {
+  const title = (raw ?? '').replace(/\s+/g, ' ').trim().replace(/^["'“‘]+|["'”’.]+$/g, '').trim()
+  if (title.length < 2) return null
+  return shorten(title)
+}
+
+/** The first words of the first question, for a conversation that has no title from the model yet. */
+export function titleFrom(text: string): string {
+  return shorten(text.split('\n')[0].replace(/\s+/g, ' ').trim()) || 'Nieuw gesprek'
+}
+
+function shorten(text: string): string {
+  if (text.length <= MAX_TITLE_LENGTH) return text
+  const cut = text.slice(0, MAX_TITLE_LENGTH - 1)
+  const space = cut.lastIndexOf(' ')
+  return `${(space > 20 ? cut.slice(0, space) : cut).replace(/[,;:.!?-]+$/, '')}…`
 }
 
 function toReply(output: ModelOutput, blocks: Block[], conversationId: string, id: string): AylaReply {

@@ -1,30 +1,12 @@
 // Ayla's brain: one endpoint for web, iPhone and Watch. See docs/ayla.md.
 // It runs with the user's own session, so row level security applies to every query.
 import { createClient } from 'jsr:@supabase/supabase-js@2'
-import { answer, HISTORY_LIMIT, type PastMessage } from './brain.ts'
+import { answer, HISTORY_LIMIT, type PastMessage, titleFrom } from './brain.ts'
 import { parseRequest } from './contract.ts'
 import { openRouterCompletion } from './openrouter.ts'
 import { MODEL_OUTPUT_SCHEMA } from './prompt.ts'
 import { adzunaSearch } from './vacancies.ts'
-
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
-
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } })
-}
-
-function sessionLevel(token: string): string | undefined {
-  try {
-    const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
-    return JSON.parse(atob(payload)).aal
-  } catch {
-    return undefined
-  }
-}
+import { CORS, json, sessionLevel } from '../_shared/http.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
@@ -52,7 +34,7 @@ Deno.serve(async (req) => {
   } else {
     const { data, error } = await supabase
       .from('ayla_conversations')
-      .insert({ started_on: request.device, title: request.text.slice(0, 60) })
+      .insert({ started_on: request.device, title: titleFrom(request.text) })
       .select('id')
       .single()
     if (error || !data) return json({ error: 'unavailable' }, 500)
@@ -74,10 +56,11 @@ Deno.serve(async (req) => {
   const adzunaId = Deno.env.get('ADZUNA_APP_ID')
   const adzunaKey = Deno.env.get('ADZUNA_APP_KEY')
 
+  let title: string | undefined
   let reply
   try {
     reply = await answer(
-      { request, conversationId, history, firstName },
+      { request, conversationId, history, firstName, onTitle: request.conversationId ? undefined : (t) => { title = t } },
       {
         complete: openRouterCompletion(openRouterKey, MODEL_OUTPUT_SCHEMA),
         searchVacancies: adzunaId && adzunaKey ? adzunaSearch(adzunaId, adzunaKey) : undefined,
@@ -93,7 +76,10 @@ Deno.serve(async (req) => {
     { conversation_id: conversationId, role: 'ayla', text: reply.text, device: request.device, reply },
   ])
   if (saveError) return json({ error: 'unavailable' }, 500)
-  await supabase.from('ayla_conversations').update({ updated_at: new Date().toISOString() }).eq('id', conversationId)
+  await supabase
+    .from('ayla_conversations')
+    .update({ updated_at: new Date().toISOString(), ...(title ? { title } : {}) })
+    .eq('id', conversationId)
 
   return json(reply)
 })

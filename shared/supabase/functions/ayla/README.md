@@ -14,7 +14,7 @@ Ayla's brain for web, iPhone and Watch. The contract is in [`shared/ayla`](../..
 ## Tests
 
 ```bash
-node --test shared/supabase/functions/ayla/tests/
+node --test shared/supabase/functions/ayla/tests/ shared/supabase/functions/ayla-voice/tests/
 ```
 
 ## Going live
@@ -29,3 +29,5 @@ Agree with the web team first: this adds two tables and a function to the shared
    ```
    Without the Adzuna keys Ayla works, and says that vacancy search is not set up yet.
 4. Deploy from the `shared` folder: `supabase functions deploy ayla --project-ref <ref>`.
+5. Ayla's voice is a second function, `ayla-voice` (it uses the same OpenRouter key): `supabase functions deploy ayla-voice --project-ref <ref>`.
+   Both functions share `_shared/http.ts` (CORS, JSON replies, sign-in level).
