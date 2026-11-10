@@ -18,12 +18,12 @@ struct VerificationView: View {
     var body: some View {
         AuthScreen {
             AuthIntro(
-                emblem: .iconShieldCheck,
+                emblem: .iconDevicePhoneMobile,
                 eyebrow: purpose == .signIn ? "Tweestapsverificatie" : "Wachtwoord herstellen",
-                title: "Bevestig dat jij het bent",
+                title: "Vul de code uit je authenticator-app in",
                 message: purpose == .signIn
-                    ? "Open je authenticator-app en vul de code van 6 cijfers voor je PAVE-account in."
-                    : "Voor je account staat tweestapsverificatie aan. Vul de code uit je authenticator-app in. Daarna kies je een nieuw wachtwoord."
+                    ? "Open je authenticator-app en neem de code van 6 cijfers voor PAVE over. Je krijgt hem niet per mail."
+                    : "Voor je account staat tweestapsverificatie aan. Neem de code over uit je authenticator-app, niet uit je mail. Daarna kies je een nieuw wachtwoord."
             )
         } content: {
             VStack(alignment: .leading, spacing: 24) {
@@ -38,8 +38,8 @@ struct VerificationView: View {
                 )
 
                 PaveNotice(
-                    title: "Gebruik je authenticator-app",
-                    message: SupportText.sentence("Je code komt uit je authenticator-app, niet via e-mail of sms. Kun je niet bij de app? Neem contact op via ")
+                    title: "Kun je niet bij de app?",
+                    message: SupportText.sentence("Neem contact op via ")
                 )
 
                 AuthReturnButton(action: flow.returnToLogin)

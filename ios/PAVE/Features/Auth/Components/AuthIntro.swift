@@ -35,10 +35,10 @@ struct AuthIntro: View {
 
 #Preview {
     AuthIntro(
-        emblem: .iconShieldCheck,
+        emblem: .iconDevicePhoneMobile,
         eyebrow: "Tweestapsverificatie",
-        title: "Bevestig dat jij het bent",
-        message: "Open je authenticator-app en vul de code van 6 cijfers voor je PAVE-account in."
+        title: "Vul de code uit je authenticator-app in",
+        message: "Open je authenticator-app en neem de code van 6 cijfers voor PAVE over. Je krijgt hem niet per mail."
     )
     .padding(32)
 }

@@ -11,8 +11,9 @@ struct PasswordRequirementTests {
         ("Short!1a", PasswordRequirement.minimumLength),
         ("alllowercase!2026", .mixedCase),
         ("ALLUPPERCASE!2026", .mixedCase),
-        ("NoSymbolsHere2026", .numberAndSymbol),
-        ("NoNumbersHere!!!", .numberAndSymbol),
+        ("NoSymbolsHere2026", .symbol),
+        ("No Symbols Here 2026", .symbol),
+        ("NoNumbersHere!!!", .number),
     ])
     func weakPasswordMissesRequirement(password: String, requirement: PasswordRequirement) {
         #expect(!requirement.isMet(by: password))
