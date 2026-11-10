@@ -8,13 +8,10 @@ const code = ref('');
 const errorMessage = ref('');
 const isVerifying = ref(false);
 
+const RESET_AUTHENTICATOR_STEP_INDEX = 2;
+
 const eyebrow = computed(() =>
   isPasswordReset.value ? 'Wachtwoord herstellen' : 'Tweestapsverificatie',
-);
-const description = computed(() =>
-  isPasswordReset.value
-    ? 'Voor je account staat tweestapsverificatie aan. Neem de code over uit je authenticator-app, niet uit je mail. Daarna kies je een nieuw wachtwoord.'
-    : 'Open je authenticator-app en neem de code van 6 cijfers voor PAVE over. Je krijgt hem niet per mail.',
 );
 const nextPath = computed(() =>
   isPasswordReset.value ? SET_PASSWORD_PATH : HOME_PATH,
@@ -43,9 +40,13 @@ async function handleSubmit() {
 <template>
   <AuthCard
     :eyebrow="eyebrow"
-    title="Vul de code uit je authenticator-app in"
-    :description="description"
+    :title="AUTHENTICATOR_HEADING"
+    :description="AUTHENTICATOR_INSTRUCTION"
   >
+    <template v-if="isPasswordReset" #steps>
+      <AuthSteps :steps="RESET_STEPS" :current-index="RESET_AUTHENTICATOR_STEP_INDEX" />
+    </template>
+
     <template #icon>
       <svg
         class="size-5"
@@ -67,7 +68,9 @@ async function handleSubmit() {
       <AuthCodeInput
         id="verification-code"
         v-model="code"
-        hint="Vul de code in die je authenticator-app nu laat zien."
+        :label="AUTHENTICATOR_CODE_LABEL"
+        is-autofocused
+        :hint="AUTHENTICATOR_CODE_HINT"
         :error="errorMessage"
       />
       <AuthPrimaryButton type="submit" :disabled="isVerifying">
@@ -75,7 +78,7 @@ async function handleSubmit() {
       </AuthPrimaryButton>
     </form>
 
-    <AuthInfoBox title="Kun je niet bij de app?">
+    <AuthInfoBox title="Kun je niet bij je authenticator-app?">
       Neem contact op via <AuthSupportLink />.
     </AuthInfoBox>
 

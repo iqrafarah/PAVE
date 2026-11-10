@@ -25,3 +25,5 @@ export function getPasswordRules(password: string): PasswordRule[] {
     { label: 'Minimaal één symbool', isMet: SYMBOL.test(password) },
   ];
 }
+
+export type PasswordFieldState = 'incomplete' | 'valid';
