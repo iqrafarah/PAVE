@@ -10,10 +10,10 @@ public enum AylaBlock: Codable, Equatable, Sendable {
     case unknown(type: String)
 
     public struct CategoryCount: Codable, Equatable, Sendable {
-        public var category: VaultCategory
+        public var category: AylaVaultCategory
         public var count: Int
 
-        public init(category: VaultCategory, count: Int) {
+        public init(category: AylaVaultCategory, count: Int) {
             self.category = category
             self.count = count
         }

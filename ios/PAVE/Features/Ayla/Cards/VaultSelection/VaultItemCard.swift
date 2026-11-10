@@ -1,3 +1,4 @@
+import PAVECore
 import SwiftUI
 
 /// A selectable vault item used in the library and Ayla's task-consent panel.
@@ -8,7 +9,6 @@ struct VaultItemCard: View {
     let tint: Color
     let isSelected: Bool
     var category: String?
-    var logo: VaultCompanyLogo?
     let action: () -> Void
 
     init(
@@ -18,7 +18,6 @@ struct VaultItemCard: View {
         tint: Color,
         isSelected: Bool,
         category: String? = nil,
-        logo: VaultCompanyLogo? = nil,
         action: @escaping () -> Void
     ) {
         self.title = title
@@ -27,19 +26,17 @@ struct VaultItemCard: View {
         self.tint = tint
         self.isSelected = isSelected
         self.category = category
-        self.logo = logo
         self.action = action
     }
 
     init(item: VaultItem, isSelected: Bool, action: @escaping () -> Void) {
         self.init(
             title: item.title,
-            organisation: item.organisation,
-            period: item.period,
+            organisation: item.place ?? "",
+            period: item.period ?? "",
             tint: item.category.tint,
             isSelected: isSelected,
             category: item.category.title,
-            logo: item.logo,
             action: action
         )
     }
@@ -47,7 +44,7 @@ struct VaultItemCard: View {
     var body: some View {
         Button(action: action) {
             HStack(alignment: .top, spacing: 12) {
-                VaultCompanyLogoView(logo: logo, organisation: organisation)
+                CompanyMonogram(name: organisation.isEmpty ? title : organisation, size: 58)
                     .padding(.top, 8)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(title)
@@ -65,8 +62,8 @@ struct VaultItemCard: View {
                             .padding(.top, 5)
                     }
                     VStack(alignment: .leading, spacing: 9) {
-                        PaveIconLabel(icon: .iconBuilding, text: organisation)
-                        PaveIconLabel(icon: .iconCalendar, text: period)
+                        PaveIconLabel(icon: .iconBuildingOfficeSolid, text: organisation)
+                        PaveIconLabel(icon: .iconCalendarDaysSolid, text: period)
                     }
                     .padding(.leading, 5)
                     .padding(.top, 9)
@@ -97,8 +94,8 @@ struct VaultItemCard: View {
 
 #Preview {
     VStack(spacing: 13) {
-        VaultItemCard(item: VaultItem.consentPrototype[0], isSelected: true) {}
-        VaultItemCard(item: VaultItem.consentPrototype[1], isSelected: false) {}
+        VaultItemCard(item: VaultContents.preview.items[0], isSelected: true) {}
+        VaultItemCard(item: VaultContents.preview.items[1], isSelected: false) {}
     }
     .padding(.leading, 25)
     .padding(.trailing, 26)

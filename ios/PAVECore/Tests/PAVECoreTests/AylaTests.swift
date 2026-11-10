@@ -71,7 +71,7 @@ struct AylaReplyTests {
         let json = #"{"version":1,"id":"r","conversationId":"c","text":"Hoi","blocks":[{"type":"timeline","steps":[]}],"usedData":["skills","somethingNew"]}"#
         let reply = try AylaReply.decode(Data(json.utf8))
         #expect(reply.blocks == [.unknown(type: "timeline")])
-        #expect(reply.usedData == [.skills, VaultCategory(rawValue: "somethingNew")])
+        #expect(reply.usedData == [.skills, AylaVaultCategory(rawValue: "somethingNew")])
     }
 
     @Test func aReplySurvivesARoundTrip() throws {

@@ -1,259 +1,330 @@
+import PAVECore
 import SwiftUI
 
-/// The mobile vault list. The view accepts real items when a vault service is added; until then the app shows an
-/// honest empty state and the supplied design examples stay in previews only.
+/// Your vault: folders on top, then everything in it as tiles or a list. It reads and writes your own Supabase rows.
 struct VaultScreen: View {
+    @Environment(VaultModel.self) private var model
     let onShowMenu: (() -> Void)?
-    var items: [VaultItem] = []
-    private let usesPrototypeCounts: Bool
 
-    @State private var selectedItems: Set<String>
-    @State private var selectedCategories: Set<String> = []
-    @State private var searchText = ""
+    @AppStorage("vaultShowsGrid") private var isGrid = true
+    @State private var filter = VaultFilter()
     @State private var isSearching = false
     @FocusState private var isSearchFocused: Bool
-    @State private var selectedCategory = VaultCategory.all
-    @State private var selectedStatus = VaultStatusFilter.all
-    @State private var showsSelection = false
+    @State private var openedItem: VaultItem?
+    @State private var editedItem: VaultItem?
+    @State private var addsItem = false
+    @State private var deletedItem: VaultItem?
+    @State private var folderSheet: FolderSheet?
+    @State private var deletedFolder: VaultFolder?
 
-    init(
-        onShowMenu: (() -> Void)?,
-        items: [VaultItem] = [],
-        initiallySelectedItems: Set<String> = [],
-        usesPrototypeCounts: Bool = false
-    ) {
-        self.onShowMenu = onShowMenu
-        self.items = items
-        self.usesPrototypeCounts = usesPrototypeCounts
-        _selectedItems = State(initialValue: initiallySelectedItems)
+    private enum FolderSheet: Identifiable {
+        case new
+        case edit(VaultFolder)
+
+        var id: String {
+            switch self {
+            case .new: "new"
+            case .edit(let folder): folder.id
+            }
+        }
     }
 
-    private var visibleItems: [VaultItem] {
-        let searched = items.filter { item in
-            searchText.isEmpty || [item.title, item.organisation, item.period, item.category.title]
-                .joined(separator: " ")
-                .localizedCaseInsensitiveContains(searchText)
-        }
-        return searched.filter { item in
-            let matchesCategory = selectedCategory == .all || item.category == selectedCategory
-            let matchesStatus = selectedStatus.matches(item.status)
-            return matchesCategory && matchesStatus
-        }
+    private var visibleItems: [VaultItem] { filter.apply(to: model.items) }
+
+    /// The four folders from the design, then the other categories that hold something.
+    private var categories: [VaultCategory] {
+        VaultCategory.featured + VaultCategory.allCases.filter { !VaultCategory.featured.contains($0) && model.count(in: .category($0)) > 0 }
     }
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 18) {
-                    categoryStrip
-                    controls
-                    if isSearching {
-                        PaveSearchField(text: $searchText, prompt: "Zoek in je kluis", isFocused: $isSearchFocused)
-                    }
-                    if visibleItems.isEmpty {
-                        emptyState
-                    } else {
-                        VStack(spacing: 12) {
-                            ForEach(visibleItems) { item in
-                                VaultItemCard(item: item, isSelected: selectedItems.contains(item.id)) {
-                                    toggle(item.id, in: &selectedItems)
-                                }
+            content
+                .background(Color.canvas.ignoresSafeArea())
+                .mainScreenToolbar("Kluis", onShowMenu: onShowMenu)
+                .toolbar {
+                    if model.state == .ready {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button(action: toggleSearch) {
+                                Image(isSearching ? .iconXMark : .iconSearch)
                             }
+                            .accessibilityLabel(isSearching ? "Zoeken sluiten" : "Zoeken in je kluis")
+                        }
+                        ToolbarSpacer(.fixed, placement: .topBarTrailing)
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Menu {
+                                Button { addsItem = true } label: {
+                                    Label { Text("Item toevoegen") } icon: { Image(.iconDocumentPlusSolid) }
+                                }
+                                Button { folderSheet = .new } label: {
+                                    Label { Text("Map aanmaken") } icon: { Image(.iconFolderPlusSolid) }
+                                }
+                            } label: {
+                                Image(.iconPlus)
+                            }
+                            .accessibilityLabel("Toevoegen")
                         }
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
-                .padding(.bottom, 28)
-                .frame(maxWidth: 680)
-                .frame(maxWidth: .infinity)
-            }
-            .scrollBounceBehavior(.basedOnSize)
-            .background(Color.canvas.ignoresSafeArea())
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                if !selectedItems.isEmpty {
-                    VaultSelectionBar(count: selectedItems.count) { showsSelection = true }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 8)
-                        .padding(.bottom, 6)
-                        .background(.ultraThinMaterial)
+                .task { await model.load() }
+                .sheet(item: $openedItem) { item in
+                    VaultItemDetailView(itemID: item.id)
+                        .paveSheet()
                 }
-            }
-            .mainScreenToolbar("Kluis", onShowMenu: onShowMenu)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        if isSearching {
-                            isSearchFocused = false
-                            searchText = ""
-                            isSearching = false
-                        } else {
-                            isSearching = true
-                            isSearchFocused = true
+                .sheet(item: $editedItem) { item in
+                    VaultItemEditor(item: item)
+                        .paveSheet()
+                }
+                .sheet(isPresented: $addsItem) {
+                    VaultItemEditor(category: newItemCategory, folderID: newItemFolderID)
+                        .paveSheet()
+                }
+                .sheet(item: $folderSheet) { sheet in
+                    Group {
+                        switch sheet {
+                        case .new:
+                            VaultFolderEditor(folder: nil, style: nil) { folder in
+                                filter.shelf = .folder(folder.id)
+                            }
+                        case .edit(let folder):
+                            VaultFolderEditor(folder: folder, style: model.style(of: folder))
                         }
-                    } label: {
-                        Image(.iconSearch)
                     }
-                    .accessibilityLabel(isSearching ? "Zoeken sluiten" : "Zoeken")
+                    .presentationDragIndicator(.visible)
+                    .paveSheet()
                 }
-                ToolbarSpacer(.fixed, placement: .topBarTrailing)
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {} label: {
-                        Image(.iconPlus)
+                .confirmationDialog("Uit je kluis verwijderen?", isPresented: isPresented($deletedItem), titleVisibility: .visible, presenting: deletedItem) { item in
+                    Button("Verwijderen", role: .destructive) {
+                        PaveHaptics.tap(.heavy)
+                        Task { await model.delete(item) }
                     }
-                    .accessibilityLabel("Document toevoegen")
+                } message: { _ in
+                    Text(VaultMessages.deleteItemMessage)
                 }
-            }
-            .onChange(of: isSearching) { _, searching in
-                isSearchFocused = searching
-            }
-            .sheet(isPresented: $showsSelection) {
-                VaultAccessSelectionPanel(
-                    items: items,
-                    selectedCategories: $selectedCategories,
-                    selectedItems: $selectedItems,
-                    onContinue: { showsSelection = false }
-                )
-                .presentationDetents([.height(570), .large])
-                .presentationBackground(.clear)
-                .presentationDragIndicator(.hidden)
-            }
+                .confirmationDialog("Map verwijderen?", isPresented: isPresented($deletedFolder), titleVisibility: .visible, presenting: deletedFolder) { folder in
+                    Button("Map verwijderen", role: .destructive) {
+                        if filter.shelf == .folder(folder.id) { filter.shelf = .all }
+                        Task { await model.deleteFolder(folder) }
+                    }
+                } message: { _ in
+                    Text(VaultMessages.deleteFolderMessage)
+                }
+                .alert("Dat lukte niet", isPresented: Binding(get: { model.problem != nil && !addsItem && editedItem == nil && openedItem == nil && folderSheet == nil }, set: { if !$0 { model.problem = nil } })) {
+                    Button("OK", role: .cancel) {}
+                } message: {
+                    Text(model.problem ?? "")
+                }
         }
         .tint(.brandGreen)
     }
 
-    private var categoryStrip: some View {
+    @ViewBuilder
+    private var content: some View {
+        switch model.state {
+        case .loading:
+            ScrollView {
+                VaultLoadingView()
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+                    .frame(maxWidth: 1000)
+                    .frame(maxWidth: .infinity)
+            }
+            .scrollDisabled(true)
+        case .unavailable:
+            PaveEmptyState(icon: .iconFolderSolid, title: VaultMessages.notInDemoTitle, message: VaultMessages.notInDemoMessage)
+                .padding(20)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        case .failed(let error):
+            VStack(spacing: 20) {
+                PaveEmptyState(
+                    icon: error == .noConnection ? .iconSignalSlash : .iconExclamationCircleSolid,
+                    title: VaultMessages.loadFailedTitle,
+                    message: VaultMessages.message(for: error)
+                )
+                PaveSecondaryButton(title: "Opnieuw proberen", icon: .iconArrowPath) {
+                    Task { await model.retry() }
+                }
+                .frame(maxWidth: 260)
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        case .ready:
+            library
+        }
+    }
+
+    private var library: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                if isSearching {
+                    PaveSearchField(text: $filter.searchText, prompt: "Zoek op titel, organisatie of vaardigheid", isFocused: $isSearchFocused)
+                }
+                shelves
+                VaultFilterBar(filter: $filter, isGrid: $isGrid)
+                items
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            .padding(.bottom, 28)
+            .frame(maxWidth: 1000)
+            .frame(maxWidth: .infinity)
+        }
+        .scrollDismissesKeyboard(.immediately)
+        .refreshable { await model.load() }
+    }
+
+    private var shelves: some View {
         ScrollView(.horizontal) {
             HStack(spacing: 9) {
-                ForEach(VaultCategory.allCases) { category in
-                    VaultCategoryTile(
+                ForEach(categories) { category in
+                    VaultFolderTile(
                         title: category.title,
-                        count: categoryCount(category),
-                        isOn: selectedCategories.contains(category.id)
+                        icon: category.folderIcon,
+                        count: model.count(in: .category(category)),
+                        isSelected: filter.shelf == .category(category)
                     ) {
-                        toggle(category.id, in: &selectedCategories)
+                        select(.category(category))
+                    }
+                }
+                ForEach(model.folders) { folder in
+                    let style = model.style(of: folder)
+                    VaultFolderTile(
+                        title: folder.name,
+                        icon: style.icon.image,
+                        color: style.color.color,
+                        surface: style.color.surface,
+                        count: model.count(in: .folder(folder.id)),
+                        isSelected: filter.shelf == .folder(folder.id)
+                    ) {
+                        select(.folder(folder.id))
+                    }
+                    .contextMenu {
+                        Button { folderSheet = .edit(folder) } label: {
+                            Label { Text("Map aanpassen") } icon: { Image(.iconPencil) }
+                        }
+                        Button(role: .destructive) { deletedFolder = folder } label: {
+                            Label { Text("Map verwijderen") } icon: { Image(.iconTrash) }
+                        }
                     }
                 }
             }
-            .padding(.horizontal, 1)
+            .padding(.vertical, 2)
         }
         .scrollIndicators(.hidden)
-        .contentMargins(.trailing, 1)
+        .scrollClipDisabled()
     }
 
-    private var controls: some View {
-        HStack(spacing: 10) {
-            Spacer(minLength: 0)
-
-            Menu {
-                Section("Bewijs") {
-                    ForEach(VaultCategory.allCases) { category in
-                        Button {
-                            selectedCategory = category
-                        } label: {
-                            if selectedCategory == category {
-                                Label(category.filterTitle, systemImage: "checkmark")
-                            } else {
-                                Text(category.filterTitle)
-                            }
-                        }
-                    }
-                }
-                Section("Status") {
-                    ForEach(VaultStatusFilter.allCases) { status in
-                        Button {
-                            selectedStatus = status
-                        } label: {
-                            if selectedStatus == status {
-                                Label(status.title, systemImage: "checkmark")
-                            } else {
-                                Text(status.title)
-                            }
-                        }
-                    }
-                }
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "line.3.horizontal.decrease")
-                    Text("Filter")
-                        .textStyle(.bodyMedium)
-                }
-                .foregroundStyle(Color.ink)
-                .padding(.horizontal, 13)
-                .frame(height: 40)
-                .background(Color.surfaceTint, in: .rect(cornerRadius: 12))
+    @ViewBuilder
+    private var items: some View {
+        let visible = visibleItems
+        if visible.isEmpty {
+            emptyState
+                .frame(maxWidth: .infinity)
+                .padding(.top, 36)
+        } else if isGrid {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 12, alignment: .top)], spacing: 12) {
+                ForEach(visible) { card($0) }
             }
-            .buttonStyle(.pave)
-            .accessibilityLabel("Filter op bewijs en status")
+        } else {
+            LazyVStack(spacing: 12) {
+                ForEach(visible) { card($0) }
+            }
         }
     }
 
+    private func card(_ item: VaultItem) -> some View {
+        Button {
+            openedItem = item
+        } label: {
+            VaultLibraryCard(item: item, isGrid: isGrid)
+        }
+        .buttonStyle(.pave)
+        .accessibilityHint("Toont alles over dit item")
+        .contextMenu {
+            VaultItemActionButtons(item: item, onEdit: { editedItem = item }, onDelete: { deletedItem = item })
+        }
+    }
+
+    @ViewBuilder
     private var emptyState: some View {
-        Group {
-            if items.isEmpty {
-                PaveEmptyState(
-                    icon: .iconFolder,
-                    title: "Je kluis is nog leeg",
-                    message: "Hier bewaar je straks je diploma's, certificaten, projecten en ervaringen, zodat je alles op één plek hebt."
-                )
-            } else {
-                PaveEmptyState(
-                    icon: .iconSearch,
-                    title: "Geen items gevonden",
-                    message: "Pas je zoekopdracht of filters aan."
-                )
+        if model.items.isEmpty {
+            emptyMessage(icon: .iconFolderSolid, title: VaultMessages.emptyTitle, message: VaultMessages.emptyMessage, button: "Item toevoegen") {
+                addsItem = true
+            }
+        } else if !filter.searchText.isEmpty || filter.narrowsDown {
+            emptyMessage(icon: .iconSearch, title: VaultMessages.noResultsTitle, message: VaultMessages.noResultsMessage, button: "Filters wissen") {
+                filter = VaultFilter()
+                filter.shelf = .all
+            }
+        } else if case .folder(let id) = filter.shelf, let folder = model.folder(id) {
+            emptyMessage(icon: .iconFolderSolid, title: "\(folder.name) is nog leeg", message: VaultMessages.emptyFolderMessage)
+        } else if case .category(let category) = filter.shelf {
+            emptyMessage(
+                icon: category.icon,
+                title: VaultMessages.emptyCategoryTitle(category),
+                message: VaultMessages.emptyMessage,
+                button: "\(category.singularTitle) toevoegen"
+            ) {
+                addsItem = true
             }
         }
-        .padding(.horizontal, 20)
-        .containerRelativeFrame(.vertical, count: 2, span: 1, spacing: 0)
     }
 
-    private func categoryCount(_ category: VaultCategory) -> Int {
-        if usesPrototypeCounts { return category.prototypeCount }
-        if category == .all { return items.count }
-        return items.count { $0.category == category }
+    private func emptyMessage(icon: ImageResource, title: String, message: String, button: String? = nil, action: @escaping () -> Void = {}) -> some View {
+        VStack(spacing: 20) {
+            PaveEmptyState(icon: icon, title: title, message: message)
+            if let button {
+                PavePrimaryButton(title: button, action: action)
+                    .frame(maxWidth: 260)
+            }
+        }
     }
 
-    private func toggle(_ id: String, in set: inout Set<String>) {
-        if set.contains(id) { set.remove(id) } else { set.insert(id) }
+    private var newItemCategory: VaultCategory {
+        if case .category(let category) = filter.shelf { return category }
+        return .projects
+    }
+
+    private var newItemFolderID: String? {
+        if case .folder(let id) = filter.shelf { return id }
+        return nil
+    }
+
+    private func select(_ shelf: VaultShelf) {
+        withAnimation(.snappy(duration: 0.22)) {
+            filter.shelf = filter.shelf == shelf ? .all : shelf
+        }
         PaveHaptics.selection()
     }
-}
 
-private enum VaultStatusFilter: String, CaseIterable, Identifiable, Hashable {
-    case all
-    case verified
-    case toVerify
-    case rejected
-
-    var id: Self { self }
-
-    var title: String {
-        switch self {
-        case .all: "Alle"
-        case .verified: "Geverifieerd"
-        case .toVerify: "Verifiëren"
-        case .rejected: "Afgewezen"
+    private func toggleSearch() {
+        withAnimation(.snappy(duration: 0.22)) {
+            if isSearching {
+                filter.searchText = ""
+                isSearching = false
+                isSearchFocused = false
+            } else {
+                isSearching = true
+                isSearchFocused = true
+            }
         }
     }
 
-    func matches(_ status: VaultItemStatus) -> Bool {
-        switch self {
-        case .all: true
-        case .verified: status == .verified
-        case .toVerify: status == .toVerify
-        case .rejected: status == .rejected
-        }
+    private func isPresented<Value>(_ value: Binding<Value?>) -> Binding<Bool> {
+        Binding(get: { value.wrappedValue != nil }, set: { if !$0 { value.wrappedValue = nil } })
     }
 }
 
-#Preview("Kluis · items") {
-    VaultScreen(
-        onShowMenu: {}, items: VaultItem.mobilePrototype,
-        initiallySelectedItems: ["full-stack-engineer", "leidinggevende"], usesPrototypeCounts: true
-    )
-}
-
-#Preview("Kluis · leeg") {
+#Preview("Kluis") {
     VaultScreen(onShowMenu: {})
+        .environment(VaultModel(previewContents: .preview))
+}
+
+#Preview("Leeg") {
+    VaultScreen(onShowMenu: {})
+        .environment(VaultModel(previewContents: VaultContents()))
+}
+
+#Preview("Demo") {
+    VaultScreen(onShowMenu: {})
+        .environment(VaultModel(service: nil))
 }

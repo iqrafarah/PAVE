@@ -28,9 +28,9 @@ public struct AylaReply: Codable, Equatable, Sendable {
     public struct AccessRequest: Codable, Equatable, Sendable {
         public var id: String
         public var purpose: String
-        public var categories: [VaultCategory]
+        public var categories: [AylaVaultCategory]
 
-        public init(id: String, purpose: String, categories: [VaultCategory]) {
+        public init(id: String, purpose: String, categories: [AylaVaultCategory]) {
             self.id = id
             self.purpose = purpose
             self.categories = categories
@@ -93,7 +93,7 @@ public struct AylaReply: Codable, Equatable, Sendable {
             category = (try? container.decode(AylaMemory.Category.self, forKey: .category)) ?? .personal
         }
     }
-    public var usedData: [VaultCategory]
+    public var usedData: [AylaVaultCategory]
 
     /// A new fact to remember (`text`), and/or one of the user's notes it makes out of date (`replaces`, that note's
     /// exact text). An empty `text` with `replaces` only suggests taking the old note away.
@@ -133,7 +133,7 @@ public struct AylaReply: Codable, Equatable, Sendable {
         memories: [MemorySuggestion]? = nil,
         memory: MemorySuggestion? = nil,
         usedMemories: [UsedMemory]? = nil,
-        usedData: [VaultCategory] = []
+        usedData: [AylaVaultCategory] = []
     ) {
         self.version = Self.version
         self.id = id
