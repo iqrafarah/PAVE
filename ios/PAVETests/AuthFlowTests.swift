@@ -117,6 +117,11 @@ struct AuthFlowTests {
         #expect(AuthSteps.breakingAfterHyphen(title) == shown)
     }
 
+    @Test func titlesKeepAHyphenatedWordTogether() {
+        #expect(AuthIntro.keepingHyphenatedWordsWhole("Open je authenticator-app") == "Open je authenticator\u{2060}-\u{2060}app")
+        #expect(AuthIntro.keepingHyphenatedWordsWhole("Check je inbox") == "Check je inbox")
+    }
+
     @Test func wrongResetCodeStaysOnTheCodeScreen() async throws {
         flow.showForgotPassword()
         try await flow.requestPasswordReset(email: MockAuthService.verifiedAccount)

@@ -22,7 +22,7 @@ struct AuthSteps: View {
                         .textStyle(.caption)
                         .foregroundStyle(index == currentIndex ? Color.ink : .inkMuted)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, 2)
+                        .allowsTightening(true)
                 }
                 .frame(maxWidth: .infinity)
             }

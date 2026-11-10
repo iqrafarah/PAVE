@@ -28,7 +28,7 @@ struct AuthIntro: View {
                     .textStyle(.eyebrow)
                     .foregroundStyle(Color.brandGreen)
             }
-            Text(title)
+            Text(Self.keepingHyphenatedWordsWhole(title))
                 .textStyle(.title)
                 .foregroundStyle(Color.ink)
                 .accessibilityAddTraits(.isHeader)
@@ -39,6 +39,11 @@ struct AuthIntro: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// "Open je authenticator-app" breaks before "authenticator-app", not after the hyphen.
+    static func keepingHyphenatedWordsWhole(_ title: String) -> String {
+        title.replacingOccurrences(of: "-", with: "\u{2060}-\u{2060}")
     }
 }
 
