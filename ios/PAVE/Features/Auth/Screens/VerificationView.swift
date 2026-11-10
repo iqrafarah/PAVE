@@ -71,8 +71,10 @@ struct VerificationView: View {
                 case .passwordReset:
                     try await flow.verifyForPasswordReset(code: code)
                 }
+                PaveHaptics.success()
             } catch {
                 self.error = AuthError(error)
+                PaveHaptics.error()
                 // As on the web: a wrong code empties the field and puts the cursor back for the next try.
                 code = ""
                 isCodeFocused = true

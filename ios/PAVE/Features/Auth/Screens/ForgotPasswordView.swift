@@ -62,8 +62,10 @@ struct ForgotPasswordView: View {
             do {
                 try await flow.requestPasswordReset(email: trimmedEmail)
                 error = nil
+                PaveHaptics.success()
             } catch {
                 self.error = AuthError(error)
+                PaveHaptics.error()
             }
         }
     }

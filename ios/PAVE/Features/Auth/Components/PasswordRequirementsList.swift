@@ -36,6 +36,8 @@ struct PasswordRequirementsList: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.surfaceTint, in: .rect(cornerRadius: 12))
         .animation(.easeOut(duration: 0.15), value: password)
+        // A light tap the moment the last requirement is met.
+        .sensoryFeedback(.impact(weight: .light), trigger: remainingCount == 0) { _, isNow in isNow }
     }
 
     private var remainingCount: Int {

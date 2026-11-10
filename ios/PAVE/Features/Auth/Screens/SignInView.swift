@@ -113,6 +113,7 @@ struct SignInView: View {
                 error = nil
             } catch {
                 self.error = AuthError(error)
+                PaveHaptics.error()
             }
         }
     }

@@ -151,8 +151,10 @@ struct VerificationSetupView: View {
             defer { isSubmitting = false }
             do {
                 try await flow.confirmVerificationSetup(code: code)
+                PaveHaptics.success()
             } catch {
                 self.error = AuthError(error)
+                PaveHaptics.error()
             }
         }
     }

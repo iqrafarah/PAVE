@@ -118,9 +118,11 @@ struct PinSetupView: View {
     private func finish(pin: String, useBiometrics: Bool) {
         do {
             try appState.completePinSetup(pin: pin, useBiometrics: useBiometrics)
+            PaveHaptics.success()
         } catch {
             reset(to: .create)
             errorMessage = PinMessages.notSaved
+            PaveHaptics.error()
         }
     }
 

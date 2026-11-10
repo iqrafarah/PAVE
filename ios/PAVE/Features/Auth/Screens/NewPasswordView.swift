@@ -69,6 +69,8 @@ struct NewPasswordView: View {
             }
             .disabled(isSubmitting)
         }
+        // A light tap the moment the two passwords become the same, as the check appears.
+        .sensoryFeedback(.impact(weight: .light), trigger: doPasswordsMatch && !confirmation.isEmpty) { _, isNow in isNow }
         .onChange(of: focus) { previous, _ in
             if previous == .confirmation { hasLeftConfirmation = true }
         }
@@ -97,11 +99,13 @@ struct NewPasswordView: View {
         guard !isSubmitting else { return }
         guard PasswordRequirement.allMet(by: password) else {
             passwordError = AuthMessages.passwordRulesNotMet
+            PaveHaptics.error()
             focus = .password
             return
         }
         guard password == confirmation else {
             confirmationError = AuthMessages.passwordsDiffer
+            PaveHaptics.error()
             focus = .confirmation
             return
         }
@@ -111,8 +115,10 @@ struct NewPasswordView: View {
             defer { isSubmitting = false }
             do {
                 try await flow.updatePassword(password)
+                PaveHaptics.success()
             } catch {
                 passwordError = AuthError(error).message
+                PaveHaptics.error()
             }
         }
     }

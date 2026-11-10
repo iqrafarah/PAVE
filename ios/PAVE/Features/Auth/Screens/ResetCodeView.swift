@@ -130,8 +130,10 @@ struct ResetCodeView: View {
             defer { isChecking = false }
             do {
                 try await flow.verifyPasswordResetCode(email: email, code: code)
+                PaveHaptics.success()
             } catch {
                 codeError = AuthError(error)
+                PaveHaptics.error()
             }
         }
     }
@@ -147,9 +149,11 @@ struct ResetCodeView: View {
                 try await flow.requestPasswordReset(email: email)
                 resendAvailableAt = .now.addingTimeInterval(Self.resendWait)
                 resendMessage = AuthMessages.emailCodeResent
+                PaveHaptics.success()
                 AccessibilityNotification.Announcement(AuthMessages.emailCodeResent).post()
             } catch {
                 resendError = AuthError(error)
+                PaveHaptics.error()
             }
         }
     }
