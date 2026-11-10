@@ -57,10 +57,10 @@ enum VaultCategory: String, CaseIterable, Identifiable, Hashable {
 
     var folderIcon: String {
         switch self {
-        case .certificates: "IconCheckBadgeSolid"
-        case .diplomas: "IconAcademicCapSolid"
-        case .feedback: "IconChatBubbleLeftEllipsisSolid"
-        case .projects: "IconWrenchScrewdriverSolid"
+        case .certificates: "IconCheckBadgeOutline"
+        case .diplomas: "IconAcademicCapOutline"
+        case .feedback: "IconChatBubbleLeftEllipsisOutline"
+        case .projects: "IconWrenchScrewdriverOutline"
         default: "IconFolder"
         }
     }

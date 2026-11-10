@@ -116,12 +116,12 @@ struct VaultScreen: View {
                         Button {
                             showsNewFolder = true
                         } label: {
-                            Label("Map toevoegen", systemImage: "folder.badge.plus")
+                            Label("Map toevoegen", image: "IconFolderPlusSolid")
                         }
                         Button {
                             showsEvidenceNotice = true
                         } label: {
-                            Label("Bewijs toevoegen", systemImage: "doc.badge.plus")
+                            Label("Bewijs toevoegen", image: "IconDocumentPlusSolid")
                         }
                     } label: {
                         Image(.iconPlus)
@@ -150,7 +150,9 @@ struct VaultScreen: View {
                     selectedCustomFolderID = folder.id
                     selectedCategory = .all
                 }
-                .presentationDetents([.height(300)])
+                .presentationDetents([.height(240)])
+                .presentationCornerRadius(24)
+                .presentationBackground(Color.white)
                 .presentationDragIndicator(.visible)
             }
             .alert("Bewijs toevoegen", isPresented: $showsEvidenceNotice) {
@@ -178,7 +180,7 @@ struct VaultScreen: View {
                     }
                 }
                 ForEach(customFolders) { folder in
-                    VaultFolderTile(title: folder.name, icon: "folder", count: 0, isSelected: selectedCustomFolderID == folder.id) {
+                    VaultFolderTile(title: folder.name, icon: "IconFolder", count: 0, isSelected: selectedCustomFolderID == folder.id) {
                         selectedCategory = .all
                         selectedCustomFolderID = folder.id
                         PaveHaptics.selection()
@@ -328,14 +330,13 @@ private struct VaultFolderTile: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 46, height: 38)
-                    .overlay {
+                    .overlay(alignment: .center) {
                         Image(icon)
                             .renderingMode(.template)
                             .resizable()
                             .scaledToFit()
                             .foregroundStyle(.white)
-                            .frame(width: 14, height: 14)
-                            .offset(y: -1)
+                            .frame(width: 16, height: 16)
                     }
                     .padding(.leading, 13)
                     .padding(.top, 19)
@@ -378,6 +379,7 @@ private struct VaultAddFolderSheet: View {
 
             TextField("Naam van de map", text: $name)
                 .textFieldStyle(.plain)
+                .textStyle(.input)
                 .padding(.horizontal, 14)
                 .frame(height: 50)
                 .background(Color.white, in: .rect(cornerRadius: 10))
@@ -401,7 +403,8 @@ private struct VaultAddFolderSheet: View {
             }
         }
         .padding(22)
-        .frame(maxHeight: .infinity, alignment: .top)
+        .frame(maxWidth: 480, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .top)
         .background(Color.canvas.ignoresSafeArea())
     }
 
