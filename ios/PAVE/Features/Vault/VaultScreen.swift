@@ -11,6 +11,7 @@ struct VaultScreen: View {
     @State private var selectedCategories: Set<String> = []
     @State private var searchText = ""
     @State private var isSearching = false
+    @FocusState private var isSearchFocused: Bool
     @State private var selectedCategory = VaultCategory.all
     @State private var selectedStatus = VaultStatusFilter.all
     @State private var showsSelection = false
@@ -47,7 +48,7 @@ struct VaultScreen: View {
                     categoryStrip
                     controls
                     if isSearching {
-                        PaveSearchField(text: $searchText, prompt: "Zoek in je kluis")
+                        PaveSearchField(text: $searchText, prompt: "Zoek in je kluis", isFocused: $isSearchFocused)
                     }
                     if visibleItems.isEmpty {
                         emptyState
@@ -80,23 +81,22 @@ struct VaultScreen: View {
             }
             .mainScreenToolbar("Kluis", onShowMenu: onShowMenu)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            isSearching.toggle()
-                            if !isSearching { searchText = "" }
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    toolbarBubble(.iconSearch, label: isSearching ? "Zoeken sluiten" : "Zoeken") {
+                        if isSearching {
+                            isSearchFocused = false
+                            searchText = ""
+                            isSearching = false
+                        } else {
+                            isSearching = true
+                            isSearchFocused = true
                         }
-                    } label: {
-                        Image(.iconSearch)
                     }
-                    .accessibilityLabel(isSearching ? "Zoeken sluiten" : "Zoeken")
+                    toolbarBubble(.iconPlus, label: "Document toevoegen") {}
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {} label: {
-                        Image(systemName: "doc.badge.plus")
-                    }
-                    .accessibilityLabel("Document toevoegen")
-                }
+            }
+            .onChange(of: isSearching) { _, searching in
+                isSearchFocused = searching
             }
             .sheet(isPresented: $showsSelection) {
                 VaultAccessSelectionPanel(
@@ -203,6 +203,19 @@ struct VaultScreen: View {
         if usesPrototypeCounts { return category.prototypeCount }
         if category == .all { return items.count }
         return items.count { $0.category == category }
+    }
+
+    private func toolbarBubble(_ icon: ImageResource, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(icon)
+                .renderingMode(.template)
+                .foregroundStyle(Color.ink)
+                .frame(width: 44, height: 44)
+                .contentShape(.circle)
+                .glassEffect(.regular.interactive(), in: .circle)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 
     private func toggle(_ id: String, in set: inout Set<String>) {
