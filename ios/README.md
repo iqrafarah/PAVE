@@ -28,7 +28,7 @@ PAVE/
       Memory/     Wat Ayla over je weet: scherm, mapjes, model; Components/ (kaart in de chat, mapje, bewerken)
       Cards/      Kaarten in een antwoord: Vacancies/, VaultSelection/, bijlagekaart, onderblad
       Shared/     Wat meerdere onderdelen van Ayla gebruiken (AylaMessages, AylaUndoBar)
-    Vault/        Kluis (nu nog leeg: er is geen kluis in de database)
+    Vault/        Kluislijst, categorieën, zoeken, statusfilter en selectie; opslag is nog niet aangesloten
     Plan/         Plannen (nu nog leeg)
     Profile/      Profiel (nu nog leeg: delen bestaat nog niet)
     Settings/     Instellingen: je account en uitloggen
@@ -176,6 +176,18 @@ Na het inloggen maak je een PIN van 6 cijfers aan. Start je de app later opnieuw
 - De PIN hoort bij één account op dit toestel. Uitloggen bewaart hem: log je opnieuw in met hetzelfde account, dan hoef je geen nieuwe PIN te maken. Logt iemand anders in, dan wordt de oude PIN gewist en maakt die een eigen PIN aan. "Pincode vergeten?" en 5 foute pogingen wissen de PIN wel.
 - Face ID/Touch ID zit in `AppState` via `BiometricAuthenticating`. De app opent hem alleen als je dat tijdens het instellen hebt aangezet.
 - Het slot komt bij het opstarten van de app, en terug uit de achtergrond na de tijd die je kiest in Instellingen → Privacy → Opnieuw vergrendelen.
+
+## Kluis
+
+De iOS-uitwerking gebruikt de twee mobiele Figma-prototypes als basis: de lijst met categorieën en selecteerbare kaarten, en het uitschuifbare paneel waarin je kiest welke gegevens Ayla voor een taak mag gebruiken. De definitieve webbeelden zijn alleen geraadpleegd voor kaartvelden, statussen en de categorie-indeling; er is geen webcode aangepast.
+
+- `VaultScreen` is de mobiele lijst. De categoriekaarten, algemene filter op bewijstype en verificatiestatus, zoeken, selectie en vaste balk met het aantal geselecteerde items werken zodra de view echte items krijgt. Zoeken en toevoegen staan rechtsboven als twee losse ronde knoppen met ruimte ertussen; iOS plaatst ze op iPhone Duo in de zijrail. Zoeken zet direct focus op het zoekveld zodat het toetsenbord opent. De plusknop gebruikt hetzelfde icoon als “Iets toevoegen” in Ayla’s geheugen en heeft nog geen actie.
+- `VaultAccessSelectionPanel` en `VaultSelectionList` vormen het mobiele paneel volgens het Ayla-toestemmingsprototype. De itemrijen, categoriekeuzes en knop “Verder” gebruiken dezelfde componenten als de lijst. Het paneel opent nu vanuit de selectie op het kluisscherm; koppeling aan een toestemmingsverzoek in Ayla wacht op het gedeelde consentcontract.
+- De aangeleverde logo’s van Mgr. Frencken College, Plus en LiveWall staan lokaal in `PAVE/Resources/Assets.xcassets`. Kaarten gebruiken de bestaande tekststijlen, kleuren, Heroicons, haptiek en knopstijl uit het iOS-designsysteem.
+- De getoonde voorbeelditems staan alleen in `VaultItem.mobilePrototype` en `VaultItem.consentPrototype` voor Xcode-previews. De app toont zonder echte items nog steeds de lege staat; voorbeeldgegevens worden niet aan Ayla verstuurd of opgeslagen.
+- De kluismigration is opgesteld in `shared/supabase/migrations/20261110120000_vault.sql`, maar nog niet toegepast. Er is nog geen `VaultService`, uploadflow, verificatieservice of taakgebonden toestemmingsendpoint. “Verder” in deze eerste UI-laag rondt alleen de lokale selectie af. Stem met Daaf en het webteam eerst het gedeelde itemmodel en de toestemming per taak af; sluit daarna pas de service en opslag aan. Zie `docs/vault.md` voor het model en de uitrolvolgorde.
+
+**Werkwijze voor volgende kluiswijzigingen:** gebruik de gedeelde `shared/`-contracten en iOS-stijlen, houd SwiftUI in `PAVE/Features/Vault/` en gedeelde modellen in `PAVECore` alleen wanneer meerdere targets ze nodig hebben. Werk de relevante sectie in deze README bij zodra schermgedrag, datamodel, beveiliging of de voortgang verandert. De webvoorbeelden zijn referentie; wijzigingen blijven in `ios/` tenzij web en iOS samen een contract aanpassen.
 
 ## Ayla
 
