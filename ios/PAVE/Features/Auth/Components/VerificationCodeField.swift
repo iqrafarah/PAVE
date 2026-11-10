@@ -10,6 +10,8 @@ struct VerificationCodeField: View {
     var errorMessage: String?
     var reservedErrors = AuthError.allMessages
     var isFocused: FocusState<Bool>.Binding
+    /// Runs as soon as the last digit is in, also when the code is pasted or filled in by iOS, so there is no button to tap.
+    var onComplete: (() -> Void)?
 
     private var isInvalid: Bool { errorMessage != nil }
 
@@ -39,10 +41,13 @@ struct VerificationCodeField: View {
                         .stroke(Color.focusRing, lineWidth: 6)
                         .opacity(isFocused.wrappedValue && !isInvalid ? 1 : 0)
                 }
-                .onChange(of: code) { _, newValue in
+                .onChange(of: code) { oldValue, newValue in
                     let digits = String(newValue.filter(\.isNumber).prefix(Self.length))
                     if digits != newValue {
                         code = digits
+                    }
+                    if digits.count == Self.length, oldValue.count < Self.length {
+                        onComplete?()
                     }
                 }
                 .animation(.easeOut(duration: 0.15), value: isFocused.wrappedValue)

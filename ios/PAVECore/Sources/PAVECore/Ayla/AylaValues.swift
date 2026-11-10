@@ -20,6 +20,7 @@ public struct AylaVaultCategory: AylaValue {
     public static let skills = Self(rawValue: "skills")
     public static let feedback = Self(rawValue: "feedback")
     public static let reflections = Self(rawValue: "reflections")
+    public static let other = Self(rawValue: "other")
 
     /// The vault category, or `nil` for a value this version of the app does not know yet.
     public var category: VaultCategory? { VaultCategory(rawValue: rawValue) }

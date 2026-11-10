@@ -45,7 +45,8 @@ struct VerificationSetupView: View {
                     title: AuthMessages.authenticatorCodeLabel,
                     errorMessage: errorMessage,
                     reservedErrors: [AuthMessages.setupCouldNotStart] + AuthError.allMessages,
-                    isFocused: $isCodeFocused
+                    isFocused: $isCodeFocused,
+                    onComplete: submit
                 )
                     .onChange(of: code) { error = nil }
 

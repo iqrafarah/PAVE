@@ -34,12 +34,12 @@ Categories match `shared/ayla/reply.schema.json`: `diplomas`, `certificates`, `b
 - Status labels: `verified` is "Geverifieerd", `toVerify` is "Niet bevestigd" (not "Verifiëren": nobody is checking it unless a validation request exists), `rejected` is "Afgewezen". Origin: `user` "Zelf toegevoegd", `organization`/`import` "Van een organisatie", `ayla` "Via Ayla".
 - New items are always `source = user` and `toVerify`; the app never sends `verification_status` or `source`. An item that is `verified`, or that comes from an organisation, cannot be changed in the app, so a confirmed item never shows edited content under a confirmed label.
 - Dates use `start_date`/`end_date`/`is_current` for categories with a period, and `issued_on` for diplomas, certificates and badges. Cards show them as "mrt 2025 - dec 2025", "nov 2025 - nu" or "jul 2024".
-- Folders have a colour and an icon on iOS. The columns for them are in the round-two proposal below (**not applied**). Until it is applied, iOS saves only the name and keeps the colour and icon on the device.
+- Folders have a colour and an icon on iOS. The columns for them come from round two below (applied). Before that, iOS kept the colour and icon on the device; that fallback still works if a column is ever missing.
 - Web should use the same words; they are in `ios/PAVE/Features/Vault/VaultMessages.swift`.
 
-## Round two (proposal, not applied)
+## Round two (applied on 2026-11-10)
 
-[`20261110170000_vault_cleanup_and_evidence_flow.sql`](../shared/supabase/migrations/20261110170000_vault_cleanup_and_evidence_flow.sql) tidies up and prepares the screens in Figma (add evidence in four steps, the consent picker, the vault grid and list). Apply it only after the web team agrees.
+[`20261110170000_vault_cleanup_and_evidence_flow.sql`](../shared/supabase/migrations/20261110170000_vault_cleanup_and_evidence_flow.sql) tidies up and prepares the screens in Figma (add evidence in four steps, the consent picker, the vault grid and list). It was applied on 2026-11-10; iOS knows the category `other` since then.
 
 What is in Supabase on 2026-11-10 (read-only check with the publishable key):
 
@@ -57,7 +57,7 @@ What it changes:
 | Remove | The functions and `private` tables of the first password reset (`get_verified_totp_secret`, `create_password_reset_token` and four more) | Taken out of the repo in fe5e73b, called by nothing; one of them could read authenticator secrets. All with `if exists`, so it also runs if they were never applied. |
 | Remove | `vault_folders.category` and `.description` | The category folders are the item categories, not rows; no screen shows a folder description. |
 | Add | `vault_folders.color` and `.icon` | The "Nieuwe map" sheet. Replaces the earlier proposal `20261110150000`. |
-| Add | Category `other` ("Overige") | The category bar in the consent picker. **iOS and `shared/ayla/reply.schema.json` must know `other` before an item uses it**: the current iOS app skips categories it does not know. |
+| Add | Category `other` ("Overige") | The category bar in the consent picker. iOS and `shared/ayla/reply.schema.json` know it. |
 | Add | `organizations.logo_url` and `vault_items.organization_id` | Logos on the cards. Only trusted server code may link an item to an organisation, so a logo never makes your own item look official. |
 | Add | `vault_items.ayla_allowed_at` | Step 4 "Ayla mag dit document bekijken en gebruiken": off by default, time of agreeing, null to take it back. A task grant is still the way to share items for one question. |
 | Tighten | `guard_vault_item_authority` | Also blocks changing the content of a verified or imported item (title, dates, organisation and so on); moving it, Ayla access and deleting still work. iOS already behaves this way. |

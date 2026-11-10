@@ -11,7 +11,7 @@ struct AylaMemoryFolderScreen: View {
     @State private var isAdding = false
 
     private var notes: [AylaMemory] {
-        memory.notes.filter { $0.category == category }
+        memory.notes.filter { $0.isIn(category) }
     }
 
     var body: some View {
@@ -55,13 +55,13 @@ struct AylaMemoryFolderScreen: View {
             }
         }
         .sheet(isPresented: $isAdding) {
-            AylaMemoryEditor(title: "Iets toevoegen", text: "", category: category) { text, category in
-                memory.add(text, category: category)
+            AylaMemoryEditor(title: "Iets toevoegen", text: "", categories: [category]) { text, categories in
+                memory.add(text, categories: categories)
             }
         }
         .sheet(item: $editing) { note in
-            AylaMemoryEditor(title: "Aanpassen", text: note.text, category: note.category) { text, category in
-                memory.update(note, to: text, category: category)
+            AylaMemoryEditor(title: "Aanpassen", text: note.text, categories: note.categories) { text, categories in
+                memory.update(note, to: text, categories: categories)
             }
         }
     }

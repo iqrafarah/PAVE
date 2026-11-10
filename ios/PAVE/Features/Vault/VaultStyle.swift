@@ -13,6 +13,7 @@ extension VaultCategory {
         case .skills: .iconPaintBrush
         case .feedback: .iconChatBubbleLeftEllipsisSolid
         case .reflections: .iconDocumentText
+        case .other: .iconFolderSolid
         }
     }
 
@@ -28,6 +29,7 @@ extension VaultCategory {
         case .skills: .iconPaintBrushOutline
         case .feedback: .iconChatBubbleLeftEllipsisOutline
         case .reflections: .iconDocumentTextOutline
+        case .other: .iconFolderOutline
         }
     }
 
@@ -36,7 +38,7 @@ extension VaultCategory {
         case .diplomas, .certificates, .badges: .cardTintApricot
         case .workExperience, .internships: .cardTintGreen
         case .projects, .skills: .cardTintLime
-        case .feedback, .reflections: .cardTintLavender
+        case .feedback, .reflections, .other: .cardTintLavender
         }
     }
 }

@@ -36,8 +36,8 @@ public protocol AylaService: Sendable {
     /// What Ayla remembers about the user, the newest first. `notSetUp` until the tables exist.
     func memories() async throws -> AylaMemories
     /// Saves a note the user kept or wrote.
-    func remember(_ text: String, category: AylaMemory.Category, source: AylaMemory.Source, conversationID: String?) async throws -> AylaMemory
-    func updateMemory(_ text: String, category: AylaMemory.Category, id: String) async throws
+    func remember(_ text: String, categories: [AylaMemory.Category], source: AylaMemory.Source, conversationID: String?) async throws -> AylaMemory
+    func updateMemory(_ text: String, categories: [AylaMemory.Category], id: String) async throws
     func forgetMemory(id: String) async throws
     func forgetAllMemories() async throws
     func setMemoryEnabled(_ isEnabled: Bool) async throws
@@ -81,11 +81,11 @@ extension AylaService {
 
     public func memories() async throws -> AylaMemories { throw AylaError.notSetUp }
     public func remember(
-        _ text: String, category: AylaMemory.Category, source: AylaMemory.Source, conversationID: String?
+        _ text: String, categories: [AylaMemory.Category], source: AylaMemory.Source, conversationID: String?
     ) async throws -> AylaMemory {
         throw AylaError.notSetUp
     }
-    public func updateMemory(_ text: String, category: AylaMemory.Category, id: String) async throws { throw AylaError.notSetUp }
+    public func updateMemory(_ text: String, categories: [AylaMemory.Category], id: String) async throws { throw AylaError.notSetUp }
     public func forgetMemory(id: String) async throws { throw AylaError.notSetUp }
     public func forgetAllMemories() async throws { throw AylaError.notSetUp }
     public func setMemoryEnabled(_ isEnabled: Bool) async throws { throw AylaError.notSetUp }
@@ -537,12 +537,12 @@ public struct SupabaseAylaService: AylaService {
     }
 
     public func remember(
-        _ text: String, category: AylaMemory.Category, source: AylaMemory.Source, conversationID: String?
+        _ text: String, categories: [AylaMemory.Category], source: AylaMemory.Source, conversationID: String?
     ) async throws -> AylaMemory {
         guard let text = AylaMemory.clean(text) else { throw AylaError.unavailable }
-        var body = ["text": text, "source": source.rawValue, "category": category.rawValue]
-        if let conversationID { body["conversation_id"] = conversationID }
-        let data = try await withoutCategoryIfMissing(body) { body in
+        let categories = AylaMemory.tidy(categories)
+        let body = MemoryBody(text: text, categories: categories, source: source.rawValue, conversationID: conversationID)
+        let data = try await withoutMissingColumns(body) { body in
             let urlRequest = try await authorized(
                 "ayla_memories",
                 query: [("select", "*")],
@@ -556,10 +556,10 @@ public struct SupabaseAylaService: AylaService {
         return row.memory
     }
 
-    public func updateMemory(_ text: String, category: AylaMemory.Category, id: String) async throws {
+    public func updateMemory(_ text: String, categories: [AylaMemory.Category], id: String) async throws {
         guard let text = AylaMemory.clean(text) else { throw AylaError.unavailable }
-        let body = ["text": text, "category": category.rawValue, "updated_at": Date.now.ISO8601Format()]
-        _ = try await withoutCategoryIfMissing(body) { body in
+        let body = MemoryBody(text: text, categories: AylaMemory.tidy(categories), updatedAt: Date.now.ISO8601Format())
+        _ = try await withoutMissingColumns(body) { body in
             let urlRequest = try await authorized(
                 "ayla_memories",
                 query: [("id", "eq.\(id)"), ("select", "id")],
@@ -572,17 +572,22 @@ public struct SupabaseAylaService: AylaService {
         }
     }
 
-    /// Before the migration with categories runs, Supabase refuses the unknown column (PGRST204); the note is then
-    /// saved without it.
-    private func withoutCategoryIfMissing(
-        _ body: [String: String], _ send: ([String: String]) async throws -> Data
-    ) async throws -> Data {
-        do {
-            return try await send(body)
-        } catch is MissingColumn {
-            var body = body
-            body["category"] = nil
-            return try await send(body)
+    /// Before a migration runs, Supabase refuses a column it does not know (PGRST204). Then the note is saved with less:
+    /// first without the list of categories (20261110180000), then also without the main category (20261109160000).
+    private func withoutMissingColumns(_ body: MemoryBody, _ send: (MemoryBody) async throws -> Data) async throws -> Data {
+        var body = body
+        while true {
+            do {
+                return try await send(body)
+            } catch is MissingColumn {
+                if body.categories != nil {
+                    body.categories = nil
+                } else if body.category != nil {
+                    body.category = nil
+                } else {
+                    throw AylaError.unavailable
+                }
+            }
         }
     }
 
@@ -687,21 +692,50 @@ private struct SettingsRow: Decodable {
     let memory_enabled: Bool
 }
 
-private struct MemoryRow: Decodable {
+struct MemoryRow: Decodable {
     let id: String
     let text: String
     let source: String
     let category: String?
+    /// Missing before 20261110180000_ayla_memory_more_categories.sql runs.
+    let categories: [String]?
     let created_at: String
 
     var memory: AylaMemory {
-        AylaMemory(
+        let all = (categories ?? []).map { AylaMemory.Category(code: $0) }
+        return AylaMemory(
             id: id,
             text: text,
-            category: AylaMemory.Category(code: category),
+            categories: all.isEmpty ? [AylaMemory.Category(code: category)] : all,
             source: AylaMemory.Source(rawValue: source) ?? .ayla,
             createdAt: SupabaseAylaService.date(from: created_at)
         )
+    }
+}
+
+/// A note as it is sent. The main category is the first of `categories`; both go along, so the Ayla function and the
+/// web, which read only `category`, keep working.
+struct MemoryBody: Encodable {
+    var text: String
+    var category: String?
+    var categories: [String]?
+    var source: String?
+    var conversationID: String?
+    var updatedAt: String?
+
+    init(text: String, categories: [AylaMemory.Category], source: String? = nil, conversationID: String? = nil, updatedAt: String? = nil) {
+        self.text = text
+        category = categories.first?.rawValue
+        self.categories = categories.map(\.rawValue)
+        self.source = source
+        self.conversationID = conversationID
+        self.updatedAt = updatedAt
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case text, category, categories, source
+        case conversationID = "conversation_id"
+        case updatedAt = "updated_at"
     }
 }
 

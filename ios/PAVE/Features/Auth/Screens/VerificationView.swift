@@ -32,7 +32,8 @@ struct VerificationView: View {
                     title: AuthMessages.authenticatorCodeLabel,
                     hint: AuthMessages.authenticatorCodeHint,
                     errorMessage: errorMessage,
-                    isFocused: $isCodeFocused
+                    isFocused: $isCodeFocused,
+                    onComplete: submit
                 )
                 .onChange(of: code) { if !code.isEmpty { error = nil } }
 

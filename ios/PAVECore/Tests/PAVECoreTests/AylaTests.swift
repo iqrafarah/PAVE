@@ -397,14 +397,41 @@ extension SupabaseAylaServiceTests {
             captured.request = urlRequest
             return (201, Data(#"[{"id":"m2","text":"Je hebt stage gelopen bij LiveWall.","source":"ayla","created_at":"2026-11-09T10:00:00+00:00"}]"#.utf8))
         }
-        let memory = try await ayla.remember("  Je hebt stage gelopen\nbij LiveWall. ", category: .work, source: .ayla, conversationID: "c1")
+        let memory = try await ayla.remember("  Je hebt stage gelopen\nbij LiveWall. ", categories: [.work, .skills, .work], source: .ayla, conversationID: "c1")
         #expect(memory.id == "m2")
         let request = try #require(captured.request)
         #expect(request.httpMethod == "POST")
         #expect(request.value(forHTTPHeaderField: "Prefer") == "return=representation")
         let body = try #require(request.bodyData)
-        let json = try #require(try JSONSerialization.jsonObject(with: body) as? [String: String])
-        #expect(json == ["text": "Je hebt stage gelopen bij LiveWall.", "source": "ayla", "category": "work", "conversation_id": "c1"])
+        let json = try #require(try JSONSerialization.jsonObject(with: body) as? [String: Any])
+        #expect(json["text"] as? String == "Je hebt stage gelopen bij LiveWall.")
+        #expect(json["source"] as? String == "ayla")
+        #expect(json["conversation_id"] as? String == "c1")
+        #expect(json["category"] as? String == "work")
+        #expect(json["categories"] as? [String] == ["work", "skills"])
+    }
+
+    @Test func aNoteInMoreCategoriesIsReadBack() throws {
+        let rows = try JSONDecoder().decode([MemoryRow].self, from: Data(#"[{"id":"m","text":"Je ontwerpt graag.","source":"user","category":"work","categories":["work","interests"],"created_at":"2026-11-10T10:00:00Z"}]"#.utf8))
+        let memory = try #require(rows.first?.memory)
+        #expect(memory.categories == [.work, .interests])
+        #expect(memory.category == .work)
+        #expect(memory.isIn(.interests))
+        let notes = AylaMemories(notes: [memory])
+        #expect(notes.byCategory.map(\.category) == [.work, .interests])
+    }
+
+    @Test func beforeTheListOfCategoriesExistsOnlyTheMainOneIsSaved() async throws {
+        let captured = CapturedList()
+        let ayla = service { urlRequest in
+            captured.append(urlRequest)
+            let body = String(decoding: urlRequest.bodyData ?? Data(), as: UTF8.self)
+            if body.contains("categories") { return (400, Data(#"{"code":"PGRST204","message":"Could not find the 'categories' column"}"#.utf8)) }
+            return (201, Data(#"[{"id":"m4","text":"Je ontwerpt graag.","source":"user","category":"work","created_at":"2026-11-10T10:00:00+00:00"}]"#.utf8))
+        }
+        let memory = try await ayla.remember("Je ontwerpt graag.", categories: [.work, .interests], source: .user, conversationID: nil)
+        #expect(captured.requests.count == 2)
+        #expect(memory.categories == [.work])
     }
 
     @Test func beforeTheCategoryColumnExistsANoteIsSavedWithoutIt() async throws {
@@ -415,8 +442,8 @@ extension SupabaseAylaServiceTests {
             if body.contains("category") { return (400, Data(#"{"code":"PGRST204","message":"Could not find the 'category' column"}"#.utf8)) }
             return (201, Data(#"[{"id":"m3","text":"Je voetbalt.","source":"ayla","created_at":"2026-11-09T10:00:00+00:00"}]"#.utf8))
         }
-        let memory = try await ayla.remember("Je voetbalt.", category: .interests, source: .ayla, conversationID: nil)
-        #expect(captured.requests.count == 2)
+        let memory = try await ayla.remember("Je voetbalt.", categories: [.interests], source: .ayla, conversationID: nil)
+        #expect(captured.requests.count == 3)
         #expect(memory.category == .personal)
     }
 

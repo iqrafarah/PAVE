@@ -2,7 +2,7 @@
 -- (Figma FEDDIES: add evidence 1348:2351 and 1348:2537, consent picker 1173:21147, vault grid 1209:55066 and list 1209:53998).
 -- See docs/vault.md, "Round two".
 --
--- PROPOSAL, NOT APPLIED. This changes the shared schema: apply only after the web team agrees.
+-- Applied on 2026-11-10. This is part of the shared schema: change it only together with the web team.
 -- It replaces the unapplied proposal 20261110150000_vault_folder_style.sql (folder colour and icon are in here).
 -- Every step can run on the current database: drops use "if exists", and nothing here deletes vault rows.
 

@@ -120,7 +120,7 @@ final class AylaMemoryModel {
             for change in changes where change.kind == .keep && !memories.knows(change.suggestion.text) {
                 do {
                     let memory = try await service.remember(
-                        change.suggestion.text, category: change.suggestion.category, source: .ayla, conversationID: conversationID
+                        change.suggestion.text, categories: [change.suggestion.category], source: .ayla, conversationID: conversationID
                     )
                     memories.notes.insert(memory, at: 0)
                     if state != .ready { state = .ready }
@@ -151,11 +151,11 @@ final class AylaMemoryModel {
         decisions[replyID] = .declined
     }
 
-    func add(_ text: String, category: AylaMemory.Category) {
+    func add(_ text: String, categories: [AylaMemory.Category]) {
         guard let service, let text = AylaMemory.clean(text) else { return }
         Task {
             do {
-                let memory = try await service.remember(text, category: category, source: .user, conversationID: nil)
+                let memory = try await service.remember(text, categories: categories, source: .user, conversationID: nil)
                 memories.notes.insert(memory, at: 0)
             } catch {
                 problem = AylaMessages.memorySaveFailed
@@ -163,15 +163,16 @@ final class AylaMemoryModel {
         }
     }
 
-    func update(_ memory: AylaMemory, to text: String, category: AylaMemory.Category) {
-        guard let service, let text = AylaMemory.clean(text), text != memory.text || category != memory.category,
+    func update(_ memory: AylaMemory, to text: String, categories: [AylaMemory.Category]) {
+        let categories = AylaMemory.tidy(categories)
+        guard let service, let text = AylaMemory.clean(text), text != memory.text || categories != memory.categories,
               let index = memories.notes.firstIndex(where: { $0.id == memory.id })
         else { return }
         memories.notes[index].text = text
-        memories.notes[index].category = category
+        memories.notes[index].categories = categories
         Task {
             do {
-                try await service.updateMemory(text, category: category, id: memory.id)
+                try await service.updateMemory(text, categories: categories, id: memory.id)
             } catch {
                 if let index = memories.notes.firstIndex(where: { $0.id == memory.id }) { memories.notes[index] = memory }
                 problem = AylaMessages.memorySaveFailed
