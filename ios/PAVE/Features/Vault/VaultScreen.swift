@@ -81,8 +81,8 @@ struct VaultScreen: View {
             }
             .mainScreenToolbar("Kluis", onShowMenu: onShowMenu)
             .toolbar {
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    toolbarBubble(.iconSearch, label: isSearching ? "Zoeken sluiten" : "Zoeken") {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
                         if isSearching {
                             isSearchFocused = false
                             searchText = ""
@@ -91,8 +91,17 @@ struct VaultScreen: View {
                             isSearching = true
                             isSearchFocused = true
                         }
+                    } label: {
+                        Image(.iconSearch)
                     }
-                    toolbarBubble(.iconPlus, label: "Document toevoegen") {}
+                    .accessibilityLabel(isSearching ? "Zoeken sluiten" : "Zoeken")
+                }
+                ToolbarSpacer(.fixed, placement: .topBarTrailing)
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {} label: {
+                        Image(.iconPlus)
+                    }
+                    .accessibilityLabel("Document toevoegen")
                 }
             }
             .onChange(of: isSearching) { _, searching in
@@ -203,19 +212,6 @@ struct VaultScreen: View {
         if usesPrototypeCounts { return category.prototypeCount }
         if category == .all { return items.count }
         return items.count { $0.category == category }
-    }
-
-    private func toolbarBubble(_ icon: ImageResource, label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(icon)
-                .renderingMode(.template)
-                .foregroundStyle(Color.ink)
-                .frame(width: 44, height: 44)
-                .contentShape(.circle)
-                .glassEffect(.regular.interactive(), in: .circle)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label)
     }
 
     private func toggle(_ id: String, in set: inout Set<String>) {
