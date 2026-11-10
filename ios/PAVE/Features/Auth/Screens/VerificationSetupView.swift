@@ -26,14 +26,6 @@ struct VerificationSetupView: View {
             )
         } content: {
             VStack(alignment: .leading, spacing: 24) {
-                if setupFailed {
-                    PaveNotice(
-                        title: "Het instellen kon niet starten",
-                        message: "Ga terug naar inloggen en log opnieuw in. Blijft dit gebeuren? Neem contact op met de IT-support.",
-                        tone: .critical
-                    )
-                }
-
                 VStack(alignment: .leading, spacing: 16) {
                     SetupStepRow(
                         number: 1,
@@ -48,12 +40,17 @@ struct VerificationSetupView: View {
                     )
                 }
 
-                VerificationCodeField(code: $code, errorMessage: errorMessage, isFocused: $isCodeFocused)
+                VerificationCodeField(
+                    code: $code,
+                    errorMessage: errorMessage,
+                    reservedErrors: [AuthMessages.setupCouldNotStart] + AuthError.allMessages,
+                    isFocused: $isCodeFocused
+                )
                     .onChange(of: code) { error = nil }
 
                 PavePrimaryButton(
-                    title: "Instellen afronden",
-                    loadingTitle: "Afronden…",
+                    title: "Instellen bevestigen",
+                    loadingTitle: "Bezig met bevestigen...",
                     isLoading: isSubmitting,
                     action: submit
                 )
@@ -62,7 +59,7 @@ struct VerificationSetupView: View {
                     otherDevice(setupURI: setupURI)
                 }
 
-                Text("Lukt het instellen niet? Neem contact op met de IT-support van je organisatie.")
+                Text(SupportText.sentence("Lukt het instellen niet? Neem contact op via "))
                     .textStyle(.footnote)
                     .foregroundStyle(Color.inkMuted)
 
@@ -129,7 +126,7 @@ struct VerificationSetupView: View {
                 .frame(minHeight: 44)
                 .contentShape(.rect)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pave)
             .accessibilityValue(showsOtherDevice ? "Uitgeklapt" : "Ingeklapt")
 
             if showsOtherDevice {
@@ -140,11 +137,7 @@ struct VerificationSetupView: View {
     }
 
     private var errorMessage: String? {
-        switch error {
-        case nil: nil
-        case .invalidCode: "Deze code klopt niet of is verlopen. Gebruik de nieuwste code en probeer het opnieuw."
-        default: "We konden het instellen niet afronden. Controleer je internetverbinding en probeer het opnieuw."
-        }
+        error?.message ?? (setupFailed ? AuthMessages.setupCouldNotStart : nil)
     }
 
     private func submit() {

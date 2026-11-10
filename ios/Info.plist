@@ -2,8 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 	<key>NSFaceIDUsageDescription</key>
 	<string>PAVE gebruikt Face ID om de app te ontgrendelen, zodat je je pincode niet hoeft in te typen.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>PAVE gebruikt de microfoon zodat je je vraag aan Ayla kunt inspreken of met haar kunt praten.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>PAVE zet wat je inspreekt om in tekst, zodat Ayla je vraag kan lezen. Dat gebeurt op je toestel als dat kan, anders via Apple.</string>
 	<key>SupabasePublishableKey</key>
 	<string>$(SUPABASE_PUBLISHABLE_KEY)</string>
 	<key>SupabaseURL</key>
@@ -11,6 +17,7 @@
 	<key>UIAppFonts</key>
 	<array>
 		<string>InterVariable.ttf</string>
+		<string>SoraVariable.ttf</string>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict>

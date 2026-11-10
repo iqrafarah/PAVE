@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "rep_05",
+  "conversationId": "conv_apply",
+  "text": "Hier is een eerste opzet voor je cv. Controleer alles en pas aan wat niet klopt.",
+  "blocks": [
+    {
+      "type": "cv",
+      "profile": "Bijna afgestudeerde student Technische Informatica die graag software bouwt waar mensen echt iets aan hebben.",
+      "experience": [
+        { "title": "Stagiair software-ontwikkeling", "organisation": "Voorbeeldbedrijf", "period": "feb 2026 – jul 2026", "description": "Een webapp gebouwd met Vue en TypeScript." }
+      ],
+      "skills": ["Python", "Swift", "Vue", "Samenwerken"]
+    }
+  ],
+  "proposedAction": {
+    "id": "act_cv",
+    "kind": "draftProfile",
+    "summary": "Deze opzet bewaren als cv",
+    "expiresAt": "2026-11-08T12:00:00Z"
+  },
+  "usedData": ["internships", "skills"]
+}

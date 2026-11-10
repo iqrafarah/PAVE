@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "id": "rep_01",
+  "conversationId": "conv_watch",
+  "text": "Je was gisteren bezig met vacatures zoeken.",
+  "question": {
+    "text": "Wil je daar verder of iets nieuws beginnen?",
+    "choices": [
+      { "id": "continue", "label": "Verder" },
+      { "id": "new", "label": "Nieuw gesprek" }
+    ]
+  },
+  "blocks": [],
+  "usedData": []
+}

@@ -6,17 +6,17 @@ import Testing
 struct SupabaseAuthServiceTests {
     @Test(arguments: [
         (ErrorCode.invalidCredentials, PAVECore.AuthError.invalidCredentials),
-        (.emailNotConfirmed, .accountNotActive),
-        (.userBanned, .accountNotActive),
+        (.emailNotConfirmed, .emailNotConfirmed),
+        (.userBanned, .unavailable),
         (.mfaVerificationFailed, .invalidCode),
         (.mfaChallengeExpired, .invalidCode),
         (.weakPassword, .weakPassword),
         (.samePassword, .samePassword),
-        (.otpExpired, .invalidCode),
+        (.otpExpired, .invalidEmailCode),
         (.flowStateExpired, .resetSessionExpired),
         (.sessionNotFound, .resetSessionExpired),
-        (.overRequestRateLimit, .rateLimited),
-        (.overEmailSendRateLimit, .rateLimited),
+        (.overRequestRateLimit, .tooManyAttempts),
+        (.overEmailSendRateLimit, .requestedTooSoon),
         (.insufficientAAL, .insufficientAssurance),
         (.validationFailed, .unavailable),
     ])
@@ -34,7 +34,10 @@ struct SupabaseAuthServiceTests {
         #expect(SupabaseAuthService.normalized("  Ravi@Student.Example.edu \n") == "ravi@student.example.edu")
     }
 
-    @Test func networkErrorsAreUnavailable() {
-        #expect(SupabaseAuthService.authError(for: URLError(.notConnectedToInternet)) == .unavailable)
+}
+
+extension SupabaseAuthServiceTests {
+    @Test func networkErrorsAreNoConnection() {
+        #expect(SupabaseAuthService.authError(for: URLError(.notConnectedToInternet)) == .noConnection)
     }
 }

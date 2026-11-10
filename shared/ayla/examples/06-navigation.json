@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "id": "rep_06",
+  "conversationId": "conv_watch",
+  "text": "Ik open je kluis.",
+  "navigation": { "screen": "vault" },
+  "blocks": [],
+  "usedData": []
+}

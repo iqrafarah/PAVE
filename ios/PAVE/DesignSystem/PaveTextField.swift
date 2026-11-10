@@ -14,6 +14,7 @@ struct PaveTextField<Field: Hashable>: View {
     var focus: FocusState<Field?>.Binding
     let field: Field
     var errorMessage: String?
+    var reservedErrors: [String] = []
 
     @Environment(\.isEnabled) private var isEnabled
     @State private var isRevealed = false
@@ -56,8 +57,10 @@ struct PaveTextField<Field: Hashable>: View {
             .onTapGesture { focus.wrappedValue = field }
             .animation(.easeOut(duration: 0.15), value: isFocused)
 
-            if let errorMessage {
-                PaveInlineError(message: errorMessage)
+            if errorMessage != nil || !reservedErrors.isEmpty {
+                MessageSlot(message: errorMessage, reserving: reservedErrors) {
+                    PaveInlineError(message: $0)
+                }
             }
         }
     }
@@ -98,7 +101,7 @@ struct PaveTextField<Field: Hashable>: View {
                     .resizable()
                     .frame(width: 20, height: 20)
                     .accessibilityHidden(true)
-                Text(isRevealed ? "Verberg" : "Toon")
+                Text(isRevealed ? "Verbergen" : "Tonen")
                     .textStyle(.eyebrow)
                     .foregroundStyle(Color.brandGreen)
             }
@@ -106,8 +109,8 @@ struct PaveTextField<Field: Hashable>: View {
             .frame(minHeight: 44)
             .contentShape(.rect)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(isRevealed ? "Verberg wachtwoord" : "Toon wachtwoord")
+        .buttonStyle(.pave)
+        .accessibilityLabel(isRevealed ? "Wachtwoord verbergen" : "Wachtwoord tonen")
     }
 
     private var borderColor: Color {
@@ -145,7 +148,7 @@ struct PaveInlineError: View {
     @Previewable @FocusState var focus: Int?
 
     VStack(spacing: 20) {
-        PaveTextField(label: "E-mailadres", placeholder: "E-mailadres van je organisatie", text: $email, kind: .email, focus: $focus, field: 0)
+        PaveTextField(label: "E-mailadres", placeholder: "E-mailadres", text: $email, kind: .email, focus: $focus, field: 0)
         PaveTextField(label: "Wachtwoord", placeholder: "Vul je wachtwoord in", text: $password, kind: .password, focus: $focus, field: 1, errorMessage: "De wachtwoorden zijn niet hetzelfde. Vul je nieuwe wachtwoord opnieuw in.")
     }
     .padding(32)

@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "id": "rep_03",
+  "conversationId": "conv_career",
+  "text": "Ik heb twee voorbeeldvacatures gevonden die aansluiten bij je vaardigheden en projecten. Bij elke vacature zie je wat al past en wat je nog mist.",
+  "blocks": [
+    {
+      "type": "vacancies",
+      "items": [
+        {
+          "id": "vac_consultant",
+          "title": "Junior IT-consultant",
+          "company": "Kade Consultancy",
+          "city": "Eindhoven",
+          "employment": "fullTime",
+          "salary": { "min": 36000, "max": 42000, "period": "year", "currency": "EUR", "isEstimate": true },
+          "source": "example",
+          "matches": [
+            { "skill": "Python", "requirement": "Ervaring met een programmeertaal zoals Python of Java" },
+            { "skill": "Samenwerken in projecten", "requirement": "Je werkt graag in een team" }
+          ],
+          "skillGap": [
+            { "skill": "Scrum-certificaat", "requirement": "Een Scrum-certificaat (PSM I) is een pre" }
+          ]
+        },
+        {
+          "id": "vac_ios",
+          "title": "Junior iOS-ontwikkelaar",
+          "company": "Studio Noorderlicht",
+          "city": "Utrecht",
+          "employment": "partTime",
+          "source": "example",
+          "matches": [
+            { "skill": "Swift", "requirement": "Kennis van Swift en SwiftUI" }
+          ],
+          "skillGap": []
+        }
+      ]
+    }
+  ],
+  "usedData": ["skills", "projects"]
+}

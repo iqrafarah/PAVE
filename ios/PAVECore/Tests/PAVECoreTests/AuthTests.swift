@@ -65,13 +65,13 @@ struct MockAuthServiceTests {
     }
 
     @Test func wrongResetCodeIsRejected() async {
-        await #expect(throws: AuthError.invalidCode) {
+        await #expect(throws: AuthError.invalidEmailCode) {
             try await service.verifyPasswordResetCode(email: MockAuthService.verifiedAccount, code: "000000")
         }
     }
 
     @Test func unknownEmailCannotUseAResetCode() async {
-        await #expect(throws: AuthError.invalidCode) {
+        await #expect(throws: AuthError.invalidEmailCode) {
             try await service.verifyPasswordResetCode(email: "nobody@student.example.edu", code: MockAuthService.demoCode)
         }
     }

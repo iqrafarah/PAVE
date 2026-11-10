@@ -15,6 +15,8 @@ final class AppState {
     private static let signedInKey = "isSignedIn"
 
     private(set) var phase: AppPhase = .loading
+    /// A chat someone tapped in the iPhone's search; opened once the app is unlocked.
+    var conversationToOpen: String?
     let authService: any AuthService
     private let pinVault: PinVault
     private let biometrics: any BiometricAuthenticating
@@ -100,6 +102,8 @@ final class AppState {
 
     func signOut() {
         defaults.set(false, forKey: Self.signedInKey)
+        AylaSpotlight.forget(in: defaults)
+        conversationToOpen = nil
         phase = .signedOut
         Task { await authService.signOut() }
     }

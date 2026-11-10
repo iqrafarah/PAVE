@@ -57,7 +57,7 @@ public actor MockAuthService: AuthService {
     public func verifyPasswordResetCode(email: String, code: String) async throws -> PasswordResetOutcome {
         try await simulateNetwork()
         let account = Self.normalized(email)
-        guard passwords[account] != nil, code == Self.demoCode else { throw AuthError.invalidCode }
+        guard passwords[account] != nil, code == Self.demoCode else { throw AuthError.invalidEmailCode }
         resetAccount = account
         resetVerified = false
         return accountsWithVerification.contains(account) ? .needsVerification : .readyForNewPassword
@@ -82,6 +82,10 @@ public actor MockAuthService: AuthService {
 
     public func accountID() async -> String? {
         currentAccount
+    }
+
+    public func accessToken() async -> String? {
+        nil
     }
 
     private func simulateNetwork() async throws {

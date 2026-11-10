@@ -18,7 +18,7 @@ struct NewPasswordView: View {
     var body: some View {
         AuthScreen {
             AuthIntro(
-                eyebrow: "Wachtwoord herstellen",
+                eyebrow: "Wachtwoord",
                 title: "Kies een nieuw wachtwoord",
                 message: "Kies een sterk wachtwoord dat je nergens anders gebruikt."
             )
@@ -31,7 +31,8 @@ struct NewPasswordView: View {
                     kind: .newPassword,
                     focus: $focus,
                     field: .password,
-                    errorMessage: passwordError
+                    errorMessage: passwordError,
+                    reservedErrors: [AuthMessages.passwordRulesNotMet] + AuthError.allMessages
                 )
                 .submitLabel(.next)
                 .onSubmit { focus = .confirmation }
@@ -46,13 +47,14 @@ struct NewPasswordView: View {
                     kind: .newPassword,
                     focus: $focus,
                     field: .confirmation,
-                    errorMessage: confirmationError
+                    errorMessage: confirmationError,
+                    reservedErrors: [AuthMessages.passwordsDiffer]
                 )
                 .submitLabel(.done)
                 .onSubmit(submit)
                 .onChange(of: confirmation) { confirmationError = nil }
 
-                PavePrimaryButton(title: "Wachtwoord opslaan", loadingTitle: "Opslaan…", isLoading: isSubmitting, action: submit)
+                PavePrimaryButton(title: "Wachtwoord opslaan", loadingTitle: "Bezig met opslaan...", isLoading: isSubmitting, action: submit)
 
                 AuthReturnButton(action: flow.returnToLogin)
             }
@@ -63,12 +65,12 @@ struct NewPasswordView: View {
     private func submit() {
         guard !isSubmitting else { return }
         guard PasswordRequirement.allMet(by: password) else {
-            passwordError = "Je wachtwoord voldoet nog niet aan alle eisen."
+            passwordError = AuthMessages.passwordRulesNotMet
             focus = .password
             return
         }
         guard password == confirmation else {
-            confirmationError = "De wachtwoorden zijn niet hetzelfde. Vul je nieuwe wachtwoord opnieuw in."
+            confirmationError = AuthMessages.passwordsDiffer
             focus = .confirmation
             return
         }
@@ -79,13 +81,7 @@ struct NewPasswordView: View {
             do {
                 try await flow.updatePassword(password)
             } catch {
-                passwordError = switch AuthError(error) {
-                case .weakPassword: "Je wachtwoord voldoet nog niet aan alle eisen."
-                case .samePassword: "Kies een wachtwoord dat anders is dan je huidige wachtwoord."
-                case .resetSessionExpired: "Je herstelsessie is verlopen. Ga terug naar inloggen en vraag een nieuwe code aan."
-                case .insufficientAssurance: "Bevestig eerst de code uit je authenticator-app. Ga terug naar inloggen en vraag een nieuwe code aan."
-                default: "We konden je wachtwoord niet opslaan. Controleer je internetverbinding en probeer het opnieuw."
-                }
+                passwordError = AuthError(error).message
             }
         }
     }

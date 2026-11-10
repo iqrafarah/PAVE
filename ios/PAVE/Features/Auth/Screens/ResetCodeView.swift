@@ -9,6 +9,8 @@ struct ResetCodeView: View {
     @State private var isChecking = false
     @State private var isResending = false
     @State private var codeError: AuthError?
+    private static let resentMessage = "We hebben een nieuwe code gestuurd."
+
     @State private var resendError: AuthError?
     @State private var resendMessage: String?
     @FocusState private var isCodeFocused: Bool
@@ -18,14 +20,13 @@ struct ResetCodeView: View {
             AuthIntro(
                 emblem: .iconMailOpen,
                 eyebrow: "Wachtwoord herstellen",
-                title: "Kijk in je inbox",
-                message: "Als er een account bestaat voor \(email), hebben we een code gestuurd om je wachtwoord te herstellen."
+                title: "Check je inbox",
+                message: AuthMessages.resetRequested
             )
         } content: {
             VStack(alignment: .leading, spacing: 24) {
                 VerificationCodeField(
                     code: $code,
-                    title: "Code van 6 cijfers",
                     hint: "Vul de code uit de e-mail in.",
                     errorMessage: codeErrorMessage,
                     isFocused: $isCodeFocused
@@ -33,61 +34,55 @@ struct ResetCodeView: View {
                 .onChange(of: code) { codeError = nil }
 
                 PavePrimaryButton(
-                    title: codeError == nil ? "Code controleren" : "Opnieuw proberen",
-                    loadingTitle: "Controleren…",
+                    title: codeError == nil ? "Code bevestigen" : "Opnieuw proberen",
+                    loadingTitle: "Bezig met controleren...",
                     isLoading: isChecking,
                     action: check
                 )
 
                 PaveNotice(
-                    title: "Geen e-mail ontvangen?",
-                    message: "Wacht een paar minuten en kijk in je map met spam of ongewenste e-mail. Nog niets? Vraag een nieuwe code aan."
+                    title: "Geen e-mail gekregen?",
+                    message: "Wacht een paar minuten en kijk ook in je map met spam of ongewenste e-mail. Nog steeds niets? Vraag een nieuwe code aan."
                 )
 
                 VStack(alignment: .leading, spacing: 4) {
                     Button(action: resend) {
-                        Text(isResending ? "Versturen…" : "Nieuwe code versturen")
+                        Text(isResending ? "Bezig met versturen..." : "Nieuwe code versturen")
                             .textStyle(.link)
                             .foregroundStyle(Color.brandGreen)
                             .frame(minHeight: 44, alignment: .leading)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.pave)
                     .disabled(isResending || isChecking)
 
-                    if let resendMessage {
-                        Text(resendMessage)
-                            .textStyle(.footnote)
-                            .foregroundStyle(Color.brandGreen)
-                    }
-                    if let resendError {
-                        PaveInlineError(message: resendErrorMessage(for: resendError))
+                    MessageSlot(
+                        message: resendError?.message ?? resendMessage,
+                        reserving: [Self.resentMessage] + AuthError.allMessages
+                    ) { text in
+                        if text == Self.resentMessage {
+                            Text(text)
+                                .textStyle(.footnote)
+                                .foregroundStyle(Color.brandGreen)
+                        } else {
+                            PaveInlineError(message: text)
+                        }
                     }
                 }
 
-                Text("Voor je privacy laten we niet weten of een e-mailadres een PAVE-account heeft.")
+                Text("We laten nooit zien of een e-mailadres een PAVE-account heeft. Zo blijven je gegevens veilig.")
                     .textStyle(.footnote)
                     .foregroundStyle(Color.inkMuted)
 
                 AuthReturnButton(action: flow.returnToLogin)
             }
             .animation(.easeOut(duration: 0.2), value: resendMessage)
+            .animation(.easeOut(duration: 0.2), value: resendError)
         }
         .onAppear { isCodeFocused = true }
     }
 
     private var codeErrorMessage: String? {
-        switch codeError {
-        case nil: nil
-        case .invalidCode: "Deze code klopt niet of is verlopen. Controleer de code of vraag een nieuwe aan."
-        case .rateLimited: "Je hebt te vaak geprobeerd. Wacht even en probeer het opnieuw."
-        default: "We konden de code niet controleren. Controleer je internetverbinding en probeer het opnieuw."
-        }
-    }
-
-    private func resendErrorMessage(for error: AuthError) -> String {
-        error == .rateLimited
-            ? "Je hebt net al een code aangevraagd. Wacht 60 seconden en probeer het opnieuw."
-            : "We konden de code niet versturen. Probeer het later opnieuw of neem contact op met de IT-support."
+        codeError?.message
     }
 
     private func check() {
@@ -116,7 +111,7 @@ struct ResetCodeView: View {
             defer { isResending = false }
             do {
                 try await flow.requestPasswordReset(email: email)
-                resendMessage = "We hebben een nieuwe code gestuurd."
+                resendMessage = Self.resentMessage
                 AccessibilityNotification.Announcement("We hebben een nieuwe code gestuurd.").post()
             } catch {
                 resendError = AuthError(error)

@@ -102,7 +102,7 @@ struct PinKeypad: View {
 
     private var deleteKey: some View {
         Button(action: onDelete) {
-            Image(systemName: "delete.backward")
+            Image(systemName: "delete.backward.fill")
                 .font(.system(size: keySize * 0.3))
                 .foregroundStyle(Color.ink)
         }

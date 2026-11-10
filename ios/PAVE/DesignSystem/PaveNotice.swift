@@ -6,9 +6,21 @@ struct PaveNotice: View {
         case critical
     }
 
-    let title: String
-    let message: String
+    let title: String?
+    let message: Text
     var tone: Tone = .info
+
+    init(title: String? = nil, message: String, tone: Tone = .info) {
+        self.title = title
+        self.message = Text(message)
+        self.tone = tone
+    }
+
+    init(title: String? = nil, message: AttributedString, tone: Tone = .info) {
+        self.title = title
+        self.message = Text(message)
+        self.tone = tone
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -18,10 +30,12 @@ struct PaveNotice: View {
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .textStyle(.calloutTitle)
-                    .foregroundStyle(tone == .info ? Color.brandGreen : .critical)
-                Text(message)
+                if let title {
+                    Text(title)
+                        .textStyle(.calloutTitle)
+                        .foregroundStyle(tone == .info ? Color.brandGreen : .critical)
+                }
+                message
                     .textStyle(.footnote)
                     .foregroundStyle(tone == .info ? Color.ink : .critical)
             }

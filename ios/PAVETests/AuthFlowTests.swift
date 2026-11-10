@@ -87,7 +87,7 @@ struct AuthFlowTests {
     @Test func wrongResetCodeStaysOnTheCodeScreen() async throws {
         flow.showForgotPassword()
         try await flow.requestPasswordReset(email: MockAuthService.verifiedAccount)
-        await #expect(throws: AuthError.invalidCode) {
+        await #expect(throws: AuthError.invalidEmailCode) {
             try await flow.verifyPasswordResetCode(email: MockAuthService.verifiedAccount, code: "000000")
         }
         #expect(flow.path.last == .resetCode(email: MockAuthService.verifiedAccount))

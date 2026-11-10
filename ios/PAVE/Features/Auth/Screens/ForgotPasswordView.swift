@@ -18,28 +18,26 @@ struct ForgotPasswordView: View {
                 emblem: .iconMail,
                 eyebrow: "Wachtwoord herstellen",
                 title: "Wachtwoord vergeten?",
-                message: "Vul het e-mailadres van je organisatie in. We sturen je een code om je wachtwoord te herstellen."
+                message: "Vul je e-mailadres in. Dan sturen we je een code om een nieuw wachtwoord te kiezen."
             )
         } content: {
             VStack(alignment: .leading, spacing: 24) {
                 PaveTextField(
                     label: "E-mailadres",
-                    placeholder: "E-mailadres van je organisatie",
+                    placeholder: "E-mailadres",
                     text: $email,
                     kind: .email,
                     focus: $focus,
                     field: .email,
-                    errorMessage: sendErrorMessage
+                    errorMessage: sendErrorMessage,
+                    reservedErrors: AuthError.allMessages
                 )
                 .submitLabel(.send)
                 .onSubmit(submit)
                 .disabled(isSubmitting)
 
-                PavePrimaryButton(title: "Code versturen", loadingTitle: "Versturen…", isLoading: isSubmitting, action: submit)
+                PavePrimaryButton(title: "Code versturen", loadingTitle: "Bezig met versturen...", isLoading: isSubmitting, action: submit)
 
-                Text("Gebruik het e-mailadres van het PAVE-account dat je van je organisatie hebt gekregen.")
-                    .textStyle(.footnote)
-                    .foregroundStyle(Color.inkMuted)
 
                 AuthReturnButton(action: flow.returnToLogin)
             }
@@ -47,10 +45,7 @@ struct ForgotPasswordView: View {
     }
 
     private var sendErrorMessage: String? {
-        guard let error else { return nil }
-        return error == .rateLimited
-            ? "Je hebt net al een code aangevraagd. Wacht 60 seconden en probeer het opnieuw."
-            : "We konden de code niet versturen. Probeer het later opnieuw of neem contact op met de IT-support."
+        error?.message
     }
 
     private func submit() {

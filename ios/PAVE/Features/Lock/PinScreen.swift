@@ -152,16 +152,28 @@ private extension View {
     }
 }
 
+enum PinMessages {
+    static let tooEasy = "Kies een pincode die moeilijker te raden is, zonder herhaalde of oplopende cijfers."
+    static let differ = "De pincodes zijn niet hetzelfde. Begin opnieuw."
+    static let notSaved = "We konden je pincode niet opslaan. Probeer het opnieuw."
+
+    static func incorrect(attemptsRemaining remaining: Int) -> String {
+        remaining == 1 ? "Onjuiste pincode. Nog 1 poging." : "Onjuiste pincode. Nog \(remaining) pogingen."
+    }
+
+    static var all: [String] {
+        [tooEasy, differ, notSaved] + (1...PinVault.maximumAttempts).map { incorrect(attemptsRemaining: $0) }
+    }
+}
+
 struct PinErrorSlot: View {
     let message: String?
 
     var body: some View {
-        Group {
-            if let message {
-                PaveInlineError(message: message)
-                    .transition(.opacity)
-            }
+        MessageSlot(message: message, reserving: PinMessages.all) {
+            PaveInlineError(message: $0)
         }
-        .frame(maxWidth: .infinity, minHeight: 44, alignment: .top)
+        .padding(.bottom, 8)
+        .frame(minHeight: 44, alignment: .top)
     }
 }

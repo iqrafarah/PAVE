@@ -9,14 +9,14 @@ struct VerificationSetupCompleteView: View {
             AuthIntro(
                 emblem: .iconCheckCircle,
                 eyebrow: "Instellen gelukt",
-                title: "Je bent klaar",
+                title: "Alles staat klaar",
                 message: "Tweestapsverificatie staat nu aan voor je PAVE-account."
             )
         } content: {
             VStack(alignment: .leading, spacing: 24) {
                 PaveNotice(
                     title: "Je portfolio is extra beveiligd",
-                    message: "Log je de volgende keer in, gebruik dan je wachtwoord en een code uit je authenticator-app. Houd de app op je telefoon."
+                    message: "Log je de volgende keer in? Gebruik dan je wachtwoord en een code uit je authenticator-app. Houd de app op je telefoon."
                 )
                 PavePrimaryButton(title: "Verder naar PAVE", action: flow.finishVerificationSetup)
             }
@@ -39,8 +39,8 @@ struct PasswordResetCompleteView: View {
         } content: {
             VStack(alignment: .leading, spacing: 24) {
                 PaveNotice(
-                    title: "Tweestapsverificatie staat nog steeds aan",
-                    message: "Je extra beveiliging blijft gewoon staan. Houd je authenticator-app bij de hand als je inlogt."
+                    title: "Tweestapsverificatie staat nog aan",
+                    message: "Als je je wachtwoord herstelt, verandert je extra beveiliging niet. Houd je authenticator-app bij de hand als je inlogt."
                 )
                 PavePrimaryButton(title: "Terug naar inloggen", action: flow.returnToLogin)
             }

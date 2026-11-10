@@ -18,7 +18,7 @@ struct AuthReturnButton: View {
             .frame(maxWidth: .infinity, minHeight: 44)
             .contentShape(.rect)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pave)
     }
 }
 
