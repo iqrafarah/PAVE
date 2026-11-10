@@ -54,7 +54,8 @@ struct ResetCodeView: View {
                     title: AuthMessages.emailCodeLabel,
                     hint: nil,
                     errorMessage: codeErrorMessage,
-                    isFocused: $isCodeFocused
+                    isFocused: $isCodeFocused,
+                    onComplete: check
                 )
                 .onChange(of: code) { codeError = nil }
 

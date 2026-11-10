@@ -54,7 +54,7 @@ struct VaultFolderTile: View {
             .clipShape(.rect(cornerRadius: 16))
             .overlay {
                 RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(isSelected ? Color.brandGreen : Color.cardBorder, lineWidth: isSelected ? 2 : 1)
+                    .strokeBorder(isSelected ? color : Color.cardBorder, lineWidth: isSelected ? 2 : 1)
             }
             .contentShape(.rect(cornerRadius: 16))
         }

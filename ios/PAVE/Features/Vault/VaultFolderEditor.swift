@@ -83,9 +83,14 @@ struct VaultFolderEditor: View {
                 .padding(.horizontal, 24)
                 .padding(.top, isShort ? 20 : 28)
                 .padding(.bottom, 16)
+                // Tapping an empty spot closes the keyboard, also when everything fits and nothing scrolls.
+                .background {
+                    Color.white
+                        .contentShape(.rect)
+                        .onTapGesture { isNameFocused = false }
+                }
             }
             .scrollDismissesKeyboard(.interactively)
-            .scrollBounceBehavior(.basedOnSize)
 
             PavePrimaryButton(
                 title: folder == nil ? "Map aanmaken" : "Bewaren",
@@ -131,8 +136,9 @@ struct VaultFolderEditor: View {
                 .textStyle(.input)
                 .foregroundStyle(Color.ink)
                 .focused($isNameFocused)
+                // Return only closes the keyboard; the folder is made with the button, after choosing a colour and icon.
                 .submitLabel(.done)
-                .onSubmit(save)
+                .onSubmit { isNameFocused = false }
                 .padding(.horizontal, 14)
                 .frame(minHeight: 52)
                 .background(Color.white, in: .rect(cornerRadius: 7))

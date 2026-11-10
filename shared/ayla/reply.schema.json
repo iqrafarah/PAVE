@@ -6,7 +6,7 @@
   "$defs": {
     "category": {
       "description": "A part of the vault Ayla may ask to use.",
-      "enum": ["diplomas", "certificates", "badges", "projects", "workExperience", "internships", "skills", "feedback", "reflections"]
+      "enum": ["diplomas", "certificates", "badges", "projects", "workExperience", "internships", "skills", "feedback", "reflections", "other"]
     },
     "device": { "enum": ["watch", "phone", "web"] },
     "memoryCategory": {

@@ -189,7 +189,7 @@ struct SupabaseVaultServiceTests {
         #expect(AylaVaultCategory.workExperience.category == .workExperience)
         #expect(AylaVaultCategory(rawValue: "somethingNew").category == nil)
         #expect(Set(VaultCategory.allCases.map(\.rawValue)) == [
-            "diplomas", "certificates", "badges", "projects", "workExperience", "internships", "skills", "feedback", "reflections",
+            "diplomas", "certificates", "badges", "projects", "workExperience", "internships", "skills", "feedback", "reflections", "other",
         ])
     }
 }

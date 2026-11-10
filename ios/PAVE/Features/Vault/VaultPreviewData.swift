@@ -23,7 +23,7 @@ extension VaultContents {
                 status: .rejected, skills: ["Swift", "Testen"]
             ),
         ],
-        folders: [VaultFolder(id: "stage", name: "Stage")]
+        folders: [VaultFolder(id: "stage", name: "Stage", color: .rose, icon: .rocket)]
     )
 }
 #endif

@@ -22,11 +22,11 @@ struct AylaMemoryModelTests {
             if notSetUp { throw AylaError.notSetUp }
             return stored
         }
-        func remember(_ text: String, category: AylaMemory.Category, source: AylaMemory.Source, conversationID: String?) async throws -> AylaMemory {
-            saved.append((text, category, source, conversationID))
+        func remember(_ text: String, categories: [AylaMemory.Category], source: AylaMemory.Source, conversationID: String?) async throws -> AylaMemory {
+            saved.append((text, categories.first ?? .personal, source, conversationID))
             if notSetUp { throw AylaError.notSetUp }
             if fails { throw AylaError.noConnection }
-            return AylaMemory(id: "m\(saved.count)", text: text, category: category, source: source, createdAt: .now)
+            return AylaMemory(id: "m\(saved.count)", text: text, categories: categories, source: source, createdAt: .now)
         }
         func forgetMemory(id: String) async throws {
             forgotten.append(id)

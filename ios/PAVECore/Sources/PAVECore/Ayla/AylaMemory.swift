@@ -48,16 +48,35 @@ public struct AylaMemory: Identifiable, Hashable, Sendable {
 
     public var id: String
     public var text: String
-    public var category: Category
+    /// Every folder the note is in, never empty; the first is its main category, the one Ayla and the web use.
+    public var categories: [Category] {
+        didSet { categories = Self.tidy(categories) }
+    }
     public var source: Source
     public var createdAt: Date
 
     public init(id: String, text: String, category: Category = .personal, source: Source, createdAt: Date) {
+        self.init(id: id, text: text, categories: [category], source: source, createdAt: createdAt)
+    }
+
+    public init(id: String, text: String, categories: [Category], source: Source, createdAt: Date) {
         self.id = id
         self.text = text
-        self.category = category
+        self.categories = Self.tidy(categories)
         self.source = source
         self.createdAt = createdAt
+    }
+
+    /// The main category.
+    public var category: Category { categories.first ?? .personal }
+
+    public func isIn(_ category: Category) -> Bool { categories.contains(category) }
+
+    /// Each category once, in the order given, and "Over jou" when there is none.
+    public static func tidy(_ categories: [Category]) -> [Category] {
+        var seen = Set<Category>()
+        let unique = categories.filter { seen.insert($0).inserted }
+        return unique.isEmpty ? [.personal] : unique
     }
 
     /// The text as it is saved: one line, trimmed, at most `maxLength` characters. Nil when nothing is left.
@@ -113,7 +132,7 @@ public struct AylaMemories: Equatable, Sendable {
     /// The notes per category, in the order of `Category.allCases`, without empty ones.
     public var byCategory: [(category: AylaMemory.Category, notes: [AylaMemory])] {
         AylaMemory.Category.allCases.compactMap { category in
-            let inCategory = notes.filter { $0.category == category }
+            let inCategory = notes.filter { $0.isIn(category) }
             return inCategory.isEmpty ? nil : (category, inCategory)
         }
     }

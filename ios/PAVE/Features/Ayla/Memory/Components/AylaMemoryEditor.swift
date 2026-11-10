@@ -1,12 +1,13 @@
 import PAVECore
 import SwiftUI
 
-/// Writing a note yourself, or changing one: the text and where it belongs.
+/// Writing a note yourself, or changing one: the text and the folders it belongs in. One note can be in more than one,
+/// such as designing as both work and a hobby.
 struct AylaMemoryEditor: View {
     let title: String
     @State var text: String
-    @State var category: AylaMemory.Category
-    let onSave: (String, AylaMemory.Category) -> Void
+    @State var categories: [AylaMemory.Category]
+    let onSave: (String, [AylaMemory.Category]) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @FocusState private var isFocused: Bool
@@ -28,14 +29,38 @@ struct AylaMemoryEditor: View {
                     Text("Ayla gebruikt dit in je gesprekken op je iPhone, het web en je Apple Watch.")
                         .textStyle(.caption)
                 }
-                Section("Categorie") {
-                    Picker("Categorie", selection: $category) {
+                Section {
+                    Menu {
                         ForEach(AylaMemory.Category.allCases, id: \.self) { category in
-                            Text(category.title).tag(category)
+                            Toggle(category.title, isOn: binding(for: category))
                         }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Text("Categorie")
+                                .foregroundStyle(Color.ink)
+                            Spacer(minLength: 12)
+                            Text(categories.map(\.title).joined(separator: ", "))
+                                .foregroundStyle(Color.inkMuted)
+                                .multilineTextAlignment(.trailing)
+                                .lineLimit(2)
+                            Image(.iconChevronDown)
+                                .renderingMode(.template)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 10, height: 10)
+                                .foregroundStyle(Color.inkMuted)
+                                .accessibilityHidden(true)
+                        }
+                        .textStyle(.bodyMedium)
+                        .contentShape(.rect)
                     }
-                    .pickerStyle(.inline)
-                    .labelsHidden()
+                    // Stays open, so you can tick more than one.
+                    .menuActionDismissBehavior(.disabled)
+                    .accessibilityLabel("Categorie")
+                    .accessibilityValue(categories.map(\.title).joined(separator: ", "))
+                } footer: {
+                    Text("Kies er één of meer, zoals Werk en stages én Interesses en hobby's.")
+                        .textStyle(.caption)
                 }
             }
             .tint(.brandGreen)
@@ -50,19 +75,34 @@ struct AylaMemoryEditor: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Bewaren") {
                         PaveHaptics.success()
-                        onSave(text, category)
+                        onSave(text, categories)
                         dismiss()
                     }
                     .disabled(!canSave)
                 }
             }
-            // A new note starts typing; changing one leaves the category in view.
+            // A new note starts typing; changing one leaves the categories in view.
             .onAppear { isFocused = text.isEmpty }
         }
         .presentationDetents([.large])
     }
+
+    /// Ticking adds the category at the end; the last one cannot be unticked, a note always belongs somewhere.
+    private func binding(for category: AylaMemory.Category) -> Binding<Bool> {
+        Binding(
+            get: { categories.contains(category) },
+            set: { isOn in
+                if isOn {
+                    if !categories.contains(category) { categories.append(category) }
+                } else if categories.count > 1 {
+                    categories.removeAll { $0 == category }
+                }
+                PaveHaptics.selection()
+            }
+        )
+    }
 }
 
 #Preview {
-    AylaMemoryEditor(title: "Iets toevoegen", text: "", category: .personal) { _, _ in }
+    AylaMemoryEditor(title: "Iets toevoegen", text: "", categories: [.work, .interests]) { _, _ in }
 }

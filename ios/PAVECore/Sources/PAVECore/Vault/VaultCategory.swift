@@ -9,6 +9,8 @@ public enum VaultCategory: String, Codable, CaseIterable, Identifiable, Sendable
     case skills
     case feedback
     case reflections
+    /// "Overige": evidence that fits no other category.
+    case other
 
     public var id: String { rawValue }
 
@@ -23,6 +25,7 @@ public enum VaultCategory: String, Codable, CaseIterable, Identifiable, Sendable
         case .skills: "Vaardigheden"
         case .feedback: "Feedback"
         case .reflections: "Reflecties"
+        case .other: "Overige"
         }
     }
 
@@ -38,6 +41,7 @@ public enum VaultCategory: String, Codable, CaseIterable, Identifiable, Sendable
         case .skills: "Vaardigheid"
         case .feedback: "Feedback"
         case .reflections: "Reflectie"
+        case .other: "Overig"
         }
     }
 
@@ -45,7 +49,7 @@ public enum VaultCategory: String, Codable, CaseIterable, Identifiable, Sendable
     public var hasPeriod: Bool {
         switch self {
         case .diplomas, .certificates, .badges: false
-        case .projects, .workExperience, .internships, .skills, .feedback, .reflections: true
+        case .projects, .workExperience, .internships, .skills, .feedback, .reflections, .other: true
         }
     }
 

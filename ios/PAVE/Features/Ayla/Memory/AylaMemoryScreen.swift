@@ -21,8 +21,8 @@ struct AylaMemoryScreen: View {
             // Only the first time: coming back from a folder must not bring back a note that is still being forgotten.
             .task { if memory.state != .ready { await memory.load() } }
             .sheet(isPresented: $isAdding) {
-                AylaMemoryEditor(title: "Iets toevoegen", text: "", category: .personal) { text, category in
-                    memory.add(text, category: category)
+                AylaMemoryEditor(title: "Iets toevoegen", text: "", categories: [.personal]) { text, categories in
+                    memory.add(text, categories: categories)
                 }
             }
             .alert("Wat Ayla over je weet", isPresented: problemBinding) {
@@ -98,7 +98,7 @@ struct AylaMemoryScreen: View {
                         NavigationLink {
                             AylaMemoryFolderScreen(category: category)
                         } label: {
-                            AylaMemoryFolder(category: category, count: memory.notes.count { $0.category == category })
+                            AylaMemoryFolder(category: category, count: memory.notes.count { $0.isIn(category) })
                         }
                         .buttonStyle(.pave)
                     }
