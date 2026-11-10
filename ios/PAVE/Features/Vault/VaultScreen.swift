@@ -305,40 +305,43 @@ private struct VaultFolderTile: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 0) {
-                ZStack {
+            ZStack(alignment: .topLeading) {
+                VStack(alignment: .leading, spacing: 0) {
                     Color.surfaceTint
-                    HStack {
-                        Image(systemName: "folder.fill")
-                            .font(.system(size: 32, weight: .regular))
-                            .overlay {
-                                Image(systemName: icon)
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundStyle(.white)
-                                    .offset(y: 3)
-                            }
-                        Spacer(minLength: 0)
+                        .frame(height: 50)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(title)
+                            .textStyle(.bodyMedium)
+                            .foregroundStyle(Color.ink)
+                            .lineLimit(1)
+                        Text("\(count) items")
+                            .textStyle(.caption)
+                            .foregroundStyle(Color.inkMuted)
                     }
-                    .foregroundStyle(Color.brandGreen)
-                    .padding(.leading, 13)
+                    .padding(.horizontal, 13)
+                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
+                    .background(Color.white)
                 }
-                .frame(height: 54)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .textStyle(.bodyMedium)
-                        .foregroundStyle(Color.ink)
-                        .lineLimit(1)
-                    Text("\(count) items")
-                        .textStyle(.caption)
-                        .foregroundStyle(Color.inkMuted)
-                }
-                .padding(.horizontal, 13)
-                .padding(.vertical, 9)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.white)
+                Image("VaultFolder")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 46, height: 38)
+                    .overlay {
+                        Image(icon)
+                            .renderingMode(.template)
+                            .resizable()
+                            .scaledToFit()
+                            .foregroundStyle(.white)
+                            .frame(width: 14, height: 14)
+                            .offset(y: -1)
+                    }
+                    .padding(.leading, 13)
+                    .padding(.top, 19)
+                    .zIndex(1)
             }
-            .frame(width: 140)
+            .frame(width: 140, height: 100)
             .clipShape(.rect(cornerRadius: 14))
             .overlay {
                 RoundedRectangle(cornerRadius: 14)
