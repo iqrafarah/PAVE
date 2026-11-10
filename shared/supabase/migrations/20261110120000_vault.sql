@@ -1,6 +1,6 @@
 -- The user's vault: folders, evidence items, attached source files, skills, validation requests,
 -- and task-scoped access grants for Ayla. See docs/vault.md.
--- Draft only. This changes the shared Supabase schema: review with the web team before applying.
+-- Applied on 2026-11-10. This is part of the shared Supabase schema: change it only together with the web team.
 
 create table public.vault_folders (
   id uuid primary key default gen_random_uuid(),

@@ -153,8 +153,8 @@ private extension View {
 }
 
 enum PinMessages {
-    static let tooEasy = "Kies een pincode die moeilijker te raden is, zonder herhaalde of oplopende cijfers."
-    static let differ = "De pincodes zijn niet hetzelfde. Begin opnieuw."
+    static let tooEasy = "Te makkelijk te raden. Kies niet 6 keer hetzelfde cijfer en geen rij zoals 123456."
+    static let differ = "De pincodes waren niet hetzelfde. Kies je pincode opnieuw."
     static let notSaved = "We konden je pincode niet opslaan. Probeer het opnieuw."
 
     static func incorrect(attemptsRemaining remaining: Int) -> String {

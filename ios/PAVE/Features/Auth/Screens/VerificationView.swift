@@ -18,17 +18,23 @@ struct VerificationView: View {
     var body: some View {
         AuthScreen {
             AuthIntro(
-                emblem: .iconShieldCheck,
-                eyebrow: purpose == .signIn ? "Tweestapsverificatie" : "Wachtwoord herstellen",
-                title: "Bevestig dat jij het bent",
-                message: purpose == .signIn
-                    ? "Open je authenticator-app en vul de code van 6 cijfers voor je PAVE-account in."
-                    : "Voor je account staat tweestapsverificatie aan. Vul de code uit je authenticator-app in. Daarna kies je een nieuw wachtwoord."
+                emblem: .iconDevicePhoneMobile,
+                eyebrow: "Tweestapsverificatie",
+                title: AuthMessages.authenticatorHeading,
+                message: AuthMessages.authenticatorInstruction,
+                steps: purpose == .passwordReset ? AuthMessages.resetSteps : nil,
+                currentStep: 2
             )
         } content: {
             VStack(alignment: .leading, spacing: 24) {
-                VerificationCodeField(code: $code, errorMessage: errorMessage, isFocused: $isCodeFocused)
-                    .onChange(of: code) { error = nil }
+                VerificationCodeField(
+                    code: $code,
+                    title: AuthMessages.authenticatorCodeLabel,
+                    hint: AuthMessages.authenticatorCodeHint,
+                    errorMessage: errorMessage,
+                    isFocused: $isCodeFocused
+                )
+                .onChange(of: code) { if !code.isEmpty { error = nil } }
 
                 PavePrimaryButton(
                     title: error == nil ? "Bevestigen" : "Opnieuw proberen",
@@ -38,8 +44,8 @@ struct VerificationView: View {
                 )
 
                 PaveNotice(
-                    title: "Gebruik je authenticator-app",
-                    message: SupportText.sentence("Je code komt uit je authenticator-app, niet via e-mail of sms. Kun je niet bij de app? Neem contact op via ")
+                    title: "Kun je niet bij je authenticator-app?",
+                    message: SupportText.sentence("Neem contact op via ")
                 )
 
                 AuthReturnButton(action: flow.returnToLogin)
@@ -65,8 +71,13 @@ struct VerificationView: View {
                 case .passwordReset:
                     try await flow.verifyForPasswordReset(code: code)
                 }
+                PaveHaptics.success()
             } catch {
                 self.error = AuthError(error)
+                PaveHaptics.error()
+                // As on the web: a wrong code empties the field and puts the cursor back for the next try.
+                code = ""
+                isCodeFocused = true
             }
         }
     }

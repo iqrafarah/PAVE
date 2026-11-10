@@ -4,11 +4,15 @@ const NON_DIGITS = /\D/g;
 
 const props = defineProps<{
   id: string;
+  label: string;
   hint?: string;
   error?: string;
+  isAutofocused?: boolean;
 }>();
 
 const code = defineModel<string>({ required: true });
+
+const inputRef = useTemplateRef<HTMLInputElement>('input');
 
 const hintId = computed(() => `${props.id}-hint`);
 const errorId = computed(() => `${props.id}-error`);
@@ -31,15 +35,26 @@ function handlePaste(event: ClipboardEvent) {
   const pastedText = event.clipboardData?.getData('text') ?? '';
   setDigits(event.target as HTMLInputElement, pastedText);
 }
+
+function focusInput() {
+  if (props.isAutofocused) inputRef.value?.focus();
+}
+
+// A wrong code empties the field, so put the cursor back for the next try.
+watch(hasError, (isNowError) => {
+  if (isNowError) focusInput();
+});
+onMounted(focusInput);
 </script>
 
 <template>
-  <div class="mt-8">
+  <div>
     <label :for="id" class="block text-sm font-medium text-ink">
-      Code van {{ CODE_LENGTH }} cijfers
+      {{ label }}
     </label>
     <input
       :id="id"
+      ref="input"
       :value="code"
       type="text"
       required

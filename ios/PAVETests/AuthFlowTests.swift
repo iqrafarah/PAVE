@@ -84,6 +84,44 @@ struct AuthFlowTests {
         #expect(flow.path.isEmpty)
     }
 
+    @Test func resetStepsIncludeTheAuthenticatorOnlyWhenItWasAsked() async throws {
+        flow.showForgotPassword()
+        try await flow.requestPasswordReset(email: MockAuthService.verifiedAccount)
+        try await flow.verifyPasswordResetCode(email: MockAuthService.verifiedAccount, code: MockAuthService.demoCode)
+        try await flow.verifyForPasswordReset(code: MockAuthService.demoCode)
+        #expect(flow.resetSteps == AuthMessages.resetSteps)
+
+        let other = AuthFlow(service: MockAuthService(delay: .zero)) { _ in }
+        other.showForgotPassword()
+        try await other.requestPasswordReset(email: MockAuthService.newAccount)
+        try await other.verifyPasswordResetCode(email: MockAuthService.newAccount, code: MockAuthService.demoCode)
+        #expect(other.resetSteps == AuthMessages.resetStepsWithoutAuthenticator)
+    }
+
+    @Test func wrongEmailGoesBackToTheEmailScreen() async throws {
+        flow.showForgotPassword()
+        try await flow.requestPasswordReset(email: MockAuthService.verifiedAccount)
+        flow.returnToResetEmail()
+        #expect(flow.path == [.forgotPassword])
+
+        flow.returnToResetEmail()
+        #expect(flow.path == [.forgotPassword])
+    }
+
+    @Test(arguments: [
+        ("Authenticator-code", "Authenticator-\u{200B}code"),
+        ("Code uit e-mail", "Code uit e-mail"),
+        ("Nieuw wachtwoord", "Nieuw wachtwoord"),
+    ])
+    func longStepLabelsBreakAfterTheHyphen(title: String, shown: String) {
+        #expect(AuthSteps.breakingAfterHyphen(title) == shown)
+    }
+
+    @Test func titlesKeepAHyphenatedWordTogether() {
+        #expect(AuthIntro.keepingHyphenatedWordsWhole("Open je authenticator-app") == "Open je authenticator\u{2060}-\u{2060}app")
+        #expect(AuthIntro.keepingHyphenatedWordsWhole("Check je inbox") == "Check je inbox")
+    }
+
     @Test func wrongResetCodeStaysOnTheCodeScreen() async throws {
         flow.showForgotPassword()
         try await flow.requestPasswordReset(email: MockAuthService.verifiedAccount)

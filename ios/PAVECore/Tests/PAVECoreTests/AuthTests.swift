@@ -11,12 +11,38 @@ struct PasswordRequirementTests {
         ("Short!1a", PasswordRequirement.minimumLength),
         ("alllowercase!2026", .mixedCase),
         ("ALLUPPERCASE!2026", .mixedCase),
-        ("NoSymbolsHere2026", .numberAndSymbol),
-        ("NoNumbersHere!!!", .numberAndSymbol),
+        ("NoSymbolsHere2026", .symbol),
+        ("No Symbols Here 2026", .symbol),
+        ("NoNumbersHere!!!", .number),
     ])
     func weakPasswordMissesRequirement(password: String, requirement: PasswordRequirement) {
         #expect(!requirement.isMet(by: password))
         #expect(!PasswordRequirement.allMet(by: password))
+    }
+}
+
+struct PasswordInputTests {
+    @Test(arguments: [
+        ("BrightFuture!2026\n", "BrightFuture!2026"),
+        ("BrightFuture!2026\r\n", "BrightFuture!2026"),
+        ("\nBright\nFuture!2026", "BrightFuture!2026"),
+        ("Bright Future!2026 ", "Bright Future!2026 "),
+    ])
+    func leavesOutLineBreaksButKeepsSpaces(pasted: String, kept: String) {
+        #expect(PasswordInput.cleaned(pasted) == kept)
+    }
+}
+
+struct EmailMaskTests {
+    @Test(arguments: [
+        ("ravi@student.example.edu", "r***@student.example.edu"),
+        (" Ravi@student.example.edu ", "R***@student.example.edu"),
+        ("not-an-address", "not-an-address"),
+        ("@example.edu", "@example.edu"),
+        ("ravi@", "ravi@"),
+    ])
+    func showsOnlyTheFirstLetterAndTheDomain(email: String, masked: String) {
+        #expect(EmailMask.masked(email) == masked)
     }
 }
 

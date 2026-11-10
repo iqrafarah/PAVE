@@ -1,21 +1,79 @@
 <script setup lang="ts">
+import type { PasswordFieldState } from '~/utils/passwordRules';
+
+type FieldLook = 'error' | 'neutral' | PasswordFieldState;
+
+const FIELD_LOOK_CLASS: Record<FieldLook, string> = {
+  error: 'border-danger focus-visible:outline-danger',
+  neutral: 'border-line focus-visible:outline-brand',
+  incomplete: 'border-warning focus-visible:outline-warning',
+  valid: 'border-brand focus-visible:outline-brand',
+};
+
 const props = defineProps<{
   id: string;
   label: string;
   placeholder: string;
   autocomplete: 'current-password' | 'new-password';
   error?: string;
+  state?: PasswordFieldState;
+  status?: string;
+  hint?: string;
+  isCopyBlocked?: boolean;
+  isPasteBlocked?: boolean;
+}>();
+
+const emit = defineEmits<{
+  blur: [];
 }>();
 
 const password = defineModel<string>({ required: true });
 
 const isVisible = ref(false);
+const isCapsLockOn = ref(false);
 
 const errorId = computed(() => `${props.id}-error`);
+const statusId = computed(() => `${props.id}-status`);
+const hintId = computed(() => `${props.id}-hint`);
 const hasError = computed(() => Boolean(props.error));
+const isEmpty = computed(() => password.value.length === 0);
+const isValid = computed(() => props.state === 'valid');
+const isStatusVisible = computed(() => Boolean(props.status) && !hasError.value && !isEmpty.value);
 const inputType = computed(() => (isVisible.value ? 'text' : 'password'));
 const toggleText = computed(() => (isVisible.value ? 'Verbergen' : 'Tonen'));
-const borderClass = computed(() => (hasError.value ? 'border-danger' : 'border-line'));
+
+const describedBy = computed(() => {
+  const ids: string[] = [];
+  if (hasError.value) ids.push(errorId.value);
+  if (isStatusVisible.value) ids.push(statusId.value);
+  if (props.hint) ids.push(hintId.value);
+  return ids.length > 0 ? ids.join(' ') : undefined;
+});
+
+const fieldLook = computed<FieldLook>(() => {
+  if (hasError.value) return 'error';
+  if (!props.state || isEmpty.value) return 'neutral';
+  return props.state;
+});
+
+function updateCapsLock(event: KeyboardEvent) {
+  // Browser autofill can fire key events without getModifierState.
+  if (typeof event.getModifierState !== 'function') return;
+  isCapsLockOn.value = event.getModifierState('CapsLock');
+}
+
+function handleBlur() {
+  isCapsLockOn.value = false;
+  emit('blur');
+}
+
+function blockCopy(event: Event) {
+  if (props.isCopyBlocked) event.preventDefault();
+}
+
+function blockPaste(event: Event) {
+  if (props.isPasteBlocked) event.preventDefault();
+}
 </script>
 
 <template>
@@ -30,9 +88,16 @@ const borderClass = computed(() => (hasError.value ? 'border-danger' : 'border-l
         :autocomplete="autocomplete"
         :placeholder="placeholder"
         :aria-invalid="hasError"
-        :aria-describedby="hasError ? errorId : undefined"
-        :class="borderClass"
-        class="h-13 w-full rounded-lg border pl-3.5 pr-24 text-base text-ink placeholder:text-muted focus-visible:outline-2 focus-visible:outline-brand"
+        :aria-describedby="describedBy"
+        :class="FIELD_LOOK_CLASS[fieldLook]"
+        class="h-13 w-full rounded-lg border pl-3.5 pr-24 text-base text-ink placeholder:text-muted focus-visible:outline-2"
+        @keydown="updateCapsLock"
+        @keyup="updateCapsLock"
+        @blur="handleBlur"
+        @copy="blockCopy"
+        @cut="blockCopy"
+        @paste="blockPaste"
+        @drop="blockPaste"
       />
       <button
         type="button"
@@ -85,5 +150,38 @@ const borderClass = computed(() => (hasError.value ? 'border-danger' : 'border-l
       </svg>
       {{ error }}
     </p>
+    <div v-if="status" aria-live="polite">
+      <p
+        v-if="isStatusVisible"
+        :id="statusId"
+        class="mt-2 flex items-center gap-1.5 text-sm text-ink"
+      >
+        <AuthCheckIcon :is-checked="isValid" />
+        {{ status }}
+      </p>
+    </div>
+    <p v-if="hint" :id="hintId" class="mt-2 text-sm text-muted">{{ hint }}</p>
+    <div aria-live="polite">
+      <p
+        v-if="isCapsLockOn"
+        class="mt-2 inline-flex items-center gap-1.5 rounded-md bg-warning-soft px-2 py-1 text-sm font-medium text-warning"
+      >
+        <svg
+          class="size-4 shrink-0"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          aria-hidden="true"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M4.5 10.5 12 3m0 0 7.5 7.5M12 3v18"
+          />
+        </svg>
+        {{ CAPS_LOCK_ON_MESSAGE }}
+      </p>
+    </div>
   </div>
 </template>

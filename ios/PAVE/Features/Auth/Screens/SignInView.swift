@@ -18,9 +18,8 @@ struct SignInView: View {
     var body: some View {
         AuthScreen {
             AuthIntro(
-                eyebrow: "Inloggen",
                 title: "Welkom bij PAVE",
-                message: "Log in om verder te werken aan je persoonlijke portfolio."
+                message: AuthMessages.loginInstruction
             )
         } content: {
             VStack(alignment: .leading, spacing: 24) {
@@ -114,6 +113,7 @@ struct SignInView: View {
                 error = nil
             } catch {
                 self.error = AuthError(error)
+                PaveHaptics.error()
             }
         }
     }
