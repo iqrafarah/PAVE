@@ -33,6 +33,19 @@ struct PasswordInputTests {
     }
 }
 
+struct EmailMaskTests {
+    @Test(arguments: [
+        ("ravi@student.example.edu", "r***@student.example.edu"),
+        (" Ravi@student.example.edu ", "R***@student.example.edu"),
+        ("not-an-address", "not-an-address"),
+        ("@example.edu", "@example.edu"),
+        ("ravi@", "ravi@"),
+    ])
+    func showsOnlyTheFirstLetterAndTheDomain(email: String, masked: String) {
+        #expect(EmailMask.masked(email) == masked)
+    }
+}
+
 struct MockAuthServiceTests {
     private let service = MockAuthService(delay: .zero)
 

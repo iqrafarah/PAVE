@@ -19,16 +19,22 @@ struct VerificationView: View {
         AuthScreen {
             AuthIntro(
                 emblem: .iconDevicePhoneMobile,
-                eyebrow: purpose == .signIn ? "Tweestapsverificatie" : "Wachtwoord herstellen",
-                title: "Vul de code uit je authenticator-app in",
-                message: purpose == .signIn
-                    ? "Open je authenticator-app en neem de code van 6 cijfers voor PAVE over. Je krijgt hem niet per mail."
-                    : "Voor je account staat tweestapsverificatie aan. Neem de code over uit je authenticator-app, niet uit je mail. Daarna kies je een nieuw wachtwoord."
+                eyebrow: "Tweestapsverificatie",
+                title: AuthMessages.authenticatorHeading,
+                message: AuthMessages.authenticatorInstruction,
+                steps: purpose == .passwordReset ? AuthMessages.resetSteps : nil,
+                currentStep: 2
             )
         } content: {
             VStack(alignment: .leading, spacing: 24) {
-                VerificationCodeField(code: $code, errorMessage: errorMessage, isFocused: $isCodeFocused)
-                    .onChange(of: code) { error = nil }
+                VerificationCodeField(
+                    code: $code,
+                    title: AuthMessages.authenticatorCodeLabel,
+                    hint: AuthMessages.authenticatorCodeHint,
+                    errorMessage: errorMessage,
+                    isFocused: $isCodeFocused
+                )
+                .onChange(of: code) { if !code.isEmpty { error = nil } }
 
                 PavePrimaryButton(
                     title: error == nil ? "Bevestigen" : "Opnieuw proberen",
@@ -38,7 +44,7 @@ struct VerificationView: View {
                 )
 
                 PaveNotice(
-                    title: "Kun je niet bij de app?",
+                    title: "Kun je niet bij je authenticator-app?",
                     message: SupportText.sentence("Neem contact op via ")
                 )
 
@@ -67,6 +73,9 @@ struct VerificationView: View {
                 }
             } catch {
                 self.error = AuthError(error)
+                // As on the web: a wrong code empties the field and puts the cursor back for the next try.
+                code = ""
+                isCodeFocused = true
             }
         }
     }

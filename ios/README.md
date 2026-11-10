@@ -146,6 +146,10 @@ Dezelfde flow als op web (`web/app/pages/forgot-password.vue`): e-mailadres invu
 - Na het opslaan van het nieuwe wachtwoord word je uitgelogd en log je opnieuw in.
 - Tweestapsverificatie is voor elk account verplicht. Supabase laat een wachtwoord pas wijzigen als ook de code uit de authenticator-app is ingevuld (anders weigert het met `insufficient_aal`). Daarom vraagt de app na de mailcode eerst die code, en daarna het nieuwe wachtwoord.
 - Een nieuw account dat nog nooit heeft ingelogd, heeft nog geen tweestapsverificatie. Dat account gaat na de mailcode direct naar het nieuwe wachtwoord, en moet bij de eerste keer inloggen alsnog tweestapsverificatie instellen.
+- Net als op web (sinds gebruikerstest 1) staat bovenaan een stappenbalk (`AuthSteps`): E-mail, Code uit e-mail, Authenticator-code, Nieuw wachtwoord. Bij een account zonder tweestapsverificatie valt de derde stap weg (`AuthFlow.resetSteps`).
+- Het codescherm laat zien naar welk adres de code ging, half verborgen (`EmailMask`: `r***@student.example.edu`), met "Verkeerd e-mailadres? Terug". Een nieuwe code aanvragen kan pas 60 seconden na de vorige; de knop telt af.
+- Bij het nieuwe wachtwoord krijgt het veld een oranje rand zolang het nog niet aan de eisen voldoet en een groene zodra het klopt. Onder de eisen staat "Nog 2 eisen te gaan". Het herhaalveld zegt "De wachtwoorden zijn hetzelfde." of, nadat je het veld verlaat, "De wachtwoorden zijn niet gelijk." De knop werkt pas als alles klopt.
+- Twee bewuste verschillen met web: plakken in het herhaalveld kan op iOS wel, omdat het sterke wachtwoord dat iOS voorstelt anders niet in beide velden komt (de hint zegt daarom alleen "Typ je wachtwoord nog een keer."). En er is geen Caps Lock-melding: het iOS-toetsenbord laat dat zelf zien.
 
 ### Tweestapsverificatie instellen op de iPhone
 

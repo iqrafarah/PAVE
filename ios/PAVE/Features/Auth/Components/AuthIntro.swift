@@ -2,12 +2,19 @@ import SwiftUI
 
 struct AuthIntro: View {
     var emblem: ImageResource?
-    let eyebrow: String
+    var eyebrow: String?
     let title: String
     var message: String?
+    /// The steps of a flow of several screens. They take the place of the eyebrow, as on the web.
+    var steps: [String]?
+    var currentStep = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            if let steps {
+                AuthSteps(steps: steps, currentIndex: currentStep)
+                    .padding(.bottom, 12)
+            }
             if let emblem {
                 Image(emblem)
                     .resizable()
@@ -16,9 +23,11 @@ struct AuthIntro: View {
                     .background(Color.surfaceTint, in: .circle)
                     .accessibilityHidden(true)
             }
-            Text(eyebrow)
-                .textStyle(.eyebrow)
-                .foregroundStyle(Color.brandGreen)
+            if let eyebrow, steps == nil {
+                Text(eyebrow)
+                    .textStyle(.eyebrow)
+                    .foregroundStyle(Color.brandGreen)
+            }
             Text(title)
                 .textStyle(.title)
                 .foregroundStyle(Color.ink)
@@ -37,8 +46,8 @@ struct AuthIntro: View {
     AuthIntro(
         emblem: .iconDevicePhoneMobile,
         eyebrow: "Tweestapsverificatie",
-        title: "Vul de code uit je authenticator-app in",
-        message: "Open je authenticator-app en neem de code van 6 cijfers voor PAVE over. Je krijgt hem niet per mail."
+        title: "Open je authenticator-app",
+        message: "Vul de code uit de app in."
     )
     .padding(32)
 }

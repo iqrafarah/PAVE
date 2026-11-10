@@ -9,7 +9,9 @@ struct ResetCodeView: View {
     @State private var isChecking = false
     @State private var isResending = false
     @State private var codeError: AuthError?
-    private static let resentMessage = "We hebben een nieuwe code gestuurd."
+    /// As on the web: a new code can be asked for 60 seconds after the last one was sent.
+    @State private var resendAvailableAt = Date.now.addingTimeInterval(Self.resendWait)
+    private static let resendWait: TimeInterval = 60
 
     @State private var resendError: AuthError?
     @State private var resendMessage: String?
@@ -19,15 +21,38 @@ struct ResetCodeView: View {
         AuthScreen {
             AuthIntro(
                 emblem: .iconMailOpen,
-                eyebrow: "Wachtwoord herstellen",
                 title: "Check je inbox",
-                message: AuthMessages.resetRequested
+                message: AuthMessages.resetCodeInstruction,
+                steps: AuthMessages.resetSteps,
+                currentStep: 1
             )
         } content: {
             VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(AuthMessages.resetCodeSent(to: EmailMask.masked(email)))
+                        .textStyle(.footnote)
+                        .foregroundStyle(Color.inkMuted)
+                    HStack(spacing: 4) {
+                        Text(AuthMessages.wrongEmailPrompt)
+                            .textStyle(.footnote)
+                            .foregroundStyle(Color.inkMuted)
+                        Button(action: flow.returnToResetEmail) {
+                            Text(AuthMessages.wrongEmailLink)
+                                .textStyle(.link)
+                                .underline()
+                                .foregroundStyle(Color.brandGreen)
+                                .frame(minHeight: 44)
+                                .contentShape(.rect)
+                        }
+                        .buttonStyle(.pave)
+                        .accessibilityLabel("Terug naar je e-mailadres")
+                    }
+                }
+
                 VerificationCodeField(
                     code: $code,
-                    hint: "Vul de code uit de e-mail in.",
+                    title: AuthMessages.emailCodeLabel,
+                    hint: nil,
                     errorMessage: codeErrorMessage,
                     isFocused: $isCodeFocused
                 )
@@ -46,20 +71,24 @@ struct ResetCodeView: View {
                 )
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Button(action: resend) {
-                        Text(isResending ? "Bezig met versturen..." : "Nieuwe code versturen")
-                            .textStyle(.link)
-                            .foregroundStyle(Color.brandGreen)
-                            .frame(minHeight: 44, alignment: .leading)
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        let secondsLeft = secondsUntilResend(at: context.date)
+                        Button(action: resend) {
+                            Text(resendLabel(secondsLeft: secondsLeft))
+                                .textStyle(.link)
+                                .foregroundStyle(secondsLeft > 0 ? Color.inkMuted : .brandGreen)
+                                .frame(minHeight: 44, alignment: .leading)
+                                .contentTransition(.numericText(countsDown: true))
+                        }
+                        .buttonStyle(.pave)
+                        .disabled(isResending || isChecking || secondsLeft > 0)
                     }
-                    .buttonStyle(.pave)
-                    .disabled(isResending || isChecking)
 
                     MessageSlot(
                         message: resendError?.message ?? resendMessage,
-                        reserving: [Self.resentMessage] + AuthError.allMessages
+                        reserving: [AuthMessages.emailCodeResent] + AuthError.allMessages
                     ) { text in
-                        if text == Self.resentMessage {
+                        if text == AuthMessages.emailCodeResent {
                             Text(text)
                                 .textStyle(.footnote)
                                 .foregroundStyle(Color.brandGreen)
@@ -68,10 +97,6 @@ struct ResetCodeView: View {
                         }
                     }
                 }
-
-                Text("We laten nooit zien of een e-mailadres een PAVE-account heeft. Zo blijven je gegevens veilig.")
-                    .textStyle(.footnote)
-                    .foregroundStyle(Color.inkMuted)
 
                 AuthReturnButton(action: flow.returnToLogin)
             }
@@ -83,6 +108,15 @@ struct ResetCodeView: View {
 
     private var codeErrorMessage: String? {
         codeError?.message
+    }
+
+    private func secondsUntilResend(at date: Date) -> Int {
+        max(0, Int(resendAvailableAt.timeIntervalSince(date).rounded(.up)))
+    }
+
+    private func resendLabel(secondsLeft: Int) -> String {
+        if isResending { return "Bezig met versturen..." }
+        return secondsLeft > 0 ? AuthMessages.resendCountdown(secondsLeft: secondsLeft) : AuthMessages.resendEmailCodeLabel
     }
 
     private func check() {
@@ -111,8 +145,9 @@ struct ResetCodeView: View {
             defer { isResending = false }
             do {
                 try await flow.requestPasswordReset(email: email)
-                resendMessage = Self.resentMessage
-                AccessibilityNotification.Announcement("We hebben een nieuwe code gestuurd.").post()
+                resendAvailableAt = .now.addingTimeInterval(Self.resendWait)
+                resendMessage = AuthMessages.emailCodeResent
+                AccessibilityNotification.Announcement(AuthMessages.emailCodeResent).post()
             } catch {
                 resendError = AuthError(error)
             }

@@ -6,7 +6,7 @@ struct VerificationCodeField: View {
 
     @Binding var code: String
     var title = "Code van 6 cijfers"
-    var hint = "Vul de code in die je authenticator-app nu laat zien."
+    var hint: String? = "Vul de code in die je authenticator-app nu laat zien."
     var errorMessage: String?
     var reservedErrors = AuthError.allMessages
     var isFocused: FocusState<Bool>.Binding
@@ -47,7 +47,7 @@ struct VerificationCodeField: View {
                 }
                 .animation(.easeOut(duration: 0.15), value: isFocused.wrappedValue)
 
-            MessageSlot(message: errorMessage ?? hint, reserving: [hint] + reservedErrors) { text in
+            MessageSlot(message: errorMessage ?? hint, reserving: [hint].compactMap { $0 } + reservedErrors) { text in
                 Text(text)
                     .textStyle(.footnote)
                     .foregroundStyle(isInvalid ? Color.critical : .inkMuted)

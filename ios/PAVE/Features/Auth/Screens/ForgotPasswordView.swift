@@ -16,9 +16,10 @@ struct ForgotPasswordView: View {
         AuthScreen {
             AuthIntro(
                 emblem: .iconMail,
-                eyebrow: "Wachtwoord herstellen",
                 title: "Wachtwoord vergeten?",
-                message: "Vul je e-mailadres in. Dan sturen we je een code om een nieuw wachtwoord te kiezen."
+                message: AuthMessages.resetEmailInstruction,
+                steps: AuthMessages.resetSteps,
+                currentStep: 0
             )
         } content: {
             VStack(alignment: .leading, spacing: 24) {
@@ -37,7 +38,6 @@ struct ForgotPasswordView: View {
                 .disabled(isSubmitting)
 
                 PavePrimaryButton(title: "Code versturen", loadingTitle: "Bezig met versturen...", isLoading: isSubmitting, action: submit)
-
 
                 AuthReturnButton(action: flow.returnToLogin)
             }
