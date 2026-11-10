@@ -15,7 +15,6 @@ struct VaultSelectionList: View {
         let period: String
         let tint: Color
         var category: String? = nil
-        var logo: VaultCompanyLogo? = nil
     }
 
     let categories: [Category]
@@ -48,8 +47,7 @@ struct VaultSelectionList: View {
                         period: item.period,
                         tint: item.tint,
                         isSelected: selectedItems.contains(item.id),
-                        category: item.category,
-                        logo: item.logo
+                        category: item.category
                     ) {
                         toggle(item.id, in: &selectedItems)
                     }
@@ -77,9 +75,9 @@ struct VaultSelectionList: View {
                 .init(id: "projects", title: "Projecten", count: 2),
             ],
             items: [
-                .init(id: "a", title: "HAVO Diploma", organisation: "Mgr. Frencken College Oosterhout", period: "2020 - 2025", tint: .cardTintApricot, category: "Diploma's", logo: .frencken),
-                .init(id: "b", title: "Leidinggevende", organisation: "Plus Laurijssen Oosterhout", period: "nov 2025 - nu (11 mnd)", tint: .cardTintGreen, category: "Ervaringen", logo: .plus),
-                .init(id: "c", title: "Eindverslag stage", organisation: "LiveWall Tilburg", period: "mrt 2025 - dec 2025", tint: .cardTintLime, category: "Projecten", logo: .livewall),
+                .init(id: "a", title: "Propedeuse HBO-ICT", organisation: "Hogeschool Zuidrand, Eindhoven", period: "jul 2024", tint: .cardTintApricot, category: "Diploma's"),
+                .init(id: "b", title: "Teamleider avondploeg", organisation: "Supermarkt De Hoek, Tilburg", period: "nov 2025 - nu", tint: .cardTintGreen, category: "Werkervaring"),
+                .init(id: "c", title: "Eindverslag stage", organisation: "Pixelwerk, Eindhoven", period: "mrt 2025 - dec 2025", tint: .cardTintLime, category: "Projecten"),
             ],
             selectedCategories: $categories,
             selectedItems: $items

@@ -1,6 +1,8 @@
+import PAVECore
 import SwiftUI
 
-/// The mobile task-consent picker designed for Ayla. It stays presentational until vault storage and task grants are connected.
+/// The task-consent picker designed for Ayla: which items and categories Ayla may use for one question.
+/// Not shown yet; it needs the consent flow on the server (`vault_access_grants`) before it can do anything.
 struct VaultAccessSelectionPanel: View {
     let items: [VaultItem]
     @Binding var selectedCategories: Set<String>
@@ -8,12 +10,8 @@ struct VaultAccessSelectionPanel: View {
     let onContinue: () -> Void
 
     private var categories: [VaultSelectionList.Category] {
-        VaultCategory.allCases.map { category in
-            .init(
-                id: category.id,
-                title: category.title,
-                count: category == .all ? items.count : items.count { $0.category == category }
-            )
+        [.init(id: "all", title: "Alle items", count: items.count)] + VaultCategory.allCases.map { category in
+            .init(id: category.id, title: category.title, count: items.count { $0.category == category })
         }
     }
 
@@ -22,11 +20,10 @@ struct VaultAccessSelectionPanel: View {
             .init(
                 id: $0.id,
                 title: $0.title,
-                organisation: $0.organisation,
-                period: $0.period,
+                organisation: $0.place ?? "",
+                period: $0.period ?? "",
                 tint: $0.category.tint,
-                category: $0.category.title,
-                logo: $0.logo
+                category: $0.category.title
             )
         }
     }
@@ -68,7 +65,7 @@ struct VaultAccessSelectionPanel: View {
 
 #Preview("Ayla · toestemming kluis") {
     @Previewable @State var categories: Set<String> = []
-    @Previewable @State var selected: Set<String> = ["havo-diploma", "eindverslag-stage"]
+    @Previewable @State var selected: Set<String> = ["propedeuse", "stageverslag"]
     ZStack(alignment: .bottom) {
         VStack(spacing: 16) {
             HStack {
@@ -98,7 +95,7 @@ struct VaultAccessSelectionPanel: View {
         .background(Color.canvas)
 
         VaultAccessSelectionPanel(
-            items: VaultItem.consentPrototype,
+            items: VaultContents.preview.items,
             selectedCategories: $categories,
             selectedItems: $selected,
             onContinue: {}

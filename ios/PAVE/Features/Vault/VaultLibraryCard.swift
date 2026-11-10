@@ -1,145 +1,114 @@
+import PAVECore
 import SwiftUI
 
-/// A vault item in the library. It shows the verification outcome in both grid and list layouts.
+/// An item in the vault, as a tile in the grid or a row in the list, like the cards in the design.
 struct VaultLibraryCard: View {
     let item: VaultItem
-    let isSelected: Bool
     let isGrid: Bool
-    let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            Group {
-                if isGrid { gridCard } else { listCard }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.white)
-            .clipShape(.rect(cornerRadius: 17))
-            .overlay {
-                RoundedRectangle(cornerRadius: 17)
-                    .strokeBorder(isSelected ? Color.brandGreen : Color.cardBorder, lineWidth: isSelected ? 2 : 1)
-            }
-            .contentShape(.rect(cornerRadius: 17))
+        Group {
+            if isGrid { gridCard } else { listCard }
         }
-        .buttonStyle(.pave)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(Color.white)
+        .clipShape(.rect(cornerRadius: 16))
+        .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder, lineWidth: 1) }
+        .contentShape(.rect(cornerRadius: 16))
+        .accessibilityElement(children: .combine)
     }
 
     private var gridCard: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Color.categoryTint(for: item.category)
-                .frame(height: 54)
+            item.category.tint
+                .frame(height: 48)
                 .overlay(alignment: .bottomLeading) {
-                    VaultCompanyLogoView(logo: item.logo, organisation: item.organisation, size: 48)
-                        .offset(x: 12, y: 22)
+                    CompanyMonogram(name: item.organisationName ?? item.title, size: 44)
+                        .padding(.leading, 12)
+                        .offset(y: 22)
                 }
                 .overlay(alignment: .topTrailing) {
-                    PaveCheckbox(isOn: isSelected, size: 18)
-                        .padding(10)
+                    VaultStatusBadge(status: item.status)
+                        .padding(8)
                 }
-
             VStack(alignment: .leading, spacing: 8) {
                 Text(item.title)
                     .textStyle(.bodyMedium)
                     .foregroundStyle(Color.ink)
                     .lineLimit(2)
-                    .frame(maxWidth: .infinity, minHeight: 38, alignment: .topLeading)
-                statusBadge
-                PaveIconLabel(icon: .iconBuilding, text: item.organisation)
-                    .lineLimit(2)
-                PaveIconLabel(icon: .iconCalendar, text: item.period)
-                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                details(lineLimit: 2)
+                if !item.skills.isEmpty {
+                    skills(limit: 1)
+                }
             }
             .padding(.horizontal, 12)
-            .padding(.top, 29)
-            .padding(.bottom, 13)
+            .padding(.top, 30)
+            .padding(.bottom, 12)
         }
     }
 
     private var listCard: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VaultCompanyLogoView(logo: item.logo, organisation: item.organisation, size: 58)
+        HStack(alignment: .top, spacing: 12) {
+            CompanyMonogram(name: item.organisationName ?? item.title, size: 48)
             VStack(alignment: .leading, spacing: 7) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(item.title)
                         .textStyle(.bubble)
                         .foregroundStyle(Color.ink)
                         .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    statusBadge
+                        .layoutPriority(1)
+                    VaultStatusBadge(status: item.status)
                 }
-                Text(item.category.title)
-                    .textStyle(.chip)
-                    .foregroundStyle(Color.brandGreen)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 4)
-                    .background(Color.surfaceTint, in: .capsule)
-                PaveIconLabel(icon: .iconBuilding, text: item.organisation)
-                    .lineLimit(1)
-                PaveIconLabel(icon: .iconCalendar, text: item.period)
-                    .lineLimit(1)
+                details(lineLimit: 1)
+                if !item.skills.isEmpty {
+                    skills(limit: 2)
+                        .padding(.top, 2)
+                }
             }
-            PaveCheckbox(isOn: isSelected)
         }
         .padding(12)
     }
 
-    private var statusBadge: some View {
-        HStack(spacing: 4) {
-            Image(systemName: item.status.symbol)
-                .font(.system(size: 10, weight: .semibold))
-            Text(item.status.title)
-                .textStyle(.caption)
+    @ViewBuilder
+    private func details(lineLimit: Int) -> some View {
+        if let place = item.place {
+            PaveIconLabel(icon: .iconBuildingOfficeSolid, text: place)
+                .lineLimit(lineLimit)
+        }
+        if let period = item.period {
+            PaveIconLabel(icon: .iconCalendarDaysSolid, text: period)
                 .lineLimit(1)
         }
-        .foregroundStyle(item.status.foreground)
-        .padding(.horizontal, 7)
-        .padding(.vertical, 4)
-        .background(item.status.background, in: .rect(cornerRadius: 6))
-        .fixedSize()
     }
-}
 
-private extension Color {
-    static func categoryTint(for category: VaultCategory) -> Color {
-        switch category {
-        case .diplomas: .cardTintApricot
-        case .certificates, .badges, .projects, .feedback: .cardTintGreen
-        case .all, .experiences, .internships, .skills, .reflections: .cardTintLavender
+    private func skills(limit: Int) -> some View {
+        HStack(spacing: 6) {
+            ForEach(item.skills.prefix(limit), id: \.self) { skill in
+                VaultSkillChip(text: skill)
+            }
+            if item.skills.count > limit {
+                VaultSkillChip(text: "+\(item.skills.count - limit)")
+                    .accessibilityLabel("en nog \(item.skills.count - limit)")
+            }
         }
     }
 }
 
-private extension VaultItemStatus {
-    var title: String {
-        switch self {
-        case .verified: "Geverifieerd"
-        case .toVerify: "Verifiëren"
-        case .rejected: "Afgewezen"
-        }
+#Preview("Raster") {
+    LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
+        ForEach(VaultContents.preview.items) { VaultLibraryCard(item: $0, isGrid: true) }
     }
+    .padding()
+    .background(Color.canvas)
+}
 
-    var symbol: String {
-        switch self {
-        case .verified: "checkmark.circle.fill"
-        case .toVerify: "clock.fill"
-        case .rejected: "exclamationmark.circle.fill"
-        }
+#Preview("Lijst") {
+    VStack(spacing: 12) {
+        ForEach(VaultContents.preview.items) { VaultLibraryCard(item: $0, isGrid: false) }
     }
-
-    var foreground: Color {
-        switch self {
-        case .verified: .brandGreen
-        case .toVerify: .orange
-        case .rejected: .red
-        }
-    }
-
-    var background: Color {
-        switch self {
-        case .verified: .cardTintGreen
-        case .toVerify: .cardTintApricot
-        case .rejected: .cardTintRose
-        }
-    }
+    .padding()
+    .background(Color.canvas)
 }

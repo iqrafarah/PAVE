@@ -2,7 +2,7 @@
 
 The vault is shared account data for iOS and web. This page describes the first database shape and how it fits the mobile work. The schema is [`shared/supabase/migrations/20261110120000_vault.sql`](../shared/supabase/migrations/20261110120000_vault.sql).
 
-> **Status (2026-11-10):** the migration is applied to the shared Supabase project; the vault tables exist and are still empty. iOS has the list and consent-picker UI, but there is no `VaultService`, upload flow, validation service, or Ayla consent endpoint yet. Change the schema only together with the web team.
+> **Status (2026-11-10):** the migration is applied to the shared Supabase project. iOS reads and writes it through `SupabaseVaultService` (PAVECore): items with their accepted skills and file names, folders, adding and changing your own items, moving them to a folder, and deleting (files first, through the Storage API). There is no file upload, validation service or Ayla consent endpoint yet. Change the schema only together with the web team.
 
 ## Data model
 
@@ -29,10 +29,45 @@ Categories match `shared/ayla/reply.schema.json`: `diplomas`, `certificates`, `b
 - File records cascade when an item is deleted, but Storage objects must be removed through the Storage API first. The future item-deletion flow must handle both operations and report cleanup failures.
 - The schema deliberately does not store OCR/extracted text. The app can read a file on-device for a one-time message where the user consents, following the existing attachment rule in `docs/ayla.md`.
 
+## How iOS shows it
+
+- Status labels: `verified` is "Geverifieerd", `toVerify` is "Niet bevestigd" (not "Verifiëren": nobody is checking it unless a validation request exists), `rejected` is "Afgewezen". Origin: `user` "Zelf toegevoegd", `organization`/`import` "Van een organisatie", `ayla` "Via Ayla".
+- New items are always `source = user` and `toVerify`; the app never sends `verification_status` or `source`. An item that is `verified`, or that comes from an organisation, cannot be changed in the app, so a confirmed item never shows edited content under a confirmed label.
+- Dates use `start_date`/`end_date`/`is_current` for categories with a period, and `issued_on` for diplomas, certificates and badges. Cards show them as "mrt 2025 - dec 2025", "nov 2025 - nu" or "jul 2024".
+- Folders have a colour and an icon on iOS. The columns for them are in the round-two proposal below (**not applied**). Until it is applied, iOS saves only the name and keeps the colour and icon on the device.
+- Web should use the same words; they are in `ios/PAVE/Features/Vault/VaultMessages.swift`.
+
+## Round two (proposal, not applied)
+
+[`20261110170000_vault_cleanup_and_evidence_flow.sql`](../shared/supabase/migrations/20261110170000_vault_cleanup_and_evidence_flow.sql) tidies up and prepares the screens in Figma (add evidence in four steps, the consent picker, the vault grid and list). Apply it only after the web team agrees.
+
+What is in Supabase on 2026-11-10 (read-only check with the publishable key):
+
+| Table | From | Used by |
+| --- | --- | --- |
+| `profiles` (id, full_name, preferred_name, email, avatar_url, role, organization_id, program, created_at, updated_at) | web team, not in our migrations | Ayla function (name) |
+| `organizations` (id, name, created_at) | web team, not in our migrations | `profiles.organization_id` |
+| `ayla_conversations`, `ayla_messages`, `ayla_memories`, `ayla_settings` | our migrations | iOS, Ayla function |
+| the 8 `vault_*` tables and the `pave-vault` bucket | `20261110120000_vault.sql` | iOS (items, files, skills, folders); web not yet |
+
+What it changes:
+
+| | Change | Why |
+| --- | --- | --- |
+| Remove | The functions and `private` tables of the first password reset (`get_verified_totp_secret`, `create_password_reset_token` and four more) | Taken out of the repo in fe5e73b, called by nothing; one of them could read authenticator secrets. All with `if exists`, so it also runs if they were never applied. |
+| Remove | `vault_folders.category` and `.description` | The category folders are the item categories, not rows; no screen shows a folder description. |
+| Add | `vault_folders.color` and `.icon` | The "Nieuwe map" sheet. Replaces the earlier proposal `20261110150000`. |
+| Add | Category `other` ("Overige") | The category bar in the consent picker. **iOS and `shared/ayla/reply.schema.json` must know `other` before an item uses it**: the current iOS app skips categories it does not know. |
+| Add | `organizations.logo_url` and `vault_items.organization_id` | Logos on the cards. Only trusted server code may link an item to an organisation, so a logo never makes your own item look official. |
+| Add | `vault_items.ayla_allowed_at` | Step 4 "Ayla mag dit document bekijken en gebruiken": off by default, time of agreeing, null to take it back. A task grant is still the way to share items for one question. |
+| Tighten | `guard_vault_item_authority` | Also blocks changing the content of a verified or imported item (title, dates, organisation and so on); moving it, Ayla access and deleting still work. iOS already behaves this way. |
+
+Not needed: steps 2 and 3 of adding evidence use the existing `vault_item_files` and `vault_item_skills`, and "Verifiëren" uses `vault_validation_requests`. The task list next to the consent picker (Items selecteren, Vacature kiezen, Kluis toestemming, CV genereren) is not stored yet; decide that together with the Ayla task flow.
+
 ## Rollout sequence
 
 1. Review categories, folder behavior, status transitions, file limits and validation ownership with Daaf and the web team.
-2. Build the `VaultService` and file upload/delete flow against this model; generate and review the database types.
+2. ~~Build the `VaultService` against this model.~~ Done on iOS on 2026-11-10 (read, add, change, move, delete, folders). Still to do: file upload, and the web client.
 3. Add the server-side validation and task-consent behavior. Test that Ayla cannot read an item or category without an active, matching grant.
 4. ~~Apply the migration to the shared Supabase project.~~ Done on 2026-11-10.
 5. Update `ios/README.md`, `docs/ayla.md` and this page when the schema is applied or the contract changes.

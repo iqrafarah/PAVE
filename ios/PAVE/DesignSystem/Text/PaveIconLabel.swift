@@ -9,6 +9,9 @@ struct PaveIconLabel: View {
         HStack(spacing: 9) {
             Image(icon)
                 .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 15, height: 15)
                 .foregroundStyle(Color.inkMuted)
                 .frame(width: 17, height: 17)
                 .accessibilityHidden(true)

@@ -6,7 +6,8 @@ public protocol AylaValue: RawRepresentable, Codable, Hashable, Sendable where R
     init(rawValue: String)
 }
 
-public struct VaultCategory: AylaValue {
+/// A vault category as Ayla names it; an open set, see `VaultCategory` for the ones the app knows.
+public struct AylaVaultCategory: AylaValue {
     public let rawValue: String
     public init(rawValue: String) { self.rawValue = rawValue }
 
@@ -19,6 +20,9 @@ public struct VaultCategory: AylaValue {
     public static let skills = Self(rawValue: "skills")
     public static let feedback = Self(rawValue: "feedback")
     public static let reflections = Self(rawValue: "reflections")
+
+    /// The vault category, or `nil` for a value this version of the app does not know yet.
+    public var category: VaultCategory? { VaultCategory(rawValue: rawValue) }
 }
 
 public struct AylaScreen: AylaValue {
