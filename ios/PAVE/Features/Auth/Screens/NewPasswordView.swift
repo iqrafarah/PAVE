@@ -88,10 +88,12 @@ struct NewPasswordView: View {
         isPasswordStrong && doPasswordsMatch
     }
 
-    /// As on the web: "hetzelfde" as soon as they match, "niet gelijk" only after you left the repeat field.
+    /// "Hetzelfde" as soon as they match. "Niet gelijk" once you are done with the repeat field: after leaving it, as
+    /// on the web, or once it is as long as the password, because on an iPhone you rarely leave a field before saving.
     private var confirmationStatus: String? {
         if doPasswordsMatch { return AuthMessages.passwordsMatch }
-        if hasLeftConfirmation, !password.isEmpty, !confirmation.isEmpty { return AuthMessages.passwordsNotEqual }
+        guard !password.isEmpty, !confirmation.isEmpty else { return nil }
+        if hasLeftConfirmation || confirmation.count >= password.count { return AuthMessages.passwordsNotEqual }
         return nil
     }
 

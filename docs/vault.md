@@ -1,8 +1,8 @@
 # The vault
 
-The vault is shared account data for iOS and web. This page describes the first database shape and how it fits the mobile work. The schema draft is [`shared/supabase/migrations/20261110120000_vault.sql`](../shared/supabase/migrations/20261110120000_vault.sql).
+The vault is shared account data for iOS and web. This page describes the first database shape and how it fits the mobile work. The schema is [`shared/supabase/migrations/20261110120000_vault.sql`](../shared/supabase/migrations/20261110120000_vault.sql).
 
-> **Status (2026-11-10):** the migration is drafted, not applied. iOS has the list and consent-picker UI, but there is no `VaultService`, upload flow, validation service, or Ayla consent endpoint yet. Do not deploy or apply the migration until both app teams have reviewed the shared model and the required server behavior.
+> **Status (2026-11-10):** the migration is applied to the shared Supabase project; the vault tables exist and are still empty. iOS has the list and consent-picker UI, but there is no `VaultService`, upload flow, validation service, or Ayla consent endpoint yet. Change the schema only together with the web team.
 
 ## Data model
 
@@ -34,7 +34,7 @@ Categories match `shared/ayla/reply.schema.json`: `diplomas`, `certificates`, `b
 1. Review categories, folder behavior, status transitions, file limits and validation ownership with Daaf and the web team.
 2. Build the `VaultService` and file upload/delete flow against this model; generate and review the database types.
 3. Add the server-side validation and task-consent behavior. Test that Ayla cannot read an item or category without an active, matching grant.
-4. Apply the migration to the shared Supabase project only after both clients and the server behavior are ready.
+4. ~~Apply the migration to the shared Supabase project.~~ Done on 2026-11-10.
 5. Update `ios/README.md`, `docs/ayla.md` and this page when the schema is applied or the contract changes.
 
 The migration includes Realtime publication entries for the vault tables so other signed-in devices can refresh. Clients must still use the authenticated user's session; service-role keys belong only in trusted server functions.
