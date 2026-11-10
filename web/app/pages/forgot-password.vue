@@ -3,6 +3,11 @@ import type { MfaStatus } from '~/utils/mfaRoutes';
 
 definePageMeta({ layout: 'auth' });
 
+const RESEND_WAIT_SECONDS = 60;
+const ONE_SECOND_MS = 1000;
+const EMAIL_STEP_INDEX = 0;
+const EMAIL_CODE_STEP_INDEX = 1;
+
 const { sendPasswordResetCode, verifyPasswordResetCode } = useAuth();
 const { getMfaStatus } = useMfa();
 
@@ -13,12 +18,21 @@ const isBusy = ref(false);
 const sendError = ref('');
 const codeError = ref('');
 const resendMessage = ref('');
+const resendSecondsLeft = ref(0);
+let resendTimer: ReturnType<typeof setInterval> | undefined;
 
 const verifyButtonLabel = computed(() => {
   if (isBusy.value) return 'Bezig met controleren...';
   if (codeError.value) return 'Opnieuw proberen';
   return 'Code bevestigen';
 });
+const codeSentMessage = computed(() => getResetCodeSentMessage(maskEmail(email.value)));
+const isResendWaiting = computed(() => resendSecondsLeft.value > 0);
+const resendButtonLabel = computed(() =>
+  isResendWaiting.value
+    ? getResendCountdownLabel(resendSecondsLeft.value)
+    : RESEND_EMAIL_CODE_LABEL,
+);
 
 async function sendCode() {
   sendError.value = '';
@@ -26,7 +40,10 @@ async function sendCode() {
   const { error } = await sendPasswordResetCode(email.value);
   isBusy.value = false;
 
-  if (!error) return true;
+  if (!error) {
+    startResendCountdown();
+    return true;
+  }
 
   sendError.value = getAuthErrorMessage(error);
   return false;
@@ -39,7 +56,31 @@ async function handleEmailSubmit() {
 async function handleResend() {
   resendMessage.value = '';
   const isSent = await sendCode();
-  if (isSent) resendMessage.value = 'We hebben een nieuwe code gestuurd.';
+  if (isSent) resendMessage.value = EMAIL_CODE_RESENT_MESSAGE;
+}
+
+function goBackToEmail() {
+  stopResendCountdown();
+  code.value = '';
+  codeError.value = '';
+  resendMessage.value = '';
+  isCodeSent.value = false;
+}
+
+function startResendCountdown() {
+  stopResendCountdown();
+  resendSecondsLeft.value = RESEND_WAIT_SECONDS;
+  resendTimer = setInterval(countDownOneSecond, ONE_SECOND_MS);
+}
+
+function countDownOneSecond() {
+  resendSecondsLeft.value -= 1;
+  if (resendSecondsLeft.value <= 0) stopResendCountdown();
+}
+
+function stopResendCountdown() {
+  clearInterval(resendTimer);
+  resendSecondsLeft.value = 0;
 }
 
 async function handleCodeSubmit() {
@@ -62,15 +103,20 @@ function getPathAfterResetCode(status: MfaStatus | null) {
   if (status === 'needs-setup') return SET_PASSWORD_PATH;
   return MFA_VERIFY_PATH;
 }
+
+onBeforeUnmount(stopResendCountdown);
 </script>
 
 <template>
   <AuthCard
     v-if="!isCodeSent"
-    eyebrow="Wachtwoord herstellen"
     title="Wachtwoord vergeten?"
-    description="Vul je e-mailadres in. Dan sturen we je een code om een nieuw wachtwoord te kiezen."
+    :description="RESET_EMAIL_INSTRUCTION"
   >
+    <template #steps>
+      <AuthSteps :steps="RESET_STEPS" :current-index="EMAIL_STEP_INDEX" />
+    </template>
+
     <template #icon>
       <svg
         class="size-5"
@@ -88,7 +134,7 @@ function getPathAfterResetCode(status: MfaStatus | null) {
       </svg>
     </template>
 
-    <form class="mt-8" @submit.prevent="handleEmailSubmit">
+    <form @submit.prevent="handleEmailSubmit">
       <AuthEmailInput id="email" v-model="email" />
       <p v-if="sendError" role="alert" class="mt-4 text-sm text-danger">
         {{ sendError }}
@@ -103,10 +149,13 @@ function getPathAfterResetCode(status: MfaStatus | null) {
 
   <AuthCard
     v-else
-    eyebrow="Wachtwoord herstellen"
     title="Check je inbox"
-    :description="RESET_REQUESTED_MESSAGE"
+    :description="RESET_CODE_INSTRUCTION"
   >
+    <template #steps>
+      <AuthSteps :steps="RESET_STEPS" :current-index="EMAIL_CODE_STEP_INDEX" />
+    </template>
+
     <template #icon>
       <svg
         class="size-5"
@@ -124,11 +173,24 @@ function getPathAfterResetCode(status: MfaStatus | null) {
       </svg>
     </template>
 
-    <form @submit.prevent="handleCodeSubmit">
+    <p class="text-sm text-muted">{{ codeSentMessage }}</p>
+    <p class="mt-1 text-sm text-muted">
+      {{ WRONG_EMAIL_PROMPT }}
+      <button
+        type="button"
+        class="font-medium text-brand underline focus-visible:outline-2 focus-visible:outline-brand"
+        @click="goBackToEmail"
+      >
+        {{ WRONG_EMAIL_LINK }}
+      </button>
+    </p>
+
+    <form class="mt-6" @submit.prevent="handleCodeSubmit">
       <AuthCodeInput
         id="reset-code"
         v-model="code"
-        hint="Vul de code uit de e-mail in."
+        :label="EMAIL_CODE_LABEL"
+        is-autofocused
         :error="codeError"
       />
       <AuthPrimaryButton type="submit" :disabled="isBusy">
@@ -143,22 +205,17 @@ function getPathAfterResetCode(status: MfaStatus | null) {
 
     <button
       type="button"
-      :disabled="isBusy"
-      class="mt-4 text-sm font-medium text-brand underline focus-visible:outline-2 focus-visible:outline-brand disabled:opacity-60"
+      :disabled="isBusy || isResendWaiting"
+      class="mt-4 text-sm font-medium text-brand underline focus-visible:outline-2 focus-visible:outline-brand disabled:text-muted disabled:no-underline"
       @click="handleResend"
     >
-      Nieuwe code versturen
+      {{ resendButtonLabel }}
     </button>
     <p v-if="resendMessage" role="status" class="mt-2 text-sm text-brand">
       {{ resendMessage }}
     </p>
     <p v-if="sendError" role="alert" class="mt-2 text-sm text-danger">
       {{ sendError }}
-    </p>
-
-    <p class="mt-4 text-sm text-muted">
-      We laten nooit zien of een e-mailadres een PAVE-account heeft. Zo blijven
-      je gegevens veilig.
     </p>
 
     <AuthBackToLogin @click="navigateTo('/login')" />

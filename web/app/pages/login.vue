@@ -21,7 +21,7 @@ async function handleSubmit() {
   isEmailUnverified.value = false;
   isLoading.value = true;
 
-  const { error } = await signIn(email.value, password.value);
+  const { error } = await signIn(email.value.trim(), password.value);
   if (error) {
     isLoading.value = false;
     showSignInError(error);
@@ -44,7 +44,7 @@ function showSignInError(error: AuthErrorLike) {
 }
 
 async function handleResend() {
-  const { error } = await resendVerificationEmail(email.value);
+  const { error } = await resendVerificationEmail(email.value.trim());
   infoMessage.value = error
     ? getAuthErrorMessage(error)
     : 'We hebben de bevestigingsmail opnieuw verstuurd.';
@@ -53,11 +53,11 @@ async function handleResend() {
 
 <template>
   <AuthCard
-    eyebrow="Inloggen"
     title="Welkom bij PAVE"
-    description="Log in om verder te werken aan je persoonlijke portfolio."
+    :description="LOGIN_INSTRUCTION"
   >
-    <form class="mt-8" @submit.prevent="handleSubmit">
+
+    <form @submit.prevent="handleSubmit">
       <AuthEmailInput id="email" v-model="email" />
       <AuthPasswordInput
         id="password"
@@ -68,7 +68,7 @@ async function handleResend() {
         autocomplete="current-password"
       />
 
-      <div class="mt-6 flex justify-end">
+      <div class="mt-3 flex justify-end">
         <NuxtLink
           to="/forgot-password"
           class="text-sm font-medium text-brand focus-visible:outline-2 focus-visible:outline-brand"

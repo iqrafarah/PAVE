@@ -24,3 +24,5 @@ export function getPasswordRules(password: string): PasswordRule[] {
     { label: 'Minimaal één cijfer en één symbool', isMet: hasDigitAndSymbol },
   ];
 }
+
+export type PasswordFieldState = 'incomplete' | 'valid';

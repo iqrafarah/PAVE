@@ -55,9 +55,9 @@ onMounted(loadSetup);
   <AuthCard
     eyebrow="Eerste keer instellen"
     title="Beveilig je PAVE-account"
-    description="Tweestapsverificatie is verplicht. Zo blijven je persoonlijke gegevens, resultaten en certificaten veilig."
+    :description="MFA_SETUP_INSTRUCTION"
   >
-    <ol class="mt-6 space-y-4">
+    <ol class="space-y-4">
       <AuthSetupStep
         :number="1"
         title="Download een authenticator-app"
@@ -96,10 +96,11 @@ onMounted(loadSetup);
       />
     </ol>
 
-    <form @submit.prevent="handleSubmit">
+    <form class="mt-6" @submit.prevent="handleSubmit">
       <AuthCodeInput
         id="setup-code"
         v-model="code"
+        :label="AUTHENTICATOR_CODE_LABEL"
         hint="Vul de code in die je authenticator-app nu laat zien."
         :error="codeError"
       />
