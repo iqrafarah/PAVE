@@ -217,52 +217,222 @@ Ayla remembers things across conversations, but only what the user kept. This fo
 
 ## Calling Ayla from the web
 
-The web uses the same two functions and the same tables, so a conversation started on the iPhone continues on the web. The user must be signed in with two-step verification (`aal2`), otherwise both functions answer `403 insufficient_aal`.
+Everything the web needs to work with Ayla the way the iPhone does. Nothing has to change on the server: the functions, tables and security rules are shared, so a conversation started on the iPhone continues on the web and the other way round.
 
-**Ask a question** (with `@nuxtjs/supabase`, which sends the session along):
+### How Ayla works, in short
+
+```
+browser ──► Supabase Edge Function `ayla` ──► OpenRouter (Mistral) for the answer
+   │              │                       └─► Adzuna when the user asks for vacancies
+   │              ├─ reads: the conversation so far, the user's first name, what Ayla remembers
+   │              └─ writes: the question and the answer to `ayla_messages`
+   │
+   ├────────────► Edge Function `ayla-voice` ──► Ayla's voice (audio stream)
+   │
+   └────────────► tables, straight from the browser: conversations, messages, memory
+                  (row level security: only the user's own rows, only after two-step verification)
+```
+
+- The brain lives on the server only. The browser never talks to OpenRouter or Adzuna and holds no keys besides the publishable one.
+- The prompt is built in layers (`ayla/prompt.ts`): who Ayla is, the device, what she may know, what she remembers, and the shape of the answer. The model answers in JSON; the server turns that into the reply below.
+- The vault is not connected yet: Ayla only knows what the user tells her, adds as a file, or let her remember.
+
+### Before you call anything
+
+- The user must be signed in **with two-step verification** (`aal2`). Otherwise both functions answer `403 insufficient_aal`, and the tables return nothing.
+- `@nuxtjs/supabase` sends the session along with `functions.invoke` and with table queries. For the streaming and voice calls you use `fetch` yourself, with `Authorization: Bearer <access_token>` and `apikey: <publishable key>`.
+
+| Status | `error` | What to show |
+| --- | --- | --- |
+| 400 | `invalid_request` | A bug in the request (see the limits below) |
+| 401 | `not_signed_in` | Sign in again |
+| 403 | `insufficient_aal` | Two-step verification is needed |
+| 404 | `conversation_not_found` | The conversation was deleted (for instance on another device): start a new one |
+| 500, 502 | `unavailable`, `not_configured` | "Ayla kon nu geen antwoord geven. Probeer het zo opnieuw." |
+
+### 1. Ask a question (the whole answer at once)
 
 ```ts
 const supabase = useSupabaseClient()
 const { data: reply, error } = await supabase.functions.invoke('ayla', {
   body: {
-    text: 'Welke stages passen bij mij?',
+    text: 'Welke stages passen bij mij?',   // 1 to 4000 characters
     device: 'web',
-    input: 'text',               // 'voice' when the question was spoken
-    conversationId,              // leave out for a new conversation
-    // context: { screen: 'vault', itemId }, attachments: [{ name, text }]  (optional)
+    input: 'text',                          // 'voice' when the question was spoken
+    conversationId,                         // leave out for a new conversation
+    attachments: [{ name: 'cv.pdf', text }],// optional, at most 3; only the text of a file (max 20,000 characters each), read in the browser
+    // context: { screen: 'vault', itemId } // optional: what the user has open
   },
 })
-// Keep reply.conversationId for the next question. Show reply.text, reply.question?.choices,
-// reply.blocks (type 'vacancies' for now) and open reply.navigation?.screen if it is set.
+conversationId = reply.conversationId       // keep it for the next question
 ```
 
-**Conversations and messages** come straight from the tables; row level security only returns the user's own:
+The server saves the question and the answer together, and gives a new conversation its title (from the model, or the first words of the question). Attachments are never stored: only that one question sees their text.
+
+### 2. Ask a question and show the answer while Ayla writes (streaming)
+
+This is what the iPhone does: the answer appears word by word, and the send button becomes a stop button. Same body as above, plus `Accept: text/event-stream`:
 
 ```ts
-await supabase.from('ayla_conversations').select('*').order('updated_at', { ascending: false }).limit(50)
-await supabase.from('ayla_messages').select('id,role,text,reply').eq('conversation_id', id).order('created_at')
-await supabase.from('ayla_conversations').update({ title }).eq('id', id).select('id')   // rename
-await supabase.from('ayla_conversations').update({ pinned_at: new Date().toISOString() }).eq('id', id) // pin (null to unpin)
-await supabase.from('ayla_conversations').delete().eq('id', id).select('id')           // delete, messages go along
+const { data: { session } } = await supabase.auth.getSession()
+const stop = new AbortController()                       // stop button: stop.abort()
+const response = await fetch(`${SUPABASE_URL}/functions/v1/ayla`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    Accept: 'text/event-stream',
+    Authorization: `Bearer ${session!.access_token}`,
+    apikey: SUPABASE_KEY,                                 // the publishable key from runtimeConfig
+  },
+  body: JSON.stringify({ text, device: 'web', input: 'text', conversationId }),
+  signal: stop.signal,
+})
+if (!response.ok) throw new Error(String(response.status)) // same statuses as the table above
+
+const reader = response.body!.pipeThrough(new TextDecoderStream()).getReader()
+let buffer = ''
+let event = ''
+for (;;) {
+  const { value, done } = await reader.read()
+  if (done) break
+  buffer += value
+  const lines = buffer.split('\n')
+  buffer = lines.pop() ?? ''
+  for (const line of lines) {
+    if (line.startsWith('event:')) event = line.slice(6).trim()
+    if (!line.startsWith('data:')) continue
+    const data = JSON.parse(line.slice(5))
+    if (event === 'start') conversationId = data.conversationId // comes first, also when you stop early
+    if (event === 'text') writing.value = data.text             // everything written so far, not a piece
+    if (event === 'reply') reply.value = data                   // the whole reply: replaces the text
+    if (event === 'error') failed.value = true
+  }
+}
 ```
 
-Check that `select('id')` returned a row after renaming or deleting; an empty result means nothing changed.
+| Event | Data | What to do |
+| --- | --- | --- |
+| `start` | `{ conversationId }` | Keep it; it is there before anything is written |
+| `text` | `{ text }` | Show it as Ayla's message that is still being written (replace, do not append) |
+| `reply` | the whole reply | Replace the message with the reply, including cards and suggestions |
+| `error` | `{ error: 'unavailable' }` | Take the half message away and show the error |
 
-**Live updates:**
+Stopping (`stop.abort()`) stops the model. What was written so far stays on screen, and the server saves it as Ayla's answer, as in ChatGPT. Without the `Accept` header nothing changes, so the plain call in step 1 keeps working.
+
+### 3. What is in a reply
 
 ```ts
-supabase
-  .channel('ayla-conversations')
+{
+  version: 1,
+  id, conversationId,
+  text,                                   // what Ayla says; no markdown
+  question?: { text, choices: [{ id, label }] },   // 2 or 3 choices: show them instead of the text field; tapping one sends its label as the next question
+  blocks: [{ type: 'vacancies', items: Vacancy[] }],  // cards; skip a type you do not know
+  navigation?: { screen },                // the user asked to open a part of PAVE
+  memories?: [{ text, category, replaces? }],  // Ayla suggests remembering these (see 5)
+  usedMemories?: [{ text, category }],    // what this answer leans on: show "Gebaseerd op" (see 5)
+  usedData: [],                           // for the vault later; empty for now
+}
+```
+
+The full contract with every field is `shared/ayla/reply.schema.json`, with examples in `shared/ayla/examples/` (one per kind of reply). `accessRequest` and `proposedAction` are in the contract but not sent yet.
+
+### 4. Conversations and messages
+
+Straight from the tables; the security rules only return the user's own rows.
+
+```ts
+// The list, newest first. Pinned ones (pinned_at not null) go on top under "Vastgezet".
+await supabase.from('ayla_conversations').select('id,title,updated_at,pinned_at,started_on').order('updated_at', { ascending: false }).limit(50)
+
+// The messages of one conversation. `reply` holds the whole reply of Ayla's messages, so cards and
+// "Gebaseerd op" come back when you open an old chat.
+await supabase.from('ayla_messages').select('id,role,text,reply,created_at').eq('conversation_id', id).order('created_at')
+
+// Rename, pin (null to unpin), delete (its messages go along). Check that select('id') returned a row:
+// an empty result means a rule refused it.
+await supabase.from('ayla_conversations').update({ title }).eq('id', id).select('id')
+await supabase.from('ayla_conversations').update({ pinned_at: new Date().toISOString() }).eq('id', id)
+await supabase.from('ayla_conversations').delete().eq('id', id).select('id')
+
+// Search in the messages (from 2 characters).
+await supabase.from('ayla_messages').select('id,conversation_id,text').ilike('text', `%${words}%`).order('created_at', { ascending: false }).limit(30)
+```
+
+**Ask again / change the last question.** Remove the last question and Ayla's answer first, so Ayla does not see the old answer in the history, then send the question again (or put it back in the text field to change it):
+
+```ts
+const { data: last } = await supabase.from('ayla_messages').select('id,role')
+  .eq('conversation_id', id).order('created_at', { ascending: false }).limit(2)
+// Only when these are one question and its answer (roles 'ayla' and 'user'):
+await supabase.from('ayla_messages').delete().in('id', last.map((m) => m.id)).select('id')   // expect 2 rows
+```
+
+**Live updates.** The list updates by itself when a chat starts or changes on another device:
+
+```ts
+supabase.channel('ayla-conversations')
   .on('postgres_changes', { event: '*', schema: 'public', table: 'ayla_conversations', filter: `user_id=eq.${userId}` }, reload)
   .subscribe()
 ```
 
-**Voice on the web:**
+### 5. Memory: "Wat Ayla over je weet"
 
-1. Recognise speech in the browser (Web Speech API, `lang = 'nl-NL'`) and send the text to `ayla` with `input: 'voice'`.
-2. Send the answer text to `ayla-voice` with `fetch` (a stream, so not `functions.invoke`): `POST {SUPABASE_URL}/functions/v1/ayla-voice` with `Authorization: Bearer <access_token>`, `apikey: <publishable key>` and `{ "text": answer }`.
-3. Read `response.body` piece by piece: raw pcm16, 24 kHz, mono. Turn each piece into `Float32` samples (divide by 32768) and play it with the Web Audio API (`AudioContext({ sampleRate: 24000 })`).
-4. An `OPTIONS` request to either function wakes it up without asking anything, so the first answer does not wait for a cold start.
+Ayla only remembers what the user kept. She suggests, the user decides.
+
+**After each reply:** when `reply.memories` is there, show a card under the answer, "Zal ik dit over je onthouden?", with one line per suggestion and its category, each with a tick (ticked by default), and the buttons Onthouden and "Nee, niet nodig":
+
+- A suggestion with `text` is a new fact. Keep it:
+  ```ts
+  await supabase.from('ayla_memories').insert({ text, category, source: 'ayla', conversation_id: conversationId }).select()
+  ```
+- A suggestion with `replaces` means an existing note is no longer true (a previous job, a study that became a diploma). Show that note struck through as its own ticked line ("Weghalen uit werk en stages"); the button then says "Bijwerken". Find the note with exactly that text and delete it only when it stays ticked:
+  ```ts
+  await supabase.from('ayla_memories').delete().eq('id', note.id).select('id')
+  ```
+  Unticked, or "Nee, niet nodig": the note stays (someone can have two jobs). An empty `text` with `replaces` only suggests taking the note away.
+- Skip a suggestion the user already has in other words; the server already leaves those out, but a note may have been added on another device since.
+
+**Under each answer:** when `reply.usedMemories` is there, show a quiet line "Gebaseerd op: opleiding, werk en stages" (the categories, in the order below). On click, show the notes themselves and a link to "Wat Ayla over je weet". This is how PAVE shows where advice comes from.
+
+**The page "Wat Ayla over je weet"** (on iOS under Settings): a folder per category, the notes in it, and:
+
+```ts
+await supabase.from('ayla_memories').select('*').order('created_at', { ascending: false })        // the notes
+await supabase.from('ayla_settings').select('memory_enabled').maybeSingle()                      // no row means on
+await supabase.from('ayla_memories').insert({ text, category, source: 'user' }).select()          // write one yourself
+await supabase.from('ayla_memories').update({ text, category, updated_at: new Date().toISOString() }).eq('id', id).select('id')
+await supabase.from('ayla_memories').delete().eq('id', id).select('id')                           // forget one (iOS gives 5 seconds to undo)
+await supabase.from('ayla_memories').delete().not('id', 'is', null)                               // forget everything, after a confirmation
+await supabase.from('ayla_settings').upsert({ memory_enabled: false, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
+```
+
+Turned off, Ayla uses none of the notes and suggests nothing; the notes stay until the user deletes them. Notes are at most 300 characters. `user_id` fills itself in.
+
+| `category` | Shown as |
+| --- | --- |
+| `education` | Opleiding |
+| `work` | Werk en stages |
+| `goals` | Doelen |
+| `skills` | Vaardigheden |
+| `values` | Wat je belangrijk vindt |
+| `workStyle` | Hoe je wilt werken |
+| `interests` | Interesses en hobby's |
+| `personal` | Over jou (also for anything unknown) |
+
+### 6. Voice
+
+1. Recognise speech in the browser (Web Speech API, `lang = 'nl-NL'`) and send the text to `ayla` with `input: 'voice'`. Use step 1 (the whole answer): the voice needs the full text.
+2. Send the answer text to `ayla-voice` with `fetch` (it streams): `POST {SUPABASE_URL}/functions/v1/ayla-voice` with `Authorization: Bearer <access_token>`, `apikey: <publishable key>` and `{ "text": answer }` (at most 2000 characters).
+3. Read `response.body` piece by piece: raw pcm16, 24 kHz, mono. Turn each piece into `Float32` samples (divide by 32768) and play them with the Web Audio API (`new AudioContext({ sampleRate: 24000 })`). A sample can be split over two pieces; keep the odd byte for the next one.
+4. An `OPTIONS` request to either function wakes it up without asking anything, so the first answer does not wait for a cold start. The iPhone does this when voice mode starts.
+
+### Rules to keep
+
+- Never save a memory, delete one or change anything without the user's tap. Ayla's text never says she remembered something.
+- Never send attachments as files or store them: only their text, with that one question.
+- Show "Gebaseerd op" whenever `usedMemories` is there; it is a promise of PAVE, not decoration.
+- Use the texts of the iPhone where they exist (`ios/PAVE/Features/Ayla/AylaMessages.swift`), so both apps say the same.
 
 ## Privacy: things to be honest about
 
