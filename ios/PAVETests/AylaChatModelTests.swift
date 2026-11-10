@@ -51,6 +51,11 @@ struct AylaChatModelTests {
             pinCalls.append((isPinned, conversationID))
             if pinFails { throw AylaError.unavailable }
         }
+        var removedTurns: [String] = []
+        func removeLastTurn(in conversationID: String) async throws {
+            removedTurns.append(conversationID)
+            if actionFails { throw AylaError.noConnection }
+        }
     }
 
     private func waitUntilIdle(_ model: AylaChatModel) async {
@@ -439,6 +444,105 @@ struct AylaChatModelTests {
         #expect(model.firstName == nil)
         await starting.value
         #expect(model.firstName == nil)
+    }
+
+    private func answered(_ ayla: FakeAyla, replies: [String]) async -> AylaChatModel {
+        ayla.replies = replies.map { .success(AylaReply(id: UUID().uuidString, conversationId: "c", text: $0)) }
+        let model = AylaChatModel(service: ayla)
+        model.send("Welke banen passen bij mij?")
+        await waitUntilIdle(model)
+        return model
+    }
+
+    @Test func askingAgainReplacesTheLastAnswer() async {
+        let ayla = FakeAyla()
+        let model = await answered(ayla, replies: ["Consultant", "Ontwikkelaar"])
+        #expect(model.canRedoLastTurn)
+
+        model.askAgain()
+        await waitUntilIdle(model)
+
+        #expect(ayla.removedTurns == ["c"])
+        #expect(model.entries.map(\.text) == ["Welke banen passen bij mij?", "Ontwikkelaar"])
+        #expect(ayla.requests.last?.text == "Welke banen passen bij mij?")
+        #expect(ayla.requests.last?.conversationId == "c")
+    }
+
+    @Test func askingAgainKeepsTheAnswerWhenRemovingFails() async {
+        let ayla = FakeAyla()
+        let model = await answered(ayla, replies: ["Consultant"])
+        ayla.actionFails = true
+
+        model.askAgain()
+        await waitUntilIdle(model)
+
+        #expect(model.entries.map(\.text) == ["Welke banen passen bij mij?", "Consultant"])
+        #expect(model.phase == .failed(AylaMessages.redoFailed))
+        #expect(ayla.requests.count == 1)
+    }
+
+    @Test func editingPutsTheQuestionBackAndSendingWaitsForTheRemoval() async {
+        let ayla = FakeAyla()
+        let model = await answered(ayla, replies: ["Consultant", "Data-analist"])
+
+        model.editLastQuestion()
+        #expect(model.entries.isEmpty)
+        #expect(model.draft == "Welke banen passen bij mij?")
+
+        model.send("Welke banen met data passen bij mij?")
+        await waitUntilIdle(model)
+
+        #expect(ayla.removedTurns == ["c"])
+        #expect(model.entries.map(\.text) == ["Welke banen met data passen bij mij?", "Data-analist"])
+    }
+
+    @Test func aFailedEditBringsTheTurnBack() async throws {
+        let ayla = FakeAyla()
+        let model = await answered(ayla, replies: ["Consultant"])
+        ayla.actionFails = true
+
+        model.editLastQuestion()
+        try await Task.sleep(for: .milliseconds(50))
+
+        #expect(model.entries.map(\.text) == ["Welke banen passen bij mij?", "Consultant"])
+        #expect(model.draft.isEmpty)
+        #expect(model.phase == .failed(AylaMessages.redoFailed))
+    }
+
+    @Test func eachChatKeepsItsOwnDraft() async {
+        let ayla = FakeAyla()
+        let drafts = AylaDrafts()
+        let model = AylaChatModel(service: ayla, drafts: drafts)
+        model.draft = "Half getypt in een nieuwe chat"
+
+        await model.open(AylaConversation(id: "a", title: "Mijn cv", updatedAt: .now))
+        #expect(model.draft.isEmpty)
+        model.draft = "Nog een vraag over mijn cv"
+
+        model.newConversation()
+        #expect(model.draft == "Half getypt in een nieuwe chat")
+
+        await model.open(AylaConversation(id: "a", title: "Mijn cv", updatedAt: .now))
+        #expect(model.draft == "Nog een vraag over mijn cv")
+    }
+
+    @Test func draftsSurviveARestartButNotSigningOut() throws {
+        let defaults = try #require(UserDefaults(suiteName: "drafts-\(UUID().uuidString)"))
+        AylaDrafts(defaults: defaults).save("Mijn vraag", for: "a")
+        #expect(AylaDrafts(defaults: defaults)["a"] == "Mijn vraag")
+        AylaDrafts.forget(in: defaults)
+        #expect(AylaDrafts(defaults: defaults)["a"].isEmpty)
+    }
+
+    @Test func sendingClearsTheDraftOfThatChat() async {
+        let ayla = FakeAyla()
+        ayla.replies = [.success(AylaReply(id: "r", conversationId: "c", text: "Hoi"))]
+        let drafts = AylaDrafts()
+        let model = AylaChatModel(service: ayla, drafts: drafts)
+        model.draft = "Hoi"
+        model.send(model.draft)
+        await waitUntilIdle(model)
+        #expect(drafts[nil].isEmpty)
     }
 
     @Test func withoutAylaTheWelcomeShowsAtOnce() {

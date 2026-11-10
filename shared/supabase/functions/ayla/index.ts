@@ -2,7 +2,8 @@
 // It runs with the user's own session, so row level security applies to every query.
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { answer, HISTORY_LIMIT, type PastMessage, titleFrom } from './brain.ts'
-import { parseRequest } from './contract.ts'
+import { loadMemory } from './memory.ts'
+import { type AylaReply, parseRequest } from './contract.ts'
 import { openRouterCompletion } from './openrouter.ts'
 import { MODEL_OUTPUT_SCHEMA } from './prompt.ts'
 import { adzunaSearch } from './vacancies.ts'
@@ -41,7 +42,7 @@ Deno.serve(async (req) => {
     conversationId = data.id as string
   }
 
-  const [{ data: past }, { data: profile }] = await Promise.all([
+  const [{ data: past }, { data: profile }, memory] = await Promise.all([
     supabase
       .from('ayla_messages')
       .select('role, text')
@@ -49,6 +50,7 @@ Deno.serve(async (req) => {
       .order('created_at', { ascending: false })
       .limit(HISTORY_LIMIT),
     supabase.from('profiles').select('preferred_name, full_name').eq('id', user.id).maybeSingle(),
+    loadMemory(supabase),
   ])
   const history = ((past ?? []) as PastMessage[]).reverse()
   const firstName = (profile?.preferred_name || profile?.full_name?.split(' ')[0] || undefined) as string | undefined
@@ -57,29 +59,75 @@ Deno.serve(async (req) => {
   const adzunaKey = Deno.env.get('ADZUNA_APP_KEY')
 
   let title: string | undefined
-  let reply
-  try {
-    reply = await answer(
-      { request, conversationId, history, firstName, onTitle: request.conversationId ? undefined : (t) => { title = t } },
-      {
-        complete: openRouterCompletion(openRouterKey, MODEL_OUTPUT_SCHEMA),
-        searchVacancies: adzunaId && adzunaKey ? adzunaSearch(adzunaId, adzunaKey) : undefined,
-        newId: () => crypto.randomUUID(),
+  const input = { request, conversationId, history, firstName, memory, onTitle: request.conversationId ? undefined : (t: string) => { title = t } }
+  const deps = {
+    complete: openRouterCompletion(openRouterKey, MODEL_OUTPUT_SCHEMA),
+    searchVacancies: adzunaId && adzunaKey ? adzunaSearch(adzunaId, adzunaKey) : undefined,
+    newId: () => crypto.randomUUID(),
+  }
+
+  /** Stores the question and the answer together, and touches the conversation. */
+  const save = async (reply: AylaReply) => {
+    const { error } = await supabase.from('ayla_messages').insert([
+      { conversation_id: conversationId, role: 'user', text: request.text, device: request.device },
+      { conversation_id: conversationId, role: 'ayla', text: reply.text, device: request.device, reply },
+    ])
+    if (error) return false
+    await supabase
+      .from('ayla_conversations')
+      .update({ updated_at: new Date().toISOString(), ...(title ? { title } : {}) })
+      .eq('id', conversationId)
+    return true
+  }
+
+  // The app asks to see the answer while it is written: server-sent events with the conversation first, then the
+  // text so far, then the whole reply. Stopping keeps what was written, as in ChatGPT.
+  if ((req.headers.get('Accept') ?? '').includes('text/event-stream')) {
+    const stop = new AbortController()
+    req.signal.addEventListener('abort', () => stop.abort())
+    let written = ''
+    const encoder = new TextEncoder()
+    const body = new ReadableStream({
+      async start(controller) {
+        const send = (event: string, data: unknown) => {
+          try {
+            controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`))
+          } catch {
+            // The app is gone; the answer is still saved below.
+          }
+        }
+        send('start', { conversationId })
+        try {
+          const reply = await answer({ ...input, signal: stop.signal, onText: (text) => { written = text; send('text', { text }) } }, deps)
+          if (await save(reply)) send('reply', reply)
+          else send('error', { error: 'unavailable' })
+        } catch {
+          if (stop.signal.aborted && written) {
+            await save({ version: 1, id: crypto.randomUUID(), conversationId: conversationId!, text: written, blocks: [], usedData: [] })
+          } else {
+            send('error', { error: 'unavailable' })
+          }
+        }
+        try {
+          controller.close()
+        } catch {
+          // Already closed by the app.
+        }
       },
-    )
+      cancel() {
+        stop.abort()
+      },
+    })
+    return new Response(body, { headers: { ...CORS, 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' } })
+  }
+
+  let reply: AylaReply
+  try {
+    reply = await answer(input, deps)
   } catch {
     return json({ error: 'unavailable' }, 502)
   }
-
-  const { error: saveError } = await supabase.from('ayla_messages').insert([
-    { conversation_id: conversationId, role: 'user', text: request.text, device: request.device },
-    { conversation_id: conversationId, role: 'ayla', text: reply.text, device: request.device, reply },
-  ])
-  if (saveError) return json({ error: 'unavailable' }, 500)
-  await supabase
-    .from('ayla_conversations')
-    .update({ updated_at: new Date().toISOString(), ...(title ? { title } : {}) })
-    .eq('id', conversationId)
+  if (!await save(reply)) return json({ error: 'unavailable' }, 500)
 
   return json(reply)
 })

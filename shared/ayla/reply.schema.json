@@ -9,6 +9,10 @@
       "enum": ["diplomas", "certificates", "badges", "projects", "workExperience", "internships", "skills", "feedback", "reflections"]
     },
     "device": { "enum": ["watch", "phone", "web"] },
+    "memoryCategory": {
+      "description": "Where a note about the user belongs. The apps show it as Opleiding, Werk en stages, Doelen, Vaardigheden, Wat je belangrijk vindt, Hoe je wilt werken, Interesses en hobby's or Over jou.",
+      "enum": ["education", "work", "goals", "skills", "values", "workStyle", "interests", "personal"]
+    },
     "request": {
       "type": "object",
       "required": ["text", "device", "input"],
@@ -221,6 +225,35 @@
           "properties": {
             "screen": { "$ref": "#/$defs/screen" },
             "itemId": { "type": "string" }
+          }
+        },
+        "memories": {
+          "type": "array",
+          "description": "Ayla suggests remembering these facts about the user, one per item, and taking away notes they make out of date. The app changes ayla_memories only after the user confirms; nothing is remembered or forgotten by itself.",
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "required": ["text", "category"],
+            "additionalProperties": false,
+            "properties": {
+              "text": { "type": "string", "maxLength": 300, "description": "The new fact. Empty when Ayla only suggests taking an old note away." },
+              "category": { "$ref": "#/$defs/memoryCategory" },
+              "replaces": { "type": "string", "minLength": 1, "description": "The exact text of one of the user's notes this makes out of date, such as a previous job. The user decides whether it goes; they may have both." }
+            }
+          }
+        },
+        "usedMemories": {
+          "type": "array",
+          "description": "Set by the server: the notes about the user (from ayla_memories) this answer leans on, so the apps can show what it is based on.",
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "required": ["text", "category"],
+            "additionalProperties": false,
+            "properties": {
+              "text": { "type": "string" },
+              "category": { "$ref": "#/$defs/memoryCategory" }
+            }
           }
         },
         "usedData": {

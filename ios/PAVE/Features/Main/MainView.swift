@@ -13,6 +13,7 @@ struct MainView: View {
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(AylaSpotlight.settingKey) private var chatsInSpotlight = false
     @State private var model: AylaChatModel
+    @State private var memory: AylaMemoryModel
     @State private var destination = MainDestination.ayla
     @State private var isMenuOpen = false
     @State private var isSidebarHidden = false
@@ -21,6 +22,9 @@ struct MainView: View {
     @State private var menuButtonFrame = CGRect.zero
     /// iPhone Duo is partly folded, with the fold between a left and a right pane.
     @State private var isFolded = false
+    /// When "Zoeken in chats" was asked for, so the search field of the chats takes the keyboard.
+    @State private var chatSearchRequestedAt: Date?
+    private let connection = PaveConnection.shared
 
     /// Wide enough to show the chats next to the conversation.
     private static let wideWidth: CGFloat = 860
@@ -29,7 +33,8 @@ struct MainView: View {
     private static let sidebarSize: CGFloat = 320
 
     init(service: (any AylaService)?) {
-        _model = State(initialValue: AylaChatModel(service: service))
+        _model = State(initialValue: AylaChatModel(service: service, drafts: .standard))
+        _memory = State(initialValue: AylaMemoryModel(service: service))
     }
 
     var body: some View {
@@ -74,13 +79,20 @@ struct MainView: View {
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .environment(\.reportMenuButtonFrame) { menuButtonFrame = $0 }
         .environment(\.hidesChatsButton, menuReplacesButtons)
+        .environment(\.chatSearchRequestedAt, chatSearchRequestedAt)
+        .focusedSceneValue(\.paveActions, keyboardActions)
         .tint(.brandGreen)
+        .environment(memory)
         .task { await model.start() }
+        .task { await memory.load() }
         .task { await model.followConversationChanges() }
         .onChange(of: hasSidebar) { isMenuOpen = false }
         // A deleted chat that could still be brought back is really deleted when the app goes away.
         .onChange(of: scenePhase) { _, phase in
-            if phase == .background { model.commitPendingDeletion() }
+            if phase == .background {
+                model.commitPendingDeletion()
+                memory.commitPendingForget()
+            }
         }
         .onChange(of: model.conversationList, initial: true) { _, list in
             if chatsInSpotlight { AylaSpotlight.update(list) }
@@ -88,10 +100,66 @@ struct MainView: View {
         .onChange(of: chatsInSpotlight) { _, isOn in
             if isOn { AylaSpotlight.update(model.conversationList) } else { AylaSpotlight.removeAll() }
         }
-        .onChange(of: appState.conversationToOpen, initial: true) { _, id in
-            guard let id else { return }
+        // Siri, a widget or the iPhone's search wait until the app is unlocked, so Ayla never starts listening behind
+        // the PIN screen.
+        .onChange(of: appState.conversationToOpen, initial: true) { handlePending() }
+        .onChange(of: appState.link, initial: true) { handlePending() }
+        .onChange(of: appState.isRelocked) { handlePending() }
+        .onChange(of: connection.isOnline) { _, isOnline in
+            if isOnline { Task { await model.refreshConversations() } }
+        }
+    }
+
+    private func handlePending() {
+        guard !appState.isRelocked else { return }
+        if let id = appState.conversationToOpen {
             appState.conversationToOpen = nil
             openFromSearch(id)
+        }
+        if let link = appState.link {
+            appState.link = nil
+            follow(link)
+        }
+    }
+
+    private var keyboardActions: PaveActions {
+        let talk: (() -> Void)? = model.isAvailable ? { self.talk() } : nil
+        let toggleMenu: (() -> Void)? = isFolded ? nil : { self.toggleMenu() }
+        return PaveActions(
+            newConversation: { startNewConversation() },
+            talk: talk,
+            searchChats: { searchChats() },
+            toggleMenu: toggleMenu,
+            openSettings: { open(.settings) }
+        )
+    }
+
+    /// Siri, a widget or Control Center: a talk starts in a new chat, as in ChatGPT.
+    private func follow(_ link: PaveLink) {
+        startNewConversation()
+        if link == .talk { talk() }
+    }
+
+    /// Talking starts in the chat that is open.
+    private func talk() {
+        destination = .ayla
+        isMenuOpen = false
+        if !isWide { showsChats = false }
+        model.wantsToTalk = true
+    }
+
+    private func searchChats() {
+        destination = .ayla
+        isMenuOpen = false
+        showsChats = true
+        chatSearchRequestedAt = .now
+    }
+
+    private func toggleMenu() {
+        if hasSidebar {
+            setSidebarHidden(!isSidebarHidden)
+        } else {
+            isMenuOpen.toggle()
         }
     }
 
@@ -181,6 +249,7 @@ struct MainView: View {
     private func startNewConversation() {
         model.newConversation()
         destination = .ayla
+        isMenuOpen = false
         if !isWide { showsChats = false }
     }
 }

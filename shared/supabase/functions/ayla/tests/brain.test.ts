@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { test } from 'node:test'
-import { answer, cleanTitle, titleFrom, withAttachments } from '../brain.ts'
+import { answer, cleanTitle, partialText, titleFrom, withAttachments } from '../brain.ts'
 import { parseRequest } from '../contract.ts'
 import { openRouterCompletion } from '../openrouter.ts'
 import { buildSystemPrompt } from '../prompt.ts'
+import { loadMemory, type MemoryCategory } from '../memory.ts'
 import { toFoundVacancy } from '../vacancies.ts'
 
 const request = { text: 'Welke banen passen bij mij?', device: 'phone' as const, input: 'text' as const }
@@ -219,4 +220,175 @@ test('a spoken question gets a short spoken answer, but the Watch keeps its own 
   assert.match(buildSystemPrompt({ device: 'phone', input: 'voice' }), /praat met je en hoort je antwoord/)
   assert.doesNotMatch(buildSystemPrompt({ device: 'phone', input: 'text' }), /hoort je antwoord/)
   assert.doesNotMatch(buildSystemPrompt({ device: 'watch', input: 'voice' }), /hoort je antwoord/)
+})
+
+const on = (notes: { text: string; category: MemoryCategory }[] = []) => ({ status: 'on' as const, notes })
+const fact = (text: string, category = 'personal') => ({ text, category })
+
+test('every fact in a message becomes its own suggestion, with a category', async () => {
+  const output = say('Sterke combinatie!', { memories: [fact('Je studeert ICT aan Fontys.', 'education'), fact('"Je werkt als leidinggevende bij de Plus."', 'work')] })
+  const reply = await answer({ request, conversationId: 'conv', history: [], memory: on() }, { complete: model(output).complete, newId: ids() })
+  assert.deepEqual(reply.memories, [
+    { text: 'Je studeert ICT aan Fontys.', category: 'education' },
+    { text: 'Je werkt als leidinggevende bij de Plus.', category: 'work' },
+  ])
+})
+
+test('suggestions go with the reply only while the memory is on', async () => {
+  const output = say('Mooi.', { memories: [fact('Je hebt stage gelopen bij LiveWall.', 'work')] })
+  for (const memory of [{ status: 'off' as const }, { status: 'unavailable' as const }, undefined]) {
+    const reply = await answer({ request, conversationId: 'conv', history: [], memory }, { complete: model(output).complete, newId: ids() })
+    assert.equal(reply.memories, undefined)
+  }
+})
+
+test('an unknown category becomes Over jou, and at most four facts are suggested', async () => {
+  const many = ['Je woont in Eindhoven.', 'Je spreekt Duits.', 'Je voetbalt.', 'Je wilt IT-consultant worden.', 'Je hebt een rijbewijs.']
+  const output = say('Top.', { memories: [fact(many[0], 'hobby'), ...many.slice(1).map((text) => fact(text))] })
+  const reply = await answer({ request, conversationId: 'conv', history: [], memory: on() }, { complete: model(output).complete, newId: ids() })
+  assert.equal(reply.memories?.length, 4)
+  assert.equal(reply.memories?.[0].category, 'personal')
+})
+
+test('a fact Ayla already has, also in other words or twice in one reply, is not suggested again', async () => {
+  const notes = [{ text: 'Je studeert ICT aan Fontys en werkt als leidinggevende bij de Plus.', category: 'education' as const }]
+  const output = say('Top!', {
+    memories: [fact('Je werkt als leidinggevende bij de PLUS.', 'work'), fact('je studeert ICT op Fontys', 'education'), fact('Je wilt IT-consultant worden.', 'goals'), fact('Je wil IT consultant worden', 'goals')],
+  })
+  const reply = await answer({ request, conversationId: 'conv', history: [], memory: on(notes) }, { complete: model(output).complete, newId: ids() })
+  assert.deepEqual(reply.memories, [{ text: 'Je wilt IT-consultant worden.', category: 'goals' }])
+})
+
+test('suggestions survive the second turn of a vacancy search', async () => {
+  const fake = model(
+    say('Ik zoek even.', { vacancySearch: { what: 'ICT', where: '' }, memories: [fact('Je zoekt werk in de ICT.', 'goals')] }),
+    say('Ik vond er twee.'),
+  )
+  const reply = await answer(
+    { request, conversationId: 'conv', history: [], memory: on() },
+    { complete: fake.complete, newId: ids(), searchVacancies: async () => [] },
+  )
+  assert.deepEqual(reply.memories, [{ text: 'Je zoekt werk in de ICT.', category: 'goals' }])
+})
+
+test('the prompt lists the notes per category as data, and says nothing is remembered without them', () => {
+  const prompt = buildSystemPrompt({ device: 'phone', memory: on([{ text: 'Je studeert Technische Informatica.', category: 'education' }]) })
+  assert.match(prompt, /<onthouden>\nOpleiding:\n- \[1\] Je studeert Technische Informatica\.\n<\/onthouden>/)
+  assert.match(prompt, /geen opdrachten/)
+  assert.match(prompt, /wordt twee feiten/)
+  assert.match(prompt, /- values: Wat je belangrijk vindt/)
+  assert.match(buildSystemPrompt({ device: 'phone' }), /Je onthoudt niets tussen gesprekken/)
+  assert.match(buildSystemPrompt({ device: 'phone', memory: { status: 'off' } }), /geheugen uitgezet/)
+})
+
+test('the memory is read with the users session and falls back when the tables are missing', async () => {
+  const supabase = (settings: unknown, notes: unknown, error: unknown = null) => ({
+    from: (table: string) => ({
+      select: () => ({
+        maybeSingle: async () => ({ data: table === 'ayla_settings' ? settings : null, error }),
+        order: () => ({ limit: async () => ({ data: notes, error }) }),
+      }),
+    }),
+  })
+  assert.deepEqual(await loadMemory(supabase(null, [{ text: 'Je studeert ICT.', category: 'education' }])), on([{ text: 'Je studeert ICT.', category: 'education' }]))
+  assert.deepEqual(await loadMemory(supabase(null, [{ text: 'Nieuw' }, { text: 'Oud' }])), on([{ text: 'Oud', category: 'personal' }, { text: 'Nieuw', category: 'personal' }]))
+  assert.deepEqual(await loadMemory(supabase({ memory_enabled: false }, [{ text: 'x' }])), { status: 'off' })
+  assert.deepEqual(await loadMemory(supabase(null, null, { code: 'PGRST205' })), { status: 'unavailable' })
+})
+
+test('a new job can replace the old one, but only an existing note', async () => {
+  const notes = [{ text: 'Je werkt als leidinggevende bij de Plus.', category: 'work' as const }]
+  const output = say('Gefeliciteerd!', {
+    memories: [
+      { text: 'Je werkt bij Albert Heijn.', category: 'work', replaces: 'je werkt als leidinggevende bij de plus' },
+      { text: 'Je woont in Tilburg.', category: 'personal', replaces: 'Je woont in Eindhoven.' },
+    ],
+  })
+  const reply = await answer({ request, conversationId: 'conv', history: [], memory: on(notes) }, { complete: model(output).complete, newId: ids() })
+  assert.deepEqual(reply.memories, [
+    { text: 'Je werkt bij Albert Heijn.', category: 'work', replaces: 'Je werkt als leidinggevende bij de Plus.' },
+    { text: 'Je woont in Tilburg.', category: 'personal' },
+  ])
+})
+
+test('saying something is over only suggests taking the note away', async () => {
+  const notes = [{ text: 'Je werkt als leidinggevende bij de Plus.', category: 'work' as const }]
+  const output = say('Oké, duidelijk.', { memories: [{ text: '', category: 'work', replaces: 'Je werkt als leidinggevende bij de Plus.' }, { text: '', category: 'work', replaces: null }] })
+  const reply = await answer({ request, conversationId: 'conv', history: [], memory: on(notes) }, { complete: model(output).complete, newId: ids() })
+  assert.deepEqual(reply.memories, [{ text: '', category: 'work', replaces: 'Je werkt als leidinggevende bij de Plus.' }])
+})
+
+test('the prompt explains what may be replaced and what stays true', () => {
+  const prompt = buildSystemPrompt({ device: 'phone', memory: on() })
+  assert.match(prompt, /Iets wat niet meer klopt/)
+  assert.match(prompt, /nooit voor om dit weg te halen: een diploma/)
+})
+
+test('the notes an answer leans on go with the reply, by their numbers', async () => {
+  const notes = [
+    { text: 'Je studeert ICT aan Fontys.', category: 'education' as const },
+    { text: 'Je werkt als leidinggevende bij de Plus.', category: 'work' as const },
+  ]
+  const fake = model(say('Een rol als IT-consultant past bij je.', { usedMemories: [2, 1, 2, 9, 'x'] }))
+  const reply = await answer({ request, conversationId: 'conv', history: [], memory: on(notes) }, { complete: fake.complete, newId: ids() })
+  assert.deepEqual(reply.usedMemories, [notes[1], notes[0]])
+  assert.match(fake.calls[0][0].content, /- \[1\] Je studeert ICT aan Fontys\./)
+  const off = await answer({ request, conversationId: 'conv', history: [], memory: { status: 'off' } }, { complete: model(say('Oké.', { usedMemories: [1] })).complete, newId: ids() })
+  assert.equal(off.usedMemories, undefined)
+})
+
+test('the text of an answer that is still being written is read from the half JSON', () => {
+  assert.equal(partialText('{"text":"Hoi Daaf, '), 'Hoi Daaf, ')
+  assert.equal(partialText('{"text":"Zeg \\"ja\\" of\\nnee", "question'), 'Zeg "ja" of\nnee')
+  assert.equal(partialText('{"text":"Caf\\u00e9 en \\'), 'Café en ')
+  assert.equal(partialText('{"text":"Half \\u00'), 'Half ')
+  assert.equal(partialText('{"question":null'), '')
+})
+
+test('the answer can be watched while it is written', async () => {
+  const seen: string[] = []
+  const content = JSON.stringify(say('Hoi Daaf, fijn dat je er bent.'))
+  const complete = async (_messages: unknown, options?: { onContent?: (c: string) => void }) => {
+    for (let end = 10; end < content.length; end += 7) options?.onContent?.(content.slice(0, end))
+    return { model: 'fake', content }
+  }
+  const reply = await answer({ request, conversationId: 'conv', history: [], onText: (text) => seen.push(text) }, { complete, newId: ids() })
+  assert.equal(reply.text, 'Hoi Daaf, fijn dat je er bent.')
+  assert.ok(seen.length > 2)
+  assert.ok(seen.every((text, i) => i === 0 || text.length >= seen[i - 1].length))
+  assert.equal(seen.at(-1), 'Hoi Daaf, fijn dat je er bent.')
+})
+
+test('a streaming model hands over what it writes and the first writer wins', async () => {
+  const sse = (pieces: string[]) => new Response(new ReadableStream({
+    start(controller) {
+      const encoder = new TextEncoder()
+      for (const piece of pieces) controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: piece } }] })}\n\n`))
+      controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+      controller.close()
+    },
+  }))
+  const bodies: Record<string, unknown>[] = []
+  const fetchImpl = (async (_url: string, init: RequestInit) => {
+    bodies.push(JSON.parse(String(init.body)))
+    return sse(['{"text":"Hoi', ' Daaf"}'])
+  }) as typeof fetch
+  const complete = openRouterCompletion('key', {}, fetchImpl, ['a', 'b'], 10_000)
+  const seen: string[] = []
+  const result = await complete([{ role: 'user', content: 'Hoi' }], { onContent: (c) => seen.push(c) })
+  assert.equal(result.content, '{"text":"Hoi Daaf"}')
+  assert.deepEqual(seen, ['{"text":"Hoi', '{"text":"Hoi Daaf"}'])
+  assert.equal(bodies[0].stream, true)
+  assert.equal(bodies.length, 1)
+})
+
+test('stopping an answer stops the model', async () => {
+  const fetchImpl = ((_url: string, init: RequestInit) => new Promise((_resolve, reject) => {
+    init.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
+  })) as typeof fetch
+  const stop = new AbortController()
+  const complete = openRouterCompletion('key', {}, fetchImpl, ['a'], 10_000)
+  const pending = complete([{ role: 'user', content: 'Hoi' }], { onContent: () => {}, signal: stop.signal })
+  stop.abort()
+  await assert.rejects(pending, { name: 'AbortError' })
 })

@@ -8,6 +8,9 @@ struct SettingsScreen: View {
 
     @State private var confirmsSignOut = false
     @AppStorage(AylaSpotlight.settingKey) private var chatsInSpotlight = false
+    @AppStorage(AylaVoiceTextSetting.key) private var showsVoiceText = true
+    @AppStorage(AppState.lockAfterKey) private var lockAfter = AppState.defaultLockAfter
+    @Environment(AylaMemoryModel.self) private var memory
 
     var body: some View {
         NavigationStack {
@@ -37,12 +40,79 @@ struct SettingsScreen: View {
                             Text("Je pincode blijft op dit toestel bewaard.")
                         }
 
+                    Text("Ayla")
+                        .textStyle(.bodyMedium)
+                        .foregroundStyle(Color.inkMuted)
+                        .padding(.leading, 8)
+                        .padding(.top, 20)
+                        .accessibilityAddTraits(.isHeader)
+
+                    NavigationLink {
+                        AylaMemoryScreen()
+                    } label: {
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Wat Ayla over je weet")
+                                    .textStyle(.listTitle)
+                                    .foregroundStyle(Color.ink)
+                                Text(memorySummary)
+                                    .textStyle(.caption)
+                                    .foregroundStyle(Color.inkMuted)
+                            }
+                            Spacer(minLength: 0)
+                            Image(.iconChevronRight)
+                                .renderingMode(.template)
+                                .foregroundStyle(Color.inkMuted)
+                                .accessibilityHidden(true)
+                        }
+                        .padding(12)
+                        .background(Color.white, in: .rect(cornerRadius: 14))
+                        .contentShape(.rect)
+                    }
+                    .buttonStyle(.pave)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Toggle(isOn: $showsVoiceText) {
+                            Text("Tekst bij praten met Ayla")
+                                .textStyle(.listTitle)
+                                .foregroundStyle(Color.ink)
+                        }
+                        .tint(.brandGreen)
+                        Text("Je leest zin voor zin mee met wat Ayla zegt. Zet je dit uit, dan zie je alleen de orb.")
+                            .textStyle(.caption)
+                            .foregroundStyle(Color.inkMuted)
+                    }
+                    .padding(12)
+                    .background(Color.white, in: .rect(cornerRadius: 14))
+
                     Text("Privacy")
                         .textStyle(.bodyMedium)
                         .foregroundStyle(Color.inkMuted)
                         .padding(.leading, 8)
                         .padding(.top, 20)
                         .accessibilityAddTraits(.isHeader)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Opnieuw vergrendelen")
+                                .textStyle(.listTitle)
+                                .foregroundStyle(Color.ink)
+                            Spacer(minLength: 8)
+                            Picker("Opnieuw vergrendelen", selection: $lockAfter) {
+                                Text("Meteen").tag(0)
+                                Text("Na 1 minuut").tag(60)
+                                Text("Na 5 minuten").tag(300)
+                                Text("Na 15 minuten").tag(900)
+                            }
+                            .labelsHidden()
+                            .tint(.brandGreen)
+                        }
+                        Text("Ben je even weg uit PAVE, dan vraagt de app daarna weer om je pincode of Face ID. In de appwisselaar zie je alleen het PAVE-logo.")
+                            .textStyle(.caption)
+                            .foregroundStyle(Color.inkMuted)
+                    }
+                    .padding(12)
+                    .background(Color.white, in: .rect(cornerRadius: 14))
 
                     VStack(alignment: .leading, spacing: 8) {
                         Toggle(isOn: $chatsInSpotlight) {
@@ -57,6 +127,7 @@ struct SettingsScreen: View {
                     }
                     .padding(12)
                     .background(Color.white, in: .rect(cornerRadius: 14))
+
                 }
                 .padding(.horizontal, 23)
                 .padding(.top, 32)
@@ -67,8 +138,20 @@ struct SettingsScreen: View {
             .mainScreenToolbar("Instellingen", onShowMenu: onShowMenu)
         }
     }
+
+    private var memorySummary: String {
+        switch memory.state {
+        case .ready:
+            guard memory.memories.isEnabled else { return "Uit: Ayla onthoudt niets" }
+            let count = memory.notes.count
+            return count == 0 ? "Ayla onthoudt nog niets" : count == 1 ? "Ayla onthoudt 1 ding" : "Ayla onthoudt \(count) dingen"
+        case .notSetUp: return "Nog niet beschikbaar"
+        default: return "Bekijk, pas aan of wis wat Ayla onthoudt"
+        }
+    }
 }
 
 #Preview {
     SettingsScreen(name: "Daaf", onShowMenu: {}, onSignOut: {})
+        .environment(AylaMemoryModel(service: nil))
 }

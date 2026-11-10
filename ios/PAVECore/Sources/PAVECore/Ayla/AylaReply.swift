@@ -71,7 +71,55 @@ public struct AylaReply: Codable, Equatable, Sendable {
     public var proposedAction: ProposedAction?
     public var blocks: [AylaBlock]
     public var navigation: Navigation?
+    /// Ayla suggests remembering these facts, one per item; they are saved only after the user confirms (`AylaMemory`).
+    public var memories: [MemorySuggestion]?
+    /// One suggestion, as the first version of the Ayla function sent it. Still read for older messages.
+    public var memory: MemorySuggestion?
+    /// The notes about the user this answer leans on ("Gebaseerd op").
+    public var usedMemories: [UsedMemory]?
+
+    public struct UsedMemory: Codable, Equatable, Hashable, Sendable {
+        public var text: String
+        public var category: AylaMemory.Category
+
+        public init(text: String, category: AylaMemory.Category) {
+            self.text = text
+            self.category = category
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            text = try container.decode(String.self, forKey: .text)
+            category = (try? container.decode(AylaMemory.Category.self, forKey: .category)) ?? .personal
+        }
+    }
     public var usedData: [VaultCategory]
+
+    /// A new fact to remember (`text`), and/or one of the user's notes it makes out of date (`replaces`, that note's
+    /// exact text). An empty `text` with `replaces` only suggests taking the old note away.
+    public struct MemorySuggestion: Codable, Equatable, Hashable, Sendable {
+        public var text: String
+        public var category: AylaMemory.Category
+        public var replaces: String?
+
+        public init(text: String, category: AylaMemory.Category = .personal, replaces: String? = nil) {
+            self.text = text
+            self.category = category
+            self.replaces = replaces
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            text = (try? container.decode(String.self, forKey: .text)) ?? ""
+            category = (try? container.decode(AylaMemory.Category.self, forKey: .category)) ?? .personal
+            replaces = try? container.decodeIfPresent(String.self, forKey: .replaces)
+        }
+    }
+
+    /// Everything Ayla suggests remembering or taking away in this reply.
+    public var suggestedMemories: [MemorySuggestion] {
+        (memories ?? memory.map { [$0] } ?? []).filter { !$0.text.isEmpty || $0.replaces != nil }
+    }
 
     public init(
         id: String,
@@ -82,6 +130,9 @@ public struct AylaReply: Codable, Equatable, Sendable {
         proposedAction: ProposedAction? = nil,
         blocks: [AylaBlock] = [],
         navigation: Navigation? = nil,
+        memories: [MemorySuggestion]? = nil,
+        memory: MemorySuggestion? = nil,
+        usedMemories: [UsedMemory]? = nil,
         usedData: [VaultCategory] = []
     ) {
         self.version = Self.version
@@ -93,6 +144,9 @@ public struct AylaReply: Codable, Equatable, Sendable {
         self.proposedAction = proposedAction
         self.blocks = blocks
         self.navigation = navigation
+        self.memories = memories
+        self.memory = memory
+        self.usedMemories = usedMemories
         self.usedData = usedData
     }
 }

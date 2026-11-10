@@ -25,6 +25,36 @@ struct AylaReplyTests {
     }
 
     @Test(.enabled(if: AylaReplyTests.examplesAreAvailable))
+    func memoryExampleCarriesTheSuggestion() throws {
+        let reply = try AylaReply.decode(Data(contentsOf: Self.examples.appending(path: "07-memory.json")))
+        #expect(reply.suggestedMemories == [
+            .init(text: "Je studeert ICT aan Fontys.", category: .education),
+            .init(text: "Je werkt als leidinggevende bij de Plus.", category: .work),
+        ])
+    }
+
+    @Test(.enabled(if: AylaReplyTests.examplesAreAvailable))
+    func aSuggestionCanReplaceAnOldNote() throws {
+        let reply = try AylaReply.decode(Data(contentsOf: Self.examples.appending(path: "08-memory-replaces.json")))
+        #expect(reply.suggestedMemories.first?.replaces == "Je werkt als leidinggevende bij de Plus.")
+        let removal = try AylaReply.decode(Data(#"{"version":1,"id":"r","conversationId":"c","text":"Oké","memories":[{"text":"","category":"work","replaces":"Je werkt bij de Plus."},{"text":"","category":"work"}],"blocks":[],"usedData":[]}"#.utf8))
+        #expect(removal.suggestedMemories == [.init(text: "", category: .work, replaces: "Je werkt bij de Plus.")])
+    }
+
+    @Test(.enabled(if: AylaReplyTests.examplesAreAvailable))
+    func anAnswerSaysWhatItLeansOn() throws {
+        let reply = try AylaReply.decode(Data(contentsOf: Self.examples.appending(path: "09-used-memories.json")))
+        #expect(reply.usedMemories?.map(\.category) == [.education, .work])
+    }
+
+    @Test func anOlderSingleSuggestionAndUnknownCategoriesStillRead() throws {
+        let old = try AylaReply.decode(Data(#"{"version":1,"id":"r","conversationId":"c","text":"Top","memory":{"text":"Je woont in Eindhoven."},"blocks":[],"usedData":[]}"#.utf8))
+        #expect(old.suggestedMemories == [.init(text: "Je woont in Eindhoven.", category: .personal)])
+        let new = try AylaReply.decode(Data(#"{"version":1,"id":"r","conversationId":"c","text":"Top","memories":[{"text":"Je voetbalt.","category":"sport"}],"blocks":[],"usedData":[]}"#.utf8))
+        #expect(new.suggestedMemories.first?.category == .personal)
+    }
+
+    @Test(.enabled(if: AylaReplyTests.examplesAreAvailable))
     func vacanciesExampleKeepsEveryField() throws {
         let reply = try AylaReply.decode(Data(contentsOf: Self.examples.appending(path: "03-vacancies.json")))
         guard case .vacancies(let items) = reply.blocks.first else {
@@ -281,6 +311,187 @@ extension SupabaseAylaServiceTests {
         await #expect(throws: AylaError.conversationNotFound) { try await ayla.rename("Nieuw", conversationID: "c1") }
     }
 
+    @Test func theLastTurnIsRemovedWhenItIsAQuestionAndItsAnswer() async throws {
+        let captured = CapturedList()
+        let ayla = service { urlRequest in
+            captured.append(urlRequest)
+            return urlRequest.httpMethod == "DELETE"
+                ? (200, Data(#"[{"id":"m2"},{"id":"m1"}]"#.utf8))
+                : (200, Data(#"[{"id":"m2","role":"ayla"},{"id":"m1","role":"user"}]"#.utf8))
+        }
+        try await ayla.removeLastTurn(in: "c1")
+        let requests = captured.requests
+        #expect(requests.count == 2)
+        let read = try #require(requests.first?.url?.absoluteString)
+        #expect(read.contains("conversation_id=eq.c1"))
+        #expect(read.contains("order=created_at.desc"))
+        #expect(read.contains("limit=2"))
+        #expect(requests.last?.httpMethod == "DELETE")
+        #expect(requests.last?.url?.absoluteString == "https://example.supabase.co/rest/v1/ayla_messages?id=in.(m2,m1)&select=id")
+    }
+
+    @Test func nothingIsRemovedWhenTheLastTwoAreNotOneTurn() async throws {
+        let captured = CapturedList()
+        let ayla = service { urlRequest in
+            captured.append(urlRequest)
+            return (200, Data(#"[{"id":"m3","role":"ayla"},{"id":"m2","role":"ayla"}]"#.utf8))
+        }
+        await #expect(throws: AylaError.conversationNotFound) { try await ayla.removeLastTurn(in: "c1") }
+        #expect(captured.requests.allSatisfy { $0.httpMethod == "GET" })
+    }
+
+    @Test func theAnswerStreamsWhileItIsWritten() async throws {
+        let body = [
+            #"event: start"#, #"data: {"conversationId":"c9"}"#, "",
+            #"event: text"#, #"data: {"text":"Hoi"}"#, "",
+            #"event: text"#, #"data: {"text":"Hoi Daaf"}"#, "",
+            #"event: reply"#, #"data: {"version":1,"id":"r","conversationId":"c9","text":"Hoi Daaf","blocks":[],"usedData":[]}"#, "",
+        ].joined(separator: "\n")
+        let captured = Captured()
+        let ayla = service { urlRequest in
+            captured.request = urlRequest
+            return (200, Data(body.utf8))
+        }
+        var events: [AylaStreamEvent] = []
+        for try await event in ayla.stream(AylaRequest(text: "Hoi", device: .phone, input: .text)) { events.append(event) }
+        #expect(events.count == 4)
+        #expect(events.first == .started(conversationID: "c9"))
+        #expect(events[2] == .text("Hoi Daaf"))
+        if case .reply(let reply) = events.last { #expect(reply.text == "Hoi Daaf") } else { Issue.record("no reply") }
+        #expect(captured.request?.value(forHTTPHeaderField: "Accept") == "text/event-stream")
+    }
+
+    @Test func aStreamWithoutAReplyFails() async {
+        let ayla = service { _ in (200, Data("event: start\ndata: {\"conversationId\":\"c9\"}\n\nevent: error\ndata: {\"error\":\"unavailable\"}\n\n".utf8)) }
+        await #expect(throws: AylaError.unavailable) {
+            for try await _ in ayla.stream(AylaRequest(text: "Hoi", device: .phone, input: .text)) {}
+        }
+    }
+
+    @Test func memoriesAndTheSettingAreReadTogether() async throws {
+        let ayla = service { urlRequest in
+            if urlRequest.url!.path().hasSuffix("ayla_settings") { return (200, Data(#"[{"memory_enabled":false}]"#.utf8)) }
+            return (200, Data(#"[{"id":"m1","text":"Je studeert ICT.","source":"user","category":"education","created_at":"2026-11-09T10:00:00+00:00"}]"#.utf8))
+        }
+        let memories = try await ayla.memories()
+        #expect(memories.isEnabled == false)
+        #expect(memories.notes.map(\.text) == ["Je studeert ICT."])
+        #expect(memories.notes.first?.source == .user)
+        #expect(memories.notes.first?.category == .education)
+    }
+
+    @Test func withoutASettingTheMemoryIsOn() async throws {
+        let ayla = service { _ in (200, Data("[]".utf8)) }
+        #expect(try await ayla.memories() == AylaMemories(isEnabled: true, notes: []))
+    }
+
+    @Test func aMissingTableMeansNotSetUp() async {
+        let ayla = service { _ in (404, Data(#"{"code":"PGRST205","message":"Could not find the table"}"#.utf8)) }
+        await #expect(throws: AylaError.notSetUp) { try await ayla.memories() }
+        await #expect(throws: AylaError.notSetUp) { try await ayla.forgetAllMemories() }
+    }
+
+    @Test func rememberingSavesTheTidyNoteWithItsConversation() async throws {
+        let captured = Captured()
+        let ayla = service { urlRequest in
+            captured.request = urlRequest
+            return (201, Data(#"[{"id":"m2","text":"Je hebt stage gelopen bij LiveWall.","source":"ayla","created_at":"2026-11-09T10:00:00+00:00"}]"#.utf8))
+        }
+        let memory = try await ayla.remember("  Je hebt stage gelopen\nbij LiveWall. ", category: .work, source: .ayla, conversationID: "c1")
+        #expect(memory.id == "m2")
+        let request = try #require(captured.request)
+        #expect(request.httpMethod == "POST")
+        #expect(request.value(forHTTPHeaderField: "Prefer") == "return=representation")
+        let body = try #require(request.bodyData)
+        let json = try #require(try JSONSerialization.jsonObject(with: body) as? [String: String])
+        #expect(json == ["text": "Je hebt stage gelopen bij LiveWall.", "source": "ayla", "category": "work", "conversation_id": "c1"])
+    }
+
+    @Test func beforeTheCategoryColumnExistsANoteIsSavedWithoutIt() async throws {
+        let captured = CapturedList()
+        let ayla = service { urlRequest in
+            captured.append(urlRequest)
+            let body = String(decoding: urlRequest.bodyData ?? Data(), as: UTF8.self)
+            if body.contains("category") { return (400, Data(#"{"code":"PGRST204","message":"Could not find the 'category' column"}"#.utf8)) }
+            return (201, Data(#"[{"id":"m3","text":"Je voetbalt.","source":"ayla","created_at":"2026-11-09T10:00:00+00:00"}]"#.utf8))
+        }
+        let memory = try await ayla.remember("Je voetbalt.", category: .interests, source: .ayla, conversationID: nil)
+        #expect(captured.requests.count == 2)
+        #expect(memory.category == .personal)
+    }
+
+    @Test func categoriesMatchTheAylaFunction() {
+        #expect(AylaMemory.Category.allCases.map(\.rawValue) == ["education", "work", "goals", "skills", "values", "workStyle", "interests", "personal"])
+        #expect(AylaMemory.Category(code: "values").title == "Wat je belangrijk vindt")
+    }
+
+    @Test func notesAreGroupedByCategory() {
+        let memories = AylaMemories(notes: [
+            AylaMemory(id: "1", text: "Je voetbalt.", category: .interests, source: .ayla, createdAt: .now),
+            AylaMemory(id: "2", text: "Je studeert ICT.", category: .education, source: .ayla, createdAt: .now),
+        ])
+        #expect(memories.byCategory.map(\.category) == [.education, .interests])
+    }
+
+    @Test func forgettingEverythingDeletesOnlyWithAFilter() async throws {
+        let captured = Captured()
+        let ayla = service { urlRequest in
+            captured.request = urlRequest
+            return (204, Data())
+        }
+        try await ayla.forgetAllMemories()
+        #expect(captured.request?.httpMethod == "DELETE")
+        #expect(captured.request?.url?.absoluteString == "https://example.supabase.co/rest/v1/ayla_memories?id=not.is.null")
+    }
+
+    @Test func theSettingIsOneRowPerUser() async throws {
+        let captured = Captured()
+        let ayla = service { urlRequest in
+            captured.request = urlRequest
+            return (201, Data())
+        }
+        try await ayla.setMemoryEnabled(false)
+        let request = try #require(captured.request)
+        #expect(request.url?.absoluteString == "https://example.supabase.co/rest/v1/ayla_settings?on_conflict=user_id")
+        #expect(request.value(forHTTPHeaderField: "Prefer") == "resolution=merge-duplicates,return=minimal")
+    }
+
+    @Test func aFactInOtherWordsIsKnown() {
+        let memories = AylaMemories(notes: [AylaMemory(id: "m", text: "Je studeert ICT aan Fontys en werkt als leidinggevende bij de Plus.", source: .ayla, createdAt: .now)])
+        #expect(memories.knows("Je werkt als leidinggevende bij de PLUS."))
+        #expect(memories.knows("je studeert ICT op Fontys"))
+        #expect(!memories.knows("Je wilt IT-consultant worden."))
+    }
+
+    @Test func timesShowAboveTheFirstMessageAndAfterAPause() {
+        let start = Date(timeIntervalSince1970: 1_000_000)
+        #expect(AylaTimeline.showsTime(before: start, after: nil))
+        #expect(!AylaTimeline.showsTime(before: start.addingTimeInterval(60), after: start))
+        #expect(AylaTimeline.showsTime(before: start.addingTimeInterval(20 * 60), after: start))
+        #expect(!AylaTimeline.showsTime(before: .distantPast, after: nil))
+    }
+
+    @Test func timeLabelsAreDutchAndRelative() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try #require(TimeZone(identifier: "Europe/Amsterdam"))
+        let now = try #require(calendar.date(from: DateComponents(year: 2026, month: 11, day: 9, hour: 15)))
+        func at(_ day: Int, _ month: Int = 11, _ year: Int = 2026) -> Date {
+            calendar.date(from: DateComponents(year: year, month: month, day: day, hour: 14, minute: 2))!
+        }
+        let label = { (date: Date) in AylaTimeline.label(for: date, now: now, calendar: calendar).replacingOccurrences(of: "\u{202F}", with: " ") }
+        #expect(label(at(9)) == "Vandaag 14:02")
+        #expect(label(at(8)) == "Gisteren 14:02")
+        #expect(label(at(5)) == "Donderdag 14:02")
+        #expect(label(at(1)) == "1 nov 14:02")
+        #expect(label(at(1, 11, 2025)) == "1 nov 2025 14:02")
+    }
+
+    @Test func notesAreTheSameWhateverTheCapitalsOrFullStop() {
+        #expect(AylaMemory.isSame("Je studeert ICT.", "je studeert ict"))
+        #expect(AylaMemory.clean("   ") == nil)
+        #expect(AylaMemory.clean(String(repeating: "a", count: 400))?.count == AylaMemory.maxLength)
+    }
+
     @Test func searchingLooksInTheMessages() async throws {
         let rows = #"[{"id":"m1","conversation_id":"c1","text":"Ik zoek een stage in de zorg"}]"#
         let captured = Captured()
@@ -513,6 +724,19 @@ struct PCM16DecoderTests {
 }
 
 struct AylaVoiceCueTests {
+    @Test func captionsFollowTheSentences() {
+        let text = "Hoi Ravi! Je stage telt mee. Wil je verder?"
+        #expect(AylaCaptions.sentences(in: text) == ["Hoi Ravi!", "Je stage telt mee.", "Wil je verder?"])
+        #expect(AylaCaptions.sentence(in: text, at: 0) == "Hoi Ravi!")
+        #expect(AylaCaptions.sentence(in: text, at: 12) == "Je stage telt mee.")
+        #expect(AylaCaptions.sentence(in: text, at: 500) == "Wil je verder?")
+        #expect(AylaCaptions.sentence(in: "", at: 0) == nil)
+    }
+
+    @Test func numbersWithADotStayInOneSentence() {
+        #expect(AylaCaptions.sentences(in: "Dat kost 2.500 euro. Prima.") == ["Dat kost 2.500 euro.", "Prima."])
+    }
+
     @Test func wordsAboutPaveBringUpTheirIcon() {
         let cues = AylaVoiceCue.cues(in: "Hoi Daaf! In je kluis staan al drie diploma's, en daarna maken we samen een plan.")
         #expect(cues.map(\.icon) == [.hand, .kluis, .opleiding, .plan])
