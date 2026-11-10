@@ -20,6 +20,18 @@ struct PasswordRequirementTests {
     }
 }
 
+struct PasswordInputTests {
+    @Test(arguments: [
+        ("BrightFuture!2026\n", "BrightFuture!2026"),
+        ("BrightFuture!2026\r\n", "BrightFuture!2026"),
+        ("\nBright\nFuture!2026", "BrightFuture!2026"),
+        ("Bright Future!2026 ", "Bright Future!2026 "),
+    ])
+    func leavesOutLineBreaksButKeepsSpaces(pasted: String, kept: String) {
+        #expect(PasswordInput.cleaned(pasted) == kept)
+    }
+}
+
 struct MockAuthServiceTests {
     private let service = MockAuthService(delay: .zero)
 

@@ -1,3 +1,4 @@
+import PAVECore
 import SwiftUI
 
 struct PaveTextField<Field: Hashable>: View {
@@ -86,6 +87,10 @@ struct PaveTextField<Field: Hashable>: View {
             .textContentType(kind == .password ? .password : .newPassword)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
+            .onChange(of: text) { _, newValue in
+                let cleaned = PasswordInput.cleaned(newValue)
+                if cleaned != newValue { text = cleaned }
+            }
         }
     }
 
