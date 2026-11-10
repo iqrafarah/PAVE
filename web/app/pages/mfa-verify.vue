@@ -8,13 +8,10 @@ const code = ref('');
 const errorMessage = ref('');
 const isVerifying = ref(false);
 
+const RESET_AUTHENTICATOR_STEP_INDEX = 2;
+
 const eyebrow = computed(() =>
   isPasswordReset.value ? 'Wachtwoord herstellen' : 'Tweestapsverificatie',
-);
-const description = computed(() =>
-  isPasswordReset.value
-    ? 'Voor je account staat tweestapsverificatie aan. Vul de code uit je authenticator-app in. Daarna kies je een nieuw wachtwoord.'
-    : 'Open je authenticator-app en vul de code van 6 cijfers voor je PAVE-account in.',
 );
 const nextPath = computed(() =>
   isPasswordReset.value ? SET_PASSWORD_PATH : HOME_PATH,
@@ -43,9 +40,13 @@ async function handleSubmit() {
 <template>
   <AuthCard
     :eyebrow="eyebrow"
-    title="Bevestig dat jij het bent"
-    :description="description"
+    :title="AUTHENTICATOR_HEADING"
+    :description="AUTHENTICATOR_INSTRUCTION"
   >
+    <template v-if="isPasswordReset" #steps>
+      <AuthSteps :steps="RESET_STEPS" :current-index="RESET_AUTHENTICATOR_STEP_INDEX" />
+    </template>
+
     <template #icon>
       <svg
         class="size-5"
@@ -58,7 +59,7 @@ async function handleSubmit() {
         <path
           stroke-linecap="round"
           stroke-linejoin="round"
-          d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"
+          d="M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3"
         />
       </svg>
     </template>
@@ -67,7 +68,9 @@ async function handleSubmit() {
       <AuthCodeInput
         id="verification-code"
         v-model="code"
-        hint="Vul de code in die je authenticator-app nu laat zien."
+        :label="AUTHENTICATOR_CODE_LABEL"
+        is-autofocused
+        :hint="AUTHENTICATOR_CODE_HINT"
         :error="errorMessage"
       />
       <AuthPrimaryButton type="submit" :disabled="isVerifying">
@@ -75,9 +78,8 @@ async function handleSubmit() {
       </AuthPrimaryButton>
     </form>
 
-    <AuthInfoBox title="Gebruik je authenticator-app">
-      Je code komt uit je authenticator-app, niet via e-mail of sms. Kun je niet
-      bij de app? Neem contact op via <AuthSupportLink />.
+    <AuthInfoBox title="Kun je niet bij je authenticator-app?">
+      Neem contact op via <AuthSupportLink />.
     </AuthInfoBox>
 
     <AuthBackToLogin @click="signOut" />

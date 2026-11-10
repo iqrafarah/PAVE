@@ -42,10 +42,10 @@ onMounted(verifyLink);
     title="We controleren je link"
     description="Dit duurt maar even."
   >
-    <p v-if="errorMessage" role="alert" class="mt-6 text-sm text-danger">
+    <p v-if="errorMessage" role="alert" class="text-sm text-danger">
       {{ errorMessage }}
     </p>
-    <p v-else role="status" class="mt-6 text-sm text-muted">Even geduld...</p>
+    <p v-else role="status" class="text-sm text-muted">Even geduld...</p>
 
     <AuthBackToLogin @click="navigateTo('/login')" />
   </AuthCard>
