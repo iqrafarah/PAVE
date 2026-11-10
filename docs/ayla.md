@@ -1,6 +1,6 @@
 # Ayla
 
-> **Status (2026-11-10):** the brain (`shared/supabase/functions/ayla`) and Ayla's voice (`shared/supabase/functions/ayla-voice`) run on the shared Supabase project. iOS has chat, voice, chat history and the first vault list/selection UI. Memory tables are applied. A vault schema draft is in `shared/supabase/migrations/20261110120000_vault.sql`, but it is not applied and has no client/service or Edge Function integration yet. Task consent is not enforced by the server yet. See [docs/vault.md](vault.md) for the model and rollout sequence. Changes to the contract or shared database require iOS and web review (see `Conventions.md`).
+> **Status (2026-11-10):** the brain (`shared/supabase/functions/ayla`) and Ayla's voice (`shared/supabase/functions/ayla-voice`) run on the shared Supabase project. iOS has chat, voice, chat history and the first vault list/selection UI. Memory tables are applied. The vault schema (`shared/supabase/migrations/20261110120000_vault.sql`) is applied, but has no client/service or Edge Function integration yet. Task consent is not enforced by the server yet. See [docs/vault.md](vault.md) for the model and rollout sequence. Changes to the contract or shared database require iOS and web review (see `Conventions.md`).
 
 ## The idea
 
@@ -179,7 +179,7 @@ Only text leaves the device: the user's voice never does. The text of Ayla's ans
 | `migrations/…_ayla_conversations.sql` | `ayla_conversations` and `ayla_messages` with row level security; both are in the Realtime publication |
 | `migrations/…_ayla_conversation_pins.sql` | `pinned_at` for "Vastgezet". Until it runs, the apps hide pinning |
 | `ayla/memory.ts`, `migrations/…_ayla_memory.sql`, `…_ayla_memory_categories.sql` | Account memory and categories; applied on 2026-11-09 |
-| `migrations/20261110120000_vault.sql` | Draft schema for vault records, private files, skills, validation requests and task grants; not applied |
+| `migrations/20261110120000_vault.sql` | Vault records, private files, skills, validation requests and task grants; applied on 2026-11-10 |
 
 The existing policy "Own conversations" (`for all`) already allows renaming and deleting your own conversations; deleting removes the messages too (`on delete cascade`). No extra database change is needed for that.
 
@@ -196,7 +196,7 @@ Details and the reasons behind each choice are in `ios/README.md` (section Ayla)
 - **Around the chat:** a half-typed message is kept per chat on the device, a button jumps back to the newest message, and offline the app says so calmly instead of failing.
 - **Voice mode:** a haptic at every turn, and captions that follow Ayla sentence by sentence (on by default; the user can hide all text under the orb).
 - **Memory:** "Zal ik dit onthouden?" under a reply, and "Wat Ayla over je weet" in Settings (see "Memory").
-- **Vault:** the mobile list and consent-picker UI are in progress; the schema is drafted, but persistence, uploads, validation and server-enforced task grants are not connected yet (see [docs/vault.md](vault.md)).
+- **Vault:** the mobile list and consent-picker UI are in progress; the schema is applied, but persistence, uploads, validation and server-enforced task grants are not connected yet (see [docs/vault.md](vault.md)).
 - **Outside the app:** Siri and Shortcuts phrases, the Action button, Control Center buttons and widgets start a voice conversation or a new chat. They only open the app (behind the PIN), never show anything from it.
 
 ## Memory ("Wat Ayla over je weet")
