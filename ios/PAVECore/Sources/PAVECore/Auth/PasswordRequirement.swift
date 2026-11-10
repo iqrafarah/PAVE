@@ -1,7 +1,8 @@
 public enum PasswordRequirement: CaseIterable, Sendable {
     case minimumLength
     case mixedCase
-    case numberAndSymbol
+    case number
+    case symbol
 
     public static let minimumCharacterCount = 12
 
@@ -11,9 +12,10 @@ public enum PasswordRequirement: CaseIterable, Sendable {
             password.count >= Self.minimumCharacterCount
         case .mixedCase:
             password.contains(where: \.isUppercase) && password.contains(where: \.isLowercase)
-        case .numberAndSymbol:
+        case .number:
             password.contains(where: \.isNumber)
-                && password.contains { !$0.isLetter && !$0.isNumber && !$0.isWhitespace }
+        case .symbol:
+            password.contains { !$0.isLetter && !$0.isNumber && !$0.isWhitespace }
         }
     }
 
@@ -24,7 +26,8 @@ public enum PasswordRequirement: CaseIterable, Sendable {
         switch self {
         case .minimumLength: "Minimaal \(Self.minimumCharacterCount) tekens"
         case .mixedCase: "Hoofdletters en kleine letters"
-        case .numberAndSymbol: "Minimaal één cijfer en één symbool"
+        case .number: "Minimaal één cijfer"
+        case .symbol: "Minimaal één symbool"
         }
     }
 

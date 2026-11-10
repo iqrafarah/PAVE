@@ -13,6 +13,7 @@ struct PinSetupView: View {
     @State private var digits = ""
     @State private var errorMessage: String?
     @State private var isSubmitting = false
+    @State private var shakes = 0
 
     var body: some View {
         switch step {
@@ -21,7 +22,7 @@ struct PinSetupView: View {
                 emblem: .iconShieldCheck,
                 eyebrow: "Beveilig je account",
                 title: "Kies een pincode",
-                message: "Met deze pincode open je PAVE. Kies 6 cijfers die moeilijk te raden zijn."
+                message: "Met deze pincode open je PAVE. Kies 6 cijfers, maar niet 111111 of 123456."
             ) { keySize in
                 pad(keySize: keySize)
             } accessory: {
@@ -55,6 +56,11 @@ struct PinSetupView: View {
     private func pad(keySize: CGFloat) -> some View {
         PinPad(digits: $digits, isError: errorMessage != nil, keySize: keySize, onComplete: submit)
             .disabled(isSubmitting)
+            .modifier(PinShake(trigger: shakes))
+            // The message stays until you start on a new pincode, so you can read why the last one did not work.
+            .onChange(of: digits) { _, newValue in
+                if newValue.count == 1 { errorMessage = nil }
+            }
     }
 
     private var biometricsIntro: some View {
@@ -78,9 +84,11 @@ struct PinSetupView: View {
                     finish(pin: pin, useBiometrics: didAuthenticate)
                 }
             }
-            AuthReturnButton(title: "Niet nu") {
-                finish(pin: pin, useBiometrics: false)
-            }
+            Button("Niet nu") { finish(pin: pin, useBiometrics: false) }
+                .textStyle(.link)
+                .foregroundStyle(Color.brandGreen)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .buttonStyle(.pave)
         }
     }
 
@@ -110,9 +118,11 @@ struct PinSetupView: View {
     private func finish(pin: String, useBiometrics: Bool) {
         do {
             try appState.completePinSetup(pin: pin, useBiometrics: useBiometrics)
+            PaveHaptics.success()
         } catch {
             reset(to: .create)
             errorMessage = PinMessages.notSaved
+            PaveHaptics.error()
         }
     }
 
@@ -124,6 +134,7 @@ struct PinSetupView: View {
 
     private func fail(_ message: String, then next: Step? = nil) {
         errorMessage = message
+        shakes += 1
         AccessibilityNotification.Announcement(message).post()
         isSubmitting = true
         Task {
@@ -132,7 +143,6 @@ struct PinSetupView: View {
             isSubmitting = false
             if let next {
                 step = next
-                errorMessage = nil
             }
         }
     }

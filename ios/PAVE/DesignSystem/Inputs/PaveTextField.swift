@@ -1,3 +1,4 @@
+import PAVECore
 import SwiftUI
 
 struct PaveTextField<Field: Hashable>: View {
@@ -15,6 +16,17 @@ struct PaveTextField<Field: Hashable>: View {
     let field: Field
     var errorMessage: String?
     var reservedErrors: [String] = []
+    /// How far the password is: an orange edge while it is not good yet, a green one when it is, as on the web.
+    var progress: Progress?
+    /// A line under the field with a check when the progress is `.valid`, such as "De wachtwoorden zijn hetzelfde."
+    var status: String?
+    var reservedStatuses: [String] = []
+    var hint: String?
+
+    enum Progress {
+        case incomplete
+        case valid
+    }
 
     @Environment(\.isEnabled) private var isEnabled
     @State private var isRevealed = false
@@ -46,21 +58,32 @@ struct PaveTextField<Field: Hashable>: View {
             .background(isEnabled ? Color.white : .fieldDisabled, in: .rect(cornerRadius: 7))
             .overlay {
                 RoundedRectangle(cornerRadius: 7)
-                    .strokeBorder(borderColor, lineWidth: isInvalid || isFocused ? 2 : 1)
+                    .strokeBorder(borderColor, lineWidth: borderWidth)
             }
             .background {
                 RoundedRectangle(cornerRadius: 7)
                     .stroke(ringColor, lineWidth: 6)
                     .opacity(isInvalid || isFocused ? 1 : 0)
+                    .animation(.easeOut(duration: 0.15), value: shownProgress)
             }
             .contentShape(.rect)
             .onTapGesture { focus.wrappedValue = field }
             .animation(.easeOut(duration: 0.15), value: isFocused)
 
-            if errorMessage != nil || !reservedErrors.isEmpty {
-                MessageSlot(message: errorMessage, reserving: reservedErrors) {
-                    PaveInlineError(message: $0)
+            if errorMessage != nil || !reservedErrors.isEmpty || !reservedStatuses.isEmpty {
+                MessageSlot(message: errorMessage ?? visibleStatus, reserving: reservedErrors + reservedStatuses) { text in
+                    if text == errorMessage || reservedErrors.contains(text) {
+                        PaveInlineError(message: text)
+                    } else {
+                        statusLine(text)
+                    }
                 }
+            }
+
+            if let hint {
+                Text(hint)
+                    .textStyle(.footnote)
+                    .foregroundStyle(Color.inkMuted)
             }
         }
     }
@@ -86,6 +109,10 @@ struct PaveTextField<Field: Hashable>: View {
             .textContentType(kind == .password ? .password : .newPassword)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
+            .onChange(of: text) { _, newValue in
+                let cleaned = PasswordInput.cleaned(newValue)
+                if cleaned != newValue { text = cleaned }
+            }
         }
     }
 
@@ -113,14 +140,46 @@ struct PaveTextField<Field: Hashable>: View {
         .accessibilityLabel(isRevealed ? "Wachtwoord verbergen" : "Wachtwoord tonen")
     }
 
+    private var visibleStatus: String? {
+        text.isEmpty ? nil : status
+    }
+
+    private var shownProgress: Progress? {
+        text.isEmpty ? nil : progress
+    }
+
+    private func statusLine(_ text: String) -> some View {
+        let isMet = shownProgress == .valid
+        return HStack(spacing: 8) {
+            Image(isMet ? .iconCheck : .iconRequirementBullet)
+                .resizable()
+                .frame(width: isMet ? 16 : 4, height: isMet ? 16 : 4)
+                .frame(width: 16)
+                .accessibilityHidden(true)
+            Text(text)
+                .textStyle(.footnote)
+                .foregroundStyle(Color.ink)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
     private var borderColor: Color {
         if isInvalid { return .critical }
-        if isFocused { return .brandGreen }
-        return .hairline
+        switch shownProgress {
+        case .incomplete: return .warning
+        case .valid: return .brandGreen
+        case nil: return isFocused ? .brandGreen : .hairline
+        }
+    }
+
+    private var borderWidth: CGFloat {
+        isInvalid || isFocused || shownProgress != nil ? 2 : 1
     }
 
     private var ringColor: Color {
-        isInvalid ? Color.critical.opacity(0.13) : .focusRing
+        if isInvalid { return Color.critical.opacity(0.13) }
+        if shownProgress == .incomplete { return Color.warning.opacity(0.13) }
+        return .focusRing
     }
 }
 

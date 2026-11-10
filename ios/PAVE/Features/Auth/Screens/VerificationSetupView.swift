@@ -22,7 +22,7 @@ struct VerificationSetupView: View {
             AuthIntro(
                 eyebrow: "Eerste keer instellen",
                 title: "Beveilig je PAVE-account",
-                message: "Tweestapsverificatie is verplicht. Zo blijven je persoonlijke gegevens, resultaten en certificaten veilig."
+                message: AuthMessages.verificationSetupInstruction
             )
         } content: {
             VStack(alignment: .leading, spacing: 24) {
@@ -42,6 +42,7 @@ struct VerificationSetupView: View {
 
                 VerificationCodeField(
                     code: $code,
+                    title: AuthMessages.authenticatorCodeLabel,
                     errorMessage: errorMessage,
                     reservedErrors: [AuthMessages.setupCouldNotStart] + AuthError.allMessages,
                     isFocused: $isCodeFocused
@@ -150,8 +151,10 @@ struct VerificationSetupView: View {
             defer { isSubmitting = false }
             do {
                 try await flow.confirmVerificationSetup(code: code)
+                PaveHaptics.success()
             } catch {
                 self.error = AuthError(error)
+                PaveHaptics.error()
             }
         }
     }

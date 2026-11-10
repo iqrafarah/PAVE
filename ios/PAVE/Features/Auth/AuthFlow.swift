@@ -65,6 +65,18 @@ final class AuthFlow {
         }
     }
 
+    /// "Verkeerd e-mailadres? Terug": back to the email screen, which still holds what you typed.
+    func returnToResetEmail() {
+        if case .resetCode = path.last {
+            path.removeLast()
+        }
+    }
+
+    /// The steps of the password reset: with the authenticator code when the account needed it on the way.
+    var resetSteps: [String] {
+        path.contains(.resetVerification) ? AuthMessages.resetSteps : AuthMessages.resetStepsWithoutAuthenticator
+    }
+
     func verifyPasswordResetCode(email: String, code: String) async throws {
         switch try await service.verifyPasswordResetCode(email: email, code: code) {
         case .readyForNewPassword:

@@ -125,6 +125,8 @@ De inlogflow staat in `PAVE/Features/Auth/`. De schermen praten nooit direct met
 
 `AuthServiceFactory` kiest automatisch: staan `SUPABASE_URL` en `SUPABASE_PUBLISHABLE_KEY` in `Config/Local.xcconfig`, dan Supabase, anders de mock. Zie `Config/Local.xcconfig.example`; het zijn dezelfde waarden als in `web/.env`.
 
+Wachtwoordvelden laten enters weg, net als een wachtwoordveld in de browser (`PasswordInput`): een wachtwoord dat je uit Notities of Mail plakt, neemt er vaak een mee, en dan lukt inloggen niet (uit gebruikerstest 1). Spaties blijven staan.
+
 **Accounts worden nooit in de app aangemaakt.** Gebruikers krijgen hun account van de organisatie. De app kan alleen inloggen, tweestapsverificatie instellen en het wachtwoord resetten. Registreren staat in Supabase uit.
 
 ### Supabase-instellingen
@@ -144,6 +146,11 @@ Dezelfde flow als op web (`web/app/pages/forgot-password.vue`): e-mailadres invu
 - Na het opslaan van het nieuwe wachtwoord word je uitgelogd en log je opnieuw in.
 - Tweestapsverificatie is voor elk account verplicht. Supabase laat een wachtwoord pas wijzigen als ook de code uit de authenticator-app is ingevuld (anders weigert het met `insufficient_aal`). Daarom vraagt de app na de mailcode eerst die code, en daarna het nieuwe wachtwoord.
 - Een nieuw account dat nog nooit heeft ingelogd, heeft nog geen tweestapsverificatie. Dat account gaat na de mailcode direct naar het nieuwe wachtwoord, en moet bij de eerste keer inloggen alsnog tweestapsverificatie instellen.
+- Net als op web (sinds gebruikerstest 1) staat bovenaan een stappenbalk (`AuthSteps`): E-mail, Code uit e-mail, Authenticator-code, Nieuw wachtwoord. Bij een account zonder tweestapsverificatie valt de derde stap weg (`AuthFlow.resetSteps`).
+- Het codescherm laat zien naar welk adres de code ging, half verborgen (`EmailMask`: `r***@student.example.edu`), met "Verkeerd e-mailadres? Terug". Een nieuwe code aanvragen kan pas 60 seconden na de vorige; de knop telt af.
+- Bij het nieuwe wachtwoord krijgt het veld een oranje rand zolang het nog niet aan de eisen voldoet en een groene zodra het klopt. Onder de eisen staat "Nog 2 eisen te gaan". Het herhaalveld zegt "De wachtwoorden zijn hetzelfde." of, nadat je het veld verlaat, "De wachtwoorden zijn niet gelijk." De knop werkt pas als alles klopt.
+- Trillingen in de hele inlogflow, zoals in de chat (`PaveHaptics`): een fouttrilling bij elke melding die iets weigert (fout wachtwoord, foute code, wachtwoord voldoet niet), een succestrilling als een code klopt, een nieuwe code verstuurd is, of je wachtwoord of pincode is opgeslagen, en een licht tikje zodra je aan alle wachtwoordeisen voldoet en zodra de twee wachtwoorden gelijk zijn.
+- Twee bewuste verschillen met web: plakken in het herhaalveld kan op iOS wel, omdat het sterke wachtwoord dat iOS voorstelt anders niet in beide velden komt (de hint zegt daarom alleen "Typ je wachtwoord nog een keer."). En er is geen Caps Lock-melding: het iOS-toetsenbord laat dat zelf zien.
 
 ### Tweestapsverificatie instellen op de iPhone
 
@@ -163,11 +170,12 @@ De code voor de tweestapsverificatie en voor wachtwoord vergeten is bij de demo-
 Na het inloggen maak je een PIN van 6 cijfers aan. Start je de app later opnieuw terwijl je nog bent ingelogd, dan vraagt PAVE eerst om die PIN. Je kunt ook Face ID of Touch ID aanzetten om sneller te ontgrendelen.
 
 - De logica staat in `PAVECore/Sources/PAVECore/Lock/` (`PinVault`, `PinPolicy`). De PIN wordt nooit zelf bewaard: alleen een hash met een willekeurige salt (PBKDF2), in de Keychain van deze iPhone (`WhenUnlockedThisDeviceOnly`).
-- Een PIN met herhaalde of oplopende cijfers (bijv. `000000`, `123456`) wordt geweigerd.
+- Een PIN van 6 keer hetzelfde cijfer of een rij (bijv. `111111`, `123456`, `654321`) wordt geweigerd. Het scherm noemt die voorbeelden al vooraf, zodat je niet hoeft te raden wat niet mag (uit gebruikerstest 1).
+- Een foute PIN schudt en trilt (`PinShake`), bij het aanmaken en bij het ontgrendelen. Zijn de twee PINs bij het aanmaken niet hetzelfde, dan ga je terug naar "Kies een pincode" en blijft de melding staan tot je het eerste cijfer typt.
 - Na 5 foute pogingen word je uitgelogd en moet je opnieuw inloggen met wachtwoord en code. Dat geldt ook bij "Pincode vergeten?".
-- De PIN hoort bij één account op dit toestel. Uitloggen bewaart hem: log je opnieuw in met hetzelfde account, dan hoef je geen nieuwe PIN te maken. Logt iemand anders in, dan wordt de oude PIN gewist en maakt die een eigen PIN aan. ""Pincode vergeten?" en 5 foute pogingen wissen de PIN wel.
+- De PIN hoort bij één account op dit toestel. Uitloggen bewaart hem: log je opnieuw in met hetzelfde account, dan hoef je geen nieuwe PIN te maken. Logt iemand anders in, dan wordt de oude PIN gewist en maakt die een eigen PIN aan. "Pincode vergeten?" en 5 foute pogingen wissen de PIN wel.
 - Face ID/Touch ID zit in `AppState` via `BiometricAuthenticating`. De app opent hem alleen als je dat tijdens het instellen hebt aangezet.
-- Het slot komt bij het opstarten van de app. Terug uit de achtergrond vraagt hij nog niet opnieuw om de PIN.
+- Het slot komt bij het opstarten van de app, en terug uit de achtergrond na de tijd die je kiest in Instellingen → Privacy → Opnieuw vergrendelen.
 
 ## Ayla
 

@@ -25,11 +25,23 @@ struct PasswordRequirementsList: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityValue(isMet ? "Voldaan" : "Niet voldaan")
             }
+
+            Text(AuthMessages.remainingRules(remainingCount))
+                .textStyle(.label)
+                .foregroundStyle(Color.ink)
+                .padding(.top, 4)
+                .contentTransition(.numericText())
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.surfaceTint, in: .rect(cornerRadius: 12))
         .animation(.easeOut(duration: 0.15), value: password)
+        // A light tap the moment the last requirement is met.
+        .sensoryFeedback(.impact(weight: .light), trigger: remainingCount == 0) { _, isNow in isNow }
+    }
+
+    private var remainingCount: Int {
+        PasswordRequirement.allCases.filter { !$0.isMet(by: password) }.count
     }
 }
 
