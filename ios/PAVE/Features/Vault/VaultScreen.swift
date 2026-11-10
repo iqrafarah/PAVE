@@ -16,6 +16,10 @@ struct VaultScreen: View {
     @State private var selectedStatus = VaultStatusFilter.all
     @State private var showsSelection = false
     @State private var isGridView = true
+    @State private var customFolders: [VaultCustomFolder] = []
+    @State private var selectedCustomFolderID: UUID?
+    @State private var showsNewFolder = false
+    @State private var showsEvidenceNotice = false
 
     init(
         onShowMenu: (() -> Void)?,
@@ -36,6 +40,7 @@ struct VaultScreen: View {
                 .localizedCaseInsensitiveContains(searchText)
         }
         return searched.filter { item in
+            guard selectedCustomFolderID == nil else { return false }
             let matchesCategory = selectedCategory == .all || item.category == selectedCategory
             let matchesStatus = selectedStatus.matches(item.status)
             return matchesCategory && matchesStatus
@@ -107,10 +112,21 @@ struct VaultScreen: View {
                 }
                 ToolbarSpacer(.fixed, placement: .topBarTrailing)
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {} label: {
+                    Menu {
+                        Button {
+                            showsNewFolder = true
+                        } label: {
+                            Label("Map toevoegen", systemImage: "folder.badge.plus")
+                        }
+                        Button {
+                            showsEvidenceNotice = true
+                        } label: {
+                            Label("Bewijs toevoegen", systemImage: "doc.badge.plus")
+                        }
+                    } label: {
                         Image(.iconPlus)
                     }
-                    .accessibilityLabel("Document toevoegen")
+                    .accessibilityLabel("Toevoegen")
                 }
             }
             .onChange(of: isSearching) { _, searching in
@@ -127,6 +143,21 @@ struct VaultScreen: View {
                 .presentationBackground(.clear)
                 .presentationDragIndicator(.hidden)
             }
+            .sheet(isPresented: $showsNewFolder) {
+                VaultAddFolderSheet(existingNames: customFolders.map(\.name)) { name in
+                    let folder = VaultCustomFolder(name: name)
+                    customFolders.append(folder)
+                    selectedCustomFolderID = folder.id
+                    selectedCategory = .all
+                }
+                .presentationDetents([.height(300)])
+                .presentationDragIndicator(.visible)
+            }
+            .alert("Bewijs toevoegen", isPresented: $showsEvidenceNotice) {
+                Button("Begrepen", role: .cancel) {}
+            } message: {
+                Text("Bewijs toevoegen kan zodra de kluisopslag en uploadfunctie zijn aangesloten.")
+            }
         }
         .tint(.brandGreen)
     }
@@ -136,11 +167,20 @@ struct VaultScreen: View {
             HStack(spacing: 9) {
                 ForEach(VaultCategory.folderCategories) { category in
                     VaultFolderTile(
-                        category: category,
+                        title: category.title,
+                        icon: category.folderIcon,
                         count: categoryCount(category),
                         isSelected: selectedCategory == category
                     ) {
+                        selectedCustomFolderID = nil
                         selectedCategory = selectedCategory == category ? .all : category
+                        PaveHaptics.selection()
+                    }
+                }
+                ForEach(customFolders) { folder in
+                    VaultFolderTile(title: folder.name, icon: "folder", count: 0, isSelected: selectedCustomFolderID == folder.id) {
+                        selectedCategory = .all
+                        selectedCustomFolderID = folder.id
                         PaveHaptics.selection()
                     }
                 }
@@ -155,8 +195,9 @@ struct VaultScreen: View {
         HStack(spacing: 10) {
             Menu {
                 Section("Bewijs") {
-                    ForEach(VaultCategory.allCases) { category in
+                    ForEach(activeFilterCategories) { category in
                         Button {
+                            selectedCustomFolderID = nil
                             selectedCategory = category
                         } label: {
                             if selectedCategory == category {
@@ -213,7 +254,14 @@ struct VaultScreen: View {
 
     private var emptyState: some View {
         Group {
-            if items.isEmpty {
+            if let selectedCustomFolderID,
+               let folder = customFolders.first(where: { $0.id == selectedCustomFolderID }) {
+                PaveEmptyState(
+                    icon: .iconFolder,
+                    title: "\(folder.name) is nog leeg",
+                    message: "Voeg straks bewijs aan deze map toe."
+                )
+            } else if items.isEmpty {
                 PaveEmptyState(
                     icon: .iconFolder,
                     title: "Je kluis is nog leeg",
@@ -236,6 +284,12 @@ struct VaultScreen: View {
         return items.count { $0.category == category }
     }
 
+    private var activeFilterCategories: [VaultCategory] {
+        [.all] + VaultCategory.allCases.filter { category in
+            category != .all && (usesPrototypeCounts ? category.prototypeCount > 0 : items.contains { $0.category == category })
+        }
+    }
+
     private func toggle(_ id: String, in set: inout Set<String>) {
         if set.contains(id) { set.remove(id) } else { set.insert(id) }
         PaveHaptics.selection()
@@ -243,7 +297,8 @@ struct VaultScreen: View {
 }
 
 private struct VaultFolderTile: View {
-    let category: VaultCategory
+    let title: String
+    let icon: String
     let count: Int
     let isSelected: Bool
     let action: () -> Void
@@ -255,10 +310,10 @@ private struct VaultFolderTile: View {
                     Color.surfaceTint
                     HStack {
                         Image(systemName: "folder.fill")
-                            .font(.system(size: 42, weight: .regular))
+                            .font(.system(size: 32, weight: .regular))
                             .overlay {
-                                Image(systemName: category.folderIcon)
-                                    .font(.system(size: 16, weight: .medium))
+                                Image(systemName: icon)
+                                    .font(.system(size: 12, weight: .medium))
                                     .foregroundStyle(.white)
                                     .offset(y: 3)
                             }
@@ -267,10 +322,10 @@ private struct VaultFolderTile: View {
                     .foregroundStyle(Color.brandGreen)
                     .padding(.leading, 13)
                 }
-                .frame(height: 58)
+                .frame(height: 54)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(category.title)
+                    Text(title)
                         .textStyle(.bodyMedium)
                         .foregroundStyle(Color.ink)
                         .lineLimit(1)
@@ -283,7 +338,7 @@ private struct VaultFolderTile: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.white)
             }
-            .frame(width: 142)
+            .frame(width: 140)
             .clipShape(.rect(cornerRadius: 14))
             .overlay {
                 RoundedRectangle(cornerRadius: 14)
@@ -293,6 +348,64 @@ private struct VaultFolderTile: View {
         }
         .buttonStyle(.pave)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
+private struct VaultCustomFolder: Identifiable {
+    let id = UUID()
+    let name: String
+}
+
+private struct VaultAddFolderSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var name = ""
+    let existingNames: [String]
+    let onCreate: (String) -> Void
+
+    private var trimmedName: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var alreadyExists: Bool {
+        existingNames.contains { $0.localizedCaseInsensitiveCompare(trimmedName) == .orderedSame }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Nieuwe map")
+                .textStyle(.calloutTitle)
+                .foregroundStyle(Color.ink)
+
+            TextField("Naam van de map", text: $name)
+                .textFieldStyle(.plain)
+                .padding(.horizontal, 14)
+                .frame(height: 50)
+                .background(Color.white, in: .rect(cornerRadius: 10))
+                .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(Color.cardBorder) }
+                .submitLabel(.done)
+                .onSubmit(create)
+
+            if alreadyExists {
+                Text("Je hebt al een map met deze naam.")
+                    .textStyle(.caption)
+                    .foregroundStyle(Color.critical)
+            }
+
+            HStack(spacing: 12) {
+                Button("Annuleren", role: .cancel) { dismiss() }
+                    .buttonStyle(.pave)
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                    .background(Color.surfaceTint, in: .capsule)
+                PavePrimaryButton(title: "Map aanmaken", action: create)
+                    .disabled(trimmedName.isEmpty || alreadyExists)
+            }
+        }
+        .padding(22)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(Color.canvas.ignoresSafeArea())
+    }
+
+    private func create() {
+        guard !trimmedName.isEmpty, !alreadyExists else { return }
+        onCreate(trimmedName)
+        dismiss()
     }
 }
 
