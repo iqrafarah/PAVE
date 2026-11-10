@@ -79,6 +79,25 @@ struct VaultScreen: View {
                 }
             }
             .mainScreenToolbar("Kluis", onShowMenu: onShowMenu)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            isSearching.toggle()
+                            if !isSearching { searchText = "" }
+                        }
+                    } label: {
+                        Image(.iconSearch)
+                    }
+                    .accessibilityLabel(isSearching ? "Zoeken sluiten" : "Zoeken")
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {} label: {
+                        Image(systemName: "doc.badge.plus")
+                    }
+                    .accessibilityLabel("Document toevoegen")
+                }
+            }
             .sheet(isPresented: $showsSelection) {
                 VaultAccessSelectionPanel(
                     items: items,
@@ -115,64 +134,48 @@ struct VaultScreen: View {
 
     private var controls: some View {
         HStack(spacing: 10) {
+            Spacer(minLength: 0)
+
             Menu {
-                ForEach(VaultCategory.allCases) { category in
-                    Button {
-                        selectedCategory = category
-                    } label: {
-                        if selectedCategory == category {
-                            Label(category.title, systemImage: "checkmark")
-                        } else {
-                            Text(category.title)
+                Section("Bewijs") {
+                    ForEach(VaultCategory.allCases) { category in
+                        Button {
+                            selectedCategory = category
+                        } label: {
+                            if selectedCategory == category {
+                                Label(category.filterTitle, systemImage: "checkmark")
+                            } else {
+                                Text(category.filterTitle)
+                            }
+                        }
+                    }
+                }
+                Section("Status") {
+                    ForEach(VaultStatusFilter.allCases) { status in
+                        Button {
+                            selectedStatus = status
+                        } label: {
+                            if selectedStatus == status {
+                                Label(status.title, systemImage: "checkmark")
+                            } else {
+                                Text(status.title)
+                            }
                         }
                     }
                 }
             } label: {
-                HStack(spacing: 5) {
-                    Text(selectedCategory.filterTitle)
+                HStack(spacing: 8) {
+                    Image(systemName: "line.3.horizontal.decrease")
+                    Text("Filter")
                         .textStyle(.bodyMedium)
-                    Image(.iconChevronDown)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 12, height: 12)
                 }
                 .foregroundStyle(Color.ink)
                 .padding(.horizontal, 13)
                 .frame(height: 40)
                 .background(Color.surfaceTint, in: .rect(cornerRadius: 12))
             }
-            .accessibilityLabel("Categorie: \(selectedCategory.filterTitle)")
-
-            Spacer(minLength: 0)
-
-            toolbarButton(.iconSearch, label: isSearching ? "Zoeken sluiten" : "Zoeken") {
-                withAnimation(.easeOut(duration: 0.2)) {
-                    isSearching.toggle()
-                    if !isSearching { searchText = "" }
-                }
-            }
-            Menu {
-                ForEach(VaultStatusFilter.allCases) { status in
-                    Button {
-                        selectedStatus = status
-                    } label: {
-                        if selectedStatus == status {
-                            Label(status.title, systemImage: "checkmark")
-                        } else {
-                            Text(status.title)
-                        }
-                    }
-                }
-            } label: {
-                Image(.iconSettings)
-                    .renderingMode(.template)
-                    .foregroundStyle(Color.ink)
-                    .frame(width: 40, height: 40)
-                    .background(Color.surfaceTint, in: .rect(cornerRadius: 12))
-                    .contentShape(.rect(cornerRadius: 12))
-            }
             .buttonStyle(.pave)
-            .accessibilityLabel("Filter op status: \(selectedStatus.title)")
+            .accessibilityLabel("Filter op bewijs en status")
         }
     }
 
@@ -200,19 +203,6 @@ struct VaultScreen: View {
         if usesPrototypeCounts { return category.prototypeCount }
         if category == .all { return items.count }
         return items.count { $0.category == category }
-    }
-
-    private func toolbarButton(_ icon: ImageResource, label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(icon)
-                .renderingMode(.template)
-                .foregroundStyle(Color.ink)
-                .frame(width: 40, height: 40)
-                .background(Color.surfaceTint, in: .rect(cornerRadius: 12))
-                .contentShape(.rect(cornerRadius: 12))
-        }
-        .buttonStyle(.pave)
-        .accessibilityLabel(label)
     }
 
     private func toggle(_ id: String, in set: inout Set<String>) {
