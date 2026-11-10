@@ -15,6 +15,7 @@ struct VaultScreen: View {
     @State private var selectedCategory = VaultCategory.all
     @State private var selectedStatus = VaultStatusFilter.all
     @State private var showsSelection = false
+    @State private var isGridView = true
 
     init(
         onShowMenu: (() -> Void)?,
@@ -45,17 +46,25 @@ struct VaultScreen: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 18) {
-                    categoryStrip
+                    folderStrip
                     controls
                     if isSearching {
                         PaveSearchField(text: $searchText, prompt: "Zoek in je kluis", isFocused: $isSearchFocused)
                     }
                     if visibleItems.isEmpty {
                         emptyState
+                    } else if isGridView {
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                            ForEach(visibleItems) { item in
+                                VaultLibraryCard(item: item, isSelected: selectedItems.contains(item.id), isGrid: true) {
+                                    toggle(item.id, in: &selectedItems)
+                                }
+                            }
+                        }
                     } else {
                         VStack(spacing: 12) {
                             ForEach(visibleItems) { item in
-                                VaultItemCard(item: item, isSelected: selectedItems.contains(item.id)) {
+                                VaultLibraryCard(item: item, isSelected: selectedItems.contains(item.id), isGrid: false) {
                                     toggle(item.id, in: &selectedItems)
                                 }
                             }
@@ -122,16 +131,17 @@ struct VaultScreen: View {
         .tint(.brandGreen)
     }
 
-    private var categoryStrip: some View {
+    private var folderStrip: some View {
         ScrollView(.horizontal) {
             HStack(spacing: 9) {
-                ForEach(VaultCategory.allCases) { category in
-                    VaultCategoryTile(
-                        title: category.title,
+                ForEach(VaultCategory.folderCategories) { category in
+                    VaultFolderTile(
+                        category: category,
                         count: categoryCount(category),
-                        isOn: selectedCategories.contains(category.id)
+                        isSelected: selectedCategory == category
                     ) {
-                        toggle(category.id, in: &selectedCategories)
+                        selectedCategory = selectedCategory == category ? .all : category
+                        PaveHaptics.selection()
                     }
                 }
             }
@@ -143,8 +153,6 @@ struct VaultScreen: View {
 
     private var controls: some View {
         HStack(spacing: 10) {
-            Spacer(minLength: 0)
-
             Menu {
                 Section("Bewijs") {
                     ForEach(VaultCategory.allCases) { category in
@@ -185,6 +193,21 @@ struct VaultScreen: View {
             }
             .buttonStyle(.pave)
             .accessibilityLabel("Filter op bewijs en status")
+
+            Spacer(minLength: 0)
+
+            Button {
+                withAnimation(.snappy(duration: 0.22)) { isGridView.toggle() }
+                PaveHaptics.selection()
+            } label: {
+                Image(systemName: isGridView ? "list.bullet" : "square.grid.2x2")
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(Color.ink)
+                    .frame(width: 40, height: 40)
+                    .background(Color.surfaceTint, in: .rect(cornerRadius: 12))
+            }
+            .buttonStyle(.pave)
+            .accessibilityLabel(isGridView ? "Lijstweergave" : "Rasterweergave")
         }
     }
 
@@ -209,14 +232,67 @@ struct VaultScreen: View {
     }
 
     private func categoryCount(_ category: VaultCategory) -> Int {
-        if usesPrototypeCounts { return category.prototypeCount }
-        if category == .all { return items.count }
+        if usesPrototypeCounts, category.prototypeCount > 0 { return category.prototypeCount }
         return items.count { $0.category == category }
     }
 
     private func toggle(_ id: String, in set: inout Set<String>) {
         if set.contains(id) { set.remove(id) } else { set.insert(id) }
         PaveHaptics.selection()
+    }
+}
+
+private struct VaultFolderTile: View {
+    let category: VaultCategory
+    let count: Int
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 0) {
+                ZStack {
+                    Color.surfaceTint
+                    HStack {
+                        Image(systemName: "folder.fill")
+                            .font(.system(size: 42, weight: .regular))
+                            .overlay {
+                                Image(systemName: category.folderIcon)
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundStyle(.white)
+                                    .offset(y: 3)
+                            }
+                        Spacer(minLength: 0)
+                    }
+                    .foregroundStyle(Color.brandGreen)
+                    .padding(.leading, 13)
+                }
+                .frame(height: 58)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(category.title)
+                        .textStyle(.bodyMedium)
+                        .foregroundStyle(Color.ink)
+                        .lineLimit(1)
+                    Text("\(count) items")
+                        .textStyle(.caption)
+                        .foregroundStyle(Color.inkMuted)
+                }
+                .padding(.horizontal, 13)
+                .padding(.vertical, 9)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.white)
+            }
+            .frame(width: 142)
+            .clipShape(.rect(cornerRadius: 14))
+            .overlay {
+                RoundedRectangle(cornerRadius: 14)
+                    .strokeBorder(isSelected ? Color.brandGreen : Color.cardBorder, lineWidth: isSelected ? 2 : 1)
+            }
+            .contentShape(.rect(cornerRadius: 14))
+        }
+        .buttonStyle(.pave)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 

@@ -4,8 +4,13 @@ enum VaultCategory: String, CaseIterable, Identifiable, Hashable {
     case all
     case diplomas
     case certificates
+    case badges
     case projects
     case experiences
+    case internships
+    case skills
+    case feedback
+    case reflections
 
     var id: String { rawValue }
 
@@ -14,8 +19,13 @@ enum VaultCategory: String, CaseIterable, Identifiable, Hashable {
         case .all: "Alle items"
         case .diplomas: "Diploma's"
         case .certificates: "Certificaten"
+        case .badges: "Badges"
         case .projects: "Projecten"
         case .experiences: "Ervaringen"
+        case .internships: "Stages"
+        case .skills: "Skills"
+        case .feedback: "Feedback"
+        case .reflections: "Reflecties"
         }
     }
 
@@ -29,6 +39,7 @@ enum VaultCategory: String, CaseIterable, Identifiable, Hashable {
         case .all: 50
         case .diplomas: 5
         case .certificates: 15
+        case .badges, .internships, .skills, .feedback, .reflections: 0
         case .projects: 20
         case .experiences: 10
         }
@@ -36,9 +47,21 @@ enum VaultCategory: String, CaseIterable, Identifiable, Hashable {
 
     var tint: Color {
         switch self {
-        case .all, .experiences: .cardTintLavender
+        case .all, .experiences, .internships, .skills, .reflections: .cardTintLavender
         case .diplomas: .cardTintApricot
-        case .certificates, .projects: .cardTintGreen
+        case .certificates, .badges, .projects, .feedback: .cardTintGreen
+        }
+    }
+
+    static let folderCategories: [VaultCategory] = [.certificates, .diplomas, .feedback, .projects]
+
+    var folderIcon: String {
+        switch self {
+        case .certificates: "checkmark.seal"
+        case .diplomas: "graduationcap"
+        case .feedback: "ellipsis.bubble"
+        case .projects: "wrench.and.screwdriver"
+        default: "folder"
         }
     }
 }
