@@ -150,4 +150,5 @@ struct AylaRootView: View {
 #Preview {
     @Previewable @State var showsChats = false
     AylaRootView(model: AylaChatModel(service: nil), onShowMenu: {}, showsChats: $showsChats)
+        .environment(AylaMemoryModel(service: nil))
 }

@@ -1,4 +1,5 @@
 // The Ayla contract, see shared/ayla/reply.schema.json.
+import type { MemoryCategory } from './memory.ts'
 
 export const CATEGORIES = ['diplomas', 'certificates', 'badges', 'projects', 'workExperience', 'internships', 'skills', 'feedback', 'reflections'] as const
 export const SCREENS = ['home', 'chat', 'vault', 'vaultItem', 'addEvidence', 'plans', 'vacancies', 'profile', 'settings'] as const
@@ -54,6 +55,13 @@ export interface AylaReply {
   proposedAction?: { id: string; kind: 'addVaultItem' | 'updatePlan' | 'draftProfile' | 'requestValidation'; summary: string; expiresAt: string }
   blocks: Block[]
   navigation?: { screen: Screen; itemId?: string }
+  /**
+   * Ayla suggests remembering these facts, one per item, and taking away notes they make out of date (`replaces`,
+   * the exact text of the user's note; with an empty `text` only that). Nothing changes before the user confirms.
+   */
+  memories?: { text: string; category: MemoryCategory; replaces?: string }[]
+  /** The notes about the user this answer leans on, so the apps can show "Gebaseerd op". */
+  usedMemories?: { text: string; category: MemoryCategory }[]
   usedData: Category[]
 }
 

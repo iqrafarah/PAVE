@@ -13,10 +13,19 @@ enum AppPhase: Equatable {
 @Observable
 final class AppState {
     private static let signedInKey = "isSignedIn"
+    /// How long the app may be away before it asks for the PIN or Face ID again, in seconds (0: at once).
+    static let lockAfterKey = "lockAfterSeconds"
+    static let defaultLockAfter = 300
 
     private(set) var phase: AppPhase = .loading
     /// A chat someone tapped in the iPhone's search; opened once the app is unlocked.
     var conversationToOpen: String?
+    /// Something asked from outside the app (Siri, a widget, Control Center); done once the app is unlocked.
+    var link: PaveLink?
+    /// The app came back after being away too long: the PIN screen lies over it, so the open chat and what you were
+    /// typing stay where they are.
+    private(set) var isRelocked = false
+    private var backgroundedAt: Date?
     let authService: any AuthService
     private let pinVault: PinVault
     private let biometrics: any BiometricAuthenticating
@@ -33,6 +42,25 @@ final class AppState {
         self.authService = authService
         self.pinVault = pinVault
         self.biometrics = biometrics
+        PaveLinkInbox.receive = { [weak self] link in self?.link = link }
+    }
+
+    /// Whether the app is unlocked and showing your things.
+    var isOpen: Bool { phase == .main && !isRelocked }
+
+    var lockAfter: TimeInterval {
+        TimeInterval(defaults.object(forKey: Self.lockAfterKey) as? Int ?? Self.defaultLockAfter)
+    }
+
+    func didEnterBackground(at date: Date = .now) {
+        guard phase == .main, !isRelocked else { return }
+        backgroundedAt = date
+    }
+
+    func didBecomeActive(at date: Date = .now) {
+        defer { backgroundedAt = nil }
+        guard phase == .main, let backgroundedAt, pinVault.hasPin else { return }
+        if date.timeIntervalSince(backgroundedAt) >= lockAfter { isRelocked = true }
     }
 
     var isSignedIn: Bool {
@@ -78,7 +106,7 @@ final class AppState {
         let result = pinVault.check(pin)
         switch result {
         case .correct:
-            phase = .main
+            if isRelocked { isRelocked = false } else { phase = .main }
         case .lockedOut:
             signOut()
         case .incorrect:
@@ -89,10 +117,14 @@ final class AppState {
 
     @discardableResult
     func unlockWithBiometrics() async -> Bool {
-        guard phase == .locked, canUnlockWithBiometrics else { return false }
+        guard phase == .locked || isRelocked, canUnlockWithBiometrics else { return false }
         guard await biometrics.authenticate(reason: "Ontgrendel PAVE") else { return false }
-        guard phase == .locked else { return false }
-        phase = .main
+        if isRelocked {
+            isRelocked = false
+        } else {
+            guard phase == .locked else { return false }
+            phase = .main
+        }
         return true
     }
 
@@ -103,7 +135,10 @@ final class AppState {
     func signOut() {
         defaults.set(false, forKey: Self.signedInKey)
         AylaSpotlight.forget(in: defaults)
+        AylaDrafts.forget(in: defaults)
         conversationToOpen = nil
+        link = nil
+        isRelocked = false
         phase = .signedOut
         Task { await authService.signOut() }
     }

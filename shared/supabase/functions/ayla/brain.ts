@@ -1,4 +1,5 @@
 import { type AylaReply, type AylaRequest, type Block, type Screen, SCREENS } from './contract.ts'
+import { cleanMemories, type Memory, type MemorySuggestion, usedNotes } from './memory.ts'
 import type { ChatMessage, Complete } from './openrouter.ts'
 import { buildSystemPrompt } from './prompt.ts'
 import type { FoundVacancy, SearchVacancies } from './vacancies.ts'
@@ -10,6 +11,12 @@ export interface BrainInput {
   conversationId: string
   history: PastMessage[]
   firstName?: string
+  /** What the user let Ayla remember. Missing means Ayla remembers nothing. */
+  memory?: Memory
+  /** Called with the text of the answer so far, while the model writes it. */
+  onText?: (text: string) => void
+  /** Stops the answer, for instance when the user taps stop. */
+  signal?: AbortSignal
   /** Called with a short title for a new conversation, when the model gives one. */
   onTitle?: (title: string) => void
 }
@@ -31,18 +38,37 @@ interface ModelOutput {
   navigation: { screen: string } | null
   vacancySearch: { what: string; where: string } | null
   title: string | null
+  memories: unknown
+  usedMemories: unknown
 }
 
 /** One turn of the conversation: the prompt in layers, the model, and a reply in the contract format. */
 export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaReply> {
   const { request } = input
+  const memory: Memory = input.memory ?? { status: 'unavailable' }
   const messages: ChatMessage[] = [
-    { role: 'system', content: buildSystemPrompt({ device: request.device, input: request.input, firstName: input.firstName, context: request.context }) },
+    { role: 'system', content: buildSystemPrompt({ device: request.device, input: request.input, firstName: input.firstName, context: request.context, memory }) },
     ...input.history.slice(-HISTORY_LIMIT).map((m): ChatMessage => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text })),
     { role: 'user', content: withAttachments(request) },
   ]
 
-  let output = parseOutput((await deps.complete(messages)).content)
+  let lastText = ''
+  const options = {
+    signal: input.signal,
+    onContent: input.onText
+      ? (content: string) => {
+        const text = stripMarkdown(partialText(content))
+        if (text && text !== lastText) {
+          lastText = text
+          input.onText?.(text)
+        }
+      }
+      : undefined,
+  }
+  let output = parseOutput((await deps.complete(messages, options)).content)
+  // The first answer heard what the user said; the second one only talks about the vacancies.
+  const heard = cleanMemories(output.memories, memory)
+  const firstUsed = usedNotes(output.usedMemories, memory)
   const title = cleanTitle(output.title)
   if (title && input.onTitle) input.onTitle(title)
   const blocks: Block[] = []
@@ -51,13 +77,50 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
     const { what, where } = output.vacancySearch
     const found = await search(deps.searchVacancies, what, where)
     messages.push({ role: 'assistant', content: JSON.stringify(output) }, { role: 'system', content: describeSearch(found) })
-    output = parseOutput((await deps.complete(messages)).content)
+    output = parseOutput((await deps.complete(messages, options)).content)
     if (found.status === 'ok' && found.items.length && request.device !== 'watch') {
       blocks.push({ type: 'vacancies', items: found.items.map((f) => f.vacancy) })
     }
   }
 
-  return toReply(output, blocks, input.conversationId, deps.newId())
+  const reply = toReply(output, blocks, input.conversationId, deps.newId())
+  const later = cleanMemories(output.memories, memory)
+  const suggestions: MemorySuggestion[] = later.length ? later : heard
+  if (suggestions.length) reply.memories = suggestions
+  const laterUsed = usedNotes(output.usedMemories, memory)
+  const used = laterUsed.length ? laterUsed : firstUsed
+  if (used.length) reply.usedMemories = used
+  return reply
+}
+
+/**
+ * The text field of an answer that is still being written: the model writes JSON, and `text` comes first. An escape
+ * cut in half at the end waits for the next piece.
+ */
+export function partialText(json: string): string {
+  const start = json.match(/"text"\s*:\s*"/)
+  if (!start || start.index === undefined) return ''
+  let text = ''
+  for (let i = start.index + start[0].length; i < json.length; i++) {
+    const char = json[i]
+    if (char === '"') return text
+    if (char !== '\\') {
+      text += char
+      continue
+    }
+    const next = json[i + 1]
+    if (next === undefined) return text
+    if (next === 'u') {
+      const hex = json.slice(i + 2, i + 6)
+      if (hex.length < 4) return text
+      text += String.fromCharCode(parseInt(hex, 16))
+      i += 5
+      continue
+    }
+    text += { n: '\n', t: '\t', r: '', b: '', f: '' }[next] ?? next
+    i += 1
+  }
+  return text
 }
 
 /** The question plus the text of the files the user added, marked so the model treats it as data. */
@@ -101,9 +164,11 @@ function parseOutput(content: string): ModelOutput {
         ? { what: json.vacancySearch.what.trim(), where: String(json.vacancySearch.where ?? '').trim() }
         : null,
       title: typeof json.title === 'string' ? json.title : null,
+      memories: Array.isArray(json.memories) ? json.memories : [],
+      usedMemories: Array.isArray(json.usedMemories) ? json.usedMemories : [],
     }
   } catch {
-    return { text: content, question: null, navigation: null, vacancySearch: null, title: null }
+    return { text: content, question: null, navigation: null, vacancySearch: null, title: null, memories: [], usedMemories: [] }
   }
 }
 

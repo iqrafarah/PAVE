@@ -30,6 +30,49 @@ struct AppStateTests {
         return state
     }
 
+    @Test func comingBackAfterTheLockTimeAsksForThePinOverTheApp() throws {
+        let state = try signedInState()
+        let away = Date(timeIntervalSince1970: 1_000)
+        state.didEnterBackground(at: away)
+        state.didBecomeActive(at: away.addingTimeInterval(TimeInterval(AppState.defaultLockAfter)))
+        #expect(state.isRelocked)
+        #expect(state.phase == .main)
+        #expect(!state.isOpen)
+
+        #expect(state.unlock(with: pin) == .correct)
+        #expect(!state.isRelocked)
+        #expect(state.isOpen)
+    }
+
+    @Test func aShortTimeAwayDoesNotLock() throws {
+        let state = try signedInState()
+        let away = Date(timeIntervalSince1970: 1_000)
+        state.didEnterBackground(at: away)
+        state.didBecomeActive(at: away.addingTimeInterval(30))
+        #expect(!state.isRelocked)
+    }
+
+    @Test func lockingAtOnceIsASetting() throws {
+        let state = try signedInState()
+        defaults.set(0, forKey: AppState.lockAfterKey)
+        let away = Date(timeIntervalSince1970: 1_000)
+        state.didEnterBackground(at: away)
+        state.didBecomeActive(at: away.addingTimeInterval(1))
+        #expect(state.isRelocked)
+    }
+
+    @Test func faceIDUnlocksTheRelockedApp() async throws {
+        let state = makeState(biometrics: StubBiometrics())
+        state.finishLoading()
+        state.signIn(accountID: ravi)
+        try state.completePinSetup(pin: pin, useBiometrics: true)
+        let away = Date(timeIntervalSince1970: 1_000)
+        state.didEnterBackground(at: away)
+        state.didBecomeActive(at: away.addingTimeInterval(3_600))
+        #expect(await state.unlockWithBiometrics())
+        #expect(state.isOpen)
+    }
+
     @Test func startsInLoading() {
         #expect(makeState().phase == .loading)
     }

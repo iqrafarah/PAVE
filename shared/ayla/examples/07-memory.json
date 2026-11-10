@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "id": "rep_07",
+  "conversationId": "conv_phone",
+  "text": "Mooi, die combinatie van studie en leidinggeven is sterk voor een baan als IT-consultant.",
+  "memories": [
+    { "text": "Je studeert ICT aan Fontys.", "category": "education" },
+    { "text": "Je werkt als leidinggevende bij de Plus.", "category": "work" }
+  ],
+  "blocks": [],
+  "usedData": []
+}
