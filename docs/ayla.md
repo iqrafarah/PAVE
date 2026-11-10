@@ -432,7 +432,7 @@ Turned off, Ayla uses none of the notes and suggests nothing; the notes stay unt
 - Never save a memory, delete one or change anything without the user's tap. Ayla's text never says she remembered something.
 - Never send attachments as files or store them: only their text, with that one question.
 - Show "Gebaseerd op" whenever `usedMemories` is there; it is a promise of PAVE, not decoration.
-- Use the texts of the iPhone where they exist (`ios/PAVE/Features/Ayla/AylaMessages.swift`), so both apps say the same.
+- Use the texts of the iPhone where they exist (`ios/PAVE/Features/Ayla/Shared/AylaMessages.swift`), so both apps say the same.
 
 ## Privacy: things to be honest about
 

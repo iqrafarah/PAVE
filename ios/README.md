@@ -6,26 +6,40 @@ SwiftUI-app voor PAVE. Open `PAVE.xcodeproj` in Xcode 26 of nieuwer. Minimale ve
 
 ```
 PAVE/
-  App/          PAVEApp, AppState (loading → login → pincode → main), RootView
-  DesignSystem/ Herbruikbare UI: tekststijlen, knoppen, tekstveld, melding, toetsenbord voor de pincode
-  Features/     Eén map per feature van het takenbord
+  App/            PAVEApp, AppState (loading → login → pincode → main), RootView, PaveAppDelegate
+    Services/     Keuze tussen echte en demo-diensten (AuthServiceFactory, AylaServiceFactory), Face ID, internetverbinding
+    Shortcuts/    Sneltoetsen (PaveCommands) en Siri/Opdrachten (PaveAppShortcuts)
+  DesignSystem/   Herbruikbare UI voor de hele app
+    Buttons/      Knoppen, chips, vinkje
+    Text/         Tekststijlen, titels, hulptekst, icoon met tekst
+    Inputs/       Tekstveld, zoekveld, toetsenbord voor de pincode
+    Feedback/     Meldingen, lege staat, offline-melding, trillingen, privacyscherm, MessageSlot
+    Layout/       Indeling per toestel (AdaptiveLayout), maximale breedte, matchedFrame
+  Features/       Eén map per feature van het takenbord
     Loading/
-    Auth/       AuthFlow (navigatie + logica), Screens/, Components/
-    Lock/       Pincode aanmaken en invoeren (PinSetupView, PinLockView, PinScreen)
-    Main/       De app na het inloggen: menu (zijbalk of rail) en de keuze tussen Ayla, Kluis, Plan, Profiel, Instellingen en Meldingen
-    Ayla/       Chat met Ayla, chatoverzicht, plusmenu en bijlagen
-    Vault/      Kluis (nu nog leeg: er is geen kluis in de database)
-    Plan/       Plannen (nu nog leeg)
-    Profile/    Profiel (nu nog leeg: delen bestaat nog niet)
-    Settings/   Instellingen: je account en uitloggen
+    Auth/         AuthFlow (navigatie + logica), Screens/, Components/
+    Lock/         Pincode aanmaken en invoeren (PinSetupView, PinLockView, PinScreen)
+    Main/         De app na het inloggen: MainView, Menu/ (zijbalk, lade, account, bel), Components/
+    Ayla/         AylaRootView, en per onderdeel:
+      Chat/       Het gesprek: AylaChatScreen, AylaChatModel, concepten; Components/ (berichten, welkom, keuzes, denken)
+      Composer/   Het tekstveld en dicteren; Attachments/ (plusmenu, bijlagen, scannen, slepen en plakken)
+      Voice/      Spraakbalk en volledig scherm; Audio/ (opnemen, afspelen, voorlezen), Orb/ (de orb en zijn beweging)
+      Chats/      Chatoverzicht en zoeken; Components/ (lijst, rijen, voorbeeld, menu)
+      Memory/     Wat Ayla over je weet: scherm, mapjes, model; Components/ (kaart in de chat, mapje, bewerken)
+      Cards/      Kaarten in een antwoord: Vacancies/, VaultSelection/, bijlagekaart, onderblad
+      Shared/     Wat meerdere onderdelen van Ayla gebruiken (AylaMessages, AylaUndoBar)
+    Vault/        Kluis (nu nog leeg: er is geen kluis in de database)
+    Plan/         Plannen (nu nog leeg)
+    Profile/      Profiel (nu nog leeg: delen bestaat nog niet)
+    Settings/     Instellingen: je account en uitloggen
     Notifications/ Meldingen (nu nog leeg)
-  Resources/    AppIcon.icon, Assets.xcassets (iconen)
-PAVEWatch/      Apple Watch-app (spraakbot, geen volledige interface)
-PAVEWidgets/    Widgets en knoppen voor het Bedieningspaneel (WidgetKit-extensie)
-Shared/         Wat iPhone, Watch en widgets delen: kleuren, logo-letters, laadscherm, de PAVE-slash, fonts (Inter, Sora),
-                de links naar de app (`PaveLink`) en de opdrachten voor Siri (`PaveIntents`)
-PAVETests/      Swift Testing
-PAVECore/       Gedeelde logica voor iPhone en Watch (zonder UI): Auth/, Lock/, Layout/
+  Resources/      AppIcon.icon, Assets.xcassets (iconen)
+PAVEWatch/        Apple Watch-app (spraakbot, geen volledige interface)
+PAVEWidgets/      Widgets en knoppen voor het Bedieningspaneel (WidgetKit-extensie)
+Shared/           Wat iPhone, Watch en widgets delen: kleuren, logo-letters, laadscherm, de PAVE-slash, fonts (Inter, Sora),
+                  de links naar de app (`PaveLink`) en de opdrachten voor Siri (`PaveIntents`)
+PAVETests/        Swift Testing
+PAVECore/         Gedeelde logica voor iPhone en Watch (zonder UI): Auth/, Lock/, Layout/, Ayla/
 ```
 
 Nieuwe features krijgen een eigen map in `Features/` (bijv. `Home/`, `Ayla/`, `Vault/`, `Plans/`, `Jobs/`, `Contact/`, `Settings/`, `Onboarding/`). UI-componenten die alleen de iPhone gebruikt, komen in `PAVE/DesignSystem/`. Alles wat iPhone en Watch allebei tonen, staat in `Shared/`.
@@ -55,7 +69,7 @@ De app draait op iPhone en iPad. Alle inlog- en pincodeschermen passen zich aan 
 - **Half open** (alleen iOS 27.1 of nieuwer): de app vraagt de vouwzone op (`reservedRegions(kind: .division)`) en verdeelt het scherm in twee velden aan weerszijden van de vouw. Titel en uitleg staan in het ene veld, formulier of toetsenbord in het andere. Er staat niets in de vouw. De berekening zit in `PAVECore/Layout/FoldSplit.swift` en is getest.
 - De pincodeschermen meten hoeveel ruimte de tekst inneemt en maken de toetsen zo groot als er past. Bij heel grote tekst scrollen ze, in plaats van af te kappen.
 
-De indeling zit in `AuthScreen` (inlog) en `PinScreen` (pincode), de keuze tussen de indelingen in `DesignSystem/AdaptiveLayout.swift`. Nieuwe schermen in de inlogflow gebruiken `AuthScreen { intro } content: { formulier }`.
+De indeling zit in `AuthScreen` (inlog) en `PinScreen` (pincode), de keuze tussen de indelingen in `DesignSystem/Layout/AdaptiveLayout.swift`. Nieuwe schermen in de inlogflow gebruiken `AuthScreen { intro } content: { formulier }`.
 
 Testen kan in Xcode via Device Hub (Window, Device Hub): kies de iPhone Duo en zet het toestel dicht, open, half open, gedraaid en in Split View. Controleer Split View aan beide kanten, want de veilige zone is niet aan beide kanten even breed.
 
@@ -70,8 +84,8 @@ Een component in SwiftUI is een `View`, net als een `.vue`-bestand op web. Een s
 - **Eén component per bestand**, met dezelfde naam (`ChatBubble` staat in `ChatBubble.swift`). Een klein datatype dat alleen bij dat component hoort, mag erbij (zoals `AylaChoice` bij `AylaChoiceBar`).
 - **Elk component heeft een `#Preview`**, zodat je het in Xcode los ziet, zonder de app te starten.
 - **Waar komt een component?**
-  - Bruikbaar in meer dan één onderdeel van de app (knoppen, invoervelden, chips, meldingen): `PAVE/DesignSystem/`, met `Pave` voor de naam (`PaveChip`, `PaveActionButton`).
-  - Alleen voor één onderdeel: `PAVE/Features/<Onderdeel>/Components/`.
+  - Bruikbaar in meer dan één onderdeel van de app (knoppen, invoervelden, chips, meldingen): `PAVE/DesignSystem/<Soort>/`, met `Pave` voor de naam (`PaveChip` in `Buttons/`, `PaveNotice` in `Feedback/`).
+  - Alleen voor één onderdeel: `PAVE/Features/<Onderdeel>/Components/`. Is een feature groot (zoals Ayla), dan krijgt elk deel een eigen map met daarin weer `Components/`: `Features/Ayla/Chat/Components/`.
   - Een heel scherm: `PAVE/Features/<Onderdeel>/` (of `Screens/` bij veel schermen).
   - Logica zonder scherm (versturen, opslaan, regels): een model naast het scherm (`AylaChatModel`), of `PAVECore` als de Watch of web het ook nodig heeft.
 - **Een component krijgt gegevens binnen en meldt acties terug**, zoals props en emits op web: `AylaComposer(text:onSend:)`. Het component praat zelf niet met de server.
