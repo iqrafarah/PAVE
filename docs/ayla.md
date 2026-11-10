@@ -192,7 +192,7 @@ Details and the reasons behind each choice are in `ios/README.md` (section Ayla)
 - **Menu:** laid out like ChatGPT, a sidebar on iPad and the open iPhone Duo held sideways, and a layout around the fold of a partly folded iPhone Duo.
 - **Messages:** press and hold to copy, select text, have Ayla read it out, get a new answer to the last question, or change your last question. The last two first remove the last question and answer from `ayla_messages` (`removeLastTurn`, allowed by the policy "Delete own messages"), so Ayla does not see the old answer in the history.
 - **Around the chat:** a half-typed message is kept per chat on the device, a button jumps back to the newest message, and offline the app says so calmly instead of failing.
-- **Voice mode:** a haptic at every turn, and optional captions that follow Ayla sentence by sentence.
+- **Voice mode:** a haptic at every turn, and captions that follow Ayla sentence by sentence (on by default; the user can hide all text under the orb).
 - **Memory:** "Zal ik dit onthouden?" under a reply, and "Wat Ayla over je weet" in Settings (see "Memory").
 - **Outside the app:** Siri and Shortcuts phrases, the Action button, Control Center buttons and widgets start a voice conversation or a new chat. They only open the app (behind the PIN), never show anything from it.
 

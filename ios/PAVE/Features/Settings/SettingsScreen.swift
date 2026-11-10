@@ -8,7 +8,7 @@ struct SettingsScreen: View {
 
     @State private var confirmsSignOut = false
     @AppStorage(AylaSpotlight.settingKey) private var chatsInSpotlight = false
-    @AppStorage(AylaCaptionsSetting.key) private var captionsChoice: Bool?
+    @AppStorage(AylaVoiceTextSetting.key) private var showsVoiceText = true
     @AppStorage(AppState.lockAfterKey) private var lockAfter = AppState.defaultLockAfter
     @Environment(AylaMemoryModel.self) private var memory
 
@@ -71,6 +71,20 @@ struct SettingsScreen: View {
                     }
                     .buttonStyle(.pave)
 
+                    VStack(alignment: .leading, spacing: 8) {
+                        Toggle(isOn: $showsVoiceText) {
+                            Text("Tekst bij praten met Ayla")
+                                .textStyle(.listTitle)
+                                .foregroundStyle(Color.ink)
+                        }
+                        .tint(.brandGreen)
+                        Text("Je leest zin voor zin mee met wat Ayla zegt. Zet je dit uit, dan zie je alleen de orb.")
+                            .textStyle(.caption)
+                            .foregroundStyle(Color.inkMuted)
+                    }
+                    .padding(12)
+                    .background(Color.white, in: .rect(cornerRadius: 14))
+
                     Text("Privacy")
                         .textStyle(.bodyMedium)
                         .foregroundStyle(Color.inkMuted)
@@ -114,26 +128,6 @@ struct SettingsScreen: View {
                     .padding(12)
                     .background(Color.white, in: .rect(cornerRadius: 14))
 
-                    Text("Toegankelijkheid")
-                        .textStyle(.bodyMedium)
-                        .foregroundStyle(Color.inkMuted)
-                        .padding(.leading, 8)
-                        .padding(.top, 20)
-                        .accessibilityAddTraits(.isHeader)
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Toggle(isOn: captions) {
-                            Text("Ondertitels bij praten met Ayla")
-                                .textStyle(.listTitle)
-                                .foregroundStyle(Color.ink)
-                        }
-                        .tint(.brandGreen)
-                        Text("Je leest zin voor zin mee met wat Ayla zegt. Staat standaard aan als je ondertiteling in de toegankelijkheidsinstellingen van je iPhone hebt aangezet.")
-                            .textStyle(.caption)
-                            .foregroundStyle(Color.inkMuted)
-                    }
-                    .padding(12)
-                    .background(Color.white, in: .rect(cornerRadius: 14))
                 }
                 .padding(.horizontal, 23)
                 .padding(.top, 32)
@@ -154,10 +148,6 @@ struct SettingsScreen: View {
         case .notSetUp: return "Nog niet beschikbaar"
         default: return "Bekijk, pas aan of wis wat Ayla onthoudt"
         }
-    }
-
-    private var captions: Binding<Bool> {
-        Binding(get: { AylaCaptionsSetting.isOn(captionsChoice) }, set: { captionsChoice = $0 })
     }
 }
 

@@ -69,7 +69,7 @@ struct AylaChatScreen: View {
     @State private var isAwayFromBottom = false
     /// The offline line above the text field; the conversation makes room for it, so it never covers a message.
     @State private var offlineNoticeHeight: CGFloat = 0
-    @AppStorage(AylaCaptionsSetting.key) private var captionsChoice: Bool?
+    @AppStorage(AylaVoiceTextSetting.key) private var showsVoiceText = true
     private let connection = PaveConnection.shared
 
     private struct SelectableText: Identifiable {
@@ -95,7 +95,7 @@ struct AylaChatScreen: View {
                             mode: orbMode(voice.state),
                             meter: voice.meter,
                             orbFrame: frame,
-                            quietFrame: orbMotion.isLow ? .null : captionFrame,
+                            quietFrame: orbMotion.isLow || !showsVoiceText ? .null : captionFrame,
                             revealedAt: fieldRevealedAt
                         )
                     }
@@ -311,12 +311,12 @@ struct AylaChatScreen: View {
                 .allowsHitTesting(!isTalking || orbMotion.isLow)
 
             if let voice, isTalking {
-                // With captions on, the line follows Ayla sentence by sentence.
-                TimelineView(.periodic(from: .now, by: showsCaptions ? 0.25 : 3600)) { context in
+                // The line follows Ayla sentence by sentence.
+                TimelineView(.periodic(from: .now, by: showsVoiceText ? 0.25 : 3600)) { context in
                     AylaVoiceStage(
                         caption: stageCaption(voice, at: context.date),
                         motion: orbMotion,
-                        isCaptioned: showsCaptions,
+                        showsText: showsVoiceText,
                         onOrbFrame: { place(.center, at: $0) },
                         onCaptionFrame: { captionFrame = $0 }
                     )
@@ -678,7 +678,7 @@ struct AylaChatScreen: View {
     /// The one line under the full-screen orb: what you say, Ayla's answer, or a hint while nothing is happening.
     private func stageCaption(_ voice: AylaVoiceSession, at date: Date) -> AylaVoiceCaption {
         if !voice.heard.isEmpty { return .init(text: voice.heard, kind: .heard) }
-        if showsCaptions, let sentence = voice.spokenSentence(at: date) {
+        if let sentence = voice.spokenSentence(at: date) {
             return .init(text: sentence, kind: .answer)
         }
         if voice.state == .speaking, let answer = model.entries.last(where: { $0.role == .ayla })?.text, !answer.isEmpty {
@@ -826,8 +826,6 @@ struct AylaChatScreen: View {
 
 
     private var isVoiceActive: Bool { voice?.isActive == true }
-
-    private var showsCaptions: Bool { AylaCaptionsSetting.isOn(captionsChoice) }
 
     private enum OrbPlace {
         /// Large in the middle.
