@@ -113,7 +113,7 @@ struct VaultItemEditor: View {
             .scrollContentBackground(.hidden)
             .background(Color.canvas)
             .scrollDismissesKeyboard(.interactively)
-            .navigationTitle(itemID == nil ? "Nieuw in je kluis" : "Aanpassen")
+            .navigationTitle(itemID == nil ? "Nieuw item" : "Aanpassen")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

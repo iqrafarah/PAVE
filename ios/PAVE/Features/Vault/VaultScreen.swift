@@ -68,12 +68,15 @@ struct VaultScreen: View {
                 .task { await model.load() }
                 .sheet(item: $openedItem) { item in
                     VaultItemDetailView(itemID: item.id)
+                        .paveSheet()
                 }
                 .sheet(item: $editedItem) { item in
                     VaultItemEditor(item: item)
+                        .paveSheet()
                 }
                 .sheet(isPresented: $addsItem) {
                     VaultItemEditor(category: newItemCategory, folderID: newItemFolderID)
+                        .paveSheet()
                 }
                 .sheet(item: $folderSheet) { sheet in
                     Group {
@@ -86,9 +89,8 @@ struct VaultScreen: View {
                             VaultFolderEditor(folder: folder, style: model.style(of: folder))
                         }
                     }
-                    .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
-                    .presentationCornerRadius(25)
+                    .paveSheet()
                 }
                 .confirmationDialog("Uit je kluis verwijderen?", isPresented: isPresented($deletedItem), titleVisibility: .visible, presenting: deletedItem) { item in
                     Button("Verwijderen", role: .destructive) {
@@ -189,6 +191,7 @@ struct VaultScreen: View {
                         title: folder.name,
                         icon: style.icon.image,
                         color: style.color.color,
+                        surface: style.color.surface,
                         count: model.count(in: .folder(folder.id)),
                         isSelected: filter.shelf == .folder(folder.id)
                     ) {

@@ -26,20 +26,9 @@ struct VaultItemDetailView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Klaar") { dismiss() }
                 }
-                if let item {
-                    ToolbarItem(placement: .primaryAction) {
-                        Menu {
-                            VaultItemActionButtons(item: item, onEdit: { isEditing = true }, onDelete: { confirmsDelete = true })
-                        } label: {
-                            Image(.iconEllipsis)
-                                .renderingMode(.template)
-                        }
-                        .accessibilityLabel("Meer")
-                    }
-                }
             }
             .sheet(isPresented: $isEditing) {
-                if let item { VaultItemEditor(item: item) }
+                if let item { VaultItemEditor(item: item).paveSheet() }
             }
             .confirmationDialog("Uit je kluis verwijderen?", isPresented: $confirmsDelete, titleVisibility: .visible) {
                 Button("Verwijderen", role: .destructive) {
@@ -70,6 +59,20 @@ struct VaultItemDetailView: View {
                             .accessibilityAddTraits(.isHeader)
                         VaultStatusBadge(status: item.status)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    // In the content rather than the navigation bar: on the outer display of the iPhone Duo the bar puts
+                    // its buttons in the status column, where the sheet does not reach.
+                    Menu {
+                        VaultItemActionButtons(item: item, onEdit: { isEditing = true }, onDelete: { confirmsDelete = true })
+                    } label: {
+                        Image(.iconEllipsis)
+                            .renderingMode(.template)
+                            .foregroundStyle(Color.ink)
+                            .frame(width: 44, height: 44)
+                            .background(Color.surfaceTint, in: .circle)
+                            .contentShape(.circle)
+                    }
+                    .accessibilityLabel("Meer")
                 }
 
                 section("Status") {

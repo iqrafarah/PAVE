@@ -13,35 +13,21 @@ struct VaultFilterBar: View {
     var body: some View {
         HStack(spacing: 8) {
             Menu {
-                Picker(selection: $filter.status) {
-                    Text("Alle statussen").tag(VaultItem.Status?.none)
+                Section("Status") {
                     ForEach(VaultItem.Status.allCases, id: \.self) { status in
-                        Text(status.title).tag(Optional(status))
+                        Toggle(status.title, isOn: choice($filter.status, status))
                     }
-                } label: {
-                    Text("Status")
-                    Text(filter.status?.title ?? "Alle statussen")
                 }
-                .pickerStyle(.menu)
-                Picker(selection: $filter.origin) {
-                    Text("Alle bronnen").tag(VaultFilter.Origin?.none)
+                Section("Bron") {
                     ForEach(VaultFilter.Origin.allCases, id: \.self) { origin in
-                        Text(origin.title).tag(Optional(origin))
+                        Toggle(origin.title, isOn: choice($filter.origin, origin))
                     }
-                } label: {
-                    Text("Bron")
-                    Text(filter.origin?.title ?? "Alle bronnen")
                 }
-                .pickerStyle(.menu)
-                Picker(selection: $filter.order) {
+                Section("Datum") {
                     ForEach(VaultFilter.Order.allCases, id: \.self) { order in
-                        Text(order.title).tag(order)
+                        Toggle(order.title, isOn: Binding(get: { filter.order == order }, set: { if $0 { filter.order = order } }))
                     }
-                } label: {
-                    Text("Datum")
-                    Text(filter.order.title)
                 }
-                .pickerStyle(.menu)
                 if filter.narrowsDown {
                     Section {
                         Button("Filters wissen", role: .destructive) {
@@ -110,6 +96,11 @@ struct VaultFilterBar: View {
             }
         }
         .contentShape(.rect(cornerRadius: 10))
+    }
+
+    /// On when this value is chosen; tapping it again turns the filter off, so "Alle" needs no row of its own.
+    private func choice<Value: Equatable>(_ selection: Binding<Value?>, _ value: Value) -> Binding<Bool> {
+        Binding(get: { selection.wrappedValue == value }, set: { selection.wrappedValue = $0 ? value : nil })
     }
 
     /// What VoiceOver reads on the Filter button: which filters are on and how the list is sorted.

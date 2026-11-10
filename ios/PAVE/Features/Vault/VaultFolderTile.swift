@@ -5,6 +5,7 @@ struct VaultFolderTile: View {
     let title: String
     let icon: ImageResource
     var color: Color = .brandGreen
+    var surface: Color = .surfaceTint
     let count: Int
     let isSelected: Bool
     let action: () -> Void
@@ -12,7 +13,7 @@ struct VaultFolderTile: View {
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 0) {
-                Color.surfaceTint
+                surface
                     .frame(height: 50)
                     .overlay(alignment: .bottomLeading) {
                         Image(.vaultFolder)

@@ -78,6 +78,11 @@ extension VaultFolderColor {
         case .slate: .folderSlate
         }
     }
+
+    /// The light band behind the folder: 11% of the colour on white, which for green is exactly the surface tint.
+    var surface: Color {
+        self == .green ? .surfaceTint : color.mix(with: .white, by: 0.89)
+    }
 }
 
 extension VaultFolderIcon {

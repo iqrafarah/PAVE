@@ -14,7 +14,7 @@ enum VaultMessages {
     static let folderNameMissing = "Geef je map een naam."
     static let deleteFolderMessage = "De items in deze map blijven gewoon in je kluis staan."
     static let deleteItemMessage = "Dit haalt het item en de bestanden erbij voorgoed uit je kluis, ook op het web. Dit kun je niet ongedaan maken."
-    static let folderNameTaken = "Je hebt al een map met deze naam."
+    static let folderNameTaken = "Je hebt al een map met deze naam. Kies een andere naam."
 
     static func itemCount(_ count: Int) -> String {
         count == 1 ? "1 item" : "\(count) items"

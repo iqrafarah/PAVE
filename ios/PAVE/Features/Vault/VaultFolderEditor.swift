@@ -26,6 +26,13 @@ struct VaultFolderEditor: View {
         _icon = State(initialValue: style?.icon ?? .folder)
     }
 
+    /// The outer display of the iPhone Duo and an iPhone held sideways have little height: less space between parts.
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @State private var size = CGSize(width: 400, height: 800)
+    private var isShort: Bool { verticalSizeClass == .compact || size.height < 720 }
+    /// Wide and low, like the card on the open iPhone Duo or an iPad held sideways: two columns, so nothing hides under the button.
+    private var isWide: Bool { size.width >= 500 && size.height < 560 }
+
     private var trimmedName: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
     private static let errors = [VaultMessages.folderNameTaken, VaultMessages.folderNameMissing, VaultMessages.message(for: .noConnection)]
 
@@ -38,8 +45,9 @@ struct VaultFolderEditor: View {
                 form
             }
         }
-        .frame(maxWidth: 520)
+        .frame(maxWidth: isWide ? 760 : 520)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { size = $0 }
         .background(Color.white.ignoresSafeArea())
         .tint(.brandGreen)
     }
@@ -47,73 +55,37 @@ struct VaultFolderEditor: View {
     private var form: some View {
         VStack(spacing: 0) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    Text(folder == nil ? VaultMessages.newFolderTitle : "Map aanpassen")
-                        .textStyle(.emptyTitle)
-                        .foregroundStyle(Color.ink)
-                        .accessibilityAddTraits(.isHeader)
-
-                    VaultFolderTile(
-                        title: trimmedName.isEmpty ? VaultMessages.newFolderTitle : trimmedName,
-                        icon: icon.image,
-                        color: color.color,
-                        count: folder.map { model.count(in: .folder($0.id)) } ?? 0,
-                        isSelected: false
-                    ) {}
-                    .allowsHitTesting(false)
-                    .frame(maxWidth: .infinity)
-                    .accessibilityHidden(true)
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Naam")
-                            .textStyle(.label)
-                            .foregroundStyle(Color.ink)
-                        TextField("Bijvoorbeeld Stage of Bijbaan", text: $name)
-                            .textStyle(.input)
-                            .foregroundStyle(Color.ink)
-                            .focused($isNameFocused)
-                            .submitLabel(.done)
-                            .onSubmit(save)
-                            .padding(.horizontal, 14)
-                            .frame(minHeight: 52)
-                            .background(Color.white, in: .rect(cornerRadius: 7))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 7)
-                                    .strokeBorder(error == nil ? Color.cardBorder : Color.critical, lineWidth: error == nil ? 1 : 1.5)
+                Group {
+                    if isWide {
+                        HStack(alignment: .top, spacing: 28) {
+                            VStack(alignment: .leading, spacing: 16) {
+                                title
+                                preview
+                                nameField
                             }
-                            .accessibilityLabel("Naam van de map")
-                            .onChange(of: name) { error = nil }
-                        MessageSlot(message: error, reserving: Self.errors) { PaveInlineError(message: $0) }
-                    }
-
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Kleur")
-                            .textStyle(.label)
-                            .foregroundStyle(Color.ink)
-                        HStack(spacing: 0) {
-                            ForEach(VaultFolderColor.allCases, id: \.self) { option in
-                                colorButton(option)
-                                    .frame(maxWidth: .infinity)
+                            .frame(maxWidth: .infinity)
+                            VStack(alignment: .leading, spacing: 16) {
+                                colors
+                                icons
                             }
+                            .frame(maxWidth: .infinity)
                         }
-                    }
-
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Icoon")
-                            .textStyle(.label)
-                            .foregroundStyle(Color.ink)
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 8), spacing: 8) {
-                            ForEach(VaultFolderIcon.allCases, id: \.self) { option in
-                                iconButton(option)
-                            }
+                    } else {
+                        VStack(alignment: .leading, spacing: isShort ? 16 : 24) {
+                            title
+                            preview
+                            nameField
+                            colors
+                            icons
                         }
                     }
                 }
                 .padding(.horizontal, 24)
-                .padding(.top, 28)
+                .padding(.top, isShort ? 20 : 28)
                 .padding(.bottom, 16)
             }
             .scrollDismissesKeyboard(.interactively)
+            .scrollBounceBehavior(.basedOnSize)
 
             PavePrimaryButton(
                 title: folder == nil ? "Map aanmaken" : "Bewaren",
@@ -121,9 +93,84 @@ struct VaultFolderEditor: View {
                 isLoading: isSaving,
                 action: save
             )
+            .frame(maxWidth: isWide ? 360 : .infinity)
             .padding(.horizontal, 24)
             .padding(.top, 8)
             .padding(.bottom, 12)
+        }
+    }
+
+    private var title: some View {
+        Text(folder == nil ? VaultMessages.newFolderTitle : "Map aanpassen")
+            .textStyle(.emptyTitle)
+            .foregroundStyle(Color.ink)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    private var preview: some View {
+        VaultFolderTile(
+            title: trimmedName.isEmpty ? VaultMessages.newFolderTitle : trimmedName,
+            icon: icon.image,
+            color: color.color,
+            surface: color.surface,
+            count: folder.map { model.count(in: .folder($0.id)) } ?? 0,
+            isSelected: false
+        ) {}
+        .allowsHitTesting(false)
+        .frame(maxWidth: .infinity)
+        .accessibilityHidden(true)
+    }
+
+    private var nameField: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Naam")
+                .textStyle(.label)
+                .foregroundStyle(Color.ink)
+            TextField("Bijvoorbeeld Stage of Bijbaan", text: $name)
+                .textStyle(.input)
+                .foregroundStyle(Color.ink)
+                .focused($isNameFocused)
+                .submitLabel(.done)
+                .onSubmit(save)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 52)
+                .background(Color.white, in: .rect(cornerRadius: 7))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 7)
+                        .strokeBorder(error == nil ? Color.cardBorder : Color.critical, lineWidth: error == nil ? 1 : 1.5)
+                }
+                .accessibilityLabel("Naam van de map")
+                .onChange(of: name) { error = nil }
+            MessageSlot(message: error, reserving: Self.errors) { PaveInlineError(message: $0) }
+        }
+    }
+
+    private var colors: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Kleur")
+                .textStyle(.label)
+                .foregroundStyle(Color.ink)
+            HStack(spacing: 0) {
+                ForEach(VaultFolderColor.allCases, id: \.self) { option in
+                    colorButton(option)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+        }
+    }
+
+    private var icons: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Icoon")
+                .textStyle(.label)
+                .foregroundStyle(Color.ink)
+            // As many columns as fit, each at least 44 points so every icon stays easy to tap.
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 44, maximum: 64), spacing: 8)], spacing: 8) {
+                ForEach(VaultFolderIcon.allCases, id: \.self) { option in
+                    iconButton(option)
+                }
+            }
         }
     }
 
@@ -183,7 +230,7 @@ struct VaultFolderEditor: View {
                 .frame(width: 112, height: 112)
                 .background(Color.brandGreen, in: .circle)
                 .accessibilityHidden(true)
-            VaultFolderTile(title: folder.name, icon: icon.image, color: color.color, count: 0, isSelected: false) {}
+            VaultFolderTile(title: folder.name, icon: icon.image, color: color.color, surface: color.surface, count: 0, isSelected: false) {}
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
             Spacer(minLength: 0)
@@ -233,6 +280,7 @@ struct VaultFolderEditor: View {
     private func show(_ message: String) {
         PaveHaptics.error()
         withAnimation(.easeOut(duration: 0.2)) { error = message }
+        AccessibilityNotification.Announcement(message).post()
         isNameFocused = true
     }
 }
