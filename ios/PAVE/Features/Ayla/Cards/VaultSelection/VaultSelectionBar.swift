@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Shown in place of the text field while choosing vault items: how many are chosen, and "Verder".
+/// Summarises the selected vault items and offers to continue.
 struct VaultSelectionBar: View {
     let count: Int
     let onContinue: () -> Void

@@ -1,40 +1,91 @@
 import SwiftUI
 
-/// A vault item that the user can tick to let Ayla use it (Figma: "HAVO Diploma").
+/// A selectable vault item used in the library and Ayla's task-consent panel.
 struct VaultItemCard: View {
     let title: String
     let organisation: String
     let period: String
     let tint: Color
     let isSelected: Bool
+    var category: String?
+    var logo: VaultCompanyLogo?
     let action: () -> Void
+
+    init(
+        title: String,
+        organisation: String,
+        period: String,
+        tint: Color,
+        isSelected: Bool,
+        category: String? = nil,
+        logo: VaultCompanyLogo? = nil,
+        action: @escaping () -> Void
+    ) {
+        self.title = title
+        self.organisation = organisation
+        self.period = period
+        self.tint = tint
+        self.isSelected = isSelected
+        self.category = category
+        self.logo = logo
+        self.action = action
+    }
+
+    init(item: VaultItem, isSelected: Bool, action: @escaping () -> Void) {
+        self.init(
+            title: item.title,
+            organisation: item.organisation,
+            period: item.period,
+            tint: item.category.tint,
+            isSelected: isSelected,
+            category: item.category.title,
+            logo: item.logo,
+            action: action
+        )
+    }
 
     var body: some View {
         Button(action: action) {
-            HStack(alignment: .top, spacing: 16) {
-                CompanyMonogram(name: organisation)
-                    .padding(.top, 9)
+            HStack(alignment: .top, spacing: 12) {
+                VaultCompanyLogoView(logo: logo, organisation: organisation)
+                    .padding(.top, 8)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(title)
                         .textStyle(.bubble)
                         .foregroundStyle(Color.ink)
-                        .padding(.top, 16)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 11)
+                    if let category {
+                        Text(category)
+                            .textStyle(.chip)
+                            .foregroundStyle(Color.brandGreen)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 4)
+                            .background(Color.surfaceTint, in: .capsule)
+                            .padding(.top, 5)
+                    }
                     VStack(alignment: .leading, spacing: 9) {
                         PaveIconLabel(icon: .iconBuilding, text: organisation)
                         PaveIconLabel(icon: .iconCalendar, text: period)
                     }
                     .padding(.leading, 5)
-                    .padding(.top, 13.6)
-                    .padding(.bottom, 16)
+                    .padding(.top, 9)
+                    .padding(.bottom, 11)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 PaveCheckbox(isOn: isSelected)
-                    .padding(.top, 16)
-                    .padding(.trailing, 17)
+                    .padding(.top, 12)
+                    .padding(.trailing, 8)
             }
             .padding(.leading, 9)
-            .frame(maxWidth: .infinity, minHeight: 109, alignment: .leading)
-            .background { FigmaCardGradient(tint: tint, start: UnitPoint(x: 0.77, y: 1.67), end: UnitPoint(x: 0.23, y: -0.67)) }
+            .frame(maxWidth: .infinity, minHeight: 116, alignment: .leading)
+            .background {
+                if isSelected {
+                    FigmaCardGradient(tint: tint, start: UnitPoint(x: 0.77, y: 1.67), end: UnitPoint(x: 0.23, y: -0.67))
+                } else {
+                    Color.white
+                }
+            }
             .clipShape(.rect(cornerRadius: 17))
             .overlay { RoundedRectangle(cornerRadius: 17).strokeBorder(Color.cardBorder, lineWidth: 1) }
             .contentShape(.rect(cornerRadius: 17))
@@ -46,8 +97,8 @@ struct VaultItemCard: View {
 
 #Preview {
     VStack(spacing: 13) {
-        VaultItemCard(title: "Diploma", organisation: "Voorbeeldschool", period: "2020 - 2025", tint: .cardTintApricot, isSelected: true) {}
-        VaultItemCard(title: "Bijbaan", organisation: "Voorbeeldwinkel", period: "Nov 2025 - nu", tint: .cardTintGreen, isSelected: false) {}
+        VaultItemCard(item: VaultItem.consentPrototype[0], isSelected: true) {}
+        VaultItemCard(item: VaultItem.consentPrototype[1], isSelected: false) {}
     }
     .padding(.leading, 25)
     .padding(.trailing, 26)

@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// The content of the panel in which the user chooses what Ayla may use (Figma frame "Kluis toestemming").
-/// It is ready for the vault; there is no vault in the database yet, so the app does not show it.
+/// The category and item selectors shared by the vault list and Ayla's task-consent panel.
 struct VaultSelectionList: View {
     struct Category: Identifiable {
         let id: String
@@ -15,6 +14,8 @@ struct VaultSelectionList: View {
         let organisation: String
         let period: String
         let tint: Color
+        var category: String? = nil
+        var logo: VaultCompanyLogo? = nil
     }
 
     let categories: [Category]
@@ -46,7 +47,9 @@ struct VaultSelectionList: View {
                         organisation: item.organisation,
                         period: item.period,
                         tint: item.tint,
-                        isSelected: selectedItems.contains(item.id)
+                        isSelected: selectedItems.contains(item.id),
+                        category: item.category,
+                        logo: item.logo
                     ) {
                         toggle(item.id, in: &selectedItems)
                     }
@@ -74,9 +77,9 @@ struct VaultSelectionList: View {
                 .init(id: "projects", title: "Projecten", count: 2),
             ],
             items: [
-                .init(id: "a", title: "Diploma", organisation: "Voorbeeldschool", period: "2020 - 2025", tint: .cardTintApricot),
-                .init(id: "b", title: "Bijbaan", organisation: "Voorbeeldwinkel", period: "Nov 2025 - nu", tint: .cardTintGreen),
-                .init(id: "c", title: "Eindverslag stage", organisation: "Voorbeeldbureau", period: "Mar 2025 - Dec 2025", tint: .cardTintLime),
+                .init(id: "a", title: "HAVO Diploma", organisation: "Mgr. Frencken College Oosterhout", period: "2020 - 2025", tint: .cardTintApricot, category: "Diploma's", logo: .frencken),
+                .init(id: "b", title: "Leidinggevende", organisation: "Plus Laurijssen Oosterhout", period: "nov 2025 - nu (11 mnd)", tint: .cardTintGreen, category: "Ervaringen", logo: .plus),
+                .init(id: "c", title: "Eindverslag stage", organisation: "LiveWall Tilburg", period: "mrt 2025 - dec 2025", tint: .cardTintLime, category: "Projecten", logo: .livewall),
             ],
             selectedCategories: $categories,
             selectedItems: $items
