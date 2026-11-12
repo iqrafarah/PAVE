@@ -16,6 +16,7 @@ struct MainView: View {
     @State private var memory: AylaMemoryModel
     @State private var vault: VaultModel
     @State private var devices: SignedInDevicesModel
+    @State private var watchConnection = WatchConnectionModel()
     @State private var destination = MainDestination.ayla
     @State private var isMenuOpen = false
     @State private var isSidebarHidden = false
@@ -226,6 +227,7 @@ struct MainView: View {
         case .settings:
             SettingsScreen(name: model.firstName, onShowMenu: onShowMenu, onSignOut: appState.signOut)
                 .environment(devices)
+                .environment(watchConnection)
         case .notifications:
             NotificationsScreen(onShowMenu: onShowMenu)
         }

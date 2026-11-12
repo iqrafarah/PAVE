@@ -47,10 +47,13 @@ public enum WatchLink {
     public enum Update: Equatable, Sendable {
         case session(WatchSession)
         case signedOut
+        /// Signed in on the iPhone, but this Watch is not connected in Instellingen (yet), or was disconnected.
+        case notConnected
     }
 
     static let sessionKey = "session"
     static let signedOutKey = "signedOut"
+    static let notConnectedKey = "notConnected"
     static let requestKey = "request"
 
     /// The Watch asks for a fresh session; the iPhone answers with `message(for:)`.
@@ -60,9 +63,10 @@ public enum WatchLink {
         message[requestKey] as? String == sessionKey
     }
 
-    /// `nil` means signed out on the iPhone.
-    public static func message(for session: WatchSession?) -> [String: Any] {
+    /// `nil` means signed out on the iPhone. A Watch that is not connected gets no session, even when signed in.
+    public static func message(for session: WatchSession?, isConnected: Bool = true) -> [String: Any] {
         guard let session, let data = try? JSONEncoder().encode(session) else { return [signedOutKey: true] }
+        guard isConnected else { return [notConnectedKey: true] }
         return [sessionKey: data]
     }
 
@@ -72,6 +76,7 @@ public enum WatchLink {
             return .session(session)
         }
         if message[signedOutKey] as? Bool == true { return .signedOut }
+        if message[notConnectedKey] as? Bool == true { return .notConnected }
         return nil
     }
 }

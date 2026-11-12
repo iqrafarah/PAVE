@@ -4,12 +4,14 @@ import PAVECore
 import WatchConnectivity
 
 /// The session the iPhone gave this Watch. There is no sign-in on the Watch: without a session from the iPhone,
-/// the Watch asks you to sign in there.
+/// the Watch asks you to sign in there, or to connect the Watch there when you are signed in but did not connect it.
 @Observable
 final class WatchSessionStore: NSObject, WCSessionDelegate {
     private(set) var session: WatchSession?
     /// The iPhone said you signed out, or never sent a session.
     private(set) var isSignedOut = false
+    /// Signed in on the iPhone, but this Watch is not connected in Instellingen.
+    private(set) var needsConnecting = false
 
     func start() {
         guard WCSession.isSupported() else {
@@ -52,9 +54,15 @@ final class WatchSessionStore: NSObject, WCSessionDelegate {
         case .session(let new):
             session = new
             isSignedOut = false
+            needsConnecting = false
         case .signedOut:
             session = nil
             isSignedOut = true
+            needsConnecting = false
+        case .notConnected:
+            session = nil
+            isSignedOut = true
+            needsConnecting = true
         case nil:
             break
         }

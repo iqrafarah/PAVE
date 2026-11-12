@@ -15,7 +15,7 @@ enum DevicesMessages {
     static let unavailableTitle = "Geen apparaten in de demo"
     static let unavailableMessage = "Log in met je eigen account om te zien waar je bent ingelogd."
     static let loadFailedTitle = "De lijst kon niet laden"
-    static let settingsRowMessage = "Bekijk waar je bent ingelogd en log apparaten uit"
+    static let settingsRowMessage = "Bekijk waar je bent ingelogd en koppel je Apple Watch"
 
     static func signOutQuestion(_ device: SignedInDevice) -> String {
         "Uitloggen op \(name(of: device))?"

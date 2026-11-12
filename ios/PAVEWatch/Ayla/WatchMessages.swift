@@ -13,6 +13,8 @@ enum WatchMessages {
     static let noMicrophone = "Zet de microfoon aan voor PAVE in Instellingen op je Apple Watch."
     static let signedOutTitle = "Log in op je iPhone"
     static let signedOutMessage = "Open PAVE op je iPhone en log in. Dan kun je hier met Ayla praten."
+    static let notConnectedTitle = "Koppel je Watch"
+    static let notConnectedMessage = "Open PAVE op je iPhone en kies Instellingen › Ingelogde apparaten."
     static let rememberQuestion = "Zal ik dit onthouden?"
     static let remembered = "Onthouden"
     static let notRemembered = "Niet onthouden"

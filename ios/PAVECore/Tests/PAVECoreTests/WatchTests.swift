@@ -29,6 +29,8 @@ struct WatchSessionTests {
         let session = WatchSession(projectURL: project, publishableKey: "pk", accessToken: token(expiresIn: 3600))
         #expect(WatchLink.update(from: WatchLink.message(for: session)) == .session(session))
         #expect(WatchLink.update(from: WatchLink.message(for: nil)) == .signedOut)
+        #expect(WatchLink.update(from: WatchLink.message(for: session, isConnected: false)) == .notConnected)
+        #expect(WatchLink.update(from: WatchLink.message(for: nil, isConnected: false)) == .signedOut)
         #expect(WatchLink.update(from: ["something": "else"]) == nil)
         #expect(WatchLink.isSessionRequest(WatchLink.sessionRequest))
         #expect(!WatchLink.isSessionRequest(["request": "other"]))

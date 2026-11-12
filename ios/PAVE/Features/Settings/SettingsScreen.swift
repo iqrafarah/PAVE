@@ -179,4 +179,5 @@ struct SettingsScreen: View {
     SettingsScreen(name: "Daaf", onShowMenu: {}, onSignOut: {})
         .environment(AylaMemoryModel(service: nil))
         .environment(SignedInDevicesModel(service: nil))
+        .environment(WatchConnectionModel())
 }

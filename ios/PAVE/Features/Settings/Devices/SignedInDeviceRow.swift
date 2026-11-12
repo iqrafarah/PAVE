@@ -9,38 +9,65 @@ struct SignedInDeviceRow: View {
     var onSignOut: (() -> Void)?
 
     var body: some View {
+        DeviceRow(
+            icon: device.icon,
+            title: DevicesMessages.name(of: device),
+            activity: DevicesMessages.activity(of: device),
+            detail: DevicesMessages.signedIn(of: device),
+            isHighlighted: device.isCurrent,
+            actionTitle: "Uitloggen",
+            actionLabel: "Uitloggen op \(DevicesMessages.name(of: device))",
+            isBusy: isSigningOut,
+            action: onSignOut
+        )
+    }
+}
+
+/// The layout of a row in Ingelogde apparaten, also used for the connected Apple Watch.
+struct DeviceRow: View {
+    let icon: ImageResource
+    let title: String
+    let activity: String
+    let detail: String
+    var isHighlighted = false
+    var actionTitle = "Uitloggen"
+    var actionLabel: String?
+    var isBusy = false
+    var action: (() -> Void)?
+
+    var body: some View {
         HStack(spacing: 12) {
-            Image(device.icon)
+            Image(icon)
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
                 .frame(width: 20, height: 20)
-                .foregroundStyle(device.isCurrent ? Color.white : .brandGreen)
+                .foregroundStyle(isHighlighted ? Color.white : .brandGreen)
                 .frame(width: 40, height: 40)
-                .background(device.isCurrent ? Color.brandGreen : .dropZone, in: .rect(cornerRadius: 10))
+                .background(isHighlighted ? Color.brandGreen : .dropZone, in: .rect(cornerRadius: 10))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
-                Text(DevicesMessages.name(of: device))
+                Text(title)
                     .textStyle(.listTitle)
                     .foregroundStyle(Color.ink)
                     .lineLimit(2)
-                Text(DevicesMessages.activity(of: device))
+                Text(activity)
                     .textStyle(.caption)
-                    .foregroundStyle(device.isCurrent ? Color.brandGreen : .inkMuted)
-                Text(DevicesMessages.signedIn(of: device))
+                    .foregroundStyle(isHighlighted ? Color.brandGreen : .inkMuted)
+                Text(detail)
                     .textStyle(.caption)
                     .foregroundStyle(Color.inkMuted)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            if let onSignOut {
-                Button(action: onSignOut) {
+            if let action {
+                Button(action: action) {
                     Group {
-                        if isSigningOut {
+                        if isBusy {
                             ProgressView()
                                 .controlSize(.small)
                                 .tint(.critical)
                         } else {
-                            Text("Uitloggen")
+                            Text(actionTitle)
                                 .textStyle(.gapChip)
                         }
                     }
@@ -51,8 +78,8 @@ struct SignedInDeviceRow: View {
                     .contentShape(.capsule)
                 }
                 .buttonStyle(.pave)
-                .disabled(isSigningOut)
-                .accessibilityLabel("Uitloggen op \(DevicesMessages.name(of: device))")
+                .disabled(isBusy)
+                .accessibilityLabel(actionLabel ?? actionTitle)
             }
         }
         .padding(12)

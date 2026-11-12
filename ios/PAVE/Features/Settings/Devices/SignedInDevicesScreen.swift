@@ -5,8 +5,11 @@ import SwiftUI
 /// one to sign out everywhere else at once.
 struct SignedInDevicesScreen: View {
     @Environment(SignedInDevicesModel.self) private var model
+    @Environment(WatchConnectionModel.self) private var watch
     @State private var deviceToSignOut: SignedInDevice?
     @State private var confirmsAllOthers = false
+    @State private var confirmsWatchDisconnect = false
+    @State private var connectsWatch = false
 
     var body: some View {
         ScrollView {
@@ -26,12 +29,28 @@ struct SignedInDevicesScreen: View {
             .frame(maxWidth: .infinity)
             .animation(.snappy(duration: 0.3), value: model.devices)
             .animation(.snappy(duration: 0.3), value: model.state)
+            .animation(.snappy(duration: 0.3), value: watch.connection)
         }
         .background(Color.canvas.ignoresSafeArea())
         .navigationTitle(DevicesMessages.title)
         .navigationBarTitleDisplayMode(.inline)
-        .task { await model.load() }
-        .refreshable { await model.load() }
+        .task {
+            await watch.refresh()
+            await model.load()
+        }
+        .refreshable {
+            await watch.refresh()
+            await model.load()
+        }
+        .sheet(isPresented: $connectsWatch) {
+            WatchConnectSheet()
+                .paveSheet()
+        }
+        .confirmationDialog(WatchConnectMessages.disconnectQuestion, isPresented: $confirmsWatchDisconnect, titleVisibility: .visible) {
+            Button("Ontkoppelen", role: .destructive) { Task { await watch.disconnect() } }
+        } message: {
+            Text(WatchConnectMessages.disconnectMessage)
+        }
         .confirmationDialog(
             deviceToSignOut.map(DevicesMessages.signOutQuestion) ?? "",
             isPresented: Binding(get: { deviceToSignOut != nil }, set: { if !$0 { deviceToSignOut = nil } }),
@@ -63,6 +82,8 @@ struct SignedInDevicesScreen: View {
             PaveEmptyState(icon: .iconDevicePhoneMobileSolid, title: DevicesMessages.unavailableTitle, message: DevicesMessages.unavailableMessage)
                 .padding(.top, 24)
         case .notSetUp:
+            // The Watch goes through this iPhone, so it can be connected without the list of sessions.
+            watchSection
             PaveEmptyState(icon: .iconDevicePhoneMobileSolid, title: DevicesMessages.notSetUpTitle, message: DevicesMessages.notSetUpMessage)
                 .padding(.vertical, 24)
             signOutAllButton
@@ -74,6 +95,7 @@ struct SignedInDevicesScreen: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.top, 24)
+            watchSection
         case .ready:
             list
         }
@@ -90,6 +112,7 @@ struct SignedInDevicesScreen: View {
             heading(DevicesMessages.thisDevice)
             SignedInDeviceRow(device: current)
         }
+        watchSection
         heading(DevicesMessages.otherDevices)
             .padding(.top, model.current == nil ? 0 : 12)
         if model.others.isEmpty {
@@ -107,6 +130,60 @@ struct SignedInDevicesScreen: View {
             }
             signOutAllButton
                 .padding(.top, 8)
+        }
+    }
+
+    /// The Watch has no session of its own: it uses this iPhone's, so it shows here as connected through this iPhone,
+    /// with Ontkoppelen. Not connected yet, the row opens the connect screen.
+    @ViewBuilder
+    private var watchSection: some View {
+        heading(WatchConnectMessages.rowTitle)
+            .padding(.top, 12)
+        if let connection = watch.connection {
+            DeviceRow(
+                icon: .iconWatchSolid,
+                title: WatchConnectMessages.rowTitle,
+                activity: WatchConnectMessages.activity(connection),
+                detail: WatchConnectMessages.connectedVia(connection),
+                actionTitle: "Ontkoppelen",
+                actionLabel: "Apple Watch ontkoppelen"
+            ) {
+                confirmsWatchDisconnect = true
+            }
+            .transition(.opacity.combined(with: .move(edge: .trailing)))
+        } else {
+            Button { connectsWatch = true } label: {
+                HStack(spacing: 12) {
+                    Image(.iconWatchSolid)
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 20, height: 20)
+                        .foregroundStyle(Color.brandGreen)
+                        .frame(width: 40, height: 40)
+                        .background(Color.dropZone, in: .rect(cornerRadius: 10))
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(WatchConnectMessages.title)
+                            .textStyle(.listTitle)
+                            .foregroundStyle(Color.ink)
+                        Text(WatchConnectMessages.rowDetail(watch))
+                            .textStyle(.caption)
+                            .foregroundStyle(Color.inkMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Image(.iconChevronRight)
+                        .renderingMode(.template)
+                        .foregroundStyle(Color.inkMuted)
+                        .accessibilityHidden(true)
+                }
+                .padding(12)
+                .background(Color.white, in: .rect(cornerRadius: 14))
+                .contentShape(.rect)
+            }
+            .buttonStyle(.pave)
+            .transition(.opacity)
         }
     }
 
@@ -129,4 +206,5 @@ struct SignedInDevicesScreen: View {
         SignedInDevicesScreen()
     }
     .environment(SignedInDevicesModel(service: nil))
+    .environment(WatchConnectionModel())
 }

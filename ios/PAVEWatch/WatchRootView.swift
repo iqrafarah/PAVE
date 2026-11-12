@@ -16,7 +16,7 @@ struct WatchRootView: View {
                     WatchVoiceView(model: model)
                 }
             } else {
-                WatchSignedOutView()
+                WatchSignedOutView(needsConnecting: sessions.needsConnecting)
             }
         }
         .animation(.easeInOut(duration: 0.4), value: isLoading)
