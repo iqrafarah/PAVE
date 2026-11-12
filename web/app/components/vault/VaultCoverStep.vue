@@ -2,13 +2,17 @@
 import type { VaultCoverChoice } from '~/types/vault';
 
 // Step 2 "Documenten", the cover (Figma 1167:12237): a card with or without a picture on top. With a cover you add
-// the picture below.
+// the picture below. Under it, a logo for the round badge on the card, which is optional.
 defineProps<{
   problem?: string;
 }>();
 
 const choice = defineModel<VaultCoverChoice>('choice', { required: true });
 const cover = defineModel<File | null>('cover', { required: true });
+const logo = defineModel<File | null>('logo', { required: true });
+const logoProblem = ref<string | null>(null);
+const logoId = useId();
+const logoProblemId = useId();
 
 const fileProblem = ref<string | null>(null);
 const groupId = useId();
@@ -58,5 +62,19 @@ function pick(file: File) {
       />
     </template>
     <p v-if="fileProblem || problem" :id="problemId" role="alert" class="mt-2 text-xs text-danger">{{ fileProblem ?? problem }}</p>
+
+    <p :id="logoId" class="mt-7 text-base font-semibold text-heading">{{ VAULT_LOGO }}</p>
+    <p class="mt-1 text-xs text-subtle">{{ VAULT_LOGO_HINT }}</p>
+    <VaultFileChip v-if="logo" class="mt-3" :file="logo" @remove="logo = null" />
+    <VaultDropZone
+      v-else
+      class="mt-3"
+      kind="cover"
+      is-compact
+      :described-by="logoProblem ? logoProblemId : logoId"
+      @pick="logo = $event; logoProblem = null"
+      @problem="logoProblem = $event"
+    />
+    <p v-if="logoProblem" :id="logoProblemId" role="alert" class="mt-2 text-xs text-danger">{{ logoProblem }}</p>
   </div>
 </template>

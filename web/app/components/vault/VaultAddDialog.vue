@@ -21,6 +21,7 @@ const draft = ref<VaultItemDraft>(createDraft());
 const showsProblems = ref(false);
 const coverChoice = ref<VaultCoverChoice>('none');
 const cover = ref<File | null>(null);
+const logo = ref<File | null>(null);
 const coverProblem = ref<string | undefined>();
 const skills = ref<string[]>([]);
 const vaultSkills = ref<string[]>([]);
@@ -35,7 +36,7 @@ const isDone = computed(() => step.value === 'done');
 const problems = computed(() => (showsProblems.value ? checkDraft(draft.value) : {}));
 const isDirty = computed(
   () =>
-    Boolean(file.value || cover.value || skills.value.length) ||
+    Boolean(file.value || cover.value || logo.value || skills.value.length) ||
     Object.values(draft.value).some((value) => String(value).trim() !== ''),
 );
 
@@ -46,6 +47,7 @@ function reset() {
   showsProblems.value = false;
   coverChoice.value = 'none';
   cover.value = null;
+  logo.value = null;
   coverProblem.value = undefined;
   skills.value = [];
   saveError.value = null;
@@ -86,12 +88,13 @@ function goTo(next: VaultAddStep) {
 
 function pickFile(picked: File) {
   file.value = picked;
+  if (!draft.value.category && vaultAdd.state.value.category) draft.value.category = vaultAdd.state.value.category;
   goTo('details');
 }
 
 function addWithoutFile() {
   file.value = null;
-  if (!draft.value.category) draft.value.category = 'workExperience';
+  if (!draft.value.category) draft.value.category = vaultAdd.state.value.category ?? 'workExperience';
   goTo('details');
 }
 
@@ -121,6 +124,7 @@ async function saveItem() {
     draft: draft.value,
     file: file.value,
     cover: coverChoice.value === 'cover' ? cover.value : null,
+    logo: logo.value,
     skills: skills.value,
   });
   isSaving.value = false;
@@ -233,14 +237,17 @@ function handleClose() {
           v-else-if="step === 'details'"
           ref="details"
           v-model:draft="draft"
+          v-model:folder-id="vaultAdd.state.value.folderId"
           :file="file"
           :problems="problems"
+          shows-folder
           @remove-file="file = null"
         />
         <VaultCoverStep
           v-else-if="step === 'cover'"
           v-model:choice="coverChoice"
           v-model:cover="cover"
+          v-model:logo="logo"
           :problem="coverProblem"
         />
         <VaultSkillsStep

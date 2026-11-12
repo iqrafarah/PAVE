@@ -4,16 +4,22 @@ import type { DraftField } from '~/utils/vaultAdd';
 
 // Step 2 "Documenten" (Figma 1167:11759): the chosen file and what the evidence is about. Every field is required,
 // as in the design; what is missing shows once you press Volgende.
-defineProps<{
-  file: File | null;
-  problems: Partial<Record<DraftField, string>>;
-}>();
+withDefaults(
+  defineProps<{
+    file: File | null;
+    problems: Partial<Record<DraftField, string>>;
+    // Shows "Map" next to "Soort"; off where the folder is not chosen.
+    showsFolder?: boolean;
+  }>(),
+  { showsFolder: false },
+);
 
 const emit = defineEmits<{
   removeFile: [];
 }>();
 
 const draft = defineModel<VaultItemDraft>('draft', { required: true });
+const folderId = defineModel<string | null>('folderId', { default: null });
 
 const ids = {
   title: useId(),
@@ -21,6 +27,7 @@ const ids = {
   organisation: useId(),
   period: useId(),
   description: useId(),
+  folder: useId(),
 };
 const CATEGORIES = Object.entries(VAULT_CATEGORY_TITLES) as [VaultItemCategory, string][];
 const withPeriod = computed(() => hasPeriod(draft.value.category));
@@ -70,6 +77,10 @@ function focusFirstProblem(field: DraftField) {
           <option value="" disabled>{{ VAULT_FIELD_CATEGORY_PLACEHOLDER }}</option>
           <option v-for="[value, title] in CATEGORIES" :key="value" :value="value" class="text-heading">{{ title }}</option>
         </select>
+      </VaultField>
+
+      <VaultField v-if="showsFolder" :label="VAULT_FIELD_FOLDER" :for="ids.folder" class="sm:col-span-2">
+        <VaultFolderSelect :id="ids.folder" v-model:folder-id="folderId" v-model:category="draft.category" can-change-category />
       </VaultField>
 
       <VaultField

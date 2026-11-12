@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import type { RowMenuItem } from '~/types/ayla';
 
-defineProps<{
+const props = defineProps<{
   items: RowMenuItem[];
   label: string;
+  // The list is placed on the screen itself (position: fixed), so a parent that scrolls or clips, like the sideways
+  // folder row in the vault, does not cut it off. It closes when the page scrolls, as it would drift away.
+  floats?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -14,12 +17,42 @@ const isOpen = ref(false);
 const rootRef = useTemplateRef<HTMLDivElement>('root');
 const toggleRef = useTemplateRef<HTMLButtonElement>('toggle');
 const menuId = useId();
+const floatingStyle = ref<Record<string, string> | undefined>();
+
+function place() {
+  const rect = toggleRef.value?.getBoundingClientRect();
+  if (!rect) return;
+  floatingStyle.value = { position: 'fixed', top: `${rect.bottom + 4}px`, right: `${window.innerWidth - rect.right}px` };
+}
+
+function closeOnScroll(event: Event) {
+  // Scrolling inside the list itself is fine; the page or a row moving away is not.
+  if (rootRef.value?.contains(event.target as Node)) return;
+  isOpen.value = false;
+}
+
+watch(isOpen, (open) => {
+  if (!props.floats) return;
+  if (open) {
+    window.addEventListener('scroll', closeOnScroll, true);
+    window.addEventListener('resize', closeOnScroll);
+  } else {
+    window.removeEventListener('scroll', closeOnScroll, true);
+    window.removeEventListener('resize', closeOnScroll);
+  }
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', closeOnScroll, true);
+  window.removeEventListener('resize', closeOnScroll);
+});
 
 function getMenuItems() {
   return Array.from(rootRef.value?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? []);
 }
 
 async function open() {
+  if (props.floats) place();
   isOpen.value = true;
   await nextTick();
   getMenuItems()[0]?.focus();
@@ -74,7 +107,9 @@ function handleFocusOut(event: FocusEvent) {
       v-if="isOpen"
       :id="menuId"
       role="menu"
-      class="absolute right-0 top-full z-30 mt-1 w-48 rounded-xl border border-line bg-white p-1 shadow-lg"
+      :style="floats ? floatingStyle : undefined"
+      :class="floats ? 'z-50' : 'absolute right-0 top-full z-30 mt-1'"
+      class="w-48 rounded-xl border border-line bg-white p-1 shadow-lg"
     >
       <li v-for="item in items" :key="item.id" role="none">
         <button

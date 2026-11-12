@@ -93,7 +93,7 @@ export const AYLA_FILE_TOO_LONG = 'Dit bestand is te lang. Ayla leest maximaal 2
 export const AYLA_TOO_MANY_FILES = 'Je kunt 3 bestanden tegelijk toevoegen.';
 export const AYLA_REMOVE_FILE = 'Bestand weghalen';
 export const AYLA_COPIED = 'Gekopieerd';
-export const AYLA_TYPE_SOMETHING_ELSE = 'Zelf iets typen';
+export const AYLA_VAULT_LABEL = 'Kluis';
 export const AYLA_ERROR_LOADING_CHAT = 'Dit gesprek kon niet worden geladen. Probeer het opnieuw.';
 export const AYLA_MICROPHONE_BLOCKED =
   'Geef je browser toegang tot je microfoon om je vraag in te spreken.';

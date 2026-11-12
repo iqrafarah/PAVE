@@ -1,4 +1,4 @@
-import type { AylaAttachment, AylaErrorCode, AylaInput, ChatMessage } from '~/types/ayla';
+import type { AylaAttachment, AylaErrorCode, AylaInput, ChatMessage, AylaScreen } from '~/types/ayla';
 
 export type ConversationLoadStatus = 'idle' | 'loading' | 'ready' | 'notFound' | 'failed';
 
@@ -15,6 +15,8 @@ export interface SendOptions {
   text: string;
   attachments?: AylaAttachment[];
   input?: AylaInput;
+  // What the user has open, such as the vault, so Ayla knows where the question comes from.
+  context?: { screen: AylaScreen };
   onConversationStarted?: (conversationId: string) => void;
 }
 
@@ -108,6 +110,7 @@ export function useAylaConversation() {
         input: options.input ?? 'text',
         ...(state.value.conversationId ? { conversationId: state.value.conversationId } : {}),
         ...(attachments.length ? { attachments } : {}),
+        ...(options.context ? { context: options.context } : {}),
       },
       {
         onStart(conversationId) {
