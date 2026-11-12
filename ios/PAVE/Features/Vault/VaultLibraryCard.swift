@@ -2,8 +2,8 @@ import PAVECore
 import SwiftUI
 
 /// An item in the vault, as a tile in the grid or a row in the list, like the cards in the design. The circle shows the
-/// logo, in both views. The grid has the cover in its band; the list has no band, so the cover gives its colour as a fade
-/// from the top left instead (Figma 1348:9). Without a cover, the logo gives the colour; without either, the category.
+/// logo, in both views. The grid has the cover in its band; the list has no band and fades the colour of the logo from the
+/// top left instead (Figma 1348:9). Without a logo the cover gives the colour; without either, the category.
 struct VaultLibraryCard: View {
     let item: VaultItem
     let isGrid: Bool
@@ -15,7 +15,7 @@ struct VaultLibraryCard: View {
     private var cover: VaultItem.File? { model?.cover(of: item) }
     /// Behind the cover in the band of the grid.
     private var bandTint: Color { logoLook?.tint ?? item.category.tint }
-    private var fadeTint: Color { coverLook?.tint ?? bandTint }
+    private var fadeTint: Color { logoLook?.tint ?? coverLook?.tint ?? item.category.tint }
 
     var body: some View {
         Group {
@@ -43,8 +43,8 @@ struct VaultLibraryCard: View {
             let loaded = await model?.look(of: logo)
             withAnimation(.easeOut(duration: 0.25)) { logoLook = loaded }
         }
-        .task(id: isGrid ? nil : cover?.id) {
-            guard !isGrid, let cover else { coverLook = nil; return }
+        .task(id: isGrid || logo != nil ? nil : cover?.id) {
+            guard !isGrid, logo == nil, let cover else { coverLook = nil; return }
             let loaded = await model?.look(of: cover)
             withAnimation(.easeOut(duration: 0.25)) { coverLook = loaded }
         }
