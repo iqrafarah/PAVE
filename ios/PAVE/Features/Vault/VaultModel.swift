@@ -187,9 +187,9 @@ final class VaultModel {
         try await service.removeSkills(names, from: itemID)
     }
 
-    func suggestSkills(for draft: VaultItemDraft, existing: [String]) async throws -> [VaultSkillSuggestion] {
+    func suggestSkills(for draft: VaultItemDraft, material: VaultSkillsMaterial, existing: [String]) async throws -> [VaultSkillSuggestion] {
         guard let service else { throw VaultError.unavailable }
-        return try await service.suggestSkills(for: draft, existing: existing)
+        return try await service.suggestSkills(for: draft, material: material, existing: existing)
     }
 
     /// The folders the item is in, in the order of the folder row.

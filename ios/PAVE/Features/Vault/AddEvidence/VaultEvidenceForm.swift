@@ -11,6 +11,14 @@ struct VaultEvidenceForm: View {
     let folders: [VaultFolder]
     /// The user chose a folder (or none) on purpose, so it no longer follows the kind of evidence.
     var onFolderChosen: () -> Void = {}
+    /// A folder for the kind that does not exist yet and is made when saving, such as Stages; ticked on at first.
+    var newFolder: NewFolder?
+
+    struct NewFolder {
+        let name: String
+        let isOn: Bool
+        let onToggle: (Bool) -> Void
+    }
 
     @State private var width: CGFloat = 400
     @State private var editsPeriod = false
@@ -50,7 +58,7 @@ struct VaultEvidenceForm: View {
                     period
                 }
             }
-            if !folders.isEmpty {
+            if !folders.isEmpty || newFolder != nil {
                 VaultFormField(title: "Mappen", isRequired: false) {
                     folder
                 }
@@ -105,13 +113,19 @@ struct VaultEvidenceForm: View {
     }
 
     private var chosenFolders: String {
-        let names = folders.filter { draft.folderIDs.contains($0.id) }.map(\.name)
+        var names = folders.filter { draft.folderIDs.contains($0.id) }.map(\.name)
+        if let newFolder, newFolder.isOn { names.append(newFolder.name) }
         return names.isEmpty ? "Geen map" : names.joined(separator: ", ")
     }
 
     /// Several folders can be ticked; the menu stays open while you tick them.
     private var folder: some View {
         Menu {
+            if let newFolder {
+                Toggle(isOn: Binding(get: { newFolder.isOn }, set: newFolder.onToggle)) {
+                    Text(VaultMessages.newKindFolder(newFolder.name))
+                }
+            }
             ForEach(folders) { folder in
                 Toggle(isOn: Binding(
                     get: { draft.folderIDs.contains(folder.id) },
@@ -124,7 +138,7 @@ struct VaultEvidenceForm: View {
                 }
             }
         } label: {
-            menuLabel(chosenFolders, icon: .iconChevronDown, isPlaceholder: draft.folderIDs.isEmpty)
+            menuLabel(chosenFolders, icon: .iconChevronDown, isPlaceholder: chosenFolders == "Geen map")
         }
         .menuActionDismissBehavior(.disabled)
         .accessibilityValue(chosenFolders)

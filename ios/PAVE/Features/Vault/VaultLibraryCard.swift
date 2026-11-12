@@ -1,37 +1,59 @@
 import PAVECore
 import SwiftUI
 
-/// An item in the vault, as a tile in the grid or a row in the list, like the cards in the design.
+/// An item in the vault, as a tile in the grid or a row in the list, like the cards in the design. The circle shows the
+/// logo, in both views. The grid has the cover in its band; the list has no band, so the cover gives its colour as a fade
+/// from the top left instead (Figma 1348:9). Without a cover, the logo gives the colour; without either, the category.
 struct VaultLibraryCard: View {
     let item: VaultItem
     let isGrid: Bool
     @Environment(VaultModel.self) private var model: VaultModel?
-    @State private var look: VaultLogoLook?
+    @State private var logoLook: VaultLogoLook?
+    @State private var coverLook: VaultLogoLook?
 
     private var logo: VaultItem.File? { model?.logo(of: item) }
     private var cover: VaultItem.File? { model?.cover(of: item) }
+    /// Behind the cover in the band of the grid.
+    private var bandTint: Color { logoLook?.tint ?? item.category.tint }
+    private var fadeTint: Color { coverLook?.tint ?? bandTint }
 
     var body: some View {
         Group {
             if isGrid { gridCard } else { listCard }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Color.white)
+        .background {
+            if isGrid {
+                Color.white
+            } else {
+                // The fade from the top left corner in the list, as in Figma 1348:9; a cover photo shows only in the grid.
+                LinearGradient(
+                    stops: [.init(color: fadeTint, location: 0), .init(color: .white, location: 0.55)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
+        }
         .clipShape(.rect(cornerRadius: 16))
         .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder, lineWidth: 1) }
         .contentShape(.rect(cornerRadius: 16))
         .accessibilityElement(children: .combine)
         .task(id: logo?.id) {
-            guard let logo else { look = nil; return }
+            guard let logo else { logoLook = nil; return }
             let loaded = await model?.look(of: logo)
-            withAnimation(.easeOut(duration: 0.25)) { look = loaded }
+            withAnimation(.easeOut(duration: 0.25)) { logoLook = loaded }
+        }
+        .task(id: isGrid ? nil : cover?.id) {
+            guard !isGrid, let cover else { coverLook = nil; return }
+            let loaded = await model?.look(of: cover)
+            withAnimation(.easeOut(duration: 0.25)) { coverLook = loaded }
         }
     }
 
     private var gridCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             // The band shows the cover, or else a light tint of the strongest colour in the logo; the logo is the avatar.
-            (look?.tint ?? item.category.tint)
+            bandTint
                 .overlay {
                     if let cover {
                         VaultThumbnail(source: .file(cover), cornerRadius: 0)
@@ -40,7 +62,7 @@ struct VaultLibraryCard: View {
                 .frame(height: 48)
                 .clipped()
                 .overlay(alignment: .bottomLeading) {
-                    VaultLogoAvatar(look: look, name: item.organisationName ?? item.title, size: 44)
+                    VaultLogoAvatar(look: logoLook, name: item.organisationName ?? item.title, size: 44)
                         .padding(.leading, 12)
                         .offset(y: 22)
                 }
@@ -66,8 +88,8 @@ struct VaultLibraryCard: View {
     }
 
     private var listCard: some View {
-        HStack(alignment: .top, spacing: 12) {
-            VaultLogoAvatar(look: look, name: item.organisationName ?? item.title, size: 48)
+        HStack(alignment: .center, spacing: 14) {
+            VaultLogoAvatar(look: logoLook, name: item.organisationName ?? item.title, size: 64)
             VStack(alignment: .leading, spacing: 7) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(item.title)
@@ -86,7 +108,7 @@ struct VaultLibraryCard: View {
                 }
             }
         }
-        .padding(12)
+        .padding(14)
     }
 
     @ViewBuilder

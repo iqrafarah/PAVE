@@ -50,8 +50,9 @@ final class VaultAddEvidenceModel {
     private(set) var showsMissing = false
     private(set) var isSaving = false
     private(set) var savedItemID: String?
-    /// The database has no cover column yet: the item was saved without its cover.
+    /// The database does not take a cover or a logo yet: the item was saved without it.
     private(set) var coverWaits = false
+    private(set) var logoWaits = false
 
     private var savedParts: Set<Part> = []
     private let initialDraft: VaultItemDraft
@@ -60,16 +61,20 @@ final class VaultAddEvidenceModel {
     /// folder of the kind follows when you change the kind, until you choose folders yourself.
     private var folderFollowsCategory = true
     private var kindFolderID: String?
+    /// The kind has no folder yet: one with its name (such as Stages) is made when you save, unless you untick it.
+    private(set) var newKindFolder: String?
 
     init(vault: VaultModel, category: VaultCategory, folderID: String?) {
         self.vault = vault
         ayla = VaultAylaSkills(vault: vault)
         let kindFolder = VaultExampleFolders.folder(for: category, in: vault.folders)?.id
         kindFolderID = kindFolder
+        newKindFolder = kindFolder == nil ? category.title : nil
         var folderIDs = [String]()
         for id in [folderID, kindFolder].compactMap({ $0 }) where !folderIDs.contains(id) { folderIDs.append(id) }
         initialDraft = VaultItemDraft(category: category, folderIDs: folderIDs)
         draft = initialDraft
+        ayla.documents = { [weak self] in self?.documents ?? [] }
     }
 
     var folders: [VaultFolder] { vault.folders }
@@ -80,10 +85,29 @@ final class VaultAddEvidenceModel {
 
     func categoryChanged() {
         guard folderFollowsCategory else { return }
-        let newKindFolder = VaultExampleFolders.folder(for: draft.category, in: vault.folders)?.id
+        let folder = VaultExampleFolders.folder(for: draft.category, in: vault.folders)?.id
         if let kindFolderID { draft.folderIDs.removeAll { $0 == kindFolderID } }
-        if let newKindFolder, !draft.folderIDs.contains(newKindFolder) { draft.folderIDs.append(newKindFolder) }
-        kindFolderID = newKindFolder
+        if let folder, !draft.folderIDs.contains(folder) { draft.folderIDs.append(folder) }
+        kindFolderID = folder
+        newKindFolder = folder == nil ? draft.category.title : nil
+    }
+
+    /// The kind has no folder, whether or not one will be made.
+    var kindFolderMissing: Bool { VaultExampleFolders.folder(for: draft.category, in: vault.folders) == nil }
+
+    func setMakesKindFolder(_ makes: Bool) {
+        newKindFolder = makes ? draft.category.title : nil
+        folderChosen()
+    }
+
+    /// Makes the folder of the kind just before saving, or finds it when it was made meanwhile.
+    private func makeKindFolderIfNeeded() async {
+        guard let name = newKindFolder else { return }
+        let folder = await vault.createFolder(named: name, color: .green, icon: draft.category.folderStyleIcon)
+            ?? vault.folders.first { $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }
+        vault.problem = nil
+        if let folder, !draft.folderIDs.contains(folder.id) { draft.folderIDs.append(folder.id) }
+        newKindFolder = nil
     }
 
     var hasChanges: Bool {
@@ -204,11 +228,13 @@ final class VaultAddEvidenceModel {
         guard !isSaving else { return }
         isSaving = true
         defer { isSaving = false }
+        SupabaseVaultService.lastFailure = nil
         do {
             let id: String
             if let savedItemID {
                 id = savedItemID
             } else {
+                await makeKindFolderIfNeeded()
                 id = try await vault.addItem(draft)
                 savedItemID = id
             }
@@ -228,7 +254,7 @@ final class VaultAddEvidenceModel {
                 do {
                     try await vault.attach(logo, to: id)
                 } catch VaultError.missingColumn {
-                    coverWaits = true
+                    logoWaits = true
                 }
                 savedParts.insert(.logo)
             }
@@ -240,7 +266,7 @@ final class VaultAddEvidenceModel {
             PaveHaptics.success()
             go(to: .done)
         } catch {
-            problem = VaultMessages.message(for: VaultError(error))
+            problem = VaultMessages.withDetail(VaultMessages.message(for: VaultError(error)))
             PaveHaptics.error()
         }
     }
@@ -255,7 +281,7 @@ final class VaultAddEvidenceModel {
             await vault.load()
             return true
         } catch {
-            problem = VaultMessages.message(for: VaultError(error))
+            problem = VaultMessages.withDetail(VaultMessages.message(for: VaultError(error)))
             PaveHaptics.error()
             return false
         }

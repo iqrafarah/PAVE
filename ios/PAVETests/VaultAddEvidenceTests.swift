@@ -53,8 +53,10 @@ struct VaultAddEvidenceTests {
 
         func removeFile(_ file: VaultItem.File) async throws { removedFiles.append(file.id) }
         func removeSkills(_ names: [String], from itemID: String) async throws { if !names.isEmpty { removedSkills.append(names) } }
-        func suggestSkills(for draft: VaultItemDraft, existing: [String]) async throws -> [VaultSkillSuggestion] {
-            [VaultSkillSuggestion(name: "Presenteren", reason: "Je gaf een eindpresentatie")]
+        var material: [VaultSkillsMaterial] = []
+        func suggestSkills(for draft: VaultItemDraft, material: VaultSkillsMaterial, existing: [String]) async throws -> [VaultSkillSuggestion] {
+            self.material.append(material)
+            return [VaultSkillSuggestion(name: "Presenteren", reason: "Je gaf een eindpresentatie")]
         }
 
         func update(_ draft: VaultItemDraft, itemID: String) async throws { updated.append(draft) }
@@ -228,6 +230,25 @@ struct VaultAddEvidenceTests {
         #expect(fromStage.draft.folderIDs == ["s"])
     }
 
+    @Test func aKindWithoutAFolderGetsOneWhenSavingUnlessUnticked() async {
+        let service = FakeVault()
+        let flow = await filledFlow(service)
+        #expect(flow.newKindFolder == "Stages")
+        await flow.next()
+        await flow.next()
+        #expect(flow.page == .done)
+        #expect(await service.createdFolders == ["Stages"])
+        #expect(await service.added.first?.folderIDs == ["folder-Stages"])
+
+        let other = FakeVault()
+        let unticked = await filledFlow(other)
+        unticked.setMakesKindFolder(false)
+        await unticked.next()
+        await unticked.next()
+        #expect(await !other.createdFolders.contains("Stages"))
+        #expect(await other.added.first?.folderIDs == [])
+    }
+
     @Test func changingAConfirmedItemAsksAndSavesOnlyWhatChanged() async {
         let service = FakeVault()
         let report = VaultItem.File(id: "f1", name: "verslag.pdf", mimeType: "application/pdf", storagePath: "u/i/f1.pdf")
@@ -256,6 +277,31 @@ struct VaultAddEvidenceTests {
         #expect(ayla.state == .idle)
         await ayla.ask(for: VaultItemDraft(category: .projects), existing: [])
         #expect(ayla.state == .loaded([VaultSkillSuggestion(name: "Presenteren", reason: "Je gaf een eindpresentatie")]))
+    }
+
+    @Test func aylaLooksAtTheTextOfAPDFAndAPhotoOfAnImage() async {
+        let pdf = UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: 595, height: 842)).pdfData { context in
+            context.beginPage()
+            ("Stageverslag LiveWall: ik bouwde de front-end van drie campagnes in React." as NSString)
+                .draw(at: CGPoint(x: 40, y: 40), withAttributes: [.font: UIFont.systemFont(ofSize: 14)])
+        }
+        let large = UIGraphicsImageRenderer(size: CGSize(width: 3000, height: 1500)).jpegData(withCompressionQuality: 0.8) { context in
+            UIColor.systemTeal.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 3000, height: 1500))
+        }
+        let service = FakeVault()
+        let flow = VaultAddEvidenceModel(vault: VaultModel(service: service), category: .internships, folderID: nil)
+        flow.pick(.success(VaultUpload(data: pdf, fileName: "verslag.pdf", mimeType: "application/pdf")))
+        flow.pick(.success(VaultUpload(data: large, fileName: "certificaat.jpeg", mimeType: "image/jpeg")))
+        flow.draft.title = "Eindstage"
+
+        await flow.ayla.ask(for: flow.draft, existing: [])
+        let material = await service.material.first
+        #expect(material?.texts.first?.text.contains("front-end van drie campagnes") == true)
+        #expect(material?.images.map(\.name) == ["certificaat.jpeg"])
+        let photo = material?.images.first.flatMap { UIImage(data: $0.jpeg) }
+        #expect(photo.map { max($0.size.width * $0.scale, $0.size.height * $0.scale) } ?? 0 <= VaultSkillsMaterialReader.photoSide)
+        #expect(flow.ayla.lookedAtFiles == 2)
     }
 
     @Test func theBandTakesTheStrongestColour() {

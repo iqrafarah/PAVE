@@ -16,6 +16,10 @@ enum VaultMessages {
     static let deleteItemMessage = "Dit haalt het item en de bestanden erbij voorgoed uit je kluis, ook op het web. Dit kun je niet ongedaan maken."
     static let folderNameTaken = "Je hebt al een map met deze naam. Kies een andere naam."
 
+    static func newKindFolder(_ name: String) -> String {
+        "\(name) (nieuwe map)"
+    }
+
     static func inFolders(_ names: [String]) -> String {
         names.count == 1 ? "In de map \(names[0])" : "In de mappen \(names.joined(separator: ", "))"
     }
@@ -38,6 +42,14 @@ enum VaultMessages {
         case .fileRejected: "Dit bestand kan niet in je kluis. Kies een PDF, Word-bestand, tekst of foto tot 20 MB."
         case .unavailable, .missingColumn: "Er ging iets mis. Probeer het zo nog een keer."
         }
+    }
+
+    /// In a debug build the technical reason goes under the message, so a test can say exactly what failed.
+    static func withDetail(_ message: String) -> String {
+        #if DEBUG
+        if let detail = SupabaseVaultService.lastFailure { return "\(message)\n[\(detail)]" }
+        #endif
+        return message
     }
 
     // MARK: Bewijs toevoegen
@@ -69,17 +81,28 @@ enum VaultMessages {
     static let addDocument = "Document toevoegen"
     static let addAnotherDocument = "Nog een document toevoegen"
     static let coverMissing = "Kies een foto voor de omslag, of kies Geen omslag."
-    static let coverNotYet = "Je bewijs staat in je kluis. Het logo en de omslag kunnen nog niet bewaard worden; dat komt binnenkort."
+    static func imagesNotYet(cover: Bool, logo: Bool) -> String {
+        let what = cover && logo ? "Het logo en de omslag kunnen" : logo ? "Het logo kan" : "De omslag kan"
+        return "Je bewijs staat in je kluis. \(what) nog niet bewaard worden; dat komt binnenkort."
+    }
     static let skillsFromVault = "Vaardigheden uit je kluis"
     static let skillsOwn = "Zelf een vaardigheid toevoegen"
     static let skillsPrompt = "Zoek of typ een vaardigheid"
     static let skillsEmpty = "Je kluis heeft nog geen vaardigheden. Voeg er hieronder zelf een toe."
-    static let aylaSkillsIntro = "Ayla kan vaardigheden voorstellen die bij dit bewijs passen. Ze ziet alleen wat je in dit formulier invulde."
-    static let aylaSkillsOnlyForm = "Ayla ziet alleen wat je in dit formulier invulde."
+    static let aylaSkillsIntro = "Ayla kan vaardigheden voorstellen die bij dit bewijs passen. Ze kijkt naar wat je invulde en naar je bestanden, alleen voor dit voorstel."
+
+    /// Under her proposals: what Ayla looked at, so it is clear where they come from.
+    static func aylaSkillsLookedAt(files: Int) -> String {
+        switch files {
+        case 0: "Ayla keek alleen naar wat je invulde."
+        case 1: "Ayla keek naar wat je invulde en naar 1 bestand, alleen voor dit voorstel."
+        default: "Ayla keek naar wat je invulde en naar \(files) bestanden, alleen voor dit voorstel."
+        }
+    }
     static let aylaSkillsAsk = "Vraag Ayla om voorstellen"
     static let aylaSkillsAgain = "Opnieuw vragen"
     static let aylaSkillsThinking = "Ayla bekijkt je bewijs…"
-    static let aylaSkillsNone = "Ayla vond geen nieuwe vaardigheden in dit bewijs. Vul de omschrijving aan en vraag het opnieuw."
+    static let aylaSkillsNone = "Ayla vond geen nieuwe vaardigheden in dit bewijs. Vul de omschrijving aan of voeg een bestand toe en vraag het opnieuw."
 
     static func aylaSkills(_ error: VaultError) -> String {
         switch error {

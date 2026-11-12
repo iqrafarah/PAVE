@@ -26,7 +26,7 @@ struct VaultAylaSuggestions: View {
                         }
                         .transition(.opacity.combined(with: .move(edge: .top)))
                     }
-                    Text(VaultMessages.aylaSkillsOnlyForm)
+                    Text(VaultMessages.aylaSkillsLookedAt(files: ayla.lookedAtFiles))
                         .textStyle(.meta)
                         .foregroundStyle(Color.inkMuted)
                         .padding(.top, 2)

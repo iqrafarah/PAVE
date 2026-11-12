@@ -2,7 +2,8 @@ import Foundation
 import Observation
 import PAVECore
 
-/// "Voorstel van Ayla": she proposes skills only when you ask, and then only sees the fields of this form.
+/// "Voorstel van Ayla": skills that fit the form and the documents. She gets the text of PDFs and text files and small
+/// photos of images, only for this proposal.
 @Observable
 final class VaultAylaSkills {
     enum State: Equatable {
@@ -13,6 +14,10 @@ final class VaultAylaSkills {
     }
 
     private(set) var state = State.idle
+    /// How many files the last proposal looked at.
+    private(set) var lookedAtFiles = 0
+    /// The documents of the evidence as they are now, set by the flow that owns this.
+    @ObservationIgnored var documents: () async -> [VaultUpload] = { [] }
     private let vault: VaultModel
 
     init(vault: VaultModel) {
@@ -22,10 +27,14 @@ final class VaultAylaSkills {
     func ask(for draft: VaultItemDraft, existing: [String]) async {
         guard state != .loading else { return }
         state = .loading
+        SupabaseVaultService.lastFailure = nil
         do {
-            state = .loaded(try await vault.suggestSkills(for: draft, existing: existing))
+            let material = await VaultSkillsMaterialReader.read(await documents())
+            let suggestions = try await vault.suggestSkills(for: draft, material: material, existing: existing)
+            lookedAtFiles = material.fileCount
+            state = .loaded(suggestions)
         } catch {
-            state = .failed(VaultMessages.aylaSkills(VaultError(error)))
+            state = .failed(VaultMessages.withDetail(VaultMessages.aylaSkills(VaultError(error))))
         }
     }
 }
