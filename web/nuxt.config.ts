@@ -5,6 +5,11 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   modules: ['@nuxtjs/supabase'],
+  // Feature subfolders organize files without changing component names in templates.
+  components: [{ path: '~/components', pathPrefix: false }],
+  imports: {
+    dirs: ['~/composables/**', '~/utils/**'],
+  },
   app: {
     head: {
       htmlAttrs: { lang: 'nl' },

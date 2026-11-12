@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PaveIconName } from '~/utils/paveIcons';
+import type { PaveIconName } from '~/utils/layout/paveIcons';
 
 // An icon from the iPhone app, in the current text color (like SwiftUI's renderingMode(.template)).
 const props = defineProps<{

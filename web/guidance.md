@@ -25,29 +25,61 @@ Current state of `web/` (verified from `package.json`):
 
 ## 2. Folder structure (Nuxt 4)
 
-Application code lives in `web/app/`. Use the standard Nuxt 4 directories and do not invent new top-level ones.
+Application code lives in `web/app/`. Start in `app/pages/` to find a screen, then follow its components and composables. Use the standard Nuxt 4 directories and do not invent new top-level ones.
 
 ```text
 web/
 ├── app/
-│   ├── app.vue
-│   ├── assets/          # css/main.css (Tailwind + design tokens), fonts, images
-│   ├── components/      # PascalCase.vue
-│   ├── composables/     # useXxx.ts (auto-imported)
-│   ├── layouts/
-│   ├── middleware/      # route guards (auth)
-│   ├── pages/           # kebab-case.vue
-│   ├── plugins/
-│   ├── types/           # app types + generated database types
-│   └── utils/           # pure functions, no Vue, no Supabase
-├── public/
-├── server/              # only if a server route is truly needed (see §6)
-└── nuxt.config.ts
+│   ├── pages/          # Routes and screen composition; filenames determine URLs
+│   ├── components/     # UI grouped by feature (see below)
+│   ├── composables/    # State, browser behavior and Supabase access, by feature
+│   ├── utils/          # Helpers and text constants, by feature; no Vue or Supabase
+│   ├── types/          # Shared TypeScript types
+│   ├── layouts/        # Default app shell and authentication shell
+│   ├── middleware/     # Route guards
+│   ├── plugins/        # Startup, session, appearance and cached-data setup
+│   ├── assets/css/     # Global styles and design tokens in main.css
+│   ├── app.vue         # App entry point
+│   └── error.vue       # Full-page error screen
+├── public/             # Static assets, served at their existing URLs
+└── nuxt.config.ts      # Framework setup and automatic import rules
 ```
 
+`node_modules/`, `.nuxt/`, `.output/` and `.data/` are dependencies or generated/local data, not application source. Keep these folders collapsed in your editor; do not edit them.
+
+### Find a feature
+
+The same feature names are used in `components/`, `composables/` and `utils/`:
+
+| Feature | Start here | Supporting files |
+| --- | --- | --- |
+| Ayla chat | `pages/index.vue`, `pages/ayla/[id].vue` | `ayla/` |
+| Ayla memory | `pages/ayla/geheugen.vue` | `components/ayla/memory/`, Ayla composables and helpers |
+| Vault (Kluis) | `pages/kluis.vue` | `vault/` |
+| Settings | `pages/instellingen/` | `settings/` |
+| Login, passwords and MFA | `pages/login.vue`, password and MFA pages | `auth/` |
+| Navigation and app shell | `layouts/default.vue` | `layout/` |
+| Reusable behavior and helpers | — | `composables/shared/`, `utils/shared/` |
+
+The larger component folders have one extra level:
+
+- `components/ayla/`: `chat/`, `composer/`, `history/`, `memory/`, `voice/` and `shared/`. `AylaChatView.vue` and `AylaTitleBar.vue` stay at the feature root as entry points.
+- `components/vault/`: `add/`, `items/`, `folders/`, `forms/` and `shared/`. `VaultLibrary.vue` and `VaultToolbar.vue` stay at the feature root.
+
+A feature's `shared/` folder contains components used in multiple parts of that feature. App-wide layout components stay in `components/layout/`.
+
+### Keep it manageable
+
+- Put new files in the existing feature folder. Add a subfolder when it groups a meaningful part of a large feature; avoid folders for a single tiny helper.
+- Component filenames include the feature prefix, such as `AylaComposer.vue` or `VaultItemCard.vue`. Names must be unique across the app.
+- Nuxt uses component filenames without directory prefixes (`pathPrefix: false`), so moving `AylaComposer.vue` within `components/ayla/` keeps `<AylaComposer>` working. [Nuxt component naming](https://nuxt.com/docs/4.x/directory-structure/app/components#component-names).
+- `nuxt.config.ts` scans nested composable and utility folders. Existing automatic imports such as `useVault()` still work. Keep exported names unique and update explicit imports when moving files. [Nuxt nested imports](https://nuxt.com/docs/4.x/directory-structure/app/composables#how-files-are-scanned).
+- Use an explicit path for type imports, for example `~/composables/auth/useAuth`.
+- Keep route files in `pages/`; moving them can change URLs. Keep assets at their existing public paths unless you also update every reference.
+- Extract a component for a distinct UI responsibility or reuse. Keep small one-off markup and helpers with their owner; do not create empty placeholders for future features.
 - Do not create `web/shared/`. Nuxt 4 reserves it for code shared between app and server, and it would be confused with the repo-root `shared/`.
-- Group components by feature in subfolders (`components/vault/SkillCard.vue`), not by technical kind.
-- A file has one responsibility. Split any component over about 200 lines.
+- Only add `web/server/` if a server route is truly needed (see §6).
+- A file has one responsibility. Review components over about 200 lines for meaningful splits, but keep small one-off markup and helpers with their owner.
 
 ## 3. Naming and readability (from Conventions.md)
 
@@ -102,7 +134,7 @@ Write code a teammate can understand in one read. Simple and boring beats clever
 Supabase is the single source of truth. The web app is a client of it, not a second backend.
 
 1. **One client.** Create the Supabase client in exactly one place **[PROPOSED: `@nuxtjs/supabase` module]**. Never call `createClient` anywhere else.
-2. **One data layer.** All reads and writes live in composables under `app/composables/` (for example `useProfile.ts`, `useVault.ts`). Pages and components call composables, never `supabase.from(...)`.
+2. **One data layer.** All reads and writes live in feature folders under `app/composables/` (for example `vault/useVault.ts`). Pages and components call composables, never `supabase.from(...)`.
 3. **Anon key only.** Only the public URL and anon key are ever used in the browser. The service-role key must never appear in `web/`, in `nuxt.config.ts`, in `runtimeConfig.public`, or in any commit.
 4. **RLS is the security.** Never bypass or work around Row Level Security. If a query fails because of RLS, fix the policy through a migration (see §7), not the client.
 5. **Schema names are law.** Table and column names are used exactly as in the database (`snake_case`). Map to camelCase in one mapper per entity inside the composable, not scattered through components.
@@ -143,7 +175,7 @@ Anything below that changes must be agreed with the iOS team before merging.
 
 ## 8. Quality, Git and Definition of Done
 
-- No linter, formatter or tests exist yet. **[PROPOSED]** add ESLint (`@nuxt/eslint`), Prettier config and Vitest, then make `npm run lint`, `npm run typecheck` and `npm run test` mandatory before opening a PR. Until then, `npx nuxi typecheck` must pass.
+- No linter, formatter or tests exist yet. Run `npm run typecheck` and `npm run build` before opening a PR. **[PROPOSED]** add ESLint (`@nuxt/eslint`), Prettier config and Vitest, then also require `npm run lint` and `npm run test`.
 - Never push to `main` or `dev`. Branch from `dev`, open a PR, get at least one approval from another team member.
 - Commits are small, in English, imperative mood ("Add profile card").
 - A task is done only when it meets the Definition of Done in `Conventions.md`.
@@ -167,5 +199,5 @@ All text the user sees (labels, buttons, placeholders, errors, emails shown in t
 - Address the user with "je/jij", never "u". Use everyday words and short sentences. No jargon, no corporate phrases.
 - PAVE is not an organization app. Never write "organisatie", "IT-support", "your organization's email" or similar. Say "e-mailadres" and refer to "PAVE-support" when the user needs help.
 - Error messages say what happened and what the user can do next. Never blame the user, and never reveal whether an email address has an account.
-- Do not scatter strings through templates when they repeat: keep repeated messages in one place (for example `app/utils/messages.ts`) so web and iOS stay in sync with `docs/ui-teksten.md`.
+- Do not scatter strings through templates when they repeat: keep repeated messages in one place (for example `app/utils/shared/messages.ts`) so web and iOS stay in sync with `docs/ui-teksten.md`.
 - The Figma designs are in English. Translate them using the glossary instead of copying the English text.
