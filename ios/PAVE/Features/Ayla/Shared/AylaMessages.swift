@@ -2,6 +2,21 @@ import PAVECore
 
 /// Texts the chat shows. They have no web counterpart yet; agree on them with the web team.
 enum AylaMessages {
+    /// Above Ja and Nee when Ayla offers to add something to the vault, as on the web (AYLA_VAULT_LABEL).
+    static let vaultLabel = "Kluis"
+    static let openVault = "Open je kluis"
+    static let openSettings = "Open instellingen"
+    static let clearContext = "Niet meer over dit bewijs vragen"
+    static let askAboutItem = "Vraag Ayla over dit bewijs"
+    static let askNotAllowedTitle = "Ayla mag dit bewijs nog niet gebruiken"
+    static let askNotAllowedMessage = "Sta je het toe, dan kan Ayla dit bewijs meenemen in je vragen en zoekopdrachten. Je kunt het altijd weer uitzetten."
+    static let askAllow = "Toestaan en vragen"
+    static let askWithout = "Vragen zonder toestemming"
+
+    /// "Uit je kluis: stages, diploma's".
+    static func usedVault(_ names: [String]) -> String { "Uit je kluis: \(names.joined(separator: ", "))" }
+    /// "Over: Eindstage".
+    static func about(_ title: String) -> String { "Over: \(title)" }
     static let noConnection = "Ayla is niet bereikbaar. Controleer je internetverbinding en probeer het opnieuw."
     static let signInAgain = "Je sessie is verlopen. Log opnieuw in om met Ayla te praten."
     static let conversationGone = "Dit gesprek bestaat niet meer. Begin een nieuw gesprek."

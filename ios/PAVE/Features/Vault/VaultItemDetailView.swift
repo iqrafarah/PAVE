@@ -8,6 +8,9 @@ struct VaultItemDetailView: View {
     let itemID: String
     @State private var isEditing = false
     @State private var requestsConfirmation = false
+    @Environment(\.askAylaAbout) private var askAylaAbout
+    /// Asking Ayla about an item she may not use yet: first the choice to allow it.
+    @State private var asksPermission = false
     @State private var confirmsDelete = false
     @State private var look: VaultLogoLook?
 
@@ -36,6 +39,22 @@ struct VaultItemDetailView: View {
                 if let item {
                     VaultRequestConfirmationSheet(item: item, documentCount: model.documents(of: item).count).paveSheet()
                 }
+            }
+            .confirmationDialog(AylaMessages.askNotAllowedTitle, isPresented: $asksPermission, titleVisibility: .visible) {
+                Button(AylaMessages.askAllow) {
+                    guard let item else { return }
+                    Task {
+                        try? await model.setAylaAllowed(true, itemID: item.id)
+                        await model.load()
+                        startAsking(about: item)
+                    }
+                }
+                Button(AylaMessages.askWithout) {
+                    if let item { startAsking(about: item) }
+                }
+                Button("Annuleren", role: .cancel) {}
+            } message: {
+                Text(AylaMessages.askNotAllowedMessage)
             }
             .confirmationDialog("Uit je kluis verwijderen?", isPresented: $confirmsDelete, titleVisibility: .visible) {
                 Button("Verwijderen", role: .destructive) {
@@ -113,10 +132,10 @@ struct VaultItemDetailView: View {
                 section("Gegevens") {
                     VStack(alignment: .leading, spacing: 12) {
                         if let place = item.place {
-                            PaveIconLabel(icon: .iconBuildingOfficeSolid, text: place)
+                            PaveIconLabel(icon: .iconVaultBuildingOutline, text: place)
                         }
                         if let period = item.period {
-                            PaveIconLabel(icon: .iconCalendarDaysSolid, text: period)
+                            PaveIconLabel(icon: .iconVaultCalendarOutline, text: period)
                         }
                         let folders = model.folders(of: item)
                         if !folders.isEmpty {
@@ -153,12 +172,29 @@ struct VaultItemDetailView: View {
                     }
                 }
 
+                if askAylaAbout != nil {
+                    PavePrimaryButton(title: AylaMessages.askAboutItem) { ask(about: item) }
+                }
                 PaveSecondaryButton(title: "Aanpassen", icon: .iconPencil) { isEditing = true }
             }
             .padding(20)
             .frame(maxWidth: 560, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
+    }
+
+    /// Ayla only sees the item when she may use it; otherwise the user chooses first.
+    private func ask(about item: VaultItem) {
+        if item.aylaAllowedAt == nil {
+            asksPermission = true
+        } else {
+            startAsking(about: item)
+        }
+    }
+
+    private func startAsking(about item: VaultItem) {
+        dismiss()
+        askAylaAbout?(item)
     }
 
     private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {

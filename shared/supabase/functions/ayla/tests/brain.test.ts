@@ -79,6 +79,46 @@ test('without an Adzuna key Ayla says honestly that searching is not set up', as
   assert.match(fake.calls[1].at(-1)!.content, /nog niet ingesteld/)
 })
 
+const stage = { id: 'item-1', kind: 'internships', category: 'Stage', title: 'Eindstage', status: 'bevestigd', skills: [], files: [] }
+const diploma = { id: 'item-2', kind: 'diplomas', category: "Diploma's", title: 'Propedeuse', status: 'bevestigd', skills: [], files: [] }
+const vault = { status: 'on' as const, items: [stage, diploma] }
+
+test('the vault items Ayla used become usedData, each kind once', async () => {
+  const fake = model(say('Je stage bij LiveWall laat Figma zien.', { usedVaultItems: [1, 1, 9, 'x'] }))
+  const reply = await answer({ request, conversationId: 'c', history: [], vault }, { complete: fake.complete, newId: ids() })
+  assert.deepEqual(reply.usedData, ['internships'])
+})
+
+test('opening one item goes by its id, and only for an item Ayla may see', async () => {
+  const open = (item: number | null) => answer(
+    { request, conversationId: 'c', history: [], vault },
+    { complete: model(say('Ik open hem.', { navigation: { screen: 'vaultItem', item } })).complete, newId: ids() },
+  )
+  assert.deepEqual((await open(2)).navigation, { screen: 'vaultItem', itemId: 'item-2' })
+  assert.deepEqual((await open(7)).navigation, { screen: 'vault' })
+  assert.deepEqual((await open(null)).navigation, { screen: 'vault' })
+})
+
+test('the item that is open is named only when Ayla may see it', () => {
+  const allowed = buildSystemPrompt({ device: 'phone', context: { screen: 'vaultItem', itemId: 'item-1' }, vault })
+  assert.match(allowed, /item 1 uit de kluis open \(Eindstage\)/)
+  const hidden = buildSystemPrompt({ device: 'phone', context: { screen: 'vaultItem', itemId: 'secret' }, vault })
+  assert.match(hidden, /niet mag zien/)
+  assert.doesNotMatch(hidden, /secret/)
+})
+
+test('the iPhone and the web get a proposal for the vault too, with Ja and Nee', async () => {
+  const item = { category: 'internships', title: 'Eindstage', organisation: 'LiveWall', place: null, startDate: '2025-02', endDate: null, issuedOn: null, isCurrent: true }
+  for (const device of ['phone', 'web'] as const) {
+    const fake = model(say('Zal ik je stage toevoegen?', { navigation: { screen: 'addEvidence', item: null }, vaultItem: item }))
+    const reply = await answer({ request: { ...request, device }, conversationId: 'c', history: [] }, { complete: fake.complete, newId: ids() })
+    assert.equal(reply.proposedAction?.kind, 'addVaultItem')
+    assert.equal(reply.proposedAction?.vaultItem?.title, 'Eindstage')
+    assert.deepEqual(reply.question?.choices.map((c) => c.label), ['Ja', 'Nee'])
+    assert.match(fake.calls[0][0].content, /vul dan vaultItem in/)
+  }
+})
+
 test('the Watch gets no vacancy cards', async () => {
   const fake = model(say('', { vacancySearch: { what: 'developer', where: '' } }), say('Ze staan op je iPhone.'))
   const reply = await answer({ request: { ...request, device: 'watch' }, conversationId: 'c', history: [] }, {
