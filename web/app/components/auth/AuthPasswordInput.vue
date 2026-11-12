@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PasswordFieldState } from '~/utils/passwordRules';
+import type { PasswordFieldState } from '~/utils/auth/passwordRules';
 
 type FieldLook = 'error' | 'neutral' | PasswordFieldState;
 

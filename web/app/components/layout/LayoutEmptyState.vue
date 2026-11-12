@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PaveIconName } from '~/utils/paveIcons';
+import type { PaveIconName } from '~/utils/layout/paveIcons';
 
 // iOS PaveEmptyState: a green icon on a soft green tile, a title and a short message, centered.
 defineProps<{

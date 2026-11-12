@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PaveIconName } from '~/utils/paveIcons';
+import type { PaveIconName } from '~/utils/layout/paveIcons';
 
 // A screen from the menu that has nothing in it yet (iOS MainEmptyScreen): its title at the top and an honest empty
 // state in the middle, instead of made-up content.

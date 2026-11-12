@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { EmailLinkType } from '~/composables/useAuth';
+import type { EmailLinkType } from '~/composables/auth/useAuth';
 
 definePageMeta({ layout: 'auth' });
 

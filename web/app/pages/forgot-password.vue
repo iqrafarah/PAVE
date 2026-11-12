@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { MfaStatus } from '~/utils/mfaRoutes';
+import type { MfaStatus } from '~/utils/auth/mfaRoutes';
 
 definePageMeta({ layout: 'auth' });
 

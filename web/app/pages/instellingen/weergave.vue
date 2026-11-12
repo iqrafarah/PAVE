@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TextSize, ThemeId } from '~/utils/appearance';
+import type { TextSize, ThemeId } from '~/utils/settings/appearance';
 
 useHead({ title: `${PERSONAL_TITLE} - PAVE` });
 const personal = usePersonalisation();

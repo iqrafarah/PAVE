@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { SignedInDevice } from '~/utils/devices';
+import type { SignedInDevice } from '~/utils/settings/devices';
 
 // One signed-in device (iOS SignedInDeviceRow): an icon for the kind of device, its name, when it was active and, for
 // another device, a button to sign it out.

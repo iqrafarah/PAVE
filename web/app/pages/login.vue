@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AuthErrorLike } from '~/utils/authErrors';
+import type { AuthErrorLike } from '~/utils/auth/authErrors';
 
 definePageMeta({ layout: 'auth' });
 

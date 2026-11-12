@@ -1,4 +1,4 @@
-import type { MfaStatus } from '~/utils/mfaRoutes';
+import type { MfaStatus } from '~/utils/auth/mfaRoutes';
 
 const LOGIN_PATH = '/login';
 const PATHS_WITHOUT_MFA = ['/forgot-password', '/confirm', PASSWORD_UPDATED_PATH];

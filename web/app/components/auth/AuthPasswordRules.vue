@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PasswordRule } from '~/utils/passwordRules';
+import type { PasswordRule } from '~/utils/auth/passwordRules';
 
 const props = defineProps<{
   rules: PasswordRule[];

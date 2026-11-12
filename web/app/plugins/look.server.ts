@@ -1,6 +1,6 @@
-import type { KeptLook } from '~/utils/appearance';
-import { appearanceStyle, normaliseAppearance, themeColours, validCustomColor } from '~/utils/appearance';
-import { PERSONAL_THEMES } from '~/utils/settingsMessages';
+import type { KeptLook } from '~/utils/settings/appearance';
+import { appearanceStyle, normaliseAppearance, themeColours, validCustomColor } from '~/utils/settings/appearance';
+import { PERSONAL_THEMES } from '~/utils/settings/settingsMessages';
 
 // Builds the page in your theme colour and text size on the server already, from the cookie the browser keeps, with
 // the icon for the browser tab in that colour. Without this the page arrives in PAVE green and only changes once the

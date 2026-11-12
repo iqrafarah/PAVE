@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ThemeId } from '~/utils/appearance';
+import type { ThemeId } from '~/utils/settings/appearance';
 
 defineProps<{ customColor: string | null }>();
 const theme = defineModel<ThemeId>({ required: true });

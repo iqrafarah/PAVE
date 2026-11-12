@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { SignedInDevice } from '~/utils/devices';
+import type { SignedInDevice } from '~/utils/settings/devices';
 
 // "Ingelogde apparaten" (iOS SignedInDevicesScreen): where the account is signed in. This device first, then the
 // others, each with a button to sign it out, and one button to sign out everywhere else. Before the database is ready
