@@ -26,8 +26,8 @@ struct VaultEvidenceAddedView: View {
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 340)
             }
-            if flow.coverWaits {
-                PaveNotice(message: VaultMessages.coverNotYet)
+            if flow.coverWaits || flow.logoWaits {
+                PaveNotice(message: VaultMessages.imagesNotYet(cover: flow.coverWaits, logo: flow.logoWaits))
             }
             Spacer(minLength: 0)
             VaultAylaConsentCard(isOn: $flow.allowsAyla, hasFile: flow.hasFile)

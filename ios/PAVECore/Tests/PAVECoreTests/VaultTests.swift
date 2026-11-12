@@ -164,6 +164,9 @@ struct SupabaseVaultServiceTests {
         #expect(SupabaseVaultService.error(status: 403, body: Data(#"{"code":"42501"}"#.utf8)) == .notAllowed)
         #expect(SupabaseVaultService.error(status: 500, body: Data()) == .unavailable)
         #expect(SupabaseVaultService.error(status: 400, body: Data(#"{"code":"PGRST204","message":"Could not find the 'color' column"}"#.utf8)) == .missingColumn)
+        let oldRoles = Data(#"{"code":"23514","message":"new row for relation \"vault_item_files\" violates check constraint \"vault_item_files_role_check\""}"#.utf8)
+        #expect(SupabaseVaultService.error(status: 400, body: oldRoles) == .missingColumn)
+        #expect(SupabaseVaultService.error(status: 400, body: Data(#"{"code":"23514","message":"other check"}"#.utf8)) == .unavailable)
     }
 
     @Test func readsFolderStyleWhenTheColumnsExist() throws {

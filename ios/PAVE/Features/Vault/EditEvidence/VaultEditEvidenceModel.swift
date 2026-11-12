@@ -55,6 +55,17 @@ final class VaultEditEvidenceModel {
         originalSkills = item.skills
         allowsAyla = item.aylaAllowedAt != nil
         originalAyla = item.aylaAllowedAt != nil
+        ayla.documents = { [weak self] in await self?.currentDocuments() ?? [] }
+    }
+
+    /// The documents as they are now, kept and new, for Ayla's proposal.
+    private func currentDocuments() async -> [VaultUpload] {
+        var uploads = [VaultUpload]()
+        for file in keptDocuments {
+            guard let data = await vault.data(of: file) else { continue }
+            uploads.append(VaultUpload(data: data, fileName: file.name, mimeType: file.mimeType))
+        }
+        return uploads + newDocuments
     }
 
     var folders: [VaultFolder] { vault.folders }

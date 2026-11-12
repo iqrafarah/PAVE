@@ -30,7 +30,7 @@ public protocol VaultService: Sendable {
     func removeFile(_ file: VaultItem.File) async throws
     func removeSkills(_ names: [String], from itemID: String) async throws
     /// "Voorstel van Ayla": skills that fit the evidence. Only the fields of the draft go to Ayla, on request.
-    func suggestSkills(for draft: VaultItemDraft, existing: [String]) async throws -> [VaultSkillSuggestion]
+    func suggestSkills(for draft: VaultItemDraft, material: VaultSkillsMaterial, existing: [String]) async throws -> [VaultSkillSuggestion]
 }
 
 public enum VaultError: Error, Equatable, Sendable {
@@ -204,16 +204,18 @@ public struct SupabaseVaultService: VaultService {
         ), accepting: [200, 204])
     }
 
-    public func suggestSkills(for draft: VaultItemDraft, existing: [String]) async throws -> [VaultSkillSuggestion] {
+    public func suggestSkills(for draft: VaultItemDraft, material: VaultSkillsMaterial, existing: [String]) async throws -> [VaultSkillSuggestion] {
         let body: [String: Any] = [
             "category": draft.category.rawValue,
             "title": draft.title,
             "organisation": draft.organisationName,
             "description": draft.description,
             "existing": existing,
+            "files": material.texts.map { ["name": $0.name, "text": $0.text] },
+            "images": material.images.map { ["name": $0.name, "data": $0.jpeg.base64EncodedString()] },
         ]
         var urlRequest = try await request(functionsURL.appending(path: "ayla-skills"), method: "POST", json: body)
-        urlRequest.timeoutInterval = 40
+        urlRequest.timeoutInterval = material.images.isEmpty ? 40 : 60
         let data = try await send(urlRequest)
         guard let response = try? JSONDecoder().decode(SkillSuggestionsResponse.self, from: data) else { throw VaultError.unavailable }
         return response.skills
@@ -386,9 +388,10 @@ public struct SupabaseVaultService: VaultService {
         logger.error("Vault request failed: \(status, privacy: .public) \(detail?.code ?? "-", privacy: .public) \(detail?.message ?? "", privacy: .public)")
         let code = detail?.code
         if code == "23505" { return .duplicateFolderName }
-        // A column, a table or a relation between tables that the database does not have yet.
         // A column, a table or a relation between tables that the database does not have yet (PostgREST or Postgres codes).
         if ["PGRST204", "PGRST205", "PGRST200", "42P01", "42703"].contains(code) { return .missingColumn }
+        // A database that does not take a logo yet: its role check is older than the app (migration 20261112140000).
+        if code == "23514", detail?.message?.contains("vault_item_files_role_check") == true { return .missingColumn }
         if code == "NOT_FOUND", status == 404 { return .notSetUp }
         switch status {
         case 401: return .notSignedIn

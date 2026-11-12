@@ -50,8 +50,9 @@ final class VaultAddEvidenceModel {
     private(set) var showsMissing = false
     private(set) var isSaving = false
     private(set) var savedItemID: String?
-    /// The database has no cover column yet: the item was saved without its cover.
+    /// The database does not take a cover or a logo yet: the item was saved without it.
     private(set) var coverWaits = false
+    private(set) var logoWaits = false
 
     private var savedParts: Set<Part> = []
     private let initialDraft: VaultItemDraft
@@ -73,6 +74,7 @@ final class VaultAddEvidenceModel {
         for id in [folderID, kindFolder].compactMap({ $0 }) where !folderIDs.contains(id) { folderIDs.append(id) }
         initialDraft = VaultItemDraft(category: category, folderIDs: folderIDs)
         draft = initialDraft
+        ayla.documents = { [weak self] in self?.documents ?? [] }
     }
 
     var folders: [VaultFolder] { vault.folders }
@@ -252,7 +254,7 @@ final class VaultAddEvidenceModel {
                 do {
                     try await vault.attach(logo, to: id)
                 } catch VaultError.missingColumn {
-                    coverWaits = true
+                    logoWaits = true
                 }
                 savedParts.insert(.logo)
             }
