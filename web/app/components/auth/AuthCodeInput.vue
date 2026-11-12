@@ -20,10 +20,18 @@ const hasError = computed(() => Boolean(props.error));
 const describedBy = computed(() => (hasError.value ? errorId.value : hintId.value));
 const borderClass = computed(() => (hasError.value ? 'border-danger' : 'border-line'));
 
-function setDigits(input: HTMLInputElement, text: string) {
+// With the last digit typed or pasted the form sends itself, as people are used to: no extra click or Enter.
+async function setDigits(input: HTMLInputElement, text: string) {
   const digits = text.replace(NON_DIGITS, '').slice(0, CODE_LENGTH);
+  const isNewlyComplete = digits.length === CODE_LENGTH && digits !== code.value;
   input.value = digits;
   code.value = digits;
+  if (!isNewlyComplete) return;
+  // Wait until the page has the code, then submit like the button would (with the form's own checks).
+  await nextTick();
+  // Not while the form cannot be sent yet (its button is disabled, for example while a check is still running).
+  const button = input.form?.querySelector<HTMLButtonElement>('button[type="submit"]');
+  if (button && !button.disabled) input.form?.requestSubmit(button);
 }
 
 function handleInput(event: Event) {
