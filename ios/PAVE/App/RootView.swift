@@ -41,10 +41,14 @@ struct RootView: View {
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .background: appState.didEnterBackground()
-            case .active: appState.didBecomeActive()
+            case .active:
+                appState.didBecomeActive()
+                WatchBridge.shared.update()
             default: break
             }
         }
+        // The Watch follows: signed in here means signed in there, signed out means out there too.
+        .onChange(of: appState.phase) { WatchBridge.shared.update() }
         // Also while the app is locked: the chat opens once it is unlocked.
         .onContinueUserActivity(CSSearchableItemActionType) { activity in
             appState.conversationToOpen = AylaSpotlight.conversationID(in: activity)

@@ -1,7 +1,7 @@
 // The Ayla contract, see shared/ayla/reply.schema.json.
 import type { MemoryCategory } from './memory.ts'
 
-export const CATEGORIES = ['diplomas', 'certificates', 'badges', 'projects', 'workExperience', 'internships', 'skills', 'feedback', 'reflections'] as const
+export const CATEGORIES = ['diplomas', 'certificates', 'badges', 'projects', 'workExperience', 'internships', 'skills', 'feedback', 'reflections', 'other'] as const
 export const SCREENS = ['home', 'chat', 'vault', 'vaultItem', 'addEvidence', 'plans', 'vacancies', 'profile', 'settings'] as const
 export const DEVICES = ['watch', 'phone', 'web'] as const
 
@@ -45,6 +45,18 @@ export type Block =
   | { type: 'skillSuggestions'; itemId: string; skills: { name: string; reason: string }[] }
   | { type: 'cv'; profile: string; experience: { title: string; organisation: string; period: string; description?: string }[]; skills: string[] }
 
+/** An item Ayla proposes for the vault, in the fields of `vault_items`; dates as YYYY-MM-DD. */
+export interface VaultItemProposal {
+  category: Category
+  title: string
+  organisationName?: string
+  organisationLocation?: string
+  startDate?: string
+  endDate?: string
+  issuedOn?: string
+  isCurrent?: boolean
+}
+
 export interface AylaReply {
   version: 1
   id: string
@@ -52,7 +64,14 @@ export interface AylaReply {
   text: string
   question?: { text: string; choices: Choice[] }
   accessRequest?: { id: string; purpose: string; categories: Category[] }
-  proposedAction?: { id: string; kind: 'addVaultItem' | 'updatePlan' | 'draftProfile' | 'requestValidation'; summary: string; expiresAt: string }
+  proposedAction?: {
+    id: string
+    kind: 'addVaultItem' | 'updatePlan' | 'draftProfile' | 'requestValidation'
+    summary: string
+    expiresAt: string
+    /** With `addVaultItem`: what to put in the vault once the user confirms. */
+    vaultItem?: VaultItemProposal
+  }
   blocks: Block[]
   navigation?: { screen: Screen; itemId?: string }
   /**

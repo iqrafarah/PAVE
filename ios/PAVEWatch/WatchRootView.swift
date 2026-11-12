@@ -1,26 +1,39 @@
 import SwiftUI
 
+/// The splash, then either Ayla or the request to sign in on the iPhone.
 struct WatchRootView: View {
+    @State private var sessions = WatchSessionStore()
+    @State private var model: WatchAylaModel?
     @State private var isLoading = true
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         Group {
             if isLoading {
                 PaveSplashView()
-            } else {
-                VStack(spacing: 4) {
-                    Text("Ayla")
-                        .font(.headline)
-                    Text("Komt binnenkort.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+            } else if let model, !model.isSignedOut {
+                NavigationStack {
+                    WatchVoiceView(model: model)
                 }
+            } else {
+                WatchSignedOutView()
             }
         }
         .animation(.easeInOut(duration: 0.4), value: isLoading)
+        // Lowering your wrist only dims the screen, so Ayla finishes her answer; leaving the app stops her.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { model?.pause() }
+        }
         .task {
-            try? await Task.sleep(for: .seconds(1.5))
+            sessions.start()
+            let model = WatchAylaModel(sessions: sessions)
+            self.model = model
+            WatchLaunchRequest.onListen = { model.listenFromShortcut() }
+            // Coming from Siri: skip most of the splash and listen straight away.
+            let fromShortcut = WatchLaunchRequest.takePending()
+            try? await Task.sleep(for: .seconds(fromShortcut ? 0.6 : 1.5))
             isLoading = false
+            if fromShortcut { model.listenFromShortcut() }
         }
     }
 }

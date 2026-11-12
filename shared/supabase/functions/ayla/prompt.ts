@@ -1,5 +1,6 @@
 import type { Device, Screen } from './contract.ts'
 import { MEMORY_CATEGORIES, type Memory, memoryPrompt } from './memory.ts'
+import { VAULT_ITEM_SCHEMA } from './proposal.ts'
 
 // Layer 1: who Ayla is and her rules. Adapted from the voice demo, without
 // the demo parts and without privacy claims that are not true for this setup.
@@ -45,9 +46,9 @@ Antwoord in het Nederlands, tenzij de gebruiker een andere taal spreekt.
 
 // Layer 2: style per device. Same Ayla, different length.
 const DEVICE_PROMPTS: Record<Device, string> = {
-  watch: 'De gebruiker praat met je via een Apple Watch. Antwoord in één of twee korte zinnen. Bied bij een keuze hooguit drie korte keuzes, zoals Ja en Nee. Noem nooit gevoelige gegevens hardop. Vacatures en kaarten passen niet op het horloge: zeg dat ze in de app op de iPhone staan.',
-  phone: 'De gebruiker gebruikt de PAVE-app op een iPhone. Houd je antwoord kort, hooguit een paar zinnen.',
-  web: 'De gebruiker gebruikt de PAVE-website op een groot scherm. Houd je antwoord kort, hooguit een paar zinnen.',
+  watch: 'De gebruiker praat met je via een Apple Watch. Antwoord in één of twee korte zinnen. Bied bij een keuze hooguit drie korte keuzes, zoals Ja en Nee. Noem nooit gevoelige gegevens hardop. Vacatures en kaarten passen niet op het horloge: zeg dat ze in de app op de iPhone staan. Vraagt de gebruiker om iets in de kluis te zetten, zoals een stage, diploma, certificaat of project, vul dan vaultItem in met alleen wat de gebruiker zelf noemde (onbekend is null, datums als JJJJ-MM-DD of JJJJ-MM) en vraag in je tekst kort of je het mag toevoegen. Zeg nooit dat het al in de kluis staat: dat gebeurt pas als de gebruiker Ja zegt. Anders is vaultItem null.',
+  phone: 'De gebruiker gebruikt de PAVE-app op een iPhone. Houd je antwoord kort, hooguit een paar zinnen. vaultItem is altijd null.',
+  web: 'De gebruiker gebruikt de PAVE-website op een groot scherm. Houd je antwoord kort, hooguit een paar zinnen. vaultItem is altijd null.',
 }
 
 const SCREEN_NAMES: Record<Screen, string> = {
@@ -112,7 +113,7 @@ export function buildSystemPrompt(input: PromptInput): string {
 export const MODEL_OUTPUT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['text', 'question', 'navigation', 'vacancySearch', 'title', 'memories', 'usedMemories'],
+  required: ['text', 'question', 'navigation', 'vacancySearch', 'title', 'memories', 'usedMemories', 'vaultItem'],
   properties: {
     text: { type: 'string' },
     question: {
@@ -153,6 +154,7 @@ export const MODEL_OUTPUT_SCHEMA = {
         },
       },
     },
+    vaultItem: VAULT_ITEM_SCHEMA,
     vacancySearch: {
       type: ['object', 'null'],
       additionalProperties: false,

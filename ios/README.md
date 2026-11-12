@@ -114,7 +114,13 @@ Met een gratis Apple-account verloopt de app na 7 dagen en moet je hem opnieuw i
 
 ## Apple Watch
 
-De Watch-app (`PAVEWatch/`) is een spraakbot voor snelle vragen en handsfree bedienen. Hij krijgt geen volledige interface. Nu bevat hij alleen het laadscherm en een tijdelijk Ayla-scherm. De Watch-app zit in de iPhone-app: een iPhone-build installeert hem op de gekoppelde Watch. Kies in Xcode het scheme `PAVEWatch` om hem los te draaien. Bundle-id: `<jouw APP_BUNDLE_IDENTIFIER>.watchkitapp`.
+De Watch-app (`PAVEWatch/`) is een spraakbot voor snelle vragen en handsfree bedienen. Hij krijgt geen volledige interface: één scherm met een knop om te praten, wat Ayla doet, en haar korte antwoord.
+
+- **Inloggen via de iPhone** (`WatchBridge` op de iPhone, `WatchSessionStore` op de Watch, `WatchSession`/`WatchLink` in PAVECore): de iPhone geeft alleen een kortlevend toegangstoken door (met tweestapsverificatie); het verversingstoken blijft op de iPhone, zodat ze elkaar niet uitloggen. Is het token bijna verlopen, dan vraagt de Watch een nieuw. Uitloggen op de iPhone logt de Watch ook uit. Met het demo-account geen sessie.
+- **Praten:** tik op de groene knop en praat; na 1,4 seconde stilte stopt hij vanzelf (`WatchRecorder`, 16 kHz WAV, maximaal 30 seconden). watchOS heeft geen spraakherkenning, dus de opname gaat naar de Edge Function `ayla-listen` (`AylaListenService`); die geeft alleen tekst terug en bewaart niets. Daarna gaat de vraag naar `ayla` met `device: watch` (antwoord van één of twee zinnen) en leest Ayla het voor met haar eigen stem (`WatchVoicePlayer`, met de Nederlandse stem van de Watch als reserve).
+- **Ja/Nee:** keuzes van Ayla (hooguit drie) en "Zal ik dit onthouden?". Niets wordt bewaard zonder Ja.
+- **Status:** `ayla-listen` is nog niet gedeployed; tot dan zegt de Watch "Praten met Ayla kan nog niet op je Apple Watch."
+ De Watch-app zit in de iPhone-app: een iPhone-build installeert hem op de gekoppelde Watch. Kies in Xcode het scheme `PAVEWatch` om hem los te draaien. Bundle-id: `<jouw APP_BUNDLE_IDENTIFIER>.watchkitapp`.
 
 ## Inloggen
 

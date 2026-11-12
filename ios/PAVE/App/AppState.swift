@@ -45,6 +45,11 @@ final class AppState {
         PaveLinkInbox.receive = { [weak self] link in self?.link = link }
     }
 
+    /// Signed in on this iPhone, also while the PIN screen is up; the Watch may then ask for the session.
+    static func isSignedIn(in defaults: UserDefaults = .standard) -> Bool {
+        defaults.bool(forKey: signedInKey)
+    }
+
     /// Whether the app is unlocked and showing your things.
     var isOpen: Bool { phase == .main && !isRelocked }
 
