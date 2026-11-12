@@ -59,7 +59,21 @@ export function checkVaultFile(file: File, kind: 'evidence' | 'cover') {
 }
 
 export function createDraft(): VaultItemDraft {
-  return { title: '', category: '', organisationName: '', startMonth: '', endMonth: '', issuedMonth: '', description: '' };
+  return {
+    title: '',
+    category: '',
+    organisationName: '',
+    startMonth: '',
+    endMonth: '',
+    issuedMonth: '',
+    description: '',
+    usesPeriod: null,
+  };
+}
+
+/** Whether the draft has a period (start and end) or one date: what you chose, or else what fits its kind. */
+export function draftHasPeriod(draft: VaultItemDraft) {
+  return draft.usesPeriod ?? hasPeriod(draft.category);
 }
 
 export type DraftField = 'title' | 'category' | 'organisationName' | 'period' | 'description';
@@ -72,7 +86,7 @@ export function checkDraft(draft: VaultItemDraft): Partial<Record<DraftField, st
   else if (title.length > MAX_TITLE_LENGTH) problems.title = VAULT_PROBLEM_TITLE_TOO_LONG;
   if (!draft.category) problems.category = VAULT_PROBLEM_CATEGORY;
   if (!draft.organisationName.trim()) problems.organisationName = VAULT_PROBLEM_ORGANISATION;
-  if (hasPeriod(draft.category)) {
+  if (draftHasPeriod(draft)) {
     if (!draft.startMonth) problems.period = VAULT_PROBLEM_PERIOD;
     else if (draft.endMonth && draft.endMonth < draft.startMonth) problems.period = VAULT_PROBLEM_END_BEFORE_START;
   } else if (!draft.issuedMonth) {
@@ -90,7 +104,7 @@ function toDate(month: string) {
 
 /** The columns for vault_items, like VaultItemDraft.row on iOS: only the dates that fit the category are sent. */
 export function toVaultItemRow(draft: VaultItemDraft) {
-  const withPeriod = hasPeriod(draft.category);
+  const withPeriod = draftHasPeriod(draft);
   return {
     category: draft.category,
     title: draft.title.trim(),
@@ -165,4 +179,10 @@ export function isYesChoice(label: string) {
 export function getSuggestedSkills(reply: AylaReply | null | undefined) {
   const names = (reply?.blocks ?? []).flatMap((block) => (block.type === 'skillSuggestions' ? block.skills.map((skill) => skill.name) : []));
   return [...new Set(names.map((name) => name.trim()).filter(Boolean))];
+}
+
+/** The file name without its extension and with dashes as spaces: a first guess at a title (as on iOS). */
+export function suggestedTitle(fileName: string) {
+  const base = fileName.replace(/\.[^.]+$/, '');
+  return base.replace(/[-_]+/g, ' ').split(' ').filter(Boolean).join(' ').slice(0, 200);
 }

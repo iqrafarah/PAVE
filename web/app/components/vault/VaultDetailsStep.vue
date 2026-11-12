@@ -2,24 +2,27 @@
 import type { VaultItemCategory, VaultItemDraft } from '~/types/vault';
 import type { DraftField } from '~/utils/vaultAdd';
 
-// Step 2 "Documenten" (Figma 1167:11759): the chosen file and what the evidence is about. Every field is required,
-// as in the design; what is missing shows once you press Volgende.
+// The details of evidence (Figma 1167:11759, iOS VaultEvidenceForm): the chosen files and what the evidence is about,
+// with the folders it goes in. Every field but the folders is required, as in the design; what is missing shows once
+// you press Volgende. Used for adding and for changing evidence.
 withDefaults(
   defineProps<{
-    file: File | null;
+    files?: File[];
     problems: Partial<Record<DraftField, string>>;
-    // Shows "Map" next to "Soort"; off where the folder is not chosen.
-    showsFolder?: boolean;
+    // A folder for the kind that does not exist yet ("Stages"), offered in Mappen; null when there is none.
+    newFolderName?: string | null;
   }>(),
-  { showsFolder: false },
+  { files: () => [], newFolderName: null },
 );
 
 const emit = defineEmits<{
-  removeFile: [];
+  removeFile: [index: number];
+  foldersChosen: [];
 }>();
 
 const draft = defineModel<VaultItemDraft>('draft', { required: true });
-const folderId = defineModel<string | null>('folderId', { default: null });
+const folderIds = defineModel<string[]>('folderIds', { required: true });
+const makesNewFolder = defineModel<boolean>('makesNewFolder', { default: false });
 
 const ids = {
   title: useId(),
@@ -30,7 +33,11 @@ const ids = {
   folder: useId(),
 };
 const CATEGORIES = Object.entries(VAULT_CATEGORY_TITLES) as [VaultItemCategory, string][];
-const withPeriod = computed(() => hasPeriod(draft.value.category));
+const withPeriod = computed(() => draftHasPeriod(draft.value));
+
+function choosePeriod(isPeriod: boolean) {
+  draft.value = { ...draft.value, usesPeriod: isPeriod };
+}
 
 const fieldClass =
   'h-9.75 w-full min-w-0 rounded-field border border-field-line bg-white px-3 text-sm font-medium text-heading focus:border-brand focus:outline-none aria-invalid:border-danger';
@@ -50,7 +57,7 @@ function focusFirstProblem(field: DraftField) {
 
 <template>
   <div class="flex flex-col gap-4">
-    <VaultFileChip v-if="file" class="mb-1.5" :file="file" @remove="emit('removeFile')" />
+    <VaultFileChip v-for="(file, index) in files" :key="`${file.name}-${file.size}-${index}`" :file="file" @remove="emit('removeFile', index)" />
 
     <div class="grid gap-x-4.5 gap-y-4 sm:grid-cols-2">
       <VaultField :label="VAULT_FIELD_TITLE" :for="ids.title" :problem="problems.title" :problem-id="problemId(ids.title)">
@@ -79,8 +86,14 @@ function focusFirstProblem(field: DraftField) {
         </select>
       </VaultField>
 
-      <VaultField v-if="showsFolder" :label="VAULT_FIELD_FOLDER" :for="ids.folder" class="sm:col-span-2">
-        <VaultFolderSelect :id="ids.folder" v-model:folder-id="folderId" v-model:category="draft.category" can-change-category />
+      <VaultField :label="VAULT_FIELD_FOLDERS" :for="ids.folder" is-optional class="sm:col-span-2">
+        <VaultFoldersPicker
+          :id="ids.folder"
+          v-model:folder-ids="folderIds"
+          v-model:makes-new-folder="makesNewFolder"
+          :new-folder-name="newFolderName"
+          @chosen="emit('foldersChosen')"
+        />
       </VaultField>
 
       <VaultField
@@ -108,7 +121,24 @@ function focusFirstProblem(field: DraftField) {
         :problem-id="problemId(ids.period)"
         is-group
       >
-        <!-- Something you did for a while has a start and an end; a diploma or certificate has one month. -->
+        <!-- A period or one date, for any kind; the kind only decides which comes first (as on iOS). It sits beside
+             the label, so the field itself lines up with the one next to it. -->
+        <template #aside>
+          <div class="flex shrink-0 rounded-md bg-surface p-0.5" role="radiogroup" :aria-label="VAULT_FIELD_PERIOD_KIND">
+            <button
+              v-for="option in [true, false]"
+              :key="String(option)"
+              type="button"
+              role="radio"
+              :aria-checked="withPeriod === option"
+              :class="withPeriod === option ? 'bg-white text-brand shadow-sm' : 'text-subtle hover:text-heading'"
+              class="h-6 rounded px-2 text-[0.6875rem] font-semibold focus-visible:outline-2 focus-visible:outline-brand"
+              @click="choosePeriod(option)"
+            >
+              {{ option ? VAULT_PERIOD_RANGE : VAULT_PERIOD_ONE_DATE }}
+            </button>
+          </div>
+        </template>
         <div
           v-if="withPeriod"
           role="group"

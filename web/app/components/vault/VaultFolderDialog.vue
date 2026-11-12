@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { VaultFolder, VaultFolderColor, VaultFolderIcon, VaultShelfEntry } from '~/types/vault';
+import type { VaultFolder, VaultFolderColor, VaultFolderIcon } from '~/types/vault';
 
 // Making a folder or changing one (iOS VaultFolderEditor): a name, a colour and an icon, with the folder shown as it
-// will look. A standard folder (Certificaten, Diploma's...) can be changed too; that is kept in your account.
+// will look. The four example folders are ordinary folders, so they change the same way.
 const props = defineProps<{
   // Null while closed; 'new' for a new folder, or the folder to change.
-  folder: VaultShelfEntry | 'new' | null;
+  folder: VaultFolder | 'new' | null;
 }>();
 
 const emit = defineEmits<{
@@ -33,20 +33,15 @@ const isOpen = computed({
   },
 });
 const previewName = computed(() => name.value.trim() || VAULT_NEW_FOLDER_TITLE);
-// A standard folder keeps its own icon (Stages: a building) until you choose another one.
-const hasChosenIcon = ref(false);
-const previewIcon = computed(() =>
-  editing.value && !hasChosenIcon.value ? editing.value.iconSrc : VAULT_FOLDER_ICONS[icon.value],
-);
 
 watch(
   () => props.folder,
   (folder) => {
     if (!folder) return;
-    name.value = folder === 'new' ? '' : folder.title;
-    color.value = folder === 'new' ? 'green' : folder.colorKey;
-    icon.value = folder === 'new' ? 'folder' : folder.iconKey;
-    hasChosenIcon.value = false;
+    const style = folder === 'new' ? null : folderStyle(folder);
+    name.value = folder === 'new' ? '' : folder.name;
+    color.value = style?.color ?? 'green';
+    icon.value = style?.icon ?? 'folder';
     problem.value = null;
   },
   { immediate: true },
@@ -60,39 +55,22 @@ async function save() {
     problem.value = VAULT_FOLDER_NAME_MISSING;
     return;
   }
-  if (vault.isFolderNameTaken(trimmed, editing.value?.key)) {
+  if (vault.isFolderNameTaken(trimmed, editing.value?.id)) {
     problem.value = VAULT_FOLDER_NAME_TAKEN;
     return;
   }
   isSaving.value = true;
-  const target = editing.value;
-  let isSaved: boolean;
-  if (target?.shelf.kind === 'category') {
-    const category = target.shelf.category;
-    const isDefaultName = trimmed === VAULT_CATEGORY_PLURALS[category];
-    const keepsIcon = hasChosenIcon.value || Boolean(vault.state.value.categoryFolders[category]?.icon);
-    isSaved = await vault.updateCategoryFolder(category, {
-      ...(isDefaultName ? {} : { name: trimmed }),
-      ...(color.value === 'green' ? {} : { color: color.value }),
-      ...(keepsIcon ? { icon: icon.value } : {}),
-    });
-  } else if (target?.shelf.kind === 'folder') {
-    isSaved = await vault.updateFolder(target.shelf.id, trimmed, color.value, icon.value);
-  } else {
-    const created = await vault.createFolder(trimmed, color.value, icon.value);
+  if (editing.value) {
+    const isSaved = await vault.updateFolder(editing.value.id, trimmed, color.value, icon.value);
     isSaving.value = false;
-    if (created) emit('created', created);
+    if (isSaved) emit('close');
     else takeProblem();
     return;
   }
+  const created = await vault.createFolder(trimmed, color.value, icon.value);
   isSaving.value = false;
-  if (isSaved) emit('close');
+  if (created) emit('created', created);
   else takeProblem();
-}
-
-/** A standard folder with its own icon (not one of the choices) has no choice lit up until you pick one. */
-function isShownAsChosen(option: VaultFolderIcon) {
-  return icon.value === option && previewIcon.value === VAULT_FOLDER_ICONS[option];
 }
 
 /** The reason it did not work is shown here, not in the toast of the vault. */
@@ -110,10 +88,10 @@ function takeProblem() {
         aria-hidden="true"
         inert
         :title="previewName"
-        :icon="previewIcon"
+        :icon="VAULT_FOLDER_ICONS[icon]"
         :color="VAULT_FOLDER_COLORS[color]"
         :surface="folderSurface(color)"
-        :count="editing ? editing.count : 0"
+        :count="editing ? vault.count({ kind: 'folder', id: editing.id }) : 0"
       />
 
       <div class="flex flex-col">
@@ -154,8 +132,8 @@ function takeProblem() {
           <label
             v-for="option in ICONS"
             :key="option"
-            :class="isShownAsChosen(option) ? 'text-white' : 'bg-tint text-heading hover:bg-brand-soft'"
-            :style="isShownAsChosen(option) ? { background: VAULT_FOLDER_COLORS[color] } : undefined"
+            :class="icon === option ? 'text-white' : 'bg-tint text-heading hover:bg-brand-soft'"
+            :style="icon === option ? { background: VAULT_FOLDER_COLORS[color] } : undefined"
             class="flex h-11 cursor-pointer items-center justify-center rounded-[0.625rem] has-focus-visible:outline-2 has-focus-visible:outline-offset-1 has-focus-visible:outline-brand"
           >
             <input
@@ -164,7 +142,6 @@ function takeProblem() {
               name="vault-folder-icon"
               :value="option"
               class="sr-only"
-              @change="hasChosenIcon = true"
             />
             <VaultIcon :src="VAULT_FOLDER_ICONS[option]" class="size-5" />
             <span class="sr-only">{{ VAULT_FOLDER_ICON_TITLES[option] }}</span>

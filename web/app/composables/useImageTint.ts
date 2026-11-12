@@ -1,5 +1,6 @@
 // The soft colour behind a vault card, taken from its logo or cover (Figma: the orange Frencken logo on apricot, the
-// green Plus logo on green). The most vivid colour of the picture is mixed with white, so text stays readable.
+// green Plus logo on green): the band of a grid card and the fade of a list card. The strongest colour of the picture
+// is mixed with white, so text stays readable.
 // Null while the picture loads, when it cannot be read (another site that does not allow it) or when it has no colour:
 // the card then keeps the colour of its category.
 
@@ -32,34 +33,38 @@ function readTint(url: string) {
   });
 }
 
-/** Groups the pixels into rough colours and takes the one that is both common and vivid. */
+/**
+ * The colour that stands out most, the same way as iOS (VaultLogoLook.strongestColor): white, black and grey count for
+ * nothing, and the more saturated and bright a pixel is, the more it weighs. The pixels are grouped by hue and the
+ * heaviest group gives its average colour.
+ */
 function vividColour(pixels: Uint8ClampedArray) {
-  const groups = new Map<number, { r: number; g: number; b: number; count: number; saturation: number }>();
+  const BINS = 24;
+  const weights = new Array<number>(BINS).fill(0);
+  const sums = Array.from({ length: BINS }, () => ({ r: 0, g: 0, b: 0, w: 0 }));
   for (let index = 0; index < pixels.length; index += 4) {
-    const [r, g, b, alpha] = [pixels[index]!, pixels[index + 1]!, pixels[index + 2]!, pixels[index + 3]!];
-    if (alpha < 200) continue;
+    if (pixels[index + 3]! < 128) continue;
+    const [r, g, b] = [pixels[index]! / 255, pixels[index + 1]! / 255, pixels[index + 2]! / 255];
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
     const saturation = max === 0 ? 0 : (max - min) / max;
-    // White, black and grey say nothing about the brand.
-    if (saturation < 0.25 || max < 50) continue;
-    const key = ((r >> 5) << 6) | ((g >> 5) << 3) | (b >> 5);
-    const group = groups.get(key) ?? { r: 0, g: 0, b: 0, count: 0, saturation: 0 };
-    group.r += r;
-    group.g += g;
-    group.b += b;
-    group.count += 1;
-    group.saturation += saturation;
-    groups.set(key, group);
+    if (saturation <= 0.25 || max <= 0.2) continue;
+    let hue = max === r ? (g - b) / (max - min) : max === g ? 2 + (b - r) / (max - min) : 4 + (r - g) / (max - min);
+    hue = (((hue / 6) % 1) + 1) % 1;
+    const bin = Math.min(Math.floor(hue * BINS), BINS - 1);
+    const weight = saturation * max;
+    weights[bin]! += weight;
+    const sum = sums[bin]!;
+    sum.r += r * weight;
+    sum.g += g * weight;
+    sum.b += b * weight;
+    sum.w += weight;
   }
-  let best: { r: number; g: number; b: number; count: number; saturation: number } | null = null;
-  for (const group of groups.values()) {
-    if (!best || group.count * (group.saturation / group.count) > best.count * (best.saturation / best.count)) best = group;
-  }
-  // A few coloured pixels in a grey picture are noise.
-  if (!best || best.count < (SAMPLE_SIZE * SAMPLE_SIZE) / 50) return null;
-  const mix = (sum: number) => Math.round(255 - STRENGTH * (255 - sum / best!.count));
-  return `rgb(${mix(best.r)} ${mix(best.g)} ${mix(best.b)})`;
+  const best = weights.indexOf(Math.max(...weights));
+  const total = sums[best]!;
+  if (total.w <= 0) return null;
+  const mix = (channel: number) => Math.round(255 - STRENGTH * (255 - (channel / total.w) * 255));
+  return `rgb(${mix(total.r)} ${mix(total.g)} ${mix(total.b)})`;
 }
 
 export function useImageTint(url: MaybeRefOrGetter<string | null | undefined>) {

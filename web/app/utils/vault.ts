@@ -1,6 +1,4 @@
 import type {
-  VaultCategoryFolder,
-  VaultCategoryFolders,
   VaultFileRole,
   VaultFilter,
   VaultFolder,
@@ -32,8 +30,6 @@ export const VAULT_CATEGORIES: VaultItemCategory[] = [
   'other',
 ];
 
-/** The folders that are always on top of the vault, as in the design. Other categories appear once they hold something. */
-export const FEATURED_CATEGORIES: VaultItemCategory[] = ['certificates', 'diplomas', 'feedback', 'projects'];
 
 export const VAULT_CATEGORY_PLURALS: Record<VaultItemCategory, string> = {
   diplomas: "Diploma's",
@@ -158,9 +154,12 @@ export function itemPlace(item: VaultItem) {
   return parts.length ? parts.join(', ') : null;
 }
 
-/** A confirmed item stays as it was confirmed, and what an organisation added is theirs. The rest you can change. */
-export function isEditable(item: VaultItem) {
-  return item.source === 'user' && item.status !== 'verified';
+/**
+ * Every item can be changed (migration 20261112120000). A confirmed one then goes back to "Niet bevestigd" until it is
+ * confirmed again, so the app says so first (iOS changeNeedsReconfirmation).
+ */
+export function needsReconfirmation(item: VaultItem) {
+  return item.status === 'verified';
 }
 
 export function itemCount(count: number) {
@@ -196,17 +195,7 @@ function searchableText(item: VaultItem) {
 }
 
 export function isOnShelf(item: VaultItem, shelf: VaultShelf) {
-  if (shelf.kind === 'category') {
-    return item.category === shelf.category || (Boolean(shelf.folderId) && item.folderId === shelf.folderId);
-  }
-  if (shelf.kind === 'folder') return item.folderId === shelf.id;
-  return true;
-}
-
-export function isSameShelf(a: VaultShelf, b: VaultShelf) {
-  if (a.kind === 'category' && b.kind === 'category') return a.category === b.category;
-  if (a.kind === 'folder' && b.kind === 'folder') return a.id === b.id;
-  return a.kind === b.kind;
+  return shelf.kind === 'all' || item.folderIds.includes(shelf.id);
 }
 
 export function createFilter(): VaultFilter {
@@ -234,101 +223,76 @@ export function applyFilter(items: VaultItem[], filter: VaultFilter) {
     });
 }
 
-/** The start of a logo's or cover's file name in Storage ("uid/item/cover-uuid.jpg"); evidence has no prefix. */
+/**
+ * Before migration 20261112120000 there was no role column and the web marked a logo or cover by the start of its file
+ * name ("uid/item/cover-uuid.jpg"). Those files are still recognised; new ones also get the prefix, harmless after it.
+ */
 export const VAULT_FILE_PREFIXES = { logo: 'logo-', cover: 'cover-' } as const;
 
-export function fileRole(path: string): VaultFileRole {
+export function fileRole(role: string | null | undefined, path: string): VaultFileRole {
+  if (role === 'logo' || role === 'cover') return role;
   const name = path.split('/').pop() ?? '';
   if (name.startsWith(VAULT_FILE_PREFIXES.logo)) return 'logo';
   if (name.startsWith(VAULT_FILE_PREFIXES.cover)) return 'cover';
-  return 'evidence';
+  return 'document';
 }
 
 /** The pictures a browser can show; HEIC only works in Safari. */
 export const SHOWN_IMAGE_TYPES = ['image/jpeg', 'image/png'];
 
-/** The folder icon a category starts with, as one of the choices in the folder editor. */
-function categoryIconKey(category: VaultItemCategory): VaultFolderIcon {
-  const src = CATEGORY_FOLDER_ICONS[category];
-  const match = (Object.entries(VAULT_FOLDER_ICONS) as [VaultFolderIcon, string][]).find(([, path]) => path === src);
-  return match?.[0] ?? 'folder';
-}
+/** Enough for a report, a certificate and a few photos, without turning the vault into file storage (as on iOS). */
+export const MAX_DOCUMENTS = 5;
+
+/** The four folders every account starts with (iOS VaultExampleFolders, migration 20261112120000). */
+export const EXAMPLE_FOLDERS: { name: string; category: VaultItemCategory; color: VaultFolderColor; icon: VaultFolderIcon }[] = [
+  { name: 'Certificaten', category: 'certificates', color: 'green', icon: 'check-badge' },
+  { name: "Diploma's", category: 'diplomas', color: 'green', icon: 'academic-cap' },
+  { name: 'Feedback', category: 'feedback', color: 'green', icon: 'chat-bubble-left-ellipsis' },
+  { name: 'Projecten', category: 'projects', color: 'green', icon: 'wrench-screwdriver' },
+];
+
+/** The icon of the folder that is made for a kind of evidence, such as Stages when you add a stage. */
+export const CATEGORY_FOLDER_ICON_KEYS: Record<VaultItemCategory, VaultFolderIcon> = {
+  diplomas: 'academic-cap',
+  certificates: 'check-badge',
+  badges: 'star',
+  projects: 'wrench-screwdriver',
+  workExperience: 'briefcase',
+  internships: 'briefcase',
+  skills: 'paint-brush',
+  feedback: 'chat-bubble-left-ellipsis',
+  reflections: 'document-text',
+  other: 'folder',
+};
 
 /**
- * The folders above the vault: the standard ones you did not remove (the four from the design always, the other
- * categories once they hold something), then the folders you made.
+ * The folder of a kind of evidence, where a new item goes: the example folder (Projecten for a project), or a folder
+ * you named after the kind yourself (Stages, Werkervaring). Null when you have neither.
  */
-export function buildShelves(
-  items: VaultItem[],
-  folders: VaultFolder[],
-  categoryFolders: VaultCategoryFolders,
-): VaultShelfEntry[] {
-  const count = (shelf: VaultShelf) => items.filter((item) => isOnShelf(item, shelf)).length;
-  const plain = (name: string) => name.trim().toLocaleLowerCase('nl');
-  // A folder you made with the name of a standard folder is shown as that folder, not twice.
-  const twinOf = (title: string) => folders.find((folder) => plain(folder.name) === plain(title));
-  const twins = new Set<string>();
-  const standard = VAULT_CATEGORIES.filter((category) => {
-    if (categoryFolders[category]?.isHidden) return false;
-    return FEATURED_CATEGORIES.includes(category) || count({ kind: 'category', category }) > 0;
-  })
-    .sort((a, b) => {
-      const [left, right] = [FEATURED_CATEGORIES.indexOf(a), FEATURED_CATEGORIES.indexOf(b)];
-      return (left < 0 ? 99 : left) - (right < 0 ? 99 : right);
-    })
-    .map((category): VaultShelfEntry => {
-      const custom = categoryFolders[category] ?? {};
-      const colorKey = custom.color ?? 'green';
-      const iconKey = custom.icon ?? categoryIconKey(category);
-      const title = custom.name ?? VAULT_CATEGORY_PLURALS[category];
-      const twin = twinOf(title) ?? twinOf(VAULT_CATEGORY_PLURALS[category]);
-      if (twin) twins.add(twin.id);
-      const shelf = { kind: 'category' as const, category, ...(twin ? { folderId: twin.id } : {}) };
-      return {
-        key: `category-${category}`,
-        shelf,
-        title,
-        iconSrc: custom.icon ? VAULT_FOLDER_ICONS[custom.icon] : CATEGORY_FOLDER_ICONS[category],
-        hex: VAULT_FOLDER_COLORS[colorKey],
-        surface: folderSurface(colorKey),
-        colorKey,
-        iconKey,
-        count: count(shelf),
-        isStandard: true,
-      };
-    });
-  const own = folders.filter((folder) => !twins.has(folder.id)).map((folder): VaultShelfEntry => {
+export function kindFolder(category: VaultItemCategory, folders: VaultFolder[]) {
+  const names = [EXAMPLE_FOLDERS.find((example) => example.category === category)?.name, VAULT_CATEGORY_PLURALS[category]]
+    .filter((name): name is string => Boolean(name))
+    .map((name) => name.toLocaleLowerCase('nl'));
+  return folders.find((folder) => names.includes(folder.name.trim().toLocaleLowerCase('nl'))) ?? null;
+}
+
+/** The folders above the vault, in the order they were made, each with its look and how many items it holds. */
+export function buildShelves(items: VaultItem[], folders: VaultFolder[]): VaultShelfEntry[] {
+  return folders.map((folder) => {
     const style = folderStyle(folder);
-    const shelf = { kind: 'folder' as const, id: folder.id };
     return {
-      key: `folder-${folder.id}`,
-      shelf,
-      title: folder.name,
+      folder,
       iconSrc: VAULT_FOLDER_ICONS[style.icon],
       hex: style.hex,
       surface: style.surface,
       colorKey: style.color,
       iconKey: style.icon,
-      count: count(shelf),
-      isStandard: false,
+      count: items.filter((item) => item.folderIds.includes(folder.id)).length,
     };
   });
-  return [...standard, ...own];
 }
 
-/** Keeps only what this version understands from user_metadata.vault_category_folders. */
-export function readCategoryFolders(value: unknown): VaultCategoryFolders {
-  if (!value || typeof value !== 'object') return {};
-  const result: VaultCategoryFolders = {};
-  for (const [category, raw] of Object.entries(value as Record<string, unknown>)) {
-    if (!(VAULT_CATEGORIES as string[]).includes(category) || !raw || typeof raw !== 'object') continue;
-    const entry = raw as Record<string, unknown>;
-    const folder: VaultCategoryFolder = {};
-    if (typeof entry.name === 'string' && entry.name.trim()) folder.name = entry.name.trim().slice(0, 100);
-    if (typeof entry.color === 'string' && entry.color in VAULT_FOLDER_COLORS) folder.color = entry.color as VaultFolderColor;
-    if (typeof entry.icon === 'string' && entry.icon in VAULT_FOLDER_ICONS) folder.icon = entry.icon as VaultFolderIcon;
-    if (entry.isHidden === true) folder.isHidden = true;
-    result[category as VaultItemCategory] = folder;
-  }
-  return result;
+/** "In de map Projecten" or "In de mappen Projecten, Stage". */
+export function inFolders(names: string[]) {
+  return names.length === 1 ? `In de map ${names[0]}` : `In de mappen ${names.join(', ')}`;
 }

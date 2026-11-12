@@ -20,7 +20,8 @@ const progressWidth = computed(() => `calc((100% - 1.875rem) * ${props.current /
     <li
       v-for="(label, index) in VAULT_ADD_STEPS"
       :key="label"
-      class="relative flex w-7.5 flex-col items-center"
+      :class="index === 0 ? 'items-start' : index === VAULT_ADD_STEPS.length - 1 ? 'items-end' : 'items-center'"
+      class="relative flex w-7.5 flex-col"
       :aria-current="index === current ? 'step' : undefined"
     >
       <span

@@ -16,9 +16,10 @@ export interface VaultItemDraft {
   endMonth: VaultMonth;
   issuedMonth: VaultMonth;
   description: string;
+  // A period (start and end) or one date. Null follows the kind: a period for experience, one date for a diploma,
+  // certificate or badge. You can choose the other way for any kind (iOS VaultItemDraft.usesPeriod).
+  usesPeriod: boolean | null;
 }
-
-export type VaultCoverChoice = 'none' | 'cover';
 
 export interface VaultSkillOption {
   name: string;
@@ -31,8 +32,11 @@ export type VaultStatus = 'toVerify' | 'verified' | 'rejected';
 /** Who put the item in the vault. */
 export type VaultSource = 'user' | 'organization' | 'ayla' | 'import';
 
-/** What a file is for: the card's logo, its cover ("Omslag") or evidence. Told apart by the start of its name. */
-export type VaultFileRole = 'logo' | 'cover' | 'evidence';
+/**
+ * What a file is for (vault_item_files.role, migration 20261112120000): the evidence itself, the image in the round
+ * avatar on the card (logo) or the image in the band above it (cover). At most one logo and one cover per item.
+ */
+export type VaultFileRole = 'document' | 'logo' | 'cover';
 
 export interface VaultFile {
   id: string;
@@ -45,7 +49,8 @@ export interface VaultFile {
 /** One piece of evidence in the vault (iOS VaultItem). Dates are `YYYY-MM-DD` without a time. */
 export interface VaultItem {
   id: string;
-  folderId: string | null;
+  // Every folder the item is in (vault_item_folders), the first being vault_items.folder_id.
+  folderIds: string[];
   category: VaultItemCategory;
   title: string;
   description: string | null;
@@ -57,11 +62,13 @@ export interface VaultItem {
   isCurrent: boolean;
   status: VaultStatus;
   source: VaultSource;
-  // The logo on the card: the one of the organisation the item is linked to (organizations.logo_url), else the one you
-  // added yourself. Without either the card shows the first letter.
+  // The round image on the card: the organisation's logo (organizations.logo_url), else your own logo, else the cover
+  // (as on iOS). Without any of them the card shows the first letter.
   logoUrl: string | null;
-  // A short-lived link to the cover picture ("Omslag"), shown at the top of the card.
+  // A short-lived link to the cover ("Omslag"), shown in the band of a grid card.
   coverUrl: string | null;
+  // "Ayla mag dit bekijken en gebruiken" is on since then; null when it is off.
+  aylaAllowedAt: string | null;
   // The skills the user kept; Ayla's proposals that were not accepted are left out.
   skills: string[];
   files: VaultFile[];
@@ -89,7 +96,10 @@ export type VaultFolderIcon =
   | 'user-group'
   | 'trophy';
 
-/** A folder the user made. An item can sit in one folder and keeps its category. */
+/**
+ * A folder. Every account starts with four example folders (Certificaten, Diploma's, Feedback, Projecten) that are
+ * ordinary folders too. An item can be in several folders and keeps its category.
+ */
 export interface VaultFolder {
   id: string;
   name: string;
@@ -98,41 +108,25 @@ export interface VaultFolder {
   createdAt: string;
 }
 
-/**
- * What you changed about a standard folder (a category): its name, colour or icon, or that you removed it from the
- * row. Kept in the account (user_metadata.vault_category_folders), so it is the same on every device.
- */
-export interface VaultCategoryFolder {
-  name?: string;
-  color?: VaultFolderColor;
-  icon?: VaultFolderIcon;
-  isHidden?: boolean;
-}
-
-export type VaultCategoryFolders = Partial<Record<VaultItemCategory, VaultCategoryFolder>>;
-
-/** One folder in the row above the vault, a standard one or one you made, ready to show. */
+/** One folder in the row above the vault, ready to show. */
 export interface VaultShelfEntry {
-  key: string;
-  shelf: Exclude<VaultShelf, { kind: 'all' }>;
-  title: string;
-  // The icon and colours to draw it with.
+  folder: VaultFolder;
   iconSrc: string;
   hex: string;
   surface: string;
-  // The choices it starts with when you change it.
   colorKey: VaultFolderColor;
   iconKey: VaultFolderIcon;
   count: number;
-  isStandard: boolean;
 }
 
-/** Which part of the vault you look at: everything, one category or one of your own folders. */
-export type VaultShelf =
-  | { kind: 'all' }
-  // folderId: a folder you made with the same name ("Certificaten" from before the standard folders), shown as one.
-  | { kind: 'category'; category: VaultItemCategory; folderId?: string }
-  | { kind: 'folder'; id: string };
+/** Which part of the vault you look at: everything or one folder. */
+export type VaultShelf = { kind: 'all' } | { kind: 'folder'; id: string };
+
+/** A skill Ayla proposes for evidence you are adding (Edge Function ayla-skills), with why. */
+export interface VaultSkillSuggestion {
+  name: string;
+  reason: string;
+}
 
 /** "Zelf toegevoegd", "Van een organisatie" (also imports) or "Via Ayla". */
 export type VaultOrigin = 'own' | 'organisation' | 'ayla';

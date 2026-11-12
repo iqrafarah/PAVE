@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { VaultFile, VaultFileRole } from '~/types/vault';
+import type { VaultFile } from '~/types/vault';
 
-// Everything about one item (iOS VaultItemDetailView): where it comes from, whether it is confirmed and what you can
-// do with it: change it (and the folder it is in), give the card a logo or cover, or delete it.
+// Everything about one item (iOS VaultItemDetailView): where it comes from, whether it is confirmed, the folders it is
+// in and its documents. Changing it (details, folders, logo, cover, files, skills, Ayla) happens in "Aanpassen".
 const props = defineProps<{
   itemId: string | null;
 }>();
@@ -10,16 +10,13 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: [];
   edit: [itemId: string];
+  requestConfirmation: [itemId: string];
 }>();
 
 const vault = useVault();
 const supabase = useUntypedSupabase();
 const deleteRef = useTemplateRef<{ open: () => void }>('confirmDelete');
 const fileProblem = ref<string | null>(null);
-const imageInputRef = useTemplateRef<HTMLInputElement>('imageInput');
-const imageRole = ref<Exclude<VaultFileRole, 'evidence'>>('logo');
-const busyRole = ref<Exclude<VaultFileRole, 'evidence'> | null>(null);
-const imageProblem = ref<string | null>(null);
 
 const item = computed(() => vault.state.value.items.find((entry) => entry.id === props.itemId) ?? null);
 const isOpen = computed({
@@ -28,49 +25,13 @@ const isOpen = computed({
     if (!open) emit('close');
   },
 });
-const folder = computed(() => (item.value ? vault.folder(item.value.folderId) : null));
+const folderNames = computed(() =>
+  vault.state.value.folders.filter((folder) => item.value?.folderIds.includes(folder.id)).map((folder) => folder.name),
+);
 const place = computed(() => (item.value ? itemPlace(item.value) : null));
 const period = computed(() => (item.value ? itemPeriod(item.value) : null));
-const imageButton =
-  'min-h-8 rounded-lg px-2.5 text-sm font-medium text-brand hover:bg-tint focus-visible:outline-2 focus-visible:outline-brand disabled:opacity-50';
-
 // The logo and cover are pictures of the card, not evidence, so they are left out of "Bestanden".
-const evidenceFiles = computed(() => item.value?.files.filter((file) => file.role === 'evidence') ?? []);
-const hasOwnLogo = computed(() => item.value?.files.some((file) => file.role === 'logo') ?? false);
-// An organisation's logo always wins, so then there is nothing to choose.
-const hasOrganisationLogo = computed(() => Boolean(item.value?.logoUrl) && !hasOwnLogo.value);
-const hasOwnCover = computed(() => item.value?.files.some((file) => file.role === 'cover') ?? false);
-
-function pickImage(role: Exclude<VaultFileRole, 'evidence'>) {
-  imageRole.value = role;
-  imageProblem.value = null;
-  imageInputRef.value?.click();
-}
-
-async function setImage(role: Exclude<VaultFileRole, 'evidence'>, file: File | null) {
-  if (!item.value) return;
-  if (file) {
-    const problem = checkVaultFile(file, 'cover');
-    if (problem) {
-      imageProblem.value = problem;
-      return;
-    }
-  }
-  busyRole.value = role;
-  const isSaved = await vault.setImage(item.value, role, file);
-  busyRole.value = null;
-  if (!isSaved) {
-    imageProblem.value = vault.state.value.problem;
-    vault.state.value.problem = null;
-  }
-}
-
-function handleImage(event: Event) {
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0] ?? null;
-  input.value = '';
-  if (file) setImage(imageRole.value, file);
-}
+const documents = computed(() => item.value?.files.filter((file) => file.role === 'document') ?? []);
 
 async function remove() {
   if (!item.value) return;
@@ -90,13 +51,7 @@ async function openFile(file: VaultFile) {
   window.open(data.signedUrl, '_blank', 'noopener');
 }
 
-watch(
-  () => props.itemId,
-  () => {
-    fileProblem.value = null;
-    imageProblem.value = null;
-  },
-);
+watch(() => props.itemId, () => (fileProblem.value = null));
 </script>
 
 <template>
@@ -113,9 +68,19 @@ watch(
 
       <section class="flex flex-col gap-2.5">
         <h3 class="text-xs font-semibold text-subtle">{{ VAULT_DETAIL_STATUS }}</h3>
-        <p class="rounded-2xl border border-card-border bg-white p-4 text-sm font-medium text-heading">
-          {{ VAULT_STATUS_EXPLANATIONS[item.status] }}
-        </p>
+        <div class="flex flex-col gap-3.5 rounded-2xl border border-card-border bg-white p-4">
+          <p class="text-sm font-medium text-heading">{{ VAULT_STATUS_EXPLANATIONS[item.status] }}</p>
+          <!-- Also after a change: a confirmed item that was changed is Niet bevestigd again and can be sent anew. -->
+          <button
+            v-if="item.status !== 'verified'"
+            type="button"
+            class="flex min-h-13.25 w-full items-center justify-center gap-2.5 rounded-full border-[1.5px] border-brand bg-white px-4 text-base font-semibold text-brand transition-transform hover:bg-drop active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            @click="emit('requestConfirmation', item.id)"
+          >
+            <VaultIcon src="/images/vault/icons/CheckBadgeSolid.svg" class="size-5" />
+            {{ item.status === 'rejected' ? VAULT_REQUEST_AGAIN_ACTION : VAULT_REQUEST_ACTION }}
+          </button>
+        </div>
       </section>
 
       <section class="flex flex-col gap-2.5">
@@ -127,8 +92,8 @@ watch(
           <li v-if="period" class="flex items-center gap-2.5">
             <VaultIcon src="/images/vault/calendar.svg" class="size-5" />{{ period }}
           </li>
-          <li v-if="folder" class="flex items-center gap-2.5">
-            <VaultIcon src="/images/vault/icons/FolderSolid.svg" class="size-5" />{{ VAULT_DETAIL_IN_FOLDER(folder.name) }}
+          <li v-if="folderNames.length" class="flex items-center gap-2.5">
+            <VaultIcon src="/images/vault/icons/FolderSolid.svg" class="size-5" />{{ inFolders(folderNames) }}
           </li>
           <li class="flex items-center gap-2.5">
             <VaultIcon src="/images/vault/icons/InformationCircle.svg" class="size-5" />
@@ -151,42 +116,10 @@ watch(
         </ul>
       </section>
 
-      <!-- The card: a round logo and a cover picture on top, both optional and yours to change. -->
-      <section class="flex flex-col gap-2.5" :aria-busy="busyRole !== null">
-        <h3 class="text-xs font-semibold text-subtle">{{ VAULT_DETAIL_CARD }}</h3>
-        <input ref="imageInput" type="file" :accept="VAULT_COVER_ACCEPT" class="sr-only" tabindex="-1" aria-hidden="true" @change="handleImage" />
-        <ul class="flex flex-col divide-y divide-card-border rounded-2xl border border-card-border bg-white">
-          <li class="flex items-center gap-3 p-3">
-            <VaultLogo :name="item.organisationName ?? item.title" :logo-url="item.logoUrl" :size="40" />
-            <span class="min-w-0 flex-1 text-sm font-medium text-heading">{{ VAULT_LOGO }}</span>
-            <span v-if="hasOrganisationLogo" class="text-xs text-subtle">{{ VAULT_LOGO_FROM_ORGANISATION }}</span>
-            <button v-else type="button" :class="imageButton" :disabled="busyRole !== null" @click="pickImage('logo')">
-              {{ busyRole === 'logo' ? VAULT_SAVING : hasOwnLogo ? VAULT_IMAGE_CHANGE : VAULT_IMAGE_CHOOSE }}
-            </button>
-            <button v-if="hasOwnLogo" type="button" :class="imageButton" class="text-danger" :disabled="busyRole !== null" @click="setImage('logo', null)">
-              {{ VAULT_DELETE }}
-            </button>
-          </li>
-          <li class="flex items-center gap-3 p-3">
-            <span class="flex h-10 w-14 shrink-0 overflow-hidden rounded-lg bg-tile" aria-hidden="true">
-              <img v-if="item.coverUrl" :src="item.coverUrl" alt="" class="size-full object-cover" />
-            </span>
-            <span class="min-w-0 flex-1 text-sm font-medium text-heading">{{ VAULT_COVER }}</span>
-            <button type="button" :class="imageButton" :disabled="busyRole !== null" @click="pickImage('cover')">
-              {{ busyRole === 'cover' ? VAULT_SAVING : item.coverUrl ? VAULT_IMAGE_CHANGE : VAULT_IMAGE_CHOOSE }}
-            </button>
-            <button v-if="hasOwnCover" type="button" :class="imageButton" class="text-danger" :disabled="busyRole !== null" @click="setImage('cover', null)">
-              {{ VAULT_DELETE }}
-            </button>
-          </li>
-        </ul>
-        <p v-if="imageProblem" role="alert" class="text-xs text-danger">{{ imageProblem }}</p>
-      </section>
-
-      <section v-if="evidenceFiles.length" class="flex flex-col gap-2.5">
+      <section v-if="documents.length" class="flex flex-col gap-2.5">
         <h3 class="text-xs font-semibold text-subtle">{{ VAULT_DETAIL_FILES }}</h3>
         <ul class="flex flex-col gap-1 rounded-2xl border border-card-border bg-white p-2">
-          <li v-for="file in evidenceFiles" :key="file.id">
+          <li v-for="file in documents" :key="file.id">
             <button
               type="button"
               class="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm font-medium text-heading hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand"

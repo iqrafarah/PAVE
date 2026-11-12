@@ -1,9 +1,12 @@
 <script setup lang="ts">
-// The dashed green field (Figma "Sleep bestand hierheen of klik om te uploaden"): drop a file on it, or click it to
-// choose one. The file is only checked here; nothing is uploaded before the last step.
+// The dashed green field with the cloud (iOS VaultUploadZone): drop a file on it, or click it to choose one. Compact
+// is one low row, for adding another file. The file is only checked here; nothing is uploaded before the last step.
 const props = defineProps<{
   kind: 'evidence' | 'cover';
   isCompact?: boolean;
+  // Other words than "Sleep een bestand hierheen…", such as "Nog een document toevoegen".
+  title?: string;
+  hint?: string;
   describedBy?: string;
 }>();
 
@@ -50,18 +53,21 @@ function handleDrop(event: DragEvent) {
       type="button"
       :aria-describedby="describedBy"
       :class="[
-        isCompact ? 'min-h-43.5 pt-4.5' : 'min-h-56.5 pt-8.25',
+        isCompact ? 'min-h-16 items-center gap-3 px-4 py-2.5 text-left' : 'min-h-48.5 flex-col items-center justify-center gap-3.5 p-5 text-center',
         isDraggingOver ? 'border-brand bg-tint' : 'border-drop-line bg-drop hover:bg-tint',
       ]"
-      class="flex w-full flex-col items-center rounded-xl border-2 border-dashed px-4 pb-5 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+      class="flex w-full rounded-xl border-2 border-dashed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       @click="inputRef?.click()"
       @dragenter.prevent="isDraggingOver = true"
       @dragover.prevent="isDraggingOver = true"
       @dragleave.prevent="isDraggingOver = false"
       @drop.prevent="handleDrop"
     >
-      <img src="/images/vault/upload-cloud.svg" alt="" width="89.2203" height="94" />
-      <span class="mt-1.5 font-heading text-base font-semibold text-heading">{{ VAULT_DROP_FILE }}</span>
+      <VaultIcon src="/images/vault/icons/CloudArrowUpSolid.svg" :class="isCompact ? 'size-6' : 'size-13'" class="text-brand" />
+      <span class="flex min-w-0 flex-col" :class="isCompact ? 'gap-0.5' : 'gap-1'">
+        <span :class="isCompact ? 'text-sm' : 'text-base'" class="font-semibold text-heading">{{ title ?? VAULT_DROP_FILE }}</span>
+        <span class="text-xs font-medium text-subtle">{{ hint ?? (kind === 'cover' ? VAULT_COVER_HINT : VAULT_UPLOAD_HINT) }}</span>
+      </span>
     </button>
   </div>
 </template>

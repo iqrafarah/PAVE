@@ -1,18 +1,16 @@
-import type { VaultFileRole, VaultItemCategory, VaultItemDraft } from '~/types/vault';
-
-const BUCKET = 'pave-vault';
+import type { VaultItemCategory, VaultItemDraft } from '~/types/vault';
 
 interface OpenOptions {
   // Skills Ayla suggested in the conversation that opened "Kluis aanvullen".
   suggestedSkills?: string[];
-  // Opened from a category or folder in the vault (iOS: "Item toevoegen" in the shelf you look at).
+  // Opened for a kind of evidence, or from a folder in the vault (iOS: "Bewijs toevoegen" in the folder you look at).
   category?: VaultItemCategory;
   folderId?: string | null;
 }
 
 interface VaultAddState {
   isOpen: boolean;
-  // Changes every time it opens, so the dialog starts empty again.
+  // Changes on every open, so the dialog starts fresh.
   session: number;
   suggestedSkills: string[];
   category: VaultItemCategory | null;
@@ -21,24 +19,32 @@ interface VaultAddState {
 
 export interface VaultSaveInput {
   draft: VaultItemDraft;
-  file: File | null;
+  folderIds: string[];
+  // A folder for the kind that does not exist yet ("Stages"), made just before saving; null when none.
+  newFolderName: string | null;
+  documents: File[];
   cover: File | null;
   logo: File | null;
   skills: string[];
 }
 
-type SaveResult = { itemId: string; error: null } | { itemId: null; error: string };
+/**
+ * What a save has done so far. The item is saved first; when a later part fails (a file, the skills), trying again
+ * does only what is still missing, as on iOS, so nothing is added twice.
+ */
+export interface VaultSaveProgress {
+  itemId: string | null;
+  savedParts: Set<string>;
+}
 
-function errorMessage(error: { code?: string; message?: string } | null) {
-  if (isMissingTable(error) || isMissingColumn(error)) return VAULT_SAVE_NOT_READY;
-  if (error?.code === 'PGRST301' || error?.code === '401') return VAULT_SAVE_NOT_SIGNED_IN;
-  return VAULT_SAVE_FAILED;
+export function createSaveProgress(): VaultSaveProgress {
+  return { itemId: null, savedParts: new Set() };
 }
 
 /**
  * "Kluis aanvullen": adding evidence to the vault in four steps, from anywhere in the app. It writes the tables iOS
- * also uses (docs/vault.md): the item, its files in the private pave-vault bucket and its skills. What you add yourself
- * is always your own and not yet confirmed; the database refuses anything else.
+ * also uses (docs/vault.md) through useVault: the item and its folders, its files in the private pave-vault bucket and
+ * its skills. What you add yourself is always your own and not yet confirmed; the database refuses anything else.
  */
 export function useVaultAdd() {
   const supabase = useUntypedSupabase();
@@ -77,73 +83,57 @@ export function useVaultAdd() {
     return [...byKey.values()].sort((a, b) => a.localeCompare(b, 'nl'));
   }
 
-  async function uploadFile(userId: string, itemId: string, file: File, role: VaultFileRole) {
-    // A logo's or cover's name starts with "logo-" or "cover-", so the vault can show it on the card.
-    const prefix = role === 'evidence' ? '' : VAULT_FILE_PREFIXES[role];
-    const name = `${prefix}${crypto.randomUUID()}.${getExtension(file.name)}`;
-    const path = `${userId}/${itemId}/${name}`;
-    const mimeType = getVaultMimeType(file)!;
-    const upload = await supabase.storage.from(BUCKET).upload(path, file, { contentType: mimeType, upsert: false });
-    if (upload.error) return { path: null, error: upload.error };
-    const record = await supabase.from('vault_item_files').insert({
-      item_id: itemId,
-      storage_path: path,
-      file_name: file.name.slice(0, 255),
-      mime_type: mimeType,
-      file_size_bytes: file.size,
-    });
-    return { path, error: record.error };
+  /** Makes the folder of the kind just before saving, or finds it when it was made meanwhile. */
+  async function kindFolderId(name: string, category: VaultItemCategory) {
+    const made = await vault.createFolder(name, 'green', CATEGORY_FOLDER_ICON_KEYS[category]);
+    vault.state.value.problem = null;
+    return made?.id ?? vault.state.value.folders.find((folder) => folder.name.toLowerCase() === name.toLowerCase())?.id ?? null;
   }
 
-  /** Takes a half-saved item away again: Storage objects first (the database cannot), then the item and its rows. */
-  async function removeItem(itemId: string, paths: string[]) {
-    if (paths.length) await supabase.storage.from(BUCKET).remove(paths);
-    await supabase.from('vault_items').delete().eq('id', itemId);
-  }
-
-  async function save(input: VaultSaveInput): Promise<SaveResult> {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const userId = sessionData.session?.user.id;
-    if (!userId) return { itemId: null, error: VAULT_SAVE_NOT_SIGNED_IN };
-
-    const row = { ...toVaultItemRow(input.draft), folder_id: state.value.folderId };
-    const item = await supabase.from('vault_items').insert(row).select('id').single();
-    if (item.error || !item.data) return { itemId: null, error: errorMessage(item.error) };
-    const itemId = (item.data as { id: string }).id;
-
-    const uploaded: string[] = [];
-    const files: [File | null, VaultFileRole][] = [
-      [input.file, 'evidence'],
-      [input.cover, 'cover'],
-      [input.logo, 'logo'],
-    ];
-    for (const [file, role] of files) {
-      if (!file) continue;
-      const result = await uploadFile(userId, itemId, file, role);
-      if (result.path) uploaded.push(result.path);
-      if (result.error) {
-        await removeItem(itemId, uploaded);
-        return { itemId: null, error: errorMessage(result.error) };
+  /** Saves what is still missing. Returns the message to show when a part failed; the progress says how far it got. */
+  async function save(input: VaultSaveInput, progress: VaultSaveProgress): Promise<string | null> {
+    try {
+      if (!progress.itemId) {
+        const folderIds = [...input.folderIds];
+        if (input.newFolderName && input.draft.category) {
+          const id = await kindFolderId(input.newFolderName, input.draft.category);
+          if (id && !folderIds.includes(id)) folderIds.push(id);
+        }
+        progress.itemId = await vault.addItem(input.draft, folderIds);
       }
-    }
-
-    if (input.skills.length) {
-      const skills = await supabase.from('vault_item_skills').insert(input.skills.map((name) => ({ item_id: itemId, name })));
-      if (skills.error) {
-        await removeItem(itemId, uploaded);
-        return { itemId: null, error: errorMessage(skills.error) };
+      const itemId = progress.itemId;
+      for (const [index, file] of input.documents.entries()) {
+        const key = `document:${index}`;
+        if (progress.savedParts.has(key)) continue;
+        await vault.attach(itemId, file, 'document');
+        progress.savedParts.add(key);
       }
+      for (const [role, file] of [['cover', input.cover], ['logo', input.logo]] as const) {
+        if (!file || progress.savedParts.has(role)) continue;
+        await vault.attach(itemId, file, role);
+        progress.savedParts.add(role);
+      }
+      if (input.skills.length && !progress.savedParts.has('skills')) {
+        await vault.addSkills(itemId, input.skills);
+        progress.savedParts.add('skills');
+      }
+      // The vault page shows the new item straight away.
+      vault.load();
+      return null;
+    } catch (error) {
+      return error instanceof VaultSaveError ? error.message : VAULT_SAVE_FAILED;
     }
-
-    // The vault page shows the new item straight away.
-    vault.load();
-    return { itemId, error: null };
   }
 
   /** "Ayla mag dit document bekijken en gebruiken": the standing yes for this one item (vault_items.ayla_allowed_at). */
   async function allowAyla(itemId: string) {
-    const { error } = await supabase.from('vault_items').update({ ayla_allowed_at: new Date().toISOString() }).eq('id', itemId);
-    return error ? VAULT_CONSENT_FAILED : null;
+    try {
+      await vault.setAylaAllowed(itemId, true);
+      vault.load();
+      return null;
+    } catch {
+      return VAULT_CONSENT_FAILED;
+    }
   }
 
   return { state, open, close, loadVaultSkills, save, allowAyla };
