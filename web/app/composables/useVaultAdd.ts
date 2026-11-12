@@ -1,10 +1,13 @@
-import type { VaultItemDraft } from '~/types/vault';
+import type { VaultFileRole, VaultItemCategory, VaultItemDraft } from '~/types/vault';
 
 const BUCKET = 'pave-vault';
 
 interface OpenOptions {
   // Skills Ayla suggested in the conversation that opened "Kluis aanvullen".
   suggestedSkills?: string[];
+  // Opened from a category or folder in the vault (iOS: "Item toevoegen" in the shelf you look at).
+  category?: VaultItemCategory;
+  folderId?: string | null;
 }
 
 interface VaultAddState {
@@ -12,12 +15,15 @@ interface VaultAddState {
   // Changes every time it opens, so the dialog starts empty again.
   session: number;
   suggestedSkills: string[];
+  category: VaultItemCategory | null;
+  folderId: string | null;
 }
 
 export interface VaultSaveInput {
   draft: VaultItemDraft;
   file: File | null;
   cover: File | null;
+  logo: File | null;
   skills: string[];
 }
 
@@ -36,10 +42,23 @@ function errorMessage(error: { code?: string; message?: string } | null) {
  */
 export function useVaultAdd() {
   const supabase = useUntypedSupabase();
-  const state = useState<VaultAddState>('vault-add', () => ({ isOpen: false, session: 0, suggestedSkills: [] }));
+  const vault = useVault();
+  const state = useState<VaultAddState>('vault-add', () => ({
+    isOpen: false,
+    session: 0,
+    suggestedSkills: [],
+    category: null,
+    folderId: null,
+  }));
 
   function open(options: OpenOptions = {}) {
-    state.value = { isOpen: true, session: state.value.session + 1, suggestedSkills: options.suggestedSkills ?? [] };
+    state.value = {
+      isOpen: true,
+      session: state.value.session + 1,
+      suggestedSkills: options.suggestedSkills ?? [],
+      category: options.category ?? null,
+      folderId: options.folderId ?? null,
+    };
   }
 
   function close() {
@@ -58,8 +77,11 @@ export function useVaultAdd() {
     return [...byKey.values()].sort((a, b) => a.localeCompare(b, 'nl'));
   }
 
-  async function uploadFile(userId: string, itemId: string, file: File) {
-    const path = `${userId}/${itemId}/${crypto.randomUUID()}.${getExtension(file.name)}`;
+  async function uploadFile(userId: string, itemId: string, file: File, role: VaultFileRole) {
+    // A logo's or cover's name starts with "logo-" or "cover-", so the vault can show it on the card.
+    const prefix = role === 'evidence' ? '' : VAULT_FILE_PREFIXES[role];
+    const name = `${prefix}${crypto.randomUUID()}.${getExtension(file.name)}`;
+    const path = `${userId}/${itemId}/${name}`;
     const mimeType = getVaultMimeType(file)!;
     const upload = await supabase.storage.from(BUCKET).upload(path, file, { contentType: mimeType, upsert: false });
     if (upload.error) return { path: null, error: upload.error };
@@ -84,15 +106,20 @@ export function useVaultAdd() {
     const userId = sessionData.session?.user.id;
     if (!userId) return { itemId: null, error: VAULT_SAVE_NOT_SIGNED_IN };
 
-    const item = await supabase.from('vault_items').insert(toVaultItemRow(input.draft)).select('id').single();
+    const row = { ...toVaultItemRow(input.draft), folder_id: state.value.folderId };
+    const item = await supabase.from('vault_items').insert(row).select('id').single();
     if (item.error || !item.data) return { itemId: null, error: errorMessage(item.error) };
     const itemId = (item.data as { id: string }).id;
 
     const uploaded: string[] = [];
-    // The cover is kept as an image file of the item: vault_items has no cover column yet.
-    for (const file of [input.file, input.cover]) {
+    const files: [File | null, VaultFileRole][] = [
+      [input.file, 'evidence'],
+      [input.cover, 'cover'],
+      [input.logo, 'logo'],
+    ];
+    for (const [file, role] of files) {
       if (!file) continue;
-      const result = await uploadFile(userId, itemId, file);
+      const result = await uploadFile(userId, itemId, file, role);
       if (result.path) uploaded.push(result.path);
       if (result.error) {
         await removeItem(itemId, uploaded);
@@ -108,6 +135,8 @@ export function useVaultAdd() {
       }
     }
 
+    // The vault page shows the new item straight away.
+    vault.load();
     return { itemId, error: null };
   }
 

@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import type { AylaAttachment, AylaErrorCode } from '~/types/ayla';
+import type { AylaAttachment, AylaErrorCode, AylaScreen } from '~/types/ayla';
+
+const props = defineProps<{
+  // The screen this chat sits on, such as the vault: the chatbox then says so and Ayla hears it with the question.
+  screen?: AylaScreen;
+}>();
 
 interface ErrorAction {
   label: string;
@@ -20,7 +25,6 @@ const { readDraft, saveDraft } = useAylaDraft();
 
 const text = ref('');
 const attachments = ref<AylaAttachment[]>([]);
-const isTypingInstead = ref(false);
 const isComposerReading = ref(false);
 const composerRef = useTemplateRef<{ openFilePicker: () => void; focus: () => void }>('composer');
 
@@ -39,11 +43,19 @@ const isReadingAttachment = computed(() => {
   return isThinking.value && question?.role === 'user' && question.attachmentNames.length > 0;
 });
 const isReadingFiles = computed(() => isComposerReading.value || isReadingAttachment.value);
+// The vault shows under the chatbox until a chat starts.
+const isFloating = computed(() => Boolean(props.screen) && !hasMessages.value && !isReadingFiles.value);
 const errorMessage = computed(() => (state.value.error ? getAylaErrorMessage(state.value.error) : null));
 const errorAction = computed(() => (state.value.error ? ERROR_ACTIONS[state.value.error] : undefined));
+// The user's question that Ayla's newest answer is about.
+const askedText = computed(() => {
+  const question = state.value.messages.at(-2);
+  return latestAnswer.value && question?.role === 'user' ? question.text : '';
+});
+const isVaultOffer = computed(() => offersToAddEvidence(latestAnswer.value?.reply, askedText.value));
 const openQuestion = computed(() => {
-  if (state.value.isWriting || isTypingInstead.value) return null;
-  const question = getReplyQuestion(latestAnswer.value?.reply);
+  if (state.value.isWriting) return null;
+  const question = getReplyQuestion(latestAnswer.value?.reply, askedText.value);
   return question && question.choices.length >= 2 ? question : null;
 });
 
@@ -64,6 +76,7 @@ async function send(questionText: string, input: 'text' | 'voice' = 'text') {
     text: questionText,
     attachments: sentAttachments,
     input,
+    ...(props.screen ? { context: { screen: props.screen } } : {}),
     onConversationStarted(newId) {
       if (startedWithoutConversation) saveDraft(null, '');
       navigateTo(`/ayla/${newId}`);
@@ -81,14 +94,8 @@ function sendWhileTalking() {
 // "Ja" to Ayla's "Wil je iets toevoegen?" opens Kluis aanvullen; the answer still goes to Ayla, as in the design.
 function choose(label: string) {
   const reply = latestAnswer.value?.reply;
-  if (offersToAddEvidence(reply) && isYesChoice(label)) vaultAdd.open({ suggestedSkills: getSuggestedSkills(reply) });
+  if (isVaultOffer.value && isYesChoice(label)) vaultAdd.open({ suggestedSkills: getSuggestedSkills(reply) });
   send(label);
-}
-
-async function typeInstead() {
-  isTypingInstead.value = true;
-  await nextTick();
-  composerRef.value?.focus();
 }
 
 function openFilePicker() {
@@ -101,7 +108,6 @@ watch(conversationId, (id, previousId) => {
   text.value = readDraft(id);
 });
 watch(text, (value) => saveDraft(conversationId.value, value));
-watch(() => state.value.messages.length, () => (isTypingInstead.value = false));
 watch(conversation.questionToEdit, async (question) => {
   if (question === null) return;
   text.value = question;
@@ -120,7 +126,7 @@ defineExpose({ openFilePicker });
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-1 flex-col">
+  <div class="relative flex min-h-0 flex-1 flex-col">
     <AylaCanvas
       v-if="hasMessages || isReadingFiles"
       :latest-answer="latestAnswer"
@@ -130,7 +136,11 @@ defineExpose({ openFilePicker });
     />
     <slot v-else name="empty" />
 
-    <div class="relative flex flex-col items-center px-4 pb-8.25">
+    <!-- Over a screen such as the vault, the chatbox floats: what is behind it stays visible around it. -->
+    <div
+      :class="isFloating ? 'pointer-events-none absolute inset-x-0 bottom-0 *:pointer-events-auto' : 'relative'"
+      class="flex flex-col items-center px-4 pb-8.25"
+    >
       <!-- Only while talking is on: Ayla's small orb, above her answer and the text field. -->
       <AylaVoiceDock v-if="voice.isActive.value" class="relative mb-3" />
       <AylaLatestBubble
@@ -138,6 +148,7 @@ defineExpose({ openFilePicker });
         :key="latestAnswer.id"
         class="relative mb-2.5"
         :message="latestAnswer"
+        :question="openQuestion?.text"
         :can-answer-again="!state.isWriting"
         @answer-again="conversation.changeLastTurn('answerAgain')"
       />
@@ -169,8 +180,8 @@ defineExpose({ openFilePicker });
         class="relative"
         :question="openQuestion.text"
         :choices="openQuestion.choices"
+        :is-about-vault="isVaultOffer"
         @choose="choose"
-        @type-instead="typeInstead"
       />
       <AylaComposer
         v-else
@@ -178,7 +189,8 @@ defineExpose({ openFilePicker });
         v-model:text="text"
         v-model:attachments="attachments"
         class="relative"
-        :variant="hasMessages ? 'chat' : 'home'"
+        :variant="hasMessages || screen ? 'chat' : 'home'"
+        :context-label="screen === 'vault' ? AYLA_VAULT_LABEL : undefined"
         :is-writing="state.isWriting"
         :is-talking="voice.isActive.value"
         :is-muted="voice.session.value.isMuted"

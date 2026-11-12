@@ -4,24 +4,22 @@ import type { AylaChoice } from '~/types/ayla';
 defineProps<{
   question: string;
   choices: AylaChoice[];
+  // A question about the vault shows the folder with "Kluis" above the choices (Figma 976:7971).
+  isAboutVault?: boolean;
 }>();
 
 const emit = defineEmits<{
   choose: [label: string];
-  typeInstead: [];
 }>();
 </script>
 
 <template>
   <AylaTray>
-    <template #strip>
-      <button
-        type="button"
-        class="text-xs font-semibold text-heading underline hover:text-brand focus-visible:outline-2 focus-visible:outline-brand"
-        @click="emit('typeInstead')"
-      >
-        {{ AYLA_TYPE_SOMETHING_ELSE }}
-      </button>
+    <template v-if="isAboutVault" #strip>
+      <span class="flex items-center gap-1.75 font-heading text-xs font-semibold text-heading">
+        <img src="/images/ayla/pill-vault.svg" alt="" width="20.3122" height="18" />
+        {{ AYLA_VAULT_LABEL }}
+      </span>
     </template>
     <!-- Long or many choices go onto a second line instead of running out of their button. -->
     <div role="group" :aria-label="question" class="flex flex-wrap gap-1.25">

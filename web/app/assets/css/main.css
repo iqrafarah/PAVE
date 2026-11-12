@@ -58,6 +58,15 @@
     --color-cover-selected: #f0f0f0;
     --color-cover-selected-line: #747474;
     --color-checkbox: #878787;
+    /* The vault (Figma 1209:55066 and 1209:53998; status colours from iOS Shared/Assets.xcassets) */
+    --color-card-line: #ecedeb;
+    --color-chip: #f4f5f7;
+    --color-toolbar-line: #f1f2f3;
+    --color-status-verified-surface: #eff6f2;
+    --color-status-pending: #7a5a22;
+    --color-status-pending-surface: #fef3e1;
+    --color-status-rejected: #8c3c3c;
+    --color-status-rejected-surface: #fee4e1;
     --radius-field: 0.4375rem;
     --radius-modal: 1.2rem;
     --radius-done: 2.5rem;
@@ -95,5 +104,31 @@
             opacity: 1;
             transform: translateY(0);
         }
+    }
+}
+/*
+ * Everything you can click shows the hand cursor (Tailwind v4 gives buttons the arrow). Something that cannot be used
+ * right now keeps the arrow.
+ */
+@layer base {
+    button:not(:disabled),
+    [role="button"]:not([aria-disabled="true"]),
+    [role="menuitem"],
+    [role="menuitemradio"],
+    [role="option"],
+    [role="tab"],
+    a[href],
+    label:has(> input:is([type="checkbox"], [type="radio"], [type="file"]):not(:disabled)),
+    summary,
+    select:not(:disabled),
+    input[type="checkbox"]:not(:disabled),
+    input[type="radio"]:not(:disabled),
+    input[type="file"]:not(:disabled) {
+        cursor: pointer;
+    }
+
+    :disabled,
+    [aria-disabled="true"] {
+        cursor: not-allowed;
     }
 }

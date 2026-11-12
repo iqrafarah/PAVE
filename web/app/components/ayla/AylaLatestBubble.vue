@@ -5,11 +5,13 @@ import type { ChatMessage } from '~/types/ayla';
 const props = defineProps<{
   message: ChatMessage;
   canAnswerAgain: boolean;
+  // The question with choices under this answer, if any.
+  question?: string;
 }>();
 
 // Ayla's question goes under her answer, as in the design ("…Wil je iets toevoegen?"), unless she already said it.
 const shownText = computed(() => {
-  const question = getReplyQuestion(props.message.reply)?.text.trim();
+  const question = props.question?.trim();
   if (!question || props.message.isWriting || props.message.text.includes(question)) return props.message.text;
   return `${props.message.text}\n\n${question}`;
 });

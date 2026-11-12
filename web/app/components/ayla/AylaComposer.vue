@@ -11,6 +11,8 @@ const props = defineProps<{
   // While talking with Ayla the field stays as it is: the microphone mutes and the green button stops talking.
   isTalking?: boolean;
   isMuted?: boolean;
+  // Shown above the field when the chat sits on a screen, such as "Kluis" (Figma 1209:55066).
+  contextLabel?: string;
 }>();
 
 const emit = defineEmits<{
@@ -194,6 +196,10 @@ defineExpose({ openFilePicker, focus });
     <!-- Figma Kluis doorzoeken: one-line white field (591 x 53) in the tray. -->
     <AylaTray v-else>
       <template #strip>
+        <span v-if="contextLabel && !attachments.length" class="flex items-center gap-1.75 font-heading text-xs font-semibold text-heading">
+          <img src="/images/ayla/pill-vault.svg" alt="" width="20.3122" height="18" />
+          {{ contextLabel }}
+        </span>
         <AylaAttachmentChip
           v-for="(attachment, index) in attachments"
           :key="attachment.name + index"
