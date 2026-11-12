@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 public protocol VaultService: Sendable {
     /// Everything in the vault of the signed-in user, the most recently changed first.
@@ -51,6 +52,8 @@ public enum VaultError: Error, Equatable, Sendable {
 
 /// Reads and writes the `vault_*` tables with the session of the signed-in user. Row-level security keeps it to their own rows.
 public struct SupabaseVaultService: VaultService {
+    static let logger = Logger(subsystem: "nl.fontys.pave", category: "vault")
+
     private let restURL: URL
     private let storageURL: URL
     private let functionsURL: URL
@@ -110,7 +113,12 @@ public struct SupabaseVaultService: VaultService {
         urlRequest.setValue("return=representation", forHTTPHeaderField: "Prefer")
         let data = try await send(urlRequest, accepting: [201])
         guard let id = try? JSONDecoder().decode([IDRow].self, from: data).first?.id else { throw VaultError.unavailable }
-        try await linkFolders(draft.folderIDs, itemID: id)
+        // The item exists now and folder_id holds its first folder; extra folder links must never undo that.
+        do {
+            try await linkFolders(draft.folderIDs, itemID: id)
+        } catch {
+            Self.logger.error("Linking folders failed: \(String(describing: error), privacy: .public)")
+        }
         return id
     }
 
@@ -240,7 +248,12 @@ public struct SupabaseVaultService: VaultService {
         _ = try await send(try await request(
             restURL.appending(path: "vault_items"), query: [("id", "eq.\(itemID)")], method: "PATCH", json: draft.row
         ), accepting: [200, 204])
-        try await replaceFolderLinks(draft.folderIDs, itemID: itemID)
+        // The details are saved and folder_id holds the first folder; extra folder links must never undo that.
+        do {
+            try await replaceFolderLinks(draft.folderIDs, itemID: itemID)
+        } catch {
+            Self.logger.error("Linking folders failed: \(String(describing: error), privacy: .public)")
+        }
     }
 
     public func setFolders(_ folderIDs: [String], itemID: String) async throws {
@@ -364,10 +377,13 @@ public struct SupabaseVaultService: VaultService {
     }
 
     static func error(status: Int, body: Data) -> VaultError {
-        let code = (try? JSONDecoder().decode(PostgrestError.self, from: body))?.code
+        let detail = try? JSONDecoder().decode(PostgrestError.self, from: body)
+        logger.error("Vault request failed: \(status, privacy: .public) \(detail?.code ?? "-", privacy: .public) \(detail?.message ?? "", privacy: .public)")
+        let code = detail?.code
         if code == "23505" { return .duplicateFolderName }
         // A column, a table or a relation between tables that the database does not have yet.
-        if code == "PGRST204" || code == "PGRST205" || code == "PGRST200" { return .missingColumn }
+        // A column, a table or a relation between tables that the database does not have yet (PostgREST or Postgres codes).
+        if ["PGRST204", "PGRST205", "PGRST200", "42P01", "42703"].contains(code) { return .missingColumn }
         if code == "NOT_FOUND", status == 404 { return .notSetUp }
         switch status {
         case 401: return .notSignedIn
@@ -379,6 +395,7 @@ public struct SupabaseVaultService: VaultService {
 
 private struct PostgrestError: Decodable {
     let code: String?
+    let message: String?
 }
 
 private struct IDRow: Decodable {

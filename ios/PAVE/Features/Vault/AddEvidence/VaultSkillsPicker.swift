@@ -8,6 +8,8 @@ struct VaultSkillsPicker: View {
     let known: [String]
     @Bindable var ayla: VaultAylaSkills
     let draft: VaultItemDraft
+    /// When adding evidence, Ayla starts looking as soon as you reach the skills.
+    var asksAylaOnAppear = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var search = ""
     @State private var showsAll = false
@@ -50,6 +52,14 @@ struct VaultSkillsPicker: View {
         }
         .animation(reduceMotion ? nil : .snappy(duration: 0.3), value: skills)
         .animation(.easeOut(duration: 0.2), value: query)
+        .task {
+            guard asksAylaOnAppear, ayla.state == .idle else { return }
+            await askAyla()
+        }
+    }
+
+    private func askAyla() async {
+        await ayla.ask(for: draft, existing: VaultSkills.cleaned(skills + known))
     }
 
     private var vaultSection: some View {
@@ -83,7 +93,7 @@ struct VaultSkillsPicker: View {
         section(Text("Voorstel van ") + Text("Ayla").foregroundStyle(Color.brandGreen)) {
             VaultAylaSuggestions(ayla: ayla, isChosen: isChosen, onToggle: toggle) {
                 isSearching = false
-                Task { await ayla.ask(for: draft, existing: VaultSkills.cleaned(skills + known)) }
+                Task { await askAyla() }
             }
         }
     }

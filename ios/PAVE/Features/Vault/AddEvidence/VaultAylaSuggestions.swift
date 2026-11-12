@@ -19,13 +19,17 @@ struct VaultAylaSuggestions: View {
             case .loaded(let suggestions) where suggestions.isEmpty:
                 prompt(VaultMessages.aylaSkillsNone, button: VaultMessages.aylaSkillsAgain)
             case .loaded(let suggestions):
-                VStack(spacing: 6) {
+                VStack(alignment: .leading, spacing: 6) {
                     ForEach(suggestions, id: \.self) { suggestion in
                         VaultSkillRow(name: suggestion.name, detail: suggestion.reason, style: .ayla, isChosen: isChosen(suggestion.name)) {
                             onToggle(suggestion.name)
                         }
                         .transition(.opacity.combined(with: .move(edge: .top)))
                     }
+                    Text(VaultMessages.aylaSkillsOnlyForm)
+                        .textStyle(.meta)
+                        .foregroundStyle(Color.inkMuted)
+                        .padding(.top, 2)
                 }
             case .failed(let message):
                 prompt(message, button: VaultMessages.aylaSkillsAgain)

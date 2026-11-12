@@ -5,8 +5,6 @@ import SwiftUI
 /// opened, removed, or joined by another one.
 struct VaultDocumentsStep: View {
     @Bindable var flow: VaultAddEvidenceModel
-    @State private var logoSource: VaultFileSource?
-    @State private var coverSource: VaultFileSource?
     @State private var documentSource: VaultFileSource?
 
     var body: some View {
@@ -17,9 +15,8 @@ struct VaultDocumentsStep: View {
                 wantsCover: Binding(get: { flow.wantsCover }, set: { flow.wantsCover = $0; flow.problem = nil }),
                 title: flow.draft.title,
                 category: flow.draft.category,
-                onChooseLogo: { logoSource = $0 },
+                onPick: { flow.pick($0) },
                 onRemoveLogo: flow.removeLogo,
-                onChooseCover: { coverSource = $0 },
                 onRemoveCover: flow.removeCover
             )
             VaultDocumentsSection(count: flow.documents.count, canAdd: flow.canAddDocument, onChoose: { documentSource = $0 }) {
@@ -30,8 +27,6 @@ struct VaultDocumentsStep: View {
             }
         }
         .animation(.snappy(duration: 0.3), value: flow.documents)
-        .vaultFilePicker(source: $logoSource, role: .logo) { flow.pick($0) }
-        .vaultFilePicker(source: $coverSource, role: .cover) { flow.pick($0) }
         .vaultFilePicker(source: $documentSource, role: .document) { flow.pick($0) }
     }
 }

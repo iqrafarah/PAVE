@@ -118,8 +118,6 @@ final class VaultAddEvidenceModel {
                 draft.title = String(upload.suggestedTitle.prefix(VaultItemDraft.maximumTitleLength))
             }
             problem = nil
-            // Like most apps: a chosen file goes straight on to its details.
-            if page == .source { go(to: .details) }
         case .failure(let failure):
             problem = VaultMessages.upload(failure)
             PaveHaptics.error()

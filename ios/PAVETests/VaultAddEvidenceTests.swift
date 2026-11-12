@@ -76,6 +76,7 @@ struct VaultAddEvidenceTests {
     private func filledFlow(_ service: FakeVault) async -> VaultAddEvidenceModel {
         let flow = VaultAddEvidenceModel(vault: VaultModel(service: service), category: .internships, folderID: nil)
         flow.pick(.success(pdf))
+        await flow.next()
         flow.draft.organisationName = "LiveWall"
         flow.draft.startDate = VaultDay(year: 2025, month: 2, day: 1)
         flow.draft.description = "Front-end voor campagnes"
@@ -87,9 +88,14 @@ struct VaultAddEvidenceTests {
         let flow = VaultAddEvidenceModel(vault: VaultModel(service: FakeVault()), category: .projects, folderID: nil)
         flow.pick(.success(pdf))
         #expect(flow.draft.title == "LiveWall eindstage verslag")
-        #expect(flow.page == .details)
+        // You stay at the first step, so you can add another file before going on.
+        #expect(flow.page == .source)
         flow.pick(.success(pdf))
         #expect(flow.documents.count == 1)
+        flow.pick(.success(VaultUpload(data: Data([7]), fileName: "bijlage.png", mimeType: "image/png")))
+        #expect(flow.documents.count == 2)
+        await flow.next()
+        #expect(flow.page == .details)
     }
 
     @Test func theFormStopsAtEmptyFields() async {
@@ -268,5 +274,27 @@ struct VaultAddEvidenceTests {
             context.fill(CGRect(x: 0, y: 0, width: 10, height: 10))
         }
         #expect(VaultLogoLook.strongestColor(in: grey) == nil)
+    }
+}
+
+struct VaultImageFrameTests {
+    private let image = CGSize(width: 1000, height: 500)
+    private let frame = CGSize(width: 200, height: 200)
+
+    @Test func theImageAlwaysCoversTheFrame() {
+        #expect(VaultImageFrame.displayed(image: image, frame: frame, zoom: 1) == CGSize(width: 400, height: 200))
+        let crop = VaultImageFrame.crop(image: image, frame: frame, zoom: 1, offset: .zero)
+        #expect(crop == CGRect(x: 250, y: 0, width: 500, height: 500))
+    }
+
+    @Test func movingNeverShowsAnEdge() {
+        #expect(VaultImageFrame.clamped(CGSize(width: 500, height: 40), image: image, frame: frame, zoom: 1) == CGSize(width: 100, height: 0))
+        let left = VaultImageFrame.crop(image: image, frame: frame, zoom: 1, offset: CGSize(width: 100, height: 0))
+        #expect(left.minX == 0)
+    }
+
+    @Test func zoomingTakesASmallerPart() {
+        let crop = VaultImageFrame.crop(image: image, frame: frame, zoom: 2, offset: .zero)
+        #expect(crop == CGRect(x: 375, y: 125, width: 250, height: 250))
     }
 }

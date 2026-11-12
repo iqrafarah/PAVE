@@ -8,8 +8,6 @@ struct VaultEvidenceEditor: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @State private var edit: VaultEditEvidenceModel
-    @State private var coverSource: VaultFileSource?
-    @State private var logoSource: VaultFileSource?
     @State private var documentSource: VaultFileSource?
     @State private var confirmsDiscard = false
     @State private var confirmsReconfirmation = false
@@ -37,9 +35,8 @@ struct VaultEvidenceEditor: View {
                         wantsCover: $edit.wantsCover,
                         title: edit.draft.title,
                         category: edit.draft.category,
-                        onChooseLogo: { logoSource = $0 },
+                        onPick: { edit.pick($0) },
                         onRemoveLogo: edit.removeLogo,
-                        onChooseCover: { coverSource = $0 },
                         onRemoveCover: edit.removeCover
                     )
                     VaultDocumentsSection(
@@ -85,8 +82,6 @@ struct VaultEvidenceEditor: View {
         .sheetDismissGuard(isBlocked: edit.hasChanges || edit.isSaving) {
             if !edit.isSaving { confirmsDiscard = true }
         }
-        .vaultFilePicker(source: $logoSource, role: .logo) { edit.pick($0) }
-        .vaultFilePicker(source: $coverSource, role: .cover) { edit.pick($0) }
         .vaultFilePicker(source: $documentSource, role: .document) { edit.pick($0) }
         .confirmationDialog(VaultMessages.discardChangesTitle, isPresented: $confirmsDiscard, titleVisibility: .visible) {
             Button("Wijzigingen weggooien", role: .destructive) { dismiss() }

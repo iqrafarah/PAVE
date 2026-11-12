@@ -356,5 +356,7 @@ struct VaultFolderLinkTests {
 
     @Test func aMissingRelationIsNotMigratedYet() {
         #expect(SupabaseVaultService.error(status: 400, body: Data(#"{"code":"PGRST200"}"#.utf8)) == .missingColumn)
+        #expect(SupabaseVaultService.error(status: 404, body: Data(#"{"code":"42P01","message":"relation does not exist"}"#.utf8)) == .missingColumn)
+        #expect(SupabaseVaultService.error(status: 400, body: Data(#"{"code":"42703"}"#.utf8)) == .missingColumn)
     }
 }

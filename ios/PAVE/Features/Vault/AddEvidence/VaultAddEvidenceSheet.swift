@@ -118,7 +118,7 @@ struct VaultAddEvidenceSheet: View {
                     case .source: sourcePage
                     case .details: detailsPage
                     case .documents: VaultDocumentsStep(flow: flow)
-                    case .skills: VaultSkillsPicker(skills: $flow.skills, known: flow.knownSkills, ayla: flow.ayla, draft: flow.draft)
+                    case .skills: VaultSkillsPicker(skills: $flow.skills, known: flow.knownSkills, ayla: flow.ayla, draft: flow.draft, asksAylaOnAppear: true)
                     case .done: EmptyView()
                     }
                 }
