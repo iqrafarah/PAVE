@@ -832,7 +832,7 @@ struct AylaChatScreen: View {
         case .idle, .writing:
             Color.canvas
         case .thinking:
-            LinearGradient(stops: [.init(color: .canvas, location: 0.658), .init(color: .thinkingGlow, location: 1)], startPoint: .top, endPoint: .bottom)
+            LinearGradient(stops: [.init(color: .canvas, location: 0.658), .init(color: .paveThinkingGlow, location: 1)], startPoint: .top, endPoint: .bottom)
         case .failed:
             LinearGradient(stops: [.init(color: .canvas, location: 0.658), .init(color: .errorGlow, location: 1)], startPoint: .top, endPoint: .bottom)
         }

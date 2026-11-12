@@ -7,7 +7,8 @@ struct VaultScreen: View {
     let onShowMenu: (() -> Void)?
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
-    @AppStorage("vaultShowsGrid") private var isGrid = true
+    /// How the vault opens, from Instellingen; switching here lasts until the vault is opened again.
+    @State private var isGrid = PaveAppearance.vaultLayout == .grid
     /// The evidence moved under the folders and the filter bar: a thin line then separates them.
     @State private var itemsScrolled = false
     @State private var filter = VaultFilter()
@@ -120,7 +121,7 @@ struct VaultScreen: View {
                     Text(model.problem ?? "")
                 }
         }
-        .tint(.brandGreen)
+        .tint(.paveAccent)
     }
 
     @ViewBuilder

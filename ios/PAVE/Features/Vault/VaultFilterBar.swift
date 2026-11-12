@@ -55,7 +55,7 @@ struct VaultFilterBar: View {
                     .frame(width: 20, height: 20)
                     .foregroundStyle(Color.ink)
                     .frame(width: 44, height: 44)
-                    .background(Color.surfaceTint, in: .rect(cornerRadius: 10))
+                    .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 10))
                     .contentShape(.rect(cornerRadius: 10))
             }
             .buttonStyle(.pave)
@@ -82,17 +82,17 @@ struct VaultFilterBar: View {
                     .monospacedDigit()
                     .foregroundStyle(Color.white)
                     .frame(minWidth: 18, minHeight: 18)
-                    .background(Color.brandGreen, in: .circle)
+                    .background(Color.paveAccent, in: .circle)
                     .accessibilityHidden(true)
             }
         }
-        .foregroundStyle(activeCount > 0 ? Color.brandGreen : Color.ink)
+        .foregroundStyle(activeCount > 0 ? Color.paveAccent : Color.ink)
         .padding(.horizontal, 14)
         .frame(minHeight: 44)
-        .background(Color.surfaceTint, in: .rect(cornerRadius: 10))
+        .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 10))
         .overlay {
             if activeCount > 0 {
-                RoundedRectangle(cornerRadius: 10).strokeBorder(Color.brandGreen.opacity(0.35), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 10).strokeBorder(Color.paveAccent.opacity(0.35), lineWidth: 1)
             }
         }
         .contentShape(.rect(cornerRadius: 10))

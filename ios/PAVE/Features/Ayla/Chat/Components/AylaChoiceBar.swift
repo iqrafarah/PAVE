@@ -21,7 +21,7 @@ struct AylaChoiceBar: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 16, height: 16)
-                        .foregroundStyle(Color.brandGreen)
+                        .foregroundStyle(Color.paveAccent)
                         .accessibilityHidden(true)
                     Text(AylaMessages.vaultLabel)
                         .textStyle(.label)
@@ -54,7 +54,7 @@ struct AylaChoiceBar: View {
             }
         }
         .padding(8.15)
-        .background(Color.surfaceTint, in: .capsule)
+        .background(Color.paveSurfaceTint, in: .capsule)
     }
 }
 

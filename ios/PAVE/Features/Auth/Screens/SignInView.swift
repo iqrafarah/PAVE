@@ -69,7 +69,7 @@ struct SignInView: View {
 
             Button("Wachtwoord vergeten?", action: flow.showForgotPassword)
                 .textStyle(.link)
-                .foregroundStyle(isSubmitting ? Color.inkMuted : .brandGreen)
+                .foregroundStyle(isSubmitting ? Color.inkMuted : .paveAccent)
                 .frame(maxWidth: .infinity, minHeight: 44, alignment: .trailing)
                 .buttonStyle(.pave)
         }

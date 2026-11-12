@@ -14,7 +14,7 @@ struct VaultLogoLook: Equatable {
             return (image, strongestColor(in: image))
         }.value
         guard let (image, strongest) = found else { return nil }
-        return VaultLogoLook(image: image, tint: strongest.map { Color(uiColor: $0).mix(with: .white, by: 0.78) } ?? .surfaceTint)
+        return VaultLogoLook(image: image, tint: strongest.map { Color(uiColor: $0).mix(with: .white, by: 0.78) } ?? .paveSurfaceTint)
     }
 
     /// The colour that stands out most: white, black and grey count for nothing, and the more saturated and bright a

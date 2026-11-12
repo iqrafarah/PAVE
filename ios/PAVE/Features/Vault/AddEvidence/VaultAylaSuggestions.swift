@@ -53,7 +53,7 @@ struct VaultAylaSuggestions: View {
                     .foregroundStyle(Color.white)
                     .padding(.horizontal, 14)
                     .frame(minHeight: 36)
-                    .background(Color.brandGreen, in: .capsule)
+                    .background(Color.paveAccent, in: .capsule)
                     .contentShape(.capsule)
             }
             .buttonStyle(.pave)

@@ -66,10 +66,10 @@ struct VaultLookSection: View {
                     } else {
                         Image(.iconPlus)
                             .renderingMode(.template)
-                            .foregroundStyle(Color.brandGreen)
+                            .foregroundStyle(Color.paveAccent)
                             .frame(width: 64, height: 64)
-                            .background(Color.dropZone, in: .circle)
-                            .overlay { Circle().strokeBorder(Color.focusRing, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])) }
+                            .background(Color.paveDropZone, in: .circle)
+                            .overlay { Circle().strokeBorder(Color.paveFocusRing, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])) }
                     }
                 }
                 .contentShape(.circle)
@@ -152,7 +152,7 @@ struct VaultLookSection: View {
         .padding(.leading, 12)
         .padding(.trailing, 4)
         .padding(.vertical, 10)
-        .background(Color.surfaceTint, in: .rect(cornerRadius: 12))
+        .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 12))
     }
 
     // MARK: Choosing and framing

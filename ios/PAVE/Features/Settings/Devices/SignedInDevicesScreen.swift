@@ -90,7 +90,7 @@ struct SignedInDevicesScreen: View {
         case .failed(let error):
             VStack(spacing: 20) {
                 PaveEmptyState(icon: .iconExclamationCircleSolid, title: DevicesMessages.loadFailedTitle, message: DevicesMessages.message(for: error))
-                PaveSecondaryButton(title: "Opnieuw proberen", icon: .iconArrowPath) { Task { await model.load() } }
+                PaveSecondaryButton(title: "Opnieuw proberen", icon: .iconArrowPathSolid) { Task { await model.load() } }
                     .frame(maxWidth: 260)
             }
             .frame(maxWidth: .infinity)
@@ -159,9 +159,9 @@ struct SignedInDevicesScreen: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 20, height: 20)
-                        .foregroundStyle(Color.brandGreen)
+                        .foregroundStyle(Color.paveAccent)
                         .frame(width: 40, height: 40)
-                        .background(Color.dropZone, in: .rect(cornerRadius: 10))
+                        .background(Color.paveDropZone, in: .rect(cornerRadius: 10))
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 3) {
                         Text(WatchConnectMessages.title)
@@ -173,8 +173,11 @@ struct SignedInDevicesScreen: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    Image(.iconChevronRight)
+                    Image(.iconChevronRightSolid)
                         .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 14, height: 14)
                         .foregroundStyle(Color.inkMuted)
                         .accessibilityHidden(true)
                 }

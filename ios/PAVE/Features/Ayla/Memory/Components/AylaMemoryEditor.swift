@@ -63,7 +63,7 @@ struct AylaMemoryEditor: View {
                         .textStyle(.caption)
                 }
             }
-            .tint(.brandGreen)
+            .tint(.paveAccent)
             .scrollContentBackground(.hidden)
             .background(Color.canvas.ignoresSafeArea())
             .navigationTitle(title)

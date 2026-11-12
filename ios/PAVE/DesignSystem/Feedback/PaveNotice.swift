@@ -33,7 +33,7 @@ struct PaveNotice: View {
                 if let title {
                     Text(title)
                         .textStyle(.calloutTitle)
-                        .foregroundStyle(tone == .info ? Color.brandGreen : .critical)
+                        .foregroundStyle(tone == .info ? Color.paveAccent : .critical)
                 }
                 message
                     .textStyle(.footnote)
@@ -42,7 +42,7 @@ struct PaveNotice: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(16)
-        .background(tone == .info ? Color.surfaceTint : .criticalSurface, in: .rect(cornerRadius: 12))
+        .background(tone == .info ? Color.paveSurfaceTint : .criticalSurface, in: .rect(cornerRadius: 12))
         .accessibilityElement(children: .combine)
     }
 }

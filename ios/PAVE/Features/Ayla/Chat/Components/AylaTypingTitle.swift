@@ -145,7 +145,7 @@ struct AylaTypingRenderer: TextRenderer {
                 width: size,
                 height: size
             )
-            context.fill(Path(square), with: .color(Color.brandGreen.opacity(alpha)))
+            context.fill(Path(square), with: .color(Color.paveAccent.opacity(alpha)))
         }
     }
 }

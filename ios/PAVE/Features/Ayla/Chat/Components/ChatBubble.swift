@@ -57,14 +57,14 @@ struct ChatBubble: View {
             MaxWidthLayout(maxWidth: isUser ? 232 : 230) {
                 Text(text)
                     .textStyle(.bubble)
-                    .foregroundStyle(isUser ? Color.ink : .brandGreen)
+                    .foregroundStyle(isUser ? Color.ink : .paveAccent)
             }
         }
         .padding(.leading, isUser ? 14 : 15)
         .padding(.trailing, isUser ? 14 : 15)
         .padding(.top, isUser ? 15 : 14)
         .padding(.bottom, 14)
-        .background(isUser ? Color.bubbleUser : .surfaceTint, in: .rect(cornerRadius: 18))
+        .background(isUser ? Color.bubbleUser : .paveSurfaceTint, in: .rect(cornerRadius: 18))
     }
 }
 

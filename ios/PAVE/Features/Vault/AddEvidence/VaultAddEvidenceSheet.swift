@@ -56,7 +56,7 @@ struct VaultAddEvidenceSheet: View {
         .frame(maxWidth: 600)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.white.ignoresSafeArea())
-        .tint(.brandGreen)
+        .tint(.paveAccent)
         .animation(pageAnimation, value: flow.page)
         .animation(.easeOut(duration: 0.2), value: isTyping)
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }

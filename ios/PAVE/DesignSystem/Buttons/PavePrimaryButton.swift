@@ -37,10 +37,10 @@ private struct PrimaryButtonBody: View {
 
     var body: some View {
         configuration.label
-            .foregroundStyle(isLoading ? Color.brandGreen : isEnabled ? .white : .inkMuted)
+            .foregroundStyle(isLoading ? Color.paveAccent : isEnabled ? .white : .inkMuted)
             .frame(maxWidth: .infinity, minHeight: 53)
             .padding(.horizontal, 16)
-            .background(isLoading || !isEnabled ? Color.controlDisabled : .brandGreen, in: .capsule)
+            .background(isLoading || !isEnabled ? Color.controlDisabled : .paveAccent, in: .capsule)
             .contentShape(.capsule)
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
             .animation(.easeOut(duration: 0.15), value: configuration.isPressed)

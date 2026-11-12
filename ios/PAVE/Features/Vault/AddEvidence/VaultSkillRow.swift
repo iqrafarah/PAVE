@@ -34,7 +34,7 @@ struct VaultSkillRow: View {
                     .renderingMode(.template)
                     .resizable()
                     .frame(width: 20, height: 20)
-                    .foregroundStyle(isDark ? Color.white : isChosen ? .brandGreen : .ink)
+                    .foregroundStyle(isDark ? Color.white : isChosen ? .paveAccent : .ink)
                     .contentTransition(.opacity)
                     .accessibilityHidden(true)
             }
@@ -53,8 +53,8 @@ struct VaultSkillRow: View {
     }
 
     private var background: Color {
-        if isDark { return .brandGreen }
-        return isChosen ? .surfaceTint : .tileFill
+        if isDark { return .paveAccent }
+        return isChosen ? .paveSurfaceTint : .tileFill
     }
 }
 

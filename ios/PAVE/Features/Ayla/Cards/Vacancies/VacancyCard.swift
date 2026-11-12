@@ -79,14 +79,14 @@ struct VacancyCard: View {
                 HStack {
                     Text(gap.skill)
                         .textStyle(.gapChip)
-                        .foregroundStyle(Color.brandGreen)
+                        .foregroundStyle(Color.paveAccent)
                     Spacer()
                     Image(.iconArrowRight)
                         .accessibilityHidden(true)
                 }
                 .padding(.horizontal, 11)
                 .frame(minHeight: 32)
-                .background(Color.surfaceTint, in: .rect(cornerRadius: 7))
+                .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 7))
             }
         }
     }

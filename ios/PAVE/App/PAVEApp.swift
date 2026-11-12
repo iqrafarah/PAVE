@@ -15,6 +15,8 @@ struct PAVEApp: App {
         WindowGroup {
             RootView()
                 .environment(appState)
+                // The theme colour of the account, before it is loaded again.
+                .onAppear { PaveAppearance.applyStored() }
         }
         .commands { PaveCommands() }
     }

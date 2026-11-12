@@ -44,7 +44,7 @@ struct PaveTextField<Field: Hashable>: View {
                 input
                     .textStyle(.input)
                     .foregroundStyle(Color.ink)
-                    .tint(.brandGreen)
+                    .tint(.paveAccent)
                     .focused(focus, equals: field)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -130,7 +130,7 @@ struct PaveTextField<Field: Hashable>: View {
                     .accessibilityHidden(true)
                 Text(isRevealed ? "Verbergen" : "Tonen")
                     .textStyle(.eyebrow)
-                    .foregroundStyle(Color.brandGreen)
+                    .foregroundStyle(Color.paveAccent)
             }
             .padding(.horizontal, 8)
             .frame(minHeight: 44)
@@ -167,8 +167,8 @@ struct PaveTextField<Field: Hashable>: View {
         if isInvalid { return .critical }
         switch shownProgress {
         case .incomplete: return .warning
-        case .valid: return .brandGreen
-        case nil: return isFocused ? .brandGreen : .hairline
+        case .valid: return .paveAccent
+        case nil: return isFocused ? .paveAccent : .hairline
         }
     }
 
@@ -179,7 +179,7 @@ struct PaveTextField<Field: Hashable>: View {
     private var ringColor: Color {
         if isInvalid { return Color.critical.opacity(0.13) }
         if shownProgress == .incomplete { return Color.warning.opacity(0.13) }
-        return .focusRing
+        return .paveFocusRing
     }
 }
 

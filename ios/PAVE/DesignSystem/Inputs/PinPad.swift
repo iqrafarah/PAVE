@@ -60,7 +60,7 @@ struct PinDots: View {
     }
 
     private var tint: Color {
-        isError ? .critical : .brandGreen
+        isError ? .critical : .paveAccent
     }
 }
 
@@ -118,7 +118,7 @@ struct PinKeypad: View {
             Button(action: onBiometric) {
                 Image(systemName: biometricKind.symbolName)
                     .font(.system(size: keySize * 0.38))
-                    .foregroundStyle(Color.brandGreen)
+                    .foregroundStyle(Color.paveAccent)
             }
             .buttonStyle(KeyStyle(size: keySize, filled: false))
             .accessibilityLabel("Ontgrendel met \(biometricKind.name)")
@@ -138,7 +138,7 @@ private struct KeyStyle: ButtonStyle {
             .background {
                 if filled {
                     Circle()
-                        .fill(configuration.isPressed ? Color.surfaceTint : .white)
+                        .fill(configuration.isPressed ? Color.paveSurfaceTint : .white)
                         .overlay { Circle().strokeBorder(Color.hairline, lineWidth: 1) }
                 }
             }

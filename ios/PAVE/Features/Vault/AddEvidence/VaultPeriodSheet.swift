@@ -38,7 +38,7 @@ struct VaultPeriodSheet: View {
                     Section {
                         DatePicker("Van", selection: start, in: ...Date.now, displayedComponents: .date)
                         Toggle("Ik doe dit nog", isOn: $draft.isCurrent.animation(.snappy(duration: 0.3)))
-                            .tint(.brandGreen)
+                            .tint(.paveAccent)
                         if !draft.isCurrent {
                             DatePicker("Tot", selection: end, in: (draft.startDate?.date() ?? .distantPast)..., displayedComponents: .date)
                                 .transition(.opacity.combined(with: .move(edge: .top)))
@@ -67,7 +67,7 @@ struct VaultPeriodSheet: View {
             }
             .onAppear(perform: fillIn)
         }
-        .tint(.brandGreen)
+        .tint(.paveAccent)
         .onGeometryChange(for: Bool.self) { $0.safeAreaInsets.trailing > 0 || $0.safeAreaInsets.leading > 0 } action: { hasSideColumn = $0 }
         .presentationDetents(hasSideColumn ? [.large] : [.medium, .large])
         .presentationDragIndicator(.visible)

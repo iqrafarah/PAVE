@@ -117,7 +117,7 @@ struct AylaMemoryFolderScreen: View {
             } label: {
                 Label("Aanpassen", image: .iconPencil)
             }
-            .tint(.brandGreen)
+            .tint(.paveAccent)
         }
         .contextMenu {
             Button { editing = note } label: { Label("Aanpassen", image: .iconPencil) }

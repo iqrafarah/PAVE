@@ -43,6 +43,8 @@ struct VaultImageFramer: View {
 
     let image: UIImage
     let shape: Shape
+    /// The title above the image; by default "Logo" or "Omslag".
+    var title: String?
     let onDone: (UIImage) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -106,7 +108,7 @@ struct VaultImageFramer: View {
                 }
             }
             .ignoresSafeArea(edges: .bottom)
-            .navigationTitle(shape == .circle ? "Logo" : "Omslag")
+            .navigationTitle(title ?? (shape == .circle ? "Logo" : "Omslag"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.black, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)

@@ -40,7 +40,7 @@ struct ResetCodeView: View {
                             Text(AuthMessages.wrongEmailLink)
                                 .textStyle(.link)
                                 .underline()
-                                .foregroundStyle(Color.brandGreen)
+                                .foregroundStyle(Color.paveAccent)
                                 .frame(minHeight: 44)
                                 .contentShape(.rect)
                         }
@@ -77,7 +77,7 @@ struct ResetCodeView: View {
                         Button(action: resend) {
                             Text(resendLabel(secondsLeft: secondsLeft))
                                 .textStyle(.link)
-                                .foregroundStyle(secondsLeft > 0 ? Color.inkMuted : .brandGreen)
+                                .foregroundStyle(secondsLeft > 0 ? Color.inkMuted : .paveAccent)
                                 .frame(minHeight: 44, alignment: .leading)
                                 .contentTransition(.numericText(countsDown: true))
                         }
@@ -92,7 +92,7 @@ struct ResetCodeView: View {
                         if text == AuthMessages.emailCodeResent {
                             Text(text)
                                 .textStyle(.footnote)
-                                .foregroundStyle(Color.brandGreen)
+                                .foregroundStyle(Color.paveAccent)
                         } else {
                             PaveInlineError(message: text)
                         }

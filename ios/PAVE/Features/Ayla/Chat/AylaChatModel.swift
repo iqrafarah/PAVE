@@ -36,6 +36,11 @@ final class AylaChatModel {
     private(set) var phase = Phase.idle
     private(set) var conversationID: String?
     private(set) var firstName: String?
+
+    /// The name changed in Instellingen: the welcome and the menu use it at once.
+    func nameChanged(_ name: String?) {
+        firstName = name
+    }
     /// The welcome waits for the name, so it does not jump when the name comes in.
     private(set) var isGreetingReady: Bool
     private(set) var conversationList = AylaConversationList()

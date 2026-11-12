@@ -94,7 +94,7 @@ struct WatchConnectSheet: View {
 
     private var scene: some View {
         ZStack {
-            RadialGradient(colors: [.orbShade3.opacity(0.32), .orbShade3.opacity(0.12), .clear], center: .center, startRadius: 20, endRadius: 200)
+            RadialGradient(colors: [Color.paveOrbShade(3).opacity(0.32), Color.paveOrbShade(3).opacity(0.12), .clear], center: .center, startRadius: 20, endRadius: 200)
                 .scaleEffect(stage == .connecting ? 1.15 : 1)
                 .opacity(watchOut ? 1 : 0)
                 .animation(reduceMotion ? nil : .easeInOut(duration: 1.2).repeatForever(), value: stage == .connecting)
@@ -190,7 +190,7 @@ struct WatchConnectSheet: View {
                     PavePrimaryButton(title: "Koppelen") { Task { await connect() } }
                         .disabled(stage == .boxed)
                 } else {
-                    PaveSecondaryButton(title: "Opnieuw kijken", icon: .iconArrowPath) { Task { await model.refresh() } }
+                    PaveSecondaryButton(title: "Opnieuw kijken", icon: .iconArrowPathSolid) { Task { await model.refresh() } }
                 }
             case .connecting:
                 PavePrimaryButton(title: "Koppelen", loadingTitle: "Koppelen…", isLoading: true) {}

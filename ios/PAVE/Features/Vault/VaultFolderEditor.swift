@@ -54,7 +54,7 @@ struct VaultFolderEditor: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onGeometryChange(for: CGSize.self) { $0.size } action: { size = $0 }
         .background(Color.white.ignoresSafeArea())
-        .tint(.brandGreen)
+        .tint(.paveAccent)
     }
 
     private var form: some View {
@@ -217,7 +217,7 @@ struct VaultFolderEditor: View {
                 .frame(width: 20, height: 20)
                 .foregroundStyle(isOn ? Color.white : Color.ink)
                 .frame(maxWidth: .infinity, minHeight: 44)
-                .background(isOn ? color.color : Color.surfaceTint, in: .rect(cornerRadius: 10))
+                .background(isOn ? color.color : Color.paveSurfaceTint, in: .rect(cornerRadius: 10))
                 .contentShape(.rect(cornerRadius: 10))
         }
         .buttonStyle(.pave)
@@ -239,7 +239,7 @@ struct VaultFolderEditor: View {
                 .frame(width: 44, height: 44)
                 .foregroundStyle(.white)
                 .frame(width: 112, height: 112)
-                .background(Color.brandGreen, in: .circle)
+                .background(Color.paveAccent, in: .circle)
                 .accessibilityHidden(true)
             VaultFolderTile(title: folder.name, icon: icon.image, color: color.color, surface: color.surface, count: 0, isSelected: false) {}
                 .allowsHitTesting(false)

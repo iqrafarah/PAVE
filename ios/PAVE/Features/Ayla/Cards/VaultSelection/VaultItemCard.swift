@@ -55,10 +55,10 @@ struct VaultItemCard: View {
                     if let category {
                         Text(category)
                             .textStyle(.chip)
-                            .foregroundStyle(Color.brandGreen)
+                            .foregroundStyle(Color.paveAccent)
                             .padding(.horizontal, 9)
                             .padding(.vertical, 4)
-                            .background(Color.surfaceTint, in: .capsule)
+                            .background(Color.paveSurfaceTint, in: .capsule)
                             .padding(.top, 5)
                     }
                     VStack(alignment: .leading, spacing: 9) {

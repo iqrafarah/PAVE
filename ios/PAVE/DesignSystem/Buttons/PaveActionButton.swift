@@ -24,17 +24,17 @@ struct PaveActionButton: View {
                 Text(title)
                     .textStyle(.action)
             }
-            .foregroundStyle(Color.brandGreen)
+            .foregroundStyle(Color.paveAccent)
             .frame(maxWidth: .infinity, minHeight: 58)
             .background {
                 if style == .tinted {
-                    RoundedRectangle(cornerRadius: cornerRadius).fill(Color.surfaceTint)
+                    RoundedRectangle(cornerRadius: cornerRadius).fill(Color.paveSurfaceTint)
                 }
             }
             .contentShape(.rect(cornerRadius: cornerRadius))
         }
         .buttonStyle(.pave)
-        .glassEffect(style == .glass ? .regular.tint(Color.surfaceTint.opacity(0.75)).interactive() : .identity, in: .rect(cornerRadius: cornerRadius))
+        .glassEffect(style == .glass ? .regular.tint(Color.paveSurfaceTint.opacity(0.75)).interactive() : .identity, in: .rect(cornerRadius: cornerRadius))
     }
 }
 
