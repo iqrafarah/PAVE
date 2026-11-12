@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import type { VaultAddStep, VaultCoverChoice, VaultItemDraft } from '~/types/vault';
+import type { VaultAddStep, VaultItemDraft } from '~/types/vault';
 import type { DraftField } from '~/utils/vaultAdd';
 
-// "Kluis aanvullen" (Figma FEDDIES 1167:12715 → 1167:11759 → 1167:12237 → 1167:11255 → 1167:10880). Nothing is saved
-// until the skills step: then the item, its files and its skills go into the vault at once, and the last card asks
-// whether Ayla may use it. Closing halfway asks first, so nothing you filled in disappears by accident.
+// "Bewijs toevoegen" (iOS VaultAddEvidenceSheet, Figma FEDDIES 1348:1169 to 1348:2537): four steps in one window, with
+// what iOS has (VaultAddEvidenceModel): up to five documents, several folders, a logo and a cover with the card shown
+// live, and Ayla's proposals for skills. Nothing is saved until the skills step; after that the item exists and only
+// what is still missing is tried again. The last card asks whether Ayla may use it. Closing halfway asks first.
 const vaultAdd = useVaultAdd();
+const vault = useVault();
 
-const STEP_INDEX: Record<VaultAddStep, number> = { basis: 0, details: 1, cover: 1, skills: 2, done: 3 };
+const STEP_INDEX: Record<VaultAddStep, number> = { basis: 0, details: 0, cover: 1, skills: 2, done: 3 };
 
 const dialogRef = useTemplateRef<HTMLDialogElement>('dialog');
 const contentRef = useTemplateRef<HTMLDivElement>('content');
@@ -16,42 +18,61 @@ const discardRef = useTemplateRef<{ open: () => void }>('discard');
 const titleId = useId();
 
 const step = ref<VaultAddStep>('basis');
-const file = ref<File | null>(null);
+const documents = ref<File[]>([]);
 const draft = ref<VaultItemDraft>(createDraft());
+const folderIds = ref<string[]>([]);
+// New evidence goes in the folder of its kind; that follows the kind until you choose folders yourself (as on iOS).
+const foldersFollowKind = ref(true);
+const kindFolderIdNow = ref<string | null>(null);
+const makesKindFolder = ref(true);
 const showsProblems = ref(false);
-const coverChoice = ref<VaultCoverChoice>('none');
+const wantsCover = ref(false);
 const cover = ref<File | null>(null);
 const logo = ref<File | null>(null);
-const coverProblem = ref<string | undefined>();
+const coverProblem = ref<string | null>(null);
 const skills = ref<string[]>([]);
 const vaultSkills = ref<string[]>([]);
 const isLoadingSkills = ref(false);
 const isSaving = ref(false);
 const saveError = ref<string | null>(null);
-const itemId = ref<string | null>(null);
+const progress = ref(createSaveProgress());
 const allowsAyla = ref(false);
+
+const logoUrl = useObjectUrl(logo);
+const coverUrl = useObjectUrl(cover);
 
 const stepIndex = computed(() => STEP_INDEX[step.value]);
 const isDone = computed(() => step.value === 'done');
+const isSaved = computed(() => progress.value.itemId !== null);
 const problems = computed(() => (showsProblems.value ? checkDraft(draft.value) : {}));
+// The kind has no folder yet: one with its name (such as Stages) is offered and made when you save.
+const newKindFolderName = computed(() =>
+  draft.value.category && !kindFolder(draft.value.category, vault.state.value.folders)
+    ? VAULT_CATEGORY_PLURALS[draft.value.category]
+    : null,
+);
 const isDirty = computed(
   () =>
-    Boolean(file.value || cover.value || logo.value || skills.value.length) ||
-    Object.values(draft.value).some((value) => String(value).trim() !== ''),
+    Boolean(documents.value.length || cover.value || logo.value || skills.value.length) ||
+    Object.entries(draft.value).some(([key, value]) => key !== 'usesPeriod' && String(value).trim() !== ''),
 );
 
 function reset() {
   step.value = 'basis';
-  file.value = null;
+  documents.value = [];
   draft.value = createDraft();
+  folderIds.value = vaultAdd.state.value.folderId ? [vaultAdd.state.value.folderId] : [];
+  foldersFollowKind.value = true;
+  kindFolderIdNow.value = null;
+  makesKindFolder.value = true;
   showsProblems.value = false;
-  coverChoice.value = 'none';
+  wantsCover.value = false;
   cover.value = null;
   logo.value = null;
-  coverProblem.value = undefined;
+  coverProblem.value = null;
   skills.value = [];
   saveError.value = null;
-  itemId.value = null;
+  progress.value = createSaveProgress();
   allowsAyla.value = false;
 }
 
@@ -71,6 +92,20 @@ watch(
     reset();
     dialogRef.value?.showModal();
     loadSkills();
+    if (vault.state.value.status !== 'ready') vault.load();
+  },
+);
+
+/** The folder of the kind comes along with the kind, until you tick folders yourself. */
+watch(
+  () => [draft.value.category, vault.state.value.folders] as const,
+  ([category]) => {
+    if (!foldersFollowKind.value || !category) return;
+    const folder = kindFolder(category, vault.state.value.folders)?.id ?? null;
+    let ids = folderIds.value.filter((id) => id !== kindFolderIdNow.value);
+    if (folder && !ids.includes(folder)) ids = [...ids, folder];
+    folderIds.value = ids;
+    kindFolderIdNow.value = folder;
   },
 );
 
@@ -86,16 +121,27 @@ function goTo(next: VaultAddStep) {
   step.value = next;
 }
 
-function pickFile(picked: File) {
-  file.value = picked;
-  if (!draft.value.category && vaultAdd.state.value.category) draft.value.category = vaultAdd.state.value.category;
+function startDetails() {
+  if (!draft.value.category) draft.value.category = vaultAdd.state.value.category ?? 'projects';
   goTo('details');
 }
 
+/** A picked file keeps you on the first step, so you can add more; its name is a first guess at the title. */
+function pickDocument(picked: File) {
+  if (documents.value.length >= MAX_DOCUMENTS) return;
+  if (documents.value.some((file) => file.name === picked.name && file.size === picked.size)) return;
+  documents.value = [...documents.value, picked];
+  if (!draft.value.title.trim()) draft.value.title = suggestedTitle(picked.name);
+  saveError.value = null;
+}
+
+function removeDocument(index: number) {
+  documents.value = documents.value.filter((_, position) => position !== index);
+}
+
 function addWithoutFile() {
-  file.value = null;
-  if (!draft.value.category) draft.value.category = vaultAdd.state.value.category ?? 'workExperience';
-  goTo('details');
+  documents.value = [];
+  startDetails();
 }
 
 function checkDetails() {
@@ -109,43 +155,55 @@ function checkDetails() {
 }
 
 function checkCover() {
-  if (coverChoice.value === 'cover' && !cover.value) {
+  if (wantsCover.value && !cover.value) {
     coverProblem.value = VAULT_PROBLEM_COVER;
     return;
   }
-  coverProblem.value = undefined;
+  coverProblem.value = null;
   goTo('skills');
+}
+
+function pickImage(role: 'logo' | 'cover', file: File) {
+  if (role === 'logo') logo.value = file;
+  else {
+    cover.value = file;
+    coverProblem.value = null;
+  }
+}
+
+function removeImage(role: 'logo' | 'cover') {
+  if (role === 'logo') logo.value = null;
+  else cover.value = null;
 }
 
 async function saveItem() {
   isSaving.value = true;
-  saveError.value = null;
-  const result = await vaultAdd.save({
-    draft: draft.value,
-    file: file.value,
-    cover: coverChoice.value === 'cover' ? cover.value : null,
-    logo: logo.value,
-    skills: skills.value,
-  });
+  saveError.value = await vaultAdd.save(
+    {
+      draft: draft.value,
+      folderIds: folderIds.value,
+      newFolderName: newKindFolderName.value && makesKindFolder.value ? newKindFolderName.value : null,
+      documents: documents.value,
+      cover: wantsCover.value ? cover.value : null,
+      logo: logo.value,
+      skills: skills.value,
+    },
+    progress.value,
+  );
   isSaving.value = false;
-  if (result.error !== null) {
-    saveError.value = result.error;
-    return;
-  }
-  itemId.value = result.itemId;
-  goTo('done');
+  if (!saveError.value) goTo('done');
 }
 
 function next() {
   if (step.value === 'basis') {
-    if (file.value) goTo('details');
+    if (documents.value.length) startDetails();
     else saveError.value = VAULT_PROBLEM_FILE;
-  }
-  else if (step.value === 'details') checkDetails();
+  } else if (step.value === 'details') checkDetails();
   else if (step.value === 'cover') checkCover();
   else if (step.value === 'skills') saveItem();
 }
 
+/** Back is gone once the item is saved: changing the details then would not reach the vault (as on iOS). */
 function back() {
   if (step.value === 'details') goTo('basis');
   else if (step.value === 'cover') goTo('details');
@@ -153,9 +211,9 @@ function back() {
 }
 
 async function finish() {
-  if (allowsAyla.value && itemId.value) {
+  if (allowsAyla.value && progress.value.itemId) {
     isSaving.value = true;
-    saveError.value = await vaultAdd.allowAyla(itemId.value);
+    saveError.value = await vaultAdd.allowAyla(progress.value.itemId);
     isSaving.value = false;
     if (saveError.value) return;
   }
@@ -165,7 +223,7 @@ async function finish() {
 /** ✕, Escape or a click next to the card. Once saved it simply closes; halfway it asks first. */
 function requestClose() {
   if (isSaving.value) return;
-  if (!isDone.value && isDirty.value) discardRef.value?.open();
+  if (!isSaved.value && isDirty.value) discardRef.value?.open();
   else vaultAdd.close();
 }
 
@@ -188,8 +246,8 @@ function handleClose() {
   <dialog
     ref="dialog"
     :aria-labelledby="titleId"
-    :class="isDone ? 'max-w-108.25 rounded-done' : 'max-w-154 rounded-modal'"
-    class="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] overflow-hidden bg-white p-0 text-heading shadow-modal backdrop:bg-backdrop"
+    :class="isDone ? 'max-w-120' : 'max-w-154'"
+    class="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] overflow-hidden rounded-modal bg-white p-0 text-heading shadow-modal backdrop:bg-backdrop"
     @cancel="handleCancel"
     @close="handleClose"
     @click="handleBackdropClick"
@@ -199,71 +257,87 @@ function handleClose() {
       v-model:allows-ayla="allowsAyla"
       :title-id="titleId"
       :is-saving="isSaving"
+      :has-file="documents.length > 0"
       :problem="saveError"
       @finish="finish"
     />
 
     <div v-else class="flex max-h-[calc(100dvh-2rem)] flex-col">
-      <div class="flex items-start justify-between gap-4 px-9 pt-8.75 max-sm:px-5 sm:pr-11.5">
-        <h2 :id="titleId" class="font-heading text-hero font-semibold text-heading max-sm:text-2xl">{{ VAULT_ADD_TITLE }}</h2>
+      <div class="flex items-center justify-between gap-4 px-9 pt-8 max-sm:px-5">
+        <h2 :id="titleId" class="font-heading text-2xl font-semibold text-heading">{{ VAULT_ADD_TITLE }}</h2>
         <button
           type="button"
           :aria-label="VAULT_ADD_CLOSE"
           :title="VAULT_ADD_CLOSE"
-          class="mt-0.75 flex h-9.25 w-8.75 shrink-0 items-center justify-center rounded-field border border-field-line hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand"
+          class="flex h-9.25 w-8.75 shrink-0 items-center justify-center rounded-field border border-field-line hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand"
           @click="requestClose"
         >
           <img src="/images/vault/close.svg" alt="" width="13.6909" height="13.6909" />
         </button>
       </div>
 
-      <VaultAddSteps class="mx-9 mt-10 max-sm:mx-5 sm:mr-11.5" :current="stepIndex" />
+      <VaultAddSteps class="mx-9 mt-6 max-sm:mx-5" :current="stepIndex" />
 
       <div
         ref="content"
         tabindex="-1"
         autofocus
         :aria-label="`${VAULT_ADD_STEPS[stepIndex]} (${stepIndex + 1}/${VAULT_ADD_STEPS.length})`"
-        class="min-h-0 flex-1 overflow-y-auto px-9 pb-1 pt-7.5 focus:outline-none max-sm:px-5"
+        class="min-h-0 flex-1 overflow-y-auto px-9 pb-1 pt-6 focus:outline-none max-sm:px-5"
       >
         <VaultBasisStep
           v-if="step === 'basis'"
-          :file="file"
-          @pick="pickFile"
-          @remove-file="file = null"
+          :files="documents"
+          @pick="pickDocument"
+          @remove-file="removeDocument"
           @without-file="addWithoutFile"
         />
         <VaultDetailsStep
           v-else-if="step === 'details'"
           ref="details"
           v-model:draft="draft"
-          v-model:folder-id="vaultAdd.state.value.folderId"
-          :file="file"
+          v-model:folder-ids="folderIds"
+          v-model:makes-new-folder="makesKindFolder"
+          :files="documents"
           :problems="problems"
-          shows-folder
-          @remove-file="file = null"
+          :new-folder-name="newKindFolderName"
+          @remove-file="removeDocument"
+          @folders-chosen="foldersFollowKind = false"
         />
-        <VaultCoverStep
-          v-else-if="step === 'cover'"
-          v-model:choice="coverChoice"
-          v-model:cover="cover"
-          v-model:logo="logo"
-          :problem="coverProblem"
-        />
+        <div v-else-if="step === 'cover'" class="flex flex-col gap-8">
+          <VaultLookSection
+            v-model:wants-cover="wantsCover"
+            :logo-url="logoUrl"
+            :cover-url="coverUrl"
+            :title="draft.title"
+            :organisation-name="draft.organisationName"
+            :category="draft.category"
+            :problem="coverProblem"
+            :has-logo="Boolean(logo)"
+            @pick="pickImage"
+            @remove="removeImage"
+          />
+          <VaultDocumentsSection :files="documents" @pick="pickDocument" @remove-file="removeDocument" />
+        </div>
         <VaultSkillsStep
           v-else
           v-model:selected="skills"
           :vault-skills="vaultSkills"
           :ayla-skills="vaultAdd.state.value.suggestedSkills"
           :is-loading="isLoadingSkills"
+          :draft="draft"
+          :documents="documents"
+          asks-ayla-on-mount
         />
       </div>
 
-      <div class="px-9 pb-8 pt-7 max-sm:px-5 sm:pr-10">
+      <!-- Step 1 without a file has two clear choices and no button (as on iOS). -->
+      <div v-if="step === 'basis' && !documents.length" class="pb-8" />
+      <div v-else class="px-9 pb-8 pt-6 max-sm:px-5">
         <p v-if="saveError" role="alert" class="mb-3 text-sm text-danger">{{ saveError }}</p>
         <div class="flex justify-end gap-2.5">
           <button
-            v-if="step !== 'basis'"
+            v-if="step !== 'basis' && !isSaved"
             type="button"
             :disabled="isSaving"
             class="min-h-10 min-w-25.75 rounded-field bg-field-line px-4 text-base font-medium text-heading hover:bg-tile focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-60"
@@ -278,12 +352,19 @@ function handleClose() {
             class="min-h-10 min-w-28.5 rounded-field bg-brand px-4 text-base font-medium text-white hover:bg-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-60"
             @click="next"
           >
-            {{ isSaving ? VAULT_ADD_SAVING : VAULT_ADD_NEXT }}
+            {{ isSaving ? VAULT_ADD_SAVING : step === 'skills' ? VAULT_ADD_BUTTON : VAULT_ADD_NEXT }}
           </button>
         </div>
       </div>
     </div>
 
-    <LayoutConfirmSheet ref="discard" :title="VAULT_DISCARD_TITLE" :confirm-label="VAULT_DISCARD_CONFIRM" @confirm="vaultAdd.close()" />
+    <LayoutConfirmSheet
+      ref="discard"
+      :title="VAULT_DISCARD_TITLE"
+      :message="VAULT_DISCARD_MESSAGE"
+      :confirm-label="VAULT_DISCARD_CONFIRM"
+      :cancel-label="VAULT_DISCARD_KEEP"
+      @confirm="vaultAdd.close()"
+    />
   </dialog>
 </template>

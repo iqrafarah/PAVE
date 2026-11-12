@@ -1,11 +1,25 @@
 <script setup lang="ts">
-// Step 3 "Vaardigheden" (Figma 1167:11255): pick skills you already have in your vault, take Ayla's suggestions, or
-// type your own. The chosen ones are the grey chips at the bottom; click one to take it away again.
-const props = defineProps<{
-  vaultSkills: string[];
-  aylaSkills: string[];
-  isLoading: boolean;
-}>();
+import type { VaultItemDraft, VaultSkillSuggestion } from '~/types/vault';
+
+// Step 3 "Vaardigheden" (Figma 1167:11255, iOS VaultSkillsPicker): pick skills you already have in your vault, take
+// Ayla's proposals, or type your own. The chosen ones are the grey chips at the bottom; click one to take it away again.
+// Ayla's proposals come from the Edge Function ayla-skills, which sees the fields of this form and what could be read
+// from the documents (text files and photos), only for this proposal; when adding, she
+// starts as soon as the step opens, when changing only on request. Skills she named in the chat are shown too.
+const props = withDefaults(
+  defineProps<{
+    vaultSkills: string[];
+    aylaSkills?: string[];
+    isLoading: boolean;
+    draft: VaultItemDraft;
+    // The files Ayla may look at for her proposal.
+    documents?: File[];
+    // Fetches the files instead, for evidence that already has saved documents.
+    loadDocuments?: () => Promise<File[]>;
+    asksAylaOnMount?: boolean;
+  }>(),
+  { aylaSkills: () => [], documents: () => [], asksAylaOnMount: false },
+);
 
 const selected = defineModel<string[]>('selected', { required: true });
 
@@ -15,6 +29,43 @@ const searchId = useId();
 const vaultTitleId = useId();
 const aylaTitleId = useId();
 
+const vault = useVault();
+type AylaState = 'idle' | 'loading' | 'loaded' | 'failed';
+const aylaState = ref<AylaState>('idle');
+const aylaProblem = ref<string | null>(null);
+const proposals = ref<VaultSkillSuggestion[]>([]);
+// How many files Ayla looked at for the proposals shown.
+const lookedAt = ref(0);
+// The chat's skills first (without a reason), then hers from this form, each once.
+const aylaRows = computed<VaultSkillSuggestion[]>(() => {
+  const rows = props.aylaSkills.map((name) => ({ name, reason: '' }));
+  for (const proposal of proposals.value) {
+    if (!rows.some((row) => row.name.toLowerCase() === proposal.name.toLowerCase())) rows.push(proposal);
+  }
+  return rows;
+});
+
+async function askAyla() {
+  aylaState.value = 'loading';
+  aylaProblem.value = null;
+  try {
+    // A file that cannot be read never stops the proposal: Ayla then looks at the form alone.
+    const material = await Promise.resolve()
+      .then(async () => readSkillsMaterial(props.loadDocuments ? await props.loadDocuments() : props.documents))
+      .catch(() => ({ files: [], images: [] }));
+    proposals.value = await vault.suggestSkills(props.draft, [...new Set([...selected.value, ...props.vaultSkills])], material);
+    lookedAt.value = material.files.length + material.images.length;
+    aylaState.value = 'loaded';
+  } catch (error) {
+    aylaProblem.value = error instanceof VaultSaveError ? error.message : VAULT_AYLA_SKILLS_FAILED;
+    aylaState.value = 'failed';
+  }
+}
+
+onMounted(() => {
+  if (props.asksAylaOnMount) askAyla();
+});
+
 const selectedKeys = computed(() => new Set(selected.value.map((name) => name.toLowerCase())));
 const isSelected = (name: string) => selectedKeys.value.has(name.toLowerCase());
 
@@ -22,7 +73,7 @@ const typed = computed(() => query.value.trim().slice(0, MAX_SKILL_LENGTH));
 const matches = computed(() => {
   const search = typed.value.toLowerCase();
   if (!search) return [];
-  const known = [...new Set([...props.vaultSkills, ...props.aylaSkills])];
+  const known = [...new Set([...props.vaultSkills, ...aylaRows.value.map((row) => row.name)])];
   return known.filter((name) => name.toLowerCase().includes(search) && !isSelected(name)).slice(0, 5);
 });
 const canAddTyped = computed(
@@ -86,26 +137,46 @@ function handleEnter() {
         <h3 :id="aylaTitleId" class="mb-3 text-base font-semibold text-heading">
           {{ VAULT_SKILLS_FROM_AYLA }} <span class="text-brand">{{ AYLA_NAME }}</span>
         </h3>
-        <ul class="flex h-41.5 flex-col gap-1.75 overflow-y-auto rounded-field border border-field-line p-2.75">
-          <li v-if="!aylaSkills.length" class="px-1 text-xs text-subtle">{{ VAULT_SKILLS_NONE_FROM_AYLA }}</li>
-          <li v-for="name in aylaSkills" :key="name">
+        <div class="flex h-41.5 flex-col gap-1.75 overflow-y-auto rounded-field border border-field-line p-2.75" :aria-busy="aylaState === 'loading'">
+          <ul v-if="aylaRows.length" class="flex flex-col gap-1.75">
+            <li v-for="row in aylaRows" :key="row.name">
+              <button
+                type="button"
+                :aria-pressed="isSelected(row.name)"
+                :class="isSelected(row.name) ? 'bg-tint text-heading' : 'bg-brand text-white hover:bg-ink'"
+                class="flex min-h-7.75 w-full items-center gap-2 rounded-sm py-1.5 pl-2.75 pr-2.5 text-left text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand"
+                @click="toggle(row.name)"
+              >
+                <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span>{{ row.name }}</span>
+                  <span v-if="row.reason" class="text-[0.6875rem] font-medium opacity-80">{{ row.reason }}</span>
+                </span>
+                <img
+                  :src="isSelected(row.name) ? '/images/vault/skill-check-ayla.svg' : '/images/vault/skill-add-light.svg'"
+                  alt=""
+                  :width="isSelected(row.name) ? 16.4704 : 16.9767"
+                  :height="isSelected(row.name) ? 17.5 : 16.9767"
+                />
+              </button>
+            </li>
+          </ul>
+          <p v-if="aylaState === 'loading'" role="status" class="animate-pulse px-1 py-1 text-xs font-medium text-brand motion-reduce:animate-none">
+            {{ VAULT_AYLA_SKILLS_THINKING }}
+          </p>
+          <div v-else-if="aylaState !== 'loaded' || !proposals.length" class="flex flex-col items-start gap-2 px-1 py-1">
+            <p class="text-xs text-subtle">
+              {{ aylaState === 'failed' ? aylaProblem : aylaState === 'loaded' ? VAULT_AYLA_SKILLS_NONE : VAULT_AYLA_SKILLS_INTRO }}
+            </p>
             <button
               type="button"
-              :aria-pressed="isSelected(name)"
-              :class="isSelected(name) ? 'bg-tint text-heading' : 'bg-brand text-white hover:bg-ink'"
-              class="flex min-h-7.75 w-full items-center gap-2 rounded-sm py-1.5 pl-2.75 pr-2.5 text-left text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand"
-              @click="toggle(name)"
+              class="min-h-8 rounded-full bg-brand px-3.5 text-xs font-semibold text-white hover:bg-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              @click="askAyla"
             >
-              <span class="min-w-0 flex-1">{{ name }}</span>
-              <img
-                :src="isSelected(name) ? '/images/vault/skill-check-ayla.svg' : '/images/vault/skill-add-light.svg'"
-                alt=""
-                :width="isSelected(name) ? 16.4704 : 16.9767"
-                :height="isSelected(name) ? 17.5 : 16.9767"
-              />
+              {{ aylaState === 'idle' ? VAULT_AYLA_SKILLS_ASK : VAULT_AYLA_SKILLS_AGAIN }}
             </button>
-          </li>
-        </ul>
+          </div>
+          <p v-else class="px-1 pt-1 text-[0.6875rem] text-subtle">{{ VAULT_AYLA_SKILLS_LOOKED_AT(lookedAt) }}</p>
+        </div>
       </section>
     </div>
 

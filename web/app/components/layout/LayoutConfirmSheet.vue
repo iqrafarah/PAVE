@@ -1,10 +1,14 @@
 <script setup lang="ts">
-// A confirmation like iOS's confirmationDialog: a small title (and message) above the red action, with "Annuleren"
-// in its own card. At the bottom of the screen on phones, in the middle on wider screens. Escape cancels.
+// A confirmation in the middle of the screen: the question, what it means, and two buttons next to each other, the safe
+// one first (it has the focus) and the red action last. Escape or a click next to the card cancels.
 defineProps<{
   title: string;
   message?: string;
   confirmLabel: string;
+  // What staying is called, such as "Verder met toevoegen"; "Annuleren" when left out.
+  cancelLabel?: string;
+  // The action is not destructive (saving, for instance): green instead of red.
+  isCalm?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -41,28 +45,28 @@ defineExpose({ open });
     ref="dialog"
     :aria-labelledby="titleId"
     :aria-describedby="message ? messageId : undefined"
-    class="m-auto w-full max-w-sm bg-transparent p-2 backdrop:bg-ink/40 max-sm:mb-0 max-sm:max-w-none"
+    class="m-auto w-[calc(100%-2rem)] max-w-110 rounded-2xl bg-white p-6 text-left shadow-modal backdrop:bg-backdrop"
     @click="handleClick"
   >
-    <div class="overflow-hidden rounded-2xl bg-white text-center">
-      <div class="px-4 py-3.5">
-        <h2 :id="titleId" class="text-xs font-semibold text-subtle">{{ title }}</h2>
-        <p v-if="message" :id="messageId" class="mt-1 text-xs/normal text-subtle">{{ message }}</p>
-      </div>
+    <h2 :id="titleId" class="font-heading text-lg font-semibold text-heading">{{ title }}</h2>
+    <p v-if="message" :id="messageId" class="mt-2 text-sm font-medium text-subtle">{{ message }}</p>
+    <div class="mt-6 flex flex-wrap justify-end gap-2.5">
       <button
         type="button"
-        class="min-h-14 w-full border-t border-line text-base font-medium text-danger hover:bg-surface focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
+        autofocus
+        class="min-h-10 flex-1 whitespace-nowrap rounded-field bg-field-line px-4 text-sm font-medium text-heading hover:bg-tile focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        @click="close"
+      >
+        {{ cancelLabel ?? AYLA_CANCEL }}
+      </button>
+      <button
+        type="button"
+        :class="isCalm ? 'bg-brand hover:bg-ink' : 'bg-danger hover:opacity-90'"
+        class="min-h-10 flex-1 whitespace-nowrap rounded-field px-4 text-sm font-medium text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         @click="confirm"
       >
         {{ confirmLabel }}
       </button>
     </div>
-    <button
-      type="button"
-      class="mt-2 min-h-14 w-full rounded-2xl bg-white text-base font-semibold text-brand hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-      @click="close"
-    >
-      {{ AYLA_CANCEL }}
-    </button>
   </dialog>
 </template>

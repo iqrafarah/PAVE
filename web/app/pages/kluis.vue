@@ -14,14 +14,14 @@ onMounted(() => conversation.startNew());
 
 <template>
   <div class="relative flex min-h-0 flex-1 flex-col">
-    <!-- The title lines up with the vault, which is centred at most 1068px wide. -->
+    <!-- The title lines up with the vault, which is centred at most 1200px wide. -->
     <AylaTitleBar
       :class="showsVault ? 'pointer-events-none absolute inset-x-0 top-0 z-10 [&_a,&_button]:pointer-events-auto' : ''"
-      :content-class="showsVault ? 'mx-auto max-w-267' : ''"
+      :content-class="showsVault ? 'mx-auto max-w-300' : ''"
     />
     <AylaChatView screen="vault">
       <template #empty>
-        <VaultLibrary class="pt-25.25" />
+        <VaultLibrary />
       </template>
     </AylaChatView>
   </div>
