@@ -7,13 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		D1A7C0FFEE0000000000000C /* AylaPixelOrb.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A7C0FFEE0000000000000B /* AylaPixelOrb.swift */; };
-		D1A7C0FFEE0000000000000D /* AylaPixelOrb.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A7C0FFEE0000000000000B /* AylaPixelOrb.swift */; };
-		D1A7C0FFEE0000000000000F /* AylaPixelIcons.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A7C0FFEE0000000000000E /* AylaPixelIcons.swift */; };
-		D1A7C0FFEE00000000000010 /* AylaPixelIcons.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A7C0FFEE0000000000000E /* AylaPixelIcons.swift */; };
-		D1A7C0FFEE00000000000012 /* VoiceMeter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A7C0FFEE00000000000011 /* VoiceMeter.swift */; };
-		D1A7C0FFEE00000000000013 /* VoiceMeter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A7C0FFEE00000000000011 /* VoiceMeter.swift */; };
-		D1A7C0FFEE00000000000001 /* PAVECore in Frameworks */ = {isa = PBXBuildFile; productRef = D1A7C0FFEE00000000000002 /* PAVECore */; };
 		065F48BE8B44293C4E61D3EA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 86B0195960554A0DF963D9CA /* Assets.xcassets */; };
 		15C5E62E401984801CF64CF7 /* PaveSplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C616F072C4F978843892A158 /* PaveSplashView.swift */; };
 		175A4414E0270FCA6C4A444D /* PixelWaveIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BFEE001DD9C244F3F78FC55 /* PixelWaveIcon.swift */; };
@@ -34,6 +27,13 @@
 		A650AACB9495333BC3055FC2 /* PaveIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BB8E50CBECFA7C43BD0172C /* PaveIntents.swift */; };
 		C5F838A8F5389AA439976568 /* PAVECore in Frameworks */ = {isa = PBXBuildFile; productRef = BFAAF27B879F677ADF44BCF9 /* PAVECore */; };
 		CFC885971A785DDF39827BE1 /* PaveSplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C616F072C4F978843892A158 /* PaveSplashView.swift */; };
+		D1A7C0FFEE00000000000001 /* PAVECore in Frameworks */ = {isa = PBXBuildFile; productRef = D1A7C0FFEE00000000000002 /* PAVECore */; };
+		D1A7C0FFEE0000000000000C /* AylaPixelOrb.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A7C0FFEE0000000000000B /* AylaPixelOrb.swift */; };
+		D1A7C0FFEE0000000000000D /* AylaPixelOrb.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A7C0FFEE0000000000000B /* AylaPixelOrb.swift */; };
+		D1A7C0FFEE0000000000000F /* AylaPixelIcons.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A7C0FFEE0000000000000E /* AylaPixelIcons.swift */; };
+		D1A7C0FFEE00000000000010 /* AylaPixelIcons.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A7C0FFEE0000000000000E /* AylaPixelIcons.swift */; };
+		D1A7C0FFEE00000000000012 /* VoiceMeter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A7C0FFEE00000000000011 /* VoiceMeter.swift */; };
+		D1A7C0FFEE00000000000013 /* VoiceMeter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A7C0FFEE00000000000011 /* VoiceMeter.swift */; };
 		D9A415E95E5DBF60221A8B8D /* PaveIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BB8E50CBECFA7C43BD0172C /* PaveIntents.swift */; };
 		E6583B2779788EDAA6A29D7C /* PixelWaveIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BFEE001DD9C244F3F78FC55 /* PixelWaveIcon.swift */; };
 /* End PBXBuildFile section */
@@ -88,9 +88,6 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		D1A7C0FFEE0000000000000B /* AylaPixelOrb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AylaPixelOrb.swift; sourceTree = "<group>"; };
-		D1A7C0FFEE0000000000000E /* AylaPixelIcons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AylaPixelIcons.swift; sourceTree = "<group>"; };
-		D1A7C0FFEE00000000000011 /* VoiceMeter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMeter.swift; sourceTree = "<group>"; };
 		0AB30166B28926E8F8E28BC1 /* PAVEWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PAVEWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		21DFCA90681B57EE7EB6D389 /* Sora-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Sora-OFL.txt"; sourceTree = "<group>"; };
 		2BCD023CC7FE6F72343B2EF5 /* PAVE.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PAVE.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -106,6 +103,9 @@
 		973322EAB88C92C7FE97EB1A /* InterVariable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = InterVariable.ttf; sourceTree = "<group>"; };
 		BF1D741B8FA937E5AA513AA9 /* PAVEWidgets-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "PAVEWidgets-Info.plist"; sourceTree = "<group>"; };
 		C616F072C4F978843892A158 /* PaveSplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaveSplashView.swift; sourceTree = "<group>"; };
+		D1A7C0FFEE0000000000000B /* AylaPixelOrb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AylaPixelOrb.swift; sourceTree = "<group>"; };
+		D1A7C0FFEE0000000000000E /* AylaPixelIcons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AylaPixelIcons.swift; sourceTree = "<group>"; };
+		D1A7C0FFEE00000000000011 /* VoiceMeter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMeter.swift; sourceTree = "<group>"; };
 		D968A6FFC0E05337390C0CF4 /* PAVEWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PAVEWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		DFFF2974A4E35CB11736629D /* PAVETests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PAVETests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -134,18 +134,18 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		9B3BD1B669B2CA48A71F4F37 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D1A7C0FFEE00000000000003 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				D1A7C0FFEE00000000000001 /* PAVECore in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		9B3BD1B669B2CA48A71F4F37 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -587,6 +587,7 @@
 		58EF6106E1342AB3B0824666 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIconBlue AppIconGold AppIconPink AppIconOrange AppIconPurple AppIconRed AppIconLime";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
@@ -636,10 +637,10 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = PAVE;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Je stem wordt opgenomen zodat Ayla hoort wat je vraagt. Na het omzetten naar tekst wordt de opname niet bewaard.";
 				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "$(APP_BUNDLE_IDENTIFIER)";
 				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Je stem wordt opgenomen zodat Ayla hoort wat je vraagt. Na het omzetten naar tekst wordt de opname niet bewaard.";
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_IDENTIFIER).watchkitapp";
 				SDKROOT = watchos;
@@ -738,6 +739,7 @@
 		DD56819F940C2A97136A05C9 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIconBlue AppIconGold AppIconPink AppIconOrange AppIconPurple AppIconRed AppIconLime";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
@@ -770,10 +772,10 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = PAVE;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Je stem wordt opgenomen zodat Ayla hoort wat je vraagt. Na het omzetten naar tekst wordt de opname niet bewaard.";
 				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "$(APP_BUNDLE_IDENTIFIER)";
 				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Je stem wordt opgenomen zodat Ayla hoort wat je vraagt. Na het omzetten naar tekst wordt de opname niet bewaard.";
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_BUNDLE_IDENTIFIER).watchkitapp";
 				SDKROOT = watchos;
@@ -841,11 +843,11 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		D1A7C0FFEE00000000000002 /* PAVECore */ = {
+		BFAAF27B879F677ADF44BCF9 /* PAVECore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PAVECore;
 		};
-		BFAAF27B879F677ADF44BCF9 /* PAVECore */ = {
+		D1A7C0FFEE00000000000002 /* PAVECore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PAVECore;
 		};

@@ -46,6 +46,13 @@ public enum PaveThemeColor: String, CaseIterable, Identifiable, Sendable {
         return UInt32(red) << 16 | UInt32(green) << 8 | UInt32(blue)
     }
 
+    /// The theme colour whose hue is closest to an own colour, for what can only show the fixed colours, like the app
+    /// icon. Grey, near-white and near-black colours have no clear hue and give PAVE green.
+    public static func nearestPreset(to color: UInt32) -> PaveThemeColor {
+        guard let hue = hue(of: color) else { return .green }
+        return presets.min { distance(hue, Self.hue(of: $0.swatch) ?? 0) < distance(hue, Self.hue(of: $1.swatch) ?? 0) } ?? .green
+    }
+
     /// `#RRGGBB`, as the account stores an own colour.
     public static func hex(_ color: UInt32) -> String {
         String(format: "#%06X", color & 0xFFFFFF)
@@ -54,6 +61,24 @@ public enum PaveThemeColor: String, CaseIterable, Identifiable, Sendable {
     public static func color(hex: String) -> UInt32? {
         guard hex.count == 7, hex.first == "#", let value = UInt32(hex.dropFirst(), radix: 16) else { return nil }
         return value
+    }
+
+    /// The hue in degrees, or nil when the colour is too grey, light or dark to have a clear one.
+    private static func hue(of color: UInt32) -> Double? {
+        let (red, green, blue) = (Double(color >> 16 & 0xFF) / 255, Double(color >> 8 & 0xFF) / 255, Double(color & 0xFF) / 255)
+        let high = max(red, green, blue), low = min(red, green, blue), range = high - low
+        guard high > 0.15, range / high > 0.18 else { return nil }
+        let hue: Double = switch high {
+        case red: (green - blue) / range
+        case green: (blue - red) / range + 2
+        default: (red - green) / range + 4
+        }
+        return (hue * 60 + 360).truncatingRemainder(dividingBy: 360)
+    }
+
+    private static func distance(_ first: Double, _ second: Double) -> Double {
+        let difference = abs(first - second)
+        return min(difference, 360 - difference)
     }
 
     private static func contrastWithWhite(_ red: Double, _ green: Double, _ blue: Double) -> Double {
