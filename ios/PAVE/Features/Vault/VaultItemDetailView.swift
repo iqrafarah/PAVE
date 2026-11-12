@@ -7,6 +7,7 @@ struct VaultItemDetailView: View {
     @Environment(VaultModel.self) private var model
     let itemID: String
     @State private var isEditing = false
+    @State private var requestsConfirmation = false
     @State private var confirmsDelete = false
     @State private var look: VaultLogoLook?
 
@@ -30,6 +31,11 @@ struct VaultItemDetailView: View {
             }
             .sheet(isPresented: $isEditing) {
                 if let item { VaultEvidenceEditor(vault: model, item: item).paveSheet() }
+            }
+            .sheet(isPresented: $requestsConfirmation) {
+                if let item {
+                    VaultRequestConfirmationSheet(item: item, documentCount: model.documents(of: item).count).paveSheet()
+                }
             }
             .confirmationDialog("Uit je kluis verwijderen?", isPresented: $confirmsDelete, titleVisibility: .visible) {
                 Button("Verwijderen", role: .destructive) {
@@ -69,7 +75,12 @@ struct VaultItemDetailView: View {
                     // In the content rather than the navigation bar: on the outer display of the iPhone Duo the bar puts
                     // its buttons in the status column, where the sheet does not reach.
                     Menu {
-                        VaultItemActionButtons(item: item, onEdit: { isEditing = true }, onDelete: { confirmsDelete = true })
+                        VaultItemActionButtons(
+                            item: item,
+                            onEdit: { isEditing = true },
+                            onRequestConfirmation: { requestsConfirmation = true },
+                            onDelete: { confirmsDelete = true }
+                        )
                     } label: {
                         Image(.iconEllipsis)
                             .renderingMode(.template)
@@ -82,10 +93,21 @@ struct VaultItemDetailView: View {
                 }
 
                 section("Status") {
-                    Text(item.status.explanation)
-                        .textStyle(.bodyMedium)
-                        .foregroundStyle(Color.ink)
-                        .fixedSize(horizontal: false, vertical: true)
+                    VStack(alignment: .leading, spacing: 14) {
+                        Text(item.status.explanation)
+                            .textStyle(.bodyMedium)
+                            .foregroundStyle(Color.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                        // Also after a change: a confirmed item that was changed is Niet bevestigd again and can be sent anew.
+                        if item.status != .verified {
+                            PaveSecondaryButton(
+                                title: item.status == .rejected ? VaultMessages.requestAgainAction : VaultMessages.requestAction,
+                                icon: .iconCheckBadgeSolid
+                            ) {
+                                requestsConfirmation = true
+                            }
+                        }
+                    }
                 }
 
                 section("Gegevens") {

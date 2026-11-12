@@ -117,7 +117,41 @@ enum VaultMessages {
     static let saving = "Toevoegen…"
     static let discardChangesTitle = "Wijzigingen weggooien?"
     static let reconfirmTitle = "Dit bewijs is bevestigd"
-    static let reconfirmMessage = "Pas je de gegevens of bestanden aan, dan staat het weer als Niet bevestigd in je kluis tot het opnieuw bevestigd is."
+    static let reconfirmMessage = "Pas je de gegevens of bestanden aan, dan staat het weer als Niet bevestigd in je kluis. Daarna kun je opnieuw bevestiging aanvragen."
+
+    // MARK: Bevestiging aanvragen (only the front for now)
+
+    static let requestAction = "Bevestiging aanvragen"
+    static let requestAgainAction = "Opnieuw bevestiging aanvragen"
+    static let requestPreviewLabel = "Voorbeeld"
+    static let requestPreviewAccessibility = "Voorbeeld, werkt nog niet"
+    static let requestNotActive = "Bevestiging aanvragen werkt nog niet. Je kunt alvast kijken hoe het wordt, maar er wordt niets verstuurd."
+    static let requestWhoTitle = "Wie kan dit bevestigen?"
+    static let requestOrganisationPrompt = "Bijv. Fontys of LiveWall"
+    static let requestEmailTitle = "E-mailadres van je contactpersoon"
+    static let requestMessageTitle = "Bericht"
+    static let requestMessagePrompt = "Bijv. Wil je mijn eindstage bevestigen?"
+    static let requestSharedTitle = "Dit ziet de ontvanger"
+    static let requestSend = "Verzoek versturen"
+    static let requestNotSentTitle = "Nog niet verstuurd"
+    static let discardRequestTitle = "Verzoek weggooien?"
+    static let sharedDescription = "Je omschrijving"
+
+    static func requestNotSentMessage(_ organisation: String) -> String {
+        let to = organisation.trimmingCharacters(in: .whitespacesAndNewlines)
+        return "Bevestiging aanvragen werkt nog niet in deze versie van PAVE. Er is niets naar \(to.isEmpty ? "de organisatie" : to) gestuurd en niets bewaard."
+    }
+
+    static func requestMissing(_ field: VaultConfirmationRequest.Field) -> String {
+        switch field {
+        case .organisation: "Vul de naam van de organisatie in."
+        case .email: "Vul een geldig e-mailadres in, zoals naam@organisatie.nl."
+        }
+    }
+
+    static func sharedTitle(_ title: String, kind: String) -> String { "\(title) (\(kind.lowercased()))" }
+    static func sharedFiles(_ count: Int) -> String { count == 1 ? "1 bestand" : "\(count) bestanden" }
+    static func sharedSkills(_ count: Int) -> String { count == 1 ? "1 vaardigheid" : "\(count) vaardigheden" }
     static let reconfirmQuestion = "Opnieuw laten bevestigen?"
     static let discardTitle = "Stoppen met toevoegen?"
     static let discardMessage = "Wat je hebt ingevuld, wordt niet bewaard."
@@ -160,6 +194,32 @@ enum VaultMessages {
     }
 }
 
+extension VaultConfirmationRequest.Recipient {
+    var title: String {
+        switch self {
+        case .school: "School of opleiding"
+        case .employer: "Werkgever of stagebedrijf"
+        case .mentor: "Docent of begeleider"
+        }
+    }
+
+    var example: String {
+        switch self {
+        case .school: "Voor diploma's, cijfers en certificaten."
+        case .employer: "Voor werkervaring en stages."
+        case .mentor: "Voor projecten, feedback en vaardigheden."
+        }
+    }
+
+    var organisationLabel: String {
+        switch self {
+        case .school: "School of opleiding"
+        case .employer: "Werkgever of stagebedrijf"
+        case .mentor: "School of organisatie van je begeleider"
+        }
+    }
+}
+
 extension VaultItem.Status {
     var title: String {
         switch self {
@@ -171,7 +231,7 @@ extension VaultItem.Status {
 
     var explanation: String {
         switch self {
-        case .verified: "Bevestigd door een officiële of vertrouwde bron. Daarom kun je dit item niet meer aanpassen."
+        case .verified: "Bevestigd door een officiële of vertrouwde bron. Pas je iets aan, dan moet het opnieuw bevestigd worden."
         case .toVerify: "Nog niet bevestigd door een school, opleiding of werkgever."
         case .rejected: "De organisatie kon dit niet bevestigen. Kijk of alles klopt en pas het zo nodig aan."
         }

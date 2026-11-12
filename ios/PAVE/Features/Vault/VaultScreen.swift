@@ -12,6 +12,7 @@ struct VaultScreen: View {
     @FocusState private var isSearchFocused: Bool
     @State private var openedItem: VaultItem?
     @State private var editedItem: VaultItem?
+    @State private var confirmedItem: VaultItem?
     @State private var addsItem = false
     @State private var deletedItem: VaultItem?
     @State private var folderSheet: FolderSheet?
@@ -67,6 +68,10 @@ struct VaultScreen: View {
                 }
                 .sheet(item: $editedItem) { item in
                     VaultEvidenceEditor(vault: model, item: item)
+                        .paveSheet()
+                }
+                .sheet(item: $confirmedItem) { item in
+                    VaultRequestConfirmationSheet(item: item, documentCount: model.documents(of: item).count)
                         .paveSheet()
                 }
                 .sheet(isPresented: $addsItem) {
@@ -225,7 +230,7 @@ struct VaultScreen: View {
         .buttonStyle(.pave)
         .accessibilityHint("Toont alles over dit item")
         .contextMenu {
-            VaultItemActionButtons(item: item, onEdit: { editedItem = item }, onDelete: { deletedItem = item })
+            VaultItemActionButtons(item: item, onEdit: { editedItem = item }, onRequestConfirmation: { confirmedItem = item }, onDelete: { deletedItem = item })
         }
     }
 
