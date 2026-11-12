@@ -12,5 +12,7 @@
 		<string>InterVariable.ttf</string>
 		<string>SoraVariable.ttf</string>
 	</array>
+	<key>PaveKeychainGroup</key>
+	<string>$(AppIdentifierPrefix)$(APP_BUNDLE_IDENTIFIER).shared</string>
 </dict>
 </plist>

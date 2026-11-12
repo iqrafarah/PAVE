@@ -77,6 +77,15 @@ struct ProfileModelTests {
         #expect(PaveThemeStore.shared.accent == PaveThemeColor.blue.accent)
     }
 
+    @Test func theWidgetsGetTheChosenColourThroughTheKeychain() throws {
+        let group = try #require(Bundle.main.object(forInfoDictionaryKey: "PaveKeychainGroup") as? String)
+        defer { PaveHomeScreen.updateWidgets(theme: PaveAppearance.theme, customColor: PaveAppearance.customColor) }
+        PaveHomeScreen.updateWidgets(theme: .pink, customColor: nil)
+        #expect(PaveHomeScreen.storedWidgetAccent(group: group) == PaveThemeColor.hex(PaveThemeColor.pink.accent))
+        PaveHomeScreen.updateWidgets(theme: .custom, customColor: 0xFFEB3B)
+        #expect(PaveHomeScreen.storedWidgetAccent(group: group) == PaveThemeColor.hex(PaveThemeColor.readableAccent(for: 0xFFEB3B)))
+    }
+
     @Test func withoutTheMigrationTheLookStaysOnThisDevice() async {
         clean()
         defer { clean() }

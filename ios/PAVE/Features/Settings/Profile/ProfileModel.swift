@@ -28,7 +28,7 @@ final class ProfileModel {
 
     private let service: (any ProfileService)?
     private let defaults: UserDefaults
-    /// Gives the app icon the chosen colour.
+    /// Gives the widgets and the app icon the chosen colour.
     private let onThemeChosen: @MainActor (PaveThemeColor, UInt32?) -> Void
 
     init(
