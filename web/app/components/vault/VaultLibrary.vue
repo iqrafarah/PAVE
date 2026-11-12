@@ -233,7 +233,8 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
     class="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-4 pb-40 sm:px-13.25"
     @scroll.passive="hasScrolled = ($event.target as HTMLElement).scrollTop > 1"
   >
-    <div class="mx-auto flex w-full max-w-300 flex-col">
+    <!-- From the left edge, like the title above it and the content of every other page; as wide as the window allows. -->
+    <div class="flex w-full flex-col">
       <h2 class="sr-only">{{ VAULT_TITLE }}</h2>
 
       <!-- Loading: grey shapes where the folders and cards will appear. -->

@@ -13,7 +13,7 @@ const LATER_PLACES = MAIN_PLACES.filter((place) => place.icon !== 'ayla');
 const aylaPlace = MAIN_PLACES[0];
 
 // "Wat Ayla over je weet" is part of the settings, as on iOS.
-const isSettingsActive = computed(() => route.path === SETTINGS_PATH || route.path === MEMORY_PAGE_PATH);
+const isSettingsActive = computed(() => route.path.startsWith(SETTINGS_PATH) || route.path === MEMORY_PAGE_PATH);
 const isAylaActive = computed(() => (aylaPlace ? isPlaceActive(aylaPlace, route.path) : false));
 
 function hasPage(path: string) {

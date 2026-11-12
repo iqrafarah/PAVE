@@ -2,6 +2,10 @@
 // working. Like the settings on the iPhone these belong to the device, so they are kept in this browser. The view of
 // the vault (list or grid) is the vault's own setting and is read and written under its own key.
 
+// Named here and not left to the automatic imports: the plugin that puts the theme on the page runs before anything
+// else, on every page.
+import { PERSONAL_TEXT_SIZES, PERSONAL_THEMES } from '~/utils/settingsMessages';
+
 export type ThemeId = (typeof PERSONAL_THEMES)[number]['id'];
 export type TextSize = (typeof PERSONAL_TEXT_SIZES)[number]['id'];
 export type WorkMode = 'ai' | 'traditional';
