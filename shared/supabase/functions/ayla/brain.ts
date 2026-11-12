@@ -3,6 +3,7 @@ import type { AllowedVault } from './vault.ts'
 import { cleanMemories, type Memory, type MemorySuggestion, usedNotes } from './memory.ts'
 import type { ChatMessage, Complete } from './openrouter.ts'
 import { buildSystemPrompt } from './prompt.ts'
+import { vaultProposal } from './proposal.ts'
 import type { FoundVacancy, SearchVacancies } from './vacancies.ts'
 
 export interface PastMessage { role: 'user' | 'ayla'; text: string }
@@ -43,6 +44,7 @@ interface ModelOutput {
   title: string | null
   memories: unknown
   usedMemories: unknown
+  vaultItem: unknown
 }
 
 /** One turn of the conversation: the prompt in layers, the model, and a reply in the contract format. */
@@ -93,6 +95,11 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   const laterUsed = usedNotes(output.usedMemories, memory)
   const used = laterUsed.length ? laterUsed : firstUsed
   if (used.length) reply.usedMemories = used
+  // Only the Watch shows a Ja/Nee card for it yet; elsewhere a proposal would have nowhere to be confirmed.
+  if (request.device === 'watch') {
+    const action = vaultProposal(output.vaultItem, deps.newId(), new Date())
+    if (action) reply.proposedAction = action
+  }
   return reply
 }
 
@@ -169,9 +176,10 @@ function parseOutput(content: string): ModelOutput {
       title: typeof json.title === 'string' ? json.title : null,
       memories: Array.isArray(json.memories) ? json.memories : [],
       usedMemories: Array.isArray(json.usedMemories) ? json.usedMemories : [],
+      vaultItem: json.vaultItem ?? null,
     }
   } catch {
-    return { text: content, question: null, navigation: null, vacancySearch: null, title: null, memories: [], usedMemories: [] }
+    return { text: content, question: null, navigation: null, vacancySearch: null, title: null, memories: [], usedMemories: [], vaultItem: null }
   }
 }
 

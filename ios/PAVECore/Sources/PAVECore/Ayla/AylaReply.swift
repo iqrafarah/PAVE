@@ -43,12 +43,57 @@ public struct AylaReply: Codable, Equatable, Sendable {
         public var kind: AylaActionKind
         public var summary: String
         public var expiresAt: Date
+        /// With `addVaultItem`: what to put in the vault once the user confirms.
+        public var vaultItem: VaultItemProposal?
 
-        public init(id: String, kind: AylaActionKind, summary: String, expiresAt: Date) {
+        public init(id: String, kind: AylaActionKind, summary: String, expiresAt: Date, vaultItem: VaultItemProposal? = nil) {
             self.id = id
             self.kind = kind
             self.summary = summary
             self.expiresAt = expiresAt
+            self.vaultItem = vaultItem
+        }
+
+        public func isOpen(at now: Date = .now) -> Bool { expiresAt > now }
+    }
+
+    /// An item Ayla proposes for the vault, with only what the user said; dates as YYYY-MM-DD.
+    public struct VaultItemProposal: Codable, Equatable, Sendable {
+        public var category: AylaVaultCategory
+        public var title: String
+        public var organisationName: String?
+        public var organisationLocation: String?
+        public var startDate: String?
+        public var endDate: String?
+        public var issuedOn: String?
+        public var isCurrent: Bool?
+
+        public init(
+            category: AylaVaultCategory, title: String, organisationName: String? = nil, organisationLocation: String? = nil,
+            startDate: String? = nil, endDate: String? = nil, issuedOn: String? = nil, isCurrent: Bool? = nil
+        ) {
+            self.category = category
+            self.title = title
+            self.organisationName = organisationName
+            self.organisationLocation = organisationLocation
+            self.startDate = startDate
+            self.endDate = endDate
+            self.issuedOn = issuedOn
+            self.isCurrent = isCurrent
+        }
+
+        /// What the app saves after Ja, or nil for a category this app does not know yet or a draft the vault refuses.
+        public var draft: VaultItemDraft? {
+            guard let category = category.category else { return nil }
+            var draft = VaultItemDraft(category: category)
+            draft.title = title
+            draft.organisationName = organisationName ?? ""
+            draft.organisationLocation = organisationLocation ?? ""
+            draft.startDate = startDate.flatMap(VaultDay.init)
+            draft.endDate = endDate.flatMap(VaultDay.init)
+            draft.issuedOn = issuedOn.flatMap(VaultDay.init)
+            draft.isCurrent = isCurrent ?? false
+            return draft.problem == nil ? draft : nil
         }
     }
 
