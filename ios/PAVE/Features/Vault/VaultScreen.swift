@@ -5,6 +5,8 @@ import SwiftUI
 struct VaultScreen: View {
     @Environment(VaultModel.self) private var model
     let onShowMenu: (() -> Void)?
+    var openItemID: String? = nil
+    var onOpenItemHandled: ((String) -> Void)? = nil
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @AppStorage("vaultShowsGrid") private var isGrid = true
@@ -14,6 +16,7 @@ struct VaultScreen: View {
     @State private var isSearching = false
     @FocusState private var isSearchFocused: Bool
     @State private var openedItem: VaultItem?
+    @State private var handledOpenID: String?
     @State private var editedItem: VaultItem?
     @State private var confirmedItem: VaultItem?
     @State private var addsItem = false
@@ -64,7 +67,14 @@ struct VaultScreen: View {
                         }
                     }
                 }
-                .task { await model.load() }
+                .task {
+                    await model.load()
+                    openRequestedItem()
+                }
+                .onChange(of: model.items) { _, _ in openRequestedItem() }
+                .onChange(of: openItemID) { _, id in
+                    if id == nil { handledOpenID = nil } else { openRequestedItem() }
+                }
                 .sheet(item: $openedItem) { item in
                     VaultItemDetailView(itemID: item.id)
                         .paveSheet()
@@ -276,6 +286,14 @@ struct VaultScreen: View {
         .contextMenu {
             VaultItemActionButtons(item: item, onEdit: { editedItem = item }, onRequestConfirmation: { confirmedItem = item }, onDelete: { deletedItem = item })
         }
+    }
+
+    private func openRequestedItem() {
+        guard let openItemID, handledOpenID != openItemID,
+              let item = model.items.first(where: { $0.id == openItemID }) else { return }
+        handledOpenID = openItemID
+        openedItem = item
+        onOpenItemHandled?(openItemID)
     }
 
     @ViewBuilder

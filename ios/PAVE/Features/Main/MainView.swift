@@ -19,6 +19,7 @@ struct MainView: View {
     @State private var isMenuOpen = false
     @State private var isSidebarHidden = false
     @State private var showsChats = false
+    @State private var pendingVaultItemID: String?
     @State private var width: CGFloat = 0
     @State private var menuButtonFrame = CGRect.zero
     /// iPhone Duo is partly folded, with the fold between a left and a right pane.
@@ -215,7 +216,11 @@ struct MainView: View {
         case .ayla:
             AylaRootView(model: model, onShowMenu: onShowMenu, isWide: isWide, showsChats: $showsChats)
         case .vault:
-            VaultScreen(onShowMenu: onShowMenu)
+            VaultScreen(
+                onShowMenu: onShowMenu,
+                openItemID: pendingVaultItemID,
+                onOpenItemHandled: { id in if pendingVaultItemID == id { pendingVaultItemID = nil } }
+            )
                 .environment(vault)
         case .plan:
             PlanScreen(onShowMenu: onShowMenu)
@@ -224,8 +229,27 @@ struct MainView: View {
         case .settings:
             SettingsScreen(name: model.firstName, onShowMenu: onShowMenu, onSignOut: appState.signOut)
         case .notifications:
-            NotificationsScreen(onShowMenu: onShowMenu)
+            NotificationsScreen(
+                onShowMenu: onShowMenu,
+                onOpenConversation: openNotificationConversation,
+                onOpenVerifiedEvidence: openNotificationEvidence
+            )
         }
+    }
+
+    private func openNotificationConversation(_ id: String) {
+        destination = .ayla
+        isMenuOpen = false
+        if !isWide { showsChats = false }
+        let conversation = model.conversationList.conversations.first { $0.id == id }
+            ?? AylaConversation(id: id, title: "", updatedAt: .now)
+        Task { await model.open(conversation) }
+    }
+
+    private func openNotificationEvidence(_ id: String) {
+        pendingVaultItemID = id
+        destination = .vault
+        isMenuOpen = false
     }
 
     private func setSidebarHidden(_ isHidden: Bool) {

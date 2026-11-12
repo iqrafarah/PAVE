@@ -32,7 +32,7 @@ PAVE/
     Plan/         Plannen (nu nog leeg)
     Profile/      Profiel (nu nog leeg: delen bestaat nog niet)
     Settings/     Instellingen: je account en uitloggen
-    Notifications/ Meldingen (nu nog leeg)
+    Notifications/ Meldingen, filters, rolgebonden overzicht en aanvraagdetail (data-aansluiting volgt)
   Resources/      AppIcon.icon, Assets.xcassets (iconen)
 PAVEWatch/        Apple Watch-app (spraakbot, geen volledige interface)
 PAVEWidgets/      Widgets en knoppen voor het Bedieningspaneel (WidgetKit-extensie)
@@ -193,6 +193,12 @@ De iOS-uitwerking gebruikt de twee mobiele Figma-prototypes als basis: de lijst 
 
 **Werkwijze voor volgende kluiswijzigingen:** gebruik de gedeelde `shared/`-contracten en iOS-stijlen, houd SwiftUI in `PAVE/Features/Vault/` en gedeelde modellen in `PAVECore` alleen wanneer meerdere targets ze nodig hebben. Werk de relevante sectie in deze README bij zodra schermgedrag, datamodel, beveiliging of de voortgang verandert. De webvoorbeelden zijn referentie; wijzigingen blijven in `ios/` tenzij web en iOS samen een contract aanpassen.
 
+## Meldingen
+
+`NotificationsScreen` bevat het iOS-overzicht volgens de aangeleverde wireframe: alle/ongelezen, zoeken, typefilter, groepering per dag en een detail voor verificatieaanvragen. Lerende accounts zien in de weergave alleen gesprekken en geverifieerd bewijs; de adminweergave toont gesprekken en verificatieaanvragen. Een gesprek kan terug naar Ayla navigeren; geverifieerd bewijs opent het eigen item in de kluis. Alleen de SwiftUI-previews bevatten voorbeeldmeldingen.
+
+De repo heeft nog geen vertrouwde accountrol, meldingenbron of endpoint waarmee een admin een bewijsbestand van een lerende mag lezen en verifiëren. Daarom opent de app standaard de lerendeweergave zonder voorbeelddata, en zijn de document- en verificatieacties in het detail nog niet actief. Zodra de rol- en servercontracten bestaan, kunnen die via de callbacks van `NotificationsScreen` worden aangesloten. Deze wijziging raakt geen webcode of gedeelde database.
+
 ## Ayla
 
 Na het ontgrendelen opent `MainView` (`PAVE/Features/Main`) met Ayla. Ayla zelf draait op de server: de Edge Function `ayla` in `shared/supabase/functions/ayla`. De app bevat geen prompt en geen sleutels. Zie `docs/ayla.md`.
@@ -202,7 +208,7 @@ Na het ontgrendelen opent `MainView` (`PAVE/Features/Main`) met Ayla. Ayla zelf 
   - **iPhone en de opengeklapte Duo rechtop:** het menu schuift als effen paneel van boven tot onder tegen de linkerrand over het gedimde scherm, zonder zwevende ronde hoeken, net als bij ChatGPT en de zijbalk op iPad (`MainMenuDrawer`); rechtsboven de bel. Sluiten: naast het paneel tikken, het wegvegen of nog eens op de menuknop.
   - **iPad en de opengeklapte Duo dwars** (vanaf 800 punten breed): een zijbalk naast het scherm. Rechtsboven in de zijbalk klap je hem weg; dan komt linksboven de menuknop om hem terug te halen. De bel en je account delen onderin een glazen capsule.
   - **Buitenkant van de Duo:** de menuknop staat in de balk langs de zijkant. Open je het menu, dan wordt die knop een kruisje, komt in plaats van de chatknop een ronde knop voor een nieuw gesprek en staan je account en de bel onderin die balk, zoals bij ChatGPT (de knoppen melden hun plek via `reportMenuButtonFrame` en `reportChatsButtonFrame`).
-  - De chats blijven achter de chatknop (keuze Daaf). Kluis, Plan, Profiel en Meldingen tonen eerlijk een lege staat, want er staat nog niets in de database; Meldingen toont dus ook geen verzonnen aantal.
+  - De chats blijven achter de chatknop (keuze Daaf). Plan en Profiel tonen eerlijk een lege staat. Meldingen hebben het iOS-overzicht, zoeken, ongelezen-filter, typefilter, aanvraagdetail en doorklik naar een chat of eigen bewijs; zonder meldingenbron toont het scherm een lege staat en geen verzonnen aantal.
 - `AylaRootView`: de chat (`AylaChatScreen`) en je chats (`AylaChatList`: zoeken, "Nieuw gesprek", Vastgezet en Chats). De chatknop rechtsboven opent ze.
 - **Chats** (`AylaChatsScreen`, `AylaChatList`), achter de chatknop rechtsboven, zoals Mail en ChatGPT:
   - **Groepen:** Vastgezet, Vandaag, Gisteren, Afgelopen 7 dagen, Afgelopen 30 dagen en Eerder (`AylaConversationList.sections`). Onder elke titel de tijd of de dag, en "Op web" of "Op Apple Watch" als het gesprek daar begon (`started_on`).
