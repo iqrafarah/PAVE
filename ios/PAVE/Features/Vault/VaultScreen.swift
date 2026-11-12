@@ -6,7 +6,10 @@ struct VaultScreen: View {
     @Environment(VaultModel.self) private var model
     let onShowMenu: (() -> Void)?
 
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @AppStorage("vaultShowsGrid") private var isGrid = true
+    /// The evidence moved under the folders and the filter bar: a thin line then separates them.
+    @State private var itemsScrolled = false
     @State private var filter = VaultFilter()
     @State private var isSearching = false
     @FocusState private var isSearchFocused: Bool
@@ -152,24 +155,65 @@ struct VaultScreen: View {
         }
     }
 
+    /// The search field, the folders and the filter bar stay in place; only the evidence below them scrolls. On a
+    /// screen without the height for that (a phone on its side) everything scrolls together.
+    @ViewBuilder
     private var library: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                if isSearching {
-                    PaveSearchField(text: $filter.searchText, prompt: "Zoek op titel, organisatie of vaardigheid", isFocused: $isSearchFocused)
+        if verticalSizeClass == .compact {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    controls
+                    items
                 }
-                shelves
-                VaultFilterBar(filter: $filter, isGrid: $isGrid)
-                items
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+                .padding(.bottom, 28)
+                .frame(maxWidth: 1000)
+                .frame(maxWidth: .infinity)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
-            .padding(.bottom, 28)
-            .frame(maxWidth: 1000)
-            .frame(maxWidth: .infinity)
+            .scrollDismissesKeyboard(.immediately)
+            .refreshable { await model.load() }
+        } else {
+            VStack(spacing: 0) {
+                controls
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+                    .padding(.bottom, 14)
+                    .frame(maxWidth: 1000)
+                    .frame(maxWidth: .infinity)
+                    .overlay(alignment: .bottom) {
+                        Rectangle()
+                            .fill(Color.cardBorder)
+                            .frame(height: 1)
+                            .opacity(itemsScrolled ? 1 : 0)
+                            .animation(.easeOut(duration: 0.15), value: itemsScrolled)
+                    }
+                    .zIndex(1)
+                ScrollView {
+                    items
+                        .padding(.horizontal, 20)
+                        .padding(.top, 4)
+                        .padding(.bottom, 28)
+                        .frame(maxWidth: 1000)
+                        .frame(maxWidth: .infinity)
+                }
+                .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > 1 } action: { _, scrolled in
+                    itemsScrolled = scrolled
+                }
+                .scrollDismissesKeyboard(.immediately)
+                .refreshable { await model.load() }
+            }
         }
-        .scrollDismissesKeyboard(.immediately)
-        .refreshable { await model.load() }
+    }
+
+    private var controls: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            if isSearching {
+                PaveSearchField(text: $filter.searchText, prompt: "Zoek op titel, organisatie of vaardigheid", isFocused: $isSearchFocused)
+            }
+            shelves
+            VaultFilterBar(filter: $filter, isGrid: $isGrid)
+        }
     }
 
     private var shelves: some View {
