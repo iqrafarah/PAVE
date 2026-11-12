@@ -21,7 +21,7 @@ struct AylaAttachmentChip: View {
                     Image(.iconPlus)
                         .renderingMode(.template)
                         .resizable()
-                        .frame(width: 9, height: 9)
+                        .paveIconFrame(9)
                         .rotationEffect(.degrees(45))
                         .foregroundStyle(Color.inkMuted)
                         .frame(width: 36, height: 44)

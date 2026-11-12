@@ -24,7 +24,7 @@ struct SettingsAylaScreen: View {
                         .renderingMode(.template)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 14, height: 14)
+                        .paveIconFrame(14)
                         .foregroundStyle(Color.inkMuted)
                         .accessibilityHidden(true)
                 }

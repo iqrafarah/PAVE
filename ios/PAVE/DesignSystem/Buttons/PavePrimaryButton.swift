@@ -58,7 +58,7 @@ private struct SpinningIcon: View {
     var body: some View {
         Image(.iconRefresh)
             .resizable()
-            .frame(width: 20, height: 20)
+            .paveIconFrame(20)
             .rotationEffect(.degrees(isSpinning ? 360 : 0))
             .animation(reduceMotion ? nil : .linear(duration: 1).repeatForever(autoreverses: false), value: isSpinning)
             .onAppear { isSpinning = true }

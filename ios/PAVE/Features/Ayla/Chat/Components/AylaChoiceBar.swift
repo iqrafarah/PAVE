@@ -20,7 +20,7 @@ struct AylaChoiceBar: View {
                         .renderingMode(.template)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 16, height: 16)
+                        .paveIconFrame(16)
                         .foregroundStyle(Color.paveAccent)
                         .accessibilityHidden(true)
                     Text(AylaMessages.vaultLabel)

@@ -9,7 +9,7 @@ struct AylaDropTarget: View {
                 Image(.iconPaperclip)
                     .renderingMode(.template)
                     .foregroundStyle(Color.paveAccent)
-                    .frame(width: 52, height: 52)
+                    .paveIconFrame(52)
                     .background(Color.paveSurfaceTint, in: .circle)
                 Text("Laat los om aan je bericht toe te voegen")
                     .textStyle(.listTitle)

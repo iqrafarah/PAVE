@@ -11,7 +11,7 @@ struct PaveSecondaryButton: View {
                 if let icon {
                     Image(icon)
                         .resizable()
-                        .frame(width: 20, height: 20)
+                        .paveIconFrame(20)
                         .accessibilityHidden(true)
                 }
                 Text(title)

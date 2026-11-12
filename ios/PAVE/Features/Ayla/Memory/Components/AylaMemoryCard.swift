@@ -181,7 +181,7 @@ struct AylaMemoryCard: View {
                     .renderingMode(.template)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 14, height: 14)
+                    .paveIconFrame(14)
                     .accessibilityHidden(true)
                 Text(didUpdate ? "Bijgewerkt" : "Onthouden")
                 Text("·").accessibilityHidden(true)

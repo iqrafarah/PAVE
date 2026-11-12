@@ -106,7 +106,7 @@ struct SetupPreviewPlaceholder: View {
                 } else {
                     Image(.iconQrcode)
                         .resizable()
-                        .frame(width: 44, height: 44)
+                        .paveIconFrame(44)
                     Text("VOORBEELD")
                         .textStyle(.tag)
                         .foregroundStyle(Color.paveAccent)

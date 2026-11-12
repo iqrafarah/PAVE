@@ -16,9 +16,9 @@ struct VaultRecipientCard: View {
                     .renderingMode(.template)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 20, height: 20)
+                    .paveIconFrame(20)
                     .foregroundStyle(isSelected ? Color.white : .paveAccent)
-                    .frame(width: 40, height: 40)
+                    .paveIconFrame(40)
                     .background(isSelected ? Color.paveAccent : .paveDropZone, in: .rect(cornerRadius: 10))
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {

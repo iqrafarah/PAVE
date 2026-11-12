@@ -9,7 +9,7 @@ struct PaveOfflineNotice: View {
             Image(.iconSignalSlash)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 14, height: 14)
+                .paveIconFrame(14)
                 .accessibilityHidden(true)
             Text(message)
                 .textStyle(.caption)

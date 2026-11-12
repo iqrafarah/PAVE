@@ -35,9 +35,9 @@ struct VaultFileRow: View {
                     .renderingMode(.template)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 12, height: 12)
+                    .paveIconFrame(12)
                     .foregroundStyle(Color.inkMuted)
-                    .frame(width: 44, height: 44)
+                    .paveIconFrame(44)
                     .contentShape(.rect)
             }
             .buttonStyle(.pave)

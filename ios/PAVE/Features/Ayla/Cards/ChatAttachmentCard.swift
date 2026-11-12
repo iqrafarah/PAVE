@@ -15,6 +15,7 @@ struct ChatAttachmentCard: View {
                     .scaledToFit()
                     .foregroundStyle(Color.paveAccent)
                     .frame(width: 23, height: 27)
+                    .paveIconScale()
                     .frame(width: 58, height: 58)
                     .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 12))
                     .accessibilityHidden(true)

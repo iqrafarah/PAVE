@@ -127,9 +127,11 @@ struct AuthLogo: View {
 
     var body: some View {
         Image(.paveLogo)
+            .renderingMode(.template)
             .resizable()
             .scaledToFit()
             .frame(width: width)
+            .foregroundStyle(Color.paveAccent)
             .accessibilityLabel("PAVE")
     }
 }

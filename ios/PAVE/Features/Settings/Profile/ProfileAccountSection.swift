@@ -81,7 +81,7 @@ struct ProfileAccountSection: View {
                                         .renderingMode(.template)
                                         .resizable()
                                         .scaledToFit()
-                                        .frame(width: 14, height: 14)
+                                        .paveIconFrame(14)
                                         .accessibilityHidden(true)
                                     Text(SettingsMessages.removePhoto)
                                         .textStyle(.gapChip)

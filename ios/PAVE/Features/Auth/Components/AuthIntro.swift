@@ -18,8 +18,8 @@ struct AuthIntro: View {
             if let emblem {
                 Image(emblem)
                     .resizable()
-                    .frame(width: 30, height: 30)
-                    .frame(width: 64, height: 64)
+                    .paveIconFrame(30)
+                    .paveIconFrame(64)
                     .background(Color.paveSurfaceTint, in: .circle)
                     .accessibilityHidden(true)
             }

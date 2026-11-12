@@ -158,9 +158,9 @@ struct SignedInDevicesScreen: View {
                         .renderingMode(.template)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 20, height: 20)
+                        .paveIconFrame(20)
                         .foregroundStyle(Color.paveAccent)
-                        .frame(width: 40, height: 40)
+                        .paveIconFrame(40)
                         .background(Color.paveDropZone, in: .rect(cornerRadius: 10))
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 3) {
@@ -177,7 +177,7 @@ struct SignedInDevicesScreen: View {
                         .renderingMode(.template)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 14, height: 14)
+                        .paveIconFrame(14)
                         .foregroundStyle(Color.inkMuted)
                         .accessibilityHidden(true)
                 }

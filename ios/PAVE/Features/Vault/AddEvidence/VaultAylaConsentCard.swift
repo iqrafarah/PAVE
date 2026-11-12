@@ -9,7 +9,7 @@ struct VaultAylaConsentCard: View {
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
             AylaLetter()
-                .frame(width: 36, height: 36)
+                .paveIconFrame(36)
                 .background(Color.paveAccent, in: .rect(cornerRadius: 9))
             VStack(alignment: .leading, spacing: 4) {
                 Text(VaultMessages.aylaConsent(hasFile: hasFile))

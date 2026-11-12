@@ -21,6 +21,8 @@ final class ProfileModel {
     var problem: String?
 
     private(set) var theme = PaveAppearance.theme
+    /// The last own colour, kept when you go back to one of the others so the picker still shows it.
+    private(set) var customColor = PaveAppearance.customColor
     private(set) var textSize = PaveTextSize(rawValue: UserDefaults.standard.string(forKey: PaveAppearance.textSizeKey) ?? "") ?? .standard
     private(set) var vaultLayout = PaveAppearance.vaultLayout
 
@@ -43,6 +45,7 @@ final class ProfileModel {
             profile = loaded
             state = .ready
             if loaded.canChangeSettings {
+                customColor = loaded.customColor ?? customColor
                 apply(theme: loaded.theme, textSize: loaded.textSize, vaultLayout: loaded.vaultLayout)
             }
             await loadAvatar()
@@ -53,6 +56,17 @@ final class ProfileModel {
 
     func setTheme(_ theme: PaveThemeColor) async {
         apply(theme: theme, textSize: textSize, vaultLayout: vaultLayout)
+        await savePreferences()
+    }
+
+    /// Shows an own colour at once, while you are still choosing it; `saveCustomColor` keeps it in the account.
+    func previewCustomColor(_ color: UInt32) {
+        customColor = color
+        apply(theme: .custom, textSize: textSize, vaultLayout: vaultLayout)
+    }
+
+    func saveCustomColor() async {
+        guard theme == .custom, customColor != nil else { return }
         await savePreferences()
     }
 
@@ -116,7 +130,7 @@ final class ProfileModel {
         self.theme = theme
         self.textSize = textSize
         self.vaultLayout = vaultLayout
-        PaveAppearance.apply(theme)
+        PaveAppearance.apply(theme, customColor: customColor)
         defaults.set(textSize.rawValue, forKey: PaveAppearance.textSizeKey)
         defaults.set(vaultLayout.rawValue, forKey: PaveAppearance.vaultLayoutKey)
     }
@@ -124,8 +138,9 @@ final class ProfileModel {
     private func savePreferences() async {
         guard let service, profile.canChangeSettings else { return }
         do {
-            try await service.setPreferences(theme: theme, textSize: textSize, vaultLayout: vaultLayout)
+            try await service.setPreferences(theme: theme, customColor: customColor, textSize: textSize, vaultLayout: vaultLayout)
             profile.theme = theme
+            profile.customColor = customColor
             profile.textSize = textSize
             profile.vaultLayout = vaultLayout
         } catch {

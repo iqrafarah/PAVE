@@ -163,7 +163,7 @@ struct VaultSkillsPicker: View {
                 Image(.iconXMark)
                     .renderingMode(.template)
                     .resizable()
-                    .frame(width: 8, height: 8)
+                    .paveIconFrame(8)
                     .foregroundStyle(Color.inkMuted)
                     .accessibilityHidden(true)
             }

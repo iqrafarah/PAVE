@@ -5,7 +5,7 @@ import OSLog
 public protocol ProfileService: Sendable {
     func profile() async throws -> PaveProfile
     func setPreferredName(_ name: String?) async throws
-    func setPreferences(theme: PaveThemeColor, textSize: PaveTextSize, vaultLayout: PaveVaultLayout) async throws
+    func setPreferences(theme: PaveThemeColor, customColor: UInt32?, textSize: PaveTextSize, vaultLayout: PaveVaultLayout) async throws
     /// Uploads a JPEG as the new photo and returns its path; the old one is removed.
     func setAvatar(_ jpeg: Data, replacing oldPath: String?) async throws -> String
     func removeAvatar(_ path: String) async throws
@@ -33,7 +33,7 @@ public struct SupabaseProfileService: ProfileService {
     public func profile() async throws -> PaveProfile {
         let userID = try await currentUserID()
         do {
-            let data = try await send(try await request(profileURL(userID, select: "preferred_name,full_name,email,avatar_url,avatar_path,theme_color,text_size,vault_layout")))
+            let data = try await send(try await request(profileURL(userID, select: "preferred_name,full_name,email,avatar_url,avatar_path,theme_color,theme_custom_color,text_size,vault_layout")))
             guard let row = try? JSONDecoder().decode([SettingsProfileRow].self, from: data).first else { return PaveProfile() }
             return row.profile(canChangeSettings: true)
         } catch ProfileError.notSetUp {
@@ -48,8 +48,13 @@ public struct SupabaseProfileService: ProfileService {
         try await patch(["preferred_name": name.map { $0 as Any } ?? NSNull()])
     }
 
-    public func setPreferences(theme: PaveThemeColor, textSize: PaveTextSize, vaultLayout: PaveVaultLayout) async throws {
-        try await patch(["theme_color": theme.rawValue, "text_size": textSize.rawValue, "vault_layout": vaultLayout.rawValue])
+    public func setPreferences(theme: PaveThemeColor, customColor: UInt32?, textSize: PaveTextSize, vaultLayout: PaveVaultLayout) async throws {
+        try await patch([
+            "theme_color": theme.rawValue,
+            "theme_custom_color": customColor.map { PaveThemeColor.hex($0) as Any } ?? NSNull(),
+            "text_size": textSize.rawValue,
+            "vault_layout": vaultLayout.rawValue,
+        ])
     }
 
     public func setAvatar(_ jpeg: Data, replacing oldPath: String?) async throws -> String {
@@ -153,8 +158,17 @@ struct SettingsProfileRow: Decodable {
     let avatar_url: String?
     let avatar_path: String?
     let theme_color: String?
+    let theme_custom_color: String?
     let text_size: String?
     let vault_layout: String?
+
+    private var customColor: UInt32? { theme_custom_color.flatMap(PaveThemeColor.color(hex:)) }
+
+    /// An own colour without its value falls back to PAVE green.
+    private var theme: PaveThemeColor {
+        let theme = theme_color.flatMap(PaveThemeColor.init(rawValue:)) ?? .green
+        return theme == .custom && customColor == nil ? .green : theme
+    }
 
     func profile(canChangeSettings: Bool) -> PaveProfile {
         PaveProfile(
@@ -163,7 +177,8 @@ struct SettingsProfileRow: Decodable {
             email: email,
             avatarPath: avatar_path,
             avatarURL: avatar_url.flatMap(URL.init(string:)),
-            theme: theme_color.flatMap(PaveThemeColor.init(rawValue:)) ?? .green,
+            theme: theme,
+            customColor: customColor,
             textSize: text_size.flatMap(PaveTextSize.init(rawValue:)) ?? .standard,
             vaultLayout: vault_layout.flatMap(PaveVaultLayout.init(rawValue:)) ?? .grid,
             canChangeSettings: canChangeSettings

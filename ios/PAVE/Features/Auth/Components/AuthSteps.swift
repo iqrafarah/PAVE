@@ -53,7 +53,7 @@ struct AuthSteps: View {
                 Image(.iconCheck)
                     .renderingMode(.template)
                     .resizable()
-                    .frame(width: 13, height: 13)
+                    .paveIconFrame(13)
                     .foregroundStyle(.white)
             } else {
                 Text("\(index + 1)")
