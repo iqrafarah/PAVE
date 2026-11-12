@@ -24,6 +24,8 @@ const props = withDefaults(
 const selected = defineModel<string[]>('selected', { required: true });
 
 const MAX_SKILL_LENGTH = 120;
+// How long fetching and reading the documents may take before Ayla goes on without them.
+const MATERIAL_TIMEOUT_MS = 15_000;
 const query = ref('');
 const searchId = useId();
 const vaultTitleId = useId();
@@ -49,11 +51,25 @@ async function askAyla() {
   aylaState.value = 'loading';
   aylaProblem.value = null;
   try {
-    // A file that cannot be read never stops the proposal: Ayla then looks at the form alone.
-    const material = await Promise.resolve()
-      .then(async () => readSkillsMaterial(props.loadDocuments ? await props.loadDocuments() : props.documents))
-      .catch(() => ({ files: [], images: [] }));
-    proposals.value = await vault.suggestSkills(props.draft, [...new Set([...selected.value, ...props.vaultSkills])], material);
+    // A file that cannot be read, or takes too long to fetch and read, never stops the proposal: Ayla then looks at
+    // the form alone.
+    const nothing = { files: [], images: [] };
+    let material = await Promise.race([
+      Promise.resolve()
+        .then(async () => readSkillsMaterial(props.loadDocuments ? await props.loadDocuments() : props.documents))
+        .catch(() => nothing),
+      new Promise<typeof nothing>((resolve) => setTimeout(() => resolve(nothing), MATERIAL_TIMEOUT_MS)),
+    ]);
+    const existing = [...new Set([...selected.value, ...props.vaultSkills])];
+    try {
+      proposals.value = await vault.suggestSkills(props.draft, existing, material);
+    } catch (error) {
+      // With files the question is much heavier (photos, long texts). When that fails, the form alone is tried once
+      // more, so a proposal still comes; a failure without files is a real one.
+      if (!material.files.length && !material.images.length) throw error;
+      material = nothing;
+      proposals.value = await vault.suggestSkills(props.draft, existing, material);
+    }
     lookedAt.value = material.files.length + material.images.length;
     aylaState.value = 'loaded';
   } catch (error) {
@@ -122,9 +138,8 @@ function handleEnter() {
               @click="toggle(name)"
             >
               <span class="min-w-0 flex-1">{{ name }}</span>
-              <img
+              <VaultIcon
                 :src="isSelected(name) ? '/images/vault/skill-check.svg' : '/images/vault/skill-add.svg'"
-                alt=""
                 :width="isSelected(name) ? 16.464 : 16.9733"
                 :height="isSelected(name) ? 17.5 : 16.9733"
               />
@@ -151,9 +166,8 @@ function handleEnter() {
                   <span>{{ row.name }}</span>
                   <span v-if="row.reason" class="text-[0.6875rem] font-medium opacity-80">{{ row.reason }}</span>
                 </span>
-                <img
+                <VaultIcon
                   :src="isSelected(row.name) ? '/images/vault/skill-check-ayla.svg' : '/images/vault/skill-add-light.svg'"
-                  alt=""
                   :width="isSelected(row.name) ? 16.4704 : 16.9767"
                   :height="isSelected(row.name) ? 17.5 : 16.9767"
                 />
@@ -183,7 +197,7 @@ function handleEnter() {
     <label :for="searchId" class="mb-3 mt-6.5 text-base font-semibold text-heading">{{ VAULT_SKILLS_ADD_OWN }}</label>
     <div class="relative">
       <div class="flex h-9.75 items-center gap-4 rounded-field border border-field-line bg-white pl-2.25 pr-3 focus-within:border-brand">
-        <img src="/images/vault/search.svg" alt="" width="18" height="18" />
+        <VaultIcon src="/images/vault/search.svg" :width="18" :height="18" class="text-heading" />
         <input
           :id="searchId"
           v-model="query"

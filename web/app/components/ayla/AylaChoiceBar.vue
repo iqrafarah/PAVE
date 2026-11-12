@@ -17,7 +17,7 @@ const emit = defineEmits<{
   <AylaTray>
     <template v-if="isAboutVault" #strip>
       <span class="flex items-center gap-1.75 font-heading text-xs font-semibold text-heading">
-        <img src="/images/ayla/pill-vault.svg" alt="" width="20.3122" height="18" />
+        <VaultIcon src="/images/ayla/pill-vault.svg" :width="20.3122" :height="18" class="text-brand" />
         {{ AYLA_VAULT_LABEL }}
       </span>
     </template>

@@ -28,18 +28,19 @@ const LATER_SHORTCUTS = [
 ];
 
 const conversation = useAylaConversation();
-const { getAccount } = useAyla();
+const account = useAccount();
 
-const firstName = ref<string | null>(null);
-const isAccountLoaded = ref(false);
-
-const heading = computed(() => getHomeHeading(firstName.value));
+// The name comes from the account the menu and the settings use too: it is kept in this browser, so the greeting is
+// there at once instead of after a question to the database.
+const hasAskedAccount = ref(false);
+const isAccountLoaded = computed(() => account.state.value.isLoaded || hasAskedAccount.value);
+const heading = computed(() => getHomeHeading(account.state.value.fullName));
 
 onMounted(async () => {
   conversation.startNew();
-  const account = await getAccount();
-  firstName.value = account.firstName;
-  isAccountLoaded.value = true;
+  await account.load();
+  // Also when the account could not be read: the greeting then shows without a name.
+  hasAskedAccount.value = true;
 });
 </script>
 
@@ -61,9 +62,9 @@ onMounted(async () => {
                 :to="shortcut.path"
                 class="inline-flex h-10.75 items-center gap-1.5 rounded-pill bg-tint px-4.75 font-heading text-xs font-semibold text-heading hover:bg-brand-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
               >
-                <img
+                <VaultIcon
                   :src="shortcut.icon"
-                  alt=""
+                  class="text-brand"
                   :width="shortcut.width"
                   :height="shortcut.height"
                 />

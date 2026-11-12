@@ -35,10 +35,7 @@ const signOutAll =
 </script>
 
 <template>
-  <div class="min-h-0 flex-1 overflow-y-auto bg-surface">
-    <SettingsPageHeader :title="DEVICES_TITLE" :back-to="SETTINGS_PATH" :back-label="PERSONAL_BACK" />
-
-    <div class="mx-auto flex w-full max-w-140 flex-col gap-3 px-5.75 pb-12 pt-6">
+  <SettingsPage :title="DEVICES_TITLE">
       <p class="px-2 text-sm text-subtle">{{ DEVICES_INTRO }}</p>
 
       <div v-if="state.status === 'idle' || state.status === 'loading'" class="flex animate-pulse flex-col gap-3 motion-reduce:animate-none" role="status">
@@ -94,7 +91,6 @@ const signOutAll =
       </template>
 
       <p v-if="state.problem" role="alert" class="px-2 text-xs/normal text-danger">{{ state.problem }}</p>
-    </div>
 
     <LayoutConfirmSheet
       ref="confirm"
@@ -103,5 +99,5 @@ const signOutAll =
       :confirm-label="SETTINGS_SIGN_OUT"
       @confirm="confirm"
     />
-  </div>
+  </SettingsPage>
 </template>

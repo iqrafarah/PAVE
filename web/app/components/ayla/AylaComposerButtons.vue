@@ -34,7 +34,7 @@ const emit = defineEmits<{
       class="relative flex size-8 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-brand"
       @click="emit('mute')"
     >
-      <img src="/images/ayla/microphone.svg" alt="" width="15" height="21" :class="isMuted ? 'opacity-50' : ''" />
+      <VaultIcon src="/images/ayla/microphone.svg" :width="15" :height="21" class="text-brand" :class="isMuted ? 'opacity-50' : ''" />
       <span v-if="isMuted" class="absolute h-5.5 w-0.5 -rotate-45 rounded-full bg-critical" aria-hidden="true" />
     </button>
     <button
@@ -45,7 +45,7 @@ const emit = defineEmits<{
       class="flex size-8 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-brand"
       @click="emit('toggleDictation')"
     >
-      <img src="/images/ayla/microphone.svg" alt="" width="15" height="21" />
+      <VaultIcon src="/images/ayla/microphone.svg" :width="15" :height="21" class="text-brand" />
       <span class="sr-only">{{
         isListening ? AYLA_STOP_DICTATE_LABEL : AYLA_DICTATE_LABEL
       }}</span>
@@ -87,7 +87,7 @@ const emit = defineEmits<{
       class="flex size-7.5 items-center justify-center rounded-full bg-brand focus-visible:outline-offset-2 focus-visible:outline-brand"
       @click="emit('send')"
     >
-      <img src="/images/ayla/send.svg" alt="" width="12.9" height="15.9" />
+      <VaultIcon src="/images/ayla/send.svg" :width="12.9" :height="15.9" class="text-white" />
       <span class="sr-only">{{ AYLA_SEND_LABEL }}</span>
     </button>
   </div>

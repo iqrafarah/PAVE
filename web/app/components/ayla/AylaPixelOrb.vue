@@ -114,9 +114,12 @@ function draw(now: number) {
   if (!reduceMotion) frame = requestAnimationFrame(draw);
 }
 
-onMounted(() => {
-  const styles = getComputedStyle(document.documentElement);
+useThemeColors((styles) => {
   palette = Array.from({ length: 7 }, (_, index) => styles.getPropertyValue(`--color-orb-${index}`).trim());
+  if (reduceMotion) draw(performance.now());
+});
+
+onMounted(() => {
   reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   frame = requestAnimationFrame(draw);
 });

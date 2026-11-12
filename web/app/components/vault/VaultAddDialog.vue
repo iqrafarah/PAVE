@@ -272,7 +272,7 @@ function handleClose() {
           class="flex h-9.25 w-8.75 shrink-0 items-center justify-center rounded-field border border-field-line hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand"
           @click="requestClose"
         >
-          <img src="/images/vault/close.svg" alt="" width="13.6909" height="13.6909" />
+          <VaultIcon src="/images/vault/close.svg" :width="13.6909" :height="13.6909" class="text-heading" />
         </button>
       </div>
 

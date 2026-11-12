@@ -5,14 +5,7 @@
 
 <template>
   <div class="relative w-full max-w-152">
-    <img
-      src="/images/ayla/tray.svg"
-      alt=""
-      width="608"
-      height="101"
-      class="absolute inset-x-0 top-0 h-full w-full"
-      aria-hidden="true"
-    />
+    <VaultIcon src="/images/ayla/tray.svg" stretch class="absolute inset-x-0 top-0 h-full w-full text-tint" />
     <div class="relative flex min-h-9.75 flex-wrap items-center gap-2 px-14 pt-2">
       <slot name="strip" />
     </div>

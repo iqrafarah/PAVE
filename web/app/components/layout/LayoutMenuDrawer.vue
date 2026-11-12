@@ -81,13 +81,13 @@ watch(() => route.fullPath, closeMenu);
       @keydown="trapFocus"
     >
       <div class="flex min-h-11 items-center gap-3 pb-5">
-        <img src="/images/ayla/logo-mark.svg" alt="PAVE" width="46" height="24" class="ml-3" />
+        <LayoutPaveLogo class="ml-3 h-6 w-11.5" />
         <span class="flex-1" />
         <NuxtLink
           to="/meldingen"
           :aria-current="route.path === '/meldingen' ? 'page' : undefined"
           :class="route.path === '/meldingen' ? 'ring-2 ring-brand' : ''"
-          class="flex size-11 items-center justify-center rounded-full bg-tile text-heading focus-visible:outline-2 focus-visible:outline-brand"
+          class="flex size-11 items-center justify-center rounded-full bg-tile text-brand focus-visible:outline-2 focus-visible:outline-brand"
         >
           <LayoutPaveIcon name="bell" class="size-5" />
           <span class="sr-only">{{ MENU_NOTIFICATIONS }}</span>
@@ -103,7 +103,7 @@ watch(() => route.fullPath, closeMenu);
             :class="isPlaceActive(place, route.path) ? 'bg-tint text-brand' : 'text-heading hover:bg-tile'"
             class="flex min-h-12 items-center gap-3.5 rounded-xl px-3 text-base font-semibold focus-visible:outline-2 focus-visible:outline-brand"
           >
-            <span class="flex size-6 items-center justify-center" aria-hidden="true">
+            <span class="flex size-6 items-center justify-center text-brand" aria-hidden="true">
               <LayoutAylaGlyph v-if="place.icon === 'ayla'" class="h-4.25 w-3.75" />
               <LayoutPaveIcon v-else :name="place.icon" class="size-5" />
             </span>
@@ -115,7 +115,7 @@ watch(() => route.fullPath, closeMenu);
             disabled
             class="flex min-h-12 w-full cursor-not-allowed items-center gap-3.5 rounded-xl px-3 text-base font-semibold text-ink-soft"
           >
-            <span class="flex size-6 items-center justify-center" aria-hidden="true">
+            <span class="flex size-6 items-center justify-center text-brand" aria-hidden="true">
               <LayoutPaveIcon v-if="place.icon !== 'ayla'" :name="place.icon" class="size-5" />
             </span>
             {{ place.label }}
@@ -128,7 +128,7 @@ watch(() => route.fullPath, closeMenu);
             class="flex min-h-12 w-full items-center gap-3.5 rounded-xl px-3 text-base font-semibold text-heading hover:bg-tile focus-visible:outline-2 focus-visible:outline-brand"
             @click="openChats"
           >
-            <span class="flex size-6 items-center justify-center" aria-hidden="true">
+            <span class="flex size-6 items-center justify-center text-brand" aria-hidden="true">
               <LayoutPaveIcon name="chat" class="size-5" />
             </span>
             {{ MENU_CHATS }}

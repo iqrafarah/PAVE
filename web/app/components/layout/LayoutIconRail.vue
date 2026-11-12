@@ -35,7 +35,7 @@ function hasPage(path: string) {
       data-panel-opener
       @click="toggleFromLogo(hasChats)"
     >
-      <img src="/images/ayla/logo-mark.svg" alt="" width="42" height="22" />
+      <LayoutPaveLogo decorative class="h-5.5 w-10.5" />
     </button>
 
     <ul class="mt-5.25 flex flex-col gap-3.75">
@@ -44,7 +44,7 @@ function hasPage(path: string) {
           to="/"
           :aria-current="isAylaActive ? 'page' : undefined"
           title="Ayla"
-          :class="isAylaActive ? 'border-brand bg-brand text-white' : 'border-tile bg-tile text-heading'"
+          :class="isAylaActive ? 'border-brand bg-brand text-white' : 'border-tile bg-tile text-brand'"
           class="flex h-9.5 w-10.25 items-center justify-center rounded-lg border-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         >
           <LayoutAylaGlyph class="h-4.25 w-3.75" />
@@ -57,7 +57,7 @@ function hasPage(path: string) {
           :to="place.path"
           :title="place.label"
           :aria-current="isPlaceActive(place, route.path) ? 'page' : undefined"
-          :class="isPlaceActive(place, route.path) ? 'bg-brand text-white' : 'bg-tile text-heading'"
+          :class="isPlaceActive(place, route.path) ? 'bg-brand text-white' : 'bg-tile text-brand'"
           class="flex h-9.5 w-10.25 items-center justify-center rounded-lg focus-visible:outline-2 focus-visible:outline-brand"
         >
           <LayoutPaveIcon v-if="place.icon !== 'ayla'" :name="place.icon" class="size-5" />
@@ -80,7 +80,7 @@ function hasPage(path: string) {
       <NuxtLink
         :to="SETTINGS_PATH"
         :aria-current="isSettingsActive ? 'page' : undefined"
-        :class="isSettingsActive ? 'bg-brand text-white' : 'bg-tile text-heading'"
+        :class="isSettingsActive ? 'bg-brand text-white' : 'bg-tile text-brand'"
         class="flex size-9 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         :title="SETTINGS_TITLE"
       >
@@ -91,7 +91,7 @@ function hasPage(path: string) {
         to="/meldingen"
         :title="MENU_NOTIFICATIONS"
         :aria-current="route.path === '/meldingen' ? 'page' : undefined"
-        :class="route.path === '/meldingen' ? 'bg-brand text-white' : 'bg-tile text-heading'"
+        :class="route.path === '/meldingen' ? 'bg-brand text-white' : 'bg-tile text-brand'"
         class="flex size-9 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       >
         <LayoutPaveIcon name="bell" class="size-5" />

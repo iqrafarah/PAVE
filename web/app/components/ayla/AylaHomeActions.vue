@@ -20,7 +20,7 @@ const LATER_ACTIONS = [
       :title="AYLA_NOT_AVAILABLE_YET"
       class="inline-flex cursor-not-allowed items-center gap-2"
     >
-      <img :src="action.icon" alt="" :width="action.width" :height="action.height" />
+      <VaultIcon :src="action.icon" class="text-brand" :width="action.width" :height="action.height" />
       <span class="whitespace-nowrap max-sm:sr-only">{{ action.label }}</span>
       <span class="sr-only">({{ AYLA_NOT_AVAILABLE_YET }})</span>
     </button>
@@ -29,7 +29,7 @@ const LATER_ACTIONS = [
       class="inline-flex items-center gap-2 rounded-md hover:text-brand focus-visible:outline-2 focus-visible:outline-brand"
       @click="emit('addFile')"
     >
-      <img src="/images/ayla/add-file.svg" alt="" width="14.6" height="15.6" />
+      <VaultIcon src="/images/ayla/add-file.svg" :width="14.6" :height="15.6" class="text-brand" />
       <span class="whitespace-nowrap max-sm:sr-only">{{ AYLA_ADD_FILE_LABEL }}</span>
     </button>
   </div>

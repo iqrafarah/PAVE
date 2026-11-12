@@ -14,7 +14,7 @@ onMounted(() => conversation.startNew());
 
 <template>
   <div class="relative flex min-h-0 flex-1 flex-col">
-    <!-- The title sits where it sits on every page (the left edge); the vault starts on the same line under it. -->
+    <!-- The title sits in the middle, as on every page; the vault scrolls on underneath it. -->
     <AylaTitleBar :class="showsVault ? 'pointer-events-none absolute inset-x-0 top-0 z-10 [&_a,&_button]:pointer-events-auto' : ''" />
     <AylaChatView screen="vault">
       <template #empty>

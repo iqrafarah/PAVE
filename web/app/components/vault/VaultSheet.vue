@@ -62,7 +62,7 @@ function handleClick(event: MouseEvent) {
           class="flex h-9.25 w-8.75 shrink-0 items-center justify-center rounded-field border border-field-line hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand"
           @click="requestClose"
         >
-          <img src="/images/vault/close.svg" alt="" width="13.6909" height="13.6909" />
+          <VaultIcon src="/images/vault/close.svg" :width="13.6909" :height="13.6909" class="text-heading" />
         </button>
       </div>
       <div tabindex="-1" autofocus class="min-h-0 flex-1 overflow-y-auto px-9 pb-1 pt-6 focus:outline-none max-sm:px-5">

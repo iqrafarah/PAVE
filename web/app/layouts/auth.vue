@@ -3,7 +3,7 @@
     <header
       class="flex h-28 justify-center bg-linear-to-b from-brand-soft to-surface pt-4"
     >
-      <img src="/images/logo.svg" alt="PAVE" class="h-12" />
+      <LayoutPaveLogo full class="h-12 w-27.5" />
     </header>
 
     <main class="mx-auto my-auto w-full max-w-card px-4 py-6">

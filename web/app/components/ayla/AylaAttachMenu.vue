@@ -87,13 +87,12 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', handlePointerD
       class="flex size-7 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-brand"
       @click="isOpen ? close(false) : open()"
     >
-      <img
+      <VaultIcon
         src="/images/ayla/plus.svg"
-        alt=""
-        width="17"
-        height="17"
+        :width="17"
+        :height="17"
         :class="isOpen ? 'rotate-45' : ''"
-        class="transition-transform motion-reduce:transition-none"
+        class="text-heading transition-transform motion-reduce:transition-none"
       />
       <span class="sr-only">{{ AYLA_ADD_TO_MESSAGE_LABEL }}</span>
     </button>
@@ -121,7 +120,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', handlePointerD
             @click="choose(row)"
           >
             <span class="flex size-9.25 shrink-0 items-center justify-center rounded-full bg-surface">
-              <img :src="row.icon" alt="" :width="row.width" :height="row.height" />
+              <VaultIcon :src="row.icon" class="text-brand" :width="row.width" :height="row.height" />
             </span>
             <span class="flex min-w-0 flex-col gap-px">
               <span class="text-sm font-medium text-ink">{{ row.label }}</span>

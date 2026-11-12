@@ -4,17 +4,20 @@
 const props = defineProps<{
   name: string | null;
   avatarUrl?: string | null;
-  size?: 'large' | 'normal';
+  size?: 'large' | 'normal' | 'profile';
 }>();
+
+const sizes = { normal: 'size-11 text-base', large: 'size-15 text-xl', profile: 'size-18 text-2xl' };
+const sizeClass = computed(() => sizes[props.size ?? 'normal']);
 
 const initial = computed(() => props.name?.trim().charAt(0).toUpperCase() ?? '');
 </script>
 
 <template>
-  <img v-if="avatarUrl" :src="avatarUrl" alt="" :class="size === 'large' ? 'size-15' : 'size-11'" class="shrink-0 rounded-full object-cover" />
+  <img v-if="avatarUrl" :src="avatarUrl" alt="" :class="sizeClass" class="shrink-0 rounded-full object-cover" />
   <span
     v-else
-    :class="size === 'large' ? 'size-15 text-xl' : 'size-11 text-base'"
+    :class="sizeClass"
     class="flex shrink-0 items-center justify-center rounded-full bg-tint font-heading font-semibold text-brand"
     aria-hidden="true"
   >

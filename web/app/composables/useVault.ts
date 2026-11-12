@@ -138,6 +138,7 @@ export class VaultSaveError extends Error {}
 export function useVault() {
   const supabase = useUntypedSupabase();
   const supabaseConfig = useRuntimeConfig().public.supabase;
+  const signedIn = useSupabaseUser();
   const state = useState<VaultState>('vault', () => ({
     status: 'loading',
     loadError: null,
@@ -159,6 +160,11 @@ export function useVault() {
 
   /** Shows the loading shapes only the first time; after that the vault stays while it refreshes. */
   async function load() {
+    // After a refresh the vault shows at once as it was, and is checked against the database right after.
+    if (state.value.status !== 'ready') {
+      const kept = readKept<{ items: VaultItem[]; folders: VaultFolder[] }>('vault', signedIn.value?.sub);
+      if (kept) Object.assign(state.value, { items: kept.items, folders: kept.folders, status: 'ready', loadError: null });
+    }
     const [items, folders] = await Promise.all([
       readItems(),
       supabase.from('vault_folders').select('*').order('created_at', { ascending: true }),

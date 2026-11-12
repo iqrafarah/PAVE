@@ -9,6 +9,7 @@
     --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
     --font-heading: "Sora", "Inter", ui-sans-serif, system-ui, sans-serif;
     --text-hero: 2rem;
+    --background-image-color-wheel: radial-gradient(circle, white, transparent 70%), conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
     --color-brand: #355d4c;
     --color-brand-soft: #c5ccc9;
     --color-ink: #1f2421;
@@ -111,6 +112,22 @@
  * right now keeps the arrow.
  */
 @layer base {
+    /*
+     * The app fills the window and its parts scroll on their own, so the page itself never moves: without this a
+     * trackpad or a phone drags the whole screen along (rubber-banding) even where there is nothing to scroll to.
+     * A part that does scroll stops at its end instead of passing the movement on to what is behind it.
+     */
+    html,
+    body {
+        overscroll-behavior: none;
+    }
+
+    .overflow-y-auto,
+    .overflow-x-auto,
+    .overflow-auto {
+        overscroll-behavior: contain;
+    }
+
     button:not(:disabled),
     [role="button"]:not([aria-disabled="true"]),
     [role="menuitem"],

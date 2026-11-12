@@ -82,8 +82,9 @@ export const VAULT_STATUS_STYLES: Record<VaultStatus, { icon: string; className:
 
 export const VAULT_ORIGINS: VaultOrigin[] = ['own', 'organisation', 'ayla'];
 
+// Green is PAVE's own colour: it follows the theme colour chosen in Instellingen, like everything else that is green.
 export const VAULT_FOLDER_COLORS: Record<VaultFolderColor, string> = {
-  green: '#355d4c',
+  green: 'var(--color-brand)',
   blue: '#2f5b7c',
   purple: '#5b4b8a',
   rust: '#9a4a26',

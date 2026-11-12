@@ -13,6 +13,6 @@ const { openMenu } = useMainMenu();
     data-menu-opener
     @click="openMenu"
   >
-    <img src="/images/ayla/logo-mark.svg" alt="" width="34" height="18" />
+    <LayoutPaveLogo decorative class="h-4.5 w-8.5" />
   </button>
 </template>

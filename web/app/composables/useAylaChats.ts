@@ -41,6 +41,7 @@ function sortForList(conversations: Conversation[]) {
 /** The user's conversations with Ayla (docs/ayla.md, section 4). */
 export function useAylaChats() {
   const supabase = useUntypedSupabase();
+  const signedIn = useSupabaseUser();
   const state = useState<ChatsState>('ayla-chats', () => ({
     conversations: [],
     status: 'idle',
@@ -61,6 +62,11 @@ export function useAylaChats() {
   }
 
   async function load() {
+    // After a refresh the chats show at once as they were, and are checked against the database right after.
+    if (state.value.status !== 'ready') {
+      const kept = readKept<{ conversations: Conversation[]; canPin: boolean }>('chats', signedIn.value?.sub);
+      if (kept) Object.assign(state.value, { conversations: kept.conversations, canPin: kept.canPin, status: 'ready' });
+    }
     if (state.value.status !== 'ready') state.value.status = 'loading';
 
     let { data, error } = await selectConversations(COLUMNS_WITH_PIN);

@@ -49,10 +49,12 @@ function draw(now: number) {
   });
 }
 
-onMounted(() => {
-  const styles = getComputedStyle(document.documentElement);
+useThemeColors((styles) => {
   loud = styles.getPropertyValue('--color-brand').trim() || loud;
   quiet = styles.getPropertyValue('--color-orb-2').trim() || quiet;
+});
+
+onMounted(() => {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   frame = requestAnimationFrame(draw);
 });

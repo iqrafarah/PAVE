@@ -66,7 +66,7 @@ onMounted(account.load);
     <div v-if="state.isLoading" role="status" class="rounded-pill bg-white p-4 text-sm text-subtle">Je gegevens laden…</div>
     <template v-else-if="state.isLoaded">
       <section :aria-label="PERSONAL_PHOTO" class="flex items-center gap-4 rounded-pill bg-white p-3">
-        <SettingsAccountBadge :name="state.fullName" :avatar-url="state.avatarUrl" size="large" />
+        <SettingsAccountBadge :name="state.fullName" :avatar-url="state.avatarUrl" size="profile" />
         <div class="flex min-w-0 flex-1 flex-col gap-2">
           <h2 class="truncate text-base font-semibold text-heading">{{ state.fullName ?? SETTINGS_YOUR_ACCOUNT }}</h2>
           <template v-if="state.canEdit">

@@ -37,6 +37,7 @@ function hasChangedRows(result: { data: unknown[] | null; error: unknown }) {
 /** What Ayla remembers about the user (docs/ayla.md, section 5). Nothing changes without the user's click. */
 export function useAylaMemory() {
   const supabase = useUntypedSupabase();
+  const signedIn = useSupabaseUser();
   const state = useState<MemoryState>('ayla-memory', () => ({
     notes: [],
     isEnabled: true,
@@ -44,6 +45,11 @@ export function useAylaMemory() {
   }));
 
   async function load() {
+    // After a refresh what Ayla remembers shows at once as it was, and is checked against the database right after.
+    if (state.value.status !== 'ready') {
+      const kept = readKept<{ notes: MemoryNote[]; isEnabled: boolean }>('memory', signedIn.value?.sub);
+      if (kept) Object.assign(state.value, { notes: kept.notes, isEnabled: kept.isEnabled, status: 'ready' });
+    }
     if (state.value.status !== 'ready') state.value.status = 'loading';
 
     const [notesResult, settingsResult] = await Promise.all([

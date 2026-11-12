@@ -6,7 +6,9 @@ const personal = usePersonalisation();
 const memory = useAylaMemory();
 const generalHeadingId = useId();
 const aylaHeadingId = useId();
-const themeName = computed(() => PERSONAL_THEMES.find((theme) => theme.id === personal.state.value.theme)?.name);
+const themeName = computed(() => personal.state.value.theme === 'custom'
+  ? PERSONAL_CUSTOM_COLOR
+  : PERSONAL_THEMES.find((theme) => theme.id === personal.state.value.theme)?.name);
 const memorySummary = computed(() => {
   const summary = getMemorySummary(memory.state.value.status, memory.state.value.isEnabled, memory.state.value.notes.length);
   return summary.length <= 22 ? summary : undefined;
@@ -26,7 +28,7 @@ onMounted(() => {
       <NuxtLink :to="SETTINGS_ACCOUNT_PATH" class="flex items-center gap-3.5 rounded-pill bg-white p-3.5 hover:bg-tint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
         <SettingsAccountBadge :name="account.state.value.fullName" :avatar-url="account.state.value.avatarUrl" size="large" />
         <span class="flex min-w-0 flex-1 flex-col gap-0.75">
-          <span class="truncate text-xl font-semibold text-heading">{{ account.state.value.fullName ?? SETTINGS_YOUR_ACCOUNT }}</span>
+          <span class="truncate font-heading text-xl font-semibold text-heading">{{ account.state.value.fullName ?? SETTINGS_YOUR_ACCOUNT }}</span>
           <span class="truncate text-xs text-subtle">{{ account.state.value.email ?? SETTINGS_ACCOUNT_SUBTITLE }}</span>
         </span>
         <LayoutPaveIcon name="chevronRight" class="size-3.5 text-subtle" />

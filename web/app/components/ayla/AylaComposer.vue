@@ -197,7 +197,7 @@ defineExpose({ openFilePicker, focus });
     <AylaTray v-else>
       <template #strip>
         <span v-if="contextLabel && !attachments.length" class="flex items-center gap-1.75 font-heading text-xs font-semibold text-heading">
-          <img src="/images/ayla/pill-vault.svg" alt="" width="20.3122" height="18" />
+          <VaultIcon src="/images/ayla/pill-vault.svg" :width="20.3122" :height="18" class="text-brand" />
           {{ contextLabel }}
         </span>
         <AylaAttachmentChip

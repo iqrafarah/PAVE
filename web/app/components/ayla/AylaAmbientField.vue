@@ -140,12 +140,14 @@ function draw(now: number) {
   }
 }
 
+useThemeColors((styles) => {
+  green = toRgb(styles.getPropertyValue('--color-orb-6').trim());
+  sage = toRgb(styles.getPropertyValue('--color-orb-4').trim());
+});
+
 onMounted(() => {
   // People who asked for less motion get the orb without the moving field.
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const styles = getComputedStyle(document.documentElement);
-  green = toRgb(styles.getPropertyValue('--color-orb-6').trim());
-  sage = toRgb(styles.getPropertyValue('--color-orb-4').trim());
   frame = requestAnimationFrame(draw);
 });
 onBeforeUnmount(() => cancelAnimationFrame(frame));

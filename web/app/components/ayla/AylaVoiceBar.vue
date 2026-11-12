@@ -40,7 +40,7 @@ function send() {
         type="submit"
         class="flex size-7.5 items-center justify-center rounded-full bg-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       >
-        <img src="/images/ayla/send.svg" alt="" width="12.9" height="15.9" />
+        <VaultIcon src="/images/ayla/send.svg" :width="12.9" :height="15.9" class="text-white" />
         <span class="sr-only">{{ AYLA_SEND_LABEL }}</span>
       </button>
     </form>
