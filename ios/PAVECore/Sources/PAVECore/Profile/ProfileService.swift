@@ -1,7 +1,7 @@
 import Foundation
 import OSLog
 
-/// The account's own name, photo and preferences in `profiles` (migration 20261112160000), with the session of the user.
+/// The account's own name, photo and preferences in `profiles` (migration 20261112170000), with the session of the user.
 public protocol ProfileService: Sendable {
     func profile() async throws -> PaveProfile
     func setPreferredName(_ name: String?) async throws

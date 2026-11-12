@@ -58,7 +58,7 @@ public struct PaveProfile: Equatable, Sendable {
     public var theme: PaveThemeColor
     public var textSize: PaveTextSize
     public var vaultLayout: PaveVaultLayout
-    /// False before the migration with the photo and the preferences (20261112160000) is applied.
+    /// False before the migration with the photo and the preferences (20261112170000) is applied.
     public var canChangeSettings: Bool
 
     public init(
@@ -97,7 +97,7 @@ public enum ProfileError: Error, Equatable, Sendable {
     case notSignedIn
     case notAllowed
     case noConnection
-    /// The columns or the bucket of migration 20261112160000 are not there yet.
+    /// The columns or the bucket of migration 20261112170000 are not there yet.
     case notSetUp
     case nameTooLong
     case unavailable
