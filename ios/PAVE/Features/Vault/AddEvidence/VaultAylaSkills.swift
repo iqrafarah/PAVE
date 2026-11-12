@@ -22,10 +22,11 @@ final class VaultAylaSkills {
     func ask(for draft: VaultItemDraft, existing: [String]) async {
         guard state != .loading else { return }
         state = .loading
+        SupabaseVaultService.lastFailure = nil
         do {
             state = .loaded(try await vault.suggestSkills(for: draft, existing: existing))
         } catch {
-            state = .failed(VaultMessages.aylaSkills(VaultError(error)))
+            state = .failed(VaultMessages.withDetail(VaultMessages.aylaSkills(VaultError(error))))
         }
     }
 }

@@ -16,6 +16,10 @@ enum VaultMessages {
     static let deleteItemMessage = "Dit haalt het item en de bestanden erbij voorgoed uit je kluis, ook op het web. Dit kun je niet ongedaan maken."
     static let folderNameTaken = "Je hebt al een map met deze naam. Kies een andere naam."
 
+    static func newKindFolder(_ name: String) -> String {
+        "\(name) (nieuwe map)"
+    }
+
     static func inFolders(_ names: [String]) -> String {
         names.count == 1 ? "In de map \(names[0])" : "In de mappen \(names.joined(separator: ", "))"
     }
@@ -38,6 +42,14 @@ enum VaultMessages {
         case .fileRejected: "Dit bestand kan niet in je kluis. Kies een PDF, Word-bestand, tekst of foto tot 20 MB."
         case .unavailable, .missingColumn: "Er ging iets mis. Probeer het zo nog een keer."
         }
+    }
+
+    /// In a debug build the technical reason goes under the message, so a test can say exactly what failed.
+    static func withDetail(_ message: String) -> String {
+        #if DEBUG
+        if let detail = SupabaseVaultService.lastFailure { return "\(message)\n[\(detail)]" }
+        #endif
+        return message
     }
 
     // MARK: Bewijs toevoegen

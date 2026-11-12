@@ -53,6 +53,8 @@ public enum VaultError: Error, Equatable, Sendable {
 /// Reads and writes the `vault_*` tables with the session of the signed-in user. Row-level security keeps it to their own rows.
 public struct SupabaseVaultService: VaultService {
     static let logger = Logger(subsystem: "nl.fontys.pave", category: "vault")
+    /// The last request that failed, as "path status code message": shown under the error in debug builds.
+    nonisolated(unsafe) public static var lastFailure: String?
 
     private let restURL: URL
     private let storageURL: URL
@@ -373,7 +375,10 @@ public struct SupabaseVaultService: VaultService {
         }
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         if statuses.contains(status) { return data }
-        throw Self.error(status: status, body: data)
+        let failure = Self.error(status: status, body: data)
+        let detail = try? JSONDecoder().decode(PostgrestError.self, from: data)
+        Self.lastFailure = "\(urlRequest.httpMethod ?? "") \(urlRequest.url?.path() ?? "") \(status) \(detail?.code ?? "") \(detail?.message ?? String(decoding: data.prefix(160), as: UTF8.self))"
+        throw failure
     }
 
     static func error(status: Int, body: Data) -> VaultError {

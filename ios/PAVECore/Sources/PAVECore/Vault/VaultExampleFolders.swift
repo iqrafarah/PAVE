@@ -26,6 +26,23 @@ public enum VaultExampleFolders {
     }
 }
 
+extension VaultCategory {
+    /// The icon for the folder of this kind, when the app makes one (such as Stages when you add a stage).
+    public var folderStyleIcon: VaultFolderIcon {
+        switch self {
+        case .diplomas: .academicCap
+        case .certificates: .checkBadge
+        case .badges: .star
+        case .projects: .wrenchScrewdriver
+        case .workExperience, .internships: .briefcase
+        case .skills: .paintBrush
+        case .feedback: .chatBubble
+        case .reflections: .documentText
+        case .other: .folder
+        }
+    }
+}
+
 /// A skill Ayla proposes for evidence you are adding, with why.
 public struct VaultSkillSuggestion: Equatable, Hashable, Sendable, Decodable {
     public let name: String

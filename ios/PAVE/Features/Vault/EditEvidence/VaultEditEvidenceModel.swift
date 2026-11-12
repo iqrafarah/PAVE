@@ -150,6 +150,7 @@ final class VaultEditEvidenceModel {
         problem = nil
         isSaving = true
         defer { isSaving = false }
+        SupabaseVaultService.lastFailure = nil
         do {
             if detailsChanged, !savedParts.contains(.details) {
                 try await vault.updateItem(draft, itemID: item.id)
@@ -192,7 +193,7 @@ final class VaultEditEvidenceModel {
             PaveHaptics.success()
             return true
         } catch {
-            problem = VaultMessages.message(for: VaultError(error))
+            problem = VaultMessages.withDetail(VaultMessages.message(for: VaultError(error)))
             PaveHaptics.error()
             await vault.load()
             return false

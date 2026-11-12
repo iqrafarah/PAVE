@@ -70,6 +70,23 @@ namen van 1 tot 4 woorden, zoals "Samenwerken" of "Front-end development". Geef 
   ]
 }
 
+/** The JSON in what the model wrote, also when it wrapped it in a code block or put a sentence around it. */
+export function parseModelJson(content: string): unknown {
+  const trimmed = content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
+  try {
+    return JSON.parse(trimmed)
+  } catch {
+    const start = trimmed.indexOf('{')
+    const end = trimmed.lastIndexOf('}')
+    if (start < 0 || end <= start) return null
+    try {
+      return JSON.parse(trimmed.slice(start, end + 1))
+    } catch {
+      return null
+    }
+  }
+}
+
 /** Only usable names, each once, nothing the user already has, at most `MAX_SUGGESTIONS`. */
 export function cleanSkills(raw: unknown, existing: string[]): SkillSuggestion[] {
   const skills = (raw as { skills?: unknown } | null)?.skills

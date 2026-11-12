@@ -1,7 +1,8 @@
 import PAVECore
 import SwiftUI
 
-/// An item in the vault, as a tile in the grid or a row in the list, like the cards in the design.
+/// An item in the vault, as a tile in the grid or a row in the list, like the cards in the design. The round image is
+/// the logo (or else the cover), and its strongest colour tints the card: the band in the grid, a fade in the list.
 struct VaultLibraryCard: View {
     let item: VaultItem
     let isGrid: Bool
@@ -10,20 +11,34 @@ struct VaultLibraryCard: View {
 
     private var logo: VaultItem.File? { model?.logo(of: item) }
     private var cover: VaultItem.File? { model?.cover(of: item) }
+    /// What goes in the circle and gives the colour: the logo, or the cover when there is no logo.
+    private var avatarFile: VaultItem.File? { logo ?? cover }
+    private var tint: Color { look?.tint ?? item.category.tint }
 
     var body: some View {
         Group {
             if isGrid { gridCard } else { listCard }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Color.white)
+        .background {
+            if isGrid {
+                Color.white
+            } else {
+                // The fade from the top left corner in the list, as in Figma 1348:9; a cover photo shows only in the grid.
+                LinearGradient(
+                    stops: [.init(color: tint, location: 0), .init(color: .white, location: 0.55)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
+        }
         .clipShape(.rect(cornerRadius: 16))
         .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder, lineWidth: 1) }
         .contentShape(.rect(cornerRadius: 16))
         .accessibilityElement(children: .combine)
-        .task(id: logo?.id) {
-            guard let logo else { look = nil; return }
-            let loaded = await model?.look(of: logo)
+        .task(id: avatarFile?.id) {
+            guard let avatarFile else { look = nil; return }
+            let loaded = await model?.look(of: avatarFile)
             withAnimation(.easeOut(duration: 0.25)) { look = loaded }
         }
     }
@@ -31,7 +46,7 @@ struct VaultLibraryCard: View {
     private var gridCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             // The band shows the cover, or else a light tint of the strongest colour in the logo; the logo is the avatar.
-            (look?.tint ?? item.category.tint)
+            tint
                 .overlay {
                     if let cover {
                         VaultThumbnail(source: .file(cover), cornerRadius: 0)
@@ -66,8 +81,8 @@ struct VaultLibraryCard: View {
     }
 
     private var listCard: some View {
-        HStack(alignment: .top, spacing: 12) {
-            VaultLogoAvatar(look: look, name: item.organisationName ?? item.title, size: 48)
+        HStack(alignment: .center, spacing: 14) {
+            VaultLogoAvatar(look: look, name: item.organisationName ?? item.title, size: 64)
             VStack(alignment: .leading, spacing: 7) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(item.title)
@@ -86,7 +101,7 @@ struct VaultLibraryCard: View {
                 }
             }
         }
-        .padding(12)
+        .padding(14)
     }
 
     @ViewBuilder

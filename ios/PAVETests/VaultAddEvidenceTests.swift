@@ -228,6 +228,25 @@ struct VaultAddEvidenceTests {
         #expect(fromStage.draft.folderIDs == ["s"])
     }
 
+    @Test func aKindWithoutAFolderGetsOneWhenSavingUnlessUnticked() async {
+        let service = FakeVault()
+        let flow = await filledFlow(service)
+        #expect(flow.newKindFolder == "Stages")
+        await flow.next()
+        await flow.next()
+        #expect(flow.page == .done)
+        #expect(await service.createdFolders == ["Stages"])
+        #expect(await service.added.first?.folderIDs == ["folder-Stages"])
+
+        let other = FakeVault()
+        let unticked = await filledFlow(other)
+        unticked.setMakesKindFolder(false)
+        await unticked.next()
+        await unticked.next()
+        #expect(await !other.createdFolders.contains("Stages"))
+        #expect(await other.added.first?.folderIDs == [])
+    }
+
     @Test func changingAConfirmedItemAsksAndSavesOnlyWhatChanged() async {
         let service = FakeVault()
         let report = VaultItem.File(id: "f1", name: "verslag.pdf", mimeType: "application/pdf", storagePath: "u/i/f1.pdf")

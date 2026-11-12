@@ -49,9 +49,9 @@ struct VaultItemDetailView: View {
             VStack(alignment: .leading, spacing: 20) {
                 HStack(alignment: .top, spacing: 14) {
                     VaultLogoAvatar(look: look, name: item.organisationName ?? item.title, size: 56)
-                        .task(id: model.logo(of: item)?.id) {
-                            guard let logo = model.logo(of: item) else { look = nil; return }
-                            let loaded = await model.look(of: logo)
+                        .task(id: (model.logo(of: item) ?? model.cover(of: item))?.id) {
+                            guard let image = model.logo(of: item) ?? model.cover(of: item) else { look = nil; return }
+                            let loaded = await model.look(of: image)
                             withAnimation(.easeOut(duration: 0.25)) { look = loaded }
                         }
                     VStack(alignment: .leading, spacing: 8) {

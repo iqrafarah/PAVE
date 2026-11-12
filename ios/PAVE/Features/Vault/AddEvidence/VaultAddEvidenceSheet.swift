@@ -139,7 +139,17 @@ struct VaultAddEvidenceSheet: View {
                 }
                 .transition(.opacity.combined(with: .scale(scale: 0.97)))
             }
-            VaultEvidenceForm(draft: $flow.draft, missing: flow.missingFields, folders: flow.folders, onFolderChosen: flow.folderChosen)
+            VaultEvidenceForm(
+                draft: $flow.draft,
+                missing: flow.missingFields,
+                folders: flow.folders,
+                onFolderChosen: flow.folderChosen,
+                newFolder: flow.newKindFolder.map { name in
+                    VaultEvidenceForm.NewFolder(name: name, isOn: true) { flow.setMakesKindFolder($0) }
+                } ?? (flow.kindFolderMissing
+                    ? VaultEvidenceForm.NewFolder(name: flow.draft.category.title, isOn: false) { flow.setMakesKindFolder($0) }
+                    : nil)
+            )
         }
         .onChange(of: flow.draft.category) { flow.categoryChanged() }
     }

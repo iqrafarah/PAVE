@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { cleanSkills, MAX_SUGGESTIONS, parseSkillsRequest, skillsMessages } from '../skills.ts'
+import { cleanSkills, MAX_SUGGESTIONS, parseModelJson, parseSkillsRequest, skillsMessages } from '../skills.ts'
 
 test('a request needs a title and keeps only text', () => {
   assert.equal(parseSkillsRequest(null), 'body')
@@ -36,4 +36,12 @@ test('suggestions are new, unique and few', () => {
     { name: 'Presenteren', reason: 'Je gaf een eindpresentatie' },
   ])
   assert.deepEqual(cleanSkills({ nope: true }, []), [])
+})
+
+test('the answer is read also inside a code block or with a sentence around it', () => {
+  const plain = { skills: [{ name: 'Samenwerken', reason: 'team' }] }
+  assert.deepEqual(parseModelJson(JSON.stringify(plain)), plain)
+  assert.deepEqual(parseModelJson('```json\n' + JSON.stringify(plain) + '\n```'), plain)
+  assert.deepEqual(parseModelJson('Hier zijn ze: ' + JSON.stringify(plain) + ' Succes!'), plain)
+  assert.equal(parseModelJson('geen json'), null)
 })
