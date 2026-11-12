@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Settings: your account, signing out and privacy. More settings come later (planned for week 4).
+/// Settings: your account, where you are signed in, signing out and privacy. More settings come later (planned for week 4).
 struct SettingsScreen: View {
     let name: String?
     let onShowMenu: (() -> Void)?
@@ -39,6 +39,30 @@ struct SettingsScreen: View {
                         } message: {
                             Text("Je pincode blijft op dit toestel bewaard.")
                         }
+
+                    NavigationLink {
+                        SignedInDevicesScreen()
+                    } label: {
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(DevicesMessages.title)
+                                    .textStyle(.listTitle)
+                                    .foregroundStyle(Color.ink)
+                                Text(DevicesMessages.settingsRowMessage)
+                                    .textStyle(.caption)
+                                    .foregroundStyle(Color.inkMuted)
+                            }
+                            Spacer(minLength: 0)
+                            Image(.iconChevronRight)
+                                .renderingMode(.template)
+                                .foregroundStyle(Color.inkMuted)
+                                .accessibilityHidden(true)
+                        }
+                        .padding(12)
+                        .background(Color.white, in: .rect(cornerRadius: 14))
+                        .contentShape(.rect)
+                    }
+                    .buttonStyle(.pave)
 
                     Text("Ayla")
                         .textStyle(.bodyMedium)
@@ -154,4 +178,5 @@ struct SettingsScreen: View {
 #Preview {
     SettingsScreen(name: "Daaf", onShowMenu: {}, onSignOut: {})
         .environment(AylaMemoryModel(service: nil))
+        .environment(SignedInDevicesModel(service: nil))
 }

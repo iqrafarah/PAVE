@@ -7,10 +7,13 @@ public struct SupabaseAuthService: AuthService {
 
     private let client: AuthClient
 
-    public init(projectURL: URL, publishableKey: String) {
+    /// `userAgent` names this app in the list of signed-in devices, such as "PAVE-iOS/0.1 (iPhone; iOS 26.1)".
+    public init(projectURL: URL, publishableKey: String, userAgent: String? = nil) {
+        var headers = ["apikey": publishableKey]
+        if let userAgent { headers["User-Agent"] = userAgent }
         client = AuthClient(
             url: projectURL.appending(path: "auth/v1"),
-            headers: ["apikey": publishableKey],
+            headers: headers,
             localStorage: KeychainLocalStorage(),
             emitLocalSessionAsInitialSession: true
         )

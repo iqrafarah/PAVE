@@ -15,6 +15,7 @@ struct MainView: View {
     @State private var model: AylaChatModel
     @State private var memory: AylaMemoryModel
     @State private var vault: VaultModel
+    @State private var devices: SignedInDevicesModel
     @State private var destination = MainDestination.ayla
     @State private var isMenuOpen = false
     @State private var isSidebarHidden = false
@@ -33,10 +34,11 @@ struct MainView: View {
     private static let sidebarWidth: CGFloat = 800
     private static let sidebarSize: CGFloat = 320
 
-    init(service: (any AylaService)?, vaultService: (any VaultService)?) {
+    init(service: (any AylaService)?, vaultService: (any VaultService)?, devicesService: (any DevicesService)? = nil) {
         _model = State(initialValue: AylaChatModel(service: service, drafts: .standard))
         _memory = State(initialValue: AylaMemoryModel(service: service))
         _vault = State(initialValue: VaultModel(service: vaultService))
+        _devices = State(initialValue: SignedInDevicesModel(service: devicesService))
     }
 
     var body: some View {
@@ -223,6 +225,7 @@ struct MainView: View {
             ProfileScreen(onShowMenu: onShowMenu)
         case .settings:
             SettingsScreen(name: model.firstName, onShowMenu: onShowMenu, onSignOut: appState.signOut)
+                .environment(devices)
         case .notifications:
             NotificationsScreen(onShowMenu: onShowMenu)
         }
