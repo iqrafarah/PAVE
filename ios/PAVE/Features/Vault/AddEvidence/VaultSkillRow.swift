@@ -33,7 +33,7 @@ struct VaultSkillRow: View {
                 Image(isChosen ? .iconCheckCircleOutline : .iconPlusCircleOutline)
                     .renderingMode(.template)
                     .resizable()
-                    .frame(width: 20, height: 20)
+                    .paveIconFrame(20)
                     .foregroundStyle(isDark ? Color.white : isChosen ? .paveAccent : .ink)
                     .contentTransition(.opacity)
                     .accessibilityHidden(true)

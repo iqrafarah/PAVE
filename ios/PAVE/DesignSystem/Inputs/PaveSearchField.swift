@@ -25,7 +25,7 @@ struct PaveSearchField: View {
                     Image(.iconPlus)
                         .renderingMode(.template)
                         .resizable()
-                        .frame(width: 11, height: 11)
+                        .paveIconFrame(11)
                         .rotationEffect(.degrees(45))
                         .foregroundStyle(Color.inkMuted)
                         .frame(width: 32, height: 40)

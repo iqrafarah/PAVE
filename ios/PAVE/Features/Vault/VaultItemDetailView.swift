@@ -104,7 +104,7 @@ struct VaultItemDetailView: View {
                         Image(.iconEllipsis)
                             .renderingMode(.template)
                             .foregroundStyle(Color.ink)
-                            .frame(width: 44, height: 44)
+                            .paveIconFrame(44)
                             .background(Color.paveSurfaceTint, in: .circle)
                             .contentShape(.circle)
                     }

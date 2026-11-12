@@ -122,7 +122,7 @@ struct VerificationSetupView: View {
                     Image(.iconChevronDown)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 14, height: 14)
+                        .paveIconFrame(14)
                         .foregroundStyle(Color.paveAccent)
                         .rotationEffect(.degrees(showsOtherDevice ? 180 : 0))
                         .accessibilityHidden(true)

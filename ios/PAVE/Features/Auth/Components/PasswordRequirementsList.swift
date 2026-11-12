@@ -14,7 +14,9 @@ struct PasswordRequirementsList: View {
                 let isMet = requirement.isMet(by: password)
                 HStack(spacing: 8) {
                     Image(isMet ? .iconCheck : .iconRequirementBullet)
+                        .renderingMode(isMet ? .original : .template)
                         .resizable()
+                        .foregroundStyle(Color.paveAccent)
                         .frame(width: isMet ? 16 : 4, height: isMet ? 16 : 4)
                         .accessibilityHidden(true)
                     Text(requirement.title)

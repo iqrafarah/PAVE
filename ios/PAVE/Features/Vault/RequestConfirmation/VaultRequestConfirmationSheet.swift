@@ -139,9 +139,9 @@ struct VaultRequestConfirmationSheet: View {
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 32, height: 32)
+                .paveIconFrame(32)
                 .foregroundStyle(Color.statusPending)
-                .frame(width: 72, height: 72)
+                .paveIconFrame(72)
                 .background(Color.statusPending.opacity(0.12), in: .circle)
                 .accessibilityHidden(true)
             VStack(spacing: 8) {

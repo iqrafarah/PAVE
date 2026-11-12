@@ -47,7 +47,7 @@ struct AylaMemoryEditor: View {
                                 .renderingMode(.template)
                                 .resizable()
                                 .scaledToFit()
-                                .frame(width: 10, height: 10)
+                                .paveIconFrame(10)
                                 .foregroundStyle(Color.inkMuted)
                                 .accessibilityHidden(true)
                         }

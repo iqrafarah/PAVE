@@ -47,7 +47,7 @@ struct AylaVoiceBar: View {
                 if canSend {
                     Button(action: send) {
                         Image(.iconSend)
-                            .frame(width: 30, height: 30)
+                            .paveIconFrame(30)
                             .background(Color.paveAccent, in: .circle)
                             .frame(width: AylaComposer.roundButtonWidth, height: 53)
                             .contentShape(.rect)
@@ -89,10 +89,10 @@ struct AylaVoiceBar: View {
                 Image(.iconPlus)
                     .renderingMode(.template)
                     .resizable()
-                    .frame(width: 15, height: 15)
+                    .paveIconFrame(15)
                     .rotationEffect(.degrees(45))
                     .foregroundStyle(Color.white)
-                    .frame(width: 53, height: 53)
+                    .paveIconFrame(53)
                     .contentShape(.circle)
             }
             .buttonStyle(.pave)

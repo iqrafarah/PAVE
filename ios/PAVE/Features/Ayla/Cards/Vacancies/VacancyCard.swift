@@ -82,6 +82,11 @@ struct VacancyCard: View {
                         .foregroundStyle(Color.paveAccent)
                     Spacer()
                     Image(.iconArrowRight)
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .paveIconHeight(9)
+                        .foregroundStyle(Color.paveAccent)
                         .accessibilityHidden(true)
                 }
                 .padding(.horizontal, 11)

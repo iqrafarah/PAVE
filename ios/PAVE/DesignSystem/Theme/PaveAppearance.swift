@@ -8,14 +8,23 @@ import UIKit
 final class PaveThemeStore {
     static let shared = PaveThemeStore()
     var theme = PaveAppearance.theme
+    var customColor = PaveAppearance.customColor
+
+    /// The accent as a colour value, or nil for PAVE green, which uses its own colour tokens.
+    var accent: UInt32? {
+        switch theme {
+        case .green: nil
+        case .custom: customColor.map(PaveThemeColor.readableAccent(for:))
+        default: theme.accent
+        }
+    }
 }
 
 extension Color {
     /// The accent of the app: PAVE green, or the theme colour chosen in Instellingen. Ayla's orb, the Watch and the
     /// widgets keep PAVE green.
     static var paveAccent: Color {
-        let theme = PaveThemeStore.shared.theme
-        return theme == .green ? Color(.brandGreen) : Color(uiColor: UIColor(hex: theme.accent))
+        PaveThemeStore.shared.accent.map { Color(uiColor: UIColor(hex: $0)) } ?? Color(.brandGreen)
     }
 }
 
@@ -32,9 +41,8 @@ extension Color {
     /// A light or dark shade of the theme colour, as light as the PAVE green token it replaces (0 is the colour
     /// itself, 1 is white). With the green theme it is exactly that token.
     private static func paveTint(_ whiteness: Double, green: Color) -> Color {
-        let theme = PaveThemeStore.shared.theme
-        guard theme != .green else { return green }
-        return Color(uiColor: UIColor(hex: theme.accent)).mix(with: .white, by: whiteness)
+        guard let accent = PaveThemeStore.shared.accent else { return green }
+        return Color(uiColor: UIColor(hex: accent)).mix(with: .white, by: whiteness)
     }
 
     static var paveSurfaceTint: Color { paveTint(0.89, green: .surfaceTint) }
@@ -61,6 +69,7 @@ extension UIColor {
 /// starts in the right colour before the account is loaded.
 enum PaveAppearance {
     static let themeKey = "paveThemeColor"
+    static let customColorKey = "paveCustomColor"
     static let textSizeKey = "paveTextSize"
     static let vaultLayoutKey = "paveVaultLayout"
 
@@ -68,12 +77,18 @@ enum PaveAppearance {
         UserDefaults.standard.string(forKey: themeKey).flatMap(PaveThemeColor.init(rawValue:)) ?? .green
     }
 
+    static var customColor: UInt32? {
+        UserDefaults.standard.string(forKey: customColorKey).flatMap(PaveThemeColor.color(hex:))
+    }
+
     static var vaultLayout: PaveVaultLayout {
         UserDefaults.standard.string(forKey: vaultLayoutKey).flatMap(PaveVaultLayout.init(rawValue:)) ?? .grid
     }
 
-    static func apply(_ theme: PaveThemeColor) {
+    static func apply(_ theme: PaveThemeColor, customColor: UInt32?) {
         UserDefaults.standard.set(theme.rawValue, forKey: themeKey)
+        UserDefaults.standard.set(customColor.map(PaveThemeColor.hex), forKey: customColorKey)
+        PaveThemeStore.shared.customColor = customColor
         PaveThemeStore.shared.theme = theme
     }
 
@@ -81,7 +96,7 @@ enum PaveAppearance {
     static var orbPalette: [Color] { (0..<7).map(Color.paveOrbShade) }
 
     static func applyStored() {
-        apply(theme)
+        apply(theme, customColor: customColor)
     }
 }
 
