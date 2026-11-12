@@ -135,7 +135,7 @@ struct MainMenuDrawer: View {
                     .renderingMode(.template)
                     .foregroundStyle(Color.white)
                     .frame(width: Self.buttonSize, height: Self.buttonSize)
-                    .background(Color.brandGreen, in: .circle)
+                    .background(Color.paveAccent, in: .circle)
                     .contentShape(.circle)
             }
             .buttonStyle(.pave)

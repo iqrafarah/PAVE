@@ -10,7 +10,7 @@ struct VaultAylaConsentCard: View {
         HStack(alignment: .top, spacing: 14) {
             AylaLetter()
                 .frame(width: 36, height: 36)
-                .background(Color.brandGreen, in: .rect(cornerRadius: 9))
+                .background(Color.paveAccent, in: .rect(cornerRadius: 9))
             VStack(alignment: .leading, spacing: 4) {
                 Text(VaultMessages.aylaConsent(hasFile: hasFile))
                     .textStyle(.label)
@@ -24,13 +24,13 @@ struct VaultAylaConsentCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             Toggle("", isOn: $isOn.animation(.snappy(duration: 0.25)))
                 .labelsHidden()
-                .tint(.brandGreen)
+                .tint(.paveAccent)
         }
         .padding(14)
-        .background(isOn ? Color.dropZone : Color.white, in: .rect(cornerRadius: 12))
+        .background(isOn ? Color.paveDropZone : Color.white, in: .rect(cornerRadius: 12))
         .overlay {
             RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(isOn ? Color.focusRing : Color.railBorder, lineWidth: 1)
+                .strokeBorder(isOn ? Color.paveFocusRing : Color.railBorder, lineWidth: 1)
         }
         .contentShape(.rect(cornerRadius: 12))
         .onTapGesture {

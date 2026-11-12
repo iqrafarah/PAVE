@@ -50,8 +50,8 @@ struct AylaAmbientField: View {
 /// and scaled by the real time between frames.
 final class AmbientFieldAnimator {
     private static let revealDuration = 1.6
-    private static let green = Color.orbShade6
-    private static let sage = Color.orbShade4
+    private static let green = Color.paveOrbShade(6)
+    private static let sage = Color.paveOrbShade(4)
 
     private var mix: [Double] = [1, 0, 0, 0]
     private var smoothLevel = 0.0

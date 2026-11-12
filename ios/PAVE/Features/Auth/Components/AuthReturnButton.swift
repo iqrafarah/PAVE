@@ -13,7 +13,7 @@ struct AuthReturnButton: View {
                     .accessibilityHidden(true)
                 Text(title)
                     .textStyle(.link)
-                    .foregroundStyle(Color.brandGreen)
+                    .foregroundStyle(Color.paveAccent)
             }
             .frame(maxWidth: .infinity, minHeight: 44)
             .contentShape(.rect)

@@ -10,10 +10,10 @@ struct PaveTitle: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 3.3) {
-            PaveMark(count: 5, size: 5.333)
+            PaveMark(count: 5, size: 5.333, color: .paveAccent)
             Text(text)
                 .textStyle(.aylaTitle)
-                .foregroundStyle(Color.brandGreen)
+                .foregroundStyle(Color.paveAccent)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(text)

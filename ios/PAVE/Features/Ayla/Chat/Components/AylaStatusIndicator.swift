@@ -22,7 +22,7 @@ struct AylaStatusIndicator: View {
             .accessibilityHidden(true)
             Text(message)
                 .textStyle(.status)
-                .foregroundStyle(state == .thinking ? Color.brandGreen : .criticalInk)
+                .foregroundStyle(state == .thinking ? Color.paveAccent : .criticalInk)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
         }

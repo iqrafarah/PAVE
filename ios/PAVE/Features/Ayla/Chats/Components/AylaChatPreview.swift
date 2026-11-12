@@ -27,7 +27,7 @@ struct AylaChatPreview: View {
                             .lineLimit(3)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 8)
-                            .background(message.role == .user ? Color.brandGreen : Color.surfaceTint, in: .rect(cornerRadius: 14))
+                            .background(message.role == .user ? Color.paveAccent : Color.paveSurfaceTint, in: .rect(cornerRadius: 14))
                             .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
                     }
                 }

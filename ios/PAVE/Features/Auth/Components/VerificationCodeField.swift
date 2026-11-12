@@ -25,7 +25,7 @@ struct VerificationCodeField: View {
                 .textStyle(.code)
                 .tracking(8)
                 .foregroundStyle(Color.ink)
-                .tint(.brandGreen)
+                .tint(.paveAccent)
                 .keyboardType(.numberPad)
                 .textContentType(.oneTimeCode)
                 .focused(isFocused)
@@ -38,7 +38,7 @@ struct VerificationCodeField: View {
                 }
                 .background {
                     RoundedRectangle(cornerRadius: 7)
-                        .stroke(Color.focusRing, lineWidth: 6)
+                        .stroke(Color.paveFocusRing, lineWidth: 6)
                         .opacity(isFocused.wrappedValue && !isInvalid ? 1 : 0)
                 }
                 .onChange(of: code) { oldValue, newValue in
@@ -62,7 +62,7 @@ struct VerificationCodeField: View {
 
     private var borderColor: Color {
         if isInvalid { return .critical }
-        if isFocused.wrappedValue { return .brandGreen }
+        if isFocused.wrappedValue { return .paveAccent }
         return .hairline
     }
 }

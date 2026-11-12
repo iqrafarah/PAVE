@@ -38,7 +38,7 @@ struct AuthSteps: View {
 
     private func line(isVisible: Bool, isDone: Bool) -> some View {
         Rectangle()
-            .fill(isVisible ? (isDone ? Color.brandGreen : .hairline) : .clear)
+            .fill(isVisible ? (isDone ? Color.paveAccent : .hairline) : .clear)
             .frame(height: 2)
     }
 
@@ -47,8 +47,8 @@ struct AuthSteps: View {
         let isReached = index <= currentIndex
         ZStack {
             Circle()
-                .fill(isReached ? Color.brandGreen : .white)
-                .overlay { Circle().strokeBorder(isReached ? Color.brandGreen : .hairline, lineWidth: 1) }
+                .fill(isReached ? Color.paveAccent : .white)
+                .overlay { Circle().strokeBorder(isReached ? Color.paveAccent : .hairline, lineWidth: 1) }
             if index < currentIndex {
                 Image(.iconCheck)
                     .renderingMode(.template)

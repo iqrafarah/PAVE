@@ -79,7 +79,7 @@ struct VaultSkillsPicker: View {
                             withAnimation(.snappy) { showsAll.toggle() }
                         }
                         .textStyle(.link)
-                        .foregroundStyle(Color.brandGreen)
+                        .foregroundStyle(Color.paveAccent)
                         .frame(maxWidth: .infinity, minHeight: 44)
                     }
                 }
@@ -90,7 +90,7 @@ struct VaultSkillsPicker: View {
     }
 
     private var aylaSection: some View {
-        section(Text("Voorstel van ") + Text("Ayla").foregroundStyle(Color.brandGreen)) {
+        section(Text("Voorstel van ") + Text("Ayla").foregroundStyle(Color.paveAccent)) {
             VaultAylaSuggestions(ayla: ayla, isChosen: isChosen, onToggle: toggle) {
                 isSearching = false
                 Task { await askAyla() }

@@ -64,7 +64,7 @@ extension VaultItem.Status {
 
     var foreground: Color {
         switch self {
-        case .verified: .brandGreen
+        case .verified: .paveAccent
         case .toVerify: .statusPending
         case .rejected: .statusRejected
         }
@@ -72,7 +72,7 @@ extension VaultItem.Status {
 
     var background: Color {
         switch self {
-        case .verified: .statusVerifiedSurface
+        case .verified: .paveVerifiedSurface
         case .toVerify: .statusPendingSurface
         case .rejected: .statusRejectedSurface
         }
@@ -82,7 +82,7 @@ extension VaultItem.Status {
 extension VaultFolderColor {
     var color: Color {
         switch self {
-        case .green: .brandGreen
+        case .green: .paveAccent
         case .blue: .folderBlue
         case .purple: .folderPurple
         case .rust: .folderRust
@@ -93,7 +93,7 @@ extension VaultFolderColor {
 
     /// The light band behind the folder: 11% of the colour on white, which for green is exactly the surface tint.
     var surface: Color {
-        self == .green ? .surfaceTint : color.mix(with: .white, by: 0.89)
+        self == .green ? .paveSurfaceTint : color.mix(with: .white, by: 0.89)
     }
 }
 

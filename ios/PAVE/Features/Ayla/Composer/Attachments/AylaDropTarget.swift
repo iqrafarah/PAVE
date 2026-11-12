@@ -8,9 +8,9 @@ struct AylaDropTarget: View {
             VStack(spacing: 12) {
                 Image(.iconPaperclip)
                     .renderingMode(.template)
-                    .foregroundStyle(Color.brandGreen)
+                    .foregroundStyle(Color.paveAccent)
                     .frame(width: 52, height: 52)
-                    .background(Color.surfaceTint, in: .circle)
+                    .background(Color.paveSurfaceTint, in: .circle)
                 Text("Laat los om aan je bericht toe te voegen")
                     .textStyle(.listTitle)
                     .foregroundStyle(Color.ink)
@@ -25,7 +25,7 @@ struct AylaDropTarget: View {
         }
         .overlay {
             RoundedRectangle(cornerRadius: 28)
-                .strokeBorder(Color.brandGreen, style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
+                .strokeBorder(Color.paveAccent, style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
                 .padding(12)
         }
         .ignoresSafeArea()

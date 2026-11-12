@@ -20,13 +20,13 @@ struct AuthIntro: View {
                     .resizable()
                     .frame(width: 30, height: 30)
                     .frame(width: 64, height: 64)
-                    .background(Color.surfaceTint, in: .circle)
+                    .background(Color.paveSurfaceTint, in: .circle)
                     .accessibilityHidden(true)
             }
             if let eyebrow, steps == nil {
                 Text(eyebrow)
                     .textStyle(.eyebrow)
-                    .foregroundStyle(Color.brandGreen)
+                    .foregroundStyle(Color.paveAccent)
             }
             Text(Self.keepingHyphenatedWordsWhole(title))
                 .textStyle(.title)

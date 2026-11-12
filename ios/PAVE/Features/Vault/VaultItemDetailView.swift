@@ -66,7 +66,7 @@ struct VaultItemDetailView: View {
                 Text(VaultMessages.deleteItemMessage)
             }
         }
-        .tint(.brandGreen)
+        .tint(.paveAccent)
     }
 
     private func content(_ item: VaultItem) -> some View {
@@ -105,7 +105,7 @@ struct VaultItemDetailView: View {
                             .renderingMode(.template)
                             .foregroundStyle(Color.ink)
                             .frame(width: 44, height: 44)
-                            .background(Color.surfaceTint, in: .circle)
+                            .background(Color.paveSurfaceTint, in: .circle)
                             .contentShape(.circle)
                     }
                     .accessibilityLabel("Meer")

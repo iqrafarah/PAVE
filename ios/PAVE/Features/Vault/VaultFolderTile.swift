@@ -4,8 +4,8 @@ import SwiftUI
 struct VaultFolderTile: View {
     let title: String
     let icon: ImageResource
-    var color: Color = .brandGreen
-    var surface: Color = .surfaceTint
+    var color: Color = .paveAccent
+    var surface: Color = .paveSurfaceTint
     let count: Int
     let isSelected: Bool
     let action: () -> Void

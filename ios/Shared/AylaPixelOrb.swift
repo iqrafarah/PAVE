@@ -20,6 +20,7 @@ struct AylaPixelOrb: View {
     var position: CGPoint?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveOrbPalette) private var palette
     @State private var animator = PixelOrbAnimator()
 
     /// Room around the orb on every side, as a share of its size, for blocks that break loose while it moves.
@@ -50,7 +51,8 @@ struct AylaPixelOrb: View {
                                 level: level,
                                 icon: icon(context.date),
                                 position: position,
-                                reduceMotion: reduceMotion
+                                reduceMotion: reduceMotion,
+                                palette: palette
                             )
                         }
                     }
@@ -66,8 +68,6 @@ struct AylaPixelOrb: View {
 /// The moving parts of the orb between frames: state weights blend instead of jumping, and the loudness is smoothed.
 final class PixelOrbAnimator {
     private static let cells = 23
-    /// Light to dark PAVE greens, the same as in the voice demo.
-    private static let palette: [Color] = [.orbShade0, .orbShade1, .orbShade2, .orbShade3, .orbShade4, .orbShade5, .orbShade6]
 
     private var mix: [Double] = [1, 0, 0, 0]
     private var smoothLevel = 0.0
@@ -88,7 +88,8 @@ final class PixelOrbAnimator {
         level: Double,
         icon: AylaVoiceIcon?,
         position: CGPoint?,
-        reduceMotion: Bool
+        reduceMotion: Bool,
+        palette: [Color]
     ) {
         let t = reduceMotion ? 0 : date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 10_000)
         let dt = lastDate.map { min(date.timeIntervalSince($0), 0.1) } ?? 0
@@ -163,7 +164,7 @@ final class PixelOrbAnimator {
                 }
 
                 v = min(1, max(0, v))
-                let index = min(Self.palette.count - 1, Int(v * Double(Self.palette.count)))
+                let index = min(palette.count - 1, Int(v * Double(palette.count)))
                 let alpha = min(1, max(0.25, (edge - r) * 7))
                 var rect = CGRect(x: CGFloat(i) * cell + gap / 2, y: CGFloat(j) * cell + gap / 2, width: cell - gap, height: cell - gap)
                 var looseAlpha = 1.0
@@ -184,7 +185,7 @@ final class PixelOrbAnimator {
                         .offsetBy(dx: behind.dx * trail + across.dx * fan, dy: behind.dy * trail + across.dy * fan)
                         .insetBy(dx: shrink / 2, dy: shrink / 2)
                 }
-                graphics.fill(Path(rect), with: .color(Self.palette[index].opacity(alpha * looseAlpha)))
+                graphics.fill(Path(rect), with: .color(palette[index].opacity(alpha * looseAlpha)))
             }
         }
     }
@@ -233,4 +234,9 @@ final class PixelOrbAnimator {
     }
     .padding()
     .background(Color.canvas)
+}
+
+extension EnvironmentValues {
+    /// Light to dark tints of the accent, for Ayla's orb; PAVE greens unless the iPhone sets the theme.
+    @Entry var paveOrbPalette: [Color] = [.orbShade0, .orbShade1, .orbShade2, .orbShade3, .orbShade4, .orbShade5, .orbShade6]
 }

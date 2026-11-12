@@ -47,7 +47,7 @@ final class VoiceIntroAnimator {
     private static let outroFlight = 0.7
     private static let outroEnd = 1.1
 
-    private static let palette: [Color] = [.orbShade0, .orbShade1, .orbShade2, .orbShade3, .orbShade4, .orbShade5, .orbShade6]
+    private static let palette: [Color] = [Color.paveOrbShade(0), Color.paveOrbShade(1), Color.paveOrbShade(2), Color.paveOrbShade(3), Color.paveOrbShade(4), Color.paveOrbShade(5), Color.paveOrbShade(6)]
 
     private var phase: AylaVoiceIntro.Phase?
     private var blocks: [Block] = []

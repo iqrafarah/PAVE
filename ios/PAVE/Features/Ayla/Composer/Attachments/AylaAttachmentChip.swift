@@ -9,7 +9,7 @@ struct AylaAttachmentChip: View {
         HStack(spacing: 6) {
             Image(.iconPaperclip)
                 .renderingMode(.template)
-                .foregroundStyle(Color.brandGreen)
+                .foregroundStyle(Color.paveAccent)
                 .accessibilityHidden(true)
             Text(name)
                 .textStyle(.meta)
@@ -38,7 +38,7 @@ struct AylaAttachmentChip: View {
         .frame(height: 32)
         .frame(maxWidth: 260, alignment: .leading)
         .fixedSize(horizontal: true, vertical: false)
-        .background(Color.surfaceTint, in: .rect(cornerRadius: 12))
+        .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 12))
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Bijlage \(name)")
     }

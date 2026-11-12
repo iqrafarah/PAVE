@@ -8,7 +8,7 @@ struct CompanyMonogram: View {
     var body: some View {
         Text(name.prefix(1).uppercased())
             .font(.custom("InterVariable-Bold", size: size * 26 / 64, relativeTo: .title2))
-            .foregroundStyle(Color.brandGreen)
+            .foregroundStyle(Color.paveAccent)
             .frame(width: size, height: size)
             .background(Color.white, in: .circle)
             .overlay { Circle().strokeBorder(Color.cardBorder, lineWidth: 1) }

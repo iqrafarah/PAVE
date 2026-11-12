@@ -10,7 +10,7 @@ struct VaultFormField<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            (Text(title) + (isRequired ? Text(" *").foregroundStyle(Color.brandGreen) : Text("")))
+            (Text(title) + (isRequired ? Text(" *").foregroundStyle(Color.paveAccent) : Text("")))
                 .textStyle(.label)
                 .foregroundStyle(Color.ink)
                 .accessibilityHidden(true)

@@ -48,7 +48,7 @@ struct VaultRemoteFileRow: View {
         .padding(.leading, 12)
         .padding(.trailing, 4)
         .padding(.vertical, 10)
-        .background(Color.surfaceTint, in: .rect(cornerRadius: 12))
+        .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 12))
         .vaultQuickLook($previewURL)
     }
 

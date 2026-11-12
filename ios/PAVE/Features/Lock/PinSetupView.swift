@@ -86,7 +86,7 @@ struct PinSetupView: View {
             }
             Button("Niet nu") { finish(pin: pin, useBiometrics: false) }
                 .textStyle(.link)
-                .foregroundStyle(Color.brandGreen)
+                .foregroundStyle(Color.paveAccent)
                 .frame(maxWidth: .infinity, minHeight: 44)
                 .buttonStyle(.pave)
         }

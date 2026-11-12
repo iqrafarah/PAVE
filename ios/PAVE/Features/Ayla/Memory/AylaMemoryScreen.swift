@@ -56,7 +56,7 @@ struct AylaMemoryScreen: View {
                     .frame(maxHeight: nil)
                 Button("Opnieuw proberen") { Task { await memory.load() } }
                     .textStyle(.label)
-                    .tint(.brandGreen)
+                    .tint(.paveAccent)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .ready:
@@ -73,7 +73,7 @@ struct AylaMemoryScreen: View {
                         .textStyle(.listTitle)
                         .foregroundStyle(Color.ink)
                 }
-                .tint(.brandGreen)
+                .tint(.paveAccent)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .background(Color.white, in: .rect(cornerRadius: 16))

@@ -36,7 +36,7 @@ struct VaultUploadZone: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 24, height: 24)
-                .foregroundStyle(Color.brandGreen)
+                .foregroundStyle(Color.paveAccent)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .textStyle(.label)
@@ -51,10 +51,10 @@ struct VaultUploadZone: View {
         }
         .padding(.horizontal, 16)
         .frame(maxWidth: .infinity, minHeight: 64)
-        .background(Color.dropZone, in: .rect(cornerRadius: 12))
+        .background(Color.paveDropZone, in: .rect(cornerRadius: 12))
         .overlay {
             RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(Color.focusRing, style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+                .strokeBorder(Color.paveFocusRing, style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
         }
         .contentShape(.rect(cornerRadius: 12))
     }
@@ -66,7 +66,7 @@ struct VaultUploadZone: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 52, height: 52)
-                    .foregroundStyle(Color.brandGreen)
+                    .foregroundStyle(Color.paveAccent)
                 VStack(spacing: 4) {
                     Text(title)
                         .textStyle(.action)
@@ -81,10 +81,10 @@ struct VaultUploadZone: View {
             }
             .padding(20)
             .frame(maxWidth: .infinity, minHeight: height)
-            .background(Color.dropZone, in: .rect(cornerRadius: 12))
+            .background(Color.paveDropZone, in: .rect(cornerRadius: 12))
             .overlay {
                 RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(Color.focusRing, style: StrokeStyle(lineWidth: 2, dash: [7, 5]))
+                    .strokeBorder(Color.paveFocusRing, style: StrokeStyle(lineWidth: 2, dash: [7, 5]))
             }
             .contentShape(.rect(cornerRadius: 12))
     }

@@ -16,6 +16,8 @@ struct MainView: View {
     @State private var memory: AylaMemoryModel
     @State private var vault: VaultModel
     @State private var devices: SignedInDevicesModel
+    @State private var profile: ProfileModel
+    @Environment(\.dynamicTypeSize) private var deviceTextSize
     @State private var watchConnection = WatchConnectionModel()
     @State private var destination = MainDestination.ayla
     @State private var isMenuOpen = false
@@ -35,11 +37,12 @@ struct MainView: View {
     private static let sidebarWidth: CGFloat = 800
     private static let sidebarSize: CGFloat = 320
 
-    init(service: (any AylaService)?, vaultService: (any VaultService)?, devicesService: (any DevicesService)? = nil) {
+    init(service: (any AylaService)?, vaultService: (any VaultService)?, devicesService: (any DevicesService)? = nil, profileService: (any ProfileService)? = nil) {
         _model = State(initialValue: AylaChatModel(service: service, drafts: .standard))
         _memory = State(initialValue: AylaMemoryModel(service: service))
         _vault = State(initialValue: VaultModel(service: vaultService))
         _devices = State(initialValue: SignedInDevicesModel(service: devicesService))
+        _profile = State(initialValue: ProfileModel(service: profileService))
     }
 
     var body: some View {
@@ -81,12 +84,19 @@ struct MainView: View {
             }
             .onChange(of: proxy.foldSplit() != nil, initial: true) { _, folded in isFolded = folded }
         }
+        // Your look from Instellingen: the photo in the menu, the text size, and the name Ayla uses.
+        .environment(profile)
+        .dynamicTypeSize(deviceTextSize.shifted(by: profile.textSize))
+        .task { await profile.load() }
+        .onChange(of: profile.profile.displayName) { _, name in
+            if let name { model.nameChanged(name) }
+        }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .environment(\.reportMenuButtonFrame) { menuButtonFrame = $0 }
         .environment(\.hidesChatsButton, menuReplacesButtons)
         .environment(\.chatSearchRequestedAt, chatSearchRequestedAt)
         .focusedSceneValue(\.paveActions, keyboardActions)
-        .tint(.brandGreen)
+        .tint(.paveAccent)
         .environment(memory)
         .task { await model.start() }
         .task { await memory.load() }
@@ -233,6 +243,7 @@ struct MainView: View {
         case .settings:
             SettingsScreen(name: model.firstName, onShowMenu: onShowMenu, onSignOut: appState.signOut)
                 .environment(devices)
+                .environment(profile)
                 .environment(watchConnection)
         case .notifications:
             NotificationsScreen(onShowMenu: onShowMenu)

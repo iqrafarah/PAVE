@@ -173,7 +173,7 @@ struct AylaChatList: View {
                 } label: {
                     Label(conversation.isPinned ? "Losmaken" : "Vastzetten", systemImage: conversation.isPinned ? "pin.slash.fill" : "pin.fill")
                 }
-                .tint(.brandGreen)
+                .tint(.paveAccent)
             }
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -244,7 +244,7 @@ struct AylaChatList: View {
                         .contentShape(.capsule)
                 }
                 .buttonStyle(.pave)
-                .foregroundStyle(Color.brandGreen)
+                .foregroundStyle(Color.paveAccent)
                 .glassEffect(.regular.interactive(), in: .capsule)
             }
             Button {
@@ -320,7 +320,7 @@ struct AylaChatList: View {
                     Task { await actions.refresh() }
                 }
                 .textStyle(.link)
-                .foregroundStyle(Color.brandGreen)
+                .foregroundStyle(Color.paveAccent)
                 .frame(minHeight: 44)
             }
             .frame(maxWidth: .infinity)

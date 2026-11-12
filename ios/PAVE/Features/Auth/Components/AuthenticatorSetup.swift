@@ -12,9 +12,9 @@ struct SetupStepRow: View {
         HStack(alignment: .top, spacing: 12) {
             Text("\(number)")
                 .textStyle(.eyebrow)
-                .foregroundStyle(Color.brandGreen)
+                .foregroundStyle(Color.paveAccent)
                 .frame(width: 28, height: 28)
-                .background(Color.surfaceTint, in: .circle)
+                .background(Color.paveSurfaceTint, in: .circle)
                 .accessibilityLabel("Stap \(number)")
 
             VStack(alignment: .leading, spacing: 4) {
@@ -47,7 +47,7 @@ struct OtherDeviceSetupCard: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Scan met je andere apparaat")
                         .textStyle(.label)
-                        .foregroundStyle(Color.brandGreen)
+                        .foregroundStyle(Color.paveAccent)
                     Text("Open je authenticator-app, voeg een account toe en scan deze code.")
                         .textStyle(.footnote)
                         .foregroundStyle(Color.ink)
@@ -70,7 +70,7 @@ struct OtherDeviceSetupCard: View {
                             copy(secret)
                         }
                         .textStyle(.eyebrow)
-                        .foregroundStyle(Color.brandGreen)
+                        .foregroundStyle(Color.paveAccent)
                         .frame(minWidth: 44, minHeight: 44)
                         .buttonStyle(.pave)
                         .accessibilityLabel(didCopy ? "Instelsleutel gekopieerd" : "Kopieer instelsleutel")
@@ -82,7 +82,7 @@ struct OtherDeviceSetupCard: View {
             }
         }
         .padding(16)
-        .background(Color.surfaceTint, in: .rect(cornerRadius: 12))
+        .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 12))
     }
 
     private func copy(_ secret: String) {
@@ -102,14 +102,14 @@ struct SetupPreviewPlaceholder: View {
             VStack(spacing: 8) {
                 if isLoading {
                     ProgressView()
-                        .tint(.brandGreen)
+                        .tint(.paveAccent)
                 } else {
                     Image(.iconQrcode)
                         .resizable()
                         .frame(width: 44, height: 44)
                     Text("VOORBEELD")
                         .textStyle(.tag)
-                        .foregroundStyle(Color.brandGreen)
+                        .foregroundStyle(Color.paveAccent)
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
                         .padding(.horizontal, 4)
@@ -126,7 +126,7 @@ struct SetupPreviewPlaceholder: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(isLoading ? "QR-code laden..." : "Voorbeeld")
                     .textStyle(.label)
-                    .foregroundStyle(Color.brandGreen)
+                    .foregroundStyle(Color.paveAccent)
                 if !isLoading {
                     Text("Demo-account. Er wordt geen echte verificatiecode gemaakt.")
                         .textStyle(.footnote)
@@ -136,7 +136,7 @@ struct SetupPreviewPlaceholder: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(16)
-        .background(Color.surfaceTint, in: .rect(cornerRadius: 12))
+        .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 12))
         .accessibilityElement(children: .combine)
     }
 }

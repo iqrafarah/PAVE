@@ -28,7 +28,7 @@ struct PixelLevelWave: View {
                     for _ in 0..<blocks {
                         graphics.fill(
                             Path(CGRect(x: x, y: y, width: Self.block, height: Self.block)),
-                            with: .color(blocks > 1 ? .brandGreen : .orbShade2)
+                            with: .color(blocks > 1 ? .paveAccent : Color.paveOrbShade(2))
                         )
                         y += Self.block + Self.gap
                     }

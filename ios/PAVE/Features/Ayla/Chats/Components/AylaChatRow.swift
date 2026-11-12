@@ -31,7 +31,7 @@ struct AylaChatRow: View {
             .padding(.horizontal, 12)
             .background {
                 if isCurrent {
-                    RoundedRectangle(cornerRadius: 12).fill(Color.surfaceTint)
+                    RoundedRectangle(cornerRadius: 12).fill(Color.paveSurfaceTint)
                 }
             }
             .contentShape(.rect(cornerRadius: 12))
