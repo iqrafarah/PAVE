@@ -22,12 +22,14 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
         public let name: String
         public let mimeType: String
         public let storagePath: String
+        public let role: VaultFileRole
 
-        public init(id: String, name: String, mimeType: String, storagePath: String) {
+        public init(id: String, name: String, mimeType: String, storagePath: String, role: VaultFileRole = .document) {
             self.id = id
             self.name = name
             self.mimeType = mimeType
             self.storagePath = storagePath
+            self.role = role
         }
     }
 
@@ -47,6 +49,8 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
     /// The skills the user kept; Ayla's proposals that were not accepted are left out.
     public var skills: [String]
     public var files: [File]
+    /// When you allowed Ayla to read this item outside a single question; nil means she may not.
+    public var aylaAllowedAt: Date?
     public var createdAt: Date
     public var updatedAt: Date
 
@@ -66,6 +70,7 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
         source: Source = .user,
         skills: [String] = [],
         files: [File] = [],
+        aylaAllowedAt: Date? = nil,
         createdAt: Date = .now,
         updatedAt: Date = .now
     ) {
@@ -84,6 +89,7 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
         self.source = source
         self.skills = skills
         self.files = files
+        self.aylaAllowedAt = aylaAllowedAt
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

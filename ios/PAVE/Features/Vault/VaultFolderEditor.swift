@@ -8,6 +8,8 @@ struct VaultFolderEditor: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(VaultModel.self) private var model
     let folder: VaultFolder?
+    /// A category folder (Certificaten, Diploma's, ...): its look changes, the items in it do not.
+    let category: VaultCategory?
     let onCreate: (VaultFolder) -> Void
 
     @State private var name: String
@@ -18,10 +20,17 @@ struct VaultFolderEditor: View {
     @State private var error: String?
     @FocusState private var isNameFocused: Bool
 
-    init(folder: VaultFolder?, style: (color: VaultFolderColor, icon: VaultFolderIcon)?, onCreate: @escaping (VaultFolder) -> Void = { _ in }) {
+    init(
+        folder: VaultFolder?,
+        category: VaultCategory? = nil,
+        name: String? = nil,
+        style: (color: VaultFolderColor, icon: VaultFolderIcon)?,
+        onCreate: @escaping (VaultFolder) -> Void = { _ in }
+    ) {
         self.folder = folder
+        self.category = category
         self.onCreate = onCreate
-        _name = State(initialValue: folder?.name ?? "")
+        _name = State(initialValue: folder?.name ?? name ?? "")
         _color = State(initialValue: style?.color ?? .green)
         _icon = State(initialValue: style?.icon ?? .folder)
     }
@@ -34,6 +43,7 @@ struct VaultFolderEditor: View {
     private var isWide: Bool { size.width >= 500 && size.height < 560 }
 
     private var trimmedName: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var isNew: Bool { folder == nil && category == nil }
     private static let errors = [VaultMessages.folderNameTaken, VaultMessages.folderNameMissing, VaultMessages.message(for: .noConnection)]
 
     var body: some View {
@@ -93,7 +103,7 @@ struct VaultFolderEditor: View {
             .scrollDismissesKeyboard(.interactively)
 
             PavePrimaryButton(
-                title: folder == nil ? "Map aanmaken" : "Bewaren",
+                title: isNew ? "Map aanmaken" : "Bewaren",
                 loadingTitle: "Bewaren…",
                 isLoading: isSaving,
                 action: save
@@ -106,7 +116,7 @@ struct VaultFolderEditor: View {
     }
 
     private var title: some View {
-        Text(folder == nil ? VaultMessages.newFolderTitle : "Map aanpassen")
+        Text(isNew ? VaultMessages.newFolderTitle : "Map aanpassen")
             .textStyle(.emptyTitle)
             .foregroundStyle(Color.ink)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -119,7 +129,7 @@ struct VaultFolderEditor: View {
             icon: icon.image,
             color: color.color,
             surface: color.surface,
-            count: folder.map { model.count(in: .folder($0.id)) } ?? 0,
+            count: category.map { model.count(in: .category($0)) } ?? folder.map { model.count(in: .folder($0.id)) } ?? 0,
             isSelected: false
         ) {}
         .allowsHitTesting(false)
@@ -264,7 +274,11 @@ struct VaultFolderEditor: View {
         isNameFocused = false
         isSaving = true
         Task {
-            if let folder {
+            if let category {
+                let saved = await model.updateCategory(category, name: name, color: color, icon: icon)
+                isSaving = false
+                if saved { dismiss() } else { show(takeProblem()) }
+            } else if let folder {
                 let saved = await model.updateFolder(folder, name: name, color: color, icon: icon)
                 isSaving = false
                 if saved { dismiss() } else { show(takeProblem()) }

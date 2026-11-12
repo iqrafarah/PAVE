@@ -15,6 +15,8 @@ final class VaultModel {
 
     private(set) var state = State.loading
     private(set) var contents = VaultContents()
+    /// How you set up the category folders; a category without an entry looks as standard.
+    private(set) var categoryFolders: [VaultCategory: VaultCategoryFolder] = [:]
     /// Saving, moving or deleting did not work; the screen shows it.
     var problem: String?
 
@@ -22,6 +24,7 @@ final class VaultModel {
     /// Folder colours and icons kept on this device while the database has no columns for them yet.
     @ObservationIgnored private let localStyles = UserDefaults.standard
     private static let localStylesKey = "vaultFolderStyles"
+    private static let localCategoryFoldersKey = "vaultCategoryFolders"
 
     init(service: (any VaultService)?) {
         self.service = service
@@ -74,6 +77,81 @@ final class VaultModel {
         } catch {
             if state != .ready { state = .failed(VaultError(error)) }
         }
+        await loadCategoryFolders()
+    }
+
+    // MARK: Category folders
+
+    func title(of category: VaultCategory) -> String {
+        categoryFolders[category]?.name ?? category.title
+    }
+
+    func isHidden(_ category: VaultCategory) -> Bool {
+        categoryFolders[category]?.isHidden == true
+    }
+
+    var hasHiddenCategories: Bool {
+        categoryFolders.values.contains(where: \.isHidden)
+    }
+
+    func style(of category: VaultCategory) -> (color: VaultFolderColor, icon: VaultFolderIcon?) {
+        (categoryFolders[category]?.color ?? .green, categoryFolders[category]?.icon)
+    }
+
+    @discardableResult
+    func updateCategory(_ category: VaultCategory, name: String, color: VaultFolderColor, icon: VaultFolderIcon) async -> Bool {
+        var folder = categoryFolders[category] ?? VaultCategoryFolder(category: category)
+        folder.name = name == category.title ? nil : name
+        folder.color = color == .green ? nil : color
+        folder.icon = icon == category.folderStyleIcon ? nil : icon
+        return await saveCategoryFolder(folder)
+    }
+
+    /// The folder leaves the row; its items stay in the vault.
+    func hide(_ category: VaultCategory) async {
+        var folder = categoryFolders[category] ?? VaultCategoryFolder(category: category)
+        folder.isHidden = true
+        await saveCategoryFolder(folder)
+    }
+
+    func showHiddenCategories() async {
+        for var folder in categoryFolders.values where folder.isHidden {
+            folder.isHidden = false
+            await saveCategoryFolder(folder)
+        }
+    }
+
+    private func loadCategoryFolders() async {
+        guard let service else { return }
+        do {
+            let folders = try await service.categoryFolders()
+            categoryFolders = Dictionary(folders.map { ($0.category, $0) }, uniquingKeysWith: { $1 })
+        } catch VaultError.missingColumn {
+            categoryFolders = localCategoryFolders()
+        } catch {}
+    }
+
+    @discardableResult
+    private func saveCategoryFolder(_ folder: VaultCategoryFolder) async -> Bool {
+        guard let service else { return false }
+        do {
+            try await service.saveCategoryFolder(folder)
+        } catch VaultError.missingColumn {
+            var local = localCategoryFolders()
+            local[folder.category] = folder
+            localStyles.set(local.values.map(\.stored), forKey: Self.localCategoryFoldersKey)
+        } catch {
+            fail(error)
+            return false
+        }
+        categoryFolders[folder.category] = folder
+        PaveHaptics.success()
+        return true
+    }
+
+    private func localCategoryFolders() -> [VaultCategory: VaultCategoryFolder] {
+        let stored = localStyles.array(forKey: Self.localCategoryFoldersKey) as? [[String: String]] ?? []
+        return Dictionary(stored.compactMap(VaultCategoryFolder.init(stored:)).map { ($0.category, $0) }, uniquingKeysWith: { $1 })
     }
 
     func retry() async {
@@ -90,6 +168,29 @@ final class VaultModel {
                 try await service.add(draft)
             }
         }
+    }
+
+    // MARK: Bewijs toevoegen
+
+    /// The steps of adding evidence report their own errors, so these throw instead of setting `problem`.
+    func addItem(_ draft: VaultItemDraft) async throws -> String {
+        guard let service else { throw VaultError.unavailable }
+        return try await service.add(draft)
+    }
+
+    func attach(_ upload: VaultUpload, to itemID: String) async throws {
+        guard let service else { throw VaultError.unavailable }
+        try await service.attach(upload, to: itemID)
+    }
+
+    func addSkills(_ names: [String], to itemID: String) async throws {
+        guard let service else { throw VaultError.unavailable }
+        try await service.addSkills(names, to: itemID)
+    }
+
+    func setAylaAllowed(_ allowed: Bool, itemID: String) async throws {
+        guard let service else { throw VaultError.unavailable }
+        try await service.setAylaAllowed(allowed, itemID: itemID)
     }
 
     func move(_ item: VaultItem, to folderID: String?) async {

@@ -3,7 +3,16 @@ import Foundation
 public protocol VaultService: Sendable {
     /// Everything in the vault of the signed-in user, the most recently changed first.
     func contents() async throws -> VaultContents
-    func add(_ draft: VaultItemDraft) async throws
+    /// Returns the id of the new item, so files and skills can be added to it.
+    @discardableResult
+    func add(_ draft: VaultItemDraft) async throws -> String
+    /// Uploads the file to the private bucket and records it on the item. A cover needs the `role` column
+    /// (migration 20261112120000); without it a cover is refused with `missingColumn` and nothing stays behind.
+    func attach(_ upload: VaultUpload, to itemID: String) async throws
+    /// Skills you add yourself: accepted straight away. Names that are already on the item are skipped by the server.
+    func addSkills(_ names: [String], to itemID: String) async throws
+    /// "Ayla mag dit bekijken en gebruiken": the standing yes for one item, which you can take back.
+    func setAylaAllowed(_ allowed: Bool, itemID: String) async throws
     func update(_ draft: VaultItemDraft, itemID: String) async throws
     /// `nil` takes the item out of its folder; it stays in the vault.
     func move(itemID: String, to folderID: String?) async throws
@@ -14,6 +23,9 @@ public protocol VaultService: Sendable {
     func updateFolder(id: String, name: String, color: VaultFolderColor, icon: VaultFolderIcon) async throws -> Bool
     /// The items in the folder stay in the vault.
     func deleteFolder(id: String) async throws
+    /// How you set up the category folders. Throws `missingColumn` while `vault_category_folders` does not exist yet.
+    func categoryFolders() async throws -> [VaultCategoryFolder]
+    func saveCategoryFolder(_ folder: VaultCategoryFolder) async throws
 }
 
 public enum VaultError: Error, Equatable, Sendable {
@@ -22,8 +34,10 @@ public enum VaultError: Error, Equatable, Sendable {
     case notAllowed
     case noConnection
     case duplicateFolderName
-    /// The database does not have a column the app sent yet (PostgREST code PGRST204).
+    /// The database does not have a column or table the app uses yet (PostgREST code PGRST204 or PGRST205).
     case missingColumn
+    /// The file is too large, empty or of a type the vault does not take.
+    case fileRejected
     case unavailable
 
     public init(_ error: any Error) { self = (error as? VaultError) ?? .unavailable }
@@ -56,7 +70,7 @@ public struct SupabaseVaultService: VaultService {
         let itemRequest = try await request(
             restURL.appending(path: "vault_items"),
             query: [
-                ("select", "*,vault_item_skills(name,status),vault_item_files(id,file_name,mime_type,storage_path)"),
+                ("select", "*,vault_item_skills(name,status),vault_item_files(*)"),
                 ("order", "updated_at.desc"),
             ]
         )
@@ -74,8 +88,109 @@ public struct SupabaseVaultService: VaultService {
         return VaultContents(items: itemRows.compactMap(\.item), folders: folderRows.map(\.folder))
     }
 
-    public func add(_ draft: VaultItemDraft) async throws {
-        _ = try await send(try await request(restURL.appending(path: "vault_items"), method: "POST", json: draft.row), accepting: [201])
+    @discardableResult
+    public func add(_ draft: VaultItemDraft) async throws -> String {
+        var urlRequest = try await request(
+            restURL.appending(path: "vault_items"), query: [("select", "id")], method: "POST", json: draft.row
+        )
+        urlRequest.setValue("return=representation", forHTTPHeaderField: "Prefer")
+        let data = try await send(urlRequest, accepting: [201])
+        guard let id = try? JSONDecoder().decode([IDRow].self, from: data).first?.id else { throw VaultError.unavailable }
+        return id
+    }
+
+    public func attach(_ upload: VaultUpload, to itemID: String) async throws {
+        guard upload.problem == nil else { throw VaultError.fileRejected }
+        guard let token = await accessToken() else { throw VaultError.notSignedIn }
+        guard let userID = Self.userID(fromToken: token) else { throw VaultError.notSignedIn }
+        let path = "\(userID)/\(itemID.lowercased())/\(UUID().uuidString.lowercased()).\(upload.fileExtension)"
+
+        var object = try await request(storageURL.appending(path: "object/\(Self.bucket)/\(path)"), method: "POST")
+        object.setValue(upload.mimeType, forHTTPHeaderField: "Content-Type")
+        object.setValue("false", forHTTPHeaderField: "x-upsert")
+        object.httpBody = upload.data
+        object.timeoutInterval = 120
+        _ = try await send(object, accepting: [200])
+
+        var row: [String: Any] = [
+            "item_id": itemID,
+            "storage_path": path,
+            "file_name": upload.fileName,
+            "mime_type": upload.mimeType,
+            "file_size_bytes": upload.data.count,
+            "checksum_sha256": upload.checksum,
+            "role": upload.role.rawValue,
+        ]
+        do {
+            try await insertFile(row)
+        } catch VaultError.missingColumn where upload.role == .document {
+            row["role"] = nil
+            do {
+                try await insertFile(row)
+            } catch {
+                await removeObjects([path])
+                throw error
+            }
+        } catch {
+            await removeObjects([path])
+            throw error
+        }
+    }
+
+    public func addSkills(_ names: [String], to itemID: String) async throws {
+        let rows = VaultSkills.cleaned(names).map { ["item_id": itemID, "name": $0] }
+        guard !rows.isEmpty else { return }
+        var urlRequest = try await request(restURL.appending(path: "vault_item_skills"), method: "POST", json: rows)
+        urlRequest.setValue("resolution=ignore-duplicates", forHTTPHeaderField: "Prefer")
+        _ = try await send(urlRequest, accepting: [201])
+    }
+
+    public func setAylaAllowed(_ allowed: Bool, itemID: String) async throws {
+        let value: Any = allowed ? Date.now.formatted(.iso8601) : NSNull()
+        _ = try await send(try await request(
+            restURL.appending(path: "vault_items"), query: [("id", "eq.\(itemID)")], method: "PATCH", json: ["ayla_allowed_at": value]
+        ), accepting: [200, 204])
+    }
+
+    public func categoryFolders() async throws -> [VaultCategoryFolder] {
+        let data = try await send(try await request(restURL.appending(path: "vault_category_folders"), query: [("select", "*")]))
+        guard let rows = try? JSONDecoder().decode([CategoryFolderRow].self, from: data) else { throw VaultError.unavailable }
+        return rows.compactMap(\.folder)
+    }
+
+    public func saveCategoryFolder(_ folder: VaultCategoryFolder) async throws {
+        var urlRequest = try await request(
+            restURL.appending(path: "vault_category_folders"), query: [("on_conflict", "user_id,category")], method: "POST", json: folder.row
+        )
+        urlRequest.setValue("resolution=merge-duplicates", forHTTPHeaderField: "Prefer")
+        _ = try await send(urlRequest, accepting: [200, 201, 204])
+    }
+
+    private func insertFile(_ row: [String: Any]) async throws {
+        _ = try await send(try await request(restURL.appending(path: "vault_item_files"), method: "POST", json: row), accepting: [201])
+    }
+
+    /// Clean-up after a failed step: the object is useless without its row.
+    private func removeObjects(_ paths: [String]) async {
+        guard let urlRequest = try? await request(
+            storageURL.appending(path: "object/\(Self.bucket)"), method: "DELETE", json: ["prefixes": paths]
+        ) else { return }
+        _ = try? await send(urlRequest, accepting: [200])
+    }
+
+    /// The account id (`sub`) inside the access token, lowercased like the storage paths.
+    static func userID(fromToken token: String) -> String? {
+        let parts = token.split(separator: ".")
+        guard parts.count == 3 else { return nil }
+        var payload = String(parts[1]).replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        payload += String(repeating: "=", count: (4 - payload.count % 4) % 4)
+        guard
+            let data = Data(base64Encoded: payload),
+            let claims = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let subject = claims["sub"] as? String,
+            UUID(uuidString: subject) != nil
+        else { return nil }
+        return subject.lowercased()
     }
 
     public func update(_ draft: VaultItemDraft, itemID: String) async throws {
@@ -89,7 +204,7 @@ public struct SupabaseVaultService: VaultService {
             restURL.appending(path: "vault_items"),
             query: [("id", "eq.\(itemID)")],
             method: "PATCH",
-            json: ["folder_id": folderID ?? NSNull()]
+            json: ["folder_id": folderID ?? NSNull()] as [String: Any]
         ), accepting: [200, 204])
     }
 
@@ -148,7 +263,7 @@ public struct SupabaseVaultService: VaultService {
         _ url: URL,
         query: [(String, String)] = [],
         method: String = "GET",
-        json: [String: Any]? = nil
+        json: Any? = nil
     ) async throws -> URLRequest {
         guard let token = await accessToken() else { throw VaultError.notSignedIn }
         var components = URLComponents(url: url, resolvingAgainstBaseURL: false)!
@@ -181,7 +296,7 @@ public struct SupabaseVaultService: VaultService {
     static func error(status: Int, body: Data) -> VaultError {
         let code = (try? JSONDecoder().decode(PostgrestError.self, from: body))?.code
         if code == "23505" { return .duplicateFolderName }
-        if code == "PGRST204" { return .missingColumn }
+        if code == "PGRST204" || code == "PGRST205" { return .missingColumn }
         switch status {
         case 401: return .notSignedIn
         case 403: return .notAllowed
@@ -192,6 +307,10 @@ public struct SupabaseVaultService: VaultService {
 
 private struct PostgrestError: Decodable {
     let code: String?
+}
+
+private struct IDRow: Decodable {
+    let id: String
 }
 
 struct ItemRow: Decodable {
@@ -205,6 +324,7 @@ struct ItemRow: Decodable {
         let file_name: String
         let mime_type: String
         let storage_path: String
+        let role: String?
     }
 
     let id: String
@@ -222,6 +342,7 @@ struct ItemRow: Decodable {
     let source: String
     let created_at: String
     let updated_at: String
+    let ayla_allowed_at: String?
     let vault_item_skills: [SkillRow]?
     let vault_item_files: [FileRow]?
 
@@ -249,10 +370,36 @@ struct ItemRow: Decodable {
                 $0.localizedStandardCompare($1) == .orderedAscending
             },
             files: (vault_item_files ?? []).map {
-                VaultItem.File(id: $0.id, name: $0.file_name, mimeType: $0.mime_type, storagePath: $0.storage_path)
+                VaultItem.File(
+                    id: $0.id,
+                    name: $0.file_name,
+                    mimeType: $0.mime_type,
+                    storagePath: $0.storage_path,
+                    role: $0.role.flatMap(VaultFileRole.init) ?? .document
+                )
             },
+            aylaAllowedAt: ayla_allowed_at.map(SupabaseAylaService.date(from:)),
             createdAt: SupabaseAylaService.date(from: created_at),
             updatedAt: SupabaseAylaService.date(from: updated_at)
+        )
+    }
+}
+
+struct CategoryFolderRow: Decodable {
+    let category: String
+    let name: String?
+    let color: String?
+    let icon: String?
+    let is_hidden: Bool
+
+    var folder: VaultCategoryFolder? {
+        guard let category = VaultCategory(rawValue: category) else { return nil }
+        return VaultCategoryFolder(
+            category: category,
+            name: name,
+            color: color.flatMap(VaultFolderColor.init),
+            icon: icon.flatMap(VaultFolderIcon.init),
+            isHidden: is_hidden
         )
     }
 }

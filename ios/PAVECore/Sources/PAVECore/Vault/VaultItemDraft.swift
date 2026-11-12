@@ -38,6 +38,39 @@ public struct VaultItemDraft: Equatable, Sendable {
         folderID = item.folderID
     }
 
+    /// The fields the "Bewijs toevoegen" form asks for (Figma marks them all as required).
+    public enum Field: CaseIterable, Sendable {
+        case title
+        case organisation
+        case period
+        case description
+    }
+
+    /// The fields of the form that are still empty, in the order they appear.
+    public var missingFields: [Field] {
+        Field.allCases.filter { field in
+            switch field {
+            case .title: Self.trimmed(title).isEmpty
+            case .organisation: Self.trimmed(organisationName).isEmpty
+            case .period: category.hasPeriod ? startDate == nil : issuedOn == nil
+            case .description: Self.trimmed(description).isEmpty
+            }
+        }
+    }
+
+    /// "feb 2025 - nu" or "jun 2025", the same way an item shows it; nil while nothing is chosen.
+    public var period: String? {
+        VaultItem(
+            id: "",
+            category: category,
+            title: "",
+            startDate: category.hasPeriod ? startDate : nil,
+            endDate: category.hasPeriod && !isCurrent ? endDate : nil,
+            issuedOn: category.hasPeriod ? nil : issuedOn,
+            isCurrent: category.hasPeriod && isCurrent
+        ).period
+    }
+
     public static let maximumTitleLength = 200
     public static let maximumDescriptionLength = 10_000
 

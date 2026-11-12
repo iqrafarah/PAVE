@@ -64,6 +64,20 @@ What it changes:
 
 Not needed: steps 2 and 3 of adding evidence use the existing `vault_item_files` and `vault_item_skills`, and "Verifiëren" uses `vault_validation_requests`. The task list next to the consent picker (Items selecteren, Vacature kiezen, Kluis toestemming, CV genereren) is not stored yet; decide that together with the Ayla task flow.
 
+## Round three: adding evidence and category folders (not applied)
+
+Migration `20261112120000_vault_cover_and_category_folders.sql`. Run it together with the web team.
+
+- **Adding evidence on iOS** follows Figma FEDDIES 1348:1169 to 1348:2537, in four steps:
+  1. **Basis:** upload a file, or add without a file; then title, type, organisation, period and description (all required, as in Figma).
+  2. **Documenten:** with or without a cover photo.
+  3. **Vaardigheden:** skills from the rest of the vault, or your own.
+  4. **Toestemming:** the item is saved; "Ayla mag dit document bekijken en gebruiken" starts unticked and only a tick sets `ayla_allowed_at`.
+- Files go to the private bucket `pave-vault` at `<user>/<item>/<uuid>.<ext>` and get a row in `vault_item_files`. Photos are stored as JPEG without their metadata (no location).
+- **Cover:** `vault_item_files.role` (`document` or `cover`), at most one cover per item, always an image. Until the column exists, iOS saves the item without its cover and says so.
+- **Category folders** (Certificaten, Diploma's, Feedback, Projecten, ...) are filters on the item category, not rows in `vault_folders`. `vault_category_folders` keeps per account a name, colour and icon (null = standard) and whether the folder is hidden. Hiding never touches the items. Until the table exists, iOS keeps these settings on the phone.
+- **Ayla's skill proposals** from the design are not built yet. Ayla may only read the evidence after step 4, so proposals have to come after the consent, not before.
+
 ## Rollout sequence
 
 1. Review categories, folder behavior, status transitions, file limits and validation ownership with Daaf and the web team.

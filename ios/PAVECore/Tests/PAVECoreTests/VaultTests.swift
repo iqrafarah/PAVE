@@ -193,3 +193,132 @@ struct SupabaseVaultServiceTests {
         ])
     }
 }
+
+struct VaultUploadTests {
+    @Test func checksLikeTheBucket() {
+        #expect(VaultUpload(data: Data([1]), fileName: "verslag.pdf", mimeType: "application/pdf").problem == nil)
+        #expect(VaultUpload(data: Data(), fileName: "leeg.pdf", mimeType: "application/pdf").problem == .empty)
+        #expect(VaultUpload(data: Data(count: VaultUpload.maximumBytes + 1), fileName: "groot.pdf", mimeType: "application/pdf").problem == .tooLarge)
+        #expect(VaultUpload(data: Data([1]), fileName: "film.mov", mimeType: "video/quicktime").problem == .unsupportedType)
+        #expect(VaultUpload(data: Data([1]), fileName: "cv.pdf", mimeType: "application/pdf", role: .cover).problem == .notAnImage)
+        #expect(VaultUpload(data: Data([1]), fileName: "foto.png", mimeType: "IMAGE/PNG", role: .cover).problem == nil)
+    }
+
+    @Test func describesTheFileLikeTheForm() {
+        let upload = VaultUpload(data: Data(count: 2_400_000), fileName: "LiveWall-eindstage_verslag.pdf", mimeType: "application/pdf")
+        #expect(upload.summary.hasPrefix("PDF - "))
+        #expect(upload.summary.hasSuffix("MB"))
+        #expect(upload.suggestedTitle == "LiveWall eindstage verslag")
+        #expect(VaultUpload.mimeType(forExtension: "JPG") == "image/jpeg")
+        #expect(VaultUpload.mimeType(forExtension: "docx") == "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        #expect(VaultUpload.mimeType(forExtension: "exe") == nil)
+    }
+
+    @Test func checksumIsSha256Hex() {
+        let upload = VaultUpload(data: Data("abc".utf8), fileName: "a.txt", mimeType: "text/plain")
+        #expect(upload.checksum == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
+    }
+
+    @Test func typesMatchTheMigration() throws {
+        let sql = try String(contentsOf: VaultMigration.url("20261110120000_vault.sql"), encoding: .utf8)
+        for type in VaultUpload.allowedTypes { #expect(sql.contains("'\(type)'")) }
+        #expect(sql.contains("\(VaultUpload.maximumBytes)"))
+        let cover = try String(contentsOf: VaultMigration.url("20261112120000_vault_cover_and_category_folders.sql"), encoding: .utf8)
+        for type in VaultUpload.imageTypes { #expect(cover.contains("'\(type)'")) }
+    }
+}
+
+struct VaultSkillsTests {
+    @Test func keepsEachNameOnce() {
+        #expect(VaultSkills.cleaned(["  Figma ", "figma", "Samen  werken", "", String(repeating: "x", count: 121)]) == ["Figma", "Samen werken"])
+    }
+
+    @Test func knownSkillsMostUsedFirst() {
+        let items = [
+            VaultItem(id: "a", category: .projects, title: "A", skills: ["Swift", "Figma"]),
+            VaultItem(id: "b", category: .projects, title: "B", skills: ["figma", "Scrum"]),
+        ]
+        #expect(VaultSkills.known(in: items) == ["Figma", "Scrum", "Swift"])
+    }
+}
+
+struct VaultEvidenceFormTests {
+    @Test func asksForEveryFieldOfTheForm() {
+        var draft = VaultItemDraft(category: .internships)
+        #expect(draft.missingFields == [.title, .organisation, .period, .description])
+        draft.title = "Stage"
+        draft.organisationName = "LiveWall"
+        draft.startDate = VaultDay(year: 2025, month: 2, day: 1)
+        draft.description = "Front-end"
+        #expect(draft.missingFields.isEmpty)
+        draft.category = .certificates
+        #expect(draft.missingFields == [.period])
+    }
+}
+
+extension SupabaseVaultServiceTests {
+    @Test func readsTheAccountFromTheToken() {
+        let payload = Data(#"{"sub":"2B1A0C4E-8D3F-4A21-9C7E-5F6B8A9D0E12","aal":"aal2"}"#.utf8).base64EncodedString()
+            .replacingOccurrences(of: "=", with: "").replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_")
+        #expect(SupabaseVaultService.userID(fromToken: "e30.\(payload).sig") == "2b1a0c4e-8d3f-4a21-9c7e-5f6b8a9d0e12")
+        #expect(SupabaseVaultService.userID(fromToken: "nope") == nil)
+    }
+
+    @Test func readsCoverAndAylaConsent() throws {
+        let json = """
+        [{"id":"a","category":"projects","title":"App","is_current":false,"verification_status":"toVerify","source":"user",
+          "created_at":"2026-11-12T10:00:00Z","updated_at":"2026-11-12T10:00:00Z","ayla_allowed_at":"2026-11-12T10:05:00Z",
+          "vault_item_files":[{"id":"f","file_name":"omslag.jpeg","mime_type":"image/jpeg","storage_path":"u/a/f.jpeg","role":"cover"},
+                              {"id":"g","file_name":"verslag.pdf","mime_type":"application/pdf","storage_path":"u/a/g.pdf"}]}]
+        """
+        let item = try #require(try JSONDecoder().decode([ItemRow].self, from: Data(json.utf8)).first?.item)
+        #expect(item.files.map(\.role) == [.cover, .document])
+        #expect(item.aylaAllowedAt != nil)
+    }
+}
+
+enum VaultMigration {
+    static func url(_ name: String) -> URL {
+        URL(filePath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appending(path: "shared/supabase/migrations/\(name)")
+    }
+}
+
+struct VaultCategoryFolderTests {
+    @Test func storesOnlyWhatDiffersFromTheCategory() {
+        let folder = VaultCategoryFolder(category: .projects, name: " Projecten ", color: .blue, icon: nil, isHidden: true)
+        let row = folder.row
+        #expect(row["category"] as? String == "projects")
+        #expect(row["name"] is NSNull)
+        #expect(row["color"] as? String == "blue")
+        #expect(row["icon"] is NSNull)
+        #expect(row["is_hidden"] as? Bool == true)
+        #expect(VaultCategoryFolder(category: .projects, name: "Mijn werk").row["name"] as? String == "Mijn werk")
+    }
+
+    @Test func survivesBeingKeptOnThePhone() {
+        let folder = VaultCategoryFolder(category: .feedback, name: "Wat anderen zeggen", color: .rose, icon: .heart, isHidden: false)
+        #expect(VaultCategoryFolder(stored: folder.stored) == folder)
+        #expect(VaultCategoryFolder(stored: ["category": "pets"]) == nil)
+    }
+
+    @Test func readsTheRows() throws {
+        let json = #"[{"category":"diplomas","name":null,"color":"slate","icon":"trophy","is_hidden":false},{"category":"pets","is_hidden":true}]"#
+        let folders = try JSONDecoder().decode([CategoryFolderRow].self, from: Data(json.utf8)).compactMap(\.folder)
+        #expect(folders == [VaultCategoryFolder(category: .diplomas, color: .slate, icon: .trophy)])
+    }
+
+    @Test func aMissingTableMeansNotMigratedYet() {
+        let body = Data(#"{"code":"PGRST205","message":"Could not find the table"}"#.utf8)
+        #expect(SupabaseVaultService.error(status: 404, body: body) == .missingColumn)
+    }
+
+    @Test func everyCategoryAndStyleIsAllowedByTheMigration() throws {
+        let sql = try String(contentsOf: VaultMigration.url("20261112120000_vault_cover_and_category_folders.sql"), encoding: .utf8)
+        for category in VaultCategory.allCases { #expect(sql.contains("'\(category.rawValue)'")) }
+        for color in VaultFolderColor.allCases { #expect(sql.contains("'\(color.rawValue)'")) }
+        for icon in VaultFolderIcon.allCases { #expect(sql.contains("'\(icon.rawValue)'")) }
+    }
+}
