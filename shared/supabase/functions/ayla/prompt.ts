@@ -1,3 +1,4 @@
+import { type AllowedVault, vaultPrompt } from './vault.ts'
 import type { Device, Screen } from './contract.ts'
 import { MEMORY_CATEGORIES, type Memory, memoryPrompt } from './memory.ts'
 
@@ -66,9 +67,7 @@ const SCREEN_NAMES: Record<Screen, string> = {
 // honestly and offers to add something instead (Figma "Wil je iets toevoegen?").
 const DATA_PROMPT = `
 ## Wat je over de gebruiker weet
-Je hebt geen toegang tot de kluis van de gebruiker. Die koppeling bestaat nog niet. Zeg dat
-eerlijk als iemand vraagt wat er in de kluis staat, en vraag de gebruiker zelf te vertellen wat
-nodig is. Je weet alleen wat de gebruiker in dit gesprek vertelt of als bestand toevoegt.
+Je weet wat de gebruiker in dit gesprek vertelt of als bestand toevoegt, en de items uit de kluis die hieronder staan.
 
 Vraagt iemand of iets in de kluis staat, of wil iemand iets bewaren (een diploma, certificaat,
 stage, project of ervaring)? Zeg dan kort dat je niet in de kluis kunt kijken en vraag of de
@@ -99,13 +98,14 @@ export interface PromptInput {
   firstName?: string
   context?: { screen: Screen }
   memory?: Memory
+  vault?: AllowedVault
 }
 
 // Layer 2b: the user talks and listens instead of reading.
 const VOICE_PROMPT = 'De gebruiker praat met je en hoort je antwoord. Antwoord in twee of drie korte, gesproken zinnen, zonder lijstjes. Noem hooguit drie dingen. Kaarten zoals vacatures ziet de gebruiker op het scherm: vat ze kort samen en lees ze niet op.'
 
 export function buildSystemPrompt(input: PromptInput): string {
-  const layers = [CORE_PROMPT, DEVICE_PROMPTS[input.device], DATA_PROMPT, memoryPrompt(input.memory ?? { status: 'unavailable' })]
+  const layers = [CORE_PROMPT, DEVICE_PROMPTS[input.device], DATA_PROMPT, vaultPrompt(input.vault), memoryPrompt(input.memory ?? { status: 'unavailable' })]
   if (input.input === 'voice' && input.device !== 'watch') layers.push(VOICE_PROMPT)
   if (input.firstName) layers.push(`De gebruiker heet ${input.firstName}.`)
   if (input.context) layers.push(`De gebruiker heeft nu ${SCREEN_NAMES[input.context.screen]} open.`)

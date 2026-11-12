@@ -3,6 +3,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { answer, HISTORY_LIMIT, type PastMessage, titleFrom } from './brain.ts'
 import { loadMemory } from './memory.ts'
+import { loadAllowedVault } from './vault.ts'
 import { type AylaReply, parseRequest } from './contract.ts'
 import { openRouterCompletion } from './openrouter.ts'
 import { MODEL_OUTPUT_SCHEMA } from './prompt.ts'
@@ -42,7 +43,7 @@ Deno.serve(async (req) => {
     conversationId = data.id as string
   }
 
-  const [{ data: past }, { data: profile }, memory] = await Promise.all([
+  const [{ data: past }, { data: profile }, memory, vault] = await Promise.all([
     supabase
       .from('ayla_messages')
       .select('role, text')
@@ -51,6 +52,7 @@ Deno.serve(async (req) => {
       .limit(HISTORY_LIMIT),
     supabase.from('profiles').select('preferred_name, full_name').eq('id', user.id).maybeSingle(),
     loadMemory(supabase),
+    loadAllowedVault(supabase),
   ])
   const history = ((past ?? []) as PastMessage[]).reverse()
   const firstName = (profile?.preferred_name || profile?.full_name?.split(' ')[0] || undefined) as string | undefined
@@ -59,7 +61,7 @@ Deno.serve(async (req) => {
   const adzunaKey = Deno.env.get('ADZUNA_APP_KEY')
 
   let title: string | undefined
-  const input = { request, conversationId, history, firstName, memory, onTitle: request.conversationId ? undefined : (t: string) => { title = t } }
+  const input = { request, conversationId, history, firstName, memory, vault, onTitle: request.conversationId ? undefined : (t: string) => { title = t } }
   const deps = {
     complete: openRouterCompletion(openRouterKey, MODEL_OUTPUT_SCHEMA),
     searchVacancies: adzunaId && adzunaKey ? adzunaSearch(adzunaId, adzunaKey) : undefined,

@@ -31,11 +31,6 @@ struct VaultScreen: View {
 
     private var visibleItems: [VaultItem] { filter.apply(to: model.items) }
 
-    /// The four folders from the design, then the other categories that hold something.
-    private var categories: [VaultCategory] {
-        VaultCategory.featured + VaultCategory.allCases.filter { !VaultCategory.featured.contains($0) && model.count(in: .category($0)) > 0 }
-    }
-
     var body: some View {
         NavigationStack {
             content
@@ -53,7 +48,7 @@ struct VaultScreen: View {
                         ToolbarItem(placement: .topBarTrailing) {
                             Menu {
                                 Button { addsItem = true } label: {
-                                    Label { Text("Item toevoegen") } icon: { Image(.iconDocumentPlusSolid) }
+                                    Label { Text("Bewijs toevoegen") } icon: { Image(.iconDocumentPlusSolid) }
                                 }
                                 Button { folderSheet = .new } label: {
                                     Label { Text("Map aanmaken") } icon: { Image(.iconFolderPlusSolid) }
@@ -71,11 +66,11 @@ struct VaultScreen: View {
                         .paveSheet()
                 }
                 .sheet(item: $editedItem) { item in
-                    VaultItemEditor(item: item)
+                    VaultEvidenceEditor(vault: model, item: item)
                         .paveSheet()
                 }
                 .sheet(isPresented: $addsItem) {
-                    VaultItemEditor(category: newItemCategory, folderID: newItemFolderID)
+                    VaultAddEvidenceSheet(vault: model, category: newItemCategory, folderID: newItemFolderID)
                         .paveSheet()
                 }
                 .sheet(item: $folderSheet) { sheet in
@@ -175,16 +170,6 @@ struct VaultScreen: View {
     private var shelves: some View {
         ScrollView(.horizontal) {
             HStack(spacing: 9) {
-                ForEach(categories) { category in
-                    VaultFolderTile(
-                        title: category.title,
-                        icon: category.folderIcon,
-                        count: model.count(in: .category(category)),
-                        isSelected: filter.shelf == .category(category)
-                    ) {
-                        select(.category(category))
-                    }
-                }
                 ForEach(model.folders) { folder in
                     let style = model.style(of: folder)
                     VaultFolderTile(
@@ -247,7 +232,7 @@ struct VaultScreen: View {
     @ViewBuilder
     private var emptyState: some View {
         if model.items.isEmpty {
-            emptyMessage(icon: .iconFolderSolid, title: VaultMessages.emptyTitle, message: VaultMessages.emptyMessage, button: "Item toevoegen") {
+            emptyMessage(icon: .iconFolderSolid, title: VaultMessages.emptyTitle, message: VaultMessages.emptyMessage, button: "Bewijs toevoegen") {
                 addsItem = true
             }
         } else if !filter.searchText.isEmpty || filter.narrowsDown {
@@ -279,8 +264,13 @@ struct VaultScreen: View {
         }
     }
 
+    /// Adding from an example folder starts with its kind, such as Project in Projecten.
     private var newItemCategory: VaultCategory {
         if case .category(let category) = filter.shelf { return category }
+        if case .folder(let id) = filter.shelf, let folder = model.folder(id),
+           let example = VaultExampleFolders.all.first(where: { $0.name.localizedCaseInsensitiveCompare(folder.name) == .orderedSame }) {
+            return example.category
+        }
         return .projects
     }
 
