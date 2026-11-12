@@ -72,7 +72,7 @@ struct WatchScreenPreview: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 24, height: 24)
-                        .foregroundStyle(Color.orbShade3)
+                        .foregroundStyle(Color.paveOrbShade(3))
                     Text(WatchConnectMessages.watchNotConnectedTitle)
                         .font(.system(size: 16, weight: .semibold))
                     Text(WatchConnectMessages.watchNotConnectedMessage)
@@ -103,8 +103,8 @@ struct WatchScreenPreview: View {
     private var glow: Color {
         switch content {
         case .notConnected: .black
-        case .connecting: .thinkingGlow
-        case .ready: .brandGreen.opacity(0.7)
+        case .connecting: .paveThinkingGlow
+        case .ready: .paveAccent.opacity(0.7)
         }
     }
 }

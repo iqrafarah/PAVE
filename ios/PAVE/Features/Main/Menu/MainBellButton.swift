@@ -12,7 +12,7 @@ struct MainBellButton: View {
             bell
                 .overlay {
                     if isSelected {
-                        Circle().strokeBorder(Color.brandGreen, lineWidth: 2)
+                        Circle().strokeBorder(Color.paveAccent, lineWidth: 2)
                     }
                 }
                 .frame(minWidth: 44, minHeight: 44)
@@ -32,7 +32,7 @@ struct MainBellButton: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 20, height: 20)
-                .foregroundStyle(isSelected ? Color.brandGreen : Color.ink)
+                .foregroundStyle(isSelected ? Color.paveAccent : Color.ink)
                 .frame(width: 44, height: 44)
         } else {
             Image(.iconBell)

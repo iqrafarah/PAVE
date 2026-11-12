@@ -32,7 +32,7 @@ struct PinLockView: View {
                 PinErrorSlot(message: errorMessage)
                 Button("Pincode vergeten?") { showsForgotPin = true }
                     .textStyle(.link)
-                    .foregroundStyle(Color.brandGreen)
+                    .foregroundStyle(Color.paveAccent)
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .buttonStyle(.pave)
             }

@@ -19,7 +19,7 @@ struct VaultSelectionBar: View {
                     .textStyle(.bodyMedium)
                     .foregroundStyle(Color.canvas)
                     .frame(width: 101, height: 35)
-                    .background(Color.brandGreen, in: .capsule)
+                    .background(Color.paveAccent, in: .capsule)
                     .frame(minHeight: 44)
                     .contentShape(.capsule)
             }
@@ -30,7 +30,7 @@ struct VaultSelectionBar: View {
         .padding(.leading, 26)
         .padding(.trailing, 16)
         .frame(height: 69.3)
-        .background(Color.surfaceTint, in: .capsule)
+        .background(Color.paveSurfaceTint, in: .capsule)
     }
 }
 

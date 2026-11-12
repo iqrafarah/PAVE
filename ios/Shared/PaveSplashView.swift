@@ -3,6 +3,8 @@ import SwiftUI
 struct PaveSplashView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isRevealed = false
+    /// The colour of the letters and the glow: PAVE green, or the theme colour on the iPhone.
+    var accent = Color.brandGreen
 
     private let letters: [ImageResource] = [.paveLetterP, .paveLetterA, .paveLetterV, .paveLetterE]
 
@@ -18,10 +20,10 @@ struct PaveSplashView: View {
 
             LinearGradient(
                 stops: [
-                    .init(color: .brandGreen, location: 0),
+                    .init(color: accent, location: 0),
                     .init(color: .canvas, location: 0.25),
                     .init(color: .canvas, location: 0.74038),
-                    .init(color: .brandGreen, location: 1),
+                    .init(color: accent, location: 1),
                 ],
                 startPoint: .topTrailing,
                 endPoint: .bottomLeading
@@ -41,8 +43,10 @@ struct PaveSplashView: View {
         ZStack {
             ForEach(Array(letters.enumerated()), id: \.offset) { index, letter in
                 Image(letter)
+                    .renderingMode(.template)
                     .resizable()
                     .scaledToFit()
+                    .foregroundStyle(accent)
                     .offset(y: isRevealed || reduceMotion ? 0 : enterDistance)
                     .opacity(isRevealed ? 1 : 0)
                     .animation(animation(forLetterAt: index), value: isRevealed)

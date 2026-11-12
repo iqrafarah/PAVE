@@ -31,5 +31,5 @@ struct AylaLetter: View {
 #Preview {
     AylaLetter()
         .padding()
-        .background(Color.brandGreen)
+        .background(Color.paveAccent)
 }

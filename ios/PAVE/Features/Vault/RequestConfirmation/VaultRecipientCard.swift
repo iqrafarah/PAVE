@@ -17,9 +17,9 @@ struct VaultRecipientCard: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 20, height: 20)
-                    .foregroundStyle(isSelected ? Color.white : .brandGreen)
+                    .foregroundStyle(isSelected ? Color.white : .paveAccent)
                     .frame(width: 40, height: 40)
-                    .background(isSelected ? Color.brandGreen : .dropZone, in: .rect(cornerRadius: 10))
+                    .background(isSelected ? Color.paveAccent : .paveDropZone, in: .rect(cornerRadius: 10))
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(recipient.title)
@@ -33,15 +33,15 @@ struct VaultRecipientCard: View {
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 Circle()
-                    .strokeBorder(isSelected ? Color.brandGreen : .railBorder, lineWidth: isSelected ? 6 : 1.5)
+                    .strokeBorder(isSelected ? Color.paveAccent : .railBorder, lineWidth: isSelected ? 6 : 1.5)
                     .frame(width: 22, height: 22)
                     .accessibilityHidden(true)
             }
             .padding(14)
-            .background(isSelected ? Color.dropZone : .white, in: .rect(cornerRadius: 12))
+            .background(isSelected ? Color.paveDropZone : .white, in: .rect(cornerRadius: 12))
             .overlay {
                 RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(isSelected ? Color.focusRing : .railBorder, lineWidth: 1)
+                    .strokeBorder(isSelected ? Color.paveFocusRing : .railBorder, lineWidth: 1)
             }
             .contentShape(.rect(cornerRadius: 12))
         }

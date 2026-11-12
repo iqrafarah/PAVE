@@ -51,7 +51,7 @@ struct AylaUsedMemories: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 13, height: 13)
-                        .foregroundStyle(Color.brandGreen)
+                        .foregroundStyle(Color.paveAccent)
                         .frame(width: 24, height: 24)
                         .background(note.category.tint, in: .rect(cornerRadius: 7))
                         .accessibilityHidden(true)
@@ -67,7 +67,7 @@ struct AylaUsedMemories: View {
             } label: {
                 Text("Bekijk wat Ayla over je weet")
                     .textStyle(.label)
-                    .foregroundStyle(Color.brandGreen)
+                    .foregroundStyle(Color.paveAccent)
                     .frame(minHeight: 36)
             }
             .buttonStyle(.pave)

@@ -20,7 +20,7 @@ struct PaveChip: View {
             .padding(.leading, 19)
             .padding(.trailing, 18)
             .frame(minWidth: width, minHeight: 43, alignment: .leading)
-            .background(Color.surfaceTint, in: .rect(cornerRadius: 14))
+            .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 14))
             .contentShape(.rect(cornerRadius: 14))
         }
         .buttonStyle(.pave)

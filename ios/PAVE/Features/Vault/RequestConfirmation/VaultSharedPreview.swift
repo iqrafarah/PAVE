@@ -26,7 +26,7 @@ struct VaultSharedPreview: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 14, height: 14)
-                        .foregroundStyle(Color.brandGreen)
+                        .foregroundStyle(Color.paveAccent)
                         .accessibilityHidden(true)
                     Text(line)
                         .textStyle(.caption)

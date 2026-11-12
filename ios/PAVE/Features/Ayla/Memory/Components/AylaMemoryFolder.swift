@@ -13,7 +13,7 @@ struct AylaMemoryFolder: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 20, height: 20)
-                .foregroundStyle(Color.brandGreen)
+                .foregroundStyle(Color.paveAccent)
                 .frame(width: 40, height: 40)
                 .background(category.tint, in: .rect(cornerRadius: 12))
                 .accessibilityHidden(true)

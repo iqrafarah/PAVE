@@ -36,10 +36,10 @@ enum WatchGiftBox {
                         .padding(.top, 1)
                 }
                 .overlay {
-                    PaveMark(size: 10, color: .brandGreen)
+                    PaveMark(size: 10, color: .paveAccent)
                 }
                 .frame(width: WatchGiftBox.width, height: WatchGiftBox.frontHeight)
-                .shadow(color: .brandGreen.opacity(0.14), radius: 30, y: 18)
+                .shadow(color: .paveAccent.opacity(0.14), radius: 30, y: 18)
                 .shadow(color: .black.opacity(0.06), radius: 3, y: 2)
         }
     }

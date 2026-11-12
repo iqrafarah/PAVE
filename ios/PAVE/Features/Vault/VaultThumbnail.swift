@@ -47,7 +47,7 @@ struct VaultThumbnail: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 22, height: 22)
-                        .foregroundStyle(Color.brandGreen)
+                        .foregroundStyle(Color.paveAccent)
                 }
             }
             .clipShape(.rect(cornerRadius: cornerRadius))

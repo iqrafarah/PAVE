@@ -9,6 +9,7 @@ struct MainAccountMenu: View {
     let onSignOut: () -> Void
 
     @State private var confirmsSignOut = false
+    @Environment(ProfileModel.self) private var profile: ProfileModel?
 
     var body: some View {
         Menu {
@@ -20,10 +21,10 @@ struct MainAccountMenu: View {
                 confirmsSignOut = true
             }
         } label: {
-            AccountBadge(name: name)
+            AccountBadge(name: name, image: profile?.avatar)
                 .overlay {
                     if isSettingsOpen {
-                        Circle().strokeBorder(Color.brandGreen, lineWidth: 2)
+                        Circle().strokeBorder(Color.paveAccent, lineWidth: 2)
                     }
                 }
         }

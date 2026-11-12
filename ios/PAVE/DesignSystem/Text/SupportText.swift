@@ -8,7 +8,7 @@ enum SupportText {
         var link = AttributedString(PaveSupport.email)
         link.link = URL(string: "mailto:\(PaveSupport.email)")
         link.underlineStyle = .single
-        link.foregroundColor = .brandGreen
+        link.foregroundColor = .paveAccent
         result.append(link)
         result.append(AttributedString(suffix))
         return result

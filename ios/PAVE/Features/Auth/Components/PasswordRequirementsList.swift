@@ -8,7 +8,7 @@ struct PasswordRequirementsList: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(PasswordRequirement.heading)
                 .textStyle(.eyebrow)
-                .foregroundStyle(Color.brandGreen)
+                .foregroundStyle(Color.paveAccent)
 
             ForEach(PasswordRequirement.allCases, id: \.self) { requirement in
                 let isMet = requirement.isMet(by: password)
@@ -34,7 +34,7 @@ struct PasswordRequirementsList: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.surfaceTint, in: .rect(cornerRadius: 12))
+        .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 12))
         .animation(.easeOut(duration: 0.15), value: password)
         // A light tap the moment the last requirement is met.
         .sensoryFeedback(.impact(weight: .light), trigger: remainingCount == 0) { _, isNow in isNow }

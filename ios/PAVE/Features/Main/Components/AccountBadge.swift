@@ -1,22 +1,30 @@
 import SwiftUI
 
-/// A round badge with the first letter of the user's name.
+/// Your account as a round badge: your photo, else the first letter of your name, else a person.
 struct AccountBadge: View {
     let name: String?
+    var image: UIImage?
+    var size: CGFloat = 44
 
     var body: some View {
         Group {
-            if let initial = name?.trimmingCharacters(in: .whitespaces).first {
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else if let initial = name?.trimmingCharacters(in: .whitespaces).first {
                 Text(String(initial).uppercased())
                     .textStyle(.action)
+                    .foregroundStyle(Color.paveAccent)
             } else {
-                Image(.iconPerson)
+                Image(.iconUserSolid)
                     .renderingMode(.template)
+                    .foregroundStyle(Color.paveAccent)
             }
         }
-        .foregroundStyle(Color.brandGreen)
-        .frame(width: 44, height: 44)
-        .background(Color.surfaceTint, in: .circle)
+        .frame(width: size, height: size)
+        .background(Color.paveSurfaceTint, in: .circle)
+        .clipShape(.circle)
         .accessibilityHidden(true)
     }
 }
@@ -26,5 +34,4 @@ struct AccountBadge: View {
         AccountBadge(name: "Daaf")
         AccountBadge(name: nil)
     }
-    .padding()
 }

@@ -58,7 +58,7 @@ struct VaultEvidenceAddedView: View {
             .foregroundStyle(.white)
             .scaleEffect(landed ? 1 : 0.4)
             .frame(width: size, height: size)
-            .background(Color.brandGreen, in: .circle)
+            .background(Color.paveAccent, in: .circle)
             .scaleEffect(landed ? 1 : 0.6)
             .opacity(landed ? 1 : 0)
             .accessibilityHidden(true)

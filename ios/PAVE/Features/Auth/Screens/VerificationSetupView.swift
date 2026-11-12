@@ -117,13 +117,13 @@ struct VerificationSetupView: View {
                 HStack {
                     Text("Een ander apparaat gebruiken")
                         .textStyle(.link)
-                        .foregroundStyle(Color.brandGreen)
+                        .foregroundStyle(Color.paveAccent)
                     Spacer()
                     Image(.iconChevronDown)
                         .resizable()
                         .scaledToFit()
                         .frame(width: 14, height: 14)
-                        .foregroundStyle(Color.brandGreen)
+                        .foregroundStyle(Color.paveAccent)
                         .rotationEffect(.degrees(showsOtherDevice ? 180 : 0))
                         .accessibilityHidden(true)
                 }

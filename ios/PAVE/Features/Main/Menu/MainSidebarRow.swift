@@ -21,10 +21,10 @@ struct MainSidebarRow: View {
                 Text(destination.title)
                     .textStyle(.listTitle)
             }
-            .foregroundStyle(isSelected ? Color.brandGreen : .ink)
+            .foregroundStyle(isSelected ? Color.paveAccent : .ink)
             .padding(.horizontal, 12)
             .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
-            .background(isSelected ? Color.surfaceTint : .clear, in: .rect(cornerRadius: 12))
+            .background(isSelected ? Color.paveSurfaceTint : .clear, in: .rect(cornerRadius: 12))
             .contentShape(.rect(cornerRadius: 12))
         }
         .buttonStyle(.pave)
@@ -38,7 +38,7 @@ struct MainSidebarRow: View {
     private var icon: some View {
         switch destination.icon {
         case .aylaLetter:
-            AylaLetter(color: isSelected ? .brandGreen : .ink)
+            AylaLetter(color: isSelected ? .paveAccent : .ink)
         case .image(let resource):
             Image(resource).renderingMode(.template)
         case .bell:

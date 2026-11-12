@@ -95,7 +95,7 @@ struct AylaMemoryCard: View {
                     .foregroundStyle(Color.white)
                     .frame(minWidth: 96, minHeight: 36)
                     .padding(.horizontal, 14)
-                    .background(Color.brandGreen, in: .capsule)
+                    .background(Color.paveAccent, in: .capsule)
                     .opacity(chosen.isEmpty ? 0.4 : 1)
                 }
                 .buttonStyle(.pave)
@@ -124,7 +124,7 @@ struct AylaMemoryCard: View {
         }
         .padding(14)
         .frame(maxWidth: 320, alignment: .leading)
-        .background(Color.surfaceTint.opacity(0.6), in: .rect(cornerRadius: 18))
+        .background(Color.paveSurfaceTint.opacity(0.6), in: .rect(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.cardBorder, lineWidth: 1))
         .accessibilityElement(children: .contain)
     }
@@ -142,7 +142,7 @@ struct AylaMemoryCard: View {
         let label = VStack(alignment: .leading, spacing: 3) {
             Text(change.isRemoval ? "Weghalen uit \(change.suggestion.category.title.lowercased())" : change.suggestion.category.title)
                 .textStyle(.caption)
-                .foregroundStyle(change.isRemoval ? Color.criticalInk : .brandGreen)
+                .foregroundStyle(change.isRemoval ? Color.criticalInk : .paveAccent)
             Text(change.text)
                 .textStyle(.bodyMedium)
                 .foregroundStyle(goes ? Color.inkMuted : .ink)
@@ -189,7 +189,7 @@ struct AylaMemoryCard: View {
                     .underline()
             }
             .textStyle(.caption)
-            .foregroundStyle(Color.brandGreen)
+            .foregroundStyle(Color.paveAccent)
             .padding(.leading, 4)
         }
         .buttonStyle(.pave)

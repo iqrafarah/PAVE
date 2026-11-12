@@ -32,7 +32,7 @@ struct AylaVoiceBar: View {
                 TextField("Vraag het aan Ayla", text: $text, prompt: Text("Vraag het aan Ayla").foregroundStyle(Color.inkMuted.opacity(0.6)), axis: .vertical)
                     .textStyle(.bodyMedium)
                     .foregroundStyle(Color.ink)
-                    .tint(.brandGreen)
+                    .tint(.paveAccent)
                     .lineLimit(1...4)
                     .submitLabel(.send)
                     .focused(isFocused)
@@ -48,7 +48,7 @@ struct AylaVoiceBar: View {
                     Button(action: send) {
                         Image(.iconSend)
                             .frame(width: 30, height: 30)
-                            .background(Color.brandGreen, in: .circle)
+                            .background(Color.paveAccent, in: .circle)
                             .frame(width: AylaComposer.roundButtonWidth, height: 53)
                             .contentShape(.rect)
                     }
@@ -96,7 +96,7 @@ struct AylaVoiceBar: View {
                     .contentShape(.circle)
             }
             .buttonStyle(.pave)
-            .glassEffect(.regular.tint(.brandGreen).interactive(), in: .circle)
+            .glassEffect(.regular.tint(.paveAccent).interactive(), in: .circle)
             .modifier(SlideOut(isShown: showsButtons))
             .accessibilityLabel("Gesprek stoppen")
         }

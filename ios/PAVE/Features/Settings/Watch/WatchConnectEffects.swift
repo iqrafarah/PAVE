@@ -7,7 +7,7 @@ struct WatchPixelStream: View {
     let target: CGFloat
 
     private static let count = 34
-    private static let colors: [Color] = [.orbShade2, .orbShade3, .orbShade4, .orbShade5, .brandGreen]
+    private static let colors: [Color] = [Color.paveOrbShade(2), Color.paveOrbShade(3), Color.paveOrbShade(4), Color.paveOrbShade(5), .paveAccent]
 
     var body: some View {
         TimelineView(.animation) { context in
@@ -47,12 +47,12 @@ struct WatchConnectRing: View {
             Circle()
                 .trim(from: 0, to: isDone ? 1 : 0.72)
                 .stroke(
-                    AngularGradient(colors: [.orbShade2, .orbShade4, .brandGreen, .orbShade2], center: .center),
+                    AngularGradient(colors: [Color.paveOrbShade(2), Color.paveOrbShade(4), .paveAccent, Color.paveOrbShade(2)], center: .center),
                     style: StrokeStyle(lineWidth: 4, lineCap: .round)
                 )
                 .rotationEffect(.degrees(spin ? 360 : 0))
             Circle()
-                .stroke(Color.orbShade4, lineWidth: 3)
+                .stroke(Color.paveOrbShade(4), lineWidth: 3)
                 .scaleEffect(pulse ? 1.45 : 1)
                 .opacity(pulse ? 0 : (isDone ? 0.8 : 0))
         }

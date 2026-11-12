@@ -28,7 +28,7 @@ struct AylaUndoBar: View {
             Spacer(minLength: 8)
             Button("Ongedaan maken", action: onUndo)
                 .textStyle(.link)
-                .foregroundStyle(Color.brandGreen)
+                .foregroundStyle(Color.paveAccent)
                 .frame(minHeight: 44)
                 .hoverEffect(.highlight)
         }

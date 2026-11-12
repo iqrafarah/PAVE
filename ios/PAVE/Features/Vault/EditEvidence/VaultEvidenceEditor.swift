@@ -70,7 +70,7 @@ struct VaultEvidenceEditor: View {
         .frame(maxWidth: 600)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.white.ignoresSafeArea())
-        .tint(.brandGreen)
+        .tint(.paveAccent)
         .animation(.easeOut(duration: 0.2), value: isTyping)
         .animation(.snappy(duration: 0.3), value: edit.keptDocuments)
         .animation(.snappy(duration: 0.3), value: edit.newDocuments)
