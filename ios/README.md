@@ -197,7 +197,7 @@ De iOS-uitwerking gebruikt de twee mobiele Figma-prototypes als basis: de lijst 
 
 `NotificationsScreen` bevat het iOS-overzicht volgens de aangeleverde wireframe: alle/ongelezen, zoeken, typefilter, groepering per dag en een detail voor verificatieaanvragen. Lerende accounts zien in de weergave alleen gesprekken en geverifieerd bewijs; de adminweergave toont gesprekken en verificatieaanvragen. Een gesprek kan terug naar Ayla navigeren; geverifieerd bewijs opent het eigen item in de kluis. Alleen de SwiftUI-previews bevatten voorbeeldmeldingen.
 
-De repo heeft nog geen vertrouwde accountrol, meldingenbron of endpoint waarmee een admin een bewijsbestand van een lerende mag lezen en verifiëren. Daarom opent de app standaard de lerendeweergave zonder voorbeelddata, en zijn de document- en verificatieacties in het detail nog niet actief. Zodra de rol- en servercontracten bestaan, kunnen die via de callbacks van `NotificationsScreen` worden aangesloten. Deze wijziging raakt geen webcode of gedeelde database.
+De iOS-schermen hebben nog geen meldingenbron of endpoint waarmee een admin een bewijsbestand van een lerende mag lezen en verifiëren. De draft-migratie `shared/supabase/migrations/20261112160000_notifications_and_vault_review.sql` legt de inbox en expliciete reviewer-toewijzingen vast, maar is nog niet toegepast of live gecontroleerd. Accountrollen, reviewer-provisioning en serverfuncties moeten eerst met het webteam worden afgesproken; zie `docs/vault.md`. Daarom opent de app standaard de lerendeweergave zonder voorbeelddata, en zijn document- en verificatieacties nog niet actief.
 
 ## Ayla
 

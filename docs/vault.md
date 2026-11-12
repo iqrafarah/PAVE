@@ -94,4 +94,15 @@ Migration `20261112120000_vault_cover_example_folders_reverify.sql`. Run it toge
 4. ~~Apply the migration to the shared Supabase project.~~ Done on 2026-11-10.
 5. Update `ios/README.md`, `docs/ayla.md` and this page when the schema is applied or the contract changes.
 
+## Notifications and organisation review (draft migration, 2026-11-12)
+
+[`20261112160000_notifications_and_vault_review.sql`](../shared/supabase/migrations/20261112160000_notifications_and_vault_review.sql) adds the database records needed to connect the iOS notifications screen:
+
+- `user_notifications` is a durable, private per-user inbox for conversations, verified evidence, and verification requests. It contains display metadata and source IDs only; Edge Functions create events and the recipient can mark them read.
+- `vault_validation_requests.organization_id` and `vault_validation_reviewers` provide a trusted route from a pending request to explicitly assigned reviewers. The learner's organisation text remains the display value; trusted server code must resolve it to an organisation.
+
+This is a migration draft; it has not been applied or remotely verified. No Supabase CLI, linked project reference, or Supabase connector is available in this workspace. The previous read-only schema check documented above is from 2026-11-10 and cannot prove the current remote state. Compare against the live project with the web team before applying.
+
+The migration does not make the verification flow operational by itself. Still required: (1) agree with the web team on the authoritative account role and organisation membership, then provision reviewer assignments; (2) add authenticated Edge Functions to create/route inbox events, list a reviewer's organisation requests, issue short-lived access to the requested private document, and atomically approve/reject while updating the item, request, audit trail, and learner notification; (3) connect the iOS inbox and actions to those functions. Keep `vault_item_files` and the private `pave-vault` Storage policies owner-only for client sessions. Chat notification routing also needs a defined recipient/relationship rule; this migration only provides the inbox record for conversation events.
+
 The migration includes Realtime publication entries for the vault tables so other signed-in devices can refresh. Clients must still use the authenticated user's session; service-role keys belong only in trusted server functions.
