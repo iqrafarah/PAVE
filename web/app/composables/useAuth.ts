@@ -46,10 +46,16 @@ export function useAuth() {
     return { error };
   }
 
+  /**
+   * After a new password every session ends, on every device and in every tab ('global'): whoever was signed in
+   * with the old password is out and must sign in again. If that fails, at least this browser is signed out.
+   */
   async function finishPasswordReset() {
     isPasswordReset.value = false;
-    const { error } = await supabase.auth.signOut({ scope: 'local' });
-    return { error };
+    const { error } = await supabase.auth.signOut({ scope: 'global' });
+    if (!error) return { error };
+    const { error: localError } = await supabase.auth.signOut({ scope: 'local' });
+    return { error: localError };
   }
 
   async function verifyEmailLink(tokenHash: string, type: EmailLinkType) {

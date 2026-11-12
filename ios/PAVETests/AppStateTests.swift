@@ -18,12 +18,33 @@ struct AppStateTests {
     private let ravi = "ravi-account"
     private let gianna = "gianna-account"
 
-    private func makeState(biometrics: StubBiometrics = StubBiometrics()) -> AppState {
-        AppState(defaults: defaults, pinVault: PinVault(storage: storage), biometrics: biometrics)
+    /// Answers the session check with a fixed state; nothing else is used by these tests.
+    private actor SessionStub: AuthService {
+        let state: SessionState
+
+        init(_ state: SessionState) {
+            self.state = state
+        }
+
+        func sessionState() async -> SessionState { state }
+        func signIn(email: String, password: String) async throws -> SignInOutcome { throw AuthError.unavailable }
+        func verify(code: String) async throws {}
+        func startVerificationSetup() async throws -> VerificationEnrollment { throw AuthError.unavailable }
+        func confirmVerificationSetup(code: String) async throws {}
+        func requestPasswordReset(email: String) async throws {}
+        func verifyPasswordResetCode(email: String, code: String) async throws -> PasswordResetOutcome { throw AuthError.unavailable }
+        func updatePassword(_ newPassword: String) async throws {}
+        func signOut() async {}
+        func accountID() async -> String? { nil }
+        func accessToken() async -> String? { nil }
     }
 
-    private func signedInState() throws -> AppState {
-        let state = makeState()
+    private func makeState(biometrics: StubBiometrics = StubBiometrics(), session: SessionState = .active) -> AppState {
+        AppState(defaults: defaults, authService: SessionStub(session), pinVault: PinVault(storage: storage), biometrics: biometrics)
+    }
+
+    private func signedInState(session: SessionState = .active) throws -> AppState {
+        let state = makeState(session: session)
         state.finishLoading()
         state.signIn(accountID: ravi)
         try state.completePinSetup(pin: pin, useBiometrics: false)
@@ -252,5 +273,42 @@ struct AppStateTests {
 
         relaunched.signIn(accountID: ravi)
         #expect(relaunched.phase == .pinSetup)
+    }
+
+    @Test func aSessionThatEndedElsewhereAsksToSignInAgain() async throws {
+        let state = try signedInState(session: .ended)
+        state.conversationToOpen = "chat-1"
+        await state.checkSession()
+        #expect(state.phase == .sessionEnded)
+        #expect(!state.isSignedIn)
+        #expect(state.conversationToOpen == nil)
+
+        state.signInAgain()
+        #expect(state.phase == .signedOut)
+        state.signIn(accountID: ravi)
+        #expect(state.phase == .main)
+    }
+
+    @Test func aSessionThatEndedWhileLockedSkipsThePin() async throws {
+        _ = try signedInState()
+        let relaunched = makeState(session: .ended)
+        relaunched.finishLoading()
+        #expect(relaunched.phase == .locked)
+        await relaunched.checkSession()
+        #expect(relaunched.phase == .sessionEnded)
+    }
+
+    @Test func noAnswerKeepsYouSignedIn() async throws {
+        let state = try signedInState(session: .unknown)
+        await state.checkSession()
+        #expect(state.phase == .main)
+        #expect(state.isSignedIn)
+    }
+
+    @Test func nothingIsCheckedWhenSignedOut() async {
+        let state = makeState(session: .ended)
+        state.finishLoading()
+        await state.checkSession()
+        #expect(state.phase == .signedOut)
     }
 }

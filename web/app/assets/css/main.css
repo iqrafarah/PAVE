@@ -6,16 +6,94 @@
  * Values below are estimated from a screenshot: replace them with the exact Figma values.
  */
 @theme {
-    --color-brand: #3f5d4e;
+    --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+    --font-heading: "Sora", "Inter", ui-sans-serif, system-ui, sans-serif;
+    --text-hero: 2rem;
+    --color-brand: #355d4c;
     --color-brand-soft: #c5ccc9;
     --color-ink: #1f2421;
     --color-muted: #666d69;
     --color-line: #d9dedb;
     --color-surface: #f9f9f9;
-    --color-tint: #e8ede9;
+    --color-tint: #e9eeea;
+    /* Ayla screens (Figma: Start, Kluis doorzoeken, Geen resultaat) */
+    --color-heading: #2b2b2b;
+    --color-subtle: #696969;
+    --color-rail-line: #eaeaea;
+    --color-tile: #f1f1f1;
+    --color-bubble: #efefef;
+    --color-skeleton: #d9d9d9;
+    --color-skeleton-image: #dadada;
+    --color-badge: #c7cecb;
+    /* iOS (Shared/Assets.xcassets): settings and "Wat Ayla over je weet" */
+    --color-ink-soft: #858585;
+    --color-card-border: #f2f2f2;
+    --color-card-tint-green: #ddeccf;
+    --color-card-tint-lime: #f0f9cd;
+    --color-card-tint-lavender: #e7ddf7;
+    --color-card-tint-rose: #f7c8cc;
+    --color-card-tint-apricot: #ffe4c1;
+    --text-folder: 0.9375rem;
+    /* iOS OrbShade0-6: Ayla's orb in voice mode, light to dark */
+    --color-orb-0: #eef4f0;
+    --color-orb-1: #d6e8dc;
+    --color-orb-2: #b4d2c0;
+    --color-orb-3: #88b49c;
+    --color-orb-4: #5f8f77;
+    --color-orb-5: #3f6c57;
+    --color-orb-6: #355e4b;
+    --radius-empty-icon: 1.375rem;
+    --radius-pill: 0.875rem;
+    --radius-bubble: 1.125rem;
+    --radius-composer: 1.5625rem;
+    --shadow-composer: 0 0 4px 0 rgb(0 0 0 / 0.25);
+    /* Kluis aanvullen (Figma FEDDIES 1167:12715 and the next steps) */
+    --font-step: "Public Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+    --color-backdrop: rgb(79 78 78 / 0.5);
+    --color-field-line: #e9e9e9;
+    --color-step-todo: #aeb2ba;
+    --color-drop: #f5f9f7;
+    --color-drop-line: #bacfc3;
+    --color-skill-idle: #f6f6f6;
+    --color-cover-selected: #f0f0f0;
+    --color-cover-selected-line: #747474;
+    --color-checkbox: #878787;
+    --radius-field: 0.4375rem;
+    --radius-modal: 1.2rem;
+    --radius-done: 2.5rem;
+    --shadow-modal: 0 0 4px 0 rgb(114 114 114 / 0.25);
     --color-danger: #b42318;
+    /* iOS CriticalInk: Ayla's blocks and message when something went wrong */
+    --color-critical: #5d3535;
     --color-warning: #c2410c;
     --color-warning-soft: #fff7ed;
     --container-card: 34.5rem;
     --tracking-code: 0.5em;
+    --animate-pixel: pixel-blink 1.2s ease-in-out infinite;
+    --animate-pixel-late: pixel-blink 1.2s ease-in-out 0.2s infinite;
+    --animate-pixel-last: pixel-blink 1.2s ease-in-out 0.4s infinite;
+    --animate-rise: rise 0.5s ease-out both;
+
+    @keyframes pixel-blink {
+        0%,
+        100% {
+            opacity: 0.25;
+        }
+        50% {
+            opacity: 1;
+        }
+    }
+
+
+    /* Ayla's newest message slides up into view. */
+    @keyframes rise {
+        from {
+            opacity: 0;
+            transform: translateY(6.25rem);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
 }

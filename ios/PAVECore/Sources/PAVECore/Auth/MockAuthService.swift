@@ -74,6 +74,11 @@ public actor MockAuthService: AuthService {
         resetVerified = false
     }
 
+    /// The demo session only ends when you sign out yourself.
+    public func sessionState() async -> SessionState {
+        .active
+    }
+
     public func signOut() async {
         currentAccount = nil
         resetAccount = nil

@@ -392,3 +392,10 @@ test('stopping an answer stops the model', async () => {
   stop.abort()
   await assert.rejects(pending, { name: 'AbortError' })
 })
+
+test('offering to add evidence always comes with Ja and Nee', async () => {
+  const fake = model(say('Ik kan niet in je kluis kijken.', { navigation: { screen: 'addEvidence' } }))
+  const reply = await answer({ request, conversationId: 'c', history: [] }, { complete: fake.complete, newId: ids() })
+  assert.deepEqual(reply.navigation, { screen: 'addEvidence' })
+  assert.deepEqual(reply.question?.choices.map((c) => c.label), ['Ja', 'Nee'])
+})

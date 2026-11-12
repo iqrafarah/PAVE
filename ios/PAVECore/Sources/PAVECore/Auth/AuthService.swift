@@ -12,6 +12,16 @@ public protocol AuthService: Sendable {
     func accountID() async -> String?
     /// The token of the current session, refreshed when needed. Used to call other Supabase services.
     func accessToken() async -> String?
+    /// Asks the server whether this session still exists. It ends when the password was changed, for example on
+    /// another device, or when the account was signed out everywhere.
+    func sessionState() async -> SessionState
+}
+
+public enum SessionState: Equatable, Sendable {
+    case active
+    case ended
+    /// No answer, for example without a connection: nothing changes.
+    case unknown
 }
 
 public enum SignInOutcome: Equatable, Sendable {

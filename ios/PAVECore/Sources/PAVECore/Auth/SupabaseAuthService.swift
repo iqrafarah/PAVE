@@ -89,6 +89,15 @@ public struct SupabaseAuthService: AuthService {
         try? await client.session.accessToken
     }
 
+    public func sessionState() async -> SessionState {
+        do {
+            _ = try await client.user()
+            return .active
+        } catch {
+            return Self.sessionState(after: error)
+        }
+    }
+
     private func mapErrors<Value>(
         function: StaticString = #function,
         _ operation: () async throws -> Value
@@ -124,6 +133,17 @@ public struct SupabaseAuthService: AuthService {
         // (for example on the web), so always ask the server.
         let user = try await client.user()
         return (user.factors ?? []).filter { $0.factorType == "totp" && $0.status == status }
+    }
+
+    /// The server removes a session when the password changes; the client then reports it as missing.
+    static func sessionState(after error: any Error) -> SessionState {
+        guard let supabaseError = error as? Auth.AuthError else { return .unknown }
+        switch supabaseError.errorCode {
+        case .sessionNotFound, .sessionExpired, .refreshTokenNotFound, .refreshTokenAlreadyUsed, .userNotFound, .userBanned:
+            return .ended
+        default:
+            return .unknown
+        }
     }
 
     static func normalized(_ email: String) -> String {
