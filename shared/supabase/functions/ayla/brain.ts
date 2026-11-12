@@ -193,6 +193,11 @@ function shorten(text: string): string {
   return `${(space > 20 ? cut.slice(0, space) : cut).replace(/[,;:.!?-]+$/, '')}…`
 }
 
+const ADD_EVIDENCE_QUESTION = {
+  text: 'Wil je iets toevoegen?',
+  choices: [{ id: 'yes', label: 'Ja' }, { id: 'no', label: 'Nee' }],
+}
+
 function toReply(output: ModelOutput, blocks: Block[], conversationId: string, id: string): AylaReply {
   const reply: AylaReply = {
     version: 1,
@@ -209,6 +214,8 @@ function toReply(output: ModelOutput, blocks: Block[], conversationId: string, i
   if (output.question && choices.length >= 2) reply.question = { text: output.question.text ?? '', choices }
   const screen = output.navigation?.screen as Screen
   if (SCREENS.includes(screen) && NAVIGABLE.has(screen)) reply.navigation = { screen }
+  // Offering to add evidence is always a Ja/Nee question (Figma "Wil je iets toevoegen?"), also when the model forgot it.
+  if (reply.navigation?.screen === 'addEvidence' && !reply.question) reply.question = ADD_EVIDENCE_QUESTION
   return reply
 }
 

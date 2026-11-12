@@ -26,7 +26,9 @@ const verifyButtonLabel = computed(() => {
   if (codeError.value) return 'Opnieuw proberen';
   return 'Code bevestigen';
 });
-const codeSentMessage = computed(() => getResetCodeSentMessage(maskEmail(email.value)));
+const codeSentMessage = computed(() =>
+  getResetCodeSentMessage(maskEmail(email.value)),
+);
 const isResendWaiting = computed(() => resendSecondsLeft.value > 0);
 const resendButtonLabel = computed(() =>
   isResendWaiting.value
@@ -147,11 +149,7 @@ onBeforeUnmount(stopResendCountdown);
     <AuthBackToLogin @click="navigateTo('/login')" />
   </AuthCard>
 
-  <AuthCard
-    v-else
-    title="Check je inbox"
-    :description="RESET_CODE_INSTRUCTION"
-  >
+  <AuthCard v-else title="Check je inbox" :description="RESET_CODE_INSTRUCTION">
     <template #steps>
       <AuthSteps :steps="RESET_STEPS" :current-index="EMAIL_CODE_STEP_INDEX" />
     </template>
