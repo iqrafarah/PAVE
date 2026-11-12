@@ -1,11 +1,11 @@
 import SwiftUI
 
-enum NotificationAudience {
+enum NotificationAudience: Equatable, Sendable {
     case learner
     case administrator
 }
 
-enum PaveNotificationKind: String, CaseIterable, Hashable, Identifiable {
+enum PaveNotificationKind: String, CaseIterable, Hashable, Identifiable, Sendable {
     case conversation
     case verifiedEvidence
     case verificationRequest
@@ -40,7 +40,7 @@ enum PaveNotificationKind: String, CaseIterable, Hashable, Identifiable {
     }
 }
 
-struct PaveNotification: Identifiable, Hashable {
+struct PaveNotification: Identifiable, Hashable, Sendable {
     let id: String
     let kind: PaveNotificationKind
     let title: String
@@ -48,6 +48,7 @@ struct PaveNotification: Identifiable, Hashable {
     let date: Date
     var isUnread = true
     var conversationID: String?
+    var validationRequestID: String? = nil
     var vaultItemID: String?
     var learnerName: String?
     var learnerOrganization: String?
@@ -60,10 +61,13 @@ struct NotificationsScreen: View {
     let onShowMenu: (() -> Void)?
     var audience: NotificationAudience = .learner
     var notifications: [PaveNotification] = []
+    var loadError: String?
+    var onRefresh: (() async -> Void)?
+    var onMarkRead: ((String) async -> Void)?
     var onOpenConversation: ((String) -> Void)?
     var onOpenVerifiedEvidence: ((String) -> Void)?
-    var onOpenVerificationDocument: ((PaveNotification) -> Void)?
-    var onVerifyRequest: ((PaveNotification) -> Void)?
+    var onLoadReview: ((String) async -> NotificationReviewPayload?)?
+    var onResolveRequest: ((String, String, String?) async -> Bool)?
 
     @State private var tab: NotificationTab = .all
     @State private var selectedKinds: Set<PaveNotificationKind> = []
@@ -105,6 +109,14 @@ struct NotificationsScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 17) {
                     intro
+                    if let loadError {
+                        Text(loadError)
+                            .textStyle(.caption)
+                            .foregroundStyle(Color.statusRejected)
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.white, in: .rect(cornerRadius: 12))
+                    }
                     tabs
                     search
                     if hasKindFilter, !selectedKinds.isEmpty {
@@ -140,8 +152,8 @@ struct NotificationsScreen: View {
                     if notification.kind == .verificationRequest {
                         VerificationRequestNotificationDetail(
                             notification: notification,
-                            onOpenDocument: onOpenVerificationDocument,
-                            onVerify: onVerifyRequest
+                            onLoadReview: onLoadReview,
+                            onResolve: onResolveRequest
                         )
                     } else {
                         NotificationMessageDetail(notification: notification)
@@ -150,6 +162,7 @@ struct NotificationsScreen: View {
             }
         }
         .tint(.brandGreen)
+        .task { await onRefresh?() }
     }
 
     private var intro: some View {
@@ -354,6 +367,7 @@ struct NotificationsScreen: View {
 
     private func markRead(_ notification: PaveNotification) {
         readIDs.insert(notification.id)
+        Task { await onMarkRead?(notification.id) }
     }
 }
 
@@ -469,9 +483,16 @@ private struct NotificationFilterSheet: View {
 
 private struct VerificationRequestNotificationDetail: View {
     let notification: PaveNotification
-    let onOpenDocument: ((PaveNotification) -> Void)?
-    let onVerify: ((PaveNotification) -> Void)?
+    let onLoadReview: ((String) async -> NotificationReviewPayload?)?
+    let onResolve: ((String, String, String?) async -> Bool)?
     @Environment(\.dismiss) private var dismiss
+    @State private var review: NotificationReviewPayload?
+    @State private var isWorking = false
+    @State private var errorMessage: String?
+    @State private var previewURL: URL?
+    @State private var confirmsReject = false
+
+    private var requestID: String? { notification.validationRequestID }
 
     var body: some View {
         ScrollView {
@@ -507,32 +528,63 @@ private struct VerificationRequestNotificationDetail: View {
                 .padding(10)
                 .background(Color.surfaceTint, in: .rect(cornerRadius: 12))
 
-                detailField("Naam document", value: notification.documentName ?? notification.title)
-                detailField("Type document", value: notification.documentType ?? "Bewijs")
+                if let item = review?.item {
+                    vaultItemCard(item)
+                    if let description = item.description, !description.isEmpty {
+                        detailField("Omschrijving", value: description)
+                    }
+                    if !item.skills.isEmpty {
+                        detailField("Vaardigheden", value: item.skills.joined(separator: " · "))
+                    }
+                } else {
+                    detailField("Naam document", value: notification.documentName ?? notification.title)
+                    detailField("Type document", value: notification.documentType ?? "Bewijs")
+                }
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Document")
                         .textStyle(.caption)
                         .foregroundStyle(Color.inkMuted)
-                    documentPlaceholder
-                    Button {
-                        onOpenDocument?(notification)
-                    } label: {
-                        Label("Bekijk volledig document", image: .iconEye)
-                            .textStyle(.caption)
-                            .foregroundStyle(Color.ink)
-                            .frame(maxWidth: .infinity)
+                    if let files = review?.item.files.filter({ $0.role == "document" }), !files.isEmpty {
+                        ForEach(files) { file in
+                            Button { Task { await open(file) } } label: {
+                                HStack(spacing: 10) {
+                                    Image(.iconDocumentText).frame(width: 18, height: 18)
+                                    Text(file.name).lineLimit(1)
+                                    Spacer()
+                                    Image(.iconEye).frame(width: 17, height: 17)
+                                }
+                                .textStyle(.caption)
+                                .foregroundStyle(Color.ink)
+                                .padding(12)
+                                .background(Color.white, in: .rect(cornerRadius: 12))
+                                .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(Color.cardBorder) }
+                            }
+                            .buttonStyle(.pave)
+                        }
+                    } else if review == nil {
+                        ProgressView().frame(maxWidth: .infinity).frame(height: 80)
+                    } else {
+                        documentPlaceholder
                     }
-                    .buttonStyle(.pave)
-                    .disabled(notification.documentFileName == nil || onOpenDocument == nil)
                 }
 
                 Text("Controleer het document voordat je het verifieert.")
                     .textStyle(.caption)
                     .foregroundStyle(Color.inkMuted)
 
-                PavePrimaryButton(title: "Verifieer document") { onVerify?(notification) }
-                    .disabled(onVerify == nil)
+                if let errorMessage {
+                    Text(errorMessage).textStyle(.caption).foregroundStyle(Color.statusRejected)
+                }
+                PavePrimaryButton(title: isWorking ? "Bezig…" : "Verifieer document") {
+                    Task { await resolve("verified") }
+                }
+                .disabled(isWorking || onResolve == nil || review == nil)
+                Button("Aanvraag afwijzen", role: .destructive) { confirmsReject = true }
+                    .textStyle(.caption)
+                    .frame(maxWidth: .infinity)
+                    .buttonStyle(.pave)
+                    .disabled(isWorking || onResolve == nil || review == nil)
             }
             .padding(20)
             .frame(maxWidth: 560, alignment: .leading)
@@ -541,6 +593,16 @@ private struct VerificationRequestNotificationDetail: View {
         .background(Color.canvas.ignoresSafeArea())
         .navigationBarBackButtonHidden()
         .toolbar(.hidden, for: .navigationBar)
+        .task(id: requestID) {
+            guard let requestID, let onLoadReview else { return }
+            review = await onLoadReview(requestID)
+            if review == nil { errorMessage = "De aanvraag kon niet worden geladen. Controleer je toegang en probeer opnieuw." }
+        }
+        .confirmationDialog("Aanvraag afwijzen?", isPresented: $confirmsReject, titleVisibility: .visible) {
+            Button("Aanvraag afwijzen", role: .destructive) { Task { await resolve("rejected") } }
+            Button("Annuleren", role: .cancel) {}
+        }
+        .vaultQuickLook($previewURL)
     }
 
     private var documentPlaceholder: some View {
@@ -559,6 +621,80 @@ private struct VerificationRequestNotificationDetail: View {
         .frame(height: 160)
         .background(Color.white, in: .rect(cornerRadius: 12))
         .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(Color.cardBorder) }
+    }
+
+    private func vaultItemCard(_ item: NotificationReviewItem) -> some View {
+        let tint = VaultCategory(rawValue: item.category)?.tint ?? Color.surfaceTint
+        let logo = item.files.first { $0.role == "logo" }
+        let cover = item.files.first { $0.role == "cover" }
+        return VStack(alignment: .leading, spacing: 0) {
+            tint
+                .overlay {
+                    if let cover, let url = URL(string: cover.url) {
+                        AsyncImage(url: url) { image in image.resizable().scaledToFill() } placeholder: { tint }
+                    }
+                }
+                .frame(height: 48)
+                .clipped()
+                .overlay(alignment: .bottomLeading) {
+                    Group {
+                        if let logo, let url = URL(string: logo.url) {
+                            AsyncImage(url: url) { image in image.resizable().scaledToFill() } placeholder: { logoFallback(item) }
+                        } else { logoFallback(item) }
+                    }
+                    .frame(width: 48, height: 48)
+                    .clipShape(.circle)
+                    .overlay { Circle().strokeBorder(Color.cardBorder) }
+                    .padding(.leading, 14)
+                    .offset(y: 24)
+                }
+            VStack(alignment: .leading, spacing: 9) {
+                HStack {
+                    Text(item.title).textStyle(.bodyMedium).foregroundStyle(Color.ink).lineLimit(2)
+                    Spacer(minLength: 4)
+                    Text("In afwachting").textStyle(.meta).foregroundStyle(Color.statusPending)
+                }
+                .padding(.top, 28)
+                Text(item.categoryTitle).textStyle(.caption).foregroundStyle(Color.inkMuted)
+                if let organisation = item.organisationName, !organisation.isEmpty {
+                    let place = [organisation, item.organisationLocation].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
+                    PaveIconLabel(icon: .iconBuildingOfficeSolid, text: place)
+                }
+                if let period = item.periodText {
+                    PaveIconLabel(icon: .iconCalendarDaysSolid, text: period)
+                }
+            }
+            .padding(14)
+        }
+        .background(Color.white, in: .rect(cornerRadius: 16))
+        .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder) }
+    }
+
+    private func logoFallback(_ item: NotificationReviewItem) -> some View {
+        Text(String((item.organisationName ?? item.title).prefix(1)).uppercased())
+            .font(.system(size: 18, weight: .semibold))
+            .foregroundStyle(Color.brandGreen)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.white)
+    }
+
+    private func open(_ file: NotificationReviewFile) async {
+        guard let url = URL(string: file.url), let (temporary, _) = try? await URLSession.shared.download(from: url),
+              let data = try? Data(contentsOf: temporary), let localURL = VaultPreviewFile.url(for: data, named: file.name) else {
+            errorMessage = "Het document kon niet worden geopend."
+            return
+        }
+        previewURL = localURL
+    }
+
+    private func resolve(_ action: String) async {
+        guard let requestID, let onResolve else { return }
+        isWorking = true
+        errorMessage = nil
+        let complete = await onResolve(requestID, action, nil)
+        isWorking = false
+        if complete { dismiss() }
+        else { errorMessage = "De beslissing kon niet worden opgeslagen. Vernieuw de meldingen en probeer opnieuw." }
     }
 
     private func detailField(_ title: String, value: String) -> some View {
@@ -606,8 +742,8 @@ private struct NotificationMessageDetail: View {
     NavigationStack {
         VerificationRequestNotificationDetail(
             notification: PaveNotification.previewAdmin[0],
-            onOpenDocument: nil,
-            onVerify: nil
+            onLoadReview: nil,
+            onResolve: nil
         )
     }
 }

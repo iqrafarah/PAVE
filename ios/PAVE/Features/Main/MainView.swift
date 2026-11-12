@@ -15,6 +15,7 @@ struct MainView: View {
     @State private var model: AylaChatModel
     @State private var memory: AylaMemoryModel
     @State private var vault: VaultModel
+    @State private var notificationsModel: NotificationsModel
     @State private var destination = MainDestination.ayla
     @State private var isMenuOpen = false
     @State private var isSidebarHidden = false
@@ -34,10 +35,11 @@ struct MainView: View {
     private static let sidebarWidth: CGFloat = 800
     private static let sidebarSize: CGFloat = 320
 
-    init(service: (any AylaService)?, vaultService: (any VaultService)?) {
+    init(service: (any AylaService)?, vaultService: (any VaultService)?, notificationsService: SupabaseNotificationsService? = nil) {
         _model = State(initialValue: AylaChatModel(service: service, drafts: .standard))
         _memory = State(initialValue: AylaMemoryModel(service: service))
         _vault = State(initialValue: VaultModel(service: vaultService))
+        _notificationsModel = State(initialValue: NotificationsModel(service: notificationsService))
     }
 
     var body: some View {
@@ -231,6 +233,13 @@ struct MainView: View {
         case .notifications:
             NotificationsScreen(
                 onShowMenu: onShowMenu,
+                audience: notificationsModel.audience,
+                notifications: notificationsModel.notifications,
+                loadError: notificationsModel.problem,
+                onRefresh: { await notificationsModel.refresh() },
+                onMarkRead: { await notificationsModel.markRead($0) },
+                onLoadReview: { await notificationsModel.review($0) },
+                onResolveRequest: { await notificationsModel.resolve($0, action: $1, response: $2) },
                 onOpenConversation: openNotificationConversation,
                 onOpenVerifiedEvidence: openNotificationEvidence
             )

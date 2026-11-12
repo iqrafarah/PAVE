@@ -34,7 +34,18 @@ struct VaultItemDetailView: View {
             }
             .sheet(isPresented: $requestsConfirmation) {
                 if let item {
-                    VaultRequestConfirmationSheet(item: item, documentCount: model.documents(of: item).count).paveSheet()
+                    VaultRequestConfirmationSheet(
+                        item: item,
+                        documentCount: model.documents(of: item).count,
+                        onSend: { request in
+                            await model.requestValidation(
+                                for: item,
+                                organisationName: request.organisation,
+                                email: request.email,
+                                message: request.message
+                            )
+                        }
+                    ).paveSheet()
                 }
             }
             .confirmationDialog("Uit je kluis verwijderen?", isPresented: $confirmsDelete, titleVisibility: .visible) {

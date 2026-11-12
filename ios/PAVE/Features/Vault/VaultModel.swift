@@ -240,6 +240,22 @@ final class VaultModel {
         await perform { try await $0.deleteFolder(id: folder.id) }
     }
 
+    func requestValidation(for item: VaultItem, organisationName: String, email: String, message: String?) async -> Bool {
+        guard let service else { problem = VaultMessages.requestNotActive; return false }
+        do {
+            try await service.requestValidation(
+                itemID: item.id, organisationName: organisationName, email: email, message: message
+            )
+            problem = nil
+            PaveHaptics.success()
+            return true
+        } catch {
+            problem = "Het verzoek kon niet worden verstuurd. Controleer de organisatienaam of probeer het later opnieuw."
+            PaveHaptics.error()
+            return false
+        }
+    }
+
     /// Runs a change and then reads the vault again, so counts and folders are always what the server has.
     @discardableResult
     private func perform(_ change: (any VaultService) async throws -> Void) async -> Bool {

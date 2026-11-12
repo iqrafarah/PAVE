@@ -21,7 +21,8 @@ struct RootView: View {
             case .main:
                 MainView(
                     service: AylaServiceFactory.make(auth: appState.authService),
-                    vaultService: VaultServiceFactory.make(auth: appState.authService)
+                    vaultService: VaultServiceFactory.make(auth: appState.authService),
+                    notificationsService: NotificationsServiceFactory.make(auth: appState.authService)
                 )
                     // Back after being away too long: the PIN screen over the app, which stays as it was.
                     .overlay {

@@ -2,22 +2,26 @@ import PAVECore
 import SwiftUI
 
 /// "Bevestiging aanvragen": choose who confirms the evidence and how to reach them, and see what they would get to see.
-/// Only the front for now: the sheet says so before and after, and nothing is sent or stored.
+/// Sends the request to the organisation's explicitly assigned reviewers.
 struct VaultRequestConfirmationSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let item: VaultItem
     let documentCount: Int
+    var onSend: ((VaultConfirmationRequest) async -> Bool)?
 
     @State private var request: VaultConfirmationRequest
     @State private var showsMissing = false
     @State private var isFinished = false
+    @State private var isSending = false
+    @State private var sendError: String?
     @State private var confirmsDiscard = false
     @FocusState private var focus: VaultConfirmationRequest.Field?
 
-    init(item: VaultItem, documentCount: Int) {
+    init(item: VaultItem, documentCount: Int, onSend: ((VaultConfirmationRequest) async -> Bool)? = nil) {
         self.item = item
         self.documentCount = documentCount
+        self.onSend = onSend
         _request = State(initialValue: VaultConfirmationRequest(item: item))
     }
 
@@ -69,7 +73,8 @@ struct VaultRequestConfirmationSheet: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    PaveNotice(message: VaultMessages.requestNotActive)
+                    if onSend == nil { PaveNotice(message: VaultMessages.requestNotActive) }
+                    if let sendError { PaveNotice(message: sendError) }
 
                     block(VaultMessages.requestWhoTitle) {
                         VStack(spacing: 10) {
@@ -124,7 +129,8 @@ struct VaultRequestConfirmationSheet: View {
             }
             .scrollDismissesKeyboard(.interactively)
 
-            PavePrimaryButton(title: VaultMessages.requestSend) { send() }
+            PavePrimaryButton(title: isSending ? "Versturen…" : VaultMessages.requestSend) { send() }
+                .disabled(isSending)
                 .padding(.horizontal, 22)
                 .padding(.top, 8)
                 .padding(.bottom, 12)
@@ -145,12 +151,12 @@ struct VaultRequestConfirmationSheet: View {
                 .background(Color.statusPending.opacity(0.12), in: .circle)
                 .accessibilityHidden(true)
             VStack(spacing: 8) {
-                Text(VaultMessages.requestNotSentTitle)
+                Text(onSend == nil ? VaultMessages.requestNotSentTitle : "Verzoek verstuurd")
                     .textStyle(.emptyTitle)
                     .foregroundStyle(Color.ink)
                     .multilineTextAlignment(.center)
                     .accessibilityAddTraits(.isHeader)
-                Text(VaultMessages.requestNotSentMessage(request.organisation))
+                Text(onSend == nil ? VaultMessages.requestNotSentMessage(request.organisation) : "\(request.organisation) ontvangt het verzoek. Je krijgt een melding zodra het bewijs is geverifieerd.")
                     .textStyle(.bodyMedium)
                     .foregroundStyle(Color.inkMuted)
                     .multilineTextAlignment(.center)
@@ -174,8 +180,19 @@ struct VaultRequestConfirmationSheet: View {
             PaveHaptics.error()
             return
         }
-        PaveHaptics.selection()
-        isFinished = true
+        guard let onSend else {
+            PaveHaptics.selection()
+            isFinished = true
+            return
+        }
+        isSending = true
+        sendError = nil
+        Task {
+            let sent = await onSend(request)
+            isSending = false
+            if sent { isFinished = true }
+            else { sendError = "Er ging iets mis. Controleer de organisatienaam en probeer het opnieuw." }
+        }
     }
 
     private func block(_ title: String, @ViewBuilder content: () -> some View) -> some View {

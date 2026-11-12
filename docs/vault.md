@@ -90,19 +90,23 @@ Migration `20261112120000_vault_cover_example_folders_reverify.sql`. Run it toge
 
 1. Review categories, folder behavior, status transitions, file limits and validation ownership with Daaf and the web team.
 2. ~~Build the `VaultService` against this model.~~ Done on iOS on 2026-11-10 (read, add, change, move, delete, folders). Still to do: file upload, and the web client.
-3. Add the server-side validation and task-consent behavior. Test that Ayla cannot read an item or category without an active, matching grant.
+3. Apply `20261112170000_resolve_vault_validation.sql`, deploy `vault-review`, provision reviewers, and test validation end to end. Separately add the Ayla task-consent behavior and verify grants before Ayla reads a vault item/category.
 4. ~~Apply the migration to the shared Supabase project.~~ Done on 2026-11-10.
 5. Update `ios/README.md`, `docs/ayla.md` and this page when the schema is applied or the contract changes.
 
-## Notifications and organisation review (draft migration, 2026-11-12)
+## Notifications and organisation review (applied 2026-11-12)
 
 [`20261112160000_notifications_and_vault_review.sql`](../shared/supabase/migrations/20261112160000_notifications_and_vault_review.sql) adds the database records needed to connect the iOS notifications screen:
 
 - `user_notifications` is a durable, private per-user inbox for conversations, verified evidence, and verification requests. It contains display metadata and source IDs only; Edge Functions create events and the recipient can mark them read.
 - `vault_validation_requests.organization_id` and `vault_validation_reviewers` provide a trusted route from a pending request to explicitly assigned reviewers. The learner's organisation text remains the display value; trusted server code must resolve it to an organisation.
 
-This is a migration draft; it has not been applied or remotely verified. No Supabase CLI, linked project reference, or Supabase connector is available in this workspace. The previous read-only schema check documented above is from 2026-11-10 and cannot prove the current remote state. Compare against the live project with the web team before applying.
+The migration was applied to the shared Supabase project on 2026-11-12 (confirmed by Gianna). I have not independently queried the live database because no Supabase CLI, linked project reference, or Supabase connector is available in this workspace.
 
-The migration does not make the verification flow operational by itself. Still required: (1) agree with the web team on the authoritative account role and organisation membership, then provision reviewer assignments; (2) add authenticated Edge Functions to create/route inbox events, list a reviewer's organisation requests, issue short-lived access to the requested private document, and atomically approve/reject while updating the item, request, audit trail, and learner notification; (3) connect the iOS inbox and actions to those functions. Keep `vault_item_files` and the private `pave-vault` Storage policies owner-only for client sessions. Chat notification routing also needs a defined recipient/relationship rule; this migration only provides the inbox record for conversation events.
+The next implementation is [`20261112170000_resolve_vault_validation.sql`](../shared/supabase/migrations/20261112170000_resolve_vault_validation.sql) plus the `vault-review` Edge Function. These are in the repo, but have **not** been applied/deployed. They add request submission, reviewer inbox/detail, five-minute signed links for the evidence files, an atomic reviewer decision with an audit row, and notifications to the learner after approval. Ayla replies also create an inbox event. The iOS inbox now calls that function, and the reviewer detail renders the evidence card and opens the actual files in Quick Look.
+
+Before the flow works against Supabase: apply migration `20261112170000`, deploy `vault-review`, and provision each organisation's authorised reviewers in `vault_validation_reviewers` through trusted admin tooling. The current repo does not define the web-owned profile role values or a reviewer provisioning UI, so we deliberately do not infer who is an admin. The organisation typed by the learner must exactly match an `organizations.name`; otherwise the request is rejected with a useful error. The contact email is saved on the request but no email is sent. Keep `vault_item_files` and the private `pave-vault` Storage policies owner-only for client sessions; only the reviewer function issues short-lived signed links.
+
+Conversation inbox events currently cover the learner's own Ayla replies. The repo has no teacher-to-learner chat or relationship model, so it cannot notify an admin about another learner's chat without defining and authorizing that sharing first.
 
 The migration includes Realtime publication entries for the vault tables so other signed-in devices can refresh. Clients must still use the authenticated user's session; service-role keys belong only in trusted server functions.

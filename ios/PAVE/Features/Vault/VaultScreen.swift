@@ -84,7 +84,18 @@ struct VaultScreen: View {
                         .paveSheet()
                 }
                 .sheet(item: $confirmedItem) { item in
-                    VaultRequestConfirmationSheet(item: item, documentCount: model.documents(of: item).count)
+                    VaultRequestConfirmationSheet(
+                        item: item,
+                        documentCount: model.documents(of: item).count,
+                        onSend: { request in
+                            await model.requestValidation(
+                                for: item,
+                                organisationName: request.organisation,
+                                email: request.email,
+                                message: request.message
+                            )
+                        }
+                    )
                         .paveSheet()
                 }
                 .sheet(isPresented: $addsItem) {

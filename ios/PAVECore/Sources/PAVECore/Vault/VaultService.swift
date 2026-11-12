@@ -31,6 +31,14 @@ public protocol VaultService: Sendable {
     func removeSkills(_ names: [String], from itemID: String) async throws
     /// "Voorstel van Ayla": skills that fit the evidence. Only the fields of the draft go to Ayla, on request.
     func suggestSkills(for draft: VaultItemDraft, material: VaultSkillsMaterial, existing: [String]) async throws -> [VaultSkillSuggestion]
+    /// Sends the item to the organisation's explicitly assigned reviewers through the trusted Edge Function.
+    func requestValidation(itemID: String, organisationName: String, email: String, message: String?) async throws
+}
+
+public extension VaultService {
+    func requestValidation(itemID: String, organisationName: String, email: String, message: String?) async throws {
+        throw VaultError.notSetUp
+    }
 }
 
 public enum VaultError: Error, Equatable, Sendable {
@@ -221,6 +229,24 @@ public struct SupabaseVaultService: VaultService {
         return response.skills
     }
 
+    public func requestValidation(itemID: String, organisationName: String, email: String, message: String?) async throws {
+        let body: [String: Any] = [
+            "action": "create",
+            "itemId": itemID,
+            "organisationName": organisationName,
+            "email": email,
+            "message": message ?? "",
+        ]
+        let data = try await send(try await request(functionsURL.appending(path: "vault-review"), method: "POST", json: body))
+        if let error = try? JSONDecoder().decode(FunctionError.self, from: data) {
+            switch error.error {
+            case "organization_not_found": throw VaultError.notSetUp
+            case "no_reviewers": throw VaultError.notAllowed
+            default: break
+            }
+        }
+    }
+
     private func insertFile(_ row: [String: Any]) async throws {
         _ = try await send(try await request(restURL.appending(path: "vault_item_files"), method: "POST", json: row), accepting: [201])
     }
@@ -404,6 +430,10 @@ public struct SupabaseVaultService: VaultService {
 private struct PostgrestError: Decodable {
     let code: String?
     let message: String?
+}
+
+private struct FunctionError: Decodable {
+    let error: String?
 }
 
 private struct IDRow: Decodable {
