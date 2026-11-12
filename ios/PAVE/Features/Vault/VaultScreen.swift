@@ -65,6 +65,9 @@ struct VaultScreen: View {
                     }
                 }
                 .task { await model.load() }
+                // Ayla pointed to one item: open it once the vault is there.
+                .onChange(of: model.itemToOpen, initial: true) { openRequestedItem() }
+                .onChange(of: model.state) { openRequestedItem() }
                 .sheet(item: $openedItem) { item in
                     VaultItemDetailView(itemID: item.id)
                         .paveSheet()
@@ -326,6 +329,12 @@ struct VaultScreen: View {
     private var newItemFolderID: String? {
         if case .folder(let id) = filter.shelf { return id }
         return nil
+    }
+
+    private func openRequestedItem() {
+        guard let id = model.itemToOpen, model.state == .ready else { return }
+        model.itemToOpen = nil
+        openedItem = model.items.first { $0.id == id }
     }
 
     private func select(_ shelf: VaultShelf) {

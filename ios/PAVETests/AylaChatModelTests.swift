@@ -5,13 +5,18 @@ import Testing
 
 @MainActor
 struct AylaChatModelTests {
+    /// The model calls the service from several tasks at once (pinning several chats), so every change to the records
+    /// goes through the lock; without it the arrays could be written at the same moment and corrupt memory.
     private final class FakeAyla: AylaService, @unchecked Sendable {
+        private let lock = NSLock()
         var replies: [Result<AylaReply, AylaError>] = []
         var requests: [AylaRequest] = []
 
         func send(_ request: AylaRequest) async throws -> AylaReply {
-            requests.append(request)
-            return try replies.removeFirst().get()
+            try lock.withLock {
+                requests.append(request)
+                return try replies.removeFirst().get()
+            }
         }
 
         var list = AylaConversationList()
@@ -26,17 +31,23 @@ struct AylaChatModelTests {
         var hits: [AylaSearchHit] = []
 
         func conversations(limit: Int) async throws -> AylaConversationList {
-            limits.append(limit)
-            if listFails { throw AylaError.noConnection }
-            return list
+            try lock.withLock {
+                limits.append(limit)
+                if listFails { throw AylaError.noConnection }
+                return list
+            }
         }
         func rename(_ title: String, conversationID: String) async throws {
-            renames.append((title, conversationID))
-            if actionFails { throw AylaError.unavailable }
+            try lock.withLock {
+                renames.append((title, conversationID))
+                if actionFails { throw AylaError.unavailable }
+            }
         }
         func delete(conversationID: String) async throws {
-            deletes.append(conversationID)
-            if actionFails { throw AylaError.unavailable }
+            try lock.withLock {
+                deletes.append(conversationID)
+                if actionFails { throw AylaError.unavailable }
+            }
         }
         func searchMessages(_ text: String) async throws -> [AylaSearchHit] { hits }
         var changes = AsyncStream<Void> { $0.finish() }
@@ -48,13 +59,17 @@ struct AylaChatModelTests {
             return "Daaf"
         }
         func setPinned(_ isPinned: Bool, conversationID: String) async throws {
-            pinCalls.append((isPinned, conversationID))
-            if pinFails { throw AylaError.unavailable }
+            try lock.withLock {
+                pinCalls.append((isPinned, conversationID))
+                if pinFails { throw AylaError.unavailable }
+            }
         }
         var removedTurns: [String] = []
         func removeLastTurn(in conversationID: String) async throws {
-            removedTurns.append(conversationID)
-            if actionFails { throw AylaError.noConnection }
+            try lock.withLock {
+                removedTurns.append(conversationID)
+                if actionFails { throw AylaError.noConnection }
+            }
         }
     }
 
@@ -94,6 +109,63 @@ struct AylaChatModelTests {
         await waitUntilIdle(model)
         #expect(model.entries.map(\.text) == ["Ben je er?", "Daar ben ik"])
         #expect(model.phase == .idle)
+    }
+
+    @Test func anAnswerAboutTheVaultOffersToAddLikeTheWeb() async {
+        let ayla = FakeAyla()
+        let skills = AylaBlock.skillSuggestions(itemId: "", skills: [.init(name: "Scrum", reason: "")])
+        ayla.replies = [
+            .success(AylaReply(id: "r1", conversationId: "c", text: "Die zie ik niet in je kluis.", blocks: [skills])),
+            .success(AylaReply(id: "r2", conversationId: "c", text: "Front-end past bij je.")),
+        ]
+        let model = AylaChatModel(service: ayla)
+
+        model.send("Staat mijn Scrum-certificaat in de kluis?")
+        await waitUntilIdle(model)
+        #expect(model.pendingQuestion == AylaVaultOffer.question)
+        #expect(model.pendingOffersEvidence)
+
+        let flow = VaultAddEvidenceModel.proposed(by: model.lastReply, vault: VaultModel(service: nil))
+        #expect(flow.skills == ["Scrum"])
+
+        model.send("Welke richting past bij mij?")
+        await waitUntilIdle(model)
+        #expect(model.pendingQuestion == nil)
+        #expect(!model.pendingOffersEvidence)
+    }
+
+    @Test func askingAboutAnItemSendsItWithEveryQuestionUntilANewConversation() async {
+        let ayla = FakeAyla()
+        ayla.replies = (1...3).map { .success(AylaReply(id: "r\($0)", conversationId: "c", text: "Oké")) }
+        let model = AylaChatModel(service: ayla)
+        model.ask(about: VaultItem(id: "item-1", category: .internships, title: "Eindstage"))
+        #expect(model.contextTitle == "Eindstage")
+
+        model.send("Wat laat dit zien?")
+        await waitUntilIdle(model)
+        model.send("En verder?")
+        await waitUntilIdle(model)
+        #expect(ayla.requests.map(\.context) == Array(repeating: AylaRequest.Context(screen: .vaultItem, itemId: "item-1"), count: 2))
+
+        model.newConversation()
+        #expect(model.contextTitle == nil)
+        model.send("Hoi")
+        await waitUntilIdle(model)
+        #expect(ayla.requests.last?.context == nil)
+    }
+
+    @Test func aProposedItemFillsTheForm() {
+        let item = AylaReply.VaultItemProposal(category: .internships, title: "Eindstage", organisationName: "LiveWall", startDate: "2025-02-01", isCurrent: true)
+        let reply = AylaReply(
+            id: "r", conversationId: "c", text: "Zal ik je stage toevoegen?",
+            proposedAction: AylaReply.ProposedAction(id: "a", kind: .addVaultItem, summary: "", expiresAt: .distantFuture, vaultItem: item)
+        )
+        let flow = VaultAddEvidenceModel.proposed(by: reply, vault: VaultModel(service: nil))
+        #expect(flow.draft.category == .internships)
+        #expect(flow.draft.title == "Eindstage")
+        #expect(flow.draft.organisationName == "LiveWall")
+        #expect(flow.draft.isCurrent)
+        #expect(AylaVaultOffer.offersToAddEvidence(reply, asked: ""))
     }
 
     @Test func choicesAreOfferedOnlyForTheLastReply() async {

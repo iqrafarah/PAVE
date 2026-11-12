@@ -5,12 +5,36 @@ struct AylaChoice: Identifiable, Equatable {
     let label: String
 }
 
-/// Two or three answers from Ayla's question, shown in place of the text field.
+/// Two or three answers from Ayla's question, shown in place of the text field. A question about the vault shows
+/// "Kluis" with the folder above the choices, as on the web (Figma 976:7971).
 struct AylaChoiceBar: View {
     let choices: [AylaChoice]
+    var isAboutVault = false
     let onChoose: (AylaChoice) -> Void
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if isAboutVault {
+                HStack(spacing: 6) {
+                    Image(.iconFolderSolid)
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 16, height: 16)
+                        .foregroundStyle(Color.brandGreen)
+                        .accessibilityHidden(true)
+                    Text(AylaMessages.vaultLabel)
+                        .textStyle(.label)
+                        .foregroundStyle(Color.ink)
+                }
+                .padding(.leading, 14)
+                .transition(.opacity)
+            }
+            choiceRow
+        }
+    }
+
+    private var choiceRow: some View {
         HStack(spacing: 3.2) {
             ForEach(choices) { choice in
                 Button {

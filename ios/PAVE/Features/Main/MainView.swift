@@ -217,9 +217,15 @@ struct MainView: View {
         switch destination {
         case .ayla:
             AylaRootView(model: model, onShowMenu: onShowMenu, isWide: isWide, showsChats: $showsChats)
+                .environment(vault)
+                .environment(\.openFromAyla, openFromAyla)
         case .vault:
             VaultScreen(onShowMenu: onShowMenu)
                 .environment(vault)
+                .environment(\.askAylaAbout) { item in
+                    model.ask(about: item)
+                    open(.ayla)
+                }
         case .plan:
             PlanScreen(onShowMenu: onShowMenu)
         case .profile:
@@ -241,6 +247,18 @@ struct MainView: View {
 
     private func open(_ destination: MainDestination) {
         self.destination = destination
+    }
+
+    /// Where Ayla points to: the vault, one item in it (it opens once the vault is there) or the settings.
+    private func openFromAyla(_ navigation: AylaReply.Navigation) {
+        switch navigation.screen {
+        case .vault: open(.vault)
+        case .vaultItem:
+            vault.itemToOpen = navigation.itemId
+            open(.vault)
+        case .settings: open(.settings)
+        default: break
+        }
     }
 
     /// A chat tapped in the iPhone's search.

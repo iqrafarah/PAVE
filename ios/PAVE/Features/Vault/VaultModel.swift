@@ -17,6 +17,8 @@ final class VaultModel {
     private(set) var contents = VaultContents()
     /// Saving, moving or deleting did not work; the screen shows it.
     var problem: String?
+    /// An item to open in the vault, for example from Ayla's "Open Eindstage".
+    var itemToOpen: String?
 
     private let service: (any VaultService)?
     /// Files already fetched in this session, so a thumbnail or preview does not download twice.

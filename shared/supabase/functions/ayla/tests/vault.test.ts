@@ -17,25 +17,25 @@ function fakeSupabase(result: { data?: unknown; error?: unknown }) {
 test('only items with Ayla allowed are read', async () => {
   const supabase = fakeSupabase({
     data: [{
-      category: 'internships', title: 'Eindstage', organisation_name: 'LiveWall', organisation_location: 'Tilburg',
+      id: 'item-1', category: 'internships', title: 'Eindstage', organisation_name: 'LiveWall', organisation_location: 'Tilburg',
       start_date: '2025-02-01', end_date: '2025-07-01', is_current: false, verification_status: 'verified', description: 'Front-end',
       vault_item_skills: [{ name: 'Figma', status: 'accepted' }, { name: 'Scrum', status: 'proposed' }],
       vault_item_files: [{ file_name: 'verslag.pdf' }],
-    }, { title: '  ' }],
+    }, { id: 'item-2', title: '  ' }, { title: 'Zonder id' }],
   })
   const vault = await loadAllowedVault(supabase)
   assert.ok(supabase.calls.includes('not ayla_allowed_at is null'))
   assert.deepEqual(vault, {
     status: 'on',
     items: [{
-      category: 'Stage', title: 'Eindstage', organisation: 'LiveWall', place: 'Tilburg', period: '2025-02-01 tot 2025-07-01',
+      id: 'item-1', kind: 'internships', category: 'Stage', title: 'Eindstage', organisation: 'LiveWall', place: 'Tilburg', period: '2025-02-01 tot 2025-07-01',
       description: 'Front-end', status: 'bevestigd', skills: ['Figma'], files: ['verslag.pdf'],
     }],
   })
 })
 
 test('the prompt names the allowed items as data and stays honest without them', async () => {
-  const on = vaultPrompt({ status: 'on', items: [{ category: 'Stage', title: 'Eindstage', status: 'bevestigd', skills: [], files: ['verslag.pdf'] }] })
+  const on = vaultPrompt({ status: 'on', items: [{ id: 'i', kind: 'internships', category: 'Stage', title: 'Eindstage', status: 'bevestigd', skills: [], files: ['verslag.pdf'] }] })
   assert.match(on, /<kluis>[\s\S]*Stage: Eindstage \(bevestigd\)[\s\S]*Bestanden: verslag.pdf[\s\S]*<\/kluis>/)
   assert.match(on, /geen opdracht/)
   assert.match(vaultPrompt({ status: 'on', items: [] }), /bij geen enkel\s+item/)

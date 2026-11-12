@@ -27,6 +27,12 @@ final class AylaChatModel {
     }
 
     private(set) var entries: [Entry] = []
+    /// What this conversation is about, such as an item from the vault ("Vraag Ayla over dit bewijs"); it goes with
+    /// every question in it, so Ayla knows what "dit" means. Only the id travels; the server reads the item itself and
+    /// only when the user allowed Ayla to use it.
+    private(set) var context: AylaRequest.Context?
+    /// The title of that item, for the chip above the text field.
+    private(set) var contextTitle: String?
     private(set) var phase = Phase.idle
     private(set) var conversationID: String?
     private(set) var firstName: String?
@@ -86,10 +92,32 @@ final class AylaChatModel {
 
     var isAvailable: Bool { service != nil }
 
-    /// Choices from Ayla's last reply, shown instead of the text field.
+    /// Choices from Ayla's last reply, shown instead of the text field. Like on the web, an answer about the vault
+    /// without a question of her own gets "Wil je iets toevoegen?" with Ja and Nee.
     var pendingQuestion: AylaReply.Question? {
         guard !isAnswering, let last = entries.last, last.role == .ayla else { return nil }
-        return last.reply?.question
+        return question(for: last)
+    }
+
+    /// Ja to the pending question opens adding evidence to the vault.
+    var pendingOffersEvidence: Bool {
+        guard !isAnswering, let last = entries.last, last.role == .ayla else { return false }
+        return AylaVaultOffer.offersToAddEvidence(last.reply, asked: askedText(before: last))
+    }
+
+    /// Ayla's newest answer, for what she proposed or suggested in it.
+    var lastReply: AylaReply? {
+        entries.last { $0.role == .ayla }?.reply
+    }
+
+    func question(for entry: Entry) -> AylaReply.Question? {
+        AylaVaultOffer.question(for: entry.reply, asked: askedText(before: entry))
+    }
+
+    /// The user's question that an answer is about.
+    private func askedText(before entry: Entry) -> String {
+        guard let index = entries.firstIndex(where: { $0.id == entry.id }), index > 0, entries[index - 1].role == .user else { return "" }
+        return entries[index - 1].text
     }
 
     var lastAylaEntryID: String? {
@@ -166,7 +194,7 @@ final class AylaChatModel {
         lastQuestion = text
         lastFiles = files
         phase = .thinking
-        let request = AylaRequest(conversationId: conversationID, text: text, device: .phone, input: input, attachments: files)
+        let request = AylaRequest(conversationId: conversationID, text: text, device: .phone, input: input, context: context, attachments: files)
         return Turn(service: service, request: request, text: text, files: files)
     }
 
@@ -277,7 +305,7 @@ final class AylaChatModel {
                 phase = .failed(AylaMessages.redoFailed)
                 return
             }
-            let request = AylaRequest(conversationId: conversationID, text: question.text, device: .phone, input: .text, attachments: files)
+            let request = AylaRequest(conversationId: conversationID, text: question.text, device: .phone, input: .text, context: context, attachments: files)
             await stream(Turn(service: service, request: request, text: question.text, files: files))
         }
     }
@@ -307,8 +335,22 @@ final class AylaChatModel {
         }
     }
 
+    /// A new conversation about one item from the vault.
+    func ask(about item: VaultItem) {
+        guard !isAnswering else { return }
+        newConversation()
+        context = AylaRequest.Context(screen: .vaultItem, itemId: item.id)
+        contextTitle = item.title
+    }
+
+    func clearContext() {
+        context = nil
+        contextTitle = nil
+    }
+
     func newConversation() {
         guard !isAnswering else { return }
+        clearContext()
         entries = []
         conversationID = nil
         lastQuestion = nil
@@ -320,6 +362,7 @@ final class AylaChatModel {
 
     func open(_ conversation: AylaConversation) async {
         guard let service, !isAnswering else { return }
+        clearContext()
         isLoadingConversation = true
         defer { isLoadingConversation = false }
         do {

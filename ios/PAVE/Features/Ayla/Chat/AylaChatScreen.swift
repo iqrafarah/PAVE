@@ -15,6 +15,10 @@ struct AylaChatScreen: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.hidesChatsButton) private var hidesChatsButton
+    @Environment(VaultModel.self) private var vault: VaultModel?
+    @Environment(\.openFromAyla) private var openFromAyla
+    /// Adding evidence after Ja to Ayla's "Wil je iets toevoegen?", filled with what she proposed.
+    @State private var addEvidence: VaultAddEvidenceModel?
     @State private var dictation = SpeechDictation()
     @State private var voice: AylaVoiceSession?
     @State private var voiceProblem: SpeechDictation.Problem?
@@ -147,6 +151,12 @@ struct AylaChatScreen: View {
         .animation(.spring(duration: 0.4), value: openVacanciesID)
         .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.35, bounce: 0.18), value: isAttachMenuOpen)
         .toolbar { toolbar }
+        .sheet(isPresented: Binding(get: { addEvidence != nil }, set: { if !$0 { addEvidence = nil } })) {
+            if let addEvidence {
+                VaultAddEvidenceSheet(flow: addEvidence)
+                    .paveSheet()
+            }
+        }
         .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
@@ -424,14 +434,26 @@ struct AylaChatScreen: View {
                     speaker: .ayla(showsMark: entry.id == model.lastAylaEntryID && !isFailed),
                     actions: actions(for: entry)
                 )
-                if let question = entry.reply?.question, !question.text.isEmpty {
+                if let question = model.question(for: entry), !question.text.isEmpty {
                     ChatBubble(text: question.text, speaker: .ayla(showsMark: false))
                 }
-                if let screen = entry.reply?.navigation?.screen, screen != .chat {
-                    Text("Dit onderdeel komt later in de app.")
-                        .textStyle(.caption)
-                        .foregroundStyle(Color.inkMuted)
-                        .padding(.leading, 4)
+                // Adding evidence opens from Ja under the question; the vault, an item in it and the settings open from a
+                // button, like on the web; other parts of PAVE are not in the app yet.
+                if let navigation = entry.reply?.navigation, navigation.screen != .chat, navigation.screen != .addEvidence {
+                    if let openFromAyla, AylaNavigationButton.canOpen(navigation.screen) {
+                        AylaNavigationButton(navigation: navigation, itemTitle: itemTitle(navigation.itemId)) {
+                            openFromAyla(navigation)
+                        }
+                    } else {
+                        Text("Dit onderdeel komt later in de app.")
+                            .textStyle(.caption)
+                            .foregroundStyle(Color.inkMuted)
+                            .padding(.leading, 4)
+                    }
+                }
+                if let reply = entry.reply, !reply.usedData.isEmpty {
+                    AylaUsedVault(categories: reply.usedData)
+                        .padding(.top, -4)
                 }
                 if let used = entry.reply?.usedMemories, !used.isEmpty {
                     AylaUsedMemories(notes: used) { showsMemory = true }
@@ -734,13 +756,23 @@ struct AylaChatScreen: View {
                     .padding(.trailing, 31)
                     .transition(.opacity)
             } else if let question = model.pendingQuestion, question.choices.count >= 2 {
-                AylaChoiceBar(choices: question.choices.map { AylaChoice(id: $0.id, label: $0.label) }) { choice in
-                    send(choice.label)
+                AylaChoiceBar(
+                    choices: question.choices.map { AylaChoice(id: $0.id, label: $0.label) },
+                    isAboutVault: model.pendingOffersEvidence
+                ) { choice in
+                    choose(choice.label)
                 }
                 .padding(.leading, 21)
                 .padding(.trailing, 22)
                 .padding(.bottom, -11)
             } else {
+                if let title = model.contextTitle, !isVoiceActive {
+                    AylaContextChip(title: title) { model.clearContext() }
+                        .padding(.leading, 33)
+                        .padding(.bottom, 8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .transition(.opacity)
+                }
                 AylaComposer(
                     text: $model.draft,
                     attachments: model.attachments,
@@ -817,6 +849,24 @@ struct AylaChatScreen: View {
     }
 
     /// Sending closes the keyboard, so Ayla's answer has the room, as in Messages.
+    private func itemTitle(_ id: String?) -> String? {
+        guard let id else { return nil }
+        return vault?.items.first { $0.id == id }?.title
+    }
+
+    /// Ja to "Wil je iets toevoegen?" opens adding evidence, filled with Ayla's proposal and skills; the answer still goes
+    /// to Ayla, as on the web.
+    private func choose(_ label: String) {
+        if model.pendingOffersEvidence, AylaVaultOffer.isYes(label), let vault {
+            let reply = model.lastReply
+            Task {
+                if vault.state != .ready { await vault.load() }
+                addEvidence = .proposed(by: reply, vault: vault)
+            }
+        }
+        send(label)
+    }
+
     private func send(_ text: String? = nil) {
         guard connection.isOnline else { return }
         dictation.stop()

@@ -1,4 +1,4 @@
-import { type AylaReply, type AylaRequest, type Block, type Screen, SCREENS } from './contract.ts'
+import { type AylaReply, type AylaRequest, type Block, CATEGORIES, type Category, type Screen, SCREENS } from './contract.ts'
 import type { AllowedVault } from './vault.ts'
 import { cleanMemories, type Memory, type MemorySuggestion, usedNotes } from './memory.ts'
 import type { ChatMessage, Complete } from './openrouter.ts'
@@ -39,11 +39,12 @@ const FALLBACK_TEXT = 'Sorry, dat lukte me even niet. Wil je het nog een keer vr
 interface ModelOutput {
   text: string
   question: { text: string; choices: { id: string; label: string }[] } | null
-  navigation: { screen: string } | null
+  navigation: { screen: string; item?: number | null } | null
   vacancySearch: { what: string; where: string } | null
   title: string | null
   memories: unknown
   usedMemories: unknown
+  usedVaultItems: unknown
   vaultItem: unknown
 }
 
@@ -88,18 +89,16 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
     }
   }
 
-  const reply = toReply(output, blocks, input.conversationId, deps.newId())
+  const reply = toReply(output, blocks, input.conversationId, deps.newId(), input.vault)
   const later = cleanMemories(output.memories, memory)
   const suggestions: MemorySuggestion[] = later.length ? later : heard
   if (suggestions.length) reply.memories = suggestions
   const laterUsed = usedNotes(output.usedMemories, memory)
   const used = laterUsed.length ? laterUsed : firstUsed
   if (used.length) reply.usedMemories = used
-  // Only the Watch shows a Ja/Nee card for it yet; elsewhere a proposal would have nowhere to be confirmed.
-  if (request.device === 'watch') {
-    const action = vaultProposal(output.vaultItem, deps.newId(), new Date())
-    if (action) reply.proposedAction = action
-  }
+  // A proposal for the vault: the Watch saves it after Ja; the iPhone and the web open adding evidence with it filled in.
+  const action = vaultProposal(output.vaultItem, deps.newId(), new Date())
+  if (action) reply.proposedAction = action
   return reply
 }
 
@@ -176,10 +175,11 @@ function parseOutput(content: string): ModelOutput {
       title: typeof json.title === 'string' ? json.title : null,
       memories: Array.isArray(json.memories) ? json.memories : [],
       usedMemories: Array.isArray(json.usedMemories) ? json.usedMemories : [],
+      usedVaultItems: Array.isArray(json.usedVaultItems) ? json.usedVaultItems : [],
       vaultItem: json.vaultItem ?? null,
     }
   } catch {
-    return { text: content, question: null, navigation: null, vacancySearch: null, title: null, memories: [], usedMemories: [], vaultItem: null }
+    return { text: content, question: null, navigation: null, vacancySearch: null, title: null, memories: [], usedMemories: [], usedVaultItems: [], vaultItem: null }
   }
 }
 
@@ -209,14 +209,26 @@ const ADD_EVIDENCE_QUESTION = {
   choices: [{ id: 'yes', label: 'Ja' }, { id: 'no', label: 'Nee' }],
 }
 
-function toReply(output: ModelOutput, blocks: Block[], conversationId: string, id: string): AylaReply {
+/** The allowed vault item with this number in the prompt (1, 2, …), or undefined. */
+function vaultItemAt(vault: AllowedVault | undefined, number: unknown) {
+  if (vault?.status !== 'on' || typeof number !== 'number' || !Number.isInteger(number)) return undefined
+  return vault.items[number - 1]
+}
+
+/** The kinds of the vault items the answer used, each once: what the apps show as "Uit je kluis". */
+function usedData(numbers: unknown, vault: AllowedVault | undefined): Category[] {
+  const kinds = (Array.isArray(numbers) ? numbers : []).map((n) => vaultItemAt(vault, n)?.kind)
+  return [...new Set(kinds.filter((kind): kind is Category => CATEGORIES.includes(kind as Category)))]
+}
+
+function toReply(output: ModelOutput, blocks: Block[], conversationId: string, id: string, vault?: AllowedVault): AylaReply {
   const reply: AylaReply = {
     version: 1,
     id,
     conversationId,
     text: stripMarkdown(output.text) || FALLBACK_TEXT,
     blocks,
-    usedData: [],
+    usedData: usedData(output.usedVaultItems, vault),
   }
   const choices = (output.question?.choices ?? [])
     .filter((c) => typeof c?.label === 'string' && c.label.trim())
@@ -225,6 +237,11 @@ function toReply(output: ModelOutput, blocks: Block[], conversationId: string, i
   if (output.question && choices.length >= 2) reply.question = { text: output.question.text ?? '', choices }
   const screen = output.navigation?.screen as Screen
   if (SCREENS.includes(screen) && NAVIGABLE.has(screen)) reply.navigation = { screen }
+  // Opening one item from the vault: only an item the user allowed, by its id; otherwise the vault itself.
+  if (screen === 'vaultItem') {
+    const item = vaultItemAt(vault, output.navigation?.item)
+    reply.navigation = item ? { screen: 'vaultItem', itemId: item.id } : { screen: 'vault' }
+  }
   // Offering to add evidence is always a Ja/Nee question (Figma "Wil je iets toevoegen?"), also when the model forgot it.
   if (reply.navigation?.screen === 'addEvidence' && !reply.question) reply.question = ADD_EVIDENCE_QUESTION
   return reply

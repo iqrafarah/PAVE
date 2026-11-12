@@ -114,12 +114,12 @@ struct VaultLibraryCard: View {
     @ViewBuilder
     private func details(lineLimit: Int) -> some View {
         if let place = item.place {
-            PaveIconLabel(icon: .iconBuildingOfficeSolid, text: place)
+            PaveIconLabel(icon: .iconVaultBuildingOutline, text: place)
                 .lineLimit(lineLimit)
         }
         if let period = item.period {
             // "mrt 2025 - dec 2025" fits a narrow tile (iPhone Duo) by getting a little smaller instead of being cut off.
-            PaveIconLabel(icon: .iconCalendarDaysSolid, text: period)
+            PaveIconLabel(icon: .iconVaultCalendarOutline, text: period)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
