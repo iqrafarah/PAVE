@@ -21,6 +21,7 @@ enum SettingsMessages {
     static let fromOrganisation = "Komt van je school of organisatie en kun je hier niet aanpassen."
     static let appearance = "Weergave"
     static let themeColor = "Themakleur"
+    static let customColorHint = "Kies je eigen kleur"
     static let vaultLayout = "Weergave kluis"
     static let vaultLayoutHint = "Zo opent je kluis. In de kluis kun je even wisselen; de volgende keer opent hij weer zo."
     static let textSize = "Tekstgrootte"
@@ -52,6 +53,7 @@ enum SettingsMessages {
         case .purple: "Paars"
         case .red: "Rood"
         case .lime: "Limoen"
+        case .custom: "Eigen kleur"
         }
     }
 

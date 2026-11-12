@@ -6,9 +6,11 @@ struct PavePrivacyCover: View {
         ZStack {
             Color.canvas
             Image(.paveLogo)
+                .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
                 .frame(width: 150)
+                .foregroundStyle(Color.paveAccent)
                 .accessibilityHidden(true)
         }
         .ignoresSafeArea()

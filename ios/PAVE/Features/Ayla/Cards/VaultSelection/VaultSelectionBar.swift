@@ -8,6 +8,11 @@ struct VaultSelectionBar: View {
     var body: some View {
         HStack(spacing: 0) {
             Image(.iconFolder)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .paveIconHeight(18)
+                .foregroundStyle(Color.paveAccent)
                 .accessibilityHidden(true)
             Text(count == 1 ? "1 item geselecteerd" : "\(count) items geselecteerd")
                 .textStyle(.chip)

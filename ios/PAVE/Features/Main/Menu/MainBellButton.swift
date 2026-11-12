@@ -31,9 +31,9 @@ struct MainBellButton: View {
             Image(.iconBellSolid)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 20, height: 20)
+                .paveIconFrame(20)
                 .foregroundStyle(isSelected ? Color.paveAccent : Color.ink)
-                .frame(width: 44, height: 44)
+                .paveIconFrame(44)
         } else {
             Image(.iconBell)
         }

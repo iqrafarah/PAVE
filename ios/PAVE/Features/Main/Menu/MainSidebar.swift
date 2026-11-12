@@ -28,9 +28,11 @@ struct MainSidebar: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 12) {
                 Image(.paveLogo)
+                    .renderingMode(.template)
                     .resizable()
                     .scaledToFit()
                     .frame(height: 24)
+                    .foregroundStyle(Color.paveAccent)
                     .padding(.leading, 12)
                     .accessibilityLabel("PAVE")
                 Spacer(minLength: 8)
@@ -78,7 +80,7 @@ struct MainSidebar: View {
             Image(systemName: "rectangle.lefthalf.filled")
                 .font(.system(size: 18, weight: .medium))
                 .foregroundStyle(Color.ink)
-                .frame(width: 44, height: 44)
+                .paveIconFrame(44)
                 .contentShape(.circle)
         }
         .buttonStyle(.pave)

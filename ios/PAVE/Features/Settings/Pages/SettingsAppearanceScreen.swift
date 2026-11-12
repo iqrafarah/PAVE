@@ -9,8 +9,12 @@ struct SettingsAppearanceScreen: View {
     var body: some View {
         SettingsPage(title: SettingsMessages.appearance) {
             card(SettingsMessages.themeColor) {
-                ThemeColorPicker(selection: profile.theme) { theme in
+                ThemeColorPicker(selection: profile.theme, customColor: profile.customColor) { theme in
                     Task { await profile.setTheme(theme) }
+                } onCustomColor: { color in
+                    profile.previewCustomColor(color)
+                } onCustomColorDone: {
+                    Task { await profile.saveCustomColor() }
                 }
             }
             card(SettingsMessages.vaultLayout) {
@@ -48,7 +52,7 @@ struct SettingsAppearanceScreen: View {
     private func vaultLayoutOption(_ layout: PaveVaultLayout) -> some View {
         let icon: ImageResource = layout == .list ? .iconListBulletSolid : .iconSquares2X2Solid
         return SettingsOptionCard(title: SettingsMessages.title(layout), isSelected: profile.vaultLayout == layout) {
-            Image(icon).renderingMode(.template)
+            Image(icon).renderingMode(.template).paveIconScale()
         } action: {
             Task { await profile.setVaultLayout(layout) }
         }

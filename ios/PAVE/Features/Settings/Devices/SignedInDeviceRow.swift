@@ -41,9 +41,9 @@ struct DeviceRow: View {
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 20, height: 20)
+                .paveIconFrame(20)
                 .foregroundStyle(isHighlighted ? Color.white : .paveAccent)
-                .frame(width: 40, height: 40)
+                .paveIconFrame(40)
                 .background(isHighlighted ? Color.paveAccent : .paveDropZone, in: .rect(cornerRadius: 10))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {

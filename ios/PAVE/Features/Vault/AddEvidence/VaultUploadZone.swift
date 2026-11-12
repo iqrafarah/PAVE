@@ -35,7 +35,7 @@ struct VaultUploadZone: View {
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 24, height: 24)
+                .paveIconFrame(24)
                 .foregroundStyle(Color.paveAccent)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -65,7 +65,7 @@ struct VaultUploadZone: View {
                     .renderingMode(.template)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 52, height: 52)
+                    .paveIconFrame(52)
                     .foregroundStyle(Color.paveAccent)
                 VStack(spacing: 4) {
                     Text(title)

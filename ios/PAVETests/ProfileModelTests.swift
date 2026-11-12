@@ -11,13 +11,15 @@ struct ProfileModelTests {
         var stored: PaveProfile
         var savedNames: [String?] = []
         var savedPreferences: [(PaveThemeColor, PaveTextSize, PaveVaultLayout)] = []
+        var savedCustomColors: [UInt32?] = []
 
         init(_ profile: PaveProfile) { stored = profile }
 
         func profile() async throws -> PaveProfile { stored }
         func setPreferredName(_ name: String?) async throws { savedNames.append(name) }
-        func setPreferences(theme: PaveThemeColor, textSize: PaveTextSize, vaultLayout: PaveVaultLayout) async throws {
+        func setPreferences(theme: PaveThemeColor, customColor: UInt32?, textSize: PaveTextSize, vaultLayout: PaveVaultLayout) async throws {
             savedPreferences.append((theme, textSize, vaultLayout))
+            savedCustomColors.append(customColor)
         }
         func setAvatar(_ jpeg: Data, replacing oldPath: String?) async throws -> String { "u/new.jpg" }
         func removeAvatar(_ path: String) async throws {}
@@ -25,7 +27,7 @@ struct ProfileModelTests {
     }
 
     private func clean() {
-        for key in [PaveAppearance.themeKey, PaveAppearance.textSizeKey, PaveAppearance.vaultLayoutKey] {
+        for key in [PaveAppearance.themeKey, PaveAppearance.customColorKey, PaveAppearance.textSizeKey, PaveAppearance.vaultLayoutKey] {
             UserDefaults.standard.removeObject(forKey: key)
         }
     }
@@ -45,6 +47,31 @@ struct ProfileModelTests {
         #expect(PaveAppearance.vaultLayout == .grid)
         let saved = await service.savedPreferences
         #expect(saved.last?.0 == .lime && saved.last?.1 == .large && saved.last?.2 == .grid)
+    }
+
+    @Test func anOwnColourShowsWhileChoosingAndIsSavedOnce() async {
+        clean()
+        defer {
+            clean()
+            PaveAppearance.applyStored()
+        }
+        let service = FakeProfiles(PaveProfile(fullName: "Ravi Santoso"))
+        let model = ProfileModel(service: service)
+        await model.load()
+
+        model.previewCustomColor(0xFFD1E8)
+        model.previewCustomColor(0xFF66AA)
+        #expect(PaveThemeStore.shared.theme == .custom)
+        #expect(PaveThemeStore.shared.accent == PaveThemeColor.readableAccent(for: 0xFF66AA))
+        #expect(await service.savedPreferences.isEmpty)
+
+        await model.saveCustomColor()
+        #expect(await service.savedCustomColors == [0xFF66AA])
+        #expect(PaveAppearance.customColor == 0xFF66AA)
+
+        await model.setTheme(.blue)
+        #expect(model.customColor == 0xFF66AA)
+        #expect(PaveThemeStore.shared.accent == PaveThemeColor.blue.accent)
     }
 
     @Test func withoutTheMigrationTheLookStaysOnThisDevice() async {

@@ -67,7 +67,7 @@ struct VaultLookSection: View {
                         Image(.iconPlus)
                             .renderingMode(.template)
                             .foregroundStyle(Color.paveAccent)
-                            .frame(width: 64, height: 64)
+                            .paveIconFrame(64)
                             .background(Color.paveDropZone, in: .circle)
                             .overlay { Circle().strokeBorder(Color.paveFocusRing, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])) }
                     }
@@ -144,7 +144,7 @@ struct VaultLookSection: View {
                 Image(.iconEllipsis)
                     .renderingMode(.template)
                     .foregroundStyle(Color.ink)
-                    .frame(width: 44, height: 44)
+                    .paveIconFrame(44)
                     .contentShape(.rect)
             }
             .accessibilityLabel(VaultMessages.coverActions)

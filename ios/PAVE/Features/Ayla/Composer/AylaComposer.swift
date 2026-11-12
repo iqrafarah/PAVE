@@ -109,9 +109,9 @@ struct AylaComposer: View {
                     Image(.iconStop)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 13, height: 13)
+                        .paveIconFrame(13)
                         .foregroundStyle(Color.white)
-                        .frame(width: 30, height: 30)
+                        .paveIconFrame(30)
                         .background(Color.paveAccent, in: .circle)
                         .shadow(color: .black.opacity(0.25), radius: 2)
                         .frame(width: Self.roundButtonWidth, height: 53)
@@ -137,7 +137,7 @@ struct AylaComposer: View {
             } else {
                 Button(action: send) {
                     Image(.iconSend)
-                        .frame(width: 30, height: 30)
+                        .paveIconFrame(30)
                         .background(Color.paveAccent, in: .circle)
                         .shadow(color: .black.opacity(0.25), radius: 2)
                         .frame(width: Self.roundButtonWidth, height: 53)

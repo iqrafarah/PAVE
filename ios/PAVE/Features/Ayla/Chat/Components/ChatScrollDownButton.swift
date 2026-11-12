@@ -13,9 +13,9 @@ struct ChatScrollDownButton: View {
             Image(.iconArrowDown)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 16, height: 16)
+                .paveIconFrame(16)
                 .foregroundStyle(Color.ink)
-                .frame(width: 36, height: 36)
+                .paveIconFrame(36)
                 .glassEffect(.regular.interactive(), in: .circle)
                 // A 36 pt circle with a 44 pt area to tap.
                 .frame(width: 44, height: 44)

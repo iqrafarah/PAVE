@@ -22,7 +22,7 @@ struct AylaAttachMenuRow: View {
                 image
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 18, height: 18)
+                    .paveIconFrame(18)
                     .foregroundStyle(Color.ink)
                     .frame(width: 37, height: 37)
                     .background(Color.white.opacity(0.7), in: .circle)

@@ -26,7 +26,7 @@ struct PaveNotice: View {
         HStack(alignment: .top, spacing: 12) {
             Image(tone == .info ? .iconInformationCircle : .iconExclamationCircle)
                 .resizable()
-                .frame(width: 22, height: 22)
+                .paveIconFrame(22)
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {

@@ -17,7 +17,7 @@ struct MainSidebarRow: View {
         Button(action: action) {
             HStack(spacing: 14) {
                 icon
-                    .frame(width: 24, height: 24)
+                    .paveIconFrame(24)
                 Text(destination.title)
                     .textStyle(.listTitle)
             }
@@ -39,10 +39,11 @@ struct MainSidebarRow: View {
         switch destination.icon {
         case .aylaLetter:
             AylaLetter(color: isSelected ? .paveAccent : .ink)
+                .paveIconScale()
         case .image(let resource):
-            Image(resource).renderingMode(.template)
+            Image(resource).renderingMode(.template).paveIconScale()
         case .bell:
-            Image(.iconBell)
+            Image(.iconBell).paveIconScale()
         }
     }
 }

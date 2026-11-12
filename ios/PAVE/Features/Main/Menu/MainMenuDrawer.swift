@@ -115,7 +115,7 @@ struct MainMenuDrawer: View {
                 Image(.iconXMark)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 20, height: 20)
+                    .paveIconFrame(20)
                     .foregroundStyle(Color.ink)
                     .frame(width: Self.buttonSize, height: Self.buttonSize)
                     .contentShape(.circle)

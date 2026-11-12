@@ -126,7 +126,7 @@ struct PaveTextField<Field: Hashable>: View {
             HStack(spacing: 6) {
                 Image(isRevealed ? .iconEyeOff : .iconEye)
                     .resizable()
-                    .frame(width: 20, height: 20)
+                    .paveIconFrame(20)
                     .accessibilityHidden(true)
                 Text(isRevealed ? "Verbergen" : "Tonen")
                     .textStyle(.eyebrow)
@@ -152,7 +152,9 @@ struct PaveTextField<Field: Hashable>: View {
         let isMet = shownProgress == .valid
         return HStack(spacing: 8) {
             Image(isMet ? .iconCheck : .iconRequirementBullet)
+                .renderingMode(isMet ? .original : .template)
                 .resizable()
+                .foregroundStyle(Color.paveAccent)
                 .frame(width: isMet ? 16 : 4, height: isMet ? 16 : 4)
                 .frame(width: 16)
                 .accessibilityHidden(true)
@@ -190,7 +192,7 @@ struct PaveInlineError: View {
         HStack(alignment: .top, spacing: 8) {
             Image(.iconExclamationCircle)
                 .resizable()
-                .frame(width: 18, height: 18)
+                .paveIconFrame(18)
                 .accessibilityHidden(true)
             Text(message)
                 .textStyle(.footnote)

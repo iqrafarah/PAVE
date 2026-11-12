@@ -13,7 +13,7 @@ struct AylaChatsMoreMenu: View {
             Image(.iconEllipsis)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 22, height: 22)
+                .paveIconFrame(22)
         }
         .simultaneousGesture(TapGesture().onEnded { PaveHaptics.tap(.light) })
         .accessibilityLabel("Meer opties")

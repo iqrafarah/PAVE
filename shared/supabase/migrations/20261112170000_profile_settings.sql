@@ -12,12 +12,20 @@
 alter table public.profiles
   add column if not exists avatar_path text
     check (avatar_path is null or avatar_path ~ '^[0-9a-f-]{36}/[0-9a-f-]{36}\.(jpg|jpeg|png|heic)$'),
-  add column if not exists theme_color text not null default 'green'
-    check (theme_color in ('green', 'blue', 'gold', 'pink', 'orange', 'purple', 'red', 'lime')),
+  add column if not exists theme_color text not null default 'green',
+  add column if not exists theme_custom_color text,
   add column if not exists text_size text not null default 'standard'
     check (text_size in ('small', 'standard', 'large')),
   add column if not exists vault_layout text not null default 'grid'
     check (vault_layout in ('list', 'grid'));
+
+alter table public.profiles drop constraint if exists profiles_theme_color_check;
+alter table public.profiles add constraint profiles_theme_color_check
+  check (theme_color in ('green', 'blue', 'gold', 'pink', 'orange', 'purple', 'red', 'lime', 'custom'));
+
+alter table public.profiles drop constraint if exists profiles_theme_custom_color_check;
+alter table public.profiles add constraint profiles_theme_custom_color_check
+  check (theme_custom_color is null or theme_custom_color ~ '^#[0-9A-F]{6}$');
 
 alter table public.profiles drop constraint if exists profiles_preferred_name_length;
 alter table public.profiles add constraint profiles_preferred_name_length
@@ -25,7 +33,9 @@ alter table public.profiles add constraint profiles_preferred_name_length
 
 comment on column public.profiles.avatar_path is
   'An own profile photo in the pave-avatars bucket (<user id>/<uuid>.<ext>). Wins over avatar_url when set.';
-comment on column public.profiles.theme_color is 'The accent colour the apps use for this account.';
+comment on column public.profiles.theme_color is 'The accent colour the apps use for this account; custom uses theme_custom_color.';
+comment on column public.profiles.theme_custom_color is
+  'An own accent colour as #RRGGBB. The apps darken it until white text on it is readable (WCAG AA, 4.5:1).';
 comment on column public.profiles.text_size is 'small, standard (the device setting) or large.';
 comment on column public.profiles.vault_layout is 'How the vault opens: list or grid. The vault can still switch for a moment.';
 
@@ -37,9 +47,9 @@ set search_path = ''
 as $$
 begin
   if coalesce(auth.role(), '') <> 'service_role' then
-    if (to_jsonb(new) - array['preferred_name', 'avatar_path', 'theme_color', 'text_size', 'vault_layout', 'updated_at'])
+    if (to_jsonb(new) - array['preferred_name', 'avatar_path', 'theme_color', 'theme_custom_color', 'text_size', 'vault_layout', 'updated_at'])
        is distinct from
-       (to_jsonb(old) - array['preferred_name', 'avatar_path', 'theme_color', 'text_size', 'vault_layout', 'updated_at']) then
+       (to_jsonb(old) - array['preferred_name', 'avatar_path', 'theme_color', 'theme_custom_color', 'text_size', 'vault_layout', 'updated_at']) then
       raise exception 'Only the name, photo and preferences can be changed here' using errcode = '42501';
     end if;
     if new.avatar_path is not null and split_part(new.avatar_path, '/', 1) <> new.id::text then
@@ -67,7 +77,7 @@ create policy "Update own profile settings"
   on public.profiles for update to authenticated
   using ((select auth.uid()) = id) with check ((select auth.uid()) = id);
 
-grant update (preferred_name, avatar_path, theme_color, text_size, vault_layout) on public.profiles to authenticated;
+grant update (preferred_name, avatar_path, theme_color, theme_custom_color, text_size, vault_layout) on public.profiles to authenticated;
 
 -- 3. Profile photos ---------------------------------------------------------------------------------------------------
 

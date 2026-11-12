@@ -12,6 +12,11 @@ struct PaveChip: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 Image(icon)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .paveIconHeight(18)
+                    .foregroundStyle(Color.paveAccent)
                     .accessibilityHidden(true)
                 Text(title)
                     .textStyle(.chip)

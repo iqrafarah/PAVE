@@ -31,6 +31,25 @@ struct ProfileTests {
         for theme in PaveThemeColor.allCases {
             #expect(1.05 / (luminance(theme.accent) + 0.05) >= 4.5, "\(theme)")
         }
+        for own: UInt32 in [0xFFFFFF, 0xFFEB3B, 0x00FF00, 0xFFD1E8, 0x7FDBFF] {
+            #expect(1.05 / (luminance(PaveThemeColor.readableAccent(for: own)) + 0.05) >= 4.5, "\(PaveThemeColor.hex(own))")
+        }
+        #expect(PaveThemeColor.readableAccent(for: 0x1A2B3C) == 0x1A2B3C)
+    }
+
+    @Test func anOwnColourIsStoredAsHexAndNeedsItsValue() throws {
+        #expect(PaveThemeColor.hex(0xff66aa) == "#FF66AA")
+        #expect(PaveThemeColor.color(hex: "#FF66AA") == 0xFF66AA)
+        #expect(PaveThemeColor.color(hex: "FF66AA") == nil)
+        #expect(!PaveThemeColor.presets.contains(.custom))
+
+        func profile(_ fields: String) throws -> PaveProfile {
+            let json = Data("[{\"full_name\":\"Ravi Santoso\",\(fields)}]".utf8)
+            return try #require(try JSONDecoder().decode([SettingsProfileRow].self, from: json).first).profile(canChangeSettings: true)
+        }
+        let own = try profile(##""theme_color":"custom","theme_custom_color":"#FF66AA""##)
+        #expect(own.theme == .custom && own.customColor == 0xFF66AA)
+        #expect(try profile(#""theme_color":"custom","theme_custom_color":null"#).theme == .green)
     }
 
     @Test func aMissingMigrationIsNotSetUp() {

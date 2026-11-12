@@ -19,7 +19,7 @@ struct AylaUndoBar: View {
             Image(.iconTrash)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 18, height: 18)
+                .paveIconFrame(18)
                 .foregroundStyle(Color.inkMuted)
                 .accessibilityHidden(true)
             Text(message)
