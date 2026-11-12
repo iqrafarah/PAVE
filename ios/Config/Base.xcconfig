@@ -1,4 +1,5 @@
-DEVELOPMENT_TEAM = Q583XQMKU2
-APP_BUNDLE_IDENTIFIER = nl.fontys.pave.iqra
-SUPABASE_URL = https://zoghaaxzrtovmgaxqleh.supabase.co
-SUPABASE_PUBLISHABLE_KEY = sb_publishable_ZN-6LPSTfPSV3jmF_dKczA_H658t0zw
+APP_BUNDLE_IDENTIFIER = nl.fontys.pave.daaf
+SUPABASE_URL =
+SUPABASE_PUBLISHABLE_KEY =
+
+#include? "Local.xcconfig"
