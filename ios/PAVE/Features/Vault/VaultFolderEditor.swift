@@ -18,7 +18,11 @@ struct VaultFolderEditor: View {
     @State private var error: String?
     @FocusState private var isNameFocused: Bool
 
-    init(folder: VaultFolder?, style: (color: VaultFolderColor, icon: VaultFolderIcon)?, onCreate: @escaping (VaultFolder) -> Void = { _ in }) {
+    init(
+        folder: VaultFolder?,
+        style: (color: VaultFolderColor, icon: VaultFolderIcon)?,
+        onCreate: @escaping (VaultFolder) -> Void = { _ in }
+    ) {
         self.folder = folder
         self.onCreate = onCreate
         _name = State(initialValue: folder?.name ?? "")
@@ -34,6 +38,7 @@ struct VaultFolderEditor: View {
     private var isWide: Bool { size.width >= 500 && size.height < 560 }
 
     private var trimmedName: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var isNew: Bool { folder == nil }
     private static let errors = [VaultMessages.folderNameTaken, VaultMessages.folderNameMissing, VaultMessages.message(for: .noConnection)]
 
     var body: some View {
@@ -93,7 +98,7 @@ struct VaultFolderEditor: View {
             .scrollDismissesKeyboard(.interactively)
 
             PavePrimaryButton(
-                title: folder == nil ? "Map aanmaken" : "Bewaren",
+                title: isNew ? "Map aanmaken" : "Bewaren",
                 loadingTitle: "Bewaren…",
                 isLoading: isSaving,
                 action: save
@@ -106,7 +111,7 @@ struct VaultFolderEditor: View {
     }
 
     private var title: some View {
-        Text(folder == nil ? VaultMessages.newFolderTitle : "Map aanpassen")
+        Text(isNew ? VaultMessages.newFolderTitle : "Map aanpassen")
             .textStyle(.emptyTitle)
             .foregroundStyle(Color.ink)
             .frame(maxWidth: .infinity, alignment: .leading)

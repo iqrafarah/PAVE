@@ -17,7 +17,7 @@ extension VaultContents {
                 skills: ["Leiderschap", "Communicatie", "Planning"]
             ),
             VaultItem(
-                id: "stageverslag", folderID: "stage", category: .projects, title: "Eindverslag stage",
+                id: "stageverslag", folderIDs: ["stage"], category: .projects, title: "Eindverslag stage",
                 organisationName: "Pixelwerk", organisationLocation: "Eindhoven",
                 startDate: VaultDay(year: 2025, month: 3, day: 1), endDate: VaultDay(year: 2025, month: 12, day: 1),
                 status: .rejected, skills: ["Swift", "Testen"]

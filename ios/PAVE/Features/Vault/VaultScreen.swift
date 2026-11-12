@@ -6,12 +6,16 @@ struct VaultScreen: View {
     @Environment(VaultModel.self) private var model
     let onShowMenu: (() -> Void)?
 
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @AppStorage("vaultShowsGrid") private var isGrid = true
+    /// The evidence moved under the folders and the filter bar: a thin line then separates them.
+    @State private var itemsScrolled = false
     @State private var filter = VaultFilter()
     @State private var isSearching = false
     @FocusState private var isSearchFocused: Bool
     @State private var openedItem: VaultItem?
     @State private var editedItem: VaultItem?
+    @State private var confirmedItem: VaultItem?
     @State private var addsItem = false
     @State private var deletedItem: VaultItem?
     @State private var folderSheet: FolderSheet?
@@ -31,11 +35,6 @@ struct VaultScreen: View {
 
     private var visibleItems: [VaultItem] { filter.apply(to: model.items) }
 
-    /// The four folders from the design, then the other categories that hold something.
-    private var categories: [VaultCategory] {
-        VaultCategory.featured + VaultCategory.allCases.filter { !VaultCategory.featured.contains($0) && model.count(in: .category($0)) > 0 }
-    }
-
     var body: some View {
         NavigationStack {
             content
@@ -53,7 +52,7 @@ struct VaultScreen: View {
                         ToolbarItem(placement: .topBarTrailing) {
                             Menu {
                                 Button { addsItem = true } label: {
-                                    Label { Text("Item toevoegen") } icon: { Image(.iconDocumentPlusSolid) }
+                                    Label { Text("Bewijs toevoegen") } icon: { Image(.iconDocumentPlusSolid) }
                                 }
                                 Button { folderSheet = .new } label: {
                                     Label { Text("Map aanmaken") } icon: { Image(.iconFolderPlusSolid) }
@@ -71,11 +70,15 @@ struct VaultScreen: View {
                         .paveSheet()
                 }
                 .sheet(item: $editedItem) { item in
-                    VaultItemEditor(item: item)
+                    VaultEvidenceEditor(vault: model, item: item)
+                        .paveSheet()
+                }
+                .sheet(item: $confirmedItem) { item in
+                    VaultRequestConfirmationSheet(item: item, documentCount: model.documents(of: item).count)
                         .paveSheet()
                 }
                 .sheet(isPresented: $addsItem) {
-                    VaultItemEditor(category: newItemCategory, folderID: newItemFolderID)
+                    VaultAddEvidenceSheet(vault: model, category: newItemCategory, folderID: newItemFolderID)
                         .paveSheet()
                 }
                 .sheet(item: $folderSheet) { sheet in
@@ -152,39 +155,70 @@ struct VaultScreen: View {
         }
     }
 
+    /// The search field, the folders and the filter bar stay in place; only the evidence below them scrolls. On a
+    /// screen without the height for that (a phone on its side) everything scrolls together.
+    @ViewBuilder
     private var library: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                if isSearching {
-                    PaveSearchField(text: $filter.searchText, prompt: "Zoek op titel, organisatie of vaardigheid", isFocused: $isSearchFocused)
+        if verticalSizeClass == .compact {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    controls
+                    items
                 }
-                shelves
-                VaultFilterBar(filter: $filter, isGrid: $isGrid)
-                items
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+                .padding(.bottom, 28)
+                .frame(maxWidth: 1000)
+                .frame(maxWidth: .infinity)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
-            .padding(.bottom, 28)
-            .frame(maxWidth: 1000)
-            .frame(maxWidth: .infinity)
+            .scrollDismissesKeyboard(.immediately)
+            .refreshable { await model.load() }
+        } else {
+            VStack(spacing: 0) {
+                controls
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+                    .padding(.bottom, 14)
+                    .frame(maxWidth: 1000)
+                    .frame(maxWidth: .infinity)
+                    .overlay(alignment: .bottom) {
+                        Rectangle()
+                            .fill(Color.cardBorder)
+                            .frame(height: 1)
+                            .opacity(itemsScrolled ? 1 : 0)
+                            .animation(.easeOut(duration: 0.15), value: itemsScrolled)
+                    }
+                    .zIndex(1)
+                ScrollView {
+                    items
+                        .padding(.horizontal, 20)
+                        .padding(.top, 4)
+                        .padding(.bottom, 28)
+                        .frame(maxWidth: 1000)
+                        .frame(maxWidth: .infinity)
+                }
+                .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > 1 } action: { _, scrolled in
+                    itemsScrolled = scrolled
+                }
+                .scrollDismissesKeyboard(.immediately)
+                .refreshable { await model.load() }
+            }
         }
-        .scrollDismissesKeyboard(.immediately)
-        .refreshable { await model.load() }
+    }
+
+    private var controls: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            if isSearching {
+                PaveSearchField(text: $filter.searchText, prompt: "Zoek op titel, organisatie of vaardigheid", isFocused: $isSearchFocused)
+            }
+            shelves
+            VaultFilterBar(filter: $filter, isGrid: $isGrid)
+        }
     }
 
     private var shelves: some View {
         ScrollView(.horizontal) {
             HStack(spacing: 9) {
-                ForEach(categories) { category in
-                    VaultFolderTile(
-                        title: category.title,
-                        icon: category.folderIcon,
-                        count: model.count(in: .category(category)),
-                        isSelected: filter.shelf == .category(category)
-                    ) {
-                        select(.category(category))
-                    }
-                }
                 ForEach(model.folders) { folder in
                     let style = model.style(of: folder)
                     VaultFolderTile(
@@ -240,14 +274,14 @@ struct VaultScreen: View {
         .buttonStyle(.pave)
         .accessibilityHint("Toont alles over dit item")
         .contextMenu {
-            VaultItemActionButtons(item: item, onEdit: { editedItem = item }, onDelete: { deletedItem = item })
+            VaultItemActionButtons(item: item, onEdit: { editedItem = item }, onRequestConfirmation: { confirmedItem = item }, onDelete: { deletedItem = item })
         }
     }
 
     @ViewBuilder
     private var emptyState: some View {
         if model.items.isEmpty {
-            emptyMessage(icon: .iconFolderSolid, title: VaultMessages.emptyTitle, message: VaultMessages.emptyMessage, button: "Item toevoegen") {
+            emptyMessage(icon: .iconFolderSolid, title: VaultMessages.emptyTitle, message: VaultMessages.emptyMessage, button: "Bewijs toevoegen") {
                 addsItem = true
             }
         } else if !filter.searchText.isEmpty || filter.narrowsDown {
@@ -279,8 +313,13 @@ struct VaultScreen: View {
         }
     }
 
+    /// Adding from an example folder starts with its kind, such as Project in Projecten.
     private var newItemCategory: VaultCategory {
         if case .category(let category) = filter.shelf { return category }
+        if case .folder(let id) = filter.shelf, let folder = model.folder(id),
+           let example = VaultExampleFolders.all.first(where: { $0.name.localizedCaseInsensitiveCompare(folder.name) == .orderedSame }) {
+            return example.category
+        }
         return .projects
     }
 

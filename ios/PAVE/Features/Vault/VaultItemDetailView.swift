@@ -7,7 +7,9 @@ struct VaultItemDetailView: View {
     @Environment(VaultModel.self) private var model
     let itemID: String
     @State private var isEditing = false
+    @State private var requestsConfirmation = false
     @State private var confirmsDelete = false
+    @State private var look: VaultLogoLook?
 
     private var item: VaultItem? { model.items.first { $0.id == itemID } }
 
@@ -28,7 +30,12 @@ struct VaultItemDetailView: View {
                 }
             }
             .sheet(isPresented: $isEditing) {
-                if let item { VaultItemEditor(item: item).paveSheet() }
+                if let item { VaultEvidenceEditor(vault: model, item: item).paveSheet() }
+            }
+            .sheet(isPresented: $requestsConfirmation) {
+                if let item {
+                    VaultRequestConfirmationSheet(item: item, documentCount: model.documents(of: item).count).paveSheet()
+                }
             }
             .confirmationDialog("Uit je kluis verwijderen?", isPresented: $confirmsDelete, titleVisibility: .visible) {
                 Button("Verwijderen", role: .destructive) {
@@ -47,7 +54,12 @@ struct VaultItemDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 HStack(alignment: .top, spacing: 14) {
-                    CompanyMonogram(name: item.organisationName ?? item.title, size: 56)
+                    VaultLogoAvatar(look: look, name: item.organisationName ?? item.title, size: 56)
+                        .task(id: model.logo(of: item)?.id) {
+                            guard let logo = model.logo(of: item) else { look = nil; return }
+                            let loaded = await model.look(of: logo)
+                            withAnimation(.easeOut(duration: 0.25)) { look = loaded }
+                        }
                     VStack(alignment: .leading, spacing: 8) {
                         Text(item.category.singularTitle)
                             .textStyle(.caption)
@@ -63,7 +75,12 @@ struct VaultItemDetailView: View {
                     // In the content rather than the navigation bar: on the outer display of the iPhone Duo the bar puts
                     // its buttons in the status column, where the sheet does not reach.
                     Menu {
-                        VaultItemActionButtons(item: item, onEdit: { isEditing = true }, onDelete: { confirmsDelete = true })
+                        VaultItemActionButtons(
+                            item: item,
+                            onEdit: { isEditing = true },
+                            onRequestConfirmation: { requestsConfirmation = true },
+                            onDelete: { confirmsDelete = true }
+                        )
                     } label: {
                         Image(.iconEllipsis)
                             .renderingMode(.template)
@@ -76,10 +93,21 @@ struct VaultItemDetailView: View {
                 }
 
                 section("Status") {
-                    Text(item.status.explanation)
-                        .textStyle(.bodyMedium)
-                        .foregroundStyle(Color.ink)
-                        .fixedSize(horizontal: false, vertical: true)
+                    VStack(alignment: .leading, spacing: 14) {
+                        Text(item.status.explanation)
+                            .textStyle(.bodyMedium)
+                            .foregroundStyle(Color.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                        // Also after a change: a confirmed item that was changed is Niet bevestigd again and can be sent anew.
+                        if item.status != .verified {
+                            PaveSecondaryButton(
+                                title: item.status == .rejected ? VaultMessages.requestAgainAction : VaultMessages.requestAction,
+                                icon: .iconCheckBadgeSolid
+                            ) {
+                                requestsConfirmation = true
+                            }
+                        }
+                    }
                 }
 
                 section("Gegevens") {
@@ -90,8 +118,9 @@ struct VaultItemDetailView: View {
                         if let period = item.period {
                             PaveIconLabel(icon: .iconCalendarDaysSolid, text: period)
                         }
-                        if let folder = model.folder(item.folderID) {
-                            PaveIconLabel(icon: .iconFolderSolid, text: "In de map \(folder.name)")
+                        let folders = model.folders(of: item)
+                        if !folders.isEmpty {
+                            PaveIconLabel(icon: .iconFolderSolid, text: VaultMessages.inFolders(folders.map(\.name)))
                         }
                         PaveIconLabel(icon: .iconInformationCircle, text: "\(item.source.title), \(VaultDay(item.createdAt).full)")
                     }
@@ -115,19 +144,16 @@ struct VaultItemDetailView: View {
                     }
                 }
 
-                if !item.files.isEmpty {
+                let documents = model.documents(of: item)
+                if !documents.isEmpty {
                     section("Bestanden") {
-                        VStack(alignment: .leading, spacing: 10) {
-                            ForEach(item.files) { file in
-                                PaveIconLabel(icon: .iconDocumentSolid, text: file.name)
-                            }
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 96, maximum: 140), spacing: 12, alignment: .top)], alignment: .leading, spacing: 14) {
+                            ForEach(documents) { VaultFileTile(file: $0) }
                         }
                     }
                 }
 
-                if item.isEditable {
-                    PaveSecondaryButton(title: "Aanpassen", icon: .iconPencil) { isEditing = true }
-                }
+                PaveSecondaryButton(title: "Aanpassen", icon: .iconPencil) { isEditing = true }
             }
             .padding(20)
             .frame(maxWidth: 560, alignment: .leading)

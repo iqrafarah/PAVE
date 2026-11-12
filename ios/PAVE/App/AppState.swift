@@ -8,6 +8,8 @@ enum AppPhase: Equatable {
     case pinSetup
     case locked
     case main
+    /// The session ended elsewhere, for example because the password was changed on another device.
+    case sessionEnded
 }
 
 @Observable
@@ -138,13 +140,33 @@ final class AppState {
     }
 
     func signOut() {
+        leave(to: .signedOut)
+    }
+
+    /// Asks the server whether the session still exists. When it ended elsewhere, a screen asks you to sign in again
+    /// instead of showing things that can no longer load. Without an answer nothing changes.
+    func checkSession() async {
+        guard hasSession, await authService.sessionState() == .ended, hasSession else { return }
+        leave(to: .sessionEnded)
+    }
+
+    func signInAgain() {
+        guard phase == .sessionEnded else { return }
+        phase = .signedOut
+    }
+
+    private var hasSession: Bool {
+        isSignedIn && [.pinSetup, .locked, .main].contains(phase)
+    }
+
+    private func leave(to phase: AppPhase) {
         defaults.set(false, forKey: Self.signedInKey)
         AylaSpotlight.forget(in: defaults)
         AylaDrafts.forget(in: defaults)
         conversationToOpen = nil
         link = nil
         isRelocked = false
-        phase = .signedOut
+        self.phase = phase
         Task { await authService.signOut() }
     }
 

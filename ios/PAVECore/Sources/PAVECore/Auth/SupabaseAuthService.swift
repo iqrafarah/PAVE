@@ -7,10 +7,13 @@ public struct SupabaseAuthService: AuthService {
 
     private let client: AuthClient
 
-    public init(projectURL: URL, publishableKey: String) {
+    /// `userAgent` names this app in the list of signed-in devices, such as "PAVE-iOS/0.1 (iPhone; iOS 26.1)".
+    public init(projectURL: URL, publishableKey: String, userAgent: String? = nil) {
+        var headers = ["apikey": publishableKey]
+        if let userAgent { headers["User-Agent"] = userAgent }
         client = AuthClient(
             url: projectURL.appending(path: "auth/v1"),
-            headers: ["apikey": publishableKey],
+            headers: headers,
             localStorage: KeychainLocalStorage(),
             emitLocalSessionAsInitialSession: true
         )
@@ -89,6 +92,15 @@ public struct SupabaseAuthService: AuthService {
         try? await client.session.accessToken
     }
 
+    public func sessionState() async -> SessionState {
+        do {
+            _ = try await client.user()
+            return .active
+        } catch {
+            return Self.sessionState(after: error)
+        }
+    }
+
     private func mapErrors<Value>(
         function: StaticString = #function,
         _ operation: () async throws -> Value
@@ -124,6 +136,17 @@ public struct SupabaseAuthService: AuthService {
         // (for example on the web), so always ask the server.
         let user = try await client.user()
         return (user.factors ?? []).filter { $0.factorType == "totp" && $0.status == status }
+    }
+
+    /// The server removes a session when the password changes; the client then reports it as missing.
+    static func sessionState(after error: any Error) -> SessionState {
+        guard let supabaseError = error as? Auth.AuthError else { return .unknown }
+        switch supabaseError.errorCode {
+        case .sessionNotFound, .sessionExpired, .refreshTokenNotFound, .refreshTokenAlreadyUsed, .userNotFound, .userBanned:
+            return .ended
+        default:
+            return .unknown
+        }
     }
 
     static func normalized(_ email: String) -> String {

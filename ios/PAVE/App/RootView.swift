@@ -12,6 +12,8 @@ struct RootView: View {
                 LoadingView()
             case .signedOut:
                 AuthFlowView(service: appState.authService, onSignedIn: appState.signIn(accountID:))
+            case .sessionEnded:
+                SessionEndedView(onSignInAgain: appState.signInAgain)
             case .pinSetup:
                 PinSetupView()
             case .locked:
@@ -19,7 +21,8 @@ struct RootView: View {
             case .main:
                 MainView(
                     service: AylaServiceFactory.make(auth: appState.authService),
-                    vaultService: VaultServiceFactory.make(auth: appState.authService)
+                    vaultService: VaultServiceFactory.make(auth: appState.authService),
+                    devicesService: DevicesServiceFactory.make(auth: appState.authService)
                 )
                     // Back after being away too long: the PIN screen over the app, which stays as it was.
                     .overlay {
@@ -36,6 +39,15 @@ struct RootView: View {
         .overlay {
             if scenePhase != .active, appState.isOpen {
                 PavePrivacyCover()
+            }
+        }
+        // While the app is open, check every minute whether the session still exists, so a password change on
+        // another device sends you to sign in again straight away.
+        .task(id: SessionCheck(isActive: scenePhase == .active, phase: appState.phase)) {
+            guard scenePhase == .active else { return }
+            while !Task.isCancelled {
+                await appState.checkSession()
+                try? await Task.sleep(for: .seconds(60))
             }
         }
         .onChange(of: scenePhase) { _, phase in
@@ -60,6 +72,11 @@ struct RootView: View {
             appState.link = PaveLink(url: url)
         }
     }
+}
+
+private struct SessionCheck: Equatable {
+    let isActive: Bool
+    let phase: AppPhase
 }
 
 #Preview {

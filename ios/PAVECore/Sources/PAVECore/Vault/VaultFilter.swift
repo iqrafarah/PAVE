@@ -49,7 +49,7 @@ public struct VaultFilter: Equatable, Sendable {
             switch shelf {
             case .all: break
             case .category(let category): guard item.category == category else { return false }
-            case .folder(let id): guard item.folderID == id else { return false }
+            case .folder(let id): guard item.folderIDs.contains(id) else { return false }
             }
             if let status, item.status != status { return false }
             if let origin, !origin.matches(item.source) { return false }

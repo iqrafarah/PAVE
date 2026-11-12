@@ -22,17 +22,20 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
         public let name: String
         public let mimeType: String
         public let storagePath: String
+        public let role: VaultFileRole
 
-        public init(id: String, name: String, mimeType: String, storagePath: String) {
+        public init(id: String, name: String, mimeType: String, storagePath: String, role: VaultFileRole = .document) {
             self.id = id
             self.name = name
             self.mimeType = mimeType
             self.storagePath = storagePath
+            self.role = role
         }
     }
 
     public let id: String
-    public var folderID: String?
+    /// The folders the item is in; it can be in several, or in none.
+    public var folderIDs: [String]
     public var category: VaultCategory
     public var title: String
     public var description: String?
@@ -47,12 +50,14 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
     /// The skills the user kept; Ayla's proposals that were not accepted are left out.
     public var skills: [String]
     public var files: [File]
+    /// When you allowed Ayla to read this item outside a single question; nil means she may not.
+    public var aylaAllowedAt: Date?
     public var createdAt: Date
     public var updatedAt: Date
 
     public init(
         id: String,
-        folderID: String? = nil,
+        folderIDs: [String] = [],
         category: VaultCategory,
         title: String,
         description: String? = nil,
@@ -66,11 +71,12 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
         source: Source = .user,
         skills: [String] = [],
         files: [File] = [],
+        aylaAllowedAt: Date? = nil,
         createdAt: Date = .now,
         updatedAt: Date = .now
     ) {
         self.id = id
-        self.folderID = folderID
+        self.folderIDs = folderIDs
         self.category = category
         self.title = title
         self.description = description
@@ -84,13 +90,14 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
         self.source = source
         self.skills = skills
         self.files = files
+        self.aylaAllowedAt = aylaAllowedAt
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
 
-    /// A confirmed item stays as it was confirmed, and what an organisation added is theirs. The rest you can change.
-    public var isEditable: Bool {
-        source == .user && status != .verified
+    /// Every item can be changed, but a confirmed one is then no longer confirmed: it has to be confirmed again.
+    public var changeNeedsReconfirmation: Bool {
+        status == .verified
     }
 
     /// "Pixelwerk, Eindhoven".

@@ -43,6 +43,16 @@ extension VaultCategory {
     }
 }
 
+extension VaultConfirmationRequest.Recipient {
+    var icon: ImageResource {
+        switch self {
+        case .school: .iconAcademicCapSolid
+        case .employer: .iconBriefcaseSolid
+        case .mentor: .iconUserGroup
+        }
+    }
+}
+
 extension VaultItem.Status {
     var icon: ImageResource {
         switch self {

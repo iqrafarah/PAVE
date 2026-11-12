@@ -7,7 +7,9 @@ export const MODELS = ['mistralai/mistral-medium-3.1', 'mistralai/mistral-small-
 export const HEDGE_MS = 3500
 const TIMEOUT_MS = 25000
 
-export interface ChatMessage { role: 'system' | 'user' | 'assistant'; content: string }
+export type ContentPart = { type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }
+
+export interface ChatMessage { role: 'system' | 'user' | 'assistant'; content: string | ContentPart[] }
 
 export interface CompleteOptions {
   /** Called with everything the model wrote so far, while it writes. */

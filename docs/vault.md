@@ -64,6 +64,28 @@ What it changes:
 
 Not needed: steps 2 and 3 of adding evidence use the existing `vault_item_files` and `vault_item_skills`, and "Verifiëren" uses `vault_validation_requests`. The task list next to the consent picker (Items selecteren, Vacature kiezen, Kluis toestemming, CV genereren) is not stored yet; decide that together with the Ayla task flow.
 
+## Round three: adding and changing evidence, example folders (not applied)
+
+Migration `20261112120000_vault_cover_example_folders_reverify.sql`. Run it together with the web team.
+
+- **Adding evidence on iOS** follows Figma FEDDIES 1348:1169 to 1348:2537, in four steps:
+  1. **Basis:** upload a file, or add without a file; then title, type, organisation, period (a period or one date, for any type), folder and description.
+  2. **Documenten:** the card shown live. A **logo** goes in the round avatar. Without a **cover**, the band takes a light tint of the logo's strongest colour (Figma 1209:56023); with a cover, the band shows that photo. Up to five documents.
+  3. **Vaardigheden:** as on the web (1348:2064, 1173:15642). Skills from the vault and "Voorstel van Ayla" side by side, then your own. Ayla only proposes on request and only sees the fields of the form (Edge Function `ayla-skills`, nothing stored).
+  4. **Toestemming:** the item is saved. "Ayla mag dit bekijken en gebruiken" starts off; switching it on sets `ayla_allowed_at`.
+- **Files** go to the private bucket `pave-vault` at `<user>/<item>/<uuid>.<ext>`. Each gets a row in `vault_item_files` with `role` set to `document`, `logo` or `cover`, with at most one logo and one cover. Photos are stored as JPEG without their metadata (no location).
+- **Changing evidence:** every item can be changed: details, logo, cover, documents, skills and Ayla's permission. Changing the details or files of a confirmed item sets it back to `toVerify`, so it is confirmed again. The guard does this for details, a trigger on `vault_item_files` for files. Only trusted server code can confirm or reject.
+- **More than one folder** (migration `20261112130000_vault_item_folders.sql`, run after the one above):
+  - `vault_item_folders` holds every folder of an item, and `vault_items.folder_id` keeps the first for older clients.
+  - New evidence goes in the folder of its kind (the example folder, or a folder named after the kind such as "Stages") and in the folder you add it from.
+  - You change the folders in the form ("Mappen", several can be ticked) and in the menu of a card ("In mappen").
+- **Example folders:** every account starts with Certificaten, Diploma's, Feedback and Projecten as ordinary `vault_folders`.
+  - They can be renamed, restyled and deleted.
+  - Existing items without a folder move into the folder of their category, once.
+  - New accounts get the folders from a trigger on `auth.users`.
+  - Until the migration runs, iOS makes them for an account without any folder.
+- **Ayla and the vault:** the `ayla` function reads the items with `ayla_allowed_at` set and uses them in answers and searches. It sees their details, skills and file names, not file contents. Other items stay invisible to her.
+
 ## Rollout sequence
 
 1. Review categories, folder behavior, status transitions, file limits and validation ownership with Daaf and the web team.
