@@ -118,8 +118,10 @@ struct VaultLibraryCard: View {
                 .lineLimit(lineLimit)
         }
         if let period = item.period {
+            // "mrt 2025 - dec 2025" fits a narrow tile (iPhone Duo) by getting a little smaller instead of being cut off.
             PaveIconLabel(icon: .iconCalendarDaysSolid, text: period)
                 .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
     }
 
