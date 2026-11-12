@@ -6,16 +6,18 @@ public protocol VaultService: Sendable {
     /// Returns the id of the new item, so files and skills can be added to it.
     @discardableResult
     func add(_ draft: VaultItemDraft) async throws -> String
-    /// Uploads the file to the private bucket and records it on the item. A cover needs the `role` column
-    /// (migration 20261112120000); without it a cover is refused with `missingColumn` and nothing stays behind.
+    /// Uploads the file to the private bucket and records it on the item. A cover or logo needs the `role` column
+    /// (migration 20261112120000); without it they are refused with `missingColumn` and nothing stays behind.
     func attach(_ upload: VaultUpload, to itemID: String) async throws
+    /// The bytes of one of your files, to show or open it. The bucket is private, so this goes with your session.
+    func fileData(_ file: VaultItem.File) async throws -> Data
     /// Skills you add yourself: accepted straight away. Names that are already on the item are skipped by the server.
     func addSkills(_ names: [String], to itemID: String) async throws
     /// "Ayla mag dit bekijken en gebruiken": the standing yes for one item, which you can take back.
     func setAylaAllowed(_ allowed: Bool, itemID: String) async throws
     func update(_ draft: VaultItemDraft, itemID: String) async throws
-    /// `nil` takes the item out of its folder; it stays in the vault.
-    func move(itemID: String, to folderID: String?) async throws
+    /// Puts the item in exactly these folders (none takes it out of every folder; it stays in the vault).
+    func setFolders(_ folderIDs: [String], itemID: String) async throws
     /// Removes the attached files from storage first, then the item.
     func delete(_ item: VaultItem) async throws
     /// The colour and icon are saved only once `vault_folders` has those columns (`styleSaved` says whether they were).
@@ -23,9 +25,11 @@ public protocol VaultService: Sendable {
     func updateFolder(id: String, name: String, color: VaultFolderColor, icon: VaultFolderIcon) async throws -> Bool
     /// The items in the folder stay in the vault.
     func deleteFolder(id: String) async throws
-    /// How you set up the category folders. Throws `missingColumn` while `vault_category_folders` does not exist yet.
-    func categoryFolders() async throws -> [VaultCategoryFolder]
-    func saveCategoryFolder(_ folder: VaultCategoryFolder) async throws
+    /// Removes one file of an item: first from storage, then its row.
+    func removeFile(_ file: VaultItem.File) async throws
+    func removeSkills(_ names: [String], from itemID: String) async throws
+    /// "Voorstel van Ayla": skills that fit the evidence. Only the fields of the draft go to Ayla, on request.
+    func suggestSkills(for draft: VaultItemDraft, existing: [String]) async throws -> [VaultSkillSuggestion]
 }
 
 public enum VaultError: Error, Equatable, Sendable {
@@ -38,6 +42,8 @@ public enum VaultError: Error, Equatable, Sendable {
     case missingColumn
     /// The file is too large, empty or of a type the vault does not take.
     case fileRejected
+    /// The Edge Function behind this is not deployed yet.
+    case notSetUp
     case unavailable
 
     public init(_ error: any Error) { self = (error as? VaultError) ?? .unavailable }
@@ -47,6 +53,7 @@ public enum VaultError: Error, Equatable, Sendable {
 public struct SupabaseVaultService: VaultService {
     private let restURL: URL
     private let storageURL: URL
+    private let functionsURL: URL
     private let publishableKey: String
     private let session: URLSession
     private let accessToken: @Sendable () async -> String?
@@ -61,18 +68,25 @@ public struct SupabaseVaultService: VaultService {
     ) {
         restURL = projectURL.appending(path: "rest/v1")
         storageURL = projectURL.appending(path: "storage/v1")
+        functionsURL = projectURL.appending(path: "functions/v1")
         self.publishableKey = publishableKey
         self.session = session
         self.accessToken = accessToken
     }
 
     public func contents() async throws -> VaultContents {
+        do {
+            return try await contents(select: "*,vault_item_skills(name,status),vault_item_files(*),vault_item_folders(folder_id)")
+        } catch VaultError.missingColumn {
+            // Before migration 20261112130000 there are no folder links yet: folder_id is the only folder.
+            return try await contents(select: "*,vault_item_skills(name,status),vault_item_files(*)")
+        }
+    }
+
+    private func contents(select: String) async throws -> VaultContents {
         let itemRequest = try await request(
             restURL.appending(path: "vault_items"),
-            query: [
-                ("select", "*,vault_item_skills(name,status),vault_item_files(*)"),
-                ("order", "updated_at.desc"),
-            ]
+            query: [("select", select), ("order", "updated_at.desc")]
         )
         let folderRequest = try await request(
             restURL.appending(path: "vault_folders"),
@@ -96,6 +110,7 @@ public struct SupabaseVaultService: VaultService {
         urlRequest.setValue("return=representation", forHTTPHeaderField: "Prefer")
         let data = try await send(urlRequest, accepting: [201])
         guard let id = try? JSONDecoder().decode([IDRow].self, from: data).first?.id else { throw VaultError.unavailable }
+        try await linkFolders(draft.folderIDs, itemID: id)
         return id
     }
 
@@ -137,6 +152,13 @@ public struct SupabaseVaultService: VaultService {
         }
     }
 
+    public func fileData(_ file: VaultItem.File) async throws -> Data {
+        var urlRequest = try await request(storageURL.appending(path: "object/authenticated/\(Self.bucket)/\(file.storagePath)"))
+        urlRequest.setValue("*/*", forHTTPHeaderField: "Accept")
+        urlRequest.timeoutInterval = 60
+        return try await send(urlRequest)
+    }
+
     public func addSkills(_ names: [String], to itemID: String) async throws {
         let rows = VaultSkills.cleaned(names).map { ["item_id": itemID, "name": $0] }
         guard !rows.isEmpty else { return }
@@ -152,18 +174,39 @@ public struct SupabaseVaultService: VaultService {
         ), accepting: [200, 204])
     }
 
-    public func categoryFolders() async throws -> [VaultCategoryFolder] {
-        let data = try await send(try await request(restURL.appending(path: "vault_category_folders"), query: [("select", "*")]))
-        guard let rows = try? JSONDecoder().decode([CategoryFolderRow].self, from: data) else { throw VaultError.unavailable }
-        return rows.compactMap(\.folder)
+    public func removeFile(_ file: VaultItem.File) async throws {
+        _ = try await send(try await request(
+            storageURL.appending(path: "object/\(Self.bucket)"), method: "DELETE", json: ["prefixes": [file.storagePath]]
+        ), accepting: [200])
+        _ = try await send(try await request(
+            restURL.appending(path: "vault_item_files"), query: [("id", "eq.\(file.id)")], method: "DELETE"
+        ), accepting: [200, 204])
     }
 
-    public func saveCategoryFolder(_ folder: VaultCategoryFolder) async throws {
-        var urlRequest = try await request(
-            restURL.appending(path: "vault_category_folders"), query: [("on_conflict", "user_id,category")], method: "POST", json: folder.row
-        )
-        urlRequest.setValue("resolution=merge-duplicates", forHTTPHeaderField: "Prefer")
-        _ = try await send(urlRequest, accepting: [200, 201, 204])
+    public func removeSkills(_ names: [String], from itemID: String) async throws {
+        let names = VaultSkills.cleaned(names)
+        guard !names.isEmpty else { return }
+        let list = names.map { "\"\($0.replacingOccurrences(of: "\"", with: ""))\"" }.joined(separator: ",")
+        _ = try await send(try await request(
+            restURL.appending(path: "vault_item_skills"),
+            query: [("item_id", "eq.\(itemID)"), ("name", "in.(\(list))")],
+            method: "DELETE"
+        ), accepting: [200, 204])
+    }
+
+    public func suggestSkills(for draft: VaultItemDraft, existing: [String]) async throws -> [VaultSkillSuggestion] {
+        let body: [String: Any] = [
+            "category": draft.category.rawValue,
+            "title": draft.title,
+            "organisation": draft.organisationName,
+            "description": draft.description,
+            "existing": existing,
+        ]
+        var urlRequest = try await request(functionsURL.appending(path: "ayla-skills"), method: "POST", json: body)
+        urlRequest.timeoutInterval = 40
+        let data = try await send(urlRequest)
+        guard let response = try? JSONDecoder().decode(SkillSuggestionsResponse.self, from: data) else { throw VaultError.unavailable }
+        return response.skills
     }
 
     private func insertFile(_ row: [String: Any]) async throws {
@@ -197,15 +240,42 @@ public struct SupabaseVaultService: VaultService {
         _ = try await send(try await request(
             restURL.appending(path: "vault_items"), query: [("id", "eq.\(itemID)")], method: "PATCH", json: draft.row
         ), accepting: [200, 204])
+        try await replaceFolderLinks(draft.folderIDs, itemID: itemID)
     }
 
-    public func move(itemID: String, to folderID: String?) async throws {
+    public func setFolders(_ folderIDs: [String], itemID: String) async throws {
         _ = try await send(try await request(
             restURL.appending(path: "vault_items"),
             query: [("id", "eq.\(itemID)")],
             method: "PATCH",
-            json: ["folder_id": folderID ?? NSNull()] as [String: Any]
+            json: ["folder_id": folderIDs.first ?? NSNull()] as [String: Any]
         ), accepting: [200, 204])
+        try await replaceFolderLinks(folderIDs, itemID: itemID)
+    }
+
+    /// Removes the item from every folder link and adds the new ones. Without the table (before the migration),
+    /// folder_id already holds the first folder and that is all there is.
+    private func replaceFolderLinks(_ folderIDs: [String], itemID: String) async throws {
+        do {
+            _ = try await send(try await request(
+                restURL.appending(path: "vault_item_folders"), query: [("item_id", "eq.\(itemID)")], method: "DELETE"
+            ), accepting: [200, 204])
+        } catch VaultError.missingColumn {
+            return
+        }
+        try await linkFolders(folderIDs, itemID: itemID)
+    }
+
+    private func linkFolders(_ folderIDs: [String], itemID: String) async throws {
+        let rows = Array(Set(folderIDs)).map { ["item_id": itemID, "folder_id": $0] }
+        guard !rows.isEmpty else { return }
+        var urlRequest = try await request(restURL.appending(path: "vault_item_folders"), method: "POST", json: rows)
+        urlRequest.setValue("resolution=ignore-duplicates", forHTTPHeaderField: "Prefer")
+        do {
+            _ = try await send(urlRequest, accepting: [200, 201])
+        } catch VaultError.missingColumn {
+            return
+        }
     }
 
     public func delete(_ item: VaultItem) async throws {
@@ -296,7 +366,9 @@ public struct SupabaseVaultService: VaultService {
     static func error(status: Int, body: Data) -> VaultError {
         let code = (try? JSONDecoder().decode(PostgrestError.self, from: body))?.code
         if code == "23505" { return .duplicateFolderName }
-        if code == "PGRST204" || code == "PGRST205" { return .missingColumn }
+        // A column, a table or a relation between tables that the database does not have yet.
+        if code == "PGRST204" || code == "PGRST205" || code == "PGRST200" { return .missingColumn }
+        if code == "NOT_FOUND", status == 404 { return .notSetUp }
         switch status {
         case 401: return .notSignedIn
         case 403: return .notAllowed
@@ -317,6 +389,10 @@ struct ItemRow: Decodable {
     struct SkillRow: Decodable {
         let name: String
         let status: String
+    }
+
+    struct FolderLinkRow: Decodable {
+        let folder_id: String
     }
 
     struct FileRow: Decodable {
@@ -345,6 +421,7 @@ struct ItemRow: Decodable {
     let ayla_allowed_at: String?
     let vault_item_skills: [SkillRow]?
     let vault_item_files: [FileRow]?
+    let vault_item_folders: [FolderLinkRow]?
 
     /// `nil` for a category or status this version of the app does not know yet.
     var item: VaultItem? {
@@ -354,7 +431,7 @@ struct ItemRow: Decodable {
         else { return nil }
         return VaultItem(
             id: id,
-            folderID: folder_id,
+            folderIDs: Self.folderIDs(first: folder_id, links: vault_item_folders),
             category: category,
             title: title,
             description: description,
@@ -385,22 +462,16 @@ struct ItemRow: Decodable {
     }
 }
 
-struct CategoryFolderRow: Decodable {
-    let category: String
-    let name: String?
-    let color: String?
-    let icon: String?
-    let is_hidden: Bool
+private struct SkillSuggestionsResponse: Decodable {
+    let skills: [VaultSkillSuggestion]
+}
 
-    var folder: VaultCategoryFolder? {
-        guard let category = VaultCategory(rawValue: category) else { return nil }
-        return VaultCategoryFolder(
-            category: category,
-            name: name,
-            color: color.flatMap(VaultFolderColor.init),
-            icon: icon.flatMap(VaultFolderIcon.init),
-            isHidden: is_hidden
-        )
+extension ItemRow {
+    /// The linked folders, and folder_id for an item that older clients put in a folder; each once, the first first.
+    static func folderIDs(first: String?, links: [FolderLinkRow]?) -> [String] {
+        var ids: [String] = first.map { [$0] } ?? []
+        for link in links ?? [] where !ids.contains(link.folder_id) { ids.append(link.folder_id) }
+        return ids
     }
 }
 

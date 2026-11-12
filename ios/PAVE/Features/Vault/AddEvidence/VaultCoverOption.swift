@@ -6,6 +6,7 @@ struct VaultCoverOption: View {
     let image: ImageResource
     let isSelected: Bool
     let action: () -> Void
+    @Environment(\.isShortSheet) private var isShort
 
     var body: some View {
         Button(action: action) {
@@ -13,14 +14,14 @@ struct VaultCoverOption: View {
                 Image(image)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 100, height: 80)
+                    .frame(width: isShort ? 70 : 100, height: isShort ? 56 : 80)
                     .clipShape(.rect(topLeadingRadius: 10, topTrailingRadius: 10))
                     .accessibilityHidden(true)
                 Text(title)
                     .textStyle(.gapChip)
                     .foregroundStyle(Color.ink)
             }
-            .frame(maxWidth: .infinity, minHeight: 139)
+            .frame(maxWidth: .infinity, minHeight: isShort ? 104 : 139)
             .background(isSelected ? Color.dropZone : .white, in: .rect(cornerRadius: 7))
             .overlay {
                 RoundedRectangle(cornerRadius: 7)

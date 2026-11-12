@@ -1,4 +1,5 @@
 import { type AylaReply, type AylaRequest, type Block, type Screen, SCREENS } from './contract.ts'
+import type { AllowedVault } from './vault.ts'
 import { cleanMemories, type Memory, type MemorySuggestion, usedNotes } from './memory.ts'
 import type { ChatMessage, Complete } from './openrouter.ts'
 import { buildSystemPrompt } from './prompt.ts'
@@ -13,6 +14,8 @@ export interface BrainInput {
   firstName?: string
   /** What the user let Ayla remember. Missing means Ayla remembers nothing. */
   memory?: Memory
+  /** The vault items the user allowed Ayla to use. Missing means she sees none. */
+  vault?: AllowedVault
   /** Called with the text of the answer so far, while the model writes it. */
   onText?: (text: string) => void
   /** Stops the answer, for instance when the user taps stop. */
@@ -47,7 +50,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   const { request } = input
   const memory: Memory = input.memory ?? { status: 'unavailable' }
   const messages: ChatMessage[] = [
-    { role: 'system', content: buildSystemPrompt({ device: request.device, input: request.input, firstName: input.firstName, context: request.context, memory }) },
+    { role: 'system', content: buildSystemPrompt({ device: request.device, input: request.input, firstName: input.firstName, context: request.context, memory, vault: input.vault }) },
     ...input.history.slice(-HISTORY_LIMIT).map((m): ChatMessage => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text })),
     { role: 'user', content: withAttachments(request) },
   ]

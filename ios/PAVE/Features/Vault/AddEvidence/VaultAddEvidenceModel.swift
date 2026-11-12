@@ -27,16 +27,22 @@ final class VaultAddEvidenceModel {
         }
     }
 
-    private enum Part { case document, cover, skills }
+    private enum Part: Hashable { case document(Int), cover, logo, skills }
+
+    /// Enough for a report, a certificate and a few photos, without turning the vault into file storage.
+    static let maximumDocuments = 5
 
     private(set) var page = Page.source
     /// Which way the pages slide.
     private(set) var movesForward = true
     var draft: VaultItemDraft
-    private(set) var document: VaultUpload?
+    private(set) var documents: [VaultUpload] = []
     var wantsCover = false
     private(set) var cover: VaultUpload?
-    private(set) var skills: [String] = []
+    /// The image in the round avatar on the card.
+    private(set) var logo: VaultUpload?
+    var skills: [String] = []
+    let ayla: VaultAylaSkills
     var allowsAyla = false
     /// Shown above the buttons: a file that cannot be used, a missing cover or a failed save.
     var problem: String?
@@ -50,15 +56,38 @@ final class VaultAddEvidenceModel {
     private var savedParts: Set<Part> = []
     private let initialDraft: VaultItemDraft
     private let vault: VaultModel
+    /// New evidence goes in the folder of its kind (a project in Projecten) and in the folder you add it from. The
+    /// folder of the kind follows when you change the kind, until you choose folders yourself.
+    private var folderFollowsCategory = true
+    private var kindFolderID: String?
 
     init(vault: VaultModel, category: VaultCategory, folderID: String?) {
         self.vault = vault
-        initialDraft = VaultItemDraft(category: category, folderID: folderID)
+        ayla = VaultAylaSkills(vault: vault)
+        let kindFolder = VaultExampleFolders.folder(for: category, in: vault.folders)?.id
+        kindFolderID = kindFolder
+        var folderIDs = [String]()
+        for id in [folderID, kindFolder].compactMap({ $0 }) where !folderIDs.contains(id) { folderIDs.append(id) }
+        initialDraft = VaultItemDraft(category: category, folderIDs: folderIDs)
         draft = initialDraft
     }
 
+    var folders: [VaultFolder] { vault.folders }
+
+    func folderChosen() {
+        folderFollowsCategory = false
+    }
+
+    func categoryChanged() {
+        guard folderFollowsCategory else { return }
+        let newKindFolder = VaultExampleFolders.folder(for: draft.category, in: vault.folders)?.id
+        if let kindFolderID { draft.folderIDs.removeAll { $0 == kindFolderID } }
+        if let newKindFolder, !draft.folderIDs.contains(newKindFolder) { draft.folderIDs.append(newKindFolder) }
+        kindFolderID = newKindFolder
+    }
+
     var hasChanges: Bool {
-        savedItemID == nil && (draft != initialDraft || document != nil || cover != nil || !skills.isEmpty)
+        savedItemID == nil && (draft != initialDraft || !documents.isEmpty || cover != nil || logo != nil || !skills.isEmpty)
     }
 
     /// Back is gone once the item is saved: changing the details then would not reach the vault.
@@ -68,6 +97,10 @@ final class VaultAddEvidenceModel {
 
     var knownSkills: [String] { VaultSkills.known(in: vault.items) }
 
+    var hasFile: Bool { !documents.isEmpty }
+
+    var canAddDocument: Bool { documents.count < Self.maximumDocuments }
+
     // MARK: Files
 
     func pick(_ result: Result<VaultUpload, VaultUpload.Problem>) {
@@ -75,21 +108,31 @@ final class VaultAddEvidenceModel {
         case .success(let upload) where upload.role == .cover:
             cover = upload
             problem = nil
+        case .success(let upload) where upload.role == .logo:
+            logo = upload
+            problem = nil
         case .success(let upload):
-            document = upload
+            guard canAddDocument, !documents.contains(upload) else { return }
+            documents.append(upload)
             if draft.title.trimmingCharacters(in: .whitespaces).isEmpty {
                 draft.title = String(upload.suggestedTitle.prefix(VaultItemDraft.maximumTitleLength))
             }
             problem = nil
+            // Like most apps: a chosen file goes straight on to its details.
+            if page == .source { go(to: .details) }
         case .failure(let failure):
             problem = VaultMessages.upload(failure)
             PaveHaptics.error()
         }
     }
 
-    func removeDocument() { document = nil }
+    func remove(_ upload: VaultUpload) {
+        documents.removeAll { $0 == upload }
+    }
 
     func removeCover() { cover = nil }
+
+    func removeLogo() { logo = nil }
 
     // MARK: Skills
 
@@ -114,7 +157,6 @@ final class VaultAddEvidenceModel {
     // MARK: Steps
 
     func withoutFile() {
-        document = nil
         go(to: .details)
     }
 
@@ -134,7 +176,7 @@ final class VaultAddEvidenceModel {
         problem = nil
         switch page {
         case .source:
-            if document != nil { go(to: .details) }
+            go(to: .details)
         case .details:
             if let firstProblem = draft.problem {
                 showsMissing = true
@@ -172,9 +214,9 @@ final class VaultAddEvidenceModel {
                 id = try await vault.addItem(draft)
                 savedItemID = id
             }
-            if let document, !savedParts.contains(.document) {
+            for (index, document) in documents.enumerated() where !savedParts.contains(.document(index)) {
                 try await vault.attach(document, to: id)
-                savedParts.insert(.document)
+                savedParts.insert(.document(index))
             }
             if wantsCover, let cover, !savedParts.contains(.cover) {
                 do {
@@ -183,6 +225,14 @@ final class VaultAddEvidenceModel {
                     coverWaits = true
                 }
                 savedParts.insert(.cover)
+            }
+            if let logo, !savedParts.contains(.logo) {
+                do {
+                    try await vault.attach(logo, to: id)
+                } catch VaultError.missingColumn {
+                    coverWaits = true
+                }
+                savedParts.insert(.logo)
             }
             if !skills.isEmpty, !savedParts.contains(.skills) {
                 try await vault.addSkills(skills, to: id)

@@ -6,6 +6,8 @@ struct VaultUploadZone: View {
     var hint: String?
     let sources: [VaultFileSource]
     var height: CGFloat = 194
+    /// One low row instead of the big area, for adding another file.
+    var isCompact = false
     let onChoose: (VaultFileSource) -> Void
 
     var body: some View {
@@ -19,6 +21,45 @@ struct VaultUploadZone: View {
                 }
             }
         } label: {
+            if isCompact { compactLabel } else { largeLabel }
+        }
+        .menuStyle(.button)
+        .buttonStyle(.pave)
+        .accessibilityLabel(title)
+        .accessibilityHint(hint ?? "")
+    }
+
+    private var compactLabel: some View {
+        HStack(spacing: 12) {
+            Image(.iconCloudArrowUpSolid)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 24, height: 24)
+                .foregroundStyle(Color.brandGreen)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .textStyle(.label)
+                    .foregroundStyle(Color.ink)
+                if let hint {
+                    Text(hint)
+                        .textStyle(.caption)
+                        .foregroundStyle(Color.inkMuted)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 16)
+        .frame(maxWidth: .infinity, minHeight: 64)
+        .background(Color.dropZone, in: .rect(cornerRadius: 12))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(Color.focusRing, style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+        }
+        .contentShape(.rect(cornerRadius: 12))
+    }
+
+    private var largeLabel: some View {
             VStack(spacing: 14) {
                 Image(.iconCloudArrowUpSolid)
                     .renderingMode(.template)
@@ -46,11 +87,6 @@ struct VaultUploadZone: View {
                     .strokeBorder(Color.focusRing, style: StrokeStyle(lineWidth: 2, dash: [7, 5]))
             }
             .contentShape(.rect(cornerRadius: 12))
-        }
-        .menuStyle(.button)
-        .buttonStyle(.pave)
-        .accessibilityLabel(title)
-        .accessibilityHint(hint ?? "")
     }
 }
 

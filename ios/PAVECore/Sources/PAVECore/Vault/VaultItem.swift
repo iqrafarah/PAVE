@@ -34,7 +34,8 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
     }
 
     public let id: String
-    public var folderID: String?
+    /// The folders the item is in; it can be in several, or in none.
+    public var folderIDs: [String]
     public var category: VaultCategory
     public var title: String
     public var description: String?
@@ -56,7 +57,7 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
 
     public init(
         id: String,
-        folderID: String? = nil,
+        folderIDs: [String] = [],
         category: VaultCategory,
         title: String,
         description: String? = nil,
@@ -75,7 +76,7 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
         updatedAt: Date = .now
     ) {
         self.id = id
-        self.folderID = folderID
+        self.folderIDs = folderIDs
         self.category = category
         self.title = title
         self.description = description
@@ -94,9 +95,9 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
         self.updatedAt = updatedAt
     }
 
-    /// A confirmed item stays as it was confirmed, and what an organisation added is theirs. The rest you can change.
-    public var isEditable: Bool {
-        source == .user && status != .verified
+    /// Every item can be changed, but a confirmed one is then no longer confirmed: it has to be confirmed again.
+    public var changeNeedsReconfirmation: Bool {
+        status == .verified
     }
 
     /// "Pixelwerk, Eindhoven".

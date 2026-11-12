@@ -42,11 +42,10 @@ struct VaultItemTests {
         #expect(item().period == nil)
     }
 
-    @Test func onlyYourOwnUnconfirmedItemsCanChange() {
-        #expect(VaultItem(id: "1", category: .projects, title: "A").isEditable)
-        #expect(VaultItem(id: "1", category: .projects, title: "A", status: .rejected).isEditable)
-        #expect(!VaultItem(id: "1", category: .projects, title: "A", status: .verified).isEditable)
-        #expect(!VaultItem(id: "1", category: .projects, title: "A", source: .organization).isEditable)
+    @Test func changingAConfirmedItemNeedsConfirmingAgain() {
+        #expect(!VaultItem(id: "1", category: .projects, title: "A").changeNeedsReconfirmation)
+        #expect(!VaultItem(id: "1", category: .projects, title: "A", status: .rejected).changeNeedsReconfirmation)
+        #expect(VaultItem(id: "1", category: .projects, title: "A", status: .verified).changeNeedsReconfirmation)
     }
 
     @Test func joinsOrganisationAndPlace() {
@@ -101,7 +100,7 @@ struct VaultItemDraftTests {
 struct VaultFilterTests {
     private let items = [
         VaultItem(id: "diploma", category: .diplomas, title: "Propedeuse", issuedOn: VaultDay("2024-07-01"), status: .verified, source: .organization),
-        VaultItem(id: "stage", folderID: "f", category: .internships, title: "Stage Pixelwerk", startDate: VaultDay("2025-02-01"), endDate: VaultDay("2025-07-01"), skills: ["Swift"]),
+        VaultItem(id: "stage", folderIDs: ["f"], category: .internships, title: "Stage Pixelwerk", startDate: VaultDay("2025-02-01"), endDate: VaultDay("2025-07-01"), skills: ["Swift"]),
         VaultItem(id: "baan", category: .workExperience, title: "Teamleider", startDate: VaultDay("2023-01-01"), isCurrent: true, status: .rejected),
     ]
     private let today = VaultDay(year: 2026, month: 11, day: 10)
@@ -223,7 +222,7 @@ struct VaultUploadTests {
         let sql = try String(contentsOf: VaultMigration.url("20261110120000_vault.sql"), encoding: .utf8)
         for type in VaultUpload.allowedTypes { #expect(sql.contains("'\(type)'")) }
         #expect(sql.contains("\(VaultUpload.maximumBytes)"))
-        let cover = try String(contentsOf: VaultMigration.url("20261112120000_vault_cover_and_category_folders.sql"), encoding: .utf8)
+        let cover = try String(contentsOf: VaultMigration.url("20261112120000_vault_cover_example_folders_reverify.sql"), encoding: .utf8)
         for type in VaultUpload.imageTypes { #expect(cover.contains("'\(type)'")) }
     }
 }
@@ -253,6 +252,24 @@ struct VaultEvidenceFormTests {
         #expect(draft.missingFields.isEmpty)
         draft.category = .certificates
         #expect(draft.missingFields == [.period])
+        draft.usesPeriod = true
+        #expect(draft.missingFields.isEmpty)
+    }
+
+    @Test func aCertificateCanHaveAPeriod() {
+        var draft = VaultItemDraft(category: .certificates)
+        draft.title = "Scrum"
+        draft.usesPeriod = true
+        draft.startDate = VaultDay(year: 2025, month: 1, day: 6)
+        draft.endDate = VaultDay(year: 2025, month: 3, day: 28)
+        draft.issuedOn = VaultDay(year: 2025, month: 4, day: 1)
+        let row = draft.row
+        #expect(row["start_date"] as? String == "2025-01-06")
+        #expect(row["end_date"] as? String == "2025-03-28")
+        #expect(row["issued_on"] is NSNull)
+        #expect(draft.period == "jan 2025 - mrt 2025")
+        let item = VaultItem(id: "a", category: .certificates, title: "Scrum", startDate: draft.startDate, endDate: draft.endDate)
+        #expect(VaultItemDraft(item: item).isPeriod)
     }
 }
 
@@ -286,39 +303,58 @@ enum VaultMigration {
     }
 }
 
-struct VaultCategoryFolderTests {
-    @Test func storesOnlyWhatDiffersFromTheCategory() {
-        let folder = VaultCategoryFolder(category: .projects, name: " Projecten ", color: .blue, icon: nil, isHidden: true)
-        let row = folder.row
-        #expect(row["category"] as? String == "projects")
-        #expect(row["name"] is NSNull)
-        #expect(row["color"] as? String == "blue")
-        #expect(row["icon"] is NSNull)
-        #expect(row["is_hidden"] as? Bool == true)
-        #expect(VaultCategoryFolder(category: .projects, name: "Mijn werk").row["name"] as? String == "Mijn werk")
+struct VaultExampleFolderTests {
+    @Test func theExampleFolderFollowsTheCategoryWhileItExists() {
+        let folders = [
+            VaultFolder(id: "p", name: "projecten", createdAt: .now),
+            VaultFolder(id: "s", name: "Stage", createdAt: .now),
+        ]
+        #expect(VaultExampleFolders.folder(for: .projects, in: folders)?.id == "p")
+        #expect(VaultExampleFolders.folder(for: .certificates, in: folders) == nil)
+        #expect(VaultExampleFolders.folder(for: .internships, in: folders) == nil)
+        #expect(VaultExampleFolders.folder(for: .internships, in: folders + [VaultFolder(id: "st", name: "Stages")])?.id == "st")
     }
 
-    @Test func survivesBeingKeptOnThePhone() {
-        let folder = VaultCategoryFolder(category: .feedback, name: "Wat anderen zeggen", color: .rose, icon: .heart, isHidden: false)
-        #expect(VaultCategoryFolder(stored: folder.stored) == folder)
-        #expect(VaultCategoryFolder(stored: ["category": "pets"]) == nil)
+    @Test func theMigrationMakesTheSameFolders() throws {
+        let sql = try String(contentsOf: VaultMigration.url("20261112120000_vault_cover_example_folders_reverify.sql"), encoding: .utf8)
+        for example in VaultExampleFolders.all {
+            #expect(sql.contains("'\(example.name.replacingOccurrences(of: "'", with: "''"))', '\(example.color.rawValue)', '\(example.icon.rawValue)'"))
+        }
     }
 
-    @Test func readsTheRows() throws {
-        let json = #"[{"category":"diplomas","name":null,"color":"slate","icon":"trophy","is_hidden":false},{"category":"pets","is_hidden":true}]"#
-        let folders = try JSONDecoder().decode([CategoryFolderRow].self, from: Data(json.utf8)).compactMap(\.folder)
-        #expect(folders == [VaultCategoryFolder(category: .diplomas, color: .slate, icon: .trophy)])
+    @Test func anUndeployedFunctionIsNotSetUp() {
+        let body = Data(#"{"code":"NOT_FOUND","message":"Requested function was not found"}"#.utf8)
+        #expect(SupabaseVaultService.error(status: 404, body: body) == .notSetUp)
+        #expect(SupabaseVaultService.error(status: 404, body: Data(#"{"code":"PGRST205"}"#.utf8)) == .missingColumn)
+    }
+}
+
+struct VaultFolderLinkTests {
+    @Test func anItemCanBeInSeveralFolders() throws {
+        let json = """
+        [{"id":"a","folder_id":"p","category":"projects","title":"App","is_current":false,"verification_status":"toVerify","source":"user",
+          "created_at":"2026-11-12T10:00:00Z","updated_at":"2026-11-12T10:00:00Z",
+          "vault_item_folders":[{"folder_id":"s"},{"folder_id":"p"}]},
+         {"id":"b","folder_id":"p","category":"projects","title":"Oud","is_current":false,"verification_status":"toVerify","source":"user",
+          "created_at":"2026-11-12T10:00:00Z","updated_at":"2026-11-12T10:00:00Z"}]
+        """
+        let items = try JSONDecoder().decode([ItemRow].self, from: Data(json.utf8)).compactMap(\.item)
+        #expect(items.map(\.folderIDs) == [["p", "s"], ["p"]])
+        var filter = VaultFilter()
+        filter.shelf = .folder("s")
+        let shown = filter.apply(to: items)
+        #expect(shown.map(\.id) == ["a"])
     }
 
-    @Test func aMissingTableMeansNotMigratedYet() {
-        let body = Data(#"{"code":"PGRST205","message":"Could not find the table"}"#.utf8)
-        #expect(SupabaseVaultService.error(status: 404, body: body) == .missingColumn)
+    @Test func theFirstFolderStaysInFolderIDForOlderClients() {
+        var draft = VaultItemDraft(category: .projects, folderIDs: ["p", "s"])
+        draft.title = "App"
+        #expect(draft.row["folder_id"] as? String == "p")
+        draft.folderIDs = []
+        #expect(draft.row["folder_id"] is NSNull)
     }
 
-    @Test func everyCategoryAndStyleIsAllowedByTheMigration() throws {
-        let sql = try String(contentsOf: VaultMigration.url("20261112120000_vault_cover_and_category_folders.sql"), encoding: .utf8)
-        for category in VaultCategory.allCases { #expect(sql.contains("'\(category.rawValue)'")) }
-        for color in VaultFolderColor.allCases { #expect(sql.contains("'\(color.rawValue)'")) }
-        for icon in VaultFolderIcon.allCases { #expect(sql.contains("'\(icon.rawValue)'")) }
+    @Test func aMissingRelationIsNotMigratedYet() {
+        #expect(SupabaseVaultService.error(status: 400, body: Data(#"{"code":"PGRST200"}"#.utf8)) == .missingColumn)
     }
 }

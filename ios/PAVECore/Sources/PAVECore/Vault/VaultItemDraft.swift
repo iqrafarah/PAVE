@@ -18,11 +18,17 @@ public struct VaultItemDraft: Equatable, Sendable {
     public var endDate: VaultDay?
     public var issuedOn: VaultDay?
     public var isCurrent = false
-    public var folderID: String?
+    /// The folders the item goes in; the first is also stored in `folder_id` for older clients.
+    public var folderIDs: [String] = []
+    /// A period from a start to an end, or one date. Nil follows the category: a period for experience, one date for a
+    /// diploma, certificate or badge. You can choose the other way for any category.
+    public var usesPeriod: Bool?
 
-    public init(category: VaultCategory, folderID: String? = nil) {
+    public var isPeriod: Bool { usesPeriod ?? category.hasPeriod }
+
+    public init(category: VaultCategory, folderIDs: [String] = []) {
         self.category = category
-        self.folderID = folderID
+        self.folderIDs = folderIDs
     }
 
     public init(item: VaultItem) {
@@ -35,7 +41,12 @@ public struct VaultItemDraft: Equatable, Sendable {
         endDate = item.endDate
         issuedOn = item.issuedOn
         isCurrent = item.isCurrent
-        folderID = item.folderID
+        folderIDs = item.folderIDs
+        if item.startDate != nil {
+            usesPeriod = true
+        } else if item.issuedOn != nil {
+            usesPeriod = false
+        }
     }
 
     /// The fields the "Bewijs toevoegen" form asks for (Figma marks them all as required).
@@ -52,7 +63,7 @@ public struct VaultItemDraft: Equatable, Sendable {
             switch field {
             case .title: Self.trimmed(title).isEmpty
             case .organisation: Self.trimmed(organisationName).isEmpty
-            case .period: category.hasPeriod ? startDate == nil : issuedOn == nil
+            case .period: isPeriod ? startDate == nil : issuedOn == nil
             case .description: Self.trimmed(description).isEmpty
             }
         }
@@ -64,10 +75,10 @@ public struct VaultItemDraft: Equatable, Sendable {
             id: "",
             category: category,
             title: "",
-            startDate: category.hasPeriod ? startDate : nil,
-            endDate: category.hasPeriod && !isCurrent ? endDate : nil,
-            issuedOn: category.hasPeriod ? nil : issuedOn,
-            isCurrent: category.hasPeriod && isCurrent
+            startDate: isPeriod ? startDate : nil,
+            endDate: isPeriod && !isCurrent ? endDate : nil,
+            issuedOn: isPeriod ? nil : issuedOn,
+            isCurrent: isPeriod && isCurrent
         ).period
     }
 
@@ -80,13 +91,14 @@ public struct VaultItemDraft: Equatable, Sendable {
         if title.isEmpty { return .missingTitle }
         if title.count > Self.maximumTitleLength { return .titleTooLong }
         if description.count > Self.maximumDescriptionLength { return .descriptionTooLong }
-        if category.hasPeriod, !isCurrent, let startDate, let endDate, endDate < startDate { return .endBeforeStart }
+        if isPeriod, !isCurrent, let startDate, let endDate, endDate < startDate { return .endBeforeStart }
         return nil
     }
 
-    /// The columns for `vault_items`. Empty text becomes null, and only the dates that fit the category are kept.
+    /// The columns for `vault_items`. Empty text becomes null, and only the dates of the chosen kind (a period or one
+    /// date) are kept.
     var row: [String: Any] {
-        let hasPeriod = category.hasPeriod
+        let hasPeriod = isPeriod
         return [
             "category": category.rawValue,
             "title": Self.trimmed(title),
@@ -97,7 +109,7 @@ public struct VaultItemDraft: Equatable, Sendable {
             "end_date": Self.json(hasPeriod && !isCurrent ? endDate?.text : nil),
             "issued_on": Self.json(hasPeriod ? nil : issuedOn?.text),
             "is_current": hasPeriod && isCurrent,
-            "folder_id": Self.json(folderID),
+            "folder_id": Self.json(folderIDs.first),
         ]
     }
 

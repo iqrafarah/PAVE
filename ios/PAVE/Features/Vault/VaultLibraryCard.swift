@@ -5,6 +5,11 @@ import SwiftUI
 struct VaultLibraryCard: View {
     let item: VaultItem
     let isGrid: Bool
+    @Environment(VaultModel.self) private var model: VaultModel?
+    @State private var look: VaultLogoLook?
+
+    private var logo: VaultItem.File? { model?.logo(of: item) }
+    private var cover: VaultItem.File? { model?.cover(of: item) }
 
     var body: some View {
         Group {
@@ -16,14 +21,26 @@ struct VaultLibraryCard: View {
         .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder, lineWidth: 1) }
         .contentShape(.rect(cornerRadius: 16))
         .accessibilityElement(children: .combine)
+        .task(id: logo?.id) {
+            guard let logo else { look = nil; return }
+            let loaded = await model?.look(of: logo)
+            withAnimation(.easeOut(duration: 0.25)) { look = loaded }
+        }
     }
 
     private var gridCard: some View {
         VStack(alignment: .leading, spacing: 0) {
-            item.category.tint
+            // The band shows the cover, or else a light tint of the strongest colour in the logo; the logo is the avatar.
+            (look?.tint ?? item.category.tint)
+                .overlay {
+                    if let cover {
+                        VaultThumbnail(source: .file(cover), cornerRadius: 0)
+                    }
+                }
                 .frame(height: 48)
+                .clipped()
                 .overlay(alignment: .bottomLeading) {
-                    CompanyMonogram(name: item.organisationName ?? item.title, size: 44)
+                    VaultLogoAvatar(look: look, name: item.organisationName ?? item.title, size: 44)
                         .padding(.leading, 12)
                         .offset(y: 22)
                 }
@@ -50,7 +67,7 @@ struct VaultLibraryCard: View {
 
     private var listCard: some View {
         HStack(alignment: .top, spacing: 12) {
-            CompanyMonogram(name: item.organisationName ?? item.title, size: 48)
+            VaultLogoAvatar(look: look, name: item.organisationName ?? item.title, size: 48)
             VStack(alignment: .leading, spacing: 7) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(item.title)

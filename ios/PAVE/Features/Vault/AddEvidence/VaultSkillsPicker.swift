@@ -1,22 +1,22 @@
 import PAVECore
 import SwiftUI
 
-/// Step 3: skills from the rest of your vault, and your own. Ayla's proposals from the design come later: she may only
-/// read the evidence after step 4.
+/// Skills for a piece of evidence, as on the web (Figma 1348:2064 and 1173:15642): skills from the rest of your vault and
+/// Ayla's proposals side by side where there is room, under each other on a phone, and your own below.
 struct VaultSkillsPicker: View {
-    @Bindable var flow: VaultAddEvidenceModel
+    @Binding var skills: [String]
+    let known: [String]
+    @Bindable var ayla: VaultAylaSkills
+    let draft: VaultItemDraft
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var search = ""
     @State private var showsAll = false
+    @State private var width: CGFloat = 400
     @FocusState private var isSearching: Bool
 
     private static let shortList = 6
 
-    private var known: [String] { flow.knownSkills }
-
-    private var shown: [String] {
-        showsAll ? known : Array(known.prefix(Self.shortList))
-    }
+    private var shown: [String] { showsAll ? known : Array(known.prefix(Self.shortList)) }
 
     private var query: String { search.trimmingCharacters(in: .whitespacesAndNewlines) }
 
@@ -26,68 +26,96 @@ struct VaultSkillsPicker: View {
     }
 
     private var canAddQuery: Bool {
-        !query.isEmpty && !known.contains { $0.caseInsensitiveCompare(query) == .orderedSame } && !flow.isChosen(query)
+        !query.isEmpty && !known.contains { $0.caseInsensitiveCompare(query) == .orderedSame } && !isChosen(query)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
-            section(VaultMessages.skillsFromVault) {
-                if known.isEmpty {
-                    Text(VaultMessages.skillsEmpty)
-                        .textStyle(.caption)
-                        .foregroundStyle(Color.inkMuted)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                } else {
-                    VStack(spacing: 6) {
-                        ForEach(shown, id: \.self) { skill in
-                            VaultSkillRow(name: skill, isChosen: flow.isChosen(skill)) { toggle(skill) }
-                        }
-                        if known.count > Self.shortList {
-                            Button(showsAll ? "Minder tonen" : "Alle \(known.count) tonen") {
-                                withAnimation(.snappy) { showsAll.toggle() }
-                            }
-                            .textStyle(.link)
-                            .foregroundStyle(Color.brandGreen)
-                            .frame(maxWidth: .infinity, minHeight: 44)
-                        }
-                    }
-                    .padding(8)
-                    .overlay { RoundedRectangle(cornerRadius: 7).strokeBorder(Color.railBorder, lineWidth: 1) }
+            if width >= 520 {
+                HStack(alignment: .top, spacing: 16) {
+                    vaultSection.frame(maxWidth: .infinity, alignment: .topLeading)
+                    aylaSection.frame(maxWidth: .infinity, alignment: .topLeading)
                 }
+            } else {
+                vaultSection
+                aylaSection
             }
-
-            section(VaultMessages.skillsOwn) {
-                VStack(alignment: .leading, spacing: 10) {
-                    searchField
-                    if !matches.isEmpty || canAddQuery {
-                        VStack(spacing: 6) {
-                            ForEach(matches, id: \.self) { skill in
-                                VaultSkillRow(name: skill, isChosen: flow.isChosen(skill)) { toggle(skill) }
-                            }
-                            if canAddQuery {
-                                VaultSkillRow(name: VaultMessages.skillAdd(query), isChosen: false, action: addQuery)
-                            }
-                        }
-                        .transition(.opacity)
-                    }
-                    if !flow.skills.isEmpty {
-                        FlowLayout(spacing: 7) {
-                            ForEach(flow.skills, id: \.self) { skill in
-                                chosenChip(skill)
-                            }
-                        }
-                        .padding(.top, 4)
-                    }
-                }
-            }
+            ownSection
         }
-        .animation(reduceMotion ? nil : .snappy(duration: 0.3), value: flow.skills)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+        .background {
+            Color.white
+                .contentShape(.rect)
+                .onTapGesture { isSearching = false }
+        }
+        .animation(reduceMotion ? nil : .snappy(duration: 0.3), value: skills)
         .animation(.easeOut(duration: 0.2), value: query)
     }
 
-    private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+    private var vaultSection: some View {
+        section(Text(VaultMessages.skillsFromVault)) {
+            if known.isEmpty {
+                Text(VaultMessages.skillsEmpty)
+                    .textStyle(.caption)
+                    .foregroundStyle(Color.inkMuted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                VStack(spacing: 6) {
+                    ForEach(shown, id: \.self) { skill in
+                        VaultSkillRow(name: skill, isChosen: isChosen(skill)) { toggle(skill) }
+                    }
+                    if known.count > Self.shortList {
+                        Button(showsAll ? "Minder tonen" : "Alle \(known.count) tonen") {
+                            withAnimation(.snappy) { showsAll.toggle() }
+                        }
+                        .textStyle(.link)
+                        .foregroundStyle(Color.brandGreen)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                }
+                .padding(8)
+                .overlay { RoundedRectangle(cornerRadius: 7).strokeBorder(Color.railBorder, lineWidth: 1) }
+            }
+        }
+    }
+
+    private var aylaSection: some View {
+        section(Text("Voorstel van ") + Text("Ayla").foregroundStyle(Color.brandGreen)) {
+            VaultAylaSuggestions(ayla: ayla, isChosen: isChosen, onToggle: toggle) {
+                isSearching = false
+                Task { await ayla.ask(for: draft, existing: VaultSkills.cleaned(skills + known)) }
+            }
+        }
+    }
+
+    private var ownSection: some View {
+        section(Text(VaultMessages.skillsOwn)) {
+            VStack(alignment: .leading, spacing: 10) {
+                searchField
+                if !matches.isEmpty || canAddQuery {
+                    VStack(spacing: 6) {
+                        ForEach(matches, id: \.self) { skill in
+                            VaultSkillRow(name: skill, isChosen: isChosen(skill)) { toggle(skill) }
+                        }
+                        if canAddQuery {
+                            VaultSkillRow(name: VaultMessages.skillAdd(query), isChosen: false, action: addQuery)
+                        }
+                    }
+                    .transition(.opacity)
+                }
+                if !skills.isEmpty {
+                    FlowLayout(spacing: 7) {
+                        ForEach(skills, id: \.self) { chosenChip($0) }
+                    }
+                    .padding(.top, 4)
+                }
+            }
+        }
+    }
+
+    private func section<Content: View>(_ title: Text, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title)
+            title
                 .textStyle(.listTitle)
                 .foregroundStyle(Color.ink)
                 .accessibilityAddTraits(.isHeader)
@@ -140,26 +168,25 @@ struct VaultSkillsPicker: View {
         .accessibilityHint("Tik om weg te halen")
     }
 
+    private func isChosen(_ skill: String) -> Bool {
+        skills.contains { $0.caseInsensitiveCompare(skill) == .orderedSame }
+    }
+
     private func toggle(_ skill: String) {
         PaveHaptics.selection()
-        flow.toggle(skill)
+        if isChosen(skill) {
+            skills.removeAll { $0.caseInsensitiveCompare(skill) == .orderedSame }
+        } else {
+            skills = VaultSkills.cleaned(skills + [skill])
+        }
     }
 
     private func addQuery() {
+        isSearching = false
         guard !query.isEmpty else { return }
         PaveHaptics.selection()
-        if let existing = known.first(where: { $0.caseInsensitiveCompare(query) == .orderedSame }) {
-            if !flow.isChosen(existing) { flow.toggle(existing) }
-        } else {
-            flow.addOwnSkill(query)
-        }
+        let name = known.first { $0.caseInsensitiveCompare(query) == .orderedSame } ?? query
+        if !isChosen(name) { skills = VaultSkills.cleaned(skills + [name]) }
         search = ""
-    }
-}
-
-#Preview {
-    ScrollView {
-        VaultSkillsPicker(flow: VaultAddEvidenceModel(vault: VaultModel(previewContents: .preview), category: .projects, folderID: nil))
-            .padding(24)
     }
 }

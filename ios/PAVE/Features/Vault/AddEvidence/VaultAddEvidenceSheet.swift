@@ -2,7 +2,7 @@ import PAVECore
 import SwiftUI
 
 /// "Bewijs toevoegen" from Figma (FEDDIES 1348:1169 to 1348:2537): four steps in one sheet. The pages slide the way you
-/// go, the stepper fills up, and at the end the sheet becomes lower for the moment the evidence is added.
+/// go while the stepper runs along, and at the end the sheet becomes lower for the moment the evidence is added.
 struct VaultAddEvidenceSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -12,6 +12,9 @@ struct VaultAddEvidenceSheet: View {
     @State private var confirmsDiscard = false
     /// The status column of the iPhone Duo's outer display: a lower sheet would float under it, so it stays tall there.
     @State private var hasSideColumn = false
+    @State private var height: CGFloat = 800
+    /// While you type, the buttons step aside: return closes the keyboard and brings them back.
+    @State private var isTyping = false
 
     init(vault: VaultModel, category: VaultCategory, folderID: String?) {
         self.init(flow: VaultAddEvidenceModel(vault: vault, category: category, folderID: folderID))
@@ -22,19 +25,16 @@ struct VaultAddEvidenceSheet: View {
         _flow = State(initialValue: flow)
     }
 
-    private var isShort: Bool { verticalSizeClass == .compact }
+    /// The outer display of the iPhone Duo and a phone held sideways: less room above and below.
+    private var isShort: Bool { verticalSizeClass == .compact || height < 720 }
 
     private var pageAnimation: Animation {
-        reduceMotion ? .easeOut(duration: 0.2) : .snappy(duration: 0.38)
+        reduceMotion ? .easeOut(duration: 0.2) : .smooth(duration: 0.42)
     }
 
     private var pageTransition: AnyTransition {
         guard !reduceMotion else { return .opacity }
-        let leading = AnyTransition.move(edge: .leading).combined(with: .opacity)
-        let trailing = AnyTransition.move(edge: .trailing).combined(with: .opacity)
-        return flow.movesForward
-            ? .asymmetric(insertion: trailing, removal: leading)
-            : .asymmetric(insertion: leading, removal: trailing)
+        return .push(from: flow.movesForward ? .trailing : .leading)
     }
 
     var body: some View {
@@ -45,21 +45,32 @@ struct VaultAddEvidenceSheet: View {
                     .id(flow.page)
                     .transition(pageTransition)
             }
+            .environment(\.isShortSheet, isShort)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .clipped()
-            footer
+            if showsFooter {
+                footer
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
         .frame(maxWidth: 600)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.white.ignoresSafeArea())
         .tint(.brandGreen)
         .animation(pageAnimation, value: flow.page)
+        .animation(.easeOut(duration: 0.2), value: isTyping)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
         .onGeometryChange(for: Bool.self) { $0.safeAreaInsets.trailing > 0 || $0.safeAreaInsets.leading > 0 } action: { hasSideColumn = $0 }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in isTyping = true }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in isTyping = false }
         .presentationDetents(flow.page == .done && !hasSideColumn ? [.custom(AddedDetent.self)] : [.large])
         .presentationDragIndicator(.visible)
-        .interactiveDismissDisabled(flow.hasChanges || flow.isSaving)
+        // Swipe down to close, like every sheet; with something filled in it first asks whether to stop.
+        .sheetDismissGuard(isBlocked: flow.hasChanges || flow.isSaving) {
+            if !flow.isSaving { confirmsDiscard = true }
+        }
         .vaultFilePicker(source: $source, role: .document) { result in
-            withAnimation(.snappy(duration: 0.3)) { flow.pick(result) }
+            withAnimation(pageAnimation) { flow.pick(result) }
         }
         .confirmationDialog(VaultMessages.discardTitle, isPresented: $confirmsDiscard, titleVisibility: .visible) {
             Button("Stoppen", role: .destructive) { dismiss() }
@@ -72,33 +83,26 @@ struct VaultAddEvidenceSheet: View {
         }
     }
 
+    /// Step 1 without a file has two clear choices and no button; after that the buttons stay, except while typing.
+    private var showsFooter: Bool {
+        !isTyping && !(flow.page == .source && !flow.hasFile)
+    }
+
     private var header: some View {
-        VStack(spacing: isShort ? 12 : 18) {
+        VStack(spacing: isShort ? 10 : 18) {
             HStack {
                 Text(VaultMessages.addTitle)
-                    .textStyle(.listTitle)
+                    .textStyle(isShort ? .label : .listTitle)
                     .foregroundStyle(Color.ink)
                     .accessibilityAddTraits(.isHeader)
                 Spacer()
-                Button(action: close) {
-                    Image(.iconXMark)
-                        .renderingMode(.template)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 13, height: 13)
-                        .foregroundStyle(Color.inkMuted)
-                        .frame(width: 44, height: 44)
-                        .contentShape(.rect)
-                }
-                .buttonStyle(.pave)
-                .accessibilityLabel("Sluiten")
             }
+            .frame(height: isShort ? 36 : 44)
             PaveStepper(steps: VaultMessages.steps, current: flow.page.step)
         }
-        .padding(.leading, 24)
-        .padding(.trailing, 12)
-        .padding(.top, isShort ? 10 : 20)
-        .padding(.bottom, isShort ? 10 : 16)
+        .padding(.horizontal, 24)
+        .padding(.top, isShort ? 8 : 22)
+        .padding(.bottom, isShort ? 8 : 16)
     }
 
     @ViewBuilder
@@ -112,9 +116,9 @@ struct VaultAddEvidenceSheet: View {
                 Group {
                     switch flow.page {
                     case .source: sourcePage
-                    case .details: VaultEvidenceForm(flow: flow)
-                    case .documents: VaultCoverPicker(flow: flow)
-                    case .skills: VaultSkillsPicker(flow: flow)
+                    case .details: detailsPage
+                    case .documents: VaultDocumentsStep(flow: flow)
+                    case .skills: VaultSkillsPicker(skills: $flow.skills, known: flow.knownSkills, ayla: flow.ayla, draft: flow.draft)
                     case .done: EmptyView()
                     }
                 }
@@ -127,24 +131,43 @@ struct VaultAddEvidenceSheet: View {
         }
     }
 
-    private var sourcePage: some View {
-        VStack(spacing: 20) {
-            if let document = flow.document {
+    private var detailsPage: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            ForEach(flow.documents, id: \.checksum) { document in
                 VaultFileRow(upload: document) {
-                    withAnimation(.snappy(duration: 0.3)) { flow.removeDocument() }
+                    withAnimation(.snappy(duration: 0.3)) { flow.remove(document) }
                 }
                 .transition(.opacity.combined(with: .scale(scale: 0.97)))
+            }
+            VaultEvidenceForm(draft: $flow.draft, missing: flow.missingFields, folders: flow.folders, onFolderChosen: flow.folderChosen)
+        }
+        .onChange(of: flow.draft.category) { flow.categoryChanged() }
+    }
+
+    private var sourcePage: some View {
+        VStack(spacing: isShort ? 14 : 20) {
+            if flow.hasFile {
+                ForEach(flow.documents, id: \.checksum) { document in
+                    VaultFileRow(upload: document) {
+                        withAnimation(.snappy(duration: 0.3)) { flow.remove(document) }
+                    }
+                }
+                if flow.canAddDocument {
+                    VaultUploadZone(title: VaultMessages.addAnotherDocument, hint: VaultMessages.uploadHint, sources: [.files, .photos], isCompact: true) {
+                        source = $0
+                    }
+                }
             } else {
-                VaultUploadZone(title: VaultMessages.uploadTitle, hint: VaultMessages.uploadHint, sources: [.files, .photos], height: isShort ? 150 : 194) {
+                VaultUploadZone(title: VaultMessages.uploadTitle, hint: VaultMessages.uploadHint, sources: [.files, .photos], height: isShort ? 140 : 194) {
                     source = $0
                 }
-                .transition(.opacity)
                 VaultOrDivider()
                 VaultChoiceCard(title: VaultMessages.withoutFileTitle, message: VaultMessages.withoutFileMessage) {
                     flow.withoutFile()
                 }
             }
         }
+        .animation(.snappy(duration: 0.3), value: flow.documents)
     }
 
     private var footer: some View {
@@ -158,7 +181,7 @@ struct VaultAddEvidenceSheet: View {
         .animation(pageAnimation, value: flow.canGoBack)
         .padding(.horizontal, 22)
         .padding(.top, 8)
-        .padding(.bottom, isShort ? 8 : 12)
+        .padding(.bottom, isShort ? 6 : 12)
         .background(Color.white)
         // A problem floats just above the buttons, over the bottom of the page, so nothing above it moves.
         .overlay(alignment: .top) {
@@ -178,10 +201,7 @@ struct VaultAddEvidenceSheet: View {
     @ViewBuilder
     private var primaryButton: some View {
         switch flow.page {
-        case .source:
-            PavePrimaryButton(title: "Volgende") { Task { await flow.next() } }
-                .disabled(flow.document == nil)
-        case .details, .documents:
+        case .source, .details, .documents:
             PavePrimaryButton(title: "Volgende") { Task { await flow.next() } }
         case .skills:
             PavePrimaryButton(title: "Toevoegen", loadingTitle: VaultMessages.saving, isLoading: flow.isSaving) {
@@ -194,9 +214,11 @@ struct VaultAddEvidenceSheet: View {
         }
     }
 
-    private func close() {
-        if flow.hasChanges { confirmsDiscard = true } else { dismiss() }
-    }
+}
+
+extension EnvironmentValues {
+    /// The sheet has little height (the iPhone Duo's outer display, a phone held sideways): parts become lower.
+    @Entry var isShortSheet = false
 }
 
 /// The lower sheet for the last step, as in Figma (about 56% of the screen), but never too low for its content.

@@ -16,29 +16,20 @@ struct VaultScreen: View {
     @State private var deletedItem: VaultItem?
     @State private var folderSheet: FolderSheet?
     @State private var deletedFolder: VaultFolder?
-    @State private var hiddenCategory: VaultCategory?
 
     private enum FolderSheet: Identifiable {
         case new
         case edit(VaultFolder)
-        case category(VaultCategory)
 
         var id: String {
             switch self {
             case .new: "new"
-            case .category(let category): "category-\(category.rawValue)"
             case .edit(let folder): folder.id
             }
         }
     }
 
     private var visibleItems: [VaultItem] { filter.apply(to: model.items) }
-
-    /// The four folders from the design, then the other categories that hold something.
-    private var categories: [VaultCategory] {
-        (VaultCategory.featured + VaultCategory.allCases.filter { !VaultCategory.featured.contains($0) && model.count(in: .category($0)) > 0 })
-            .filter { !model.isHidden($0) }
-    }
 
     var body: some View {
         NavigationStack {
@@ -62,11 +53,6 @@ struct VaultScreen: View {
                                 Button { folderSheet = .new } label: {
                                     Label { Text("Map aanmaken") } icon: { Image(.iconFolderPlusSolid) }
                                 }
-                                if model.hasHiddenCategories {
-                                    Button { Task { await model.showHiddenCategories() } } label: {
-                                        Label { Text("Verborgen mappen terugzetten") } icon: { Image(.iconFolderSolid) }
-                                    }
-                                }
                             } label: {
                                 Image(.iconPlus)
                             }
@@ -80,7 +66,7 @@ struct VaultScreen: View {
                         .paveSheet()
                 }
                 .sheet(item: $editedItem) { item in
-                    VaultItemEditor(item: item)
+                    VaultEvidenceEditor(vault: model, item: item)
                         .paveSheet()
                 }
                 .sheet(isPresented: $addsItem) {
@@ -96,14 +82,6 @@ struct VaultScreen: View {
                             }
                         case .edit(let folder):
                             VaultFolderEditor(folder: folder, style: model.style(of: folder))
-                        case .category(let category):
-                            let style = model.style(of: category)
-                            VaultFolderEditor(
-                                folder: nil,
-                                category: category,
-                                name: model.title(of: category),
-                                style: (style.color, style.icon ?? category.folderStyleIcon)
-                            )
                         }
                     }
                     .presentationDragIndicator(.visible)
@@ -116,14 +94,6 @@ struct VaultScreen: View {
                     }
                 } message: { _ in
                     Text(VaultMessages.deleteItemMessage)
-                }
-                .confirmationDialog("Map verwijderen?", isPresented: isPresented($hiddenCategory), titleVisibility: .visible, presenting: hiddenCategory) { category in
-                    Button("Map verwijderen", role: .destructive) {
-                        if filter.shelf == .category(category) { filter.shelf = .all }
-                        Task { await model.hide(category) }
-                    }
-                } message: { _ in
-                    Text(VaultMessages.hideCategoryMessage)
                 }
                 .confirmationDialog("Map verwijderen?", isPresented: isPresented($deletedFolder), titleVisibility: .visible, presenting: deletedFolder) { folder in
                     Button("Map verwijderen", role: .destructive) {
@@ -200,27 +170,6 @@ struct VaultScreen: View {
     private var shelves: some View {
         ScrollView(.horizontal) {
             HStack(spacing: 9) {
-                ForEach(categories) { category in
-                    let style = model.style(of: category)
-                    VaultFolderTile(
-                        title: model.title(of: category),
-                        icon: style.icon?.image ?? category.folderIcon,
-                        color: style.color.color,
-                        surface: style.color.surface,
-                        count: model.count(in: .category(category)),
-                        isSelected: filter.shelf == .category(category)
-                    ) {
-                        select(.category(category))
-                    }
-                    .contextMenu {
-                        Button { folderSheet = .category(category) } label: {
-                            Label { Text("Map aanpassen") } icon: { Image(.iconPencil) }
-                        }
-                        Button(role: .destructive) { hiddenCategory = category } label: {
-                            Label { Text("Map verwijderen") } icon: { Image(.iconTrash) }
-                        }
-                    }
-                }
                 ForEach(model.folders) { folder in
                     let style = model.style(of: folder)
                     VaultFolderTile(
@@ -315,8 +264,13 @@ struct VaultScreen: View {
         }
     }
 
+    /// Adding from an example folder starts with its kind, such as Project in Projecten.
     private var newItemCategory: VaultCategory {
         if case .category(let category) = filter.shelf { return category }
+        if case .folder(let id) = filter.shelf, let folder = model.folder(id),
+           let example = VaultExampleFolders.all.first(where: { $0.name.localizedCaseInsensitiveCompare(folder.name) == .orderedSame }) {
+            return example.category
+        }
         return .projects
     }
 
