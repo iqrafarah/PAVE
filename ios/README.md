@@ -1,6 +1,6 @@
 # PAVE iOS
 
-SwiftUI-app voor PAVE. Open `PAVE.xcodeproj` in Xcode 26 of nieuwer. Minimale versie: iOS 26.
+SwiftUI-app voor PAVE. Open `PAVE.xcodeproj` in Xcode 26 of nieuwer. Minimale versie: iOS 26. De iPhone-app en ingebedde Watch-app gebruiken respectievelijk iOS 26.0 en watchOS 26.0 als deployment target, zodat een Xcode 26-SDK de volledige app kan bouwen.
 
 ## Structuur
 
@@ -198,6 +198,8 @@ De iOS-uitwerking gebruikt de twee mobiele Figma-prototypes als basis: de lijst 
 `NotificationsScreen` bevat het iOS-overzicht volgens de aangeleverde wireframe: alle/ongelezen, zoeken, typefilter, groepering per dag en een detail voor verificatieaanvragen. Lerende accounts zien in de weergave alleen gesprekken en geverifieerd bewijs; de adminweergave toont gesprekken en verificatieaanvragen. Een gesprek kan terug naar Ayla navigeren; geverifieerd bewijs opent het eigen item in de kluis. Alleen de SwiftUI-previews bevatten voorbeeldmeldingen.
 
 De iOS-meldingen gebruiken `NotificationsModel` en `SupabaseNotificationsService`: de inbox laadt van Supabase, markeren als gelezen wordt opgeslagen en Ayla-/verificatiemeldingen openen hun eigen bestemming. Een reviewer-aanvraag laadt een read-only kaart van het bewijs en geeft de toegewezen reviewer tijdelijke links (vijf minuten) om de originele bestanden in Quick Look te bekijken. Goedkeuren/afwijzen gaat via `vault-review`; de database werkt aanvraag, kluisstatus, auditlog en goedkeuringsmelding atomair bij.
+
+Voor een eerste visuele controle staan statisch gerenderde iPhone-previews in `ios/previews/`. Ze volgen de huidige iOS-layout met fictieve inhoud, maar zijn geen captures van een draaiende SwiftUI-app. `render-notifications.ps1` maakt ze opnieuw.
 
 De bestaande migratie `20261112160000_notifications_and_vault_review.sql` is op 12 november 2026 toegepast (bevestigd door Gianna). De vervolgmigratie `20261112170000_resolve_vault_validation.sql` en Edge Function `shared/supabase/functions/vault-review/` zijn nog niet op Supabase toegepast/gedeployed. Reviewer-toewijzingen moeten eerst door vertrouwde admin-provisioning in `vault_validation_reviewers` worden gezet; de webrepo beschrijft geen betrouwbare rolwaarden waarmee de app dit zelf veilig kan afleiden. Zonder die migratie, deployment en toewijzingen blijft de echte flow onbeschikbaar. Zie `docs/vault.md` voor de backendvolgorde en grenzen.
 
