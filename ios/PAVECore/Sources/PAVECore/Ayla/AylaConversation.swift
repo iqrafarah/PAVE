@@ -181,13 +181,16 @@ public struct AylaStoredMessage: Equatable, Sendable, Identifiable {
     public var reply: AylaReply?
     /// When it was sent; `distantPast` when unknown.
     public var sentAt: Date
+    /// The names of the files the user sent with the message.
+    public var attachments: [String]
 
-    public init(id: String, role: Role, text: String, reply: AylaReply? = nil, sentAt: Date = .distantPast) {
+    public init(id: String, role: Role, text: String, reply: AylaReply? = nil, sentAt: Date = .distantPast, attachments: [String] = []) {
         self.id = id
         self.role = role
         self.text = text
         self.reply = reply
         self.sentAt = sentAt
+        self.attachments = attachments
     }
 }
 

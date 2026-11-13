@@ -137,6 +137,7 @@ A single place that builds the prompt, calls the model and returns a structured 
 3. **Reply format** instead of tags hidden in the text:
    - `text`: what Ayla says
    - `question` and `choices` (at most three): for Yes or No on the Watch
+   - (A stored user message keeps only the names of its attachments in its `reply` column, as `{ "attachments": [names] }`, so the chat can show them again.)
    - `accessRequest`: vault sections she wants to see, so the app can ask for consent. The question is asked once: when the model also asked it in `text`, the function takes that sentence out, and with nothing else to say `text` is the question itself and `question.text` is empty (the choices stay).
    - `proposedAction`: something she suggests, which the user confirms
    - `blocks`: cards the apps draw (selection, consent request, vacancies, skill suggestions, CV), each with a type from a fixed list

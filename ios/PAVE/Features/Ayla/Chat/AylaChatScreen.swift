@@ -443,9 +443,13 @@ struct AylaChatScreen: View {
     private func entryView(_ entry: AylaChatModel.Entry) -> some View {
         switch entry.role {
         case .user:
-            VStack(alignment: .trailing, spacing: 8) {
-                ForEach(entry.attachments, id: \.self) { name in
-                    AylaAttachmentChip(name: name)
+            VStack(alignment: .trailing, spacing: 6) {
+                if !entry.attachments.isEmpty {
+                    FlowLayout(spacing: 5, alignment: .trailing) {
+                        ForEach(entry.attachments, id: \.self) { name in
+                            AylaAttachmentChip(name: name, isCompact: true)
+                        }
+                    }
                 }
                 ChatBubble(text: entry.text, speaker: .user, actions: actions(for: entry))
             }

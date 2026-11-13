@@ -403,7 +403,7 @@ final class AylaChatModel {
             entries = messages.map { message in
                 Entry(
                     id: message.id, role: message.role == .user ? .user : .ayla, text: message.text, reply: message.reply,
-                    sentAt: message.sentAt
+                    attachments: message.attachments, sentAt: message.sentAt
                 )
             }
             conversationID = conversation.id

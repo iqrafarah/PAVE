@@ -52,7 +52,8 @@ struct AylaChatModelTests {
         func searchMessages(_ text: String) async throws -> [AylaSearchHit] { hits }
         var changes = AsyncStream<Void> { $0.finish() }
         func conversationChanges() -> AsyncStream<Void> { changes }
-        func messages(in conversationID: String) async throws -> [AylaStoredMessage] { [] }
+        var stored: [AylaStoredMessage] = []
+        func messages(in conversationID: String) async throws -> [AylaStoredMessage] { stored }
         var nameDelay: Duration?
         func firstName() async -> String? {
             if let nameDelay { try? await Task.sleep(for: nameDelay) }
@@ -279,6 +280,14 @@ struct AylaChatModelTests {
     @Test func aWebPageIsReadAsItsWords() {
         let html = "<html><head><style>p{color:red}</style><script>var x=1</script></head><body><h1>Testosteron</h1><p>Een &amp; twee&nbsp;drie.<br>Vier</p></body></html>"
         #expect(AttachmentReader.plainText(fromHTML: html) == "Testosteron\nEen & twee drie.\nVier")
+    }
+
+    @Test func aLoadedConversationShowsTheFilesAgain() async {
+        let ayla = FakeAyla()
+        ayla.stored = [AylaStoredMessage(id: "m1", role: .user, text: "Kijk je mee?", attachments: ["cv.pdf", "scan.pdf"]), AylaStoredMessage(id: "m2", role: .ayla, text: "Gezien")]
+        let model = AylaChatModel(service: ayla)
+        await model.open(AylaConversation(id: "c", title: "Cv", updatedAt: .now))
+        #expect(model.entries.map(\.attachments) == [["cv.pdf", "scan.pdf"], []])
     }
 
     @Test func atMostFiveFilesAndNoDoubles() throws {
