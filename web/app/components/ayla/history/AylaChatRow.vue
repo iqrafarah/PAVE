@@ -5,6 +5,7 @@ const props = defineProps<{
   conversation: Conversation;
   isActive: boolean;
   canPin: boolean;
+  now: Date;
 }>();
 
 const emit = defineEmits<{
@@ -17,6 +18,13 @@ const emit = defineEmits<{
 const isRenaming = ref(false);
 const newTitle = ref('');
 const renameInputRef = useTemplateRef<HTMLInputElement>('renameInput');
+
+const lastUsed = computed(() => {
+  const updatedAt = readChatDate(props.conversation.updatedAt);
+  return updatedAt ? getChatRowTime(updatedAt, props.now) : null;
+});
+// Only chats begun on the iPhone say where; chats from the web say nothing, and the watch stays hidden for now.
+const isStartedOnPhone = computed(() => props.conversation.startedOn === 'phone');
 
 const menuItems = computed<RowMenuItem[]>(() => {
   const items: RowMenuItem[] = [];
@@ -58,7 +66,7 @@ function handleMenuChoice(id: string) {
         ref="renameInput"
         v-model="newTitle"
         type="text"
-        maxlength="200"
+        :maxlength="AYLA_MAX_TITLE_LENGTH"
         class="w-full rounded-md border border-brand bg-white px-2 py-1.5 text-sm text-ink focus-visible:outline-2 focus-visible:outline-brand"
         @blur="finishRenaming"
         @keydown.esc="isRenaming = false"
@@ -68,10 +76,17 @@ function handleMenuChoice(id: string) {
       <NuxtLink
         :to="`/ayla/${conversation.id}`"
         :aria-current="isActive ? 'page' : undefined"
-        class="min-w-0 flex-1 truncate rounded-md px-2 py-1 text-sm font-medium text-heading focus-visible:outline-2 focus-visible:outline-brand"
+        class="flex min-w-0 flex-1 flex-col rounded-md px-2 py-1 focus-visible:outline-2 focus-visible:outline-brand"
         @click="emit('open')"
       >
-        {{ conversation.title }}
+        <span class="flex items-baseline gap-2">
+          <span class="min-w-0 flex-1 truncate text-sm font-medium text-heading">{{ conversation.title }}</span>
+          <span v-if="lastUsed" class="shrink-0 text-xs text-subtle">{{ lastUsed }}</span>
+        </span>
+        <span v-if="isStartedOnPhone" class="flex items-center gap-1 text-xs text-subtle">
+          <VaultIcon src="/images/settings/phone.svg" class="size-3" />
+          {{ AYLA_STARTED_ON_PHONE }}
+        </span>
       </NuxtLink>
       <div class="opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
         <AylaRowMenu

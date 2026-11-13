@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { VaultFile } from '~/types/vault';
+import type { VaultFile, VaultItem } from '~/types/vault';
 
 // Everything about one item (iOS VaultItemDetailView): where it comes from, whether it is confirmed, the folders it is
 // in and its documents. Changing it (details, folders, logo, cover, files, skills, Ayla) happens in "Aanpassen".
@@ -15,8 +15,11 @@ const emit = defineEmits<{
 
 const vault = useVault();
 const supabase = useUntypedSupabase();
+const conversation = useAylaConversation();
 const deleteRef = useTemplateRef<{ open: () => void }>('confirmDelete');
+const askRef = useTemplateRef<{ open: () => void }>('confirmAsk');
 const fileProblem = ref<string | null>(null);
+const askProblem = ref<string | null>(null);
 
 const item = computed(() => vault.state.value.items.find((entry) => entry.id === props.itemId) ?? null);
 const isOpen = computed({
@@ -40,6 +43,36 @@ async function remove() {
   await vault.remove(removed);
 }
 
+function startAsking(about: VaultItem) {
+  emit('close');
+  return conversation.askAboutItem({ itemId: about.id, title: about.title });
+}
+
+/** "Vraag Ayla over dit bewijs" (iOS VaultItemDetailView): first asks for permission when Ayla may not use it yet. */
+function askAyla() {
+  if (!item.value) return;
+  askProblem.value = null;
+  if (item.value.aylaAllowedAt) startAsking(item.value);
+  else askRef.value?.open();
+}
+
+async function allowAndAsk() {
+  const current = item.value;
+  if (!current) return;
+  try {
+    await vault.setAylaAllowed(current.id, true);
+  } catch (error) {
+    askProblem.value = error instanceof VaultSaveError ? error.message : VAULT_ERROR_GENERIC;
+    return;
+  }
+  await vault.load();
+  await startAsking(current);
+}
+
+function askWithoutPermission() {
+  if (item.value) startAsking(item.value);
+}
+
 /** Opens a file in a new tab through a link that works for one minute; the bucket itself is private. */
 async function openFile(file: VaultFile) {
   fileProblem.value = null;
@@ -51,7 +84,13 @@ async function openFile(file: VaultFile) {
   window.open(data.signedUrl, '_blank', 'noopener');
 }
 
-watch(() => props.itemId, () => (fileProblem.value = null));
+watch(
+  () => props.itemId,
+  () => {
+    fileProblem.value = null;
+    askProblem.value = null;
+  },
+);
 </script>
 
 <template>
@@ -133,6 +172,16 @@ watch(() => props.itemId, () => (fileProblem.value = null));
         <p v-if="fileProblem" role="alert" class="text-xs text-danger">{{ fileProblem }}</p>
       </section>
 
+      <div class="flex flex-col gap-2">
+        <button
+          type="button"
+          class="flex min-h-13.25 w-full items-center justify-center rounded-full bg-brand px-4 text-base font-semibold text-white transition-transform hover:bg-ink active:scale-[0.98] motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          @click="askAyla"
+        >
+          {{ AYLA_ASK_ABOUT_ITEM }}
+        </button>
+        <p v-if="askProblem" role="alert" class="text-xs text-danger">{{ askProblem }}</p>
+      </div>
     </div>
 
     <template #footer>
@@ -166,6 +215,16 @@ watch(() => props.itemId, () => (fileProblem.value = null));
       :message="VAULT_DELETE_MESSAGE"
       :confirm-label="VAULT_DELETE"
       @confirm="remove"
+    />
+    <LayoutConfirmSheet
+      ref="confirmAsk"
+      :title="AYLA_ASK_NOT_ALLOWED_TITLE"
+      :message="AYLA_ASK_NOT_ALLOWED_MESSAGE"
+      :confirm-label="AYLA_ASK_ALLOW"
+      :alternative-label="AYLA_ASK_WITHOUT"
+      is-calm
+      @confirm="allowAndAsk"
+      @alternative="askWithoutPermission"
     />
   </VaultSheet>
 </template>

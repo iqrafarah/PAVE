@@ -58,11 +58,38 @@ export const AYLA_DELETE = 'Verwijderen';
 export const AYLA_CHAT_DELETED = 'Chat verwijderd';
 export const AYLA_NO_CHATS = 'Nog geen chats';
 export const AYLA_NO_CHATS_BODY =
-  'Je gesprekken met Ayla komen hier te staan, ook die je op je iPhone of Apple Watch begint.';
+  'Je gesprekken met Ayla komen hier te staan, ook die je op je iPhone begint.';
 export const AYLA_CLOSE_PANEL = 'Sluit het paneel';
 export const AYLA_SKILL_GAP = 'Skill-gap:';
 export const AYLA_FULL_TIME = 'Fulltime';
 export const AYLA_PART_TIME = 'Part-time';
+export const AYLA_MAX_TITLE_LENGTH = 80;
+export const AYLA_STARTED_ON_PHONE = 'Op iPhone';
+
+// Chat list groups and times (iOS: AylaConversationSection and AylaTimeline in PAVECore)
+export const AYLA_TODAY = 'Vandaag';
+export const AYLA_YESTERDAY = 'Gisteren';
+export const AYLA_SECTION_TITLES = {
+  pinned: 'Vastgezet',
+  today: AYLA_TODAY,
+  yesterday: AYLA_YESTERDAY,
+  lastWeek: 'Afgelopen 7 dagen',
+  lastMonth: 'Afgelopen 30 dagen',
+  earlier: 'Eerder',
+} as const;
+
+// Asking about one item from the vault (iOS: AylaMessages.swift)
+export const AYLA_ASK_ABOUT_ITEM = 'Vraag Ayla over dit bewijs';
+export const AYLA_ASK_NOT_ALLOWED_TITLE = 'Ayla mag dit bewijs nog niet gebruiken';
+export const AYLA_ASK_NOT_ALLOWED_MESSAGE =
+  'Sta je het toe, dan kan Ayla dit bewijs meenemen in je vragen en zoekopdrachten. Je kunt het altijd weer uitzetten.';
+export const AYLA_ASK_ALLOW = 'Toestaan en vragen';
+export const AYLA_ASK_WITHOUT = 'Vragen zonder toestemming';
+export const AYLA_CLEAR_CONTEXT = 'Niet meer over dit bewijs vragen';
+
+export function getAboutLabel(title: string) {
+  return `Over: ${title}`;
+}
 
 export function getNoChatsFoundMessage(search: string) {
   return `Geen chats gevonden met “${search.trim()}”.`;
@@ -78,8 +105,6 @@ export const AYLA_HOME_INTRO =
   'Ontdek kansen, krijg persoonlijk advies en werk met AI direct in jouw PAVE-omgeving. Van je kluis en ontwikkelplan tot vacatures en sollicitaties.';
 export const AYLA_OFFLINE = 'Geen verbinding. Probeer het zo opnieuw.';
 export const AYLA_NEW_CHAT = 'Nieuwe chat';
-export const AYLA_PINNED_HEADING = 'Vastgezet';
-export const AYLA_CHATS_HEADING = 'Chats';
 export const AYLA_NOTHING_FOUND = 'Dit kon niet gevonden worden';
 export const AYLA_NO_MESSAGES = 'Nog geen berichten.';
 export const AYLA_CHATS_LOADING = 'Chats laden…';
@@ -123,20 +148,20 @@ export function getAylaErrorMessage(code: AylaErrorCode) {
 export const MEMORY_PAGE_TITLE = 'Wat Ayla over je weet';
 // Word for word from iOS AylaMemoryScreen, AylaMemoryFolderScreen, AylaMemoryFolder and AylaMemoryEditor.
 export const MEMORY_ON_EXPLANATION =
-  'Ayla stelt voor wat ze onthoudt en jij beslist. Ze gebruikt het in je gesprekken op je iPhone, het web en je Apple Watch.';
+  'Ayla stelt voor wat ze onthoudt en jij beslist. Ze gebruikt het in je gesprekken op je iPhone en op het web.';
 export const MEMORY_NOTHING_YET =
   'Ayla onthoudt nog niets over je. Vertel je in een gesprek iets wat later handig is, zoals je opleiding of een doel, dan vraagt ze of ze het mag onthouden. Je kunt ook zelf iets toevoegen.';
 export const MEMORY_FOLDER_OFF = 'Het geheugen staat uit: Ayla gebruikt dit nu niet.';
 export const MEMORY_NOT_LOADED = 'Niet geladen';
 export const MEMORY_EDIT = 'Aanpassen';
-export const MEMORY_EDITOR_FOOTER = 'Ayla gebruikt dit in je gesprekken op je iPhone, het web en je Apple Watch.';
+export const MEMORY_EDITOR_FOOTER = 'Ayla gebruikt dit in je gesprekken op je iPhone en op het web.';
 export const MEMORY_SWITCH_LABEL = 'Ayla mag dingen onthouden';
 export const MEMORY_OFF_NOTICE =
   'Ayla gebruikt niets uit deze mappen en stelt niets voor. Wat erin staat, blijft bewaard tot je het wist.';
 export const MEMORY_FORGET_ALL = 'Alles vergeten';
 export const MEMORY_FORGET_ALL_QUESTION = 'Alles vergeten?';
 export const MEMORY_FORGET_ALL_BODY =
-  'Ayla vergeet alles wat hier staat, ook op je iPhone en Apple Watch. Dit kun je niet ongedaan maken.';
+  'Ayla vergeet alles wat hier staat, ook op je iPhone. Dit kun je niet ongedaan maken.';
 export const MEMORY_FORGET = 'Vergeten';
 export const MEMORY_ADD = 'Iets toevoegen';
 export const MEMORY_ADD_PLACEHOLDER = 'Bijvoorbeeld: Je wilt werken in de zorg-ICT…';

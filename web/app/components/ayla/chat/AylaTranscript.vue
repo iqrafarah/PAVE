@@ -17,6 +17,18 @@ const scrollerRef = useTemplateRef<HTMLDivElement>('scroller');
 const isAtBottom = ref(true);
 
 const lastText = computed(() => props.messages.at(-1)?.text ?? '');
+// A time above the first message and after every pause of 15 minutes or more, as on the iPhone (AylaTimeline).
+const timeLabels = computed(() => {
+  const now = new Date();
+  const labels = new Map<string, string>();
+  let previous: Date | null = null;
+  for (const message of props.messages) {
+    const sentAt = readChatDate(message.createdAt);
+    if (sentAt && showsTimeBefore(sentAt, previous)) labels.set(message.id, getTimelineLabel(sentAt, now));
+    previous = sentAt;
+  }
+  return labels;
+});
 const lastQuestionId = computed(() => {
   const beforeLast = props.messages.at(-2);
   return beforeLast?.role === 'user' ? beforeLast.id : null;
@@ -56,6 +68,13 @@ onMounted(scrollToBottom);
           :class="message.role === 'user' ? 'items-end' : 'items-start'"
           class="group flex flex-col"
         >
+          <time
+            v-if="timeLabels.has(message.id)"
+            :datetime="message.createdAt"
+            class="mb-1.5 mt-1 self-center text-xs font-medium text-subtle"
+          >
+            {{ timeLabels.get(message.id) }}
+          </time>
           <p
             v-if="message.role === 'user'"
             class="max-w-52.75 whitespace-pre-wrap break-words rounded-xl bg-bubble px-3.25 py-3 text-xs font-semibold text-heading"
