@@ -8,6 +8,9 @@ extension EnvironmentValues {
     @Entry var hidesScreenButtons = false
     /// The toolbar buttons sit in the bar along the side of the screen (outer display of iPhone Duo), in larger circles.
     @Entry var toolbarIsBeside = false
+    /// The vault is in a sheet on the outer display of iPhone Duo, where iOS shows no toolbar buttons: search and add
+    /// sit in the page itself.
+    @Entry var vaultButtonsInPage = false
 }
 
 extension EnvironmentValues {

@@ -92,6 +92,10 @@ struct AylaChatScreen: View {
 
     /// Kluis, Plan or Profiel from the start chips, open over the chat.
     @State private var shelf: AylaShelf?
+    /// What a button of the chat does once that sheet has slid away: the menu and the chats open over the chat,
+    /// never under a sheet.
+    @State private var afterShelf: (() -> Void)?
+    @Environment(\.toolbarIsBeside) private var toolbarIsBeside
 
     private var openVacancies: [Vacancy]? {
         guard let openVacanciesID, let entry = model.entries.first(where: { $0.id == openVacanciesID }) else { return nil }
@@ -103,7 +107,7 @@ struct AylaChatScreen: View {
             let fullHeight = proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom
             let sheetHeight = (fullHeight * 0.612).rounded()
             let expandedHeight = fullHeight - proxy.safeAreaInsets.top - 24
-            let showsSheet = openVacancies != nil || shelf == .vault
+            let showsSheet = openVacancies != nil
 
             ZStack(alignment: .bottom) {
                 if let voice, isTalking {
@@ -145,30 +149,6 @@ struct AylaChatScreen: View {
                             .frame(maxWidth: .infinity)
                     }
                     .ignoresSafeArea(edges: .bottom)
-                } else if shelf == .vault {
-                    // The vault itself in the panel of the chat, so its buttons stay where they are in the app: in the
-                    // bar, or on iPhone Duo's outer display beside the menu and the chats.
-                    AylaBottomSheet(
-                        title: AylaShelf.vault.closeTitle,
-                        height: sheetHeight,
-                        expandedHeight: expandedHeight,
-                        bottomInset: bottomBarHeight + proxy.safeAreaInsets.bottom + 16,
-                        scrolls: false,
-                        background: .canvas,
-                        onClose: closeShelf
-                    ) {
-                        if let vault {
-                            VaultScreen(onShowMenu: nil)
-                                .environment(vault)
-                                .environment(\.askAylaAbout) { item in
-                                    closeShelf()
-                                    model.ask(about: item)
-                                }
-                        }
-                    }
-                    .id(AylaShelf.vault)
-                    .ignoresSafeArea(edges: .bottom)
-                    .transition(.move(edge: .bottom))
                 }
 
                 bottomBar(placeholder: placeholderColor(sheetOpen: showsSheet), isOverPanel: showsSheet)
@@ -196,18 +176,36 @@ struct AylaChatScreen: View {
             Task { await addPhotos(items) }
         }
         // The places from the start chips, as they are in the app: up from the bottom, pulled up to the full screen,
-        // swiped away. The vault is the vault itself.
-        .sheet(item: Binding(get: { shelf == .vault ? nil : shelf }, set: { if $0 == nil { closeShelf() } })) { shelf in
-            ScrollView {
-                AylaShelfContent(shelf: shelf) { _ in }
-                    .padding(.horizontal, 24)
-                    .padding(.top, 28)
-                    .padding(.bottom, 24)
+        // swiped away, with the chat still there behind them. The vault is the vault itself.
+        .sheet(item: Binding(get: { shelf }, set: { if $0 == nil { closeShelf() } }), onDismiss: {
+            afterShelf?()
+            afterShelf = nil
+        }) { shelf in
+            Group {
+                if shelf == .vault {
+                    if let vault {
+                        VaultScreen(onShowMenu: nil)
+                            .environment(vault)
+                            .environment(\.vaultButtonsInPage, toolbarIsBeside)
+                            .environment(\.askAylaAbout) { item in
+                                closeShelf()
+                                model.ask(about: item)
+                            }
+                    }
+                } else {
+                    ScrollView {
+                        AylaShelfContent(shelf: shelf) { _ in }
+                            .padding(.horizontal, 24)
+                            .padding(.top, 28)
+                            .padding(.bottom, 24)
+                    }
+                    .background(Color.white.ignoresSafeArea(edges: .bottom))
+                }
             }
-            .background(Color.white.ignoresSafeArea(edges: .bottom))
             .presentationDetents([.fraction(0.62), .large], selection: $vaultDetent)
             .presentationDragIndicator(.visible)
-            .paveSheet(background: .white)
+            .presentationBackgroundInteraction(.enabled)
+            .paveSheet(background: shelf == .vault ? .canvas : .white)
         }
         .sheet(isPresented: $picksVaultItem) {
             if let vault {
@@ -355,7 +353,7 @@ struct AylaChatScreen: View {
     private var toolbar: some ToolbarContent {
         if let onShowMenu {
             ToolbarItem(placement: .topBarLeading) {
-                MainMenuToolbarButton(action: onShowMenu)
+                MainMenuToolbarButton { closingShelf(then: onShowMenu) }
             }
         }
         ToolbarItem(placement: .principal) {
@@ -368,7 +366,7 @@ struct AylaChatScreen: View {
             ToolbarItem(placement: onShowMenu == nil ? .topBarLeading : .topBarTrailing) {
                 Button {
                     PaveHaptics.tap(.light)
-                    onShowChats()
+                    closingShelf(then: onShowChats)
                 } label: {
                     Image(.iconChat)
                         .paveToolbarHitArea()
@@ -1333,6 +1331,13 @@ struct AylaChatScreen: View {
         guard let shelf else { return }
         model.hideScreen(shelf.screen)
         self.shelf = nil
+    }
+
+    /// Something that opens over the chat waits until the sheet from the start chips is gone.
+    private func closingShelf(then action: @escaping () -> Void) {
+        guard shelf != nil else { return action() }
+        afterShelf = action
+        closeShelf()
     }
 
     private func cancelDictation() {

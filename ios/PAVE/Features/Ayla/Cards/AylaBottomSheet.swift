@@ -1,19 +1,16 @@
 import SwiftUI
 
-/// The white panel that slides up over the chat on iPhone (Figma: vacancies and choosing vault items).
-/// It follows the finger on its top edge and lands where the swipe would end: the full screen, its own height, or
-/// closed, so one swipe down from the full screen closes it. The text field stays on top of it.
+/// The white panel that slides up over the chat on iPhone (Figma: vacancies). It follows the finger on its top edge
+/// and lands where the swipe would end: the full screen, its own height, or closed, so one swipe down from the full
+/// screen closes it. The text field stays on top of it.
 ///
 /// The panel always has its full height and only moves: sliding is a shift the screen draws as it is, while changing
-/// the height would lay out everything in it again on every frame, which stutters with the vault in it.
+/// the height would lay out everything in it again on every frame.
 struct AylaBottomSheet<Content: View>: View {
     let title: String
     let height: CGFloat
     let expandedHeight: CGFloat
     let bottomInset: CGFloat
-    /// Off for content that scrolls itself, such as the vault.
-    var scrolls = true
-    var background: Color = .white
     let onClose: () -> Void
     @ViewBuilder let content: Content
 
@@ -33,31 +30,25 @@ struct AylaBottomSheet<Content: View>: View {
     var body: some View {
         VStack(spacing: 0) {
             grabber
-            if scrolls {
-                ScrollView {
-                    content
-                        .padding(.leading, 26)
-                        .padding(.trailing, 25)
-                        .padding(.bottom, bottomInset + hiddenAtRest)
-                }
-                .scrollIndicators(.hidden)
-            } else {
+            ScrollView {
                 content
+                    .padding(.leading, 26)
+                    .padding(.trailing, 25)
                     .padding(.bottom, bottomInset + hiddenAtRest)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
+            .scrollIndicators(.hidden)
         }
         .frame(height: expandedHeight, alignment: .top)
         .frame(maxWidth: .infinity)
         .background {
             UnevenRoundedRectangle(topLeadingRadius: 25, topTrailingRadius: 25, style: .continuous)
-                .fill(background)
+                .fill(.white)
                 .shadow(color: .black.opacity(0.25), radius: 0.7)
                 .ignoresSafeArea(edges: [.bottom, .horizontal])
         }
         // The fade under the text field, at the bottom of the screen wherever the panel is.
         .overlay(alignment: .bottom) {
-            LinearGradient(stops: [.init(color: background.opacity(0), location: 0), .init(color: background, location: 0.45)], startPoint: .top, endPoint: .bottom)
+            LinearGradient(stops: [.init(color: .white.opacity(0), location: 0), .init(color: .white, location: 0.45)], startPoint: .top, endPoint: .bottom)
                 .frame(height: bottomInset)
                 .offset(y: -(expandedHeight - visibleHeight))
                 .allowsHitTesting(false)

@@ -18,6 +18,7 @@ struct VaultLibraryPage: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     /// The open menu on the outer display of iPhone Duo puts its own buttons where search and add are.
     @Environment(\.hidesScreenButtons) private var hidesScreenButtons
+    @Environment(\.vaultButtonsInPage) private var buttonsInPage
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// How the vault opens, from Instellingen; switching here lasts until the vault is opened again.
     @State private var isGrid = PaveAppearance.vaultLayout == .grid
@@ -61,6 +62,9 @@ struct VaultLibraryPage: View {
 
     var body: some View {
         library
+            .safeAreaInset(edge: .top, spacing: 0) {
+                if buttonsInPage, !hidesScreenButtons { pageButtons }
+            }
             .background(Color.canvas.ignoresSafeArea())
             .onAppear {
                 guard !choseOrder else { return }
@@ -68,7 +72,7 @@ struct VaultLibraryPage: View {
                 if model.items.contains(where: { $0.position != nil }) { filter.order = .custom }
             }
             .toolbar {
-                if !hidesScreenButtons {
+                if !hidesScreenButtons, !buttonsInPage {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button(action: toggleSearch) {
                             Image(isSearching ? .iconXMark : .iconSearch)
@@ -84,12 +88,48 @@ struct VaultLibraryPage: View {
             }
     }
 
+    /// Search and add as glass circles at the top right of the page, for the vault in a sheet on iPhone Duo's outer display.
+    private var pageButtons: some View {
+        HStack(spacing: 12) {
+            Spacer()
+            Button(action: toggleSearch) {
+                Image(isSearching ? .iconXMark : .iconSearch)
+                    .renderingMode(.template)
+                    .foregroundStyle(Color.ink)
+                    .frame(width: 44, height: 44)
+                    .contentShape(.circle)
+            }
+            .buttonStyle(.pave)
+            .glassEffect(.regular.interactive(), in: .circle)
+            .accessibilityLabel(isSearching ? "Zoeken sluiten" : folder.map { "Zoeken in \($0.name)" } ?? "Zoeken in je kluis")
+            addButton
+                .buttonStyle(.pave)
+                .glassEffect(.regular.interactive(), in: .circle)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 4)
+        .padding(.bottom, 8)
+    }
+
+    @ViewBuilder
+    private var plusIcon: some View {
+        if buttonsInPage {
+            Image(.iconPlus)
+                .renderingMode(.template)
+                .foregroundStyle(Color.ink)
+                .frame(width: 44, height: 44)
+                .contentShape(.circle)
+        } else {
+            Image(.iconPlus)
+                .paveToolbarHitArea()
+        }
+    }
+
     @ViewBuilder
     private var addButton: some View {
         if let folder {
             Button { actions.add(folder) } label: {
-                Image(.iconPlus)
-                    .paveToolbarHitArea()
+                plusIcon
             }
             .accessibilityLabel("Bewijs toevoegen aan \(folder.name)")
         } else {
@@ -101,8 +141,7 @@ struct VaultLibraryPage: View {
                     Label { Text("Map aanmaken") } icon: { Image(.iconFolderPlusSolid) }
                 }
             } label: {
-                Image(.iconPlus)
-                    .paveToolbarHitArea()
+                plusIcon
             }
             .accessibilityLabel("Toevoegen")
         }
