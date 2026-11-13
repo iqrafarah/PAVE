@@ -9,6 +9,8 @@ struct VaultFolderTile: View {
     let count: Int
     let isSelected: Bool
     var isDropTarget = false
+    /// When choosing items (for Ayla): whether everything in the folder is chosen.
+    var checkbox: Bool?
     let action: () -> Void
 
     static let width: CGFloat = 140
@@ -59,6 +61,12 @@ struct VaultFolderTile: View {
                 RoundedRectangle(cornerRadius: 16)
                     // Held over with a card, it shows the same outline as a chosen folder.
                     .strokeBorder(isSelected || isDropTarget ? color : Color.cardBorder, lineWidth: isSelected || isDropTarget ? 2 : 1)
+            }
+            .overlay(alignment: .topTrailing) {
+                if let checkbox {
+                    PaveCheckbox(isOn: checkbox, size: 18)
+                        .padding(10)
+                }
             }
             .contentShape(.rect(cornerRadius: 16))
             .animation(.easeOut(duration: 0.15), value: isDropTarget)

@@ -63,6 +63,7 @@ struct AylaChatScreen: View {
     @State private var isAttachMenuOpen = false
     @State private var isChoosingFile = false
     @State private var isChoosingPhotos = false
+    @State private var vaultDetent = PresentationDetent.large
     /// Files the user took out of a card, by the reply's id and the file's checksum.
     @State private var excludedFiles: [String: Set<String>] = [:]
     /// The reply whose item is being added, so the card can say it went into the vault.
@@ -102,9 +103,8 @@ struct AylaChatScreen: View {
             let fullHeight = proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom
             let sheetHeight = (fullHeight * 0.612).rounded()
             let expandedHeight = fullHeight - proxy.safeAreaInsets.top - 24
-            // The vault opens as itself, so it gets the whole height at once.
-            let panelHeight = shelf == .vault ? expandedHeight : sheetHeight
-            let showsSheet = openVacancies != nil || shelf != nil
+            let panelShelf = shelf == .vault ? nil : shelf
+            let showsSheet = openVacancies != nil || panelShelf != nil
 
             ZStack(alignment: .bottom) {
                 if let voice, isTalking {
@@ -122,7 +122,7 @@ struct AylaChatScreen: View {
 
                 content(
                     height: proxy.size.height,
-                    bottomMargin: showsSheet ? panelHeight - proxy.safeAreaInsets.bottom : bottomBarHeight + bottomGap + offlineNoticeHeight
+                    bottomMargin: showsSheet ? sheetHeight - proxy.safeAreaInsets.bottom : bottomBarHeight + bottomGap + offlineNoticeHeight
                 )
 
                 if isAttachMenuOpen {
@@ -146,26 +146,7 @@ struct AylaChatScreen: View {
                             .frame(maxWidth: .infinity)
                     }
                     .ignoresSafeArea(edges: .bottom)
-                } else if shelf == .vault {
-                    // The vault itself, folders and all, over the chat; the text field stays, so you keep talking about it.
-                    AylaBottomSheet(
-                        title: AylaShelf.vault.closeTitle,
-                        height: expandedHeight,
-                        expandedHeight: expandedHeight,
-                        bottomInset: bottomBarHeight + proxy.safeAreaInsets.bottom + 16,
-                        scrolls: false,
-                        onClose: closeShelf
-                    ) {
-                        VaultScreen(onShowMenu: nil)
-                            .environment(\.askAylaAbout) { item in
-                                closeShelf()
-                                model.ask(about: item)
-                            }
-                    }
-                    .id(AylaShelf.vault)
-                    .ignoresSafeArea(edges: .bottom)
-                    .transition(.move(edge: .bottom))
-                } else if let shelf {
+                } else if let shelf = panelShelf {
                     AylaBottomSheet(
                         title: shelf.closeTitle,
                         height: sheetHeight,
@@ -207,11 +188,24 @@ struct AylaChatScreen: View {
             photoItems = []
             Task { await addPhotos(items) }
         }
+        // The vault itself, as it is in the app: up from the bottom, pulled up to the full screen, swiped away.
+        .sheet(isPresented: Binding(get: { shelf == .vault }, set: { if !$0 { closeShelf() } })) {
+            if let vault {
+                VaultScreen(onShowMenu: nil)
+                    .environment(vault)
+                    .environment(\.askAylaAbout) { item in
+                        closeShelf()
+                        model.ask(about: item)
+                    }
+                    .presentationDetents([.fraction(0.62), .large], selection: $vaultDetent)
+                    .presentationDragIndicator(.visible)
+                    .paveSheet()
+            }
+        }
         .sheet(isPresented: $picksVaultItem) {
             if let vault {
                 AylaVaultSelectionSheet { items in model.attach(items) }
                     .environment(vault)
-                    .presentationDragIndicator(.hidden)
                     .paveSheet()
             }
         }
@@ -1323,6 +1317,7 @@ struct AylaChatScreen: View {
         PaveHaptics.selection()
         if let shelf { model.hideScreen(shelf.screen) }
         openVacanciesID = nil
+        if next == .vault { vaultDetent = .large }
         shelf = next
         model.showScreen(next.screen)
     }
