@@ -7,6 +7,8 @@ struct VaultScreen: View {
     let onShowMenu: (() -> Void)?
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+    /// The open menu on the outer display of iPhone Duo puts its own buttons where search and add are.
+    @Environment(\.hidesScreenButtons) private var hidesScreenButtons
     /// How the vault opens, from Instellingen; switching here lasts until the vault is opened again.
     @State private var isGrid = PaveAppearance.vaultLayout == .grid
     /// The evidence moved under the folders and the filter bar: a thin line then separates them.
@@ -42,7 +44,7 @@ struct VaultScreen: View {
                 .background(Color.canvas.ignoresSafeArea())
                 .mainScreenToolbar("Kluis", onShowMenu: onShowMenu)
                 .toolbar {
-                    if model.state == .ready {
+                    if model.state == .ready, !hidesScreenButtons {
                         ToolbarItem(placement: .topBarTrailing) {
                             Button(action: toggleSearch) {
                                 Image(isSearching ? .iconXMark : .iconSearch)

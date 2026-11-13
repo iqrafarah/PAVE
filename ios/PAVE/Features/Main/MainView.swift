@@ -93,7 +93,7 @@ struct MainView: View {
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .environment(\.reportMenuButtonFrame) { menuButtonFrame = $0 }
-        .environment(\.hidesChatsButton, menuReplacesButtons)
+        .environment(\.hidesScreenButtons, menuReplacesButtons)
         .environment(\.chatSearchRequestedAt, chatSearchRequestedAt)
         .focusedSceneValue(\.paveActions, keyboardActions)
         .tint(.paveAccent)

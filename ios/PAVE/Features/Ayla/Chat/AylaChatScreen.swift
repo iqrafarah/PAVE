@@ -14,7 +14,7 @@ struct AylaChatScreen: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.horizontalSizeClass) private var sizeClass
-    @Environment(\.hidesChatsButton) private var hidesChatsButton
+    @Environment(\.hidesScreenButtons) private var hidesScreenButtons
     @Environment(VaultModel.self) private var vault: VaultModel?
     @Environment(\.openFromAyla) private var openFromAyla
     /// Adding evidence after Ja to Ayla's "Wil je iets toevoegen?", filled with what she proposed.
@@ -312,7 +312,7 @@ struct AylaChatScreen: View {
         }
         // With the menu on screen (iPad, open iPhone Duo) the chat button sits at the top left, next to the menu,
         // instead of on the right where the open iPhone Duo puts it right against the status bar.
-        if !hidesChatsButton {
+        if !hidesScreenButtons {
             ToolbarItem(placement: onShowMenu == nil ? .topBarLeading : .topBarTrailing) {
                 Button {
                     PaveHaptics.tap(.light)
