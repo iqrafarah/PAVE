@@ -118,11 +118,7 @@ export function toVaultItemRow(draft: VaultItemDraft) {
   };
 }
 
-const ADD_WORDS = /toevoeg|aanvul|bewaren|opslaan|zetten/;
-// "Ik kan niet in je kluis kijken", "Ik heb geen toegang tot je kluis", "Je hebt nog niets in je kluis".
-const SAYS_NO = /\b(niet|geen|niets|niks|nergens)\b/;
-// "Open mijn kluis" asks to go there, not what is in it.
-const OPENS_VAULT = /^(open|ga naar|toon|laat)\b/;
+const ADD_WORDS = /toevoeg|aanvul|bewaar|opsla|\bzet/;
 
 const ADD_EVIDENCE_QUESTION = {
   text: VAULT_ADD_QUESTION,
@@ -133,23 +129,18 @@ const ADD_EVIDENCE_QUESTION = {
 };
 
 /**
- * Ayla cannot look in the vault yet, so a question about what is in it ("Heb ik in de kluis al iets staan over mijn
- * LiveWall stage?"), or an answer that says she cannot see it, gets the offer to add something. `asked` is the user's
- * question this reply answers.
+ * Only a request to put something in the vault ("Zet mijn stage in de kluis") gets the offer to add something, besides
+ * Ayla offering it herself. Asking what is in the vault does not, and neither does her question whether she may look in
+ * it (accessRequest). The same as `AylaVaultOffer` on iOS. `asked` is the user's question this reply answers.
  */
 function isVaultQuestion(reply: AylaReply, asked = '') {
-  if (reply.question) return false;
+  if (reply.question || reply.accessRequest) return false;
   if (reply.navigation?.screen === 'addEvidence') return true;
-  const question = asked.trim().toLowerCase();
-  const answer = reply.text.toLowerCase();
-  if (question.includes('kluis') && !OPENS_VAULT.test(question)) return true;
-  return answer.includes('kluis') && SAYS_NO.test(answer) && !OPENS_VAULT.test(question);
+  const question = asked.toLowerCase();
+  return question.includes('kluis') && ADD_WORDS.test(question);
 }
 
-/**
- * The question under Ayla's answer. When she cannot look in the vault it is always "Wil je iets toevoegen?" with Ja
- * and Nee (Figma 976:7971), also from an Ayla function that does not ask it itself yet.
- */
+/** The question under Ayla's answer: her own, or "Wil je iets toevoegen?" (Figma 976:7971) when she was asked to add. */
 export function getReplyQuestion(reply: AylaReply | null | undefined, asked?: string) {
   if (!reply) return null;
   if (reply.question) return reply.question;
@@ -163,7 +154,7 @@ const YES_LABEL = /^(ja|jazeker|ja graag|graag|ja,? graag|ja,? toevoegen|toevoeg
  * them yet, so a question about adding to the vault counts too.
  */
 export function offersToAddEvidence(reply: AylaReply | null | undefined, asked?: string) {
-  if (!reply) return false;
+  if (!reply || reply.accessRequest) return false;
   if (reply.navigation?.screen === 'addEvidence' || reply.proposedAction?.kind === 'addVaultItem') return true;
   if (isVaultQuestion(reply, asked)) return true;
   if (!reply.question) return false;

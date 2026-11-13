@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { test } from 'node:test'
-import { answer, cleanTitle, partialText, titleFrom, withAttachments } from '../brain.ts'
+import { answer, cleanTitle, partialText, titleFrom, toPastMessage, withAttachments } from '../brain.ts'
 import { parseRequest } from '../contract.ts'
 import { openRouterCompletion } from '../openrouter.ts'
 import { buildSystemPrompt } from '../prompt.ts'
@@ -31,11 +31,11 @@ test('a plain answer becomes a reply in the contract format', async () => {
   assert.deepEqual(reply, { version: 1, id: 'id_1', conversationId: 'conv', text: 'Hoi! Waar wil je mee beginnen?', blocks: [], usedData: [] })
 })
 
-test('usedData stays empty because Ayla has no vault access yet', async () => {
+test('usedData stays empty before the user lets Ayla look in the vault', async () => {
   const fake = model(say('Ik kan nog niet in je kluis kijken.'))
   const reply = await answer({ request, conversationId: 'c', history: [] }, { complete: fake.complete, newId: ids() })
   assert.deepEqual(reply.usedData, [])
-  assert.match(fake.calls[0][0].content, /geen toegang tot de kluis/)
+  assert.match(fake.calls[0][0].content, /pas in de kluis/)
 })
 
 test('the prompt has the device style, the name and the open screen', () => {
@@ -82,16 +82,77 @@ test('without an Adzuna key Ayla says honestly that searching is not set up', as
 const stage = { id: 'item-1', kind: 'internships', category: 'Stage', title: 'Eindstage', status: 'bevestigd', skills: [], files: [] }
 const diploma = { id: 'item-2', kind: 'diplomas', category: "Diploma's", title: 'Propedeuse', status: 'bevestigd', skills: [], files: [] }
 const vault = { status: 'on' as const, items: [stage, diploma] }
+/** A conversation in which the user already let Ayla look in the vault. */
+const allowedChat = [
+  { role: 'user' as const, text: 'Kun je mijn diploma zoeken?' },
+  { role: 'ayla' as const, text: 'Ik zoek hem voor je op.\nMag ik in je kluis kijken om je diploma te zoeken?', askedVault: true },
+  { role: 'user' as const, text: 'Ja' },
+  { role: 'ayla' as const, text: 'Je propedeuse staat erin.' },
+]
 
 test('the vault items Ayla used become usedData, each kind once', async () => {
   const fake = model(say('Je stage bij LiveWall laat Figma zien.', { usedVaultItems: [1, 1, 9, 'x'] }))
-  const reply = await answer({ request, conversationId: 'c', history: [], vault }, { complete: fake.complete, newId: ids() })
+  const reply = await answer({ request, conversationId: 'c', history: allowedChat, vault }, { complete: fake.complete, newId: ids() })
   assert.deepEqual(reply.usedData, ['internships'])
+})
+
+test('Ayla asks before she looks in the vault, and sees nothing of it yet', async () => {
+  const fake = model(say('Ik zoek hem voor je op.', { askVault: 'Om je diploma te zoeken?' }))
+  const ask = { ...request, text: 'Kun je mijn diploma zoeken in de kluis?' }
+  const reply = await answer({ request: ask, conversationId: 'c', history: [], vault }, { complete: fake.complete, newId: ids() })
+  assert.match(reply.accessRequest?.id ?? '', /^id_\d+$/)
+  assert.deepEqual({ ...reply.accessRequest, id: undefined }, { id: undefined, purpose: 'je diploma te zoeken', categories: [] })
+  assert.equal(reply.question?.text, 'Mag ik in je kluis kijken om je diploma te zoeken?')
+  assert.deepEqual(reply.question?.choices.map((c) => c.label), ['Ja', 'Nee'])
+  assert.equal(reply.navigation, undefined)
+  assert.doesNotMatch(fake.calls[0][0].content, /Propedeuse|Eindstage/)
+})
+
+test('after Ja she sees the vault and answers what she asked it for', async () => {
+  const fake = model(say('Je propedeuse HBO-ICT staat erin.', { askVault: 'nog iets te zoeken' }))
+  const history = allowedChat.slice(0, 2)
+  const reply = await answer({ request: { ...request, text: 'Ja' }, conversationId: 'c', history, vault }, { complete: fake.complete, newId: ids() })
+  assert.match(fake.calls[0][0].content, /Propedeuse/)
+  assert.match(fake.calls[0][0].content, /net toestemming/)
+  assert.equal(reply.accessRequest, undefined)
+  assert.equal(fake.calls[0].at(-2)!.content, 'Ik zoek hem voor je op.\nMag ik in je kluis kijken om je diploma te zoeken?')
+})
+
+test('the Ja holds for the rest of the conversation, a Nee keeps the vault closed', async () => {
+  const later = model(say('Je stage past daar goed bij.'))
+  await answer({ request, conversationId: 'c', history: allowedChat, vault }, { complete: later.complete, newId: ids() })
+  assert.match(later.calls[0][0].content, /Eindstage/)
+  assert.match(later.calls[0][0].content, /askVault is altijd null/)
+
+  const declined = model(say('Oké, dan help ik je zonder je kluis.'))
+  const history = allowedChat.slice(0, 2)
+  await answer({ request: { ...request, text: 'Nee' }, conversationId: 'c', history, vault }, { complete: declined.complete, newId: ids() })
+  assert.doesNotMatch(declined.calls[0][0].content, /Eindstage|Propedeuse/)
+  assert.match(declined.calls[0][0].content, /niet dat je in dit gesprek in de kluis kijkt/)
+})
+
+test('asking about one item from the vault is consent in itself', async () => {
+  const fake = model(say('Deze stage laat zien dat je zelfstandig werkt.'))
+  const about = { ...request, text: 'Wat laat dit zien?', context: { screen: 'vaultItem' as const, itemId: 'item-1' } }
+  const reply = await answer({ request: about, conversationId: 'c', history: [], vault }, { complete: fake.complete, newId: ids() })
+  assert.match(fake.calls[0][0].content, /item 1 uit de kluis open \(Eindstage\)/)
+  assert.equal(reply.accessRequest, undefined)
+})
+
+test('a stored question for the vault goes into the history, so the model knows what Ja answers', () => {
+  const asked = toPastMessage({
+    role: 'ayla',
+    text: 'Ik zoek hem op.',
+    reply: { accessRequest: { id: 'a', purpose: 'je diploma te zoeken', categories: [] }, question: { text: 'Mag ik in je kluis kijken om je diploma te zoeken?', choices: [] } },
+  })
+  assert.deepEqual(asked, { role: 'ayla', text: 'Ik zoek hem op.\nMag ik in je kluis kijken om je diploma te zoeken?', askedVault: true })
+  assert.deepEqual(toPastMessage({ role: 'ayla', text: 'Hoi', reply: { question: { text: 'Wil je iets toevoegen?', choices: [] } } }), { role: 'ayla', text: 'Hoi' })
+  assert.deepEqual(toPastMessage({ role: 'user', text: 'Ja', reply: null }), { role: 'user', text: 'Ja' })
 })
 
 test('opening one item goes by its id, and only for an item Ayla may see', async () => {
   const open = (item: number | null) => answer(
-    { request, conversationId: 'c', history: [], vault },
+    { request, conversationId: 'c', history: allowedChat, vault },
     { complete: model(say('Ik open hem.', { navigation: { screen: 'vaultItem', item } })).complete, newId: ids() },
   )
   assert.deepEqual((await open(2)).navigation, { screen: 'vaultItem', itemId: 'item-2' })

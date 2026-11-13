@@ -111,11 +111,11 @@ struct AylaChatModelTests {
         #expect(model.phase == .idle)
     }
 
-    @Test func anAnswerAboutTheVaultOffersToAddLikeTheWeb() async {
+    @Test func anOfferToAddFromAylaGetsJaAndNeeLikeTheWeb() async {
         let ayla = FakeAyla()
         let skills = AylaBlock.skillSuggestions(itemId: "", skills: [.init(name: "Scrum", reason: "")])
         ayla.replies = [
-            .success(AylaReply(id: "r1", conversationId: "c", text: "Die zie ik niet in je kluis.", blocks: [skills])),
+            .success(AylaReply(id: "r1", conversationId: "c", text: "Die zie ik niet in je kluis.", blocks: [skills], navigation: .init(screen: .addEvidence))),
             .success(AylaReply(id: "r2", conversationId: "c", text: "Front-end past bij je.")),
         ]
         let model = AylaChatModel(service: ayla)

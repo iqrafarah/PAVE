@@ -1,8 +1,9 @@
 import Foundation
 
 /// When Ayla offers to add something to the vault ("Wil je iets toevoegen?" with Ja and Nee, Figma 976:7971), the same
-/// as `web/app/utils/vaultAdd.ts`. The Ayla function asks it with navigation addEvidence or a proposed addVaultItem; an
-/// answer about the vault that says she does not see something gets the question too, also from an older function.
+/// as `web/app/utils/vault/vaultAdd.ts`. The Ayla function asks it with navigation addEvidence or a proposed
+/// addVaultItem. Only a request to put something in the vault gets the question without that; asking what is in the
+/// vault does not, and neither does her question whether she may look in it (accessRequest).
 public enum AylaVaultOffer {
     public static let question = AylaReply.Question(
         text: "Wil je iets toevoegen?",
@@ -10,11 +11,7 @@ public enum AylaVaultOffer {
     )
 
     // Computed: a Regex is not Sendable, so it cannot be a shared constant.
-    private static var addWords: Regex<Substring> { #/toevoeg|aanvul|bewaren|opslaan|zetten/# }
-    /// "Ik zie dat niet in je kluis", "Je hebt nog niets in je kluis".
-    private static var saysNo: Regex<(Substring, Substring)> { #/\b(niet|geen|niets|niks|nergens)\b/# }
-    /// "Open mijn kluis" asks to go there, not what is in it.
-    private static var opensVault: Regex<(Substring, Substring)> { #/^(open|ga naar|toon|laat)\b/# }
+    private static var addWords: Regex<Substring> { #/toevoeg|aanvul|bewaar|opsla|\bzet/# }
     private static var yesLabel: Regex<(Substring, Substring)> { #/^(ja|jazeker|ja graag|graag|ja,? graag|ja,? toevoegen|toevoegen|yes)\b/#.ignoresCase() }
 
     /// The question under Ayla's answer: her own, or "Wil je iets toevoegen?" when she answers about the vault without it.
@@ -27,7 +24,7 @@ public enum AylaVaultOffer {
 
     /// Whether Ja to the question opens adding evidence.
     public static func offersToAddEvidence(_ reply: AylaReply?, asked: String) -> Bool {
-        guard let reply else { return false }
+        guard let reply, reply.accessRequest == nil else { return false }
         if reply.navigation?.screen == .addEvidence || reply.proposedAction?.kind == .addVaultItem { return true }
         if isVaultQuestion(reply, asked: asked) { return true }
         guard let question = reply.question else { return false }
@@ -53,12 +50,9 @@ public enum AylaVaultOffer {
     }
 
     private static func isVaultQuestion(_ reply: AylaReply, asked: String) -> Bool {
-        if reply.question != nil { return false }
+        if reply.question != nil || reply.accessRequest != nil { return false }
         if reply.navigation?.screen == .addEvidence { return true }
-        let question = asked.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let answer = reply.text.lowercased()
-        let opens = question.prefixMatch(of: opensVault) != nil
-        if question.contains("kluis"), !opens { return true }
-        return answer.contains("kluis") && answer.contains(saysNo) && !opens
+        let question = asked.lowercased()
+        return question.contains("kluis") && question.contains(addWords)
     }
 }

@@ -1,7 +1,7 @@
 // Ayla's brain: one endpoint for web, iPhone and Watch. See docs/ayla.md.
 // It runs with the user's own session, so row level security applies to every query.
 import { createClient } from 'jsr:@supabase/supabase-js@2'
-import { answer, HISTORY_LIMIT, type PastMessage, titleFrom } from './brain.ts'
+import { answer, CONSENT_HISTORY_LIMIT, type StoredMessage, titleFrom, toPastMessage } from './brain.ts'
 import { loadMemory } from './memory.ts'
 import { loadAllowedVault } from './vault.ts'
 import { type AylaReply, parseRequest } from './contract.ts'
@@ -44,17 +44,18 @@ Deno.serve(async (req) => {
   }
 
   const [{ data: past }, { data: profile }, memory, vault] = await Promise.all([
+    // More than the model gets, so a Ja to the vault early in a long conversation still counts.
     supabase
       .from('ayla_messages')
-      .select('role, text')
+      .select('role, text, reply')
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: false })
-      .limit(HISTORY_LIMIT),
+      .limit(CONSENT_HISTORY_LIMIT),
     supabase.from('profiles').select('preferred_name, full_name').eq('id', user.id).maybeSingle(),
     loadMemory(supabase),
     loadAllowedVault(supabase),
   ])
-  const history = ((past ?? []) as PastMessage[]).reverse()
+  const history = ((past ?? []) as StoredMessage[]).reverse().map(toPastMessage)
   const firstName = (profile?.preferred_name || profile?.full_name?.split(' ')[0] || undefined) as string | undefined
 
   const adzunaId = Deno.env.get('ADZUNA_APP_ID')
