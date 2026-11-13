@@ -187,8 +187,9 @@ struct AylaChatScreen: View {
         }
         .sheet(isPresented: $picksVaultItem) {
             if let vault {
-                AylaVaultItemPicker { item in model.attach(item) }
+                AylaVaultSelectionSheet { items in model.attach(items) }
                     .environment(vault)
+                    .presentationDragIndicator(.hidden)
                     .paveSheet()
             }
         }

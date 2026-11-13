@@ -7,6 +7,12 @@ enum AylaMessages {
     static let attachItem = "Item uit je kluis"
     static let vaultEmpty = "Je kluis is nog leeg"
     static let pickItemTitle = "Waar gaat je vraag over?"
+    static func contextItems(_ count: Int) -> String { "\(count) items uit je kluis" }
+    static func askNotAllowedTitle(_ count: Int) -> String {
+        count == 1 ? askNotAllowedTitle : "Ayla mag \(count) van deze items nog niet gebruiken"
+    }
+    static let askAllowAll = "Toestaan en gebruiken"
+    static let askWithoutThem = "Gebruiken zonder die items"
     static let conceptReading = "Ayla leest je bestanden…"
     static let conceptFiles = "Bestanden hierbij"
     static let conceptAdded = "Toegevoegd aan je kluis"

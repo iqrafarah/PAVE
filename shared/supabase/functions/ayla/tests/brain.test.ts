@@ -192,6 +192,17 @@ test('asking about one item from the vault is consent in itself', async () => {
   assert.equal(reply.accessRequest, undefined)
 })
 
+test('items chosen with the plus button are the context, and consent, for the conversation', async () => {
+  const fake = model(say('Samen laten ze zien dat je zelfstandig werkt.'))
+  const parsed = parseRequest({ ...request, text: 'Wat zeggen deze over mij?', context: { screen: 'vault', itemIds: ['item-1', 'item-2', 'secret'] } })
+  assert.ok(typeof parsed !== 'string')
+  const reply = await answer({ request: parsed, conversationId: 'c', history: [], vault }, { complete: fake.complete, newId: ids() })
+  assert.match(fake.calls[0][0].content, /koos deze items uit de kluis voor dit gesprek: 1 \(Eindstage\), 2 \(/)
+  assert.match(fake.calls[0][0].content, /1 gekozen item mag je niet zien/)
+  assert.equal(reply.accessRequest, undefined)
+  assert.equal(typeof parseRequest({ ...request, context: { screen: 'vault', itemIds: Array(11).fill('x') } }), 'string')
+})
+
 test('a stored question for the vault goes into the history, so the model knows what Ja answers', () => {
   const asked = toPastMessage({
     role: 'ayla',

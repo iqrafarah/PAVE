@@ -16,7 +16,7 @@ const NO = /^(nee|liever niet|niet|no|nope)\b/i
 const MAX_PURPOSE_LENGTH = 140
 
 export function vaultConsent(history: ConsentTurn[], request: Pick<AylaRequest, 'text' | 'context'>): VaultConsent {
-  if (request.context?.screen === 'vaultItem') return 'granted'
+  if (request.context?.screen === 'vaultItem' || request.context?.itemIds?.length) return 'granted'
   const turns: ConsentTurn[] = [...history, { role: 'user', text: request.text }]
   let consent: VaultConsent = 'notAsked'
   for (let i = 0; i < turns.length - 1; i++) {

@@ -466,10 +466,16 @@ final class AylaChatModel {
         contextTitle = item.title
     }
 
-    /// An item from the vault chosen with the plus button: the conversation is about it from here on.
-    func attach(_ item: VaultItem) {
-        context = AylaRequest.Context(screen: .vaultItem, itemId: item.id)
-        contextTitle = item.title
+    /// Items from the vault chosen with the plus button: the conversation is about them from here on.
+    func attach(_ items: [VaultItem]) {
+        guard let first = items.first else { return }
+        if items.count == 1 {
+            context = AylaRequest.Context(screen: .vaultItem, itemId: first.id)
+            contextTitle = first.title
+        } else {
+            context = AylaRequest.Context(screen: .vault, itemIds: items.map(\.id))
+            contextTitle = AylaMessages.contextItems(items.count)
+        }
     }
 
     func clearContext() {

@@ -18,7 +18,7 @@ export interface AylaRequest {
   text: string
   device: Device
   input: 'voice' | 'text'
-  context?: { screen: Screen; itemId?: string }
+  context?: { screen: Screen; itemId?: string; itemIds?: string[] }
   attachments?: Attachment[]
 }
 
@@ -119,7 +119,10 @@ export function parseRequest(body: unknown): AylaRequest | string {
     const c = b.context as Record<string, unknown>
     if (typeof c !== 'object' || c === null || !SCREENS.includes(c.screen as Screen)) return 'context is not valid'
     if (c.itemId !== undefined && typeof c.itemId !== 'string') return 'context is not valid'
-    context = { screen: c.screen as Screen, ...(c.itemId ? { itemId: c.itemId as string } : {}) }
+    // Several items chosen with the plus button, for the whole conversation.
+    if (c.itemIds !== undefined && (!Array.isArray(c.itemIds) || c.itemIds.length > 10 || !c.itemIds.every((id) => typeof id === 'string' && id.trim()))) return 'context is not valid'
+    const itemIds = Array.isArray(c.itemIds) && c.itemIds.length ? (c.itemIds as string[]) : undefined
+    context = { screen: c.screen as Screen, ...(c.itemId ? { itemId: c.itemId as string } : {}), ...(itemIds ? { itemIds } : {}) }
   }
   let attachments: Attachment[] | undefined
   if (b.attachments !== undefined) {

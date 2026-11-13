@@ -119,7 +119,7 @@ export interface PromptInput {
   device: Device
   input?: 'voice' | 'text'
   firstName?: string
-  context?: { screen: Screen; itemId?: string }
+  context?: { screen: Screen; itemId?: string; itemIds?: string[] }
   memory?: Memory
   vault?: AllowedVault
   /** Whether the user let Ayla look in the vault in this conversation. Missing means yes, as before consent existed. */
@@ -139,9 +139,19 @@ export function buildSystemPrompt(input: PromptInput): string {
 }
 
 /** What the user has open. An item from the vault is named only when the user allowed Ayla to see it. */
-function contextLayer(context: { screen: Screen; itemId?: string }, vault: AllowedVault | undefined): string {
-  if (context.screen !== 'vaultItem' || !context.itemId) return `De gebruiker heeft nu ${SCREEN_NAMES[context.screen]} open.`
+function contextLayer(context: { screen: Screen; itemId?: string; itemIds?: string[] }, vault: AllowedVault | undefined): string {
   const items = vault?.status === 'on' ? vault.items : []
+  if (context.itemIds?.length) {
+    const chosen = context.itemIds.map((id) => items.findIndex((item) => item.id === id)).filter((index) => index >= 0)
+    const hidden = context.itemIds.length - chosen.length
+    const named = chosen.map((index) => `${index + 1} (${items[index].title})`).join(', ')
+    const parts = [
+      chosen.length ? `De gebruiker koos deze items uit de kluis voor dit gesprek: ${named}. Gaat een vraag over "dit", "deze" of "ze", dan bedoelt de gebruiker die items; gebruik ze voor je antwoord.` : '',
+      hidden ? `${hidden} gekozen item${hidden === 1 ? '' : 's'} mag je niet zien: zeg dat je die pas ziet als de gebruiker daarbij "Ayla mag dit bekijken en gebruiken" aanzet.` : '',
+    ]
+    return parts.filter(Boolean).join(' ')
+  }
+  if (context.screen !== 'vaultItem' || !context.itemId) return `De gebruiker heeft nu ${SCREEN_NAMES[context.screen]} open.`
   const index = items.findIndex((item) => item.id === context.itemId)
   if (index < 0) {
     return 'De gebruiker heeft een item uit de kluis open dat jij niet mag zien. Gaat een vraag over "dit" of "deze", zeg dan dat je dat item pas ziet als de gebruiker bij dat item "Ayla mag dit bekijken en gebruiken" aanzet, en vraag de gebruiker anders zelf te vertellen wat nodig is.'

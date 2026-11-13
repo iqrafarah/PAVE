@@ -363,10 +363,13 @@ struct AylaChatModelTests {
         let model = AylaChatModel(service: ayla)
         model.send("Hoi")
         await waitUntilIdle(model)
-        model.attach(VaultItem(id: "item-1", category: .internships, title: "Eindstage"))
+        model.attach([VaultItem(id: "item-1", category: .internships, title: "Eindstage")])
         #expect(model.entries.count == 2)
         #expect(model.context == AylaRequest.Context(screen: .vaultItem, itemId: "item-1"))
         #expect(model.contextTitle == "Eindstage")
+        model.attach([VaultItem(id: "item-1", category: .internships, title: "Eindstage"), VaultItem(id: "item-2", category: .diplomas, title: "Propedeuse")])
+        #expect(model.context == AylaRequest.Context(screen: .vault, itemIds: ["item-1", "item-2"]))
+        #expect(model.contextTitle == "2 items uit je kluis")
     }
 
     @Test func aLoadedConversationShowsTheFilesAgain() async {

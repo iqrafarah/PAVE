@@ -4,10 +4,13 @@ public struct AylaRequest: Codable, Equatable, Sendable {
     public struct Context: Codable, Equatable, Sendable {
         public var screen: AylaScreen
         public var itemId: String?
+        /// Several items chosen from the vault for the whole conversation.
+        public var itemIds: [String]?
 
-        public init(screen: AylaScreen, itemId: String? = nil) {
+        public init(screen: AylaScreen, itemId: String? = nil, itemIds: [String]? = nil) {
             self.screen = screen
             self.itemId = itemId
+            self.itemIds = itemIds
         }
     }
 
