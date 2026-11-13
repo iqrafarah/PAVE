@@ -28,6 +28,8 @@ public struct VaultFilter: Equatable, Sendable {
     public enum Order: String, CaseIterable, Sendable {
         case newest
         case oldest
+        /// The order you dragged your evidence into; what you never moved comes after it, newest first.
+        case custom
     }
 
     public var shelf = VaultShelf.all
@@ -56,9 +58,12 @@ public struct VaultFilter: Equatable, Sendable {
             return query.isEmpty || Self.searchableText(of: item).localizedStandardContains(query)
         }
         return matching.sorted { lhs, rhs in
+            if order == .custom, lhs.position != rhs.position {
+                return (lhs.position ?? .max) < (rhs.position ?? .max)
+            }
             let (left, right) = (lhs.sortDay(today: today), rhs.sortDay(today: today))
             if left == right { return lhs.updatedAt > rhs.updatedAt }
-            return order == .newest ? left > right : left < right
+            return order == .oldest ? left < right : left > right
         }
     }
 

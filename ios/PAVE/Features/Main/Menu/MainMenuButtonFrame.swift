@@ -6,6 +6,8 @@ extension EnvironmentValues {
     @Entry var reportMenuButtonFrame: (CGRect) -> Void = { _ in }
     /// The open menu has taken the place of the buttons on the right of the screen (outer display of iPhone Duo).
     @Entry var hidesScreenButtons = false
+    /// The toolbar buttons sit in the bar along the side of the screen (outer display of iPhone Duo), in larger circles.
+    @Entry var toolbarIsBeside = false
 }
 
 extension EnvironmentValues {
