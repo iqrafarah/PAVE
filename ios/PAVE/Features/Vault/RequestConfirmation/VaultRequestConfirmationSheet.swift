@@ -8,7 +8,7 @@ struct VaultRequestConfirmationSheet: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let item: VaultItem
     let documentCount: Int
-    var onSend: ((VaultConfirmationRequest) async -> Bool)?
+    var onSend: ((VaultConfirmationRequest) async -> String?)?
 
     @State private var request: VaultConfirmationRequest
     @State private var showsMissing = false
@@ -18,7 +18,7 @@ struct VaultRequestConfirmationSheet: View {
     @State private var confirmsDiscard = false
     @FocusState private var focus: VaultConfirmationRequest.Field?
 
-    init(item: VaultItem, documentCount: Int, onSend: ((VaultConfirmationRequest) async -> Bool)? = nil) {
+    init(item: VaultItem, documentCount: Int, onSend: ((VaultConfirmationRequest) async -> String?)? = nil) {
         self.item = item
         self.documentCount = documentCount
         self.onSend = onSend
@@ -188,10 +188,10 @@ struct VaultRequestConfirmationSheet: View {
         isSending = true
         sendError = nil
         Task {
-            let sent = await onSend(request)
+            let sendError = await onSend(request)
             isSending = false
-            if sent { isFinished = true }
-            else { sendError = "Er ging iets mis. Controleer de organisatienaam en probeer het opnieuw." }
+            if let sendError { self.sendError = sendError }
+            else { isFinished = true }
         }
     }
 

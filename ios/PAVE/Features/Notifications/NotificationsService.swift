@@ -1,6 +1,45 @@
 import Foundation
 import Observation
 
+private enum NotificationsServiceError: Error, LocalizedError, Sendable {
+    case notConfigured
+    case noSession
+    case httpStatus(Int, String?)
+    case invalidResponse
+    case malformedPayload
+
+    var errorDescription: String? {
+        switch self {
+        case .notConfigured:
+            "Meldingen zijn niet ingesteld. Controleer de Supabase-projectinstellingen van de app."
+        case .noSession:
+            "Je sessie is verlopen. Log opnieuw in om je meldingen te bekijken."
+        case let .httpStatus(401, _):
+            "Je sessie is verlopen. Log opnieuw in om je meldingen te bekijken."
+        case let .httpStatus(403, code) where code == "insufficient_aal":
+            "Bevestig eerst je identiteit met tweestapsverificatie en probeer opnieuw."
+        case .httpStatus(403, _):
+            "Je account heeft geen toegang tot deze meldingen."
+        case .httpStatus(404, "not_found"):
+            "Deze aanvraag is niet meer beschikbaar of je account is niet als beoordelaar toegewezen."
+        case .httpStatus(404, _):
+            "De meldingenfunctie staat nog niet op Supabase. Deploy de functie vault-review."
+        case .httpStatus(409, "no_reviewers"):
+            "Voor deze organisatie is nog geen beoordelaar ingesteld."
+        case .httpStatus(409, "already_pending"):
+            "Voor dit bewijs staat al een verificatieaanvraag open."
+        case .httpStatus(500...599, _):
+            "Supabase kon de meldingen niet ophalen. Controleer de logs van vault-review in Supabase."
+        case let .httpStatus(status, _):
+            "Meldingen ophalen is mislukt (HTTP \(status)). Probeer opnieuw."
+        case .invalidResponse:
+            "Supabase stuurde een ongeldige reactie terug. Controleer de Edge Function vault-review."
+        case .malformedPayload:
+            "Supabase stuurde meldingsgegevens terug die de app niet herkent. Controleer de response van vault-review."
+        }
+    }
+}
+
 struct NotificationReviewFile: Decodable, Identifiable, Sendable {
     let id: String
     let name: String
@@ -106,7 +145,12 @@ struct SupabaseNotificationsService: Sendable {
             if let date = formatter.date(from: value) { return date }
             throw DecodingError.dataCorruptedError(in: try decoder.singleValueContainer(), debugDescription: "Invalid notification date")
         }
-        let response = try decoder.decode(InboxResponse.self, from: data)
+        let response: InboxResponse
+        do {
+            response = try decoder.decode(InboxResponse.self, from: data)
+        } catch {
+            throw NotificationsServiceError.malformedPayload
+        }
         let audience: NotificationAudience = response.audience == "administrator" ? .administrator : .learner
         let values = response.notifications.compactMap { row -> PaveNotification? in
             let kind: PaveNotificationKind
@@ -157,7 +201,7 @@ struct SupabaseNotificationsService: Sendable {
     }
 
     private func call(_ url: URL, method: String, body: [String: Any]) async throws -> Data {
-        guard let token = await accessToken() else { throw URLError(.userAuthenticationRequired) }
+        guard let token = await accessToken() else { throw NotificationsServiceError.noSession }
         var request = URLRequest(url: url, timeoutInterval: 40)
         request.httpMethod = method
         request.setValue(key, forHTTPHeaderField: "apikey")
@@ -166,8 +210,13 @@ struct SupabaseNotificationsService: Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            throw NSError(domain: "SupabaseNotifications", code: (response as? HTTPURLResponse)?.statusCode ?? -1)
+        guard let http = response as? HTTPURLResponse else {
+            throw NotificationsServiceError.invalidResponse
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            let payload = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+            let code = payload?["error"] as? String ?? payload?["code"] as? String
+            throw NotificationsServiceError.httpStatus(http.statusCode, code)
         }
         return data
     }
@@ -183,19 +232,35 @@ final class NotificationsModel {
     init(service: SupabaseNotificationsService?) { self.service = service }
 
     func refresh() async {
-        guard let service else { return }
+        guard let service else {
+            problem = NotificationsServiceError.notConfigured.localizedDescription
+            return
+        }
         do {
             let (newAudience, rows) = try await service.inbox()
             audience = newAudience
             notifications = rows
             problem = nil
+        } catch let error as LocalizedError {
+            problem = error.errorDescription ?? "Meldingen konden niet worden geladen. Probeer opnieuw."
         } catch {
             problem = "Meldingen konden niet worden geladen. Probeer opnieuw."
         }
     }
 
     func markRead(_ id: String) async { try? await service?.markRead(notificationID: id) }
-    func review(_ id: String) async -> NotificationReviewPayload? { try? await service?.review(requestID: id) }
+    func review(_ id: String) async -> (payload: NotificationReviewPayload?, error: String?) {
+        guard let service else {
+            return (nil, NotificationsServiceError.notConfigured.localizedDescription)
+        }
+        do {
+            return (try await service.review(requestID: id), nil)
+        } catch let error as LocalizedError {
+            return (nil, error.errorDescription ?? "De verificatieaanvraag kon niet worden geladen.")
+        } catch {
+            return (nil, "De verificatieaanvraag kon niet worden geladen. Probeer opnieuw.")
+        }
+    }
 
     func resolve(_ id: String, action: String, response: String?) async -> Bool {
         guard let service else { return false }

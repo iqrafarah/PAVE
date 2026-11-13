@@ -53,6 +53,10 @@ public enum VaultError: Error, Equatable, Sendable {
     case fileRejected
     /// The Edge Function behind this is not deployed yet.
     case notSetUp
+    case validationOrganisationNotFound
+    case validationNoReviewer
+    case validationAlreadyPending
+    case validationItemUnavailable
     case unavailable
 
     public init(_ error: any Error) { self = (error as? VaultError) ?? .unavailable }
@@ -237,14 +241,8 @@ public struct SupabaseVaultService: VaultService {
             "email": email,
             "message": message ?? "",
         ]
-        let data = try await send(try await request(functionsURL.appending(path: "vault-review"), method: "POST", json: body))
-        if let error = try? JSONDecoder().decode(FunctionError.self, from: data) {
-            switch error.error {
-            case "organization_not_found": throw VaultError.notSetUp
-            case "no_reviewers": throw VaultError.notAllowed
-            default: break
-            }
-        }
+        let urlRequest = try await request(functionsURL.appending(path: "vault-review"), method: "POST", json: body)
+        _ = try await sendFunction(urlRequest)
     }
 
     private func insertFile(_ row: [String: Any]) async throws {
@@ -407,6 +405,29 @@ public struct SupabaseVaultService: VaultService {
         let detail = try? JSONDecoder().decode(PostgrestError.self, from: data)
         Self.lastFailure = "\(urlRequest.httpMethod ?? "") \(urlRequest.url?.path() ?? "") \(status) \(detail?.code ?? "") \(detail?.message ?? String(decoding: data.prefix(160), as: UTF8.self))"
         throw failure
+    }
+
+    /// Edge Function errors use `{ error: "..." }`, unlike PostgREST's `{ code, message }` payload.
+    private func sendFunction(_ urlRequest: URLRequest) async throws -> Data {
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: urlRequest)
+        } catch is URLError {
+            throw VaultError.noConnection
+        }
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard (200..<300).contains(status) else {
+            let detail = try? JSONDecoder().decode(FunctionError.self, from: data)
+            switch detail?.error {
+            case .some("organization_not_found"): throw VaultError.validationOrganisationNotFound
+            case .some("no_reviewers"): throw VaultError.validationNoReviewer
+            case .some("already_pending"): throw VaultError.validationAlreadyPending
+            case .some("item_not_awaiting_verification"): throw VaultError.validationItemUnavailable
+            default: throw Self.error(status: status, body: data)
+            }
+        }
+        return data
     }
 
     static func error(status: Int, body: Data) -> VaultError {

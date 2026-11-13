@@ -240,19 +240,23 @@ final class VaultModel {
         await perform { try await $0.deleteFolder(id: folder.id) }
     }
 
-    func requestValidation(for item: VaultItem, organisationName: String, email: String, message: String?) async -> Bool {
-        guard let service else { problem = VaultMessages.requestNotActive; return false }
+    func requestValidation(for item: VaultItem, organisationName: String, email: String, message: String?) async -> String? {
+        guard let service else {
+            problem = VaultMessages.requestNotActive
+            return problem
+        }
         do {
             try await service.requestValidation(
                 itemID: item.id, organisationName: organisationName, email: email, message: message
             )
             problem = nil
             PaveHaptics.success()
-            return true
+            return nil
         } catch {
-            problem = "Het verzoek kon niet worden verstuurd. Controleer de organisatienaam of probeer het later opnieuw."
+            let message = VaultMessages.message(for: VaultError(error))
+            problem = message
             PaveHaptics.error()
-            return false
+            return message
         }
     }
 

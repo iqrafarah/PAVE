@@ -39,6 +39,10 @@ enum VaultMessages {
         case .notAllowed: "Dit mag niet met je account. Log opnieuw in en probeer het nog een keer."
         case .duplicateFolderName: folderNameTaken
         case .notSetUp: "Dit is nog niet beschikbaar. Probeer het later nog een keer."
+        case .validationOrganisationNotFound: "Deze organisatie is niet bekend bij PAVE. Controleer de naam of neem contact op met je organisatie."
+        case .validationNoReviewer: "Er is nog geen beoordelaar ingesteld voor deze organisatie. Neem contact op met je organisatie."
+        case .validationAlreadyPending: "Voor dit bewijs staat al een verificatieaanvraag open."
+        case .validationItemUnavailable: "Dit bewijs kan niet meer worden aangevraagd. Vernieuw de kluis en probeer opnieuw."
         case .fileRejected: "Dit bestand kan niet in je kluis. Kies een PDF, Word-bestand, tekst of foto tot 20 MB."
         case .unavailable, .missingColumn: "Er ging iets mis. Probeer het zo nog een keer."
         }

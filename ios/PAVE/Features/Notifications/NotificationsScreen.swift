@@ -67,7 +67,7 @@ struct NotificationsScreen: View {
     var onMarkRead: ((String) async -> Void)?
     var onOpenConversation: ((String) -> Void)?
     var onOpenVerifiedEvidence: ((String) -> Void)?
-    var onLoadReview: ((String) async -> NotificationReviewPayload?)?
+    var onLoadReview: ((String) async -> (payload: NotificationReviewPayload?, error: String?))?
     var onResolveRequest: ((String, String, String?) async -> Bool)?
 
     @State private var tab: NotificationTab = .all
@@ -484,7 +484,7 @@ private struct NotificationFilterSheet: View {
 
 private struct VerificationRequestNotificationDetail: View {
     let notification: PaveNotification
-    let onLoadReview: ((String) async -> NotificationReviewPayload?)?
+    let onLoadReview: ((String) async -> (payload: NotificationReviewPayload?, error: String?))?
     let onResolve: ((String, String, String?) async -> Bool)?
     @Environment(\.dismiss) private var dismiss
     @State private var review: NotificationReviewPayload?
@@ -596,8 +596,9 @@ private struct VerificationRequestNotificationDetail: View {
         .toolbar(.hidden, for: .navigationBar)
         .task(id: requestID) {
             guard let requestID, let onLoadReview else { return }
-            review = await onLoadReview(requestID)
-            if review == nil { errorMessage = "De aanvraag kon niet worden geladen. Controleer je toegang en probeer opnieuw." }
+            let result = await onLoadReview(requestID)
+            review = result.payload
+            errorMessage = result.error
         }
         .confirmationDialog("Aanvraag afwijzen?", isPresented: $confirmsReject, titleVisibility: .visible) {
             Button("Aanvraag afwijzen", role: .destructive) { Task { await resolve("rejected") } }
@@ -625,29 +626,45 @@ private struct VerificationRequestNotificationDetail: View {
     }
 
     private func vaultItemCard(_ item: NotificationReviewItem) -> some View {
-        let tint = VaultCategory(rawValue: item.category)?.tint ?? Color.surfaceTint
         return VStack(alignment: .leading, spacing: 0) {
-            vaultItemArtwork(item, tint: tint)
-            VStack(alignment: .leading, spacing: 9) {
-                HStack {
-                    Text(item.title).textStyle(.bodyMedium).foregroundStyle(Color.ink).lineLimit(2)
-                    Spacer(minLength: 4)
-                    Text("In afwachting").textStyle(.meta).foregroundStyle(Color.statusPending)
-                }
-                .padding(.top, 28)
-                Text(item.categoryTitle).textStyle(.caption).foregroundStyle(Color.inkMuted)
-                if let organisation = item.organisationName, !organisation.isEmpty {
-                    let place = [organisation, item.organisationLocation].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
-                    PaveIconLabel(icon: .iconBuildingOfficeSolid, text: place)
-                }
-                if let period = item.periodText {
-                    PaveIconLabel(icon: .iconCalendarDaysSolid, text: period)
-                }
-            }
-            .padding(14)
+            vaultItemCardArtwork(item)
+            vaultItemCardDetails(item)
         }
         .background(Color.white, in: .rect(cornerRadius: 16))
         .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder) }
+    }
+
+    @ViewBuilder
+    private func vaultItemCardArtwork(_ item: NotificationReviewItem) -> some View {
+        let tint = VaultCategory(rawValue: item.category)?.tint ?? Color.surfaceTint
+        vaultItemArtwork(item, tint: tint)
+    }
+
+    @ViewBuilder
+    private func vaultItemCardDetails(_ item: NotificationReviewItem) -> some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack {
+                Text(item.title).textStyle(.bodyMedium).foregroundStyle(Color.ink).lineLimit(2)
+                Spacer(minLength: 4)
+                Text("In afwachting").textStyle(.meta).foregroundStyle(Color.statusPending)
+            }
+            .padding(.top, 28)
+            Text(item.categoryTitle).textStyle(.caption).foregroundStyle(Color.inkMuted)
+            if let place = organisationPlace(for: item) {
+                PaveIconLabel(icon: .iconBuildingOfficeSolid, text: place)
+            }
+            if let period = item.periodText {
+                PaveIconLabel(icon: .iconCalendarDaysSolid, text: period)
+            }
+        }
+        .padding(14)
+    }
+
+    private func organisationPlace(for item: NotificationReviewItem) -> String? {
+        let parts = [item.organisationName, item.organisationLocation]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        return parts.isEmpty ? nil : parts.joined(separator: ", ")
     }
 
     private func vaultItemArtwork(_ item: NotificationReviewItem, tint: Color) -> some View {
