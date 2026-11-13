@@ -61,6 +61,8 @@ struct AylaChatScreen: View {
     @State private var scrollPosition = ScrollPosition(edge: .bottom)
     @State private var isAttachMenuOpen = false
     @State private var isChoosingFile = false
+    @State private var photoSource: VaultFileSource?
+    @State private var picksVaultItem = false
     @State private var fileProblem: String?
     @FocusState private var isComposerFocused: Bool
     @State private var readAloud = AylaReadAloud()
@@ -171,6 +173,14 @@ struct AylaChatScreen: View {
         .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.4), value: shelf)
         .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.35, bounce: 0.18), value: isAttachMenuOpen)
         .toolbar { toolbar }
+        .vaultFilePicker(source: $photoSource, role: .document) { addPhoto($0) }
+        .sheet(isPresented: $picksVaultItem) {
+            if let vault {
+                AylaVaultItemPicker { item in model.attach(item) }
+                    .environment(vault)
+                    .paveSheet()
+            }
+        }
         .sheet(isPresented: Binding(get: { addEvidence != nil }, set: { if !$0 { addEvidence = nil } })) {
             if let addEvidence {
                 VaultAddEvidenceSheet(flow: addEvidence)
@@ -719,7 +729,7 @@ struct AylaChatScreen: View {
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { voiceBarHeight = $0 }
             .overlay(alignment: .bottomLeading) {
                 if isAttachMenuOpen {
-                    AylaAttachMenu(onAddFile: { chooseFile() }, onScan: scanAction, onPaste: { addPasted() })
+                    attachMenu
                             .accessibilityAction(.escape) { isAttachMenuOpen = false }
                         .transition(reduceMotion ? .opacity : .scale(scale: 0.3, anchor: .bottomLeading).combined(with: .opacity))
                 }
@@ -831,7 +841,7 @@ struct AylaChatScreen: View {
                 )
                 .overlay(alignment: .bottomLeading) {
                     if isAttachMenuOpen {
-                        AylaAttachMenu(onAddFile: { chooseFile() }, onScan: scanAction, onPaste: { addPasted() })
+                        attachMenu
                             .accessibilityAction(.escape) { isAttachMenuOpen = false }
                             .transition(reduceMotion ? .opacity : .scale(scale: 0.3, anchor: .bottomLeading).combined(with: .opacity))
                     }
@@ -1099,6 +1109,43 @@ struct AylaChatScreen: View {
     private func chooseFile() {
         isAttachMenuOpen = false
         isChoosingFile = true
+    }
+
+    private var attachMenu: some View {
+        AylaAttachMenu(
+            onAddFile: { chooseFile() },
+            onPhoto: { isAttachMenuOpen = false; photoSource = .photos },
+            onPickItem: vault == nil || vault?.state == .ready && vault?.items.isEmpty == true ? nil : { isAttachMenuOpen = false; picksVaultItem = true },
+            onScan: scanAction,
+            onPaste: { addPasted() }
+        )
+    }
+
+    /// A photo from the library: written to a file of our own and read like a chosen file.
+    private func addPhoto(_ result: Result<VaultUpload, VaultUpload.Problem>) {
+        guard case .success(let upload) = result else {
+            fileProblem = AylaMessages.fileUnreadable
+            return
+        }
+        guard model.attachments.count < AylaAttachment.maxCount else {
+            fileProblem = AylaMessages.tooManyFiles
+            return
+        }
+        let model = model
+        Task {
+            let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
+            defer { try? FileManager.default.removeItem(at: folder) }
+            do {
+                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                let url = folder.appending(path: upload.fileName)
+                try upload.data.write(to: url)
+                let file = try await AttachmentReader.file(url)
+                model.attach(file.attachment, upload: file.upload ?? upload)
+                PaveHaptics.tap(.light)
+            } catch {
+                fileProblem = AylaMessages.fileUnreadable
+            }
+        }
     }
 
     private func addFiles(_ result: Result<[URL], any Error>) {

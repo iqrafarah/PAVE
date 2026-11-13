@@ -365,6 +365,12 @@ final class AylaChatModel {
         contextTitle = item.title
     }
 
+    /// An item from the vault chosen with the plus button: the conversation is about it from here on.
+    func attach(_ item: VaultItem) {
+        context = AylaRequest.Context(screen: .vaultItem, itemId: item.id)
+        contextTitle = item.title
+    }
+
     func clearContext() {
         context = nil
         contextTitle = nil

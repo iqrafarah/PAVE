@@ -2,10 +2,14 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// What the plus button adds to a message (Figma "iPhone 16 & 17 Pro Max - 2", in the current style).
-/// It grows out of the text field and covers its left side. Items from the vault and plans can be added
-/// once those exist; until then the rows say why not. "Plakken" only shows while a photo or pdf is on the clipboard.
+/// It grows out of the text field and covers its left side. An item from the vault becomes what the conversation is
+/// about; plans can be added once they exist, until then the row says why not. "Plakken" only shows while a photo or
+/// pdf is on the clipboard.
 struct AylaAttachMenu: View {
     let onAddFile: () -> Void
+    var onPhoto: (() -> Void)?
+    /// Nil while the vault is empty or not there: the row then says so.
+    var onPickItem: (() -> Void)?
     var onScan: (() -> Void)?
     var onPaste: (() -> Void)?
 
@@ -18,9 +22,16 @@ struct AylaAttachMenu: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4.5) {
-            AylaAttachMenuRow(icon: .iconFolder, title: "Item toevoegen", note: "Je kluis is nog leeg")
+            if let onPickItem {
+                AylaAttachMenuRow(icon: .iconFolder, title: AylaMessages.attachItem, action: onPickItem)
+            } else {
+                AylaAttachMenuRow(icon: .iconFolder, title: AylaMessages.attachItem, note: AylaMessages.vaultEmpty)
+            }
             AylaAttachMenuRow(icon: .iconMap, title: "Plan toevoegen", note: "Je hebt nog geen plan")
             AylaAttachMenuRow(icon: .iconPaperclip, title: "Bestand toevoegen", action: onAddFile)
+            if let onPhoto {
+                AylaAttachMenuRow(icon: .iconPhotoSolid, title: "Foto toevoegen", action: onPhoto)
+            }
             if let onScan {
                 AylaAttachMenuRow(icon: .iconCamera, title: "Document scannen", action: onScan)
             }
@@ -41,7 +52,7 @@ struct AylaAttachMenu: View {
 }
 
 #Preview {
-    AylaAttachMenu(onAddFile: {}, onScan: {}, onPaste: {})
+    AylaAttachMenu(onAddFile: {}, onPhoto: {}, onPickItem: {}, onScan: {}, onPaste: {})
         .padding()
         .background(Color.canvas)
 }

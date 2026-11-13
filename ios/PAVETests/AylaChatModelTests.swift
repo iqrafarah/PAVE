@@ -282,6 +282,18 @@ struct AylaChatModelTests {
         #expect(AttachmentReader.plainText(fromHTML: html) == "Testosteron\nEen & twee drie.\nVier")
     }
 
+    @Test func anItemFromThePlusButtonBecomesTheContextWithoutANewConversation() async {
+        let ayla = FakeAyla()
+        ayla.replies = [.success(AylaReply(id: "r1", conversationId: "c", text: "Hoi"))]
+        let model = AylaChatModel(service: ayla)
+        model.send("Hoi")
+        await waitUntilIdle(model)
+        model.attach(VaultItem(id: "item-1", category: .internships, title: "Eindstage"))
+        #expect(model.entries.count == 2)
+        #expect(model.context == AylaRequest.Context(screen: .vaultItem, itemId: "item-1"))
+        #expect(model.contextTitle == "Eindstage")
+    }
+
     @Test func aLoadedConversationShowsTheFilesAgain() async {
         let ayla = FakeAyla()
         ayla.stored = [AylaStoredMessage(id: "m1", role: .user, text: "Kijk je mee?", attachments: ["cv.pdf", "scan.pdf"]), AylaStoredMessage(id: "m2", role: .ayla, text: "Gezien")]
