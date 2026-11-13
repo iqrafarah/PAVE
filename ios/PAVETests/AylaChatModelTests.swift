@@ -187,6 +187,7 @@ struct AylaChatModelTests {
             proposedAction: AylaReply.ProposedAction(id: "a", kind: .addVaultItem, summary: "", expiresAt: .distantFuture, vaultItem: item)
         )
         let flow = VaultAddEvidenceModel.proposed(by: reply, vault: VaultModel(service: nil))
+        #expect(flow.page == .details)
         #expect(flow.draft.category == .internships)
         #expect(flow.draft.title == "Eindstage")
         #expect(flow.draft.organisationName == "LiveWall")
@@ -282,6 +283,19 @@ struct AylaChatModelTests {
         #expect(AttachmentReader.plainText(fromHTML: html) == "Testosteron\nEen & twee drie.\nVier")
     }
 
+    @Test func theOfferOnACardHidesJaAndNee() async {
+        let ayla = FakeAyla()
+        let question = AylaReply.Question(text: "Zet ik dit zo in je kluis?", choices: [.init(id: "y", label: "Ja"), .init(id: "n", label: "Nee")])
+        let item = AylaReply.VaultItemProposal(category: .projects, title: "Designtest", organisationName: "MoofPlanner")
+        let action = AylaReply.ProposedAction(id: "a", kind: .addVaultItem, summary: "", expiresAt: .distantFuture, vaultItem: item)
+        ayla.replies = [.success(AylaReply(id: "r", conversationId: "c", text: "Zo zet ik het in je kluis.", question: question, proposedAction: action, navigation: .init(screen: .addEvidence)))]
+        let model = AylaChatModel(service: ayla)
+        model.send("Zet mijn project in de kluis")
+        await waitUntilIdle(model)
+        #expect(model.pendingQuestionIsOnCard)
+        #expect(model.pendingOffersEvidence)
+    }
+
     @Test func anItemFromThePlusButtonBecomesTheContextWithoutANewConversation() async {
         let ayla = FakeAyla()
         ayla.replies = [.success(AylaReply(id: "r1", conversationId: "c", text: "Hoi"))]
@@ -316,7 +330,7 @@ struct AylaChatModelTests {
 
     @Test func theFilesOfTheLastQuestionCanGoIntoTheVault() async throws {
         let ayla = FakeAyla()
-        ayla.replies = [.success(AylaReply(id: "r1", conversationId: "c", text: "Gezien"))]
+        ayla.replies = [.success(AylaReply(id: "r1", conversationId: "c", text: "Gezien")), .success(AylaReply(id: "r2", conversationId: "c", text: "Ook gezien"))]
         let model = AylaChatModel(service: ayla)
         let file = try #require(AylaAttachment(name: "cv.pdf", text: "Stage bij LiveWall"))
         let upload = VaultUpload(data: Data([1, 2]), fileName: "cv.pdf", mimeType: "application/pdf")
@@ -328,7 +342,14 @@ struct AylaChatModelTests {
         await waitUntilIdle(model)
         // Only files the vault can keep, and only those of the question just sent; the next message starts empty.
         #expect(model.lastTurnUploads == [upload])
-        #expect(ayla.requests.last?.attachments?.map(\.name) == ["cv.pdf", "notitie.txt"])
+        // Over the whole conversation the files stay, for evidence built up over several turns.
+        model.send("En dit?")
+        await waitUntilIdle(model)
+        #expect(model.lastTurnUploads.isEmpty)
+        #expect(model.conversationUploads == [upload])
+        model.newConversation()
+        #expect(model.conversationUploads.isEmpty)
+        #expect(ayla.requests.first?.attachments?.map(\.name) == ["cv.pdf", "notitie.txt"])
     }
 
     @Test func pinningShowsAtOnceAndGoesBackWhenRefused() async {

@@ -79,6 +79,9 @@ final class AylaChatModel {
     /// written, and those sent with the last question. They never go to Ayla's chat function.
     @ObservationIgnored private var uploads: [String: VaultUpload] = [:]
     @ObservationIgnored private var lastUploads: [String: VaultUpload] = [:]
+    /// Every file sent in this conversation while the app is open, oldest first: evidence built up over several
+    /// turns takes them all along.
+    @ObservationIgnored private var sentUploads: [VaultUpload] = []
     /// The last question and answer are being removed on the server; the next question waits for that.
     @ObservationIgnored private var removal: Task<Bool, Never>?
     @ObservationIgnored private var answerTask: Task<Void, Never>?
@@ -121,6 +124,17 @@ final class AylaChatModel {
 
     func question(for entry: Entry) -> AylaReply.Question? {
         AylaVaultOffer.question(for: entry.reply, asked: askedText(before: entry))
+    }
+
+    /// The offer to add evidence is answered on the card with "Zet in de kluis", so the question and its Ja and Nee are
+    /// not shown as well. A spoken Ja still counts.
+    func questionIsOnCard(for entry: Entry) -> Bool {
+        entry.reply?.proposedAction?.vaultItem != nil && AylaVaultOffer.offersToAddEvidence(entry.reply, asked: askedText(before: entry))
+    }
+
+    var pendingQuestionIsOnCard: Bool {
+        guard let last = entries.last, last.role == .ayla else { return false }
+        return questionIsOnCard(for: last)
     }
 
     /// The user's question that an answer is about.
@@ -203,6 +217,7 @@ final class AylaChatModel {
         lastQuestion = text
         lastFiles = files
         lastUploads = uploads
+        sentUploads += files.compactMap { uploads[$0.name] }.filter { upload in !sentUploads.contains(upload) }
         uploads = [:]
         phase = .thinking
         let request = AylaRequest(conversationId: conversationID, text: text, device: .phone, input: input, context: context, attachments: files)
@@ -303,9 +318,15 @@ final class AylaChatModel {
         uploads[file.name] = nil
     }
 
-    /// The files sent with the last question, as the vault can keep them: what Ja to Ayla's offer takes along.
+    /// The files sent with the last question, as the vault can keep them.
     var lastTurnUploads: [VaultUpload] {
         lastFiles.compactMap { lastUploads[$0.name] }
+    }
+
+    /// The files sent in this conversation, newest last, as many as evidence can hold: what "Zet in de kluis" takes
+    /// along. Files from before the app was opened are no longer on the device.
+    var conversationUploads: [VaultUpload] {
+        Array(sentUploads.suffix(5))
     }
 
     /// Ayla answers the last question again, as if it was asked for the first time.
@@ -397,6 +418,7 @@ final class AylaChatModel {
         phase = .idle
         draft = drafts[nil]
         attachments = []
+        sentUploads = []
     }
 
     func open(_ conversation: AylaConversation) async {
@@ -418,6 +440,7 @@ final class AylaChatModel {
             phase = .idle
             draft = drafts[conversation.id]
             attachments = []
+            sentUploads = []
         } catch {
             phase = .failed(Self.message(for: AylaError(error)))
         }

@@ -471,7 +471,7 @@ struct AylaChatScreen: View {
                     speaker: .ayla(showsMark: entry.id == model.lastAylaEntryID && !isFailed),
                     actions: actions(for: entry)
                 )
-                if let question = model.question(for: entry), !question.text.isEmpty, !AylaVaultOffer.isAlreadyAsked(question.text, in: entry.text) {
+                if let question = model.question(for: entry), !question.text.isEmpty, !AylaVaultOffer.isAlreadyAsked(question.text, in: entry.text), !model.questionIsOnCard(for: entry) {
                     ChatBubble(text: question.text, speaker: .ayla(showsMark: false))
                 }
                 // Evidence built up together in the chat: what Ayla has so far, and the way into the vault with it.
@@ -799,7 +799,7 @@ struct AylaChatScreen: View {
                     .padding(.leading, 33)
                     .padding(.trailing, 31)
                     .transition(.opacity)
-            } else if let question = model.pendingQuestion, question.choices.count >= 2 {
+            } else if let question = model.pendingQuestion, question.choices.count >= 2, !model.pendingQuestionIsOnCard {
                 AylaChoiceBar(
                     choices: question.choices.map { AylaChoice(id: $0.id, label: $0.label) },
                     isAboutVault: model.pendingOffersEvidence
@@ -907,11 +907,11 @@ struct AylaChatScreen: View {
         send(label)
     }
 
-    /// Adding evidence as Ayla proposed it, with the files sent with the question when it is her newest answer. A
-    /// spoken conversation stops: the form is something to look at.
+    /// Adding evidence as Ayla proposed it, with the files sent in this conversation. A spoken conversation stops: the
+    /// form is something to look at.
     private func openProposedEvidence(from reply: AylaReply?) {
         guard let vault else { return }
-        let documents = reply?.id == model.lastReply?.id ? model.lastTurnUploads : []
+        let documents = model.conversationUploads
         if isTalking { stopVoice() }
         Task {
             if vault.state != .ready { await vault.load() }
