@@ -279,6 +279,16 @@ struct AylaChatModelTests {
         #expect(ayla.requests.last?.attachments == [file])
     }
 
+    @Test func aSecondPhotoWithTheSameNameGetsANumber() throws {
+        let model = AylaChatModel(service: FakeAyla())
+        #expect(model.uniqueAttachmentName("Foto 2026-11-13.jpeg") == "Foto 2026-11-13.jpeg")
+        model.attach(try #require(AylaAttachment(name: "Foto 2026-11-13.jpeg", text: "x")))
+        #expect(model.uniqueAttachmentName("Foto 2026-11-13.jpeg") == "Foto 2026-11-13 2.jpeg")
+        model.attach(try #require(AylaAttachment(name: "Foto 2026-11-13 2.jpeg", text: "x")))
+        #expect(model.uniqueAttachmentName("Foto 2026-11-13.jpeg") == "Foto 2026-11-13 3.jpeg")
+        #expect(model.attachments.count == 2)
+    }
+
     @Test func aPhotoWithoutTextStillGoesAlong() async throws {
         let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

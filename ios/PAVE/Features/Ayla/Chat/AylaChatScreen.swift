@@ -1137,10 +1137,10 @@ struct AylaChatScreen: View {
             defer { try? FileManager.default.removeItem(at: folder) }
             do {
                 try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-                let url = folder.appending(path: upload.fileName)
+                let url = folder.appending(path: model.uniqueAttachmentName(upload.fileName))
                 try upload.data.write(to: url)
                 let file = try await AttachmentReader.file(url)
-                model.attach(file.attachment, upload: file.upload ?? upload)
+                model.attach(file.attachment, upload: file.upload ?? VaultUpload(data: upload.data, fileName: url.lastPathComponent, mimeType: upload.mimeType))
                 PaveHaptics.tap(.light)
             } catch {
                 fileProblem = AylaMessages.fileUnreadable

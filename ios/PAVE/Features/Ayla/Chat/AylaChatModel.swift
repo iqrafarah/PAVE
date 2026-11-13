@@ -313,6 +313,19 @@ final class AylaChatModel {
         return true
     }
 
+    /// A name no attachment of this message has yet: photos from the library all get the same name, and a second one
+    /// must not take the place of the first.
+    func uniqueAttachmentName(_ name: String) -> String {
+        let taken = Set(attachments.map(\.name))
+        guard taken.contains(name) else { return name }
+        let url = URL(filePath: name)
+        let stem = url.deletingPathExtension().lastPathComponent
+        let suffix = url.pathExtension.isEmpty ? "" : ".\(url.pathExtension)"
+        var number = 2
+        while taken.contains("\(stem) \(number)\(suffix)") { number += 1 }
+        return "\(stem) \(number)\(suffix)"
+    }
+
     func removeAttachment(_ file: AylaAttachment) {
         attachments.removeAll { $0.name == file.name }
         uploads[file.name] = nil
