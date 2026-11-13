@@ -101,6 +101,9 @@ struct AylaChatScreen: View {
         GeometryReader { proxy in
             let fullHeight = proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom
             let sheetHeight = (fullHeight * 0.612).rounded()
+            let expandedHeight = fullHeight - proxy.safeAreaInsets.top - 24
+            // The vault opens as itself, so it gets the whole height at once.
+            let panelHeight = shelf == .vault ? expandedHeight : sheetHeight
             let showsSheet = openVacancies != nil || shelf != nil
 
             ZStack(alignment: .bottom) {
@@ -119,7 +122,7 @@ struct AylaChatScreen: View {
 
                 content(
                     height: proxy.size.height,
-                    bottomMargin: showsSheet ? sheetHeight - proxy.safeAreaInsets.bottom : bottomBarHeight + bottomGap + offlineNoticeHeight
+                    bottomMargin: showsSheet ? panelHeight - proxy.safeAreaInsets.bottom : bottomBarHeight + bottomGap + offlineNoticeHeight
                 )
 
                 if isAttachMenuOpen {
@@ -143,11 +146,30 @@ struct AylaChatScreen: View {
                             .frame(maxWidth: .infinity)
                     }
                     .ignoresSafeArea(edges: .bottom)
+                } else if shelf == .vault {
+                    // The vault itself, folders and all, over the chat; the text field stays, so you keep talking about it.
+                    AylaBottomSheet(
+                        title: AylaShelf.vault.closeTitle,
+                        height: expandedHeight,
+                        expandedHeight: expandedHeight,
+                        bottomInset: bottomBarHeight + proxy.safeAreaInsets.bottom + 16,
+                        scrolls: false,
+                        onClose: closeShelf
+                    ) {
+                        VaultScreen(onShowMenu: nil)
+                            .environment(\.askAylaAbout) { item in
+                                closeShelf()
+                                model.ask(about: item)
+                            }
+                    }
+                    .id(AylaShelf.vault)
+                    .ignoresSafeArea(edges: .bottom)
+                    .transition(.move(edge: .bottom))
                 } else if let shelf {
                     AylaBottomSheet(
                         title: shelf.closeTitle,
                         height: sheetHeight,
-                        expandedHeight: fullHeight - proxy.safeAreaInsets.top - 24,
+                        expandedHeight: expandedHeight,
                         bottomInset: bottomBarHeight + proxy.safeAreaInsets.bottom + 16,
                         onClose: closeShelf
                     ) {
@@ -404,9 +426,11 @@ struct AylaChatScreen: View {
                     .padding(.top, (height * 0.174).rounded())
                     .frame(maxWidth: .infinity)
                     // The orb falls apart right here during the outro; the welcome returns once its blocks are back in the button.
-                    // It also waits for the name, so the title does not jump when the name comes in.
-                    .opacity(isOutroRunning || !model.isGreetingReady ? 0 : 1)
+                    // It also waits for the name, so the title does not jump when the name comes in, and it stays out of
+                    // the way while you talk: a spoken conversation starts clean.
+                    .opacity(isOutroRunning || !model.isGreetingReady || isTalking ? 0 : 1)
                     .animation(.easeOut(duration: 0.3), value: model.isGreetingReady)
+                    .animation(.easeOut(duration: 0.25), value: isTalking)
             }
             .scrollBounceBehavior(.basedOnSize)
             .scrollDismissesKeyboard(.interactively)

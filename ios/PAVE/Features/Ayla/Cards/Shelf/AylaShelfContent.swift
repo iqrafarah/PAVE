@@ -22,7 +22,8 @@ struct AylaShelfContent: View {
 
             switch shelf {
             case .vault:
-                AylaVaultShelf(onAsk: onAsk)
+                // The vault opens as itself over the chat (AylaChatScreen), not as rows here.
+                EmptyView()
             case .plan:
                 PaveEmptyState(
                     icon: .iconMap,

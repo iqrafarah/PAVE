@@ -7,6 +7,8 @@ struct AylaBottomSheet<Content: View>: View {
     let height: CGFloat
     let expandedHeight: CGFloat
     let bottomInset: CGFloat
+    /// Off for content that scrolls itself, such as the vault.
+    var scrolls = true
     let onClose: () -> Void
     @ViewBuilder let content: Content
 
@@ -21,13 +23,19 @@ struct AylaBottomSheet<Content: View>: View {
     var body: some View {
         VStack(spacing: 0) {
             grabber
-            ScrollView {
+            if scrolls {
+                ScrollView {
+                    content
+                        .padding(.leading, 26)
+                        .padding(.trailing, 25)
+                        .padding(.bottom, bottomInset)
+                }
+                .scrollIndicators(.hidden)
+            } else {
                 content
-                    .padding(.leading, 26)
-                    .padding(.trailing, 25)
                     .padding(.bottom, bottomInset)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .scrollIndicators(.hidden)
         }
         .frame(height: currentHeight, alignment: .top)
         .frame(maxWidth: .infinity)
