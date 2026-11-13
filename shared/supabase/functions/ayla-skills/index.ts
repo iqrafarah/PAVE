@@ -1,6 +1,6 @@
 // "Voorstel van Ayla" for skills when adding evidence. See skills.ts. Requires two-step verification like Ayla herself.
 import { createClient } from 'jsr:@supabase/supabase-js@2'
-import { openRouterCompletion } from '../ayla/openrouter.ts'
+import { HEDGE_MS, MODELS, openRouterCompletion } from '../ayla/openrouter.ts'
 import { CORS, json, sessionLevel } from '../_shared/http.ts'
 import { cleanSkills, parseModelJson, parseSkillsRequest, SKILLS_SCHEMA, skillsMessages } from './skills.ts'
 
@@ -24,7 +24,8 @@ Deno.serve(async (req) => {
   if (typeof request === 'string') return json({ error: 'invalid_request', detail: request }, 400)
 
   try {
-    const { model, content } = await openRouterCompletion(openRouterKey, SKILLS_SCHEMA)(skillsMessages(request))
+    const complete = openRouterCompletion(openRouterKey, SKILLS_SCHEMA, fetch, MODELS, HEDGE_MS, { maxTokens: 1000, timeoutMs: 40_000 })
+    const { model, content } = await complete(skillsMessages(request))
     const parsed = parseModelJson(content)
     if (!parsed) console.error(`ayla-skills: ${model} gave no usable JSON`)
     return json({ skills: cleanSkills(parsed, request.existing) })

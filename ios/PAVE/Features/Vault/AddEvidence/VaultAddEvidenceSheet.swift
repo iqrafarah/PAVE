@@ -79,8 +79,34 @@ struct VaultAddEvidenceSheet: View {
             Text(VaultMessages.discardMessage)
         }
         .onChange(of: flow.page) { _, page in
+            flow.isResumed = false
             AccessibilityNotification.Announcement("Stap \(page.step + 1) van 4: \(VaultMessages.steps[page.step])").post()
         }
+        .onAppear {
+            if flow.isResumed { AccessibilityNotification.Announcement(VaultMessages.draftBack).post() }
+        }
+        // Closed before saving, also by accident: it comes back as it was when you add evidence within half a minute.
+        .onDisappear { flow.vault.keepDraft(flow) }
+    }
+
+    private var resumedNotice: some View {
+        HStack(spacing: 12) {
+            Text(VaultMessages.draftBack)
+                .textStyle(.caption)
+                .foregroundStyle(Color.ink)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button(VaultMessages.draftStartOver) {
+                PaveHaptics.selection()
+                withAnimation(pageAnimation) {
+                    flow = VaultAddEvidenceModel(vault: flow.vault, category: flow.startCategory, folderID: flow.startFolderID)
+                }
+            }
+            .textStyle(.label)
+            .foregroundStyle(Color.paveAccent)
+            .frame(minHeight: 44)
+        }
+        .padding(.horizontal, 14)
+        .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 12))
     }
 
     /// Step 1 without a file has two clear choices and no button; after that the buttons stay, except while typing.
@@ -99,7 +125,12 @@ struct VaultAddEvidenceSheet: View {
             }
             .frame(height: isShort ? 36 : 44)
             PaveStepper(steps: VaultMessages.steps, current: flow.page.step)
+            if flow.isResumed {
+                resumedNotice
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
         }
+        .animation(.easeOut(duration: 0.2), value: flow.isResumed)
         .padding(.horizontal, 24)
         .padding(.top, isShort ? 8 : 22)
         .padding(.bottom, isShort ? 8 : 16)
@@ -133,6 +164,9 @@ struct VaultAddEvidenceSheet: View {
 
     private var detailsPage: some View {
         VStack(alignment: .leading, spacing: 18) {
+            if flow.aylaProposal != nil {
+                VaultAylaFilledBanner(splitTitles: flow.aylaSplitTitles, addsApart: flow.addsApart, onAddsApart: flow.setAddsApart)
+            }
             ForEach(flow.documents, id: \.checksum) { document in
                 VaultFileRow(upload: document) {
                     withAnimation(.snappy(duration: 0.3)) { flow.remove(document) }
@@ -148,9 +182,11 @@ struct VaultAddEvidenceSheet: View {
                     VaultEvidenceForm.NewFolder(name: name, isOn: true) { flow.setMakesKindFolder($0) }
                 } ?? (flow.kindFolderMissing
                     ? VaultEvidenceForm.NewFolder(name: flow.draft.category.title, isOn: false) { flow.setMakesKindFolder($0) }
-                    : nil)
+                    : nil),
+                aylaNotes: flow.aylaNotes
             )
         }
+        .animation(.snappy(duration: 0.3), value: flow.documents)
         .onChange(of: flow.draft.category) { flow.categoryChanged() }
     }
 
@@ -162,7 +198,11 @@ struct VaultAddEvidenceSheet: View {
                         withAnimation(.snappy(duration: 0.3)) { flow.remove(document) }
                     }
                 }
-                if flow.canAddDocument {
+                if flow.aylaFill == .reading {
+                    VaultAylaFillSkeleton()
+                        .padding(.top, 6)
+                        .transition(.opacity)
+                } else if flow.canAddDocument {
                     VaultUploadZone(title: VaultMessages.addAnotherDocument, hint: VaultMessages.uploadHint, sources: [.files, .photos], isCompact: true) {
                         source = $0
                     }
@@ -178,6 +218,12 @@ struct VaultAddEvidenceSheet: View {
             }
         }
         .animation(.snappy(duration: 0.3), value: flow.documents)
+        .animation(.easeOut(duration: 0.25), value: flow.aylaFill)
+    }
+
+    /// With a file on the first page, Ayla offers to fill it in, until she did.
+    private var offersAyla: Bool {
+        flow.page == .source && flow.hasFile && flow.aylaFill != .filled
     }
 
     private var footer: some View {
@@ -185,9 +231,21 @@ struct VaultAddEvidenceSheet: View {
             if flow.canGoBack {
                 PaveSoftButton(title: "Terug") { flow.back() }
                     .transition(.move(edge: .leading).combined(with: .opacity))
+            } else if flow.page == .done, !flow.nextEvidence.isEmpty {
+                PaveSoftButton(title: VaultMessages.nextEvidenceSkip) {
+                    Task { if await flow.finish() { dismiss() } }
+                }
+                .disabled(flow.isSaving)
+            } else if offersAyla {
+                PaveSoftButton(title: VaultMessages.aylaFillStop) {
+                    flow.stopFilling()
+                    Task { await flow.next() }
+                }
+                .transition(.move(edge: .leading).combined(with: .opacity))
             }
             primaryButton
         }
+        .animation(pageAnimation, value: offersAyla)
         .animation(pageAnimation, value: flow.canGoBack)
         .padding(.horizontal, 22)
         .padding(.top, 8)
@@ -211,6 +269,10 @@ struct VaultAddEvidenceSheet: View {
     @ViewBuilder
     private var primaryButton: some View {
         switch flow.page {
+        case .source where offersAyla:
+            PavePrimaryButton(title: flow.aylaFill == .idle ? VaultMessages.aylaFillTitle : VaultMessages.aylaFillAgain, loadingTitle: VaultMessages.aylaFillButtonReading, isLoading: flow.aylaFill == .reading) {
+                flow.fillWithAyla()
+            }
         case .source, .details, .documents:
             PavePrimaryButton(title: "Volgende") { Task { await flow.next() } }
         case .skills:
@@ -218,8 +280,15 @@ struct VaultAddEvidenceSheet: View {
                 Task { await flow.next() }
             }
         case .done:
-            PavePrimaryButton(title: "Afronden", loadingTitle: "Bewaren…", isLoading: flow.isSaving) {
-                Task { if await flow.finish() { dismiss() } }
+            PavePrimaryButton(title: flow.nextEvidence.isEmpty ? "Afronden" : VaultMessages.nextEvidence, loadingTitle: "Bewaren…", isLoading: flow.isSaving) {
+                Task {
+                    guard await flow.finish() else { return }
+                    if let next = flow.nextFlow() {
+                        flow = next
+                    } else {
+                        dismiss()
+                    }
+                }
             }
         }
     }

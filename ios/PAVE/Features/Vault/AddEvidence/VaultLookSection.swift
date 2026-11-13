@@ -13,6 +13,9 @@ struct VaultLookSection: View {
     let onPick: (Result<VaultUpload, VaultUpload.Problem>) -> Void
     let onRemoveLogo: () -> Void
     let onRemoveCover: () -> Void
+    /// Where Ayla found the logo or the cover, as long as it is hers.
+    var logoNote: String?
+    var coverNote: String?
 
     private struct Framing: Identifiable {
         let id = UUID()
@@ -86,6 +89,9 @@ struct VaultLookSection: View {
                     .textStyle(.caption)
                     .foregroundStyle(Color.inkMuted)
                     .fixedSize(horizontal: false, vertical: true)
+                if let logoNote {
+                    VaultAylaNote(text: logoNote)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -134,6 +140,9 @@ struct VaultLookSection: View {
                 Text(VaultMessages.coverChosen)
                     .textStyle(.meta)
                     .foregroundStyle(Color.inkMuted)
+                if let coverNote {
+                    VaultAylaNote(text: coverNote)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             Menu {
