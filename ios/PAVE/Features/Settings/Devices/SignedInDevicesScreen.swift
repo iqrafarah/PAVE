@@ -134,9 +134,16 @@ struct SignedInDevicesScreen: View {
     }
 
     /// The Watch has no session of its own: it uses this iPhone's, so it shows here as connected through this iPhone,
-    /// with Ontkoppelen. Not connected yet, the row opens the connect screen.
+    /// with Ontkoppelen. Not connected yet, the row opens the connect screen. Hidden until the Watch is presented.
     @ViewBuilder
     private var watchSection: some View {
+        if WatchConnectMessages.isShown {
+            watchRows
+        }
+    }
+
+    @ViewBuilder
+    private var watchRows: some View {
         heading(WatchConnectMessages.rowTitle)
             .padding(.top, 12)
         if let connection = watch.connection {

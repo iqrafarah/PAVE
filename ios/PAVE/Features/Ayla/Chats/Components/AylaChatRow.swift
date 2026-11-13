@@ -66,7 +66,7 @@ struct AylaChatRow: View {
     static func place(_ device: AylaDevice?) -> (symbol: String, label: String)? {
         switch device {
         case .web: ("globe.europe.africa.fill", "Op web")
-        case .watch: ("applewatch", "Op Apple Watch")
+        case .watch: WatchConnectMessages.isShown ? ("applewatch", "Op Apple Watch") : nil
         case .phone, nil: nil
         }
     }

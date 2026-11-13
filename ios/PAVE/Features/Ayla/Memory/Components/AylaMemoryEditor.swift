@@ -26,7 +26,7 @@ struct AylaMemoryEditor: View {
                             if new.count > AylaMemory.maxLength { text = String(new.prefix(AylaMemory.maxLength)) }
                         }
                 } footer: {
-                    Text("Ayla gebruikt dit in je gesprekken op je iPhone, het web en je Apple Watch.")
+                    Text("Ayla gebruikt dit in je gesprekken op je iPhone en op het web.")
                         .textStyle(.caption)
                 }
                 Section {

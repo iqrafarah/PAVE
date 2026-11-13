@@ -154,6 +154,28 @@ struct AylaChatModelTests {
         #expect(ayla.requests.last?.context == nil)
     }
 
+    @Test func anOpenPlaceOverTheChatIsTheContextUntilItCloses() async {
+        let ayla = FakeAyla()
+        ayla.replies = (1...2).map { .success(AylaReply(id: "r\($0)", conversationId: "c", text: "Oké")) }
+        let model = AylaChatModel(service: ayla)
+
+        model.showScreen(.vault)
+        model.send("Wat staat erin?")
+        await waitUntilIdle(model)
+        #expect(ayla.requests.last?.context == AylaRequest.Context(screen: .vault))
+
+        model.hideScreen(.vault)
+        model.send("En verder?")
+        await waitUntilIdle(model)
+        #expect(ayla.requests.last?.context == nil)
+
+        model.ask(about: VaultItem(id: "item-1", category: .internships, title: "Eindstage"))
+        model.showScreen(.plans)
+        model.hideScreen(.vaultItem)
+        model.hideScreen(.plans)
+        #expect(model.context == AylaRequest.Context(screen: .vaultItem, itemId: "item-1"))
+    }
+
     @Test func aProposedItemFillsTheForm() {
         let item = AylaReply.VaultItemProposal(category: .internships, title: "Eindstage", organisationName: "LiveWall", startDate: "2025-02-01", isCurrent: true)
         let reply = AylaReply(
