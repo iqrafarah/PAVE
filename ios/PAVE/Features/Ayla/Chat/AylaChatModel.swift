@@ -402,11 +402,11 @@ final class AylaChatModel {
     }
 
     /// The files that go with an item Ayla proposed: the ones she named as belonging to it; when she named none, the
-    /// files of the last question. Never the whole conversation, which may hold files of other evidence.
+    /// files sent while this item was built up. Files of an item that went into the vault are no longer among them.
     func uploads(for proposal: AylaReply.VaultItemProposal?) -> [VaultUpload] {
         let names = proposal?.attachments ?? []
         let named = sentUploads.filter { names.contains($0.fileName) }
-        return Array((named.isEmpty ? lastTurnUploads : named).suffix(5))
+        return Array((named.isEmpty ? sentUploads : named).suffix(5))
     }
 
     /// Ayla answers the last question again, as if it was asked for the first time.
