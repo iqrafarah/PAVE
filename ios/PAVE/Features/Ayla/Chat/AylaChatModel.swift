@@ -75,6 +75,10 @@ final class AylaChatModel {
     private var lastQuestion: String?
     /// The files sent with the last question, so it can be asked again with them.
     @ObservationIgnored private var lastFiles: [AylaAttachment] = []
+    /// The files themselves, by name, for as long as they can still go into the vault: those of the message being
+    /// written, and those sent with the last question. They never go to Ayla's chat function.
+    @ObservationIgnored private var uploads: [String: VaultUpload] = [:]
+    @ObservationIgnored private var lastUploads: [String: VaultUpload] = [:]
     /// The last question and answer are being removed on the server; the next question waits for that.
     @ObservationIgnored private var removal: Task<Bool, Never>?
     @ObservationIgnored private var answerTask: Task<Void, Never>?
@@ -198,6 +202,8 @@ final class AylaChatModel {
         }
         lastQuestion = text
         lastFiles = files
+        lastUploads = uploads
+        uploads = [:]
         phase = .thinking
         let request = AylaRequest(conversationId: conversationID, text: text, device: .phone, input: input, context: context, attachments: files)
         return Turn(service: service, request: request, text: text, files: files)
@@ -281,17 +287,25 @@ final class AylaChatModel {
         }
     }
 
-    /// Adds a file to the next message. Returns false when there is no room for another one.
+    /// Adds a file to the next message, with the file itself when the vault can keep it. Returns false when there is
+    /// no room for another one.
     @discardableResult
-    func attach(_ file: AylaAttachment) -> Bool {
+    func attach(_ file: AylaAttachment, upload: VaultUpload? = nil) -> Bool {
         guard attachments.count < AylaAttachment.maxCount else { return false }
         attachments.removeAll { $0.name == file.name }
         attachments.append(file)
+        uploads[file.name] = upload
         return true
     }
 
     func removeAttachment(_ file: AylaAttachment) {
         attachments.removeAll { $0.name == file.name }
+        uploads[file.name] = nil
+    }
+
+    /// The files sent with the last question, as the vault can keep them: what Ja to Ayla's offer takes along.
+    var lastTurnUploads: [VaultUpload] {
+        lastFiles.compactMap { lastUploads[$0.name] }
     }
 
     /// Ayla answers the last question again, as if it was asked for the first time.
@@ -323,7 +337,10 @@ final class AylaChatModel {
         let draftBefore = draft
         entries.removeLast(2)
         draft = question.text
-        if question.attachments == lastFiles.map(\.name) { attachments = lastFiles }
+        if question.attachments == lastFiles.map(\.name) {
+            attachments = lastFiles
+            uploads = lastUploads
+        }
         removal = Task {
             do {
                 try await service.removeLastTurn(in: conversationID)

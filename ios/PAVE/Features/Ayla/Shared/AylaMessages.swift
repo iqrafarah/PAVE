@@ -4,6 +4,11 @@ import PAVECore
 enum AylaMessages {
     /// Above Ja and Nee when Ayla offers to add something to the vault, as on the web (AYLA_VAULT_LABEL).
     static let vaultLabel = "Kluis"
+    static let conceptTitle = "Bewijs in opbouw"
+    static let conceptReady = "Bewijs"
+    static let conceptHint = "Vertel verder en Ayla vult het aan."
+    static let conceptAdd = "Zet in de kluis"
+    static let conceptUnknown = "nog niet bekend"
     static let openVault = "Open je kluis"
     static let openSettings = "Open instellingen"
     static let clearContext = "Niet meer over dit bewijs vragen"

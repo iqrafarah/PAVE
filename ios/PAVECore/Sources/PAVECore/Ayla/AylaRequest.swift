@@ -38,7 +38,7 @@ public struct AylaRequest: Codable, Equatable, Sendable {
 /// A file the user added to a message. The app reads its text on the device and sends only that text;
 /// Ayla sees it in that one message and it is not stored.
 public struct AylaAttachment: Codable, Equatable, Sendable, Identifiable {
-    public static let maxCount = 3
+    public static let maxCount = 5
     public static let maxTextLength = 20_000
     public static let maxNameLength = 200
 

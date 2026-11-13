@@ -24,6 +24,15 @@ test('a stage the user named becomes a proposal with only what they said', () =>
   })
 })
 
+test('what the user did and the skills in it come along, cleaned and limited', () => {
+  const action = vaultProposal({
+    category: 'internships', title: 'Stage', description: '  Je bouwde de front-end  van drie campagnes. ',
+    skills: ['React', ' react ', 'Samenwerken', '', 'Scrum', 'Testen', 'Presenteren', 'Figma'],
+  }, 'a', now)
+  assert.equal(action?.vaultItem?.description, 'Je bouwde de front-end van drie campagnes.')
+  assert.deepEqual(action?.vaultItem?.skills, ['React', 'react', 'Samenwerken', 'Scrum', 'Testen'])
+})
+
 test('nothing usable means no proposal', () => {
   assert.equal(vaultProposal(null, 'a', now), undefined)
   assert.equal(vaultProposal({ category: 'pets', title: 'Hond' }, 'a', now), undefined)

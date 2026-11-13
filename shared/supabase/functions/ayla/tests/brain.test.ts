@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { test } from 'node:test'
-import { answer, cleanTitle, partialText, titleFrom, toPastMessage, withAttachments } from '../brain.ts'
+import { answer, cleanTitle, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
 import { parseRequest } from '../contract.ts'
 import { openRouterCompletion } from '../openrouter.ts'
 import { buildSystemPrompt } from '../prompt.ts'
@@ -106,6 +106,48 @@ test('Ayla asks before she looks in the vault, and sees nothing of it yet', asyn
   assert.deepEqual(reply.question?.choices.map((c) => c.label), ['Ja', 'Nee'])
   assert.equal(reply.navigation, undefined)
   assert.doesNotMatch(fake.calls[0][0].content, /Propedeuse|Eindstage/)
+})
+
+test('the question for the vault is asked once, also when the model asked it itself', async () => {
+  const ask = { ...request, text: 'Staat er een diploma in de kluis?' }
+  // The whole text is the ask (without a question mark, as the model wrote it): the fixed question is the answer.
+  const only = model(say('Mag ik in je kluis kijken om je diploma te zoeken', { askVault: 'je diploma te zoeken' }))
+  const one = await answer({ request: ask, conversationId: 'c', history: [], vault }, { complete: only.complete, newId: ids() })
+  assert.equal(one.text, 'Mag ik in je kluis kijken om je diploma te zoeken?')
+  assert.equal(one.question?.text, '')
+  assert.deepEqual(one.question?.choices.map((c) => c.label), ['Ja', 'Nee'])
+  // A lead plus the ask in other words: the lead stays, the fixed question follows it.
+  const both = model(say('Dat zoek ik voor je op. Zal ik even in je kluis kijken?', { askVault: 'je diploma te zoeken' }))
+  const two = await answer({ request: ask, conversationId: 'c', history: [], vault }, { complete: both.complete, newId: ids() })
+  assert.equal(two.text, 'Dat zoek ik voor je op.')
+  assert.equal(two.question?.text, 'Mag ik in je kluis kijken om je diploma te zoeken?')
+  assert.equal(withoutConsentAsk('Goed idee.\nMag ik daarvoor in je kluis kijken? Dan zie ik wat erin staat.'), 'Goed idee. Dan zie ik wat erin staat.')
+  assert.equal(withoutConsentAsk('Je kluis is privé.'), 'Je kluis is privé.')
+})
+
+test('asking for the vault in words is asking for the vault', async () => {
+  const ask = { ...request, text: 'Kunnen we iets toevoegen aan mijn kluis?' }
+  const choices = [{ id: 'yes', label: 'Ja' }, { id: 'no', label: 'Nee' }]
+  const asked = model(say('Wat wil je toevoegen aan je kluis?', { question: { text: 'Mag ik in je kluis kijken om te zien wat je al hebt?', choices }, navigation: { screen: 'vault', item: null } }))
+  const reply = await answer({ request: ask, conversationId: 'c', history: [], vault }, { complete: asked.complete, newId: ids() })
+  assert.equal(reply.accessRequest?.purpose, 'te zien wat je al hebt')
+  assert.equal(reply.text, 'Wat wil je toevoegen aan je kluis?')
+  assert.equal(reply.question?.text, 'Mag ik in je kluis kijken om te zien wat je al hebt?')
+  assert.equal(reply.navigation, undefined)
+  assert.equal(consentAskIn('Mag ik even in je kluis kijken?'), 'te zien wat erin staat')
+  assert.equal(consentAskIn('Wil je iets toevoegen?'), null)
+})
+
+test('an open question of her own is answered in words, not with Ja and Nee', async () => {
+  const open = model(say('Wat wil je toevoegen aan je kluis? Bijvoorbeeld een diploma of een stage.', { navigation: { screen: 'addEvidence', item: null } }))
+  const reply = await answer({ request, conversationId: 'c', history: [] }, { complete: open.complete, newId: ids() })
+  assert.equal(reply.question, undefined)
+  assert.equal(reply.navigation, undefined)
+  const closed = model(say('Ik zie geen diploma.', { navigation: { screen: 'addEvidence', item: null } }))
+  const offer = await answer({ request, conversationId: 'c', history: [] }, { complete: closed.complete, newId: ids() })
+  assert.equal(offer.question?.text, 'Wil je iets toevoegen?')
+  assert.ok(endsWithOpenQuestion('Mooi. Welke stage was dat?'))
+  assert.ok(!endsWithOpenQuestion('Wat een mooie stage. Zal ik hem toevoegen?'))
 })
 
 test('after Ja she sees the vault and answers what she asked it for', async () => {
@@ -281,7 +323,8 @@ test('attachments are checked and limited', () => {
   const file = { name: 'cv.pdf', text: 'Stage bij LiveWall' }
   assert.deepEqual(parseRequest({ ...request, attachments: [file] }), { ...request, attachments: [file] })
   assert.deepEqual(parseRequest({ ...request, attachments: [] }), request)
-  assert.equal(typeof parseRequest({ ...request, attachments: [file, file, file, file] }), 'string')
+  assert.equal(typeof parseRequest({ ...request, attachments: [file, file, file, file, file] }), 'object')
+  assert.equal(typeof parseRequest({ ...request, attachments: [file, file, file, file, file, file] }), 'string')
   assert.equal(typeof parseRequest({ ...request, attachments: [{ name: 'cv.pdf', text: '  ' }] }), 'string')
   assert.equal(typeof parseRequest({ ...request, attachments: [{ name: 'cv.pdf', text: 'x'.repeat(20001) }] }), 'string')
   assert.equal(typeof parseRequest({ ...request, attachments: [{ ...file, url: 'https://example.com' }] }), 'object')
@@ -481,6 +524,18 @@ test('a streaming model hands over what it writes and the first writer wins', as
   assert.deepEqual(seen, ['{"text":"Hoi', '{"text":"Hoi Daaf"}'])
   assert.equal(bodies[0].stream, true)
   assert.equal(bodies.length, 1)
+})
+
+test('a chat reply stays short, while evidence gets the room it asks for', async () => {
+  const bodies: Record<string, unknown>[] = []
+  const fetchImpl = (async (_url: string, init: RequestInit) => {
+    bodies.push(JSON.parse(String(init.body)))
+    return new Response(JSON.stringify({ choices: [{ message: { content: '{"items":[]}' } }] }))
+  }) as typeof fetch
+  await openRouterCompletion('key', {}, fetchImpl, ['a'], 10_000)([{ role: 'user', content: 'Hoi' }])
+  await openRouterCompletion('key', {}, fetchImpl, ['a'], 10_000, { maxTokens: 3000 })([{ role: 'user', content: 'Hoi' }])
+  assert.equal(bodies[0].max_tokens, 600)
+  assert.equal(bodies[1].max_tokens, 3000)
 })
 
 test('stopping an answer stops the model', async () => {

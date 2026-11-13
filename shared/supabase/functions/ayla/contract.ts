@@ -55,6 +55,10 @@ export interface VaultItemProposal {
   endDate?: string
   issuedOn?: string
   isCurrent?: boolean
+  /** What the user did or achieved, in a sentence or two, as far as they told it. */
+  description?: string
+  /** At most five skills that show in it. */
+  skills?: string[]
 }
 
 export interface AylaReply {
@@ -85,7 +89,7 @@ export interface AylaReply {
 }
 
 export const MAX_TEXT_LENGTH = 4000
-export const MAX_ATTACHMENTS = 3
+export const MAX_ATTACHMENTS = 5
 export const MAX_ATTACHMENT_LENGTH = 20000
 export const MAX_ATTACHMENT_NAME_LENGTH = 200
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i

@@ -50,6 +50,9 @@ final class AylaVoiceSession {
     /// one step after the other.
     private var audioWork: Task<Bool, Never>?
 
+    /// A spoken Ja to Ayla's offer to add evidence: the screen opens the form, as a tapped Ja does.
+    var onYesToEvidence: (() -> Void)?
+
     init(model: AylaChatModel) {
         self.model = model
         meter = audio.meter
@@ -254,6 +257,7 @@ final class AylaVoiceSession {
         recognizer.end()
         state = .thinking
         audio.play(.think)
+        if model.pendingOffersEvidence, AylaVaultOffer.isYes(question) { onYesToEvidence?() }
         turn = Task { [weak self] in
             guard let self else { return }
             guard let reply = await model.ask(question, input: .voice) else {

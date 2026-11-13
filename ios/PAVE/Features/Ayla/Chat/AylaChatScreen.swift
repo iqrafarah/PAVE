@@ -319,6 +319,7 @@ struct AylaChatScreen: View {
                     onShowChats()
                 } label: {
                     Image(.iconChat)
+                        .paveToolbarHitArea()
                 }
                 .accessibilityLabel("Chats")
             }
@@ -456,8 +457,15 @@ struct AylaChatScreen: View {
                     speaker: .ayla(showsMark: entry.id == model.lastAylaEntryID && !isFailed),
                     actions: actions(for: entry)
                 )
-                if let question = model.question(for: entry), !question.text.isEmpty {
+                if let question = model.question(for: entry), !question.text.isEmpty, !AylaVaultOffer.isAlreadyAsked(question.text, in: entry.text) {
                     ChatBubble(text: question.text, speaker: .ayla(showsMark: false))
+                }
+                // Evidence built up together in the chat: what Ayla has so far, and the way into the vault with it.
+                if let reply = entry.reply, let item = reply.proposedAction?.vaultItem, reply.accessRequest == nil {
+                    AylaEvidenceConceptCard(item: item, isLast: entry.id == model.lastAylaEntryID) {
+                        openProposedEvidence(from: reply)
+                    }
+                    .padding(.top, 3)
                 }
                 // Adding evidence opens from Ja under the question; the vault, an item in it and the settings open from a
                 // button, like on the web; other parts of PAVE are not in the app yet.
@@ -879,14 +887,22 @@ struct AylaChatScreen: View {
     /// Ja to "Wil je iets toevoegen?" opens adding evidence, filled with Ayla's proposal and skills; the answer still goes
     /// to Ayla, as on the web.
     private func choose(_ label: String) {
-        if model.pendingOffersEvidence, AylaVaultOffer.isYes(label), let vault {
-            let reply = model.lastReply
-            Task {
-                if vault.state != .ready { await vault.load() }
-                addEvidence = .proposed(by: reply, vault: vault)
-            }
+        if model.pendingOffersEvidence, AylaVaultOffer.isYes(label) {
+            openProposedEvidence(from: model.lastReply)
         }
         send(label)
+    }
+
+    /// Adding evidence as Ayla proposed it, with the files sent with the question when it is her newest answer. A
+    /// spoken conversation stops: the form is something to look at.
+    private func openProposedEvidence(from reply: AylaReply?) {
+        guard let vault else { return }
+        let documents = reply?.id == model.lastReply?.id ? model.lastTurnUploads : []
+        if isTalking { stopVoice() }
+        Task {
+            if vault.state != .ready { await vault.load() }
+            addEvidence = .proposed(by: reply, vault: vault, documents: documents)
+        }
     }
 
     private func send(_ text: String? = nil) {
@@ -1009,6 +1025,7 @@ struct AylaChatScreen: View {
         isComposerFocused = false
         isAttachMenuOpen = false
         let session = voice ?? AylaVoiceSession(model: model)
+        session.onYesToEvidence = { openProposedEvidence(from: model.lastReply) }
         voice = session
         stageSlot = .zero
         barSlot = .zero
@@ -1089,8 +1106,8 @@ struct AylaChatScreen: View {
                     fileProblem = AylaMessages.tooManyFiles
                     return
                 }
-                if let file = try? await AttachmentReader.read(url) {
-                    model.attach(file)
+                if let file = try? await AttachmentReader.file(url) {
+                    model.attach(file.attachment, upload: file.upload)
                 } else {
                     fileProblem = AylaMessages.fileUnreadable
                 }
@@ -1118,8 +1135,8 @@ struct AylaChatScreen: View {
                 fileProblem = AylaMessages.tooManyFiles
                 return
             }
-            if let file = try? await AttachmentReader.read(pages: pages, name: name) {
-                model.attach(file)
+            if let file = try? await AttachmentReader.file(pages: pages, name: name) {
+                model.attach(file.attachment, upload: file.upload)
                 PaveHaptics.success()
             } else {
                 fileProblem = AylaMessages.fileUnreadable
@@ -1146,8 +1163,8 @@ struct AylaChatScreen: View {
         let model = model
         Task {
             defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
-            if let file = try? await AttachmentReader.read(url) {
-                model.attach(file)
+            if let file = try? await AttachmentReader.file(url) {
+                model.attach(file.attachment, upload: file.upload)
                 PaveHaptics.tap(.light)
             } else {
                 fileProblem = AylaMessages.fileUnreadable
@@ -1164,8 +1181,8 @@ struct AylaChatScreen: View {
                     fileProblem = AylaMessages.tooManyFiles
                     return
                 }
-                if let file = try? await AttachmentReader.read(provider) {
-                    model.attach(file)
+                if let file = try? await AttachmentReader.file(provider) {
+                    model.attach(file.attachment, upload: file.upload)
                     PaveHaptics.tap(.light)
                 } else {
                     fileProblem = AylaMessages.fileUnreadable

@@ -177,7 +177,10 @@ struct AylaChatModelTests {
     }
 
     @Test func aProposedItemFillsTheForm() {
-        let item = AylaReply.VaultItemProposal(category: .internships, title: "Eindstage", organisationName: "LiveWall", startDate: "2025-02-01", isCurrent: true)
+        let item = AylaReply.VaultItemProposal(
+            category: .internships, title: "Eindstage", organisationName: "LiveWall", startDate: "2025-02-01", isCurrent: true,
+            description: "Je bouwde de front-end van drie campagnes.", skills: ["React", "Samenwerken"]
+        )
         let reply = AylaReply(
             id: "r", conversationId: "c", text: "Zal ik je stage toevoegen?",
             proposedAction: AylaReply.ProposedAction(id: "a", kind: .addVaultItem, summary: "", expiresAt: .distantFuture, vaultItem: item)
@@ -187,7 +190,13 @@ struct AylaChatModelTests {
         #expect(flow.draft.title == "Eindstage")
         #expect(flow.draft.organisationName == "LiveWall")
         #expect(flow.draft.isCurrent)
+        #expect(flow.draft.description == "Je bouwde de front-end van drie campagnes.")
+        #expect(flow.skills == ["React", "Samenwerken"])
+        #expect(flow.aylaFill == .idle)
         #expect(AylaVaultOffer.offersToAddEvidence(reply, asked: ""))
+        // A proposal that is still growing has no full draft yet, but the card can show it.
+        let growing = AylaReply.VaultItemProposal(category: .internships, title: "Stage", organisationName: "LiveWall")
+        #expect(growing.partialDraft.organisationName == "LiveWall")
     }
 
     @Test func choicesAreOfferedOnlyForTheLastReply() async {
@@ -267,16 +276,38 @@ struct AylaChatModelTests {
         #expect(ayla.requests.last?.attachments == [file])
     }
 
-    @Test func atMostThreeFilesAndNoDoubles() throws {
+    @Test func aWebPageIsReadAsItsWords() {
+        let html = "<html><head><style>p{color:red}</style><script>var x=1</script></head><body><h1>Testosteron</h1><p>Een &amp; twee&nbsp;drie.<br>Vier</p></body></html>"
+        #expect(AttachmentReader.plainText(fromHTML: html) == "Testosteron\nEen & twee drie.\nVier")
+    }
+
+    @Test func atMostFiveFilesAndNoDoubles() throws {
         let model = AylaChatModel(service: FakeAyla())
-        let files = try ["a.pdf", "b.pdf", "c.pdf", "d.pdf"].map { try #require(AylaAttachment(name: $0, text: "x")) }
+        let files = try ["a.pdf", "b.pdf", "c.pdf", "d.pdf", "e.pdf", "f.pdf"].map { try #require(AylaAttachment(name: $0, text: "x")) }
         #expect(model.attach(files[0]))
         #expect(model.attach(files[0]))
         #expect(model.attachments.count == 1)
-        #expect(model.attach(files[1]) && model.attach(files[2]))
-        #expect(!model.attach(files[3]))
+        for file in files[1...4] { #expect(model.attach(file)) }
+        #expect(!model.attach(files[5]))
         model.removeAttachment(files[1])
-        #expect(model.attachments.map(\.name) == ["a.pdf", "c.pdf"])
+        #expect(model.attachments.map(\.name) == ["a.pdf", "c.pdf", "d.pdf", "e.pdf"])
+    }
+
+    @Test func theFilesOfTheLastQuestionCanGoIntoTheVault() async throws {
+        let ayla = FakeAyla()
+        ayla.replies = [.success(AylaReply(id: "r1", conversationId: "c", text: "Gezien"))]
+        let model = AylaChatModel(service: ayla)
+        let file = try #require(AylaAttachment(name: "cv.pdf", text: "Stage bij LiveWall"))
+        let upload = VaultUpload(data: Data([1, 2]), fileName: "cv.pdf", mimeType: "application/pdf")
+        let note = try #require(AylaAttachment(name: "notitie.txt", text: "x"))
+        model.attach(file, upload: upload)
+        model.attach(note)
+        #expect(model.lastTurnUploads.isEmpty)
+        model.send("Kijk je mee?")
+        await waitUntilIdle(model)
+        // Only files the vault can keep, and only those of the question just sent; the next message starts empty.
+        #expect(model.lastTurnUploads == [upload])
+        #expect(ayla.requests.last?.attachments?.map(\.name) == ["cv.pdf", "notitie.txt"])
     }
 
     @Test func pinningShowsAtOnceAndGoesBackWhenRefused() async {

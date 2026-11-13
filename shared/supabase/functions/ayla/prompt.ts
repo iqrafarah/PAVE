@@ -48,7 +48,7 @@ Antwoord in het Nederlands, tenzij de gebruiker een andere taal spreekt.
 
 // Proposing an item for the vault, on the iPhone and the web: Ja opens adding evidence with it filled in; nothing is
 // saved before the user confirms there.
-const PROPOSE_ITEM = 'Vraagt de gebruiker om iets in de kluis te zetten, zoals een stage, diploma, certificaat of project, vul dan vaultItem in met alleen wat de gebruiker zelf noemde (onbekend is null, datums als JJJJ-MM-DD of JJJJ-MM), stel de vraag als question met de keuzes "Ja" en "Nee" en zet navigation op addEvidence. Zeg nooit dat het al in de kluis staat: de gebruiker vult het daarna zelf aan en bewaart het. Anders is vaultItem null.'
+const PROPOSE_ITEM = 'Wil de gebruiker iets in de kluis zetten, zoals een stage, diploma, certificaat, project, baan of feedback? Bouw het dan samen op: vul dan vaultItem in met alles wat je al weet uit dit gesprek en uit bijlagen. category; title (kort, zoals de gebruiker het noemt, of anders het soort, zoals "Stage"); organisation; place; startDate en endDate, of issuedOn (JJJJ-MM-DD of JJJJ-MM); isCurrent; description (één of twee zinnen in de je-vorm over wat de gebruiker deed of behaalde); skills (hooguit vijf vaardigheden die eruit blijken). Onbekend is null; verzin niets. Ontbreekt nog iets wezenlijks (soort, titel, organisatie of periode), stel dan in text één korte vraag naar het belangrijkste dat ontbreekt; question en navigation blijven dan null, en de gebruiker ziet intussen wat je al hebt. Zodra soort, titel en organisatie of periode bekend zijn, of de gebruiker zegt dat het zo goed is, vraag dan met question (keuzes "Ja" en "Nee") of je het zo in de kluis zet en zet navigation op addEvidence. Zeg nooit dat het al in de kluis staat: de gebruiker controleert en bewaart het zelf. Anders is vaultItem null.'
 
 // Layer 2: style per device. Same Ayla, different length.
 const DEVICE_PROMPTS: Record<Device, string> = {
@@ -101,7 +101,7 @@ Antwoord altijd met JSON volgens het schema:
 - memories: de feiten die je voorstelt te onthouden (zie hierboven), elk apart met text (één korte zin in de je-vorm, of "" als je alleen iets weghaalt), category en replaces (de precieze tekst van een oude regel die niet meer klopt, anders null). Anders een lege lijst.
 - usedMemories: de nummers van de regels uit wat je onthoudt die je voor dit antwoord gebruikte, anders een lege lijst.
 - title: alleen als dit het eerste bericht van het gesprek is: een korte titel van 2 tot 5 woorden die zegt waar het gesprek over gaat, zoals "Softskills uitwerken" of "Cv verbeteren". Zonder aanhalingstekens en zonder punt. Anders null.
-- askVault: alleen als je in de kluis wilt kijken en dat in dit gesprek nog niet mag (zie "De kluis"): waarvoor, kort, zodat het past in "Mag ik in je kluis kijken om …?". Anders null.
+- askVault: alleen als je in de kluis wilt kijken en dat in dit gesprek nog niet mag (zie "De kluis"): waarvoor, kort, zodat het past in "Mag ik in je kluis kijken om …?". PAVE stelt die vraag zelf, met vaste woorden: stel hem niet ook in text. Zeg in text alleen kort wat je gaat doen, zoals "Dat zoek ik voor je op." Anders null.
 `.trim()
 
 export interface PromptInput {

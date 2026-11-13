@@ -12,6 +12,8 @@ public enum AylaVaultOffer {
 
     // Computed: a Regex is not Sendable, so it cannot be a shared constant.
     private static var addWords: Regex<Substring> { #/toevoeg|aanvul|bewaar|opsla|\bzet/# }
+    private static var openWords: Regex<Substring> { #/^(?:wat|welke?|hoe|wanneer|waar\w*|wie|waarom|hoeveel|hoelang)\b/#.ignoresCase() }
+    private static var consentAsk: Regex<Substring> { #/\bmag ik\b[^.?!]*\bkluis\b[^.?!]*\bkijken\b/#.ignoresCase() }
     private static var yesLabel: Regex<(Substring, Substring)> { #/^(ja|jazeker|ja graag|graag|ja,? graag|ja,? toevoegen|toevoegen|yes)\b/#.ignoresCase() }
 
     /// The question under Ayla's answer: her own, or "Wil je iets toevoegen?" when she answers about the vault without it.
@@ -19,17 +21,68 @@ public enum AylaVaultOffer {
     public static func question(for reply: AylaReply?, asked: String) -> AylaReply.Question? {
         guard let reply else { return nil }
         if let question = reply.question { return question }
-        return isVaultQuestion(reply, asked: asked) ? question : nil
+        guard isVaultQuestion(reply, asked: asked) else { return nil }
+        switch lastQuestion(in: reply.text) {
+        // "Wat wil je toevoegen?": the user answers in words.
+        case .open: return nil
+        // "Zal ik het toevoegen?": Ja and Nee, without asking it again.
+        case .yesNo: return AylaReply.Question(text: "", choices: question.choices)
+        case nil: return question
+        }
     }
 
-    /// Whether Ja to the question opens adding evidence.
+    /// Whether Ja to the question opens adding evidence. Not when Ayla asked whether she may look in the vault.
     public static func offersToAddEvidence(_ reply: AylaReply?, asked: String) -> Bool {
         guard let reply, reply.accessRequest == nil else { return false }
         if reply.navigation?.screen == .addEvidence || reply.proposedAction?.kind == .addVaultItem { return true }
-        if isVaultQuestion(reply, asked: asked) { return true }
-        guard let question = reply.question else { return false }
+        if isVaultQuestion(reply, asked: asked) { return lastQuestion(in: reply.text) != .open }
+        guard let question = reply.question, !question.text.contains(consentAsk) else { return false }
         let words = "\(question.text) \(reply.text)".lowercased()
         return words.contains("kluis") && words.contains(addWords)
+    }
+
+    public enum LastQuestion: Equatable {
+        case open
+        case yesNo
+    }
+
+    /// Ayla's last question: one the user answers in words, or one answered with Ja or Nee. A sentence after it
+    /// ("Bijvoorbeeld een diploma.") does not change that.
+    public static func lastQuestion(in text: String) -> LastQuestion? {
+        guard let last = sentences(of: text).last(where: { $0.hasSuffix("?") }) else { return nil }
+        return last.contains(openWords) ? .open : .yesNo
+    }
+
+    private static func sentences(of text: String) -> [String] {
+        var result: [String] = []
+        var current = ""
+        for character in text {
+            if character.isNewline {
+                result.append(current)
+                current = ""
+                continue
+            }
+            current.append(character)
+            if ".!?".contains(character) {
+                result.append(current)
+                current = ""
+            }
+        }
+        result.append(current)
+        return result.map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+    }
+
+    /// Ayla's text already contains her question (older conversations, or a model that asked it twice), so the question
+    /// is not shown a second time. Case and the punctuation at the end do not count.
+    public static func isAlreadyAsked(_ question: String, in text: String) -> Bool {
+        let asked = normalized(question)
+        return !asked.isEmpty && normalized(text).contains(asked)
+    }
+
+    private static func normalized(_ text: String) -> String {
+        text.lowercased()
+            .replacingOccurrences(of: #"[?.!…\s]+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespaces)
     }
 
     public static func isYes(_ label: String) -> Bool {
