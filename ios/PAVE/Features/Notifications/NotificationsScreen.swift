@@ -1,3 +1,4 @@
+import PAVECore
 import SwiftUI
 
 enum NotificationAudience: Equatable, Sendable {
@@ -625,29 +626,8 @@ private struct VerificationRequestNotificationDetail: View {
 
     private func vaultItemCard(_ item: NotificationReviewItem) -> some View {
         let tint = VaultCategory(rawValue: item.category)?.tint ?? Color.surfaceTint
-        let logo = item.files.first { $0.role == "logo" }
-        let cover = item.files.first { $0.role == "cover" }
         return VStack(alignment: .leading, spacing: 0) {
-            tint
-                .overlay {
-                    if let cover, let url = URL(string: cover.url) {
-                        AsyncImage(url: url) { image in image.resizable().scaledToFill() } placeholder: { tint }
-                    }
-                }
-                .frame(height: 48)
-                .clipped()
-                .overlay(alignment: .bottomLeading) {
-                    Group {
-                        if let logo, let url = URL(string: logo.url) {
-                            AsyncImage(url: url) { image in image.resizable().scaledToFill() } placeholder: { logoFallback(item) }
-                        } else { logoFallback(item) }
-                    }
-                    .frame(width: 48, height: 48)
-                    .clipShape(.circle)
-                    .overlay { Circle().strokeBorder(Color.cardBorder) }
-                    .padding(.leading, 14)
-                    .offset(y: 24)
-                }
+            vaultItemArtwork(item, tint: tint)
             VStack(alignment: .leading, spacing: 9) {
                 HStack {
                     Text(item.title).textStyle(.bodyMedium).foregroundStyle(Color.ink).lineLimit(2)
@@ -668,6 +648,48 @@ private struct VerificationRequestNotificationDetail: View {
         }
         .background(Color.white, in: .rect(cornerRadius: 16))
         .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder) }
+    }
+
+    private func vaultItemArtwork(_ item: NotificationReviewItem, tint: Color) -> some View {
+        let logo = item.files.first { $0.role == "logo" }
+        let cover = item.files.first { $0.role == "cover" }
+
+        return tint
+            .overlay { coverArtwork(cover, tint: tint) }
+            .frame(height: 48)
+            .clipped()
+            .overlay(alignment: .bottomLeading) {
+                logoArtwork(logo, item: item)
+                    .frame(width: 48, height: 48)
+                    .clipShape(.circle)
+                    .overlay { Circle().strokeBorder(Color.cardBorder) }
+                    .padding(.leading, 14)
+                    .offset(y: 24)
+            }
+    }
+
+    @ViewBuilder
+    private func coverArtwork(_ cover: NotificationReviewFile?, tint: Color) -> some View {
+        if let cover, let url = URL(string: cover.url) {
+            AsyncImage(url: url) { image in
+                image.resizable().scaledToFill()
+            } placeholder: {
+                tint
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func logoArtwork(_ logo: NotificationReviewFile?, item: NotificationReviewItem) -> some View {
+        if let logo, let url = URL(string: logo.url) {
+            AsyncImage(url: url) { image in
+                image.resizable().scaledToFill()
+            } placeholder: {
+                logoFallback(item)
+            }
+        } else {
+            logoFallback(item)
+        }
     }
 
     private func logoFallback(_ item: NotificationReviewItem) -> some View {

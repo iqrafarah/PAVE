@@ -238,10 +238,10 @@ struct MainView: View {
                 loadError: notificationsModel.problem,
                 onRefresh: { await notificationsModel.refresh() },
                 onMarkRead: { await notificationsModel.markRead($0) },
-                onLoadReview: { await notificationsModel.review($0) },
-                onResolveRequest: { await notificationsModel.resolve($0, action: $1, response: $2) },
                 onOpenConversation: openNotificationConversation,
-                onOpenVerifiedEvidence: openNotificationEvidence
+                onOpenVerifiedEvidence: openNotificationEvidence,
+                onLoadReview: { await notificationsModel.review($0) },
+                onResolveRequest: { await notificationsModel.resolve($0, action: $1, response: $2) }
             )
         }
     }

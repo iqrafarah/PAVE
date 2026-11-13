@@ -2,6 +2,8 @@
 
 SwiftUI-app voor PAVE. Open `PAVE.xcodeproj` in Xcode 26 of nieuwer. Minimale versie: iOS 26. De iPhone-app en ingebedde Watch-app gebruiken respectievelijk iOS 26.0 en watchOS 26.0 als deployment target, zodat een Xcode 26-SDK de volledige app kan bouwen.
 
+Bij een compileerfout op een MacBook: controleer eerst dat Xcode 26 of nieuwer actief is en dat de nieuwste PAVE-wijzigingen binnen zijn. Het verificatiedetail importeert `PAVECore` voor de kluiscategorieën; houd de argumentvolgorde van `NotificationsScreen` gelijk aan de propertyvolgorde en splits zware SwiftUI-viewexpressies op in kleine views.
+
 ## Structuur
 
 ```
