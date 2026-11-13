@@ -38,6 +38,13 @@ test('usedData stays empty before the user lets Ayla look in the vault', async (
   assert.match(fake.calls[0][0].content, /pas in de kluis/)
 })
 
+test('the prompt makes work the user did into evidence instead of refusing it', () => {
+  const prompt = buildSystemPrompt({ device: 'phone' })
+  assert.match(prompt, /hoeft geen diploma of certificaat te zijn om bewijs te worden/)
+  assert.match(prompt, /weiger dan niet/)
+  assert.match(prompt, /vraag wat je er niet uit kunt halen/)
+})
+
 test('the prompt has the device style, the name and the open screen', () => {
   const prompt = buildSystemPrompt({ device: 'watch', firstName: 'Daaf', context: { screen: 'vault' } })
   assert.match(prompt, /Apple Watch/)
