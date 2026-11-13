@@ -310,6 +310,40 @@ struct AylaChatModelTests {
         #expect(AttachmentReader.plainText(fromHTML: html) == "Testosteron\nEen & twee drie.\nVier")
     }
 
+    @Test func filesOfAProposedItemAreReadOnceAndTheItemCanBeMarkedAdded() async throws {
+        let ayla = FakeAyla()
+        let item = AylaReply.VaultItemProposal(category: .certificates, title: "PSM I", attachments: ["cert.pdf"])
+        let action = AylaReply.ProposedAction(id: "a", kind: .addVaultItem, summary: "", expiresAt: .distantFuture, vaultItem: item)
+        ayla.replies = [
+            .success(AylaReply(id: "r1", conversationId: "c", text: "Wanneer was dat?", proposedAction: action)),
+            .success(AylaReply(id: "r2", conversationId: "c", text: "Zo zet ik het erin.", proposedAction: action)),
+            .success(AylaReply(id: "r3", conversationId: "c", text: "Mooi!")),
+        ]
+        let model = AylaChatModel(service: ayla)
+        var reads = 0
+        let read = VaultEvidenceProposal(category: .certificates, title: "Professional Scrum Master I", organisationName: "Scrum.org")
+        model.analyzeEvidence = { _ in reads += 1; return ([read], []) }
+        let upload = VaultUpload(data: Data([1]), fileName: "cert.pdf", mimeType: "application/pdf")
+        model.attach(try #require(AylaAttachment(name: "cert.pdf", text: "Scrum")), upload: upload)
+        model.send("Zet dit in mijn kluis")
+        await waitUntilIdle(model)
+        var analysis = model.analysis(for: model.lastReply)
+        while analysis?.isReading == true { await Task.yield(); analysis = model.analysis(for: model.lastReply) }
+        #expect(analysis?.first == read)
+        #expect(analysis?.uploads == [upload])
+
+        model.send("In juni 2025")
+        await waitUntilIdle(model)
+        #expect(model.analysis(for: model.lastReply)?.first == read)
+        #expect(reads == 1)
+
+        model.markAdded(replyID: "r2", title: "PSM I", uploads: [upload])
+        await waitUntilIdle(model)
+        #expect(model.addedReplies.contains("r2"))
+        #expect(model.conversationUploads.isEmpty)
+        #expect(ayla.requests.last?.text == "Toegevoegd aan mijn kluis: PSM I.")
+    }
+
     @Test func theOfferOnACardHidesJaAndNee() async {
         let ayla = FakeAyla()
         let question = AylaReply.Question(text: "Zet ik dit zo in je kluis?", choices: [.init(id: "y", label: "Ja"), .init(id: "n", label: "Nee")])

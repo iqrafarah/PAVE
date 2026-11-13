@@ -63,6 +63,10 @@ struct AylaChatScreen: View {
     @State private var isAttachMenuOpen = false
     @State private var isChoosingFile = false
     @State private var isChoosingPhotos = false
+    /// Files the user took out of a card, by the reply's id and the file's checksum.
+    @State private var excludedFiles: [String: Set<String>] = [:]
+    /// The reply whose item is being added, so the card can say it went into the vault.
+    @State private var addingFromReplyID: String?
     @State private var photoItems: [PhotosPickerItem] = []
     @State private var picksVaultItem = false
     @State private var fileProblem: String?
@@ -188,7 +192,14 @@ struct AylaChatScreen: View {
                     .paveSheet()
             }
         }
-        .sheet(isPresented: Binding(get: { addEvidence != nil }, set: { if !$0 { addEvidence = nil } })) {
+        .task {
+            guard let vault else { return }
+            model.analyzeEvidence = { uploads in
+                let reading = await VaultEvidenceReader.read(uploads)
+                return (try await vault.proposeEvidence(from: reading.documents), reading.pictures)
+            }
+        }
+        .sheet(isPresented: Binding(get: { addEvidence != nil }, set: { if !$0 { addEvidenceClosed() } })) {
             if let addEvidence {
                 VaultAddEvidenceSheet(flow: addEvidence)
                     .paveSheet()
@@ -483,7 +494,18 @@ struct AylaChatScreen: View {
                 }
                 // Evidence built up together in the chat: what Ayla has so far, and the way into the vault with it.
                 if let reply = entry.reply, let item = reply.proposedAction?.vaultItem, reply.accessRequest == nil {
-                    AylaEvidenceConceptCard(item: item, isLast: entry.id == model.lastAylaEntryID) {
+                    AylaEvidenceConceptCard(
+                        item: item,
+                        analysis: model.analysis(for: reply),
+                        files: model.analysis(for: reply)?.uploads ?? model.uploads(for: item),
+                        excluded: excludedFiles[reply.id] ?? [],
+                        isLast: entry.id == model.lastAylaEntryID,
+                        isAdded: model.addedReplies.contains(reply.id),
+                        onToggleFile: { file in
+                            PaveHaptics.selection()
+                            if excludedFiles[reply.id, default: []].remove(file.checksum) == nil { excludedFiles[reply.id, default: []].insert(file.checksum) }
+                        }
+                    ) {
                         openProposedEvidence(from: reply)
                     }
                     .padding(.top, 3)
@@ -918,12 +940,22 @@ struct AylaChatScreen: View {
     /// is something to look at.
     private func openProposedEvidence(from reply: AylaReply?) {
         guard let vault else { return }
-        let documents = model.uploads(for: reply?.proposedAction?.vaultItem)
+        let analysis = model.analysis(for: reply)
+        let excluded = reply.flatMap { excludedFiles[$0.id] } ?? []
+        let documents = (analysis?.uploads ?? model.uploads(for: reply?.proposedAction?.vaultItem)).filter { !excluded.contains($0.checksum) }
         if isTalking { stopVoice() }
+        addingFromReplyID = reply?.id
         Task {
             if vault.state != .ready { await vault.load() }
-            addEvidence = .proposed(by: reply, vault: vault, documents: documents)
+            addEvidence = .proposed(by: reply, vault: vault, documents: documents, analysis: excluded.isEmpty ? analysis : nil)
         }
+    }
+
+    /// The form closed: an item that was saved is marked on its card, and Ayla hears it.
+    private func addEvidenceClosed() {
+        defer { addEvidence = nil; addingFromReplyID = nil }
+        guard let flow = addEvidence, flow.savedItemID != nil, let replyID = addingFromReplyID else { return }
+        model.markAdded(replyID: replyID, title: flow.draft.title, uploads: flow.documents)
     }
 
     private func send(_ text: String? = nil) {

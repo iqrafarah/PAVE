@@ -3,6 +3,21 @@ import Testing
 @testable import PAVECore
 
 struct VaultEvidenceProposalTests {
+    @Test func theChatCompletesWhatTheDocumentsSay() {
+        let documents = VaultEvidenceProposal(
+            category: .certificates, title: "Professional Scrum Master I", organisationName: "Scrum.org", issuedOn: VaultDay(year: 2025, month: 6, day: 12),
+            description: "Certificaat voor Scrum.", skills: [VaultSkillSuggestion(name: "Scrum", reason: "Op het certificaat")], folder: "Certificaten", logoDocument: 0
+        )
+        let chat = AylaReply.VaultItemProposal(category: .certificates, title: "PSM I", startDate: "2025-01-01", endDate: "2025-06-01", description: "Je deed examen.", skills: ["scrum", "Agile werken"])
+        let merged = documents.merged(with: chat)
+        #expect(merged.title == "PSM I")
+        #expect(merged.organisationName == "Scrum.org")
+        #expect(merged.startDate == VaultDay(year: 2025, month: 1, day: 1) && merged.issuedOn == nil)
+        #expect(merged.description == "Certificaat voor Scrum.")
+        #expect(merged.skills.map(\.name) == ["Scrum", "Agile werken"])
+        #expect(merged.folder == "Certificaten" && merged.logoDocument == 0)
+    }
+
     @Test func aProposalIsReadFromTheFunction() throws {
         let json = Data(#"""
         {"items":[{"category":"certificates","title":"Microsoft Azure Fundamentals (AZ-900)","organisationName":"Microsoft",

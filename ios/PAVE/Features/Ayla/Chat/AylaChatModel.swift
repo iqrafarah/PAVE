@@ -82,6 +82,27 @@ final class AylaChatModel {
     /// Every file sent in this conversation while the app is open, oldest first: evidence built up over several
     /// turns takes them all along.
     @ObservationIgnored private var sentUploads: [VaultUpload] = []
+
+    /// What "Laat Ayla invullen" made of the files of an item proposed in the chat: the same reading as in the vault,
+    /// so the card and the form know the same, and "Zet in de kluis" does not read them again.
+    struct EvidenceAnalysis: Equatable {
+        var uploads: [VaultUpload]
+        var pictures: [VaultUpload] = []
+        var proposals: [VaultEvidenceProposal] = []
+        var isReading = true
+        var failed = false
+
+        var first: VaultEvidenceProposal? { proposals.first }
+    }
+
+    /// Reads files the way the vault does; set by the screen, which has the vault.
+    @ObservationIgnored var analyzeEvidence: ((_ uploads: [VaultUpload]) async throws -> (proposals: [VaultEvidenceProposal], pictures: [VaultUpload]))?
+    /// By the id of Ayla's reply that proposed the item.
+    private(set) var analyses: [String: EvidenceAnalysis] = [:]
+    /// The same files read once, however many turns the item takes.
+    @ObservationIgnored private var analysisCache: [String: (proposals: [VaultEvidenceProposal], pictures: [VaultUpload])] = [:]
+    /// The replies whose item went into the vault, so the card says so and the files are no longer taken along.
+    private(set) var addedReplies: Set<String> = []
     /// The last question and answer are being removed on the server; the next question waits for that.
     @ObservationIgnored private var removal: Task<Bool, Never>?
     @ObservationIgnored private var answerTask: Task<Void, Never>?
@@ -258,6 +279,7 @@ final class AylaChatModel {
                         entries.append(entry)
                     }
                     phase = .idle
+                    analyzeEvidenceIfNeeded(for: reply)
                 }
             }
             if Task.isCancelled { phase = .idle }
@@ -292,6 +314,7 @@ final class AylaChatModel {
             conversationID = reply.conversationId
             entries.append(Entry(id: reply.id, role: .ayla, text: reply.text, reply: reply))
             phase = .idle
+            analyzeEvidenceIfNeeded(for: reply)
             await refreshConversations()
             return reply
         } catch {
@@ -300,6 +323,43 @@ final class AylaChatModel {
             if attachments.isEmpty { attachments = turn.files }
             return nil
         }
+    }
+
+    func analysis(for reply: AylaReply?) -> EvidenceAnalysis? {
+        reply.flatMap { analyses[$0.id] }
+    }
+
+    /// Ayla proposed an item and there are files for it: read them as the vault would, while the conversation goes on.
+    private func analyzeEvidenceIfNeeded(for reply: AylaReply) {
+        guard let analyzeEvidence, let item = reply.proposedAction?.vaultItem, reply.accessRequest == nil else { return }
+        let uploads = self.uploads(for: item)
+        guard !uploads.isEmpty else { return }
+        let key = uploads.map(\.checksum).joined(separator: "+")
+        if let cached = analysisCache[key] {
+            analyses[reply.id] = EvidenceAnalysis(uploads: uploads, pictures: cached.pictures, proposals: cached.proposals, isReading: false, failed: cached.proposals.isEmpty)
+            return
+        }
+        analyses[reply.id] = EvidenceAnalysis(uploads: uploads)
+        Task { [weak self] in
+            do {
+                let result = try await analyzeEvidence(uploads)
+                guard let self else { return }
+                analysisCache[key] = result
+                analyses[reply.id] = EvidenceAnalysis(uploads: uploads, pictures: result.pictures, proposals: result.proposals, isReading: false, failed: result.proposals.isEmpty)
+            } catch {
+                self?.analyses[reply.id]?.isReading = false
+                self?.analyses[reply.id]?.failed = true
+            }
+        }
+    }
+
+    /// The item of this reply is in the vault: the card says so, its files are done, and Ayla hears it so the next
+    /// item starts clean.
+    func markAdded(replyID: String, title: String, uploads: [VaultUpload]) {
+        addedReplies.insert(replyID)
+        sentUploads.removeAll { upload in uploads.contains(upload) }
+        let name = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        send(AylaMessages.addedToVault(name.isEmpty ? nil : name))
     }
 
     /// Adds a file to the next message, with the file itself when the vault can keep it. Returns false when there is
@@ -439,6 +499,8 @@ final class AylaChatModel {
         draft = drafts[nil]
         attachments = []
         sentUploads = []
+        analyses = [:]
+        addedReplies = []
     }
 
     func open(_ conversation: AylaConversation) async {
@@ -461,6 +523,8 @@ final class AylaChatModel {
             draft = drafts[conversation.id]
             attachments = []
             sentUploads = []
+            analyses = [:]
+            addedReplies = []
         } catch {
             phase = .failed(Self.message(for: AylaError(error)))
         }

@@ -69,6 +69,7 @@ struct MainView: View {
                                 menuButtonFrame: menuButtonFrame,
                                 onSelect: open,
                                 onNewConversation: startNewConversation,
+                                onShowChats: openChats,
                                 onSignOut: appState.signOut
                             )
                         }
@@ -167,6 +168,13 @@ struct MainView: View {
         isMenuOpen = false
         if !isWide { showsChats = false }
         model.wantsToTalk = true
+    }
+
+    /// The chats, from the menu on any screen.
+    private func openChats() {
+        destination = .ayla
+        isMenuOpen = false
+        showsChats = true
     }
 
     private func searchChats() {

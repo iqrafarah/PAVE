@@ -7,11 +7,27 @@ enum AylaMessages {
     static let attachItem = "Item uit je kluis"
     static let vaultEmpty = "Je kluis is nog leeg"
     static let pickItemTitle = "Waar gaat je vraag over?"
+    static let conceptReading = "Ayla leest je bestanden…"
+    static let conceptFiles = "Bestanden hierbij"
+    static let conceptAdded = "Toegevoegd aan je kluis"
     static let conceptTitle = "Bewijs in opbouw"
     static let conceptReady = "Bewijs"
     static let conceptHint = "Vertel verder en Ayla vult het aan."
     static let conceptAdd = "Zet in de kluis"
     static let conceptUnknown = "nog niet bekend"
+
+    static func conceptFromFiles(logo: Bool, cover: Bool, items: Int) -> String? {
+        var parts: [String] = []
+        if logo { parts.append("logo") }
+        if cover { parts.append("omslag") }
+        var text = parts.isEmpty ? "" : "Uit je bestanden: \(parts.joined(separator: " en ")) gevonden."
+        if items > 1 { text += (text.isEmpty ? "" : " ") + "Ayla ziet \(items) bewijzen in je bestanden; je kiest in de volgende stap of je ze apart toevoegt." }
+        return text.isEmpty ? nil : text
+    }
+
+    static func addedToVault(_ title: String?) -> String {
+        title.map { "Toegevoegd aan mijn kluis: \($0)." } ?? "Toegevoegd aan mijn kluis."
+    }
     static let openVault = "Open je kluis"
     static let openSettings = "Open instellingen"
     static let clearContext = "Niet meer over dit bewijs vragen"

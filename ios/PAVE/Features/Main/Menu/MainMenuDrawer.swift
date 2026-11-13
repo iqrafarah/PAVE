@@ -14,6 +14,7 @@ struct MainMenuDrawer: View {
     let menuButtonFrame: CGRect
     let onSelect: (MainDestination) -> Void
     let onNewConversation: () -> Void
+    let onShowChats: () -> Void
     let onSignOut: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -58,6 +59,10 @@ struct MainMenuDrawer: View {
 
                     if isBeside {
                         sideButtons(menuButton: menuButton, size: screen, insets: insets)
+                            .transition(.opacity)
+                    } else {
+                        // Top right, over the dimmed screen: the chats and a new chat stay within reach, as in ChatGPT.
+                        chatButtons(menuButton: menuButton, size: screen, insets: insets)
                             .transition(.opacity)
                     }
                 }
@@ -108,6 +113,50 @@ struct MainMenuDrawer: View {
         .accessibilityAddTraits(.isModal)
     }
 
+    private var chatsButton: some View {
+        Button {
+            onShowChats()
+            close()
+        } label: {
+            Image(.iconChat)
+                .renderingMode(.template)
+                .foregroundStyle(Color.ink)
+                .frame(width: Self.buttonSize, height: Self.buttonSize)
+                .contentShape(.circle)
+        }
+        .buttonStyle(.pave)
+        .glassEffect(.regular.interactive(), in: .circle)
+        .accessibilityLabel("Chats")
+    }
+
+    private var newChatButton: some View {
+        Button {
+            onNewConversation()
+            close()
+        } label: {
+            Image(.iconCompose)
+                .renderingMode(.template)
+                .foregroundStyle(Color.white)
+                .frame(width: Self.buttonSize, height: Self.buttonSize)
+                .background(Color.paveAccent, in: .circle)
+                .contentShape(.circle)
+        }
+        .buttonStyle(.pave)
+        .accessibilityLabel("Nieuw gesprek")
+    }
+
+    /// Over the dimmed screen, in the top right where the chat button of the screen sits: the chats, and a new chat
+    /// under it.
+    private func chatButtons(menuButton: CGRect, size: CGSize, insets: EdgeInsets) -> some View {
+        let x = size.width - insets.trailing - Self.inset - Self.buttonSize / 2
+        let y = menuButton.isEmpty ? insets.top + 8 + Self.buttonSize / 2 : menuButton.midY
+        return ZStack(alignment: .topLeading) {
+            chatsButton.position(x: x, y: y)
+            newChatButton.position(x: x, y: y + Self.buttonSize + 12)
+        }
+        .frame(width: size.width, height: size.height, alignment: .topLeading)
+    }
+
     /// The bar along the side of the outer display of iPhone Duo, while the menu is open.
     private func sideButtons(menuButton: CGRect, size: CGSize, insets: EdgeInsets) -> some View {
         ZStack(alignment: .topLeading) {
@@ -125,22 +174,12 @@ struct MainMenuDrawer: View {
             .accessibilityLabel("Menu sluiten")
             .position(x: menuButton.midX, y: menuButton.midY)
 
-            // Under the close button, where the chat button was; that one and the menu button hide while the menu is
-            // open, so no second glass circle shows underneath.
-            Button {
-                onNewConversation()
-                close()
-            } label: {
-                Image(.iconCompose)
-                    .renderingMode(.template)
-                    .foregroundStyle(Color.white)
-                    .frame(width: Self.buttonSize, height: Self.buttonSize)
-                    .background(Color.paveAccent, in: .circle)
-                    .contentShape(.circle)
-            }
-            .buttonStyle(.pave)
-            .accessibilityLabel("Nieuw gesprek")
-            .position(x: menuButton.midX, y: menuButton.midY + Self.buttonSize + 16)
+            // Under the close button, where the chat button was (that one and the menu button hide while the menu is
+            // open, so no second glass circle shows underneath): the chats, and a new chat under it.
+            chatsButton
+                .position(x: menuButton.midX, y: menuButton.midY + Self.buttonSize + 16)
+            newChatButton
+                .position(x: menuButton.midX, y: menuButton.midY + 2 * (Self.buttonSize + 16))
 
             MainAccountCapsule(
                 axis: .vertical,
@@ -183,6 +222,7 @@ struct MainMenuDrawer: View {
             menuButtonFrame: .zero,
             onSelect: { _ in },
             onNewConversation: {},
+            onShowChats: {},
             onSignOut: {}
         )
     }

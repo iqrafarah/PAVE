@@ -156,6 +156,20 @@ struct VaultAddEvidenceTests {
         #expect(flow.draft.title == "Professional Scrum Master I")
     }
 
+    @Test func filesReadInTheChatAreNotReadAgain() async {
+        let service = FakeVault()
+        let chat = AylaReply.VaultItemProposal(category: .certificates, title: "PSM I", issuedOn: "2025-06-12")
+        let reply = AylaReply(id: "r", conversationId: "c", text: "Zo.", proposedAction: .init(id: "a", kind: .addVaultItem, summary: "", expiresAt: .distantFuture, vaultItem: chat))
+        let analysis = AylaChatModel.EvidenceAnalysis(uploads: [pdf], proposals: [certificate], isReading: false)
+        let flow = VaultAddEvidenceModel.proposed(by: reply, vault: VaultModel(service: service), documents: [pdf], analysis: analysis)
+        #expect(flow.page == .details)
+        #expect(flow.aylaFill == .filled)
+        #expect(flow.draft.title == "PSM I")
+        #expect(flow.draft.organisationName == "Scrum.org")
+        #expect(flow.skills == ["Scrum"])
+        #expect(await service.readDocuments.isEmpty)
+    }
+
     @Test func nothingFoundLeavesTheFormToYou() async {
         let (flow, _) = await aylaFilled([], uploads: [pdf])
         #expect(flow.aylaFill == .failed(VaultMessages.aylaFillEmpty))

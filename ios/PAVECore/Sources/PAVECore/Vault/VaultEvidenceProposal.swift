@@ -157,6 +157,28 @@ public struct VaultEvidenceProposal: Equatable, Sendable, Decodable {
         return result
     }
 
+    /// What the documents say, completed with what the user told in the chat. The chat wins on the facts the user
+    /// states (title, organisation, period); the documents win on the description, the skills come from both, and the
+    /// logo, cover, folder and sources are only in the documents.
+    public func merged(with chat: AylaReply.VaultItemProposal) -> VaultEvidenceProposal {
+        var result = self
+        let chatDraft = chat.partialDraft
+        if let category = chat.category.category { result.category = category }
+        if !chatDraft.title.isEmpty { result.title = chatDraft.title }
+        if !chatDraft.organisationName.isEmpty { result.organisationName = chatDraft.organisationName }
+        if !chatDraft.organisationLocation.isEmpty { result.organisationLocation = chatDraft.organisationLocation }
+        if chatDraft.startDate != nil || chatDraft.issuedOn != nil {
+            result.startDate = chatDraft.startDate
+            result.endDate = chatDraft.endDate
+            result.issuedOn = chatDraft.issuedOn
+            result.isCurrent = chatDraft.isCurrent
+        }
+        if result.description == nil, !chatDraft.description.isEmpty { result.description = chatDraft.description }
+        let known = Set(result.skills.map { $0.name.lowercased() })
+        result.skills += (chat.skills ?? []).filter { !known.contains($0.lowercased()) }.map { VaultSkillSuggestion(name: $0, reason: "Uit je gesprek met Ayla") }
+        return result
+    }
+
     /// The fields Ayla filled in, so the form can say so.
     public var filledFields: [VaultItemDraft.Field] {
         VaultItemDraft.Field.allCases.filter { field in
