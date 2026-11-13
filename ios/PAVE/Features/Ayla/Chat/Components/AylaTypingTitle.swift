@@ -3,8 +3,9 @@ import SwiftUI
 /// The welcome title, typed out with PAVE's slash as the cursor: the slash writes the letters and blinks twice at the
 /// end. Then it hands over, square by square: the squares at the end go out from the top, while the real slash in
 /// front of the title builds up from the bottom. The full title is laid out from the start, so nothing moves while it
-/// types. The time counts per frame, so when the app is briefly busy (opening) the typing waits instead of skipping
-/// ahead.
+/// types. The slash in front sits against the first line, not the edge of the title: a short, centred first line (a
+/// narrow pane on the open iPhone Duo) would otherwise leave it hanging apart. The time counts per frame, so when the
+/// app is briefly busy (opening) the typing waits instead of skipping ahead.
 struct AylaTypingTitle: View {
     let text: String
     /// Typing starts when this becomes true.
@@ -18,6 +19,8 @@ struct AylaTypingTitle: View {
     static let markCount = 5
     static let markSize: CGFloat = 6
     static let markSpacing: CGFloat = 10
+    /// The squares climb half a square at a time.
+    static let markWidth = markSize + CGFloat(markCount - 1) * markSize / 2
 
     private static let perCharacter = 0.065
     private static let blinks = 0.7
@@ -28,17 +31,15 @@ struct AylaTypingTitle: View {
     var body: some View {
         TimelineView(.animation(paused: isDone || !isStarted)) { context in
             let moment = moment(at: context.date)
-            HStack(alignment: .top, spacing: Self.markSpacing) {
-                // The real slash, also while it builds up, so it never jumps when the typing ends.
-                PaveMark(count: Self.markCount, size: Self.markSize, squareOpacity: moment.front)
-                MaxWidthLayout(maxWidth: 289) {
-                    Text(text)
-                        .textStyle(.welcomeTitle)
-                        .foregroundStyle(Color.ink)
-                        .multilineTextAlignment(.center)
-                        .textRenderer(AylaTypingRenderer(shown: moment.shown, cursor: moment.cursor))
-                }
+            MaxWidthLayout(maxWidth: 289) {
+                Text(text)
+                    .textStyle(.welcomeTitle)
+                    .foregroundStyle(Color.ink)
+                    .multilineTextAlignment(.center)
+                    .textRenderer(AylaTypingRenderer(shown: moment.shown, cursor: moment.cursor, front: moment.front))
             }
+            // Room for the slash in front, drawn by the renderer against the first line.
+            .padding(.leading, Self.markWidth + Self.markSpacing)
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
@@ -112,11 +113,13 @@ final class AylaTypingClock {
     }
 }
 
-/// Draws the first `shown` characters and the cursor after them.
+/// Draws the first `shown` characters, the cursor after them, and the slash in front of the first line.
 struct AylaTypingRenderer: TextRenderer {
     let shown: Double
     /// How visible each square of the cursor is; nil draws no cursor.
     let cursor: ((Int) -> Double)?
+    /// How visible each square of the slash in front of the first line is.
+    var front: (Int) -> Double = { _ in 0 }
 
     func draw(layout: Text.Layout, in context: inout GraphicsContext) {
         var count = 0.0
@@ -132,12 +135,25 @@ struct AylaTypingRenderer: TextRenderer {
                 }
             }
         }
+        let start = firstLetter(of: layout)
+        drawMark(at: CGPoint(x: start.x - AylaTypingTitle.markSpacing - AylaTypingTitle.markWidth, y: start.y), opacity: front, in: &context)
         guard let cursor else { return }
-        let origin = end ?? layout.first.map { CGPoint(x: $0.typographicBounds.rect.minX, y: $0.typographicBounds.rect.minY) } ?? .zero
+        drawMark(at: end ?? start, opacity: cursor, in: &context)
+    }
+
+    /// Where the first letter of the first line starts: a centred line starts further in than the title.
+    private func firstLetter(of layout: Text.Layout) -> CGPoint {
+        guard let line = layout.first else { return .zero }
+        let top = line.typographicBounds.rect.minY
+        let x = line.first?.first?.typographicBounds.rect.minX ?? line.typographicBounds.rect.minX
+        return CGPoint(x: x, y: top)
+    }
+
+    private func drawMark(at origin: CGPoint, opacity: (Int) -> Double, in context: inout GraphicsContext) {
         let size = AylaTypingTitle.markSize
         let squares = AylaTypingTitle.markCount
         for index in 0..<squares {
-            let alpha = cursor(index)
+            let alpha = opacity(index)
             guard alpha > 0 else { continue }
             let square = CGRect(
                 x: (origin.x + CGFloat(index) * size / 2).rounded(),
