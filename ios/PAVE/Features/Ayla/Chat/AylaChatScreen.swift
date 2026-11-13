@@ -102,9 +102,7 @@ struct AylaChatScreen: View {
         GeometryReader { proxy in
             let fullHeight = proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom
             let sheetHeight = (fullHeight * 0.612).rounded()
-            let expandedHeight = fullHeight - proxy.safeAreaInsets.top - 24
-            let panelShelf = shelf == .vault ? nil : shelf
-            let showsSheet = openVacancies != nil || panelShelf != nil
+            let showsSheet = openVacancies != nil
 
             ZStack(alignment: .bottom) {
                 if let voice, isTalking {
@@ -146,22 +144,6 @@ struct AylaChatScreen: View {
                             .frame(maxWidth: .infinity)
                     }
                     .ignoresSafeArea(edges: .bottom)
-                } else if let shelf = panelShelf {
-                    AylaBottomSheet(
-                        title: shelf.closeTitle,
-                        height: sheetHeight,
-                        expandedHeight: expandedHeight,
-                        bottomInset: bottomBarHeight + proxy.safeAreaInsets.bottom + 16,
-                        onClose: closeShelf
-                    ) {
-                        AylaShelfContent(shelf: shelf) { item in
-                            closeShelf()
-                            model.ask(about: item)
-                        }
-                    }
-                    .id(shelf)
-                    .ignoresSafeArea(edges: .bottom)
-                    .transition(.move(edge: .bottom))
                 }
 
                 bottomBar(placeholder: placeholderColor(sheetOpen: showsSheet), isOverPanel: showsSheet)
@@ -188,19 +170,31 @@ struct AylaChatScreen: View {
             photoItems = []
             Task { await addPhotos(items) }
         }
-        // The vault itself, as it is in the app: up from the bottom, pulled up to the full screen, swiped away.
-        .sheet(isPresented: Binding(get: { shelf == .vault }, set: { if !$0 { closeShelf() } })) {
-            if let vault {
-                VaultScreen(onShowMenu: nil)
-                    .environment(vault)
-                    .environment(\.askAylaAbout) { item in
-                        closeShelf()
-                        model.ask(about: item)
+        // The places from the start chips, as they are in the app: up from the bottom, pulled up to the full screen,
+        // swiped away. The vault is the vault itself.
+        .sheet(item: Binding(get: { shelf }, set: { if $0 == nil { closeShelf() } })) { shelf in
+            Group {
+                if shelf == .vault, let vault {
+                    VaultScreen(onShowMenu: nil)
+                        .environment(vault)
+                        .environment(\.isInSheet, true)
+                        .environment(\.askAylaAbout) { item in
+                            closeShelf()
+                            model.ask(about: item)
+                        }
+                } else {
+                    ScrollView {
+                        AylaShelfContent(shelf: shelf) { _ in }
+                            .padding(.horizontal, 24)
+                            .padding(.top, 28)
+                            .padding(.bottom, 24)
                     }
-                    .presentationDetents([.fraction(0.62), .large], selection: $vaultDetent)
-                    .presentationDragIndicator(.visible)
-                    .paveSheet()
+                    .background(Color.white.ignoresSafeArea(edges: .bottom))
+                }
             }
+            .presentationDetents([.fraction(0.62), .large], selection: $vaultDetent)
+            .presentationDragIndicator(.visible)
+            .paveSheet()
         }
         .sheet(isPresented: $picksVaultItem) {
             if let vault {
@@ -1317,7 +1311,7 @@ struct AylaChatScreen: View {
         PaveHaptics.selection()
         if let shelf { model.hideScreen(shelf.screen) }
         openVacanciesID = nil
-        if next == .vault { vaultDetent = .large }
+        vaultDetent = next == .vault ? .large : .fraction(0.62)
         shelf = next
         model.showScreen(next.screen)
     }
