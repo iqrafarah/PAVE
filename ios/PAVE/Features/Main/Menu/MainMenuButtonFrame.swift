@@ -8,9 +8,6 @@ extension EnvironmentValues {
     @Entry var hidesScreenButtons = false
     /// The toolbar buttons sit in the bar along the side of the screen (outer display of iPhone Duo), in larger circles.
     @Entry var toolbarIsBeside = false
-    /// A screen shown in a sheet over another one: its own buttons go in the page, as the bar of a sheet has no room
-    /// for them beside the status column.
-    @Entry var isInSheet = false
 }
 
 extension EnvironmentValues {

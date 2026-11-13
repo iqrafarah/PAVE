@@ -18,7 +18,6 @@ struct VaultLibraryPage: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     /// The open menu on the outer display of iPhone Duo puts its own buttons where search and add are.
     @Environment(\.hidesScreenButtons) private var hidesScreenButtons
-    @Environment(\.isInSheet) private var isInSheet
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// How the vault opens, from Instellingen; switching here lasts until the vault is opened again.
     @State private var isGrid = PaveAppearance.vaultLayout == .grid
@@ -69,7 +68,7 @@ struct VaultLibraryPage: View {
                 if model.items.contains(where: { $0.position != nil }) { filter.order = .custom }
             }
             .toolbar {
-                if !hidesScreenButtons, !isInSheet {
+                if !hidesScreenButtons {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button(action: toggleSearch) {
                             Image(isSearching ? .iconXMark : .iconSearch)
@@ -158,30 +157,6 @@ struct VaultLibraryPage: View {
         }
     }
 
-    /// In a sheet: search and add on the line of the filter, in the same style as the layout button there.
-    private var sheetButtons: some View {
-        HStack(spacing: 8) {
-            Button(action: toggleSearch) {
-                Image(isSearching ? .iconXMark : .iconSearch)
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .paveIconFrame(18)
-                    .foregroundStyle(Color.ink)
-                    .frame(width: 44, height: 44)
-                    .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 10))
-                    .contentShape(.rect(cornerRadius: 10))
-            }
-            .buttonStyle(.pave)
-            .accessibilityLabel(isSearching ? "Zoeken sluiten" : folder.map { "Zoeken in \($0.name)" } ?? "Zoeken in je kluis")
-            addButton
-                .foregroundStyle(Color.ink)
-                .frame(width: 44, height: 44)
-                .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 10))
-                .contentShape(.rect(cornerRadius: 10))
-        }
-    }
-
     private var controls: some View {
         VStack(alignment: .leading, spacing: 18) {
             if isSearching {
@@ -196,10 +171,7 @@ struct VaultLibraryPage: View {
             } else {
                 shelves
             }
-            HStack(spacing: 8) {
-                VaultFilterBar(filter: $filter, isGrid: $isGrid)
-                if isInSheet { sheetButtons }
-            }
+            VaultFilterBar(filter: $filter, isGrid: $isGrid)
         }
         .animation(.snappy(duration: 0.25), value: drag)
     }

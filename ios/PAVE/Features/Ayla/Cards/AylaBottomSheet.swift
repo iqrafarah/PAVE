@@ -1,12 +1,16 @@
 import SwiftUI
 
 /// The white panel that slides up over the chat on iPhone (Figma: vacancies and choosing vault items).
-/// Drag the grabber down to close it, or up to make it taller. The text field stays on top of it.
+/// It follows the finger on its top edge and lands where the swipe would end: the full screen, its own height, or
+/// closed, so one swipe down from the full screen closes it. The text field stays on top of it.
 struct AylaBottomSheet<Content: View>: View {
     let title: String
     let height: CGFloat
     let expandedHeight: CGFloat
     let bottomInset: CGFloat
+    /// Off for content that scrolls itself, such as the vault.
+    var scrolls = true
+    var background: Color = .white
     let onClose: () -> Void
     @ViewBuilder let content: Content
 
@@ -21,19 +25,25 @@ struct AylaBottomSheet<Content: View>: View {
     var body: some View {
         VStack(spacing: 0) {
             grabber
-            ScrollView {
+            if scrolls {
+                ScrollView {
+                    content
+                        .padding(.leading, 26)
+                        .padding(.trailing, 25)
+                        .padding(.bottom, bottomInset)
+                }
+                .scrollIndicators(.hidden)
+            } else {
                 content
-                    .padding(.leading, 26)
-                    .padding(.trailing, 25)
                     .padding(.bottom, bottomInset)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
-            .scrollIndicators(.hidden)
         }
         .frame(height: currentHeight, alignment: .top)
         .frame(maxWidth: .infinity)
         .background {
             UnevenRoundedRectangle(topLeadingRadius: 25, topTrailingRadius: 25, style: .continuous)
-                .fill(Color.white)
+                .fill(background)
                 .shadow(color: .black.opacity(0.25), radius: 0.7)
                 .ignoresSafeArea(edges: [.bottom, .horizontal])
         }
@@ -58,13 +68,14 @@ struct AylaBottomSheet<Content: View>: View {
                 DragGesture()
                     .onChanged { dragOffset = $0.translation.height }
                     .onEnded { value in
-                        let distance = value.predictedEndTranslation.height
-                        withAnimation(.spring(duration: 0.35)) {
+                        // Where the swipe would end, with its speed: the nearest of full, own height or closed.
+                        let end = (isExpanded ? expandedHeight : height) - value.predictedEndTranslation.height
+                        withAnimation(.spring(duration: 0.35, bounce: 0.1)) {
                             dragOffset = 0
-                            if distance > 160 {
-                                if isExpanded { isExpanded = false } else { onClose() }
-                            } else if distance < -80 {
-                                isExpanded = true
+                            if end < height * 0.55 {
+                                onClose()
+                            } else {
+                                isExpanded = abs(end - expandedHeight) < abs(end - height)
                             }
                         }
                     }
