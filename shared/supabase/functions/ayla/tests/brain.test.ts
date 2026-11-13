@@ -197,6 +197,7 @@ test('a stored question for the vault goes into the history, so the model knows 
   assert.deepEqual(asked, { role: 'ayla', text: 'Ik zoek hem op.\nMag ik in je kluis kijken om je diploma te zoeken?', askedVault: true })
   assert.deepEqual(toPastMessage({ role: 'ayla', text: 'Hoi', reply: { question: { text: 'Wil je iets toevoegen?', choices: [] } } }), { role: 'ayla', text: 'Hoi' })
   assert.deepEqual(toPastMessage({ role: 'user', text: 'Ja', reply: null }), { role: 'user', text: 'Ja' })
+  assert.deepEqual(toPastMessage({ role: 'user', text: 'Kijk mee', reply: { attachments: ['cv.pdf', 'scan.pdf'] } as never }), { role: 'user', text: 'Kijk mee\n(bijlagen: cv.pdf, scan.pdf)' })
 })
 
 test('opening one item goes by its id, and only for an item Ayla may see', async () => {

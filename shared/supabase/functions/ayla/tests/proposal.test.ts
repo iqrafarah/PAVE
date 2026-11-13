@@ -31,6 +31,8 @@ test('what the user did and the skills in it come along, cleaned and limited', (
   }, 'a', now)
   assert.equal(action?.vaultItem?.description, 'Je bouwde de front-end van drie campagnes.')
   assert.deepEqual(action?.vaultItem?.skills, ['React', 'react', 'Samenwerken', 'Scrum', 'Testen'])
+  const withFiles = vaultProposal({ category: 'projects', title: 'App', attachments: ['verslag.pdf', ' verslag.pdf', ''] }, 'a', now)
+  assert.deepEqual(withFiles?.vaultItem?.attachments, ['verslag.pdf'])
 })
 
 test('nothing usable means no proposal', () => {

@@ -323,10 +323,17 @@ final class AylaChatModel {
         lastFiles.compactMap { lastUploads[$0.name] }
     }
 
-    /// The files sent in this conversation, newest last, as many as evidence can hold: what "Zet in de kluis" takes
-    /// along. Files from before the app was opened are no longer on the device.
+    /// The files sent in this conversation, newest last. Files from before the app was opened are no longer on the device.
     var conversationUploads: [VaultUpload] {
-        Array(sentUploads.suffix(5))
+        sentUploads
+    }
+
+    /// The files that go with an item Ayla proposed: the ones she named as belonging to it; when she named none, the
+    /// files of the last question. Never the whole conversation, which may hold files of other evidence.
+    func uploads(for proposal: AylaReply.VaultItemProposal?) -> [VaultUpload] {
+        let names = proposal?.attachments ?? []
+        let named = sentUploads.filter { names.contains($0.fileName) }
+        return Array((named.isEmpty ? lastTurnUploads : named).suffix(5))
     }
 
     /// Ayla answers the last question again, as if it was asked for the first time.

@@ -71,11 +71,13 @@ public struct AylaReply: Codable, Equatable, Sendable {
         public var description: String?
         /// At most five skills that show in it.
         public var skills: [String]?
+        /// The names of the files sent in the conversation that belong to this item.
+        public var attachments: [String]?
 
         public init(
             category: AylaVaultCategory, title: String, organisationName: String? = nil, organisationLocation: String? = nil,
             startDate: String? = nil, endDate: String? = nil, issuedOn: String? = nil, isCurrent: Bool? = nil,
-            description: String? = nil, skills: [String]? = nil
+            description: String? = nil, skills: [String]? = nil, attachments: [String]? = nil
         ) {
             self.category = category
             self.title = title
@@ -87,6 +89,7 @@ public struct AylaReply: Codable, Equatable, Sendable {
             self.isCurrent = isCurrent
             self.description = description
             self.skills = skills
+            self.attachments = attachments
         }
 
         /// What the app saves after Ja, or nil for a category this app does not know yet or a draft the vault refuses.

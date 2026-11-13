@@ -907,11 +907,11 @@ struct AylaChatScreen: View {
         send(label)
     }
 
-    /// Adding evidence as Ayla proposed it, with the files sent in this conversation. A spoken conversation stops: the
-    /// form is something to look at.
+    /// Adding evidence as Ayla proposed it, with the files she said belong to it. A spoken conversation stops: the form
+    /// is something to look at.
     private func openProposedEvidence(from reply: AylaReply?) {
         guard let vault else { return }
-        let documents = model.conversationUploads
+        let documents = model.uploads(for: reply?.proposedAction?.vaultItem)
         if isTalking { stopVoice() }
         Task {
             if vault.state != .ready { await vault.load() }

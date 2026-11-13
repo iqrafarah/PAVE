@@ -347,6 +347,10 @@ struct AylaChatModelTests {
         await waitUntilIdle(model)
         #expect(model.lastTurnUploads.isEmpty)
         #expect(model.conversationUploads == [upload])
+        // Ayla names the files of an item; without names, the last question's files; never files of other evidence.
+        #expect(model.uploads(for: .init(category: .projects, title: "App", attachments: ["cv.pdf"])) == [upload])
+        #expect(model.uploads(for: .init(category: .projects, title: "App", attachments: ["ander.pdf"])).isEmpty)
+        #expect(model.uploads(for: .init(category: .projects, title: "App")).isEmpty)
         model.newConversation()
         #expect(model.conversationUploads.isEmpty)
         #expect(ayla.requests.first?.attachments?.map(\.name) == ["cv.pdf", "notitie.txt"])

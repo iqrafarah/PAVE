@@ -59,6 +59,8 @@ export interface VaultItemProposal {
   description?: string
   /** At most five skills that show in it. */
   skills?: string[]
+  /** The names of the files sent in the conversation that belong to this item. */
+  attachments?: string[]
 }
 
 export interface AylaReply {

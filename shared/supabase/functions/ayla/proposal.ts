@@ -25,7 +25,7 @@ export const CATEGORY_NAMES: Record<Category, string> = {
 export const VAULT_ITEM_SCHEMA = {
   type: ['object', 'null'],
   additionalProperties: false,
-  required: ['category', 'title', 'organisation', 'place', 'startDate', 'endDate', 'issuedOn', 'isCurrent', 'description', 'skills'],
+  required: ['category', 'title', 'organisation', 'place', 'startDate', 'endDate', 'issuedOn', 'isCurrent', 'description', 'skills', 'attachments'],
   properties: {
     category: { type: 'string', enum: [...CATEGORIES] },
     title: { type: 'string' },
@@ -37,6 +37,7 @@ export const VAULT_ITEM_SCHEMA = {
     isCurrent: { type: 'boolean' },
     description: { type: ['string', 'null'] },
     skills: { type: 'array', items: { type: 'string' } },
+    attachments: { type: 'array', items: { type: 'string' } },
   },
 } as const
 
@@ -68,6 +69,8 @@ export function vaultProposal(raw: unknown, id: string, now: Date): NonNullable<
   if (description) item.description = description
   const skills = [...new Set((Array.isArray(value.skills) ? value.skills : []).map((s) => text(s, MAX_SKILL_LENGTH)).filter((s): s is string => !!s))].slice(0, MAX_SKILLS)
   if (skills.length) item.skills = skills
+  const attachments = [...new Set((Array.isArray(value.attachments) ? value.attachments : []).map((s) => text(s, 200)).filter((s): s is string => !!s))].slice(0, 5)
+  if (attachments.length) item.attachments = attachments
   if (value.isCurrent === true) {
     item.isCurrent = true
     delete item.endDate

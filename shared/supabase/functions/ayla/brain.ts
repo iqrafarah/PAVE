@@ -47,7 +47,13 @@ export interface StoredMessage { role: 'user' | 'ayla'; text: string; reply?: Pa
  * added: the model then knows what a Ja answers.
  */
 export function toPastMessage(message: StoredMessage): PastMessage {
-  const asked = message.role === 'ayla' && !!message.reply?.accessRequest
+  // A user message keeps the names of its files, so the model knows later which file went with what.
+  const names = (message.reply as { attachments?: unknown } | null | undefined)?.attachments
+  if (message.role === 'user') {
+    const files = Array.isArray(names) ? names.filter((n): n is string => typeof n === 'string' && !!n) : []
+    return { role: 'user', text: files.length ? `${message.text}\n(bijlagen: ${files.join(', ')})` : message.text }
+  }
+  const asked = !!message.reply?.accessRequest
   if (!asked) return { role: message.role, text: message.text }
   const question = message.reply?.question?.text
   return { role: 'ayla', text: question ? `${message.text}\n${question}` : message.text, askedVault: true }
