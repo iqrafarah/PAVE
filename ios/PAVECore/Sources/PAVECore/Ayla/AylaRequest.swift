@@ -41,6 +41,8 @@ public struct AylaAttachment: Codable, Equatable, Sendable, Identifiable {
     public static let maxCount = 5
     public static let maxTextLength = 20_000
     public static let maxNameLength = 200
+    /// What Ayla gets for a photo without readable text, such as a photo of a workplace: she then asks what is on it.
+    public static let photoWithoutText = "(foto zonder leesbare tekst)"
 
     public var id: String { name }
     public var name: String

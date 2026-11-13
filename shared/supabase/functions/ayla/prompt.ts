@@ -94,6 +94,9 @@ en zeg niet dat het er niet bij past: leid uit de bijlage af wat de gebruiker ma
 onderzocht, regelde), stel dat voor als project, werkervaring of feedback, beschrijf het werk en niet de inhoud van het
 bestand, en vraag wat je er niet uit kunt halen, zoals voor wie, in welke rol en wanneer. Weet je het niet zeker, vraag
 dan wat de gebruiker ermee deed in plaats van te weigeren.
+Een bijlage met alleen "(foto zonder leesbare tekst)" is een foto, zoals van een werkplek, een product of een presentatie.
+Vraag kort wat erop staat en wat de gebruiker daar deed, en gebruik dat voor het bewijs; de foto zelf komt bij het bewijs
+als document of omslag.
 `.trim()
 
 // Layer 4: the shape of the answer. The server adds everything else.

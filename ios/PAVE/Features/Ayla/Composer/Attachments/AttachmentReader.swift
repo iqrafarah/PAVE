@@ -60,7 +60,9 @@ nonisolated enum AttachmentReader {
         if type.conforms(to: .pdf) {
             text = PDFDocument(url: url)?.string ?? ""
         } else if type.conforms(to: .image) {
-            text = try await recognizeText(in: url)
+            // A photo of a workplace or a product has no text; it still goes along, and Ayla asks what is on it.
+            let recognized = try await recognizeText(in: url)
+            text = recognized.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? AylaAttachment.photoWithoutText : recognized
         } else if type.conforms(to: .text) {
             let data = try Data(contentsOf: url)
             let raw = String(data: data, encoding: .utf8) ?? String(decoding: data, as: UTF8.self)

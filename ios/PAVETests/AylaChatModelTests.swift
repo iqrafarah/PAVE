@@ -1,6 +1,7 @@
 import Foundation
 import PAVECore
 import Testing
+import UIKit
 @testable import PAVE
 
 @MainActor
@@ -276,6 +277,21 @@ struct AylaChatModelTests {
         await waitUntilIdle(model)
         #expect(model.entries.map(\.text) == ["Kijk je mee?", "Gezien"])
         #expect(ayla.requests.last?.attachments == [file])
+    }
+
+    @Test func aPhotoWithoutTextStillGoesAlong() async throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appending(path: "werkplek.jpeg")
+        let jpeg = UIGraphicsImageRenderer(size: CGSize(width: 300, height: 200)).jpegData(withCompressionQuality: 0.8) { context in
+            UIColor.systemTeal.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 300, height: 200))
+        }
+        try jpeg.write(to: url)
+        let file = try await AttachmentReader.file(url)
+        #expect(file.attachment.text == AylaAttachment.photoWithoutText)
+        #expect(file.upload?.mimeType == "image/jpeg")
     }
 
     @Test func aWebPageIsReadAsItsWords() {

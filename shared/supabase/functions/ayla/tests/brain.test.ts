@@ -43,6 +43,7 @@ test('the prompt makes work the user did into evidence instead of refusing it', 
   assert.match(prompt, /hoeft geen diploma of certificaat te zijn om bewijs te worden/)
   assert.match(prompt, /weiger dan niet/)
   assert.match(prompt, /vraag wat je er niet uit kunt halen/)
+  assert.match(prompt, /foto zonder leesbare tekst/)
 })
 
 test('the prompt has the device style, the name and the open screen', () => {
