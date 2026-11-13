@@ -2,10 +2,11 @@ import SwiftUI
 import WidgetKit
 
 /// The small widget is one button (talk with Ayla); the medium one also starts a new chat. In the style of the
-/// splash screen: the light canvas with green in the corners and the pixel slash.
+/// splash screen: the light canvas with the theme colour in the corners and the pixel slash.
 /// With a clear or tinted Home Screen iOS draws everything in one colour and keeps only how see-through it is, so
 /// the buttons become light glass with the text and icons fully on top, instead of solid shapes they would vanish in.
 struct AylaWidgetView: View {
+    var accent = Color.brandGreen
     @Environment(\.widgetFamily) private var family
     @Environment(\.widgetRenderingMode) private var renderingMode
 
@@ -25,12 +26,12 @@ struct AylaWidgetView: View {
                 Spacer(minLength: 0)
                 VStack(spacing: 8) {
                     Link(destination: PaveLink.talk.url) {
-                        AylaWidgetButton(title: "Praat met Ayla", isPrimary: true, isFullColor: isFullColor) {
+                        AylaWidgetButton(title: "Praat met Ayla", isPrimary: true, isFullColor: isFullColor, accent: accent) {
                             PixelWaveIcon(color: isFullColor ? .white : .primary)
                         }
                     }
                     Link(destination: PaveLink.newConversation.url) {
-                        AylaWidgetButton(title: "Nieuw gesprek", isPrimary: false, isFullColor: isFullColor) {
+                        AylaWidgetButton(title: "Nieuw gesprek", isPrimary: false, isFullColor: isFullColor, accent: accent) {
                             Image(.iconCompose).renderingMode(.template)
                         }
                     }
@@ -68,7 +69,7 @@ struct AylaWidgetView: View {
                     PixelWaveIcon(color: isFullColor ? .white : .primary)
                         .scaleEffect(1.25)
                         .frame(width: 44, height: 44)
-                        .background(isFullColor ? Color.brandGreen : Color.primary.opacity(0.18), in: .circle)
+                        .background(isFullColor ? accent : Color.primary.opacity(0.18), in: .circle)
                         .widgetAccentable()
                 }
                 Spacer(minLength: 0)
@@ -110,7 +111,7 @@ struct AylaWidgetView: View {
                 Color.canvas
                 LinearGradient(
                     stops: [
-                        .init(color: .brandGreen.opacity(0.22), location: 0),
+                        .init(color: accent.opacity(0.22), location: 0),
                         .init(color: .canvas.opacity(0), location: 0.45),
                     ],
                     startPoint: .topTrailing,
@@ -121,12 +122,13 @@ struct AylaWidgetView: View {
     }
 }
 
-/// A capsule in the widget: green to talk, white for a new chat. On a clear or tinted Home Screen both are light
+/// A capsule in the widget: the theme colour to talk, white for a new chat. On a clear or tinted Home Screen both are light
 /// glass, the one to talk a little stronger, with the text and icon on top.
 struct AylaWidgetButton<Icon: View>: View {
     let title: String
     let isPrimary: Bool
     var isFullColor = true
+    var accent = Color.brandGreen
     @ViewBuilder let icon: Icon
 
     var body: some View {
@@ -152,6 +154,6 @@ struct AylaWidgetButton<Icon: View>: View {
 
     private var background: Color {
         guard isFullColor else { return Color.primary.opacity(isPrimary ? 0.22 : 0.12) }
-        return isPrimary ? .brandGreen : .white
+        return isPrimary ? accent : .white
     }
 }

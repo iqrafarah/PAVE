@@ -95,8 +95,10 @@ enum PaveAppearance {
     /// Ayla's orb in the theme colour.
     static var orbPalette: [Color] { (0..<7).map(Color.paveOrbShade) }
 
+    /// At launch: the stored look, also for widgets placed before the app shared its colour with them.
     static func applyStored() {
         apply(theme, customColor: customColor)
+        PaveHomeScreen.updateWidgets(theme: theme, customColor: customColor)
     }
 }
 

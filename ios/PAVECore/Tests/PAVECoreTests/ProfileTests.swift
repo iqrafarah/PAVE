@@ -37,6 +37,18 @@ struct ProfileTests {
         #expect(PaveThemeColor.readableAccent(for: 0x1A2B3C) == 0x1A2B3C)
     }
 
+    @Test func anOwnColourGetsTheClosestThemeColour() {
+        #expect(PaveThemeColor.nearestPreset(to: 0x7FDBFF) == .blue)
+        #expect(PaveThemeColor.nearestPreset(to: 0xFF66AA) == .pink)
+        #expect(PaveThemeColor.nearestPreset(to: 0xE53935) == .red)
+        #expect(PaveThemeColor.nearestPreset(to: 0x2E7D32) == .green)
+        #expect(PaveThemeColor.nearestPreset(to: 0x808080) == .green)
+        #expect(PaveThemeColor.nearestPreset(to: 0xFFFFFF) == .green)
+        for preset in PaveThemeColor.presets {
+            #expect(PaveThemeColor.nearestPreset(to: preset.swatch) == preset, "\(preset)")
+        }
+    }
+
     @Test func anOwnColourIsStoredAsHexAndNeedsItsValue() throws {
         #expect(PaveThemeColor.hex(0xff66aa) == "#FF66AA")
         #expect(PaveThemeColor.color(hex: "#FF66AA") == 0xFF66AA)

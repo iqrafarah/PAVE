@@ -62,5 +62,7 @@
 	</dict>
 	<key>UIUserInterfaceStyle</key>
 	<string>Light</string>
+	<key>PaveKeychainGroup</key>
+	<string>$(AppIdentifierPrefix)$(APP_BUNDLE_IDENTIFIER).shared</string>
 </dict>
 </plist>

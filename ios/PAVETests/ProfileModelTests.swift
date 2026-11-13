@@ -36,7 +36,7 @@ struct ProfileModelTests {
         clean()
         defer { clean() }
         let service = FakeProfiles(PaveProfile(fullName: "Ravi Santoso", theme: .blue, textSize: .large, vaultLayout: .list))
-        let model = ProfileModel(service: service)
+        let model = ProfileModel(service: service, onThemeChosen: { _, _ in })
         await model.load()
         #expect(model.theme == .blue)
         #expect(PaveAppearance.vaultLayout == .list)
@@ -56,7 +56,7 @@ struct ProfileModelTests {
             PaveAppearance.applyStored()
         }
         let service = FakeProfiles(PaveProfile(fullName: "Ravi Santoso"))
-        let model = ProfileModel(service: service)
+        let model = ProfileModel(service: service, onThemeChosen: { _, _ in })
         await model.load()
 
         model.previewCustomColor(0xFFD1E8)
@@ -71,14 +71,26 @@ struct ProfileModelTests {
 
         await model.setTheme(.blue)
         #expect(model.customColor == 0xFF66AA)
+        #expect(PaveHomeScreen.iconName(theme: .custom, customColor: 0xFF66AA) == "AppIconPink")
+        #expect(PaveHomeScreen.iconName(theme: .green, customColor: nil) == nil)
+        #expect(PaveHomeScreen.iconName(theme: .lime, customColor: nil) == "AppIconLime")
         #expect(PaveThemeStore.shared.accent == PaveThemeColor.blue.accent)
+    }
+
+    @Test func theWidgetsGetTheChosenColourThroughTheKeychain() throws {
+        let group = try #require(Bundle.main.object(forInfoDictionaryKey: "PaveKeychainGroup") as? String)
+        defer { PaveHomeScreen.updateWidgets(theme: PaveAppearance.theme, customColor: PaveAppearance.customColor) }
+        PaveHomeScreen.updateWidgets(theme: .pink, customColor: nil)
+        #expect(PaveHomeScreen.storedWidgetAccent(group: group) == PaveThemeColor.hex(PaveThemeColor.pink.accent))
+        PaveHomeScreen.updateWidgets(theme: .custom, customColor: 0xFFEB3B)
+        #expect(PaveHomeScreen.storedWidgetAccent(group: group) == PaveThemeColor.hex(PaveThemeColor.readableAccent(for: 0xFFEB3B)))
     }
 
     @Test func withoutTheMigrationTheLookStaysOnThisDevice() async {
         clean()
         defer { clean() }
         let service = FakeProfiles(PaveProfile(fullName: "Ravi Santoso", canChangeSettings: false))
-        let model = ProfileModel(service: service)
+        let model = ProfileModel(service: service, onThemeChosen: { _, _ in })
         await model.load()
         await model.setTextSize(.small)
         #expect(model.textSize == .small)
@@ -88,7 +100,7 @@ struct ProfileModelTests {
 
     @Test func theNameIsTidiedAndAnEmptyNameGoesBackToTheSchoolName() async {
         let service = FakeProfiles(PaveProfile(preferredName: "Rav", fullName: "Ravi Santoso"))
-        let model = ProfileModel(service: service)
+        let model = ProfileModel(service: service, onThemeChosen: { _, _ in })
         await model.load()
         #expect(await model.saveName("  Ravi   S. "))
         #expect(model.profile.displayName == "Ravi S.")

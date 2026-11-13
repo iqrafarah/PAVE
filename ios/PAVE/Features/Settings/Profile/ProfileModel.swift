@@ -28,10 +28,17 @@ final class ProfileModel {
 
     private let service: (any ProfileService)?
     private let defaults: UserDefaults
+    /// Gives the widgets and the app icon the chosen colour.
+    private let onThemeChosen: @MainActor (PaveThemeColor, UInt32?) -> Void
 
-    init(service: (any ProfileService)?, defaults: UserDefaults = .standard) {
+    init(
+        service: (any ProfileService)?,
+        defaults: UserDefaults = .standard,
+        onThemeChosen: @escaping @MainActor (PaveThemeColor, UInt32?) -> Void = PaveHomeScreen.update
+    ) {
         self.service = service
         self.defaults = defaults
+        self.onThemeChosen = onThemeChosen
         if service == nil { state = .unavailable }
     }
 
@@ -47,6 +54,7 @@ final class ProfileModel {
             if loaded.canChangeSettings {
                 customColor = loaded.customColor ?? customColor
                 apply(theme: loaded.theme, textSize: loaded.textSize, vaultLayout: loaded.vaultLayout)
+                onThemeChosen(theme, customColor)
             }
             await loadAvatar()
         } catch {
@@ -56,6 +64,7 @@ final class ProfileModel {
 
     func setTheme(_ theme: PaveThemeColor) async {
         apply(theme: theme, textSize: textSize, vaultLayout: vaultLayout)
+        onThemeChosen(theme, customColor)
         await savePreferences()
     }
 
@@ -67,6 +76,7 @@ final class ProfileModel {
 
     func saveCustomColor() async {
         guard theme == .custom, customColor != nil else { return }
+        onThemeChosen(theme, customColor)
         await savePreferences()
     }
 
