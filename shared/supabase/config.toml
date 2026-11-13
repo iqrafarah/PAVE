@@ -1,0 +1,4 @@
+project_id = "pave"
+
+[functions.vault-review]
+verify_jwt = true

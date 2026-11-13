@@ -203,7 +203,7 @@ De iOS-meldingen gebruiken `NotificationsModel` en `SupabaseNotificationsService
 
 Voor een eerste visuele controle staan statisch gerenderde iPhone-previews in `ios/previews/`. Ze volgen de huidige iOS-layout met fictieve inhoud, maar zijn geen captures van een draaiende SwiftUI-app. `render-notifications.ps1` maakt ze opnieuw.
 
-De bestaande migratie `20261112160000_notifications_and_vault_review.sql` is op 12 november 2026 toegepast (bevestigd door Gianna). De vervolgmigratie `20261112170000_resolve_vault_validation.sql` en Edge Function `shared/supabase/functions/vault-review/` zijn nog niet op Supabase toegepast/gedeployed. Reviewer-toewijzingen moeten eerst door vertrouwde admin-provisioning in `vault_validation_reviewers` worden gezet; de webrepo beschrijft geen betrouwbare rolwaarden waarmee de app dit zelf veilig kan afleiden. Zonder die migratie, deployment en toewijzingen blijft de echte flow onbeschikbaar. Zie `docs/vault.md` voor de backendvolgorde en grenzen.
+De migraties `20261112160000_notifications_and_vault_review.sql` en `20261112170000_resolve_vault_validation.sql` zijn toegepast (respectievelijk bevestigd op 12 en 13 november 2026). Deployment van `shared/supabase/functions/vault-review/` is nog niet bevestigd. Reviewer-toewijzingen moeten via vertrouwde admin-provisioning in `vault_validation_reviewers` worden gezet; de webrepo beschrijft geen betrouwbare rolwaarden waarmee de app dit zelf veilig kan afleiden. Zonder deployment en toewijzingen blijft de echte flow onbeschikbaar. Zie `docs/vault.md` voor de backendvolgorde en grenzen.
 
 ## Ayla
 
