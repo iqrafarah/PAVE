@@ -11,11 +11,11 @@ struct AuthMessagesTests {
         .deletingLastPathComponent().appending(path: "web/app/utils")
 
     private static var webIsAvailable: Bool {
-        FileManager.default.fileExists(atPath: webRoot.appending(path: "messages.ts").path(percentEncoded: false))
+        FileManager.default.fileExists(atPath: webRoot.appending(path: "shared/messages.ts").path(percentEncoded: false))
     }
 
     private func webConstants() throws -> [String: String] {
-        let source = try String(contentsOf: Self.webRoot.appending(path: "messages.ts"), encoding: .utf8)
+        let source = try String(contentsOf: Self.webRoot.appending(path: "shared/messages.ts"), encoding: .utf8)
         let pattern = #"export const (\w+) =\s*(['"])(.*?)\2;"#
         let regex = try NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators])
         var result: [String: String] = [:]
@@ -65,7 +65,7 @@ struct AuthMessagesTests {
 
     @Test(.enabled(if: AuthMessagesTests.webIsAvailable))
     func textsWithAValueAreIdenticalToTheWeb() throws {
-        let source = try String(contentsOf: Self.webRoot.appending(path: "messages.ts"), encoding: .utf8)
+        let source = try String(contentsOf: Self.webRoot.appending(path: "shared/messages.ts"), encoding: .utf8)
         let expected = [
             AuthMessages.resetCodeSent(to: "${maskedEmail}"),
             AuthMessages.resendCountdown(secondsLeft: 0).replacingOccurrences(of: "0", with: "${secondsLeft}"),
@@ -82,13 +82,13 @@ struct AuthMessagesTests {
 
     @Test(.enabled(if: AuthMessagesTests.webIsAvailable))
     func supportAddressIsTheSameAsOnTheWeb() throws {
-        let source = try String(contentsOf: Self.webRoot.appending(path: "constants.ts"), encoding: .utf8)
+        let source = try String(contentsOf: Self.webRoot.appending(path: "shared/constants.ts"), encoding: .utf8)
         #expect(source.contains("'\(PaveSupport.email)'"))
     }
 
     @Test(.enabled(if: AuthMessagesTests.webIsAvailable))
     func passwordRulesAreIdenticalToTheWeb() throws {
-        let source = try String(contentsOf: Self.webRoot.appending(path: "passwordRules.ts"), encoding: .utf8)
+        let source = try String(contentsOf: Self.webRoot.appending(path: "auth/passwordRules.ts"), encoding: .utf8)
         for requirement in PasswordRequirement.allCases {
             let expected = requirement.title.replacingOccurrences(of: "\(PasswordRequirement.minimumCharacterCount)", with: "${MIN_PASSWORD_LENGTH}")
             #expect(source.contains(expected), "\(requirement.title) differs from the web")
