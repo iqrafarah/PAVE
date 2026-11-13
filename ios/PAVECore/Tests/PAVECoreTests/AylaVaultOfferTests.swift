@@ -15,11 +15,23 @@ struct AylaVaultOfferTests {
         )
     }
 
-    @Test func aQuestionAboutWhatIsInTheVaultGetsJaAndNee() {
-        let answer = reply("Ik zie je LiveWall-stage niet in de items die ik mag gebruiken.")
-        #expect(AylaVaultOffer.question(for: answer, asked: "Heb ik in de kluis al iets over mijn stage?") == AylaVaultOffer.question)
-        #expect(AylaVaultOffer.offersToAddEvidence(answer, asked: "Heb ik in de kluis al iets over mijn stage?"))
-        #expect(AylaVaultOffer.question(for: reply("Ik zie niets in je kluis over Scrum."), asked: "Wat weet je over Scrum?") == AylaVaultOffer.question)
+    @Test func askingWhatIsInTheVaultOffersNothingAskingToAddDoes() {
+        let found = reply("Je propedeuse HBO-ICT staat in je kluis, bevestigd door Fontys.")
+        #expect(AylaVaultOffer.question(for: found, asked: "Kun je mijn diploma zoeken in de kluis?") == nil)
+        #expect(!AylaVaultOffer.offersToAddEvidence(found, asked: "Kun je mijn diploma zoeken in de kluis?"))
+        #expect(AylaVaultOffer.question(for: reply("Ik zie niets in je kluis over Scrum."), asked: "Wat weet je over Scrum?") == nil)
+
+        let add = reply("Goed idee.")
+        #expect(AylaVaultOffer.question(for: add, asked: "Zet mijn stage in de kluis") == AylaVaultOffer.question)
+        #expect(AylaVaultOffer.offersToAddEvidence(add, asked: "Kan ik mijn certificaat aan de kluis toevoegen?"))
+    }
+
+    @Test func herQuestionWhetherSheMayLookInTheVaultIsNoOffer() {
+        let ask = AylaReply.Question(text: "Mag ik in je kluis kijken om je diploma te zoeken?", choices: [.init(id: "yes", label: "Ja"), .init(id: "no", label: "Nee")])
+        var answer = reply("Ik zoek hem voor je op.", question: ask)
+        answer.accessRequest = AylaReply.AccessRequest(id: "a", purpose: "je diploma te zoeken", categories: [])
+        #expect(AylaVaultOffer.question(for: answer, asked: "Zoek mijn diploma in de kluis") == ask)
+        #expect(!AylaVaultOffer.offersToAddEvidence(answer, asked: "Zet mijn diploma in de kluis"))
     }
 
     @Test func openingTheVaultOrAnOrdinaryAnswerAsksNothing() {

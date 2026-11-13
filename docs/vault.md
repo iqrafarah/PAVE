@@ -86,6 +86,10 @@ Migration `20261112120000_vault_cover_example_folders_reverify.sql`. Run it toge
   - Until the migration runs, iOS makes them for an account without any folder.
 - **Ayla and the vault:** the `ayla` function reads the items with `ayla_allowed_at` set and uses them in answers and searches. It sees their details, skills and file names, not file contents. Other items stay invisible to her.
 
+## Test data
+
+[`shared/supabase/seed/vault_test_data.sql`](../shared/supabase/seed/vault_test_data.sql) fills the vault of one test account for trying the apps and the demo: 15 items in every category, all three statuses, every source, current and finished periods, skills, items Ayla may and may not use, and six folders. It is not a migration: fill in the account's e-mail address at the top and run it in the SQL editor. Running it again replaces the test data, and [`vault_test_data_remove.sql`](../shared/supabase/seed/vault_test_data_remove.sql) takes it out. It only touches rows whose id starts with `5eed0000`, and it reuses the example folders the account already has. There are no files: those go through the Storage API.
+
 ## Rollout sequence
 
 1. Review categories, folder behavior, status transitions, file limits and validation ownership with Daaf and the web team.

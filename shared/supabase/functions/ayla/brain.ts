@@ -1,12 +1,14 @@
 import { type AylaReply, type AylaRequest, type Block, CATEGORIES, type Category, type Screen, SCREENS } from './contract.ts'
 import type { AllowedVault } from './vault.ts'
+import { cleanPurpose, CONSENT_QUESTION_CHOICES, consentQuestion, mayLookInVault, vaultConsent } from './consent.ts'
 import { cleanMemories, type Memory, type MemorySuggestion, usedNotes } from './memory.ts'
 import type { ChatMessage, Complete } from './openrouter.ts'
 import { buildSystemPrompt } from './prompt.ts'
 import { vaultProposal } from './proposal.ts'
 import type { FoundVacancy, SearchVacancies } from './vacancies.ts'
 
-export interface PastMessage { role: 'user' | 'ayla'; text: string }
+/** A message so far. An Ayla turn says whether it asked to look in the vault, for the consent of this conversation. */
+export interface PastMessage { role: 'user' | 'ayla'; text: string; askedVault?: boolean }
 
 export interface BrainInput {
   request: AylaRequest
@@ -15,7 +17,8 @@ export interface BrainInput {
   firstName?: string
   /** What the user let Ayla remember. Missing means Ayla remembers nothing. */
   memory?: Memory
-  /** The vault items the user allowed Ayla to use. Missing means she sees none. */
+  /** The vault items the user allowed Ayla to use. Missing means she sees none. She only sees them once the user said
+   * Ja to looking in the vault in this conversation (see consent.ts). */
   vault?: AllowedVault
   /** Called with the text of the answer so far, while the model writes it. */
   onText?: (text: string) => void
@@ -33,6 +36,22 @@ export interface BrainDeps {
 }
 
 export const HISTORY_LIMIT = 20
+/** How many messages are read to know whether the user let Ayla look in the vault in this conversation. */
+export const CONSENT_HISTORY_LIMIT = 100
+
+/** A row of ayla_messages as the function reads it. */
+export interface StoredMessage { role: 'user' | 'ayla'; text: string; reply?: Partial<AylaReply> | null }
+
+/**
+ * A stored message for the brain. When Ayla asked to look in the vault, her question was not part of her text, so it is
+ * added: the model then knows what a Ja answers.
+ */
+export function toPastMessage(message: StoredMessage): PastMessage {
+  const asked = message.role === 'ayla' && !!message.reply?.accessRequest
+  if (!asked) return { role: message.role, text: message.text }
+  const question = message.reply?.question?.text
+  return { role: 'ayla', text: question ? `${message.text}\n${question}` : message.text, askedVault: true }
+}
 const NAVIGABLE = new Set<Screen>(['home', 'vault', 'addEvidence', 'plans', 'vacancies', 'profile', 'settings'])
 const FALLBACK_TEXT = 'Sorry, dat lukte me even niet. Wil je het nog een keer vragen?'
 
@@ -46,14 +65,18 @@ interface ModelOutput {
   usedMemories: unknown
   usedVaultItems: unknown
   vaultItem: unknown
+  askVault: unknown
 }
 
 /** One turn of the conversation: the prompt in layers, the model, and a reply in the contract format. */
 export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaReply> {
   const { request } = input
   const memory: Memory = input.memory ?? { status: 'unavailable' }
+  const consent = vaultConsent(input.history, request)
+  const mayLook = mayLookInVault(consent)
+  const vault = mayLook ? input.vault : undefined
   const messages: ChatMessage[] = [
-    { role: 'system', content: buildSystemPrompt({ device: request.device, input: request.input, firstName: input.firstName, context: request.context, memory, vault: input.vault }) },
+    { role: 'system', content: buildSystemPrompt({ device: request.device, input: request.input, firstName: input.firstName, context: request.context, memory, vault, vaultConsent: consent }) },
     ...input.history.slice(-HISTORY_LIMIT).map((m): ChatMessage => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text })),
     { role: 'user', content: withAttachments(request) },
   ]
@@ -89,7 +112,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
     }
   }
 
-  const reply = toReply(output, blocks, input.conversationId, deps.newId(), input.vault)
+  const reply = toReply(output, blocks, input.conversationId, deps.newId(), vault)
   const later = cleanMemories(output.memories, memory)
   const suggestions: MemorySuggestion[] = later.length ? later : heard
   if (suggestions.length) reply.memories = suggestions
@@ -99,6 +122,13 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   // A proposal for the vault: the Watch saves it after Ja; the iPhone and the web open adding evidence with it filled in.
   const action = vaultProposal(output.vaultItem, deps.newId(), new Date())
   if (action) reply.proposedAction = action
+  // Ayla wants to look in the vault and may not yet: the app asks, with fixed words, before she sees anything.
+  const purpose = mayLook ? null : cleanPurpose(output.askVault)
+  if (purpose) {
+    reply.accessRequest = { id: deps.newId(), purpose, categories: [] }
+    reply.question = { text: consentQuestion(purpose), choices: CONSENT_QUESTION_CHOICES }
+    delete reply.navigation
+  }
   return reply
 }
 
@@ -177,9 +207,10 @@ function parseOutput(content: string): ModelOutput {
       usedMemories: Array.isArray(json.usedMemories) ? json.usedMemories : [],
       usedVaultItems: Array.isArray(json.usedVaultItems) ? json.usedVaultItems : [],
       vaultItem: json.vaultItem ?? null,
+      askVault: typeof json.askVault === 'string' ? json.askVault : null,
     }
   } catch {
-    return { text: content, question: null, navigation: null, vacancySearch: null, title: null, memories: [], usedMemories: [], usedVaultItems: [], vaultItem: null }
+    return { text: content, question: null, navigation: null, vacancySearch: null, title: null, memories: [], usedMemories: [], usedVaultItems: [], vaultItem: null, askVault: null }
   }
 }
 
