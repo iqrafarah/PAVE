@@ -10,7 +10,7 @@ const getIcon = () => voice.getIcon(Date.now());
 </script>
 
 <template>
-  <div class="flex flex-col items-center">
+  <div class="flex w-full flex-col items-center">
     <button
       type="button"
       :aria-label="orbLabel"
@@ -20,6 +20,7 @@ const getIcon = () => voice.getIcon(Date.now());
     >
       <AylaPixelOrb :state="state" :get-level="getLevel" :get-icon="getIcon" />
     </button>
+    <AylaVoiceCaption />
     <!-- What you say and what Ayla is doing stays available to screen readers. -->
     <p class="sr-only" aria-live="polite">{{ voice.getCaption(Date.now()).text }}</p>
   </div>

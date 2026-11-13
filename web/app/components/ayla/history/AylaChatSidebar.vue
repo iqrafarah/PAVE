@@ -4,6 +4,7 @@ import type { Conversation } from '~/types/ayla';
 
 const SEARCH_MESSAGES_FROM = 2;
 const SEARCH_DELAY_MS = 300;
+const CLOCK_INTERVAL_MS = 60_000;
 
 const route = useRoute();
 const chats = useAylaChats();
@@ -19,6 +20,9 @@ const asideRef = useTemplateRef<HTMLElement>('aside');
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
 let channel: RealtimeChannel | null = null;
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
+let clockTimer: ReturnType<typeof setInterval> | undefined;
+// The groups and times move along with the clock, so a chat from before midnight moves to "Gisteren".
+const now = ref(new Date());
 
 const undoDelete = useUndoDelay({
   onCommit: commitDelete,
@@ -35,7 +39,7 @@ const shownConversations = computed(() => {
       messageMatchIds.value.includes(conversation.id),
   );
 });
-const sections = computed(() => splitPinned(shownConversations.value));
+const sections = computed(() => groupConversations(shownConversations.value, now.value));
 const transcript = computed(() => {
   const state = conversation.state.value;
   const isOpenChat = Boolean(activeId.value) && state.conversationId === activeId.value;
@@ -131,12 +135,14 @@ watch(search, () => {
 });
 
 onMounted(async () => {
+  clockTimer = setInterval(() => (now.value = new Date()), CLOCK_INTERVAL_MS);
   await chats.load();
   channel = await chats.subscribe();
 });
 
 onBeforeUnmount(() => {
   clearTimeout(searchTimer);
+  clearInterval(clockTimer);
   chats.unsubscribe(channel);
 });
 </script>
@@ -214,23 +220,13 @@ onBeforeUnmount(() => {
           <p v-else-if="hasNoResults" class="text-sm text-subtle">{{ getNoChatsFoundMessage(search) }}</p>
 
           <AylaChatSection
-            v-if="sections.pinned.length"
-            :title="AYLA_PINNED_HEADING"
-            :conversations="sections.pinned"
+            v-for="section in sections"
+            :key="section.kind"
+            :title="section.title"
+            :conversations="section.conversations"
             :active-id="activeId"
             :can-pin="chats.state.value.canPin"
-            @open="closeDrawer"
-            @toggle-pin="togglePin"
-            @rename="renameChat"
-            @remove="removeChat"
-          />
-          <AylaChatSection
-            v-if="sections.others.length"
-            :title="AYLA_CHATS_HEADING"
-            :conversations="sections.others"
-            :active-id="activeId"
-            :can-pin="chats.state.value.canPin"
-            is-foldable
+            :now="now"
             @open="closeDrawer"
             @toggle-pin="togglePin"
             @rename="renameChat"

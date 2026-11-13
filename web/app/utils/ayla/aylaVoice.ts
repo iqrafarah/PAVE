@@ -41,15 +41,37 @@ export function createPcm16Decoder() {
   };
 }
 
-/** The sentence of `text` that is being said at character `position`, for the caption under the orb. */
+const SENTENCE_ENDINGS = '.!?';
+const WHITESPACE = /\s/;
+
+/** The sentences of `text`, each with the punctuation that ends it (iOS AylaCaptions.sentences). */
+export function splitSentences(text: string) {
+  const sentences: string[] = [];
+  let current = '';
+  let previous: string | null = null;
+  for (const character of text) {
+    const endsSentence = previous !== null && SENTENCE_ENDINGS.includes(previous) && WHITESPACE.test(character);
+    if (endsSentence) {
+      if (current.trim()) sentences.push(current.trim());
+      current = '';
+    } else {
+      current += character;
+    }
+    previous = character;
+  }
+  if (current.trim()) sentences.push(current.trim());
+  return sentences;
+}
+
+/** The sentence that holds character `position` of `text`; the last one once past the end (iOS AylaCaptions.sentence). */
 export function getSentenceAt(text: string, position: number) {
-  const sentences = text.match(/[^.!?]+[.!?]*\s*/g) ?? [text];
+  const sentences = splitSentences(text);
   let end = 0;
   for (const sentence of sentences) {
-    end += sentence.length;
-    if (position < end) return sentence.trim();
+    end += sentence.length + 1;
+    if (position < end) return sentence;
   }
-  return sentences.at(-1)?.trim() ?? '';
+  return sentences.at(-1) ?? '';
 }
 
 export function countWords(text: string) {

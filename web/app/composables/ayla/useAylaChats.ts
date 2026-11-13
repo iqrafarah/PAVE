@@ -133,7 +133,7 @@ export function useAylaChats() {
   }
 
   function rename(id: string, title: string) {
-    const trimmedTitle = title.trim();
+    const trimmedTitle = title.trim().replace(/\s+/g, ' ').slice(0, AYLA_MAX_TITLE_LENGTH);
     if (!trimmedTitle) return Promise.resolve({ isFailed: true });
     return updateConversation(id, { title: trimmedTitle }, { title: trimmedTitle });
   }

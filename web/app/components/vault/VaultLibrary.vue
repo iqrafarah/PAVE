@@ -11,16 +11,17 @@ const vault = useVault();
 const route = useRoute();
 const router = useRouter();
 const vaultAdd = useVaultAdd();
+const personal = usePersonalisation();
 
 const PAGE_SIZE = 9;
 // Moved further than this, a press on the folder row is a drag and not a click on a folder.
 const DRAG_DISTANCE = 6;
 const primaryButton =
   'min-h-10 min-w-50 rounded-lg bg-brand px-4 text-sm font-medium text-white hover:bg-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand';
-const GRID_KEY = 'pave-vault-grid';
 
 const filter = ref<VaultFilter>(createFilter());
-const isGrid = ref(true);
+// Opens the way "Weergave kluis" in Settings says; switching here only lasts for this visit.
+const isGrid = ref(personal.state.value.isVaultGrid);
 const isSearching = ref(false);
 const shelfRowRef = useTemplateRef<HTMLUListElement>('shelfRow');
 const drag = ref<{ x: number; scrollLeft: number; isDragging: boolean } | null>(null);
@@ -206,21 +207,15 @@ watch(isSearching, async (searching) => {
   searchRef.value?.focus();
 });
 
-// Grid or list is remembered on this device, like iOS (@AppStorage).
-watch(isGrid, (value) => {
-  try {
-    localStorage.setItem(GRID_KEY, value ? 'grid' : 'list');
-  } catch {
-    // Without storage the choice is simply not remembered.
-  }
-});
+// The default can still arrive after the vault opened, for instance from the account.
+watch(
+  () => personal.state.value.isVaultGrid,
+  (isVaultGrid) => (isGrid.value = isVaultGrid),
+);
 
 onMounted(() => {
-  try {
-    isGrid.value = localStorage.getItem(GRID_KEY) !== 'list';
-  } catch {
-    isGrid.value = true;
-  }
+  personal.load();
+  isGrid.value = personal.state.value.isVaultGrid;
   vault.load();
   window.addEventListener('resize', updateShelfFade);
 });

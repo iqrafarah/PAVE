@@ -29,6 +29,7 @@ const isComposerReading = ref(false);
 const composerRef = useTemplateRef<{ openFilePicker: () => void; focus: () => void }>('composer');
 
 const state = computed(() => conversation.state.value);
+const itemContext = computed(() => conversation.itemContext.value);
 const conversationId = computed(() => state.value.conversationId);
 const hasMessages = computed(() => state.value.messages.length > 0);
 const latestAnswer = computed(() => {
@@ -96,6 +97,11 @@ function choose(label: string) {
   const reply = latestAnswer.value?.reply;
   if (isVaultOffer.value && isYesChoice(label)) vaultAdd.open({ suggestedSkills: getSuggestedSkills(reply) });
   send(label);
+}
+
+function clearItemContext() {
+  conversation.clearItemContext();
+  composerRef.value?.focus();
 }
 
 function openFilePicker() {
@@ -175,6 +181,7 @@ defineExpose({ openFilePicker });
         :message="conversation.redoError.value"
       />
 
+      <AylaContextChip v-if="itemContext" class="relative mb-2.5" :title="itemContext.title" @clear="clearItemContext" />
       <AylaChoiceBar
         v-if="openQuestion && !voice.isActive.value"
         class="relative"

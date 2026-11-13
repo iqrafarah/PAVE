@@ -1,24 +1,24 @@
 import SwiftUI
 
-/// The empty chat: greeting (typed out), explanation and three starters.
+/// The empty chat: greeting (typed out), explanation and three chips. A chip opens Kluis, Plan or Profiel over the
+/// chat, like on the web, so you can look at it and keep asking Ayla about it.
 struct AylaWelcome: View {
     let firstName: String?
     var isAvailable = true
     /// The title types itself out once this is true.
     var isTyping = true
-    let onStarter: (String) -> Void
+    let onStarter: (AylaShelf) -> Void
 
     private struct Starter {
         let icon: ImageResource
-        let title: String
-        let question: String
+        let shelf: AylaShelf
         let width: CGFloat
     }
 
     private static let starters = [
-        Starter(icon: .iconFolder, title: "Kluis", question: "Wat kan ik allemaal in mijn kluis bewaren?", width: 96),
-        Starter(icon: .iconMap, title: "Plan", question: "Kun je me helpen een ontwikkelplan te maken?", width: 93),
-        Starter(icon: .iconPerson, title: "Profiel", question: "Hoe maak ik een profiel om met een werkgever te delen?", width: 99),
+        Starter(icon: .iconFolder, shelf: .vault, width: 96),
+        Starter(icon: .iconMap, shelf: .plan, width: 93),
+        Starter(icon: .iconPerson, shelf: .profile, width: 99),
     ]
 
     private var title: String {
@@ -39,9 +39,9 @@ struct AylaWelcome: View {
 
             if isAvailable {
                 HStack(spacing: 14.5) {
-                    ForEach(Self.starters, id: \.title) { starter in
-                        PaveChip(icon: starter.icon, title: starter.title, width: starter.width) { onStarter(starter.question) }
-                            .accessibilityHint(starter.question)
+                    ForEach(Self.starters, id: \.shelf) { starter in
+                        PaveChip(icon: starter.icon, title: starter.shelf.title, width: starter.width) { onStarter(starter.shelf) }
+                            .accessibilityHint("Opent \(starter.shelf.title.lowercased()) boven het gesprek")
                     }
                 }
                 .padding(.top, 26)

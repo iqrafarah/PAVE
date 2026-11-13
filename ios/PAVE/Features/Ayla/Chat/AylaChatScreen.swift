@@ -81,6 +81,9 @@ struct AylaChatScreen: View {
         let text: String
     }
 
+    /// Kluis, Plan or Profiel from the start chips, open over the chat.
+    @State private var shelf: AylaShelf?
+
     private var openVacancies: [Vacancy]? {
         guard let openVacanciesID, let entry = model.entries.first(where: { $0.id == openVacanciesID }) else { return nil }
         return Self.vacancies(in: entry)
@@ -90,7 +93,7 @@ struct AylaChatScreen: View {
         GeometryReader { proxy in
             let fullHeight = proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom
             let sheetHeight = (fullHeight * 0.612).rounded()
-            let showsSheet = openVacancies != nil
+            let showsSheet = openVacancies != nil || shelf != nil
 
             ZStack(alignment: .bottom) {
                 if let voice, isTalking {
@@ -132,6 +135,22 @@ struct AylaChatScreen: View {
                             .frame(maxWidth: .infinity)
                     }
                     .ignoresSafeArea(edges: .bottom)
+                } else if let shelf {
+                    AylaBottomSheet(
+                        title: shelf.closeTitle,
+                        height: sheetHeight,
+                        expandedHeight: fullHeight - proxy.safeAreaInsets.top - 24,
+                        bottomInset: bottomBarHeight + proxy.safeAreaInsets.bottom + 16,
+                        onClose: closeShelf
+                    ) {
+                        AylaShelfContent(shelf: shelf) { item in
+                            closeShelf()
+                            model.ask(about: item)
+                        }
+                    }
+                    .id(shelf)
+                    .ignoresSafeArea(edges: .bottom)
+                    .transition(.move(edge: .bottom))
                 }
 
                 bottomBar(placeholder: placeholderColor(sheetOpen: showsSheet), isOverPanel: showsSheet)
@@ -149,6 +168,7 @@ struct AylaChatScreen: View {
         .animation(.easeOut(duration: 0.4), value: isOutroRunning)
         .sensoryFeedback(trigger: dictation.isListening) { _, isListening in isListening ? .start : .stop }
         .animation(.spring(duration: 0.4), value: openVacanciesID)
+        .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.4), value: shelf)
         .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.35, bounce: 0.18), value: isAttachMenuOpen)
         .toolbar { toolbar }
         .sheet(isPresented: Binding(get: { addEvidence != nil }, set: { if !$0 { addEvidence = nil } })) {
@@ -162,9 +182,11 @@ struct AylaChatScreen: View {
         .navigationBarBackButtonHidden(true)
         .onChange(of: model.entries.last?.id) {
             guard !isVoiceActive, let last = model.entries.last, last.role == .ayla, !Self.vacancies(in: last).isEmpty else { return }
+            closeShelf()
             openVacanciesID = last.id
         }
         .onChange(of: model.conversationID) { old, _ in
+            shelf = nil
             dictation.stop()
             readAloud.stop()
             isAttachMenuOpen = false
@@ -348,7 +370,7 @@ struct AylaChatScreen: View {
     private func conversation(height: CGFloat, bottomMargin: CGFloat) -> some View {
         if model.entries.isEmpty, !model.isLoadingConversation {
             ScrollView {
-                AylaWelcome(firstName: model.firstName, isAvailable: model.isAvailable, isTyping: model.isGreetingReady, onStarter: { send($0) })
+                AylaWelcome(firstName: model.firstName, isAvailable: model.isAvailable, isTyping: model.isGreetingReady, onStarter: openShelf)
                     .padding(.top, (height * 0.174).rounded())
                     .frame(maxWidth: .infinity)
                     // The orb falls apart right here during the outro; the welcome returns once its blocks are back in the button.
@@ -1161,6 +1183,20 @@ struct AylaChatScreen: View {
 
     private func closeVacancies() {
         openVacanciesID = nil
+    }
+
+    private func openShelf(_ next: AylaShelf) {
+        PaveHaptics.selection()
+        if let shelf { model.hideScreen(shelf.screen) }
+        openVacanciesID = nil
+        shelf = next
+        model.showScreen(next.screen)
+    }
+
+    private func closeShelf() {
+        guard let shelf else { return }
+        model.hideScreen(shelf.screen)
+        self.shelf = nil
     }
 
     private func cancelDictation() {

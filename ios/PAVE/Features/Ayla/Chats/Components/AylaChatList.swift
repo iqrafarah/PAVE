@@ -328,7 +328,7 @@ struct AylaChatList: View {
             .plainRow()
             .selectionDisabled()
         } else {
-            PaveEmptyState(icon: .iconChat, title: "Nog geen chats", message: "Je gesprekken met Ayla komen hier te staan, ook die je op web of je Apple Watch begint.")
+            PaveEmptyState(icon: .iconChat, title: "Nog geen chats", message: "Je gesprekken met Ayla komen hier te staan, ook die je op web begint.")
                 .frame(maxWidth: .infinity)
                 .padding(.top, 60)
                 .plainRow()

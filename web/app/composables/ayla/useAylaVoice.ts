@@ -328,14 +328,23 @@ export function useAylaVoice() {
     endTurn();
   }
 
+  /**
+   * The sentence Ayla is saying at `now`, or null when she is not speaking. The voice gives no timings, so the place in
+   * the text is estimated from how long she has been talking (iOS AylaVoiceSession.spokenSentence).
+   */
+  function getSpokenSentence(now: number) {
+    const { state, spokenText, speakingSince } = session.value;
+    if (state !== 'speaking' || !spokenText || speakingSince === null) return null;
+    const position = Math.floor(((now - speakingSince) / 1000) * VOICE_CHARACTERS_PER_SECOND);
+    return getSentenceAt(spokenText, position);
+  }
+
   /** The line under the orb: what you say, the sentence Ayla is saying, or a hint (iOS stageCaption). */
   function getCaption(now: number) {
-    const { state, heard, isMuted, spokenText, speakingSince } = session.value;
+    const { state, heard, isMuted } = session.value;
     if (heard) return { text: heard, kind: 'heard' as const };
-    if (state === 'speaking' && spokenText && speakingSince !== null) {
-      const position = Math.floor(((now - speakingSince) / 1000) * VOICE_CHARACTERS_PER_SECOND);
-      return { text: getSentenceAt(spokenText, position), kind: 'answer' as const };
-    }
+    const spokenSentence = getSpokenSentence(now);
+    if (spokenSentence !== null) return { text: spokenSentence, kind: 'answer' as const };
     if (state === 'thinking') return { text: VOICE_THINKING, kind: 'status' as const };
     if (isMuted) return { text: VOICE_MUTED_HINT, kind: 'status' as const };
     if (state === 'starting') return { text: VOICE_STARTING, kind: 'status' as const };
@@ -356,6 +365,7 @@ export function useAylaVoice() {
     tapOrb,
     sendTyped,
     getCaption,
+    getSpokenSentence,
     getMicrophoneLevel,
     getSpeakerLevel,
     getVoiceBands,

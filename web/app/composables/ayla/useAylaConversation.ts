@@ -11,12 +11,18 @@ interface ConversationState {
   announcement: string;
 }
 
+/** The vault item a new chat is about ("Vraag Ayla over dit bewijs"): every question then goes with it. */
+export interface AylaItemContext {
+  itemId: string;
+  title: string;
+}
+
 export interface SendOptions {
   text: string;
   attachments?: AylaAttachment[];
   input?: AylaInput;
   // What the user has open, such as the vault, so Ayla knows where the question comes from.
-  context?: { screen: AylaScreen };
+  context?: { screen: AylaScreen; itemId?: string };
   onConversationStarted?: (conversationId: string) => void;
 }
 
@@ -49,6 +55,9 @@ export function useAylaConversation() {
   // A question taken back with "Aanpassen", waiting for the composer to pick it up.
   const questionToEdit = useState<string | null>('ayla-question-to-edit', () => null);
   const redoError = useState<string | null>('ayla-redo-error', () => null);
+  const itemContext = useState<AylaItemContext | null>('ayla-item-context', () => null);
+  // Set just before the new chat opens, which then takes it over; any other new chat starts without one.
+  const nextItemContext = useState<AylaItemContext | null>('ayla-next-item-context', () => null);
   const { streamQuestion, loadMessages, removeLastTurn } = useAyla();
 
   function stop() {
@@ -58,6 +67,23 @@ export function useAylaConversation() {
   function startNew() {
     stop();
     state.value = { ...createEmptyState(), loadStatus: 'ready' };
+    itemContext.value = nextItemContext.value;
+    nextItemContext.value = null;
+  }
+
+  /** Starts a new chat about one vault item. */
+  function askAboutItem(context: AylaItemContext) {
+    nextItemContext.value = context;
+    return navigateTo('/');
+  }
+
+  function clearItemContext() {
+    itemContext.value = null;
+  }
+
+  function getRequestContext(options: SendOptions) {
+    if (itemContext.value) return { screen: 'vaultItem' as const, itemId: itemContext.value.itemId };
+    return options.context;
   }
 
   async function open(conversationId: string) {
@@ -65,6 +91,8 @@ export function useAylaConversation() {
     if (isAlreadyOpen) return;
 
     stop();
+    // The item belongs to the chat it was asked in, not to another chat opened from the list.
+    clearItemContext();
     state.value = { ...createEmptyState(), conversationId, loadStatus: 'loading' };
     const { data, isNotFound } = await loadMessages(conversationId);
     if (state.value.conversationId !== conversationId) return;
@@ -102,6 +130,7 @@ export function useAylaConversation() {
     state.value.isWriting = true;
     stopController = new AbortController();
     const { questionId, answer } = addTurn(text, attachments);
+    const context = getRequestContext(options);
 
     const result = await streamQuestion(
       {
@@ -110,7 +139,7 @@ export function useAylaConversation() {
         input: options.input ?? 'text',
         ...(state.value.conversationId ? { conversationId: state.value.conversationId } : {}),
         ...(attachments.length ? { attachments } : {}),
-        ...(options.context ? { context: options.context } : {}),
+        ...(context ? { context } : {}),
       },
       {
         onStart(conversationId) {
@@ -163,5 +192,17 @@ export function useAylaConversation() {
     else await send({ text: question });
   }
 
-  return { state, questionToEdit, redoError, open, startNew, send, stop, changeLastTurn };
+  return {
+    state,
+    questionToEdit,
+    redoError,
+    itemContext,
+    open,
+    startNew,
+    askAboutItem,
+    clearItemContext,
+    send,
+    stop,
+    changeLastTurn,
+  };
 }

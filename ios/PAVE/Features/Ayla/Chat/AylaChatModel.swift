@@ -353,6 +353,17 @@ final class AylaChatModel {
         contextTitle = nil
     }
 
+    /// Kluis, Plan or Profiel is open over the chat: questions are about that place, unless they are about one item.
+    func showScreen(_ screen: AylaScreen) {
+        guard contextTitle == nil else { return }
+        context = AylaRequest.Context(screen: screen)
+    }
+
+    func hideScreen(_ screen: AylaScreen) {
+        guard context?.screen == screen, context?.itemId == nil else { return }
+        context = nil
+    }
+
     func newConversation() {
         guard !isAnswering else { return }
         clearContext()
