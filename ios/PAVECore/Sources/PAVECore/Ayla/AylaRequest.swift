@@ -47,9 +47,11 @@ public struct AylaAttachment: Codable, Equatable, Sendable, Identifiable {
     public var id: String { name }
     public var name: String
     public var text: String
+    /// For a photo: a small JPEG (base64) so Ayla can look at it. Sent with that one message, not stored.
+    public var image: String?
 
     /// Cleans up the text and keeps it within what Ayla accepts. Nil when there is no text at all.
-    public init?(name: String, text: String) {
+    public init?(name: String, text: String, image: String? = nil) {
         let cleaned = text
             .split(whereSeparator: \.isNewline)
             .map { $0.split(whereSeparator: \.isWhitespace).joined(separator: " ") }
@@ -59,5 +61,6 @@ public struct AylaAttachment: Codable, Equatable, Sendable, Identifiable {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         self.name = String((trimmedName.isEmpty ? "Bestand" : trimmedName).prefix(Self.maxNameLength))
         self.text = String(cleaned.prefix(Self.maxTextLength))
+        self.image = image
     }
 }

@@ -44,6 +44,7 @@ test('the prompt makes work the user did into evidence instead of refusing it', 
   assert.match(prompt, /weiger dan niet/)
   assert.match(prompt, /vraag wat je er niet uit kunt halen/)
   assert.match(prompt, /foto zonder leesbare tekst/)
+  assert.match(prompt, /vraag alleen wat je niet kunt zien/)
 })
 
 test('the prompt has the device style, the name and the open screen', () => {
@@ -326,6 +327,19 @@ test('the model output schema and the shared reply schema agree on screens', () 
   const shared = schema.$defs.screen.enum
   for (const screen of ['home', 'vault', 'addEvidence', 'plans', 'vacancies', 'profile', 'settings']) assert.ok(shared.includes(screen))
   assert.ok(readdirSync(new URL('../../../../ayla/examples', import.meta.url)).length > 0)
+})
+
+test('a photo goes to the model as an image it can look at', () => {
+  const photo = { name: 'werkplek.jpeg', text: '(foto zonder leesbare tekst)', image: 'QUJDRA==' }
+  const parsed = parseRequest({ ...request, attachments: [photo] })
+  assert.ok(typeof parsed !== 'string')
+  const content = withAttachments(parsed)
+  assert.ok(Array.isArray(content))
+  assert.equal(content.length, 2)
+  assert.match((content[0] as { text: string }).text, /werkplek.jpeg/)
+  assert.equal((content[1] as { image_url: { url: string } }).image_url.url, 'data:image/jpeg;base64,QUJDRA==')
+  assert.equal(typeof parseRequest({ ...request, attachments: [{ ...photo, image: 'not base64!' }] }), 'string')
+  assert.equal(typeof parseRequest({ ...request, attachments: [photo, photo, photo, photo, photo] }), 'string')
 })
 
 test('attachments are checked and limited', () => {

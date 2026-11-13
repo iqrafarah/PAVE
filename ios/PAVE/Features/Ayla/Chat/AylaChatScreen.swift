@@ -1,4 +1,5 @@
 import PAVECore
+import PhotosUI
 import SwiftUI
 
 /// The conversation with Ayla (Figma frames "Ayla"). Vacancies slide up in a panel on every screen size.
@@ -61,7 +62,8 @@ struct AylaChatScreen: View {
     @State private var scrollPosition = ScrollPosition(edge: .bottom)
     @State private var isAttachMenuOpen = false
     @State private var isChoosingFile = false
-    @State private var photoSource: VaultFileSource?
+    @State private var isChoosingPhotos = false
+    @State private var photoItems: [PhotosPickerItem] = []
     @State private var picksVaultItem = false
     @State private var fileProblem: String?
     @FocusState private var isComposerFocused: Bool
@@ -173,7 +175,12 @@ struct AylaChatScreen: View {
         .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.4), value: shelf)
         .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.35, bounce: 0.18), value: isAttachMenuOpen)
         .toolbar { toolbar }
-        .vaultFilePicker(source: $photoSource, role: .document) { addPhoto($0) }
+        .photosPicker(isPresented: $isChoosingPhotos, selection: $photoItems, maxSelectionCount: max(1, AylaAttachment.maxCount - model.attachments.count), matching: .images, preferredItemEncoding: .compatible)
+        .onChange(of: photoItems) { _, items in
+            guard !items.isEmpty else { return }
+            photoItems = []
+            Task { await addPhotos(items) }
+        }
         .sheet(isPresented: $picksVaultItem) {
             if let vault {
                 AylaVaultItemPicker { item in model.attach(item) }
@@ -1114,33 +1121,35 @@ struct AylaChatScreen: View {
     private var attachMenu: some View {
         AylaAttachMenu(
             onAddFile: { chooseFile() },
-            onPhoto: { isAttachMenuOpen = false; photoSource = .photos },
+            onPhoto: { isAttachMenuOpen = false; isChoosingPhotos = true },
             onPickItem: vault == nil || vault?.state == .ready && vault?.items.isEmpty == true ? nil : { isAttachMenuOpen = false; picksVaultItem = true },
             onScan: scanAction,
             onPaste: { addPasted() }
         )
     }
 
-    /// A photo from the library: written to a file of our own and read like a chosen file.
-    private func addPhoto(_ result: Result<VaultUpload, VaultUpload.Problem>) {
-        guard case .success(let upload) = result else {
-            fileProblem = AylaMessages.fileUnreadable
-            return
-        }
-        guard model.attachments.count < AylaAttachment.maxCount else {
-            fileProblem = AylaMessages.tooManyFiles
-            return
-        }
+    /// Photos from the library, several at once: each becomes a JPEG without its location, written to a file of our
+    /// own and read like a chosen file, one after the other so their names stay apart.
+    private func addPhotos(_ items: [PhotosPickerItem]) async {
         let model = model
-        Task {
+        let day = Date.now.formatted(.iso8601.year().month().day())
+        for item in items {
+            guard model.attachments.count < AylaAttachment.maxCount else {
+                fileProblem = AylaMessages.tooManyFiles
+                return
+            }
+            guard let data = try? await item.loadTransferable(type: Data.self), let jpeg = UIImage(data: data)?.jpegData(compressionQuality: 0.85) else {
+                fileProblem = AylaMessages.fileUnreadable
+                continue
+            }
             let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
             defer { try? FileManager.default.removeItem(at: folder) }
             do {
                 try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-                let url = folder.appending(path: model.uniqueAttachmentName(upload.fileName))
-                try upload.data.write(to: url)
+                let url = folder.appending(path: model.uniqueAttachmentName("Foto \(day).jpeg"))
+                try jpeg.write(to: url)
                 let file = try await AttachmentReader.file(url)
-                model.attach(file.attachment, upload: file.upload ?? VaultUpload(data: upload.data, fileName: url.lastPathComponent, mimeType: upload.mimeType))
+                model.attach(file.attachment, upload: file.upload ?? VaultUpload(data: jpeg, fileName: url.lastPathComponent, mimeType: "image/jpeg"))
                 PaveHaptics.tap(.light)
             } catch {
                 fileProblem = AylaMessages.fileUnreadable

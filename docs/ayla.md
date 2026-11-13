@@ -144,7 +144,7 @@ A single place that builds the prompt, calls the model and returns a structured 
    - `navigation`: a screen to open, chosen from a fixed list the apps map to their own routes
    - `usedData`: which allowed sections were used, set by the server so it is always true
 
-Each message also carries `device`, `input` (voice or text) and optionally `context` (the open screen or item id) and `attachments` (up to 5 files the user added with the plus button, as many as evidence in the vault takes; the app reads their text on the device and sends only that text, which Ayla sees in that one message and which is not stored).
+Each message also carries `device`, `input` (voice or text) and optionally `context` (the open screen or item id) and `attachments` (up to 5 files the user added with the plus button, as many as evidence in the vault takes; the app reads their text on the device and sends that text, and for a photo also a small JPEG so Ayla can look at it; Ayla sees them in that one message and nothing of them is stored, only the file names).
 
 ### Models (from the demo)
 
@@ -435,7 +435,7 @@ Turned off, Ayla uses none of the notes and suggests nothing; the notes stay unt
 ### Rules to keep
 
 - Never save a memory, delete one or change anything without the user's tap. Ayla's text never says she remembered something.
-- Never send attachments as files or store them: only their text, with that one question.
+- Never store attachments: their text, and for a photo a small image, go with that one question only; the stored message keeps the names.
 - Show "Gebaseerd op" whenever `usedMemories` is there; it is a promise of PAVE, not decoration.
 - Use the texts of the iPhone where they exist (`ios/PAVE/Features/Ayla/Shared/AylaMessages.swift`), so both apps say the same.
 

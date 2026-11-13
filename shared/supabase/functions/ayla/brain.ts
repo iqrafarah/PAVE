@@ -2,7 +2,7 @@ import { type AylaReply, type AylaRequest, type Block, CATEGORIES, type Category
 import type { AllowedVault } from './vault.ts'
 import { cleanPurpose, CONSENT_QUESTION_CHOICES, consentQuestion, mayLookInVault, vaultConsent } from './consent.ts'
 import { cleanMemories, type Memory, type MemorySuggestion, usedNotes } from './memory.ts'
-import type { ChatMessage, Complete } from './openrouter.ts'
+import type { ContentPart, ChatMessage, Complete } from './openrouter.ts'
 import { buildSystemPrompt } from './prompt.ts'
 import { vaultProposal } from './proposal.ts'
 import type { FoundVacancy, SearchVacancies } from './vacancies.ts'
@@ -201,10 +201,17 @@ export function partialText(json: string): string {
 }
 
 /** The question plus the text of the files the user added, marked so the model treats it as data. */
-export function withAttachments(request: AylaRequest): string {
+/** The question with its files: their text between tags, and photos as images the model looks at. */
+export function withAttachments(request: AylaRequest): string | ContentPart[] {
   if (!request.attachments?.length) return request.text
   const files = request.attachments.map((file) => `<bijlage naam="${file.name.replaceAll('"', "'")}">\n${file.text}\n</bijlage>`)
-  return [request.text, ...files].join('\n\n')
+  const text = [request.text, ...files].join('\n\n')
+  const images = request.attachments.filter((file) => file.image)
+  if (!images.length) return text
+  return [
+    { type: 'text', text: `${text}\n\nDe afbeeldingen hierbij zijn, in deze volgorde: ${images.map((f) => f.name).join(', ')}.` },
+    ...images.map((file) => ({ type: 'image_url' as const, image_url: { url: `data:image/jpeg;base64,${file.image}` } })),
+  ]
 }
 
 type SearchResult = { status: 'ok'; items: FoundVacancy[] } | { status: 'unavailable' } | { status: 'failed' }

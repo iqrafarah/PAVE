@@ -10,7 +10,8 @@ export type Screen = (typeof SCREENS)[number]
 export type Device = (typeof DEVICES)[number]
 
 /** A file the user added to the message. The app reads the text on the device; the file itself is not sent. */
-export interface Attachment { name: string; text: string }
+/** A file the user added: its text, and for a photo a small JPEG (base64) so Ayla can look at it. Neither is stored. */
+export interface Attachment { name: string; text: string; image?: string }
 
 export interface AylaRequest {
   conversationId?: string
@@ -94,6 +95,9 @@ export const MAX_TEXT_LENGTH = 4000
 export const MAX_ATTACHMENTS = 5
 export const MAX_ATTACHMENT_LENGTH = 20000
 export const MAX_ATTACHMENT_NAME_LENGTH = 200
+/** About 1 MB of JPEG: the app sends photos of at most 1024 points. */
+export const MAX_ATTACHMENT_IMAGE_BASE64 = 1_400_000
+export const MAX_ATTACHMENT_IMAGES = 4
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /** Returns the request, or a reason why it is not valid. */
@@ -126,7 +130,13 @@ export function parseRequest(body: unknown): AylaRequest | string {
       if (typeof a !== 'object' || a === null) return 'attachments are not valid'
       if (typeof a.name !== 'string' || !a.name.trim() || a.name.length > MAX_ATTACHMENT_NAME_LENGTH) return 'attachments are not valid'
       if (typeof a.text !== 'string' || !a.text.trim() || a.text.length > MAX_ATTACHMENT_LENGTH) return 'attachments are not valid'
-      attachments.push({ name: a.name.trim(), text: a.text.trim() })
+      const attachment: Attachment = { name: a.name.trim(), text: a.text.trim() }
+      if (a.image !== undefined) {
+        if (typeof a.image !== 'string' || a.image.length > MAX_ATTACHMENT_IMAGE_BASE64 || !/^[A-Za-z0-9+/]+=*$/.test(a.image)) return 'attachments are not valid'
+        if (attachments.filter((f) => f.image).length >= MAX_ATTACHMENT_IMAGES) return 'attachments are not valid'
+        attachment.image = a.image
+      }
+      attachments.push(attachment)
     }
   }
   return {

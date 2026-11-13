@@ -301,6 +301,7 @@ struct AylaChatModelTests {
         try jpeg.write(to: url)
         let file = try await AttachmentReader.file(url)
         #expect(file.attachment.text == AylaAttachment.photoWithoutText)
+        #expect(file.attachment.image?.isEmpty == false)
         #expect(file.upload?.mimeType == "image/jpeg")
     }
 
