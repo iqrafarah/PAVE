@@ -194,13 +194,13 @@ struct AylaChatScreen: View {
             }
             .presentationDetents([.fraction(0.62), .large], selection: $vaultDetent)
             .presentationDragIndicator(.visible)
-            .paveSheet()
+            .paveSheet(background: shelf == .vault ? .canvas : .white)
         }
         .sheet(isPresented: $picksVaultItem) {
             if let vault {
                 AylaVaultSelectionSheet { items in model.attach(items) }
                     .environment(vault)
-                    .paveSheet()
+                    .paveSheet(background: .white)
             }
         }
         .task {
