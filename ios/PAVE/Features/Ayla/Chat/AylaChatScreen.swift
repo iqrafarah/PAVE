@@ -95,6 +95,9 @@ struct AylaChatScreen: View {
     /// What a button of the chat does once that sheet has slid away: the menu and the chats open over the chat,
     /// never under a sheet.
     @State private var afterShelf: (() -> Void)?
+    /// The wave of blocks after something went into the vault, and the save that is busy after a yes in words.
+    @State private var waveStartedAt: Date?
+    @State private var isSavingForUser = false
     @Environment(\.toolbarIsBeside) private var toolbarIsBeside
 
     private var openVacancies: [Vacancy]? {
@@ -149,6 +152,11 @@ struct AylaChatScreen: View {
                             .frame(maxWidth: .infinity)
                     }
                     .ignoresSafeArea(edges: .bottom)
+                }
+
+                if let waveStartedAt {
+                    AylaSuccessWave(startedAt: waveStartedAt, origin: CGPoint(x: proxy.size.width / 2, y: proxy.size.height - bottomBarHeight / 2))
+                        .transition(.opacity)
                 }
 
                 bottomBar(placeholder: placeholderColor(sheetOpen: showsSheet), isOverPanel: showsSheet)
@@ -488,6 +496,16 @@ struct AylaChatScreen: View {
         .onChange(of: model.entries.count) { scrollToBottom() }
         .onChange(of: openVacanciesID) { scrollToBottom() }
         .onChange(of: bottomBarHeight) { scrollToBottom() }
+        // The keyboard is still on its way down when the question is sent, so the first scroll can land too high and
+        // leave the last message under the "Ayla denkt na" blocks: once more when that has settled.
+        .onChange(of: model.phase) { _, phase in
+            guard phase == .thinking else { return }
+            scrollToBottom()
+            Task {
+                try? await Task.sleep(for: .milliseconds(500))
+                if model.phase == .thinking { scrollToBottom() }
+            }
+        }
         .onChange(of: offlineNoticeHeight) { if !isAwayFromBottom { scrollToBottom() } }
     }
 
@@ -756,7 +774,7 @@ struct AylaChatScreen: View {
         VStack(spacing: 12) {
             // Room above it so the conversation does not crowd it, as in ChatGPT.
             Color.clear
-                .frame(width: 140, height: 140)
+                .frame(width: 116, height: 116)
                 .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { place(.bar, at: $0) }
                 // A wider strip than the orb, so it is easy to take hold of.
                 .frame(maxWidth: .infinity)
@@ -980,13 +998,53 @@ struct AylaChatScreen: View {
         defer { addEvidence = nil; addingFromReplyID = nil }
         guard let flow = addEvidence, flow.savedItemID != nil, let replyID = addingFromReplyID else { return }
         model.markAdded(replyID: replyID, title: flow.draft.title, uploads: flow.documents)
+        startWave()
+    }
+
+    private func startWave() {
+        let started = Date()
+        waveStartedAt = started
+        Task {
+            try? await Task.sleep(for: .seconds(1.8))
+            if waveStartedAt == started { waveStartedAt = nil }
+        }
+    }
+
+    /// A yes in words to "Zal ik het in je kluis zetten?": Ayla puts it in the vault, without the form. When something
+    /// required is missing, or the save fails, the form opens instead, so nothing is saved halfway out of sight.
+    private func addEvidenceForUser(from reply: AylaReply, saying words: String) {
+        guard let vault, !isSavingForUser else { return }
+        isSavingForUser = true
+        let analysis = model.analysis(for: reply)
+        let excluded = excludedFiles[reply.id] ?? []
+        let documents = (analysis?.uploads ?? model.uploads(for: reply.proposedAction?.vaultItem)).filter { !excluded.contains($0.checksum) }
+        PaveHaptics.tap(.light)
+        Task {
+            defer { isSavingForUser = false }
+            if vault.state != .ready { await vault.load() }
+            let flow = VaultAddEvidenceModel.proposed(by: reply, vault: vault, documents: documents, analysis: excluded.isEmpty ? analysis : nil)
+            if flow.aylaFill != .reading, flow.aylaProposals.count <= 1, await flow.saveFromChat() {
+                model.markAdded(replyID: reply.id, title: flow.draft.title, uploads: flow.documents, saying: words)
+                startWave()
+            } else {
+                addingFromReplyID = reply.id
+                addEvidence = flow
+            }
+        }
     }
 
     private func send(_ text: String? = nil) {
-        guard connection.isOnline else { return }
+        guard connection.isOnline, !isSavingForUser else { return }
         dictation.stop()
         isComposerFocused = false
-        model.send(text ?? model.draft)
+        let message = text ?? model.draft
+        if text == nil, !model.isAnswering, let reply = model.lastReply, model.pendingQuestionIsOnCard, !model.addedReplies.contains(reply.id),
+           AylaVaultOffer.asksToPutInVault(reply), AylaVaultOffer.isConfirmation(message) {
+            model.draft = ""
+            addEvidenceForUser(from: reply, saying: message.trimmingCharacters(in: .whitespacesAndNewlines))
+            return
+        }
+        model.send(message)
     }
 
 

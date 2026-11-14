@@ -336,6 +336,14 @@ final class VaultAddEvidenceModel: Identifiable {
         }
     }
 
+    /// Saving from the chat without the form, once the user said yes to what Ayla proposed. False when something
+    /// required is missing or the save failed: the form then opens, so nothing is saved halfway unseen.
+    func saveFromChat() async -> Bool {
+        guard savedItemID == nil, draft.problem == nil, draft.missingFields.isEmpty, !(wantsCover && cover == nil) else { return false }
+        await save()
+        return savedItemID != nil && problem == nil
+    }
+
     /// Afronden: only a ticked box changes anything; Ayla stays out otherwise.
     func finish() async -> Bool {
         guard let savedItemID, allowsAyla else { return true }

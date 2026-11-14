@@ -41,6 +41,15 @@ public enum AylaVaultOffer {
         return words.contains("kluis") && words.contains(addWords)
     }
 
+    /// Ayla's last question is whether she may put it in the vault ("Zal ik deze stage zo in je kluis zetten?"), not a
+    /// question about a detail of it. Only then does a yes in words count as the confirmation to save.
+    public static func asksToPutInVault(_ reply: AylaReply?) -> Bool {
+        guard let reply, reply.accessRequest == nil else { return false }
+        let text = [reply.text, reply.question?.text].compactMap { $0 }.joined(separator: " ")
+        guard let last = sentences(of: text).last(where: { $0.hasSuffix("?") })?.lowercased() else { return false }
+        return last.contains("kluis") && last.contains(addWords) && !last.contains(openWords)
+    }
+
     public enum LastQuestion: Equatable {
         case open
         case yesNo
@@ -83,6 +92,20 @@ public enum AylaVaultOffer {
         text.lowercased()
             .replacingOccurrences(of: #"[?.!…\s]+"#, with: " ", options: .regularExpression)
             .trimmingCharacters(in: .whitespaces)
+    }
+
+    /// A short answer in words that says yes to what Ayla proposed ("Graag", "Zet er maar in", "Ja dat klopt"). Not when
+    /// it also holds a reservation ("ja, maar eerst de datum aanpassen"), a question, or more than a few words.
+    public static func isConfirmation(_ text: String) -> Bool {
+        let cleaned = text.lowercased()
+            .replacingOccurrences(of: #"[.,!…]+"#, with: " ", options: .regularExpression)
+            .split(whereSeparator: \.isWhitespace)
+            .map(String.init)
+        guard !cleaned.isEmpty, cleaned.count <= 7, !text.contains("?") else { return false }
+        let reservations: Set<String> = ["nee", "niet", "geen", "wacht", "eerst", "aanpassen", "verander", "veranderen", "anders", "nog", "toch", "alleen"]
+        guard cleaned.allSatisfy({ !reservations.contains($0) }), !(cleaned.count > 1 && cleaned[1] == "maar") else { return false }
+        let starters: Set<String> = ["ja", "jazeker", "graag", "klopt", "prima", "oké", "oke", "ok", "okay", "top", "goed", "perfect", "zeker", "natuurlijk", "yes", "akkoord", "doen", "doe", "zet", "toevoegen", "bewaar", "sla", "mooi"]
+        return starters.contains(cleaned[0])
     }
 
     public static func isYes(_ label: String) -> Bool {

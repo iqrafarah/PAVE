@@ -355,11 +355,12 @@ final class AylaChatModel {
 
     /// The item of this reply is in the vault: the card says so, its files are done, and Ayla hears it so the next
     /// item starts clean.
-    func markAdded(replyID: String, title: String, uploads: [VaultUpload]) {
+    func markAdded(replyID: String, title: String, uploads: [VaultUpload], saying words: String? = nil) {
         addedReplies.insert(replyID)
         sentUploads.removeAll { upload in uploads.contains(upload) }
         let name = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        send(AylaMessages.addedToVault(name.isEmpty ? nil : name))
+        let notice = AylaMessages.addedToVault(name.isEmpty ? nil : name)
+        send(words.map { "\($0)\n\(notice)" } ?? notice)
     }
 
     /// Adds a file to the next message, with the file itself when the vault can keep it. Returns false when there is

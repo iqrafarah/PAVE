@@ -92,6 +92,17 @@ struct AylaVaultOfferTests {
     }
 
     @Test func whatCountsAsYesAndWhichSkillsShePicked() {
+        let putIt = reply("Zo zet ik het in je kluis: Stage. Zal ik deze stage zo in je kluis zetten?")
+        let detail = reply("Zo zet ik het in je kluis: Stage. Klopt de periode van maart tot augustus?")
+        #expect(AylaVaultOffer.asksToPutInVault(putIt))
+        #expect(!AylaVaultOffer.asksToPutInVault(detail))
+        #expect(AylaVaultOffer.isConfirmation("Zet er maar in"))
+        #expect(AylaVaultOffer.isConfirmation("Graag"))
+        #expect(AylaVaultOffer.isConfirmation("Ja dat klopt!"))
+        #expect(!AylaVaultOffer.isConfirmation("Ja, maar eerst de datum aanpassen"))
+        #expect(!AylaVaultOffer.isConfirmation("Nee"))
+        #expect(!AylaVaultOffer.isConfirmation("Ja? Wat bedoel je"))
+        #expect(!AylaVaultOffer.isConfirmation("Wat staat erin"))
         #expect(AylaVaultOffer.isYes("Ja"))
         #expect(AylaVaultOffer.isYes(" ja, graag"))
         #expect(AylaVaultOffer.isYes("Toevoegen"))
