@@ -244,6 +244,9 @@ struct VaultLibraryPage: View {
                     Color.clear
                         .contentShape(.rect)
                         .onDrop(of: [.text], delegate: VaultFolderRowDropDelegate(fingerX: $fingerX, onDrop: endDrag))
+                        // Only in the way while the drag really moves; if its end was never heard, a tap clears it.
+                        .allowsHitTesting(isDragging)
+                        .onTapGesture { endDrag() }
                 }
             }
         }
@@ -370,6 +373,11 @@ struct VaultLibraryPage: View {
         liveOrder = model.folders.map(\.id)
         liveItems = visibleItems.map(\.id)
         if case .folder = dragged { startRowScrolling() }
+        // A long press that only opens the menu starts a drag that never moves, and may never report its end.
+        Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            if drag == dragged, !isDragging { endDrag() }
+        }
     }
 
     /// The finger is lifted: what was dragged stays where it was moved to, wherever it was let go. Cards that changed
@@ -389,7 +397,7 @@ struct VaultLibraryPage: View {
         Task {
             switch ended {
             case .folder:
-                if let folders { await model.setFolderOrder(folders) }
+                if let folders, folders != model.folders.map(\.id) { await model.setFolderOrder(folders) }
             case .item:
                 if cardsMoved, let cards {
                     await model.setItemOrder(cards)

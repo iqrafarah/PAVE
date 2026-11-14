@@ -49,6 +49,15 @@ test('the prompt makes work the user did into evidence instead of refusing it', 
   assert.match(prompt, /Toegevoegd aan mijn kluis/)
 })
 
+test('the prompt supports building evidence: files, skills, a person who confirms and next steps', () => {
+  const prompt = buildSystemPrompt({ device: 'phone' })
+  assert.match(prompt, /Voeg die toe met het plusje/)
+  assert.match(prompt, /vraag nooit open "welke vaardigheden\?"/)
+  assert.match(prompt, /wie dit kan bevestigen/)
+  assert.match(prompt, /beloof nooit dat er iets is verstuurd of bevestigd/)
+  assert.match(prompt, /hooguit twee vervolgstappen/)
+})
+
 test('the prompt has the device style, the name and the open screen', () => {
   const prompt = buildSystemPrompt({ device: 'watch', firstName: 'Daaf', context: { screen: 'vault' } })
   assert.match(prompt, /Apple Watch/)

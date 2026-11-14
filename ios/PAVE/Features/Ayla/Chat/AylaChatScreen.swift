@@ -98,6 +98,7 @@ struct AylaChatScreen: View {
     /// The wave of blocks after something went into the vault, and the save that is busy after a yes in words.
     @State private var waveStartedAt: Date?
     @State private var isSavingForUser = false
+    @State private var confirmationItem: VaultItem?
     @Environment(\.toolbarIsBeside) private var toolbarIsBeside
 
     private var openVacancies: [Vacancy]? {
@@ -214,6 +215,10 @@ struct AylaChatScreen: View {
             .presentationDragIndicator(.visible)
             .presentationBackgroundInteraction(.enabled)
             .paveSheet(background: shelf == .vault ? .canvas : .white, clipsToColumn: shelf != .vault)
+        }
+        .sheet(item: $confirmationItem) { item in
+            VaultRequestConfirmationSheet(item: item, documentCount: vault?.documents(of: item).count ?? 0)
+                .paveSheet()
         }
         .sheet(isPresented: $picksVaultItem) {
             if let vault {
@@ -546,7 +551,8 @@ struct AylaChatScreen: View {
                         onToggleFile: { file in
                             PaveHaptics.selection()
                             if excludedFiles[reply.id, default: []].remove(file.checksum) == nil { excludedFiles[reply.id, default: []].insert(file.checksum) }
-                        }
+                        },
+                        onRequestConfirmation: model.addedItemIDs[reply.id].flatMap { id in vault?.items.first { $0.id == id } }.map { saved in { confirmationItem = saved } }
                     ) {
                         openProposedEvidence(from: reply)
                     }
@@ -997,7 +1003,7 @@ struct AylaChatScreen: View {
     private func addEvidenceClosed() {
         defer { addEvidence = nil; addingFromReplyID = nil }
         guard let flow = addEvidence, flow.savedItemID != nil, let replyID = addingFromReplyID else { return }
-        model.markAdded(replyID: replyID, title: flow.draft.title, uploads: flow.documents)
+        model.markAdded(replyID: replyID, itemID: flow.savedItemID, title: flow.draft.title, uploads: flow.documents)
         startWave()
     }
 
@@ -1024,7 +1030,7 @@ struct AylaChatScreen: View {
             if vault.state != .ready { await vault.load() }
             let flow = VaultAddEvidenceModel.proposed(by: reply, vault: vault, documents: documents, analysis: excluded.isEmpty ? analysis : nil)
             if flow.aylaFill != .reading, flow.aylaProposals.count <= 1, await flow.saveFromChat() {
-                model.markAdded(replyID: reply.id, title: flow.draft.title, uploads: flow.documents, saying: words)
+                model.markAdded(replyID: reply.id, itemID: flow.savedItemID, title: flow.draft.title, uploads: flow.documents, saying: words)
                 startWave()
             } else {
                 addingFromReplyID = reply.id

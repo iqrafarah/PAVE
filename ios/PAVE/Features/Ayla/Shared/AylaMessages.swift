@@ -22,6 +22,7 @@ enum AylaMessages {
     static let conceptReady = "Bewijs"
     static let conceptHint = "Vertel verder en Ayla vult het aan."
     static let conceptAdd = "Zet in de kluis"
+    static let conceptRequestConfirmation = "Bevestiging aanvragen"
     static let conceptUnknown = "nog niet bekend"
 
     static func conceptFromFiles(logo: Bool, cover: Bool, items: Int) -> String? {

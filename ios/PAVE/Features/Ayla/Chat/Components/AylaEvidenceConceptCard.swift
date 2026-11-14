@@ -13,6 +13,8 @@ struct AylaEvidenceConceptCard: View {
     let isLast: Bool
     var isAdded = false
     var onToggleFile: (VaultUpload) -> Void = { _ in }
+    /// Once it is in the vault: asking someone to confirm it.
+    var onRequestConfirmation: (() -> Void)?
     let onAdd: () -> Void
 
     /// The documents completed with the chat, or only the chat while the files are still being read.
@@ -98,6 +100,9 @@ struct AylaEvidenceConceptCard: View {
                         }
                     }
                 }
+            }
+            if isAdded, let onRequestConfirmation {
+                PaveSecondaryButton(title: AylaMessages.conceptRequestConfirmation, action: onRequestConfirmation)
             }
             if isLast, !isAdded {
                 if !isComplete {

@@ -103,6 +103,8 @@ final class AylaChatModel {
     @ObservationIgnored private var analysisCache: [String: (proposals: [VaultEvidenceProposal], pictures: [VaultUpload])] = [:]
     /// The replies whose item went into the vault, so the card says so and the files are no longer taken along.
     private(set) var addedReplies: Set<String> = []
+    /// The vault item each added card made, so the card can ask for its confirmation.
+    private(set) var addedItemIDs: [String: String] = [:]
     /// The last question and answer are being removed on the server; the next question waits for that.
     @ObservationIgnored private var removal: Task<Bool, Never>?
     @ObservationIgnored private var answerTask: Task<Void, Never>?
@@ -355,8 +357,9 @@ final class AylaChatModel {
 
     /// The item of this reply is in the vault: the card says so, its files are done, and Ayla hears it so the next
     /// item starts clean.
-    func markAdded(replyID: String, title: String, uploads: [VaultUpload], saying words: String? = nil) {
+    func markAdded(replyID: String, itemID: String? = nil, title: String, uploads: [VaultUpload], saying words: String? = nil) {
         addedReplies.insert(replyID)
+        addedItemIDs[replyID] = itemID
         sentUploads.removeAll { upload in uploads.contains(upload) }
         let name = title.trimmingCharacters(in: .whitespacesAndNewlines)
         let notice = AylaMessages.addedToVault(name.isEmpty ? nil : name)
@@ -508,6 +511,7 @@ final class AylaChatModel {
         sentUploads = []
         analyses = [:]
         addedReplies = []
+        addedItemIDs = [:]
     }
 
     func open(_ conversation: AylaConversation) async {
@@ -532,6 +536,7 @@ final class AylaChatModel {
             sentUploads = []
             analyses = [:]
             addedReplies = []
+        addedItemIDs = [:]
         } catch {
             phase = .failed(Self.message(for: AylaError(error)))
         }
