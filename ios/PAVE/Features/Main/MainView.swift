@@ -101,6 +101,7 @@ struct MainView: View {
         .environment(\.reportMenuButtonFrame) { menuButtonFrame = $0 }
         .environment(\.hidesScreenButtons, menuReplacesButtons)
         .environment(\.toolbarIsBeside, MainMenuDrawer.isButtonBeside(menuButtonFrame))
+        .environment(\.menuButtonFrame, menuButtonFrame)
         .environment(\.chatSearchRequestedAt, chatSearchRequestedAt)
         .focusedSceneValue(\.paveActions, keyboardActions)
         .tint(.paveAccent)

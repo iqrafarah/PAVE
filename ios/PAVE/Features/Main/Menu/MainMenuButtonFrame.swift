@@ -11,6 +11,8 @@ extension EnvironmentValues {
     /// The vault is in a sheet on the outer display of iPhone Duo, where iOS shows no toolbar buttons: search and add
     /// sit in the page itself.
     @Entry var vaultButtonsInPage = false
+    /// Where the menu button is on screen, read-only; the buttons of a sheet line up with it in the bar along the side.
+    @Entry var menuButtonFrame = CGRect.zero
 }
 
 extension EnvironmentValues {

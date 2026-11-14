@@ -19,6 +19,7 @@ struct VaultLibraryPage: View {
     /// The open menu on the outer display of iPhone Duo puts its own buttons where search and add are.
     @Environment(\.hidesScreenButtons) private var hidesScreenButtons
     @Environment(\.vaultButtonsInPage) private var buttonsInPage
+    @Environment(\.menuButtonFrame) private var menuFrame
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// How the vault opens, from Instellingen; switching here lasts until the vault is opened again.
     @State private var isGrid = PaveAppearance.vaultLayout == .grid
@@ -62,8 +63,8 @@ struct VaultLibraryPage: View {
 
     var body: some View {
         library
-            .safeAreaInset(edge: .top, spacing: 0) {
-                if buttonsInPage, !hidesScreenButtons { pageButtons }
+            .overlay {
+                if buttonsInPage, !hidesScreenButtons { sideButtons }
             }
             .background(Color.canvas.ignoresSafeArea())
             .onAppear {
@@ -88,27 +89,33 @@ struct VaultLibraryPage: View {
             }
     }
 
-    /// Search and add as glass circles at the top right of the page, for the vault in a sheet on iPhone Duo's outer display.
-    private var pageButtons: some View {
-        HStack(spacing: 12) {
-            Spacer()
-            Button(action: toggleSearch) {
-                Image(isSearching ? .iconXMark : .iconSearch)
-                    .renderingMode(.template)
-                    .foregroundStyle(Color.ink)
-                    .frame(width: 44, height: 44)
-                    .contentShape(.circle)
-            }
-            .buttonStyle(.pave)
-            .glassEffect(.regular.interactive(), in: .circle)
-            .accessibilityLabel(isSearching ? "Zoeken sluiten" : folder.map { "Zoeken in \($0.name)" } ?? "Zoeken in je kluis")
-            addButton
+    /// Search and add in the status column along the side, under each other like the buttons of the bar: for the vault in
+    /// a sheet on iPhone Duo's outer display, where iOS shows no toolbar buttons. The first one is level with the menu
+    /// button, or just under the top of the sheet when that is lower.
+    private var sideButtons: some View {
+        GeometryReader { proxy in
+            let frame = proxy.frame(in: .global)
+            let x = proxy.size.width + proxy.safeAreaInsets.trailing / 2
+            let y = max(menuFrame.midY, frame.minY + 40) - frame.minY
+            ZStack(alignment: .topLeading) {
+                Button(action: toggleSearch) {
+                    Image(isSearching ? .iconXMark : .iconSearch)
+                        .renderingMode(.template)
+                        .foregroundStyle(Color.ink)
+                        .frame(width: 44, height: 44)
+                        .contentShape(.circle)
+                }
                 .buttonStyle(.pave)
                 .glassEffect(.regular.interactive(), in: .circle)
+                .accessibilityLabel(isSearching ? "Zoeken sluiten" : folder.map { "Zoeken in \($0.name)" } ?? "Zoeken in je kluis")
+                .position(x: x, y: y)
+
+                addButton
+                    .buttonStyle(.pave)
+                    .glassEffect(.regular.interactive(), in: .circle)
+                    .position(x: x, y: y + 60)
+            }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 4)
-        .padding(.bottom, 8)
     }
 
     @ViewBuilder
@@ -242,6 +249,17 @@ struct VaultLibraryPage: View {
         }
         .scrollIndicators(.hidden)
         .scrollClipDisabled()
+        .mask {
+            // Next to the status column the tiles fade out instead of being cut off, and the buttons there stay clear.
+            HStack(spacing: 0) {
+                Rectangle()
+                if buttonsInPage {
+                    LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
+                        .frame(width: 36)
+                }
+            }
+            .padding(.vertical, -40)
+        }
         .scrollPosition($rowPosition)
         .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.x + $0.contentInsets.leading } action: { _, x in rowOffset = x }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { rowWidth = $0 }

@@ -205,7 +205,7 @@ struct AylaChatScreen: View {
             .presentationDetents([.fraction(0.62), .large], selection: $vaultDetent)
             .presentationDragIndicator(.visible)
             .presentationBackgroundInteraction(.enabled)
-            .paveSheet(background: shelf == .vault ? .canvas : .white)
+            .paveSheet(background: shelf == .vault ? .canvas : .white, clipsToColumn: shelf != .vault)
         }
         .sheet(isPresented: $picksVaultItem) {
             if let vault {
