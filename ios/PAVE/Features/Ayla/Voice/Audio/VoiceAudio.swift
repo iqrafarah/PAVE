@@ -76,9 +76,10 @@ nonisolated final class VoiceAudio: @unchecked Sendable {
     }
 
     /// Switches between the AirPods' and the iPhone's microphone during a conversation; the engine starts again on
-    /// the new route, and listening with it.
+    /// the new route, and listening with it. Done between Ayla's answers, never while she talks: the restart would cut
+    /// her off.
     func useHeadsetMicrophone(_ headset: Bool) {
-        queue.async { [self] in
+        queue.sync {
             guard lock.withLock({ isRunning }) else { return }
             try? Self.configure(AVAudioSession.sharedInstance(), headsetMicrophone: headset)
             restart()

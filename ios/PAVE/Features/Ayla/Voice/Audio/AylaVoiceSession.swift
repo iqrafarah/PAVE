@@ -1,4 +1,5 @@
 import AVFAudio
+import CoreMotion
 import Foundation
 import MediaPlayer
 import Observation
@@ -126,6 +127,7 @@ final class AylaVoiceSession {
         guard state != .off else { return }
         attempt += 1
         stopFollowingHeadphones()
+        headTimeout?.cancel()
         listensForHead = false
         isPaused = false
         resumeReply = nil
@@ -142,14 +144,39 @@ final class AylaVoiceSession {
         liveActivity.end()
     }
 
-    /// For a question for Ja or Nee the iPhone's microphone listens for a moment, so iOS passes on nods and head shakes
-    /// from the AirPods; afterwards the AirPods' microphone again, which hears you better with the phone in a pocket.
+    /// For a question for Ja or Nee the iPhone's microphone listens, so the AirPods are ordinary headphones and iOS
+    /// passes on nods and head shakes; otherwise the AirPods' microphone, which hears you better with the phone in a
+    /// pocket. The switch happens before Ayla starts to say the question, so a nod already counts while she says it.
     private(set) var listensForHead = false
+    @ObservationIgnored private var headTimeout: Task<Void, Never>?
+    /// The microphone switch that is busy; Ayla only starts talking once it is done.
+    @ObservationIgnored private var micSwitch: Task<Bool, Never>?
 
-    func listenForHead(_ on: Bool) {
+    /// Waits until the microphone has switched (the engine starts again on the new route).
+    private func listenForHead(_ on: Bool) async {
+        headTimeout?.cancel()
         guard isActive, on != listensForHead else { return }
+        if on {
+            guard hasBluetoothHeadphones, ![.denied, .restricted].contains(CMHeadphoneMotionManager.authorizationStatus()) else { return }
+        }
         listensForHead = on
-        audio.useHeadsetMicrophone(!on)
+        let work = queueAudio { audio in
+            audio.useHeadsetMicrophone(!on)
+            return true
+        }
+        micSwitch = work
+        _ = await work.value
+    }
+
+    /// No answer a while after Ayla finished her question: the AirPods' microphone listens again.
+    private func endHeadListeningLater() {
+        headTimeout?.cancel()
+        guard listensForHead else { return }
+        headTimeout = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(8))
+            guard let self, !Task.isCancelled, state == .listening, heard.isEmpty else { return }
+            await listenForHead(false)
+        }
     }
 
     /// A soft sound for what just happened, so you need not look at the screen.
@@ -445,6 +472,7 @@ final class AylaVoiceSession {
         recognizer.end()
         state = .thinking
         audio.play(.think)
+        if listensForHead { Task { await listenForHead(false) } }
         turn = Task { [weak self] in
             guard let self else { return }
             guard let reply = await model.ask(question, input: .voice) else {
@@ -463,6 +491,10 @@ final class AylaVoiceSession {
             state = .listening
             return
         }
+        // A question for Ja or Nee: the iPhone's microphone before she says it, so a nod counts at once.
+        if model.pendingYesNo { await listenForHead(true) }
+        _ = await micSwitch?.value
+        guard !Task.isCancelled, state == .thinking || state == .speaking else { return }
         let text = [reply.text, reply.question?.text]
             .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
@@ -514,6 +546,7 @@ final class AylaVoiceSession {
         // Your turn: a soft sound, so you know without looking.
         audio.play(.listen)
         listen()
+        endHeadListeningLater()
     }
 
     /// The audio started again after iOS reconfigured it, so the microphone's format may have changed: listening
