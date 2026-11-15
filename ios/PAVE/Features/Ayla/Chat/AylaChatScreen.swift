@@ -294,6 +294,18 @@ struct AylaChatScreen: View {
             }
         }
         .onDisappear { headGestures.stop() }
+        // Ayla asked for Ja or Nee and waits: the iPhone's microphone listens for a moment, so a nod reaches PAVE.
+        // Back to the AirPods' microphone once answered, or after a while without an answer.
+        .onChange(of: waitsForHeadAnswer, initial: true) { _, waits in
+            guard let voice else { return }
+            voice.listenForHead(waits)
+            guard waits else { return }
+            let reply = model.lastAylaEntryID
+            Task {
+                try? await Task.sleep(for: .seconds(8))
+                if waitsForHeadAnswer, model.lastAylaEntryID == reply { voice.listenForHead(false) }
+            }
+        }
         .onChange(of: model.lastAylaEntryID) { vacancyIndex = 0 }
         // A spoken conversation goes on in the background, with the Lock Screen and the Dynamic Island showing it,
         // so you can keep talking with the phone in your pocket.
@@ -1248,6 +1260,12 @@ struct AylaChatScreen: View {
     private var voiceVacancies: [Vacancy] {
         guard isTalking, let last = model.entries.last(where: { $0.role == .ayla }) else { return [] }
         return Self.vacancies(in: last)
+    }
+
+    /// Talking with AirPods in, Ayla has asked for Ja or Nee and has finished saying it.
+    private var waitsForHeadAnswer: Bool {
+        guard let voice, isTalking, voice.state == .listening, voice.hasBluetoothHeadphones else { return false }
+        return voiceChoices.contains { AylaVaultOffer.isYes($0.label) } && voiceChoices.contains { AylaVaultOffer.isNo($0.label) }
     }
 
     /// Ayla's choices in place of the voice bar while she asks for one, even while she is still saying it: the same

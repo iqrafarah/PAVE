@@ -126,6 +126,7 @@ final class AylaVoiceSession {
         guard state != .off else { return }
         attempt += 1
         stopFollowingHeadphones()
+        listensForHead = false
         isPaused = false
         resumeReply = nil
         currentReply = nil
@@ -139,6 +140,16 @@ final class AylaVoiceSession {
         heard = ""
         cues = []
         liveActivity.end()
+    }
+
+    /// For a question for Ja or Nee the iPhone's microphone listens for a moment, so iOS passes on nods and head shakes
+    /// from the AirPods; afterwards the AirPods' microphone again, which hears you better with the phone in a pocket.
+    private(set) var listensForHead = false
+
+    func listenForHead(_ on: Bool) {
+        guard isActive, on != listensForHead else { return }
+        listensForHead = on
+        audio.useHeadsetMicrophone(!on)
     }
 
     /// A soft sound for what just happened, so you need not look at the screen.
@@ -251,6 +262,11 @@ final class AylaVoiceSession {
         commands.pauseCommand.removeTarget(nil)
         commands.playCommand.removeTarget(nil)
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+    }
+
+    /// Bluetooth headphones are where Ayla's voice goes now.
+    var hasBluetoothHeadphones: Bool {
+        AVAudioSession.sharedInstance().currentRoute.outputs.contains { [.bluetoothA2DP, .bluetoothHFP, .bluetoothLE].contains($0.portType) }
     }
 
     nonisolated private static func hasHeadphones(_ route: AVAudioSessionRouteDescription) -> Bool {
