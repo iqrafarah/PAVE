@@ -28,6 +28,11 @@ struct AylaVaultSelectionSheet: View {
         }
         .background(Color.white.ignoresSafeArea())
         .presentationDetents([.fraction(0.62), .large], selection: $detent)
+        // Knopmodus: a full press on an item or a folder ticks it; without a choice it goes on (Verder), or closes
+        // when nothing is chosen.
+        .cameraControlMenus("vault-picker", menus: cameraMenus, press: {
+            if selected.isEmpty { dismiss() } else { continueWithChosen() }
+        })
         .presentationDragIndicator(.visible)
         .task { if vault.state != .ready { await vault.load() } }
         .confirmationDialog(
@@ -128,6 +133,30 @@ struct AylaVaultSelectionSheet: View {
         }
         .buttonStyle(.pave)
         .accessibilityAddTraits(isOn ? [.isSelected] : [])
+    }
+
+    private var cameraMenus: [CameraMenu] {
+        let items = Array(vault.items.prefix(20))
+        let folders = vault.folders
+        var menus: [CameraMenu] = []
+        if !items.isEmpty {
+            menus.append(CameraMenu(id: "pick-items", title: "Bewijs", symbol: "doc.text", items: items.map(\.title), keys: items.map(\.id), onPress: { index in
+                guard items.indices.contains(index) else { return }
+                PaveHaptics.selection()
+                let id = items[index].id
+                if selected.contains(id) { selected.remove(id) } else { selected.insert(id) }
+            }))
+        }
+        if !folders.isEmpty {
+            menus.append(CameraMenu(id: "pick-folders", title: "Map", symbol: "folder", items: folders.map(\.name), keys: folders.map(\.id), onPress: { index in
+                guard folders.indices.contains(index) else { return }
+                let ids = Set(vault.items.filter { $0.folderIDs.contains(folders[index].id) }.map(\.id))
+                guard !ids.isEmpty else { return }
+                PaveHaptics.selection()
+                if ids.isSubset(of: selected) { selected.subtract(ids) } else { selected.formUnion(ids) }
+            }))
+        }
+        return menus
     }
 
     private func continueWithChosen() {

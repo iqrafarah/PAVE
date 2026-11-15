@@ -55,6 +55,27 @@ struct VaultFolderEditor: View {
         .onGeometryChange(for: CGSize.self) { $0.size } action: { size = $0 }
         .background(Color.white.ignoresSafeArea())
         .tint(.paveAccent)
+        // Knopmodus: swipe through the colours and icons and see the folder change; a full press saves, and on the
+        // page after creating it goes to the folder.
+        .cameraControlMenus("folder-editor", menus: created != nil ? [] : [
+            CameraMenu(
+                id: "folder-color", title: "Kleur", symbol: "paintpalette", items: VaultFolderColor.allCases.map(\.title),
+                selected: VaultFolderColor.allCases.firstIndex(of: color) ?? 0,
+                onSwipe: { index in withAnimation(.snappy(duration: 0.2)) { color = VaultFolderColor.allCases[index] } }
+            ),
+            CameraMenu(
+                id: "folder-icon", title: "Icoon", symbol: "square.grid.2x2", items: VaultFolderIcon.allCases.map(\.title),
+                selected: VaultFolderIcon.allCases.firstIndex(of: icon) ?? 0,
+                onSwipe: { index in withAnimation(.snappy(duration: 0.2)) { icon = VaultFolderIcon.allCases[index] } }
+            ),
+        ], press: {
+            if let created {
+                onCreate(created)
+                dismiss()
+            } else if !isSaving {
+                save()
+            }
+        })
     }
 
     private var form: some View {

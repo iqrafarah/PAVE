@@ -43,7 +43,17 @@ struct VaultRequestConfirmationSheet: View {
             Button("Weggooien", role: .destructive) { dismiss() }
             Button("Verder met invullen", role: .cancel) {}
         }
+        // Knopmodus: choose who confirms it; a full press sends (shown only, nothing is sent), then closes.
+        .cameraControlMenus("request-\(item.id)", menus: isFinished ? [] : [
+            CameraMenu(
+                id: "recipient", title: "Wie", symbol: "person.crop.circle",
+                items: VaultConfirmationRequest.Recipient.allCases.map(\.title),
+                selected: VaultConfirmationRequest.Recipient.allCases.firstIndex(of: request.recipient) ?? 0,
+                onSwipe: { index in request.recipient = VaultConfirmationRequest.Recipient.allCases[index] }
+            ),
+        ], press: { if isFinished { dismiss() } else { send() } })
     }
+
 
     private var header: some View {
         HStack(spacing: 10) {

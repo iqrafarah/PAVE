@@ -93,6 +93,17 @@ struct VaultEvidenceEditor: View {
         } message: {
             Text(VaultMessages.reconfirmMessage)
         }
+        // Knopmodus: a full press saves (as Bewaren), the menu also lets you stop without saving.
+        .cameraControlMenus("edit-\(edit.item.id)", menus: [
+            CameraMenu(id: "edit-actions", title: "Acties", symbol: "ellipsis.circle", items: ["Bewaren", "Stoppen"], onPress: { index in
+                if index == 0 { saveTapped() } else if edit.hasChanges { confirmsDiscard = true } else { dismiss() }
+            }),
+        ], press: { saveTapped() })
+    }
+
+    private func saveTapped() {
+        guard edit.hasChanges, !edit.isSaving else { return }
+        if edit.needsReconfirmation { confirmsReconfirmation = true } else { Task { await save() } }
     }
 
     private var header: some View {
@@ -112,7 +123,7 @@ struct VaultEvidenceEditor: View {
 
     private var footer: some View {
         PavePrimaryButton(title: "Bewaren", loadingTitle: "Bewaren…", isLoading: edit.isSaving) {
-            if edit.needsReconfirmation { confirmsReconfirmation = true } else { Task { await save() } }
+            saveTapped()
         }
         .disabled(!edit.hasChanges)
         .padding(.horizontal, 22)

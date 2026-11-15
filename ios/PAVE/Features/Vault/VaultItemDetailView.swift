@@ -13,6 +13,9 @@ struct VaultItemDetailView: View {
     @State private var asksPermission = false
     @State private var confirmsDelete = false
     @State private var look: VaultLogoLook?
+    /// The file the Camera Control button opens.
+    @State private var openFileID: String?
+    @Environment(PaveCameraControl.self) private var cameraControl: PaveCameraControl?
 
     private var item: VaultItem? { model.items.first { $0.id == itemID } }
 
@@ -67,6 +70,27 @@ struct VaultItemDetailView: View {
             }
         }
         .tint(.paveAccent)
+        .cameraControlMenus("item-\(itemID)", menus: cameraMenus, press: { dismiss() })
+    }
+
+    /// Knopmodus on an item: its actions and its files; a full press without a choice closes it (Klaar).
+    private var cameraMenus: [CameraMenu] {
+        guard let item else { return [] }
+        var actions: [(String, () -> Void)] = []
+        if askAylaAbout != nil { actions.append((AylaMessages.askAboutItem, { ask(about: item) })) }
+        actions.append(("Aanpassen", { isEditing = true }))
+        if item.status != .verified { actions.append(("Bevestiging aanvragen", { requestsConfirmation = true })) }
+        actions.append(("Klaar", { dismiss() }))
+        var menus = [CameraMenu(id: "item-actions", title: "Acties", symbol: "ellipsis.circle", items: actions.map(\.0), onPress: { index in
+            if actions.indices.contains(index) { actions[index].1() }
+        })]
+        let files = model.documents(of: item)
+        if !files.isEmpty {
+            menus.append(CameraMenu(id: "item-files", title: "Bestanden", symbol: "doc.on.doc", items: files.map(\.name), keys: files.map(\.id), onPress: { index in
+                if files.indices.contains(index) { openFileID = files[index].id }
+            }))
+        }
+        return menus
     }
 
     private func content(_ item: VaultItem) -> some View {
@@ -167,7 +191,13 @@ struct VaultItemDetailView: View {
                 if !documents.isEmpty {
                     section("Bestanden") {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 96, maximum: 140), spacing: 12, alignment: .top)], alignment: .leading, spacing: 14) {
-                            ForEach(documents) { VaultFileTile(file: $0) }
+                            ForEach(documents) { file in
+                                VaultFileTile(
+                                    file: file,
+                                    isChosen: cameraControl?.highlight.map { $0.menu == "item-files" && $0.key == file.id } ?? false,
+                                    openRequest: $openFileID
+                                )
+                            }
                         }
                     }
                 }

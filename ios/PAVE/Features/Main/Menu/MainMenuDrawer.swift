@@ -53,6 +53,8 @@ struct MainMenuDrawer: View {
 
                     panel(insets: insets, isBeside: isBeside, menuButton: menuButtonFrame.isEmpty ? nil : menuButton)
                         .frame(maxHeight: .infinity)
+                        // Knopmodus: with the menu open a full press closes it; "Ga naar" goes on as always.
+                        .cameraControlMenus("menu", menus: [], press: close)
                         .offset(x: min(0, drag))
                         .gesture(swipeToClose)
                         .transition(reduceMotion ? .opacity : .move(edge: .leading))

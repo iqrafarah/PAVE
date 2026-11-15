@@ -118,7 +118,10 @@ struct SettingsProfileHeader: View {
 /// A page inside Instellingen: the same canvas, width and spacing as the main page, with its own title.
 struct SettingsPage<Content: View>: View {
     let title: String
+    /// Knopmodus on this page; a full press goes back, as the back button does.
+    var cameraMenus: [CameraMenu] = []
     @ViewBuilder let content: Content
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ScrollView {
@@ -134,6 +137,7 @@ struct SettingsPage<Content: View>: View {
         .background(Color.canvas.ignoresSafeArea())
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
+        .cameraControlMenus("settings-\(title)", menus: cameraMenus, press: { dismiss() })
     }
 }
 

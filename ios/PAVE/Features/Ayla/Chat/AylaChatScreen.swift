@@ -1275,6 +1275,11 @@ struct AylaChatScreen: View {
                 }
             ))
         }
+        if let reply = model.lastReply, reply.proposedAction?.vaultItem != nil, reply.accessRequest == nil, !model.addedReplies.contains(reply.id) {
+            menus.append(CameraMenu(id: "concept", title: "Bewijs", symbol: "doc.badge.plus", items: [AylaMessages.conceptAdd], onPress: { _ in
+                openProposedEvidence(from: reply)
+            }))
+        }
         let chats = Array(model.conversationList.conversations.prefix(8))
         if !chats.isEmpty, !isTalking {
             menus.append(CameraMenu(id: "chats", title: "Chats", symbol: "bubble.left.and.bubble.right", items: chats.map { $0.title.isEmpty ? "Gesprek" : $0.title }, keys: chats.map(\.id), onPress: { index in

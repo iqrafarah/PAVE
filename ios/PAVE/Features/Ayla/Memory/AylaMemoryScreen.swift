@@ -14,6 +14,8 @@ struct AylaMemoryScreen: View {
 
     var body: some View {
         content
+            // Knopmodus: a full press adds something for Ayla to remember.
+            .cameraControlMenus("memory", menus: [], press: { isAdding = true })
             .background(Color.canvas.ignoresSafeArea())
             .navigationTitle("Wat Ayla over je weet")
             .navigationBarTitleDisplayMode(.inline)

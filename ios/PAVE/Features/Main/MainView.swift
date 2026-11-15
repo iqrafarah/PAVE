@@ -112,9 +112,9 @@ struct MainView: View {
         // Knopmodus: a full press does Ayla's choice, or starts talking. The presses are caught on an empty layer
         // behind the screen that only exists in knopmodus: around the whole screen, even switched off, iOS's catcher
         // took every tap on the toolbar buttons. iOS's own green dot shows the camera is on.
-        // What the button rests on in a menu that has no place on the screen, such as a chat or one of Ayla's actions.
+        // What the button rests on in a menu that is not lit up on the screen itself, such as a chat, a step or an action.
         .overlay(alignment: .top) {
-            if let highlight = cameraControl.highlight, ["chats", "ayla"].contains(highlight.menu) {
+            if cameraControl.topSource == nil, let highlight = cameraControl.highlight, !CameraMenu.litOnScreen.contains(highlight.menu) {
                 AylaHeadHint(text: "\(highlight.menuTitle): \(highlight.title)", isAnswer: true)
                     .padding(.top, 52)
                     .transition(.move(edge: .top).combined(with: .opacity))

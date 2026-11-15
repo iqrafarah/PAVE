@@ -11,9 +11,27 @@ struct SettingsScreen: View {
     @AppStorage(AppState.lockAfterKey) private var lockAfter = AppState.defaultLockAfter
     @Environment(AylaMemoryModel.self) private var memory
     @Environment(ProfileModel.self) private var profile
+    @State private var path: [SettingsDestination] = []
+
+    /// The pages the Camera Control button can open, as the rows do.
+    enum SettingsDestination: String, CaseIterable, Hashable {
+        case appearance
+        case devices
+        case ayla
+        case privacy
+
+        var title: String {
+            switch self {
+            case .appearance: SettingsMessages.appearance
+            case .devices: DevicesMessages.title
+            case .ayla: "Ayla"
+            case .privacy: "Privacy"
+            }
+        }
+    }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     SettingsProfileHeader(fallbackName: name, onSignOut: onSignOut)
@@ -47,6 +65,20 @@ struct SettingsScreen: View {
             .background(Color.canvas.ignoresSafeArea())
             .mainScreenToolbar("Instellingen", onShowMenu: onShowMenu)
             .task { await profile.load() }
+            .navigationDestination(for: SettingsDestination.self) { destination in
+                switch destination {
+                case .appearance: SettingsAppearanceScreen()
+                case .devices: SignedInDevicesScreen()
+                case .ayla: SettingsAylaScreen()
+                case .privacy: SettingsPrivacyScreen()
+                }
+            }
+            // Knopmodus: swipe through the pages, a full press opens the one it rests on.
+            .cameraControlMenus("settings", menus: [
+                CameraMenu(id: "settings-pages", title: "Instellingen", symbol: "gearshape", items: SettingsDestination.allCases.map(\.title), onPress: { index in
+                    path = [SettingsDestination.allCases[index]]
+                }),
+            ])
         }
         .tint(.paveAccent)
     }

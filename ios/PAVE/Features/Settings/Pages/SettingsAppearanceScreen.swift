@@ -7,7 +7,7 @@ struct SettingsAppearanceScreen: View {
     @Environment(ProfileModel.self) private var profile
 
     var body: some View {
-        SettingsPage(title: SettingsMessages.appearance) {
+        SettingsPage(title: SettingsMessages.appearance, cameraMenus: cameraMenus) {
             card(SettingsMessages.themeColor) {
                 ThemeColorPicker(selection: profile.theme, customColor: profile.customColor) { theme in
                     Task { await profile.setTheme(theme) }
@@ -47,6 +47,30 @@ struct SettingsAppearanceScreen: View {
         ForEach(PaveVaultLayout.allCases) { layout in
             vaultLayoutOption(layout)
         }
+    }
+
+    /// Knopmodus here: swipe through the colours, text sizes and vault layouts and see PAVE change at once.
+    private var cameraMenus: [CameraMenu] {
+        let themes = PaveThemeColor.presets
+        let sizes = PaveTextSize.allCases
+        let layouts = PaveVaultLayout.allCases
+        return [
+            CameraMenu(
+                id: "theme", title: "Thema", symbol: "paintpalette", items: themes.map(SettingsMessages.title),
+                selected: themes.firstIndex(of: profile.theme) ?? 0,
+                onSwipe: { index in Task { await profile.setTheme(themes[index]) } }
+            ),
+            CameraMenu(
+                id: "text-size", title: "Tekstgrootte", symbol: "textformat.size", items: sizes.map(SettingsMessages.title),
+                selected: sizes.firstIndex(of: profile.textSize) ?? 0,
+                onSwipe: { index in Task { await profile.setTextSize(sizes[index]) } }
+            ),
+            CameraMenu(
+                id: "vault-layout", title: "Kluisweergave", symbol: "square.grid.2x2", items: layouts.map(SettingsMessages.title),
+                selected: layouts.firstIndex(of: profile.vaultLayout) ?? 0,
+                onSwipe: { index in Task { await profile.setVaultLayout(layouts[index]) } }
+            ),
+        ]
     }
 
     private func vaultLayoutOption(_ layout: PaveVaultLayout) -> some View {

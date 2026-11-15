@@ -18,6 +18,9 @@ struct CameraMenu {
 
     /// Only a change in what can be chosen rebuilds the menus; a rebuild in the middle of a swipe would close them.
     var signature: String { id + "|" + items.joined(separator: "\u{1F}") }
+
+    /// Menus whose choice lights up on the screen itself; the others get a short label at the top.
+    static let litOnScreen: Set<String> = ["folders", "items", "answer", "item-files"]
 }
 
 /// Demo: going through PAVE with the Camera Control button. iOS only sends the button to an app that is using the
@@ -68,6 +71,8 @@ final class PaveCameraControl {
     private(set) var isOn = false
     private(set) var isStarting = false
     private(set) var highlight: Highlight?
+    /// The screen in front that brought its own menus: it shows the label of a choice.
+    private(set) var topSource: String?
     /// iOS shows the menus next to the button: they are only rebuilt once it closes them, so a swipe that opens a
     /// large page (with menus of its own) never closes them under your finger.
     private(set) var isMenuOpen = false
@@ -137,11 +142,13 @@ final class PaveCameraControl {
     func setMenus(_ menus: [CameraMenu], press: (() -> Void)?, source: String) {
         screens.removeAll { $0.source == source }
         screens.append((source, menus, press))
+        if topSource != source { topSource = source }
         apply()
     }
 
     func clearMenus(source: String) {
         screens.removeAll { $0.source == source }
+        if topSource != screens.last?.source { topSource = screens.last?.source }
         apply()
     }
 
@@ -372,6 +379,16 @@ private struct CameraControlMenus: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            // What the button rests on, when it does not light up on the screen itself.
+            .overlay(alignment: .top) {
+                if let control, control.topSource == source, let highlight = control.highlight, !CameraMenu.litOnScreen.contains(highlight.menu) {
+                    AylaHeadHint(text: "\(highlight.menuTitle): \(highlight.title)", isAnswer: true)
+                        .padding(.top, 8)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .allowsHitTesting(false)
+                }
+            }
+            .animation(.spring(duration: 0.3, bounce: 0.2), value: control?.highlight)
             .onChange(of: menus.map(\.signature) + [press == nil ? "" : "press"], initial: true) {
                 control?.setMenus(menus, press: press, source: source)
             }
