@@ -1,4 +1,5 @@
 import PAVECore
+import AVKit
 import SwiftUI
 
 /// The app after signing in. You can go to Ayla, your vault or your plans yourself with the menu, laid out like
@@ -20,6 +21,8 @@ struct MainView: View {
     @Environment(\.dynamicTypeSize) private var deviceTextSize
     @State private var watchConnection = WatchConnectionModel()
     @State private var destination = MainDestination.ayla
+    /// Demo: the Camera Control button steers PAVE while "knopmodus" is on.
+    @State private var cameraControl = PaveCameraControl()
     @State private var isMenuOpen = false
     @State private var isSidebarHidden = false
     @State private var showsChats = false
@@ -106,12 +109,38 @@ struct MainView: View {
         .focusedSceneValue(\.paveActions, keyboardActions)
         .tint(.paveAccent)
         .environment(memory)
+        .environment(cameraControl)
+        // Knopmodus: a badge says it is on and stops it; a full press does Ayla's choice, or starts talking.
+        .overlay(alignment: .top) {
+            if cameraControl.isOn {
+                PaveCameraControlBadge { cameraControl.stop() }
+                    .padding(.top, 52)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(duration: 0.35, bounce: 0.2), value: cameraControl.isOn)
+        .onCameraCaptureEvent(isEnabled: cameraControl.isOn) { event in
+            if event.phase == .ended { cameraControl.fullPress() }
+        }
+        .onAppear {
+            cameraControl.onGoTo = { open($0) }
+            cameraControl.onAyla = { action in
+                switch action {
+                case .talk: talk()
+                case .newConversation: startNewConversation()
+                case .chats: openChats()
+                }
+            }
+        }
+        .onChange(of: destination) { _, destination in cameraControl.show(destination) }
         .task { await model.start() }
         .task { await memory.load() }
         .task { await model.followConversationChanges() }
         .onChange(of: hasSidebar) { isMenuOpen = false }
         // A deleted chat that could still be brought back is really deleted when the app goes away.
         .onChange(of: scenePhase) { _, phase in
+            // The camera cannot run in the background; knopmodus ends with it.
+            if phase != .active { cameraControl.stop() }
             if phase == .background {
                 model.commitPendingDeletion()
                 memory.commitPendingForget()
