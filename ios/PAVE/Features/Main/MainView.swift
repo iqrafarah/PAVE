@@ -131,7 +131,7 @@ struct MainView: View {
         }
         .onChange(of: destination) { _, destination in cameraControl.show(destination) }
         // Knopmodus stays on: it starts whenever PAVE is in front and unlocked, and stops when it is not.
-        .onChange(of: CameraControlWanted(isEnabled: cameraControl.isEnabled, changed: cameraControl.enabledChanged, isActive: scenePhase != .background, isOpen: appState.isOpen), initial: true) { _, wanted in
+        .onChange(of: CameraControlWanted(isEnabled: cameraControl.isEnabled && !cameraControl.isSuspended, changed: cameraControl.enabledChanged, isActive: scenePhase != .background, isOpen: appState.isOpen), initial: true) { _, wanted in
             if wanted.isEnabled, wanted.isActive, wanted.isOpen {
                 Task { await cameraControl.start(at: destination) }
             } else {

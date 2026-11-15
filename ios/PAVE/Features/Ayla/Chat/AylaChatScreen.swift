@@ -195,6 +195,7 @@ struct AylaChatScreen: View {
         .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.4), value: shelf)
         .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.35, bounce: 0.18), value: isAttachMenuOpen)
         .toolbar { toolbar }
+        .cameraControlMenus("chat", menus: cameraMenus, press: isTalking ? { stopVoice() } : nil)
         .photosPicker(isPresented: $isChoosingPhotos, selection: $photoItems, maxSelectionCount: max(1, AylaAttachment.maxCount - model.attachments.count), matching: .images, preferredItemEncoding: .compatible)
         .onChange(of: photoItems) { _, items in
             guard !items.isEmpty else { return }
@@ -1249,6 +1250,49 @@ struct AylaChatScreen: View {
     private var voiceVacancies: [Vacancy] {
         guard isTalking, let last = model.entries.last(where: { $0.role == .ayla }) else { return [] }
         return Self.vacancies(in: last)
+    }
+
+    /// Knopmodus in the chat: Ayla's answer choices, the vacancies under the orb, and your recent chats. A full press
+    /// answers, asks about the vacancy or opens the chat; without a choice it ends a spoken conversation.
+    private var cameraMenus: [CameraMenu] {
+        var menus: [CameraMenu] = []
+        let choices: [AylaChoice] = isTalking ? voiceChoices : (model.pendingQuestion?.choices.map { AylaChoice(id: $0.id, label: $0.label) } ?? [])
+        if choices.count >= 2 {
+            menus.append(CameraMenu(id: "answer", title: "Antwoord", symbol: "checkmark.bubble", items: choices.map(\.label), onPress: { index in
+                guard choices.indices.contains(index) else { return }
+                answerByButton(choices[index])
+            }))
+        }
+        let vacancies = voiceVacancies
+        if browsesByHead, !vacancies.isEmpty {
+            menus.append(CameraMenu(
+                id: "vacancies", title: "Vacature", symbol: "briefcase", items: vacancies.map(\.title), selected: vacancyIndex,
+                onSwipe: { index in withAnimation(.snappy(duration: 0.25)) { vacancyIndex = index } },
+                onPress: { index in
+                    vacancyIndex = index
+                    chooseVacancy()
+                }
+            ))
+        }
+        let chats = Array(model.conversationList.conversations.prefix(8))
+        if !chats.isEmpty, !isTalking {
+            menus.append(CameraMenu(id: "chats", title: "Chats", symbol: "bubble.left.and.bubble.right", items: chats.map { $0.title.isEmpty ? "Gesprek" : $0.title }, onPress: { index in
+                guard chats.indices.contains(index) else { return }
+                Task { await model.open(chats[index]) }
+            }))
+        }
+        return menus
+    }
+
+    /// An answer chosen with the Camera Control button: the same as tapping it.
+    private func answerByButton(_ choice: AylaChoice) {
+        if isTalking {
+            chooseWhileTalking(choice)
+        } else if AylaVaultOffer.isYes(choice.label) || AylaVaultOffer.isNo(choice.label) {
+            answerYesNo(AylaVaultOffer.isYes(choice.label), byHead: false)
+        } else {
+            choose(choice.label)
+        }
     }
 
     /// Ayla's choices in place of the voice bar while she asks for one, even while she is still saying it: the same

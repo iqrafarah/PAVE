@@ -16,6 +16,9 @@ struct VaultScreen: View {
     @State private var deletedItem: VaultItem?
     @State private var folderSheet: FolderSheet?
     @State private var deletedFolder: VaultFolder?
+    @State private var isScanning = false
+    @State private var scanFolder: VaultFolder?
+    @Environment(PaveCameraControl.self) private var cameraControl: PaveCameraControl?
 
     private struct FolderRoute: Hashable {
         let id: String
@@ -40,6 +43,7 @@ struct VaultScreen: View {
             requestConfirmation: { confirmedItem = $0 },
             delete: { deletedItem = $0 },
             add: add,
+            scan: scan,
             newFolder: { folderSheet = .new },
             openFolder: { folder in
                 PaveHaptics.selection()
@@ -80,6 +84,17 @@ struct VaultScreen: View {
                 .sheet(item: $confirmedItem) { item in
                     VaultRequestConfirmationSheet(item: item, documentCount: model.documents(of: item).count)
                         .paveSheet()
+                }
+                // The document scanner of iOS needs the camera that knopmodus holds: knopmodus waits meanwhile.
+                .fullScreenCover(isPresented: $isScanning, onDismiss: { cameraControl?.isSuspended = false }) {
+                    DocumentScanner(
+                        onScan: { pages in
+                            isScanning = false
+                            Task { await addScan(pages) }
+                        },
+                        onCancel: { isScanning = false }
+                    )
+                    .ignoresSafeArea()
                 }
                 .sheet(item: $addFlow) { flow in
                     VaultAddEvidenceSheet(flow: flow)
@@ -170,6 +185,38 @@ struct VaultScreen: View {
             VaultExampleFolders.all.first { $0.name.localizedCaseInsensitiveCompare(folder.name) == .orderedSame }
         }
         addFlow = VaultAddEvidenceModel(vault: model, category: example?.category ?? .projects, folderID: folder?.id)
+    }
+
+    /// A full press of the Camera Control button in the vault: scan a document, then adding evidence opens with it and
+    /// Ayla fills it in. Without a scanner (the simulator) adding evidence simply opens.
+    private func scan(_ folder: VaultFolder?) {
+        guard DocumentScanner.isAvailable else {
+            add(folder)
+            return
+        }
+        scanFolder = folder
+        cameraControl?.isSuspended = true
+        Task {
+            // A moment for knopmodus to let go of the camera.
+            try? await Task.sleep(for: .milliseconds(350))
+            isScanning = true
+        }
+    }
+
+    private func addScan(_ pages: [CGImage]) async {
+        guard !pages.isEmpty else { return }
+        let day = Date.now.formatted(.iso8601.year().month().day())
+        guard let file = try? await AttachmentReader.file(pages: pages, name: "Scan \(day).pdf"), let upload = file.upload else {
+            model.problem = VaultMessages.scanFailed
+            return
+        }
+        let example = scanFolder.flatMap { folder in
+            VaultExampleFolders.all.first { $0.name.localizedCaseInsensitiveCompare(folder.name) == .orderedSame }
+        }
+        let flow = VaultAddEvidenceModel(vault: model, category: example?.category ?? .projects, folderID: scanFolder?.id)
+        flow.pick(.success(upload))
+        flow.fillWithAyla()
+        addFlow = flow
     }
 
     private func openRequestedItem() {

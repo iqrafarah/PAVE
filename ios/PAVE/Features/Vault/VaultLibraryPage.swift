@@ -66,6 +66,7 @@ struct VaultLibraryPage: View {
             .overlay {
                 if buttonsInPage, !hidesScreenButtons { sideButtons }
             }
+            .cameraControlMenus("vault-\(folderID ?? "root")", menus: cameraMenus, press: { actions.scan(folder) })
             .background(Color.canvas.ignoresSafeArea())
             .onAppear {
                 guard !choseOrder else { return }
@@ -116,6 +117,25 @@ struct VaultLibraryPage: View {
                     .position(x: x, y: y + 60)
             }
         }
+    }
+
+    /// Knopmodus in the vault: the folders (in the whole vault) and the evidence on this page; a full press on an item
+    /// opens it, without one it scans a document.
+    private var cameraMenus: [CameraMenu] {
+        var menus: [CameraMenu] = []
+        let folders = shownFolders
+        if folder == nil, !folders.isEmpty {
+            menus.append(CameraMenu(id: "folders", title: "Map", symbol: "folder", items: folders.map(\.name), onPress: { index in
+                if folders.indices.contains(index) { actions.openFolder(folders[index]) }
+            }))
+        }
+        let items = Array(visibleItems.prefix(20))
+        if !items.isEmpty {
+            menus.append(CameraMenu(id: "items", title: "Bewijs", symbol: "doc.text", items: items.map(\.title), onPress: { index in
+                if items.indices.contains(index) { actions.open(items[index]) }
+            }))
+        }
+        return menus
     }
 
     @ViewBuilder

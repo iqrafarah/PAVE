@@ -1,13 +1,32 @@
 import AVFoundation
 import Observation
+import SwiftUI
+
+/// One menu next to the Camera Control button: the items you swipe through, what a swipe does at once (going to a
+/// page) and what a full press does with the item it rests on.
+struct CameraMenu {
+    let id: String
+    let title: String
+    /// An SF Symbol, as iOS draws the menu.
+    let symbol: String
+    let items: [String]
+    var selected = 0
+    var onSwipe: ((Int) -> Void)?
+    var onPress: ((Int) -> Void)?
+
+    /// Only a change in what can be chosen rebuilds the menus; a rebuild in the middle of a swipe would close them.
+    var signature: String { id + "|" + items.joined(separator: "\u{1F}") }
+}
 
 /// Demo: going through PAVE with the Camera Control button. iOS only sends the button to an app that is using the
-/// camera, so while this "knopmodus" is on PAVE keeps a small camera session running that records and keeps nothing;
-/// the green dot of iOS shows it, and it is switched off in Instellingen › Ayla. It also switches itself off after a few minutes
-/// without the button, and when PAVE leaves the screen.
-/// - Light press: the menu "Ga naar" next to the button; swiping moves to that screen at once.
-/// - Double light press: the other menu, "Ayla" (talk, new chat, chats).
-/// - Full press: what was chosen in "Ayla"; without a choice, a conversation with Ayla.
+/// camera, so while "knopmodus" is on PAVE keeps a small camera session running that records and keeps nothing; the
+/// green dot of iOS shows it, and it is switched off in Instellingen › Ayla. It runs while PAVE is in front and
+/// unlocked.
+/// - Light press: the menus of the screen you are on (such as the folders and evidence in the vault, the chats,
+///   Ayla's answer or her vacancies), then "Ga naar" (swiping opens that page at once) and "Ayla".
+/// - Double light press: switch between those menus.
+/// - Full press: what the menu you swiped rests on; otherwise what the screen does with the button (scanning
+///   evidence in the vault, ending a spoken conversation), or a conversation with Ayla.
 @MainActor
 @Observable
 final class PaveCameraControl {
@@ -36,44 +55,47 @@ final class PaveCameraControl {
     /// Knopmodus stays chosen: it starts again whenever PAVE is open and unlocked.
     static let enabledKey = "cameraControlEnabled"
 
-    var isEnabled: Bool {
-        get { UserDefaults.standard.bool(forKey: Self.enabledKey) }
-        set { UserDefaults.standard.set(newValue, forKey: Self.enabledKey); enabledChanged += 1 }
-    }
-    /// Read by views so they update when the choice changes.
-    private(set) var enabledChanged = 0
-
     private(set) var isOn = false
     private(set) var isStarting = false
     private(set) var problem: Problem?
+    /// For a moment without the camera, such as while the document scanner of iOS uses it.
+    var isSuspended = false
+    /// Read by views so they update when the choice changes.
+    private(set) var enabledChanged = 0
+
+    var isEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: Self.enabledKey) }
+        set {
+            UserDefaults.standard.set(newValue, forKey: Self.enabledKey)
+            enabledChanged += 1
+        }
+    }
 
     @ObservationIgnored var onGoTo: (MainDestination) -> Void = { _ in }
     @ObservationIgnored var onAyla: (AylaAction) -> Void = { _ in }
 
     @ObservationIgnored let camera = CameraControlSession()
-    @ObservationIgnored private var aylaChoice: AylaAction?
-    @ObservationIgnored private var pendingGoTo: Task<Void, Never>?
+    @ObservationIgnored private var screens: [(source: String, menus: [CameraMenu], press: (() -> Void)?)] = []
+    @ObservationIgnored private var applied: [CameraMenu] = []
+    /// The menu last swiped and the item it rests on, until a full press uses it.
+    @ObservationIgnored private var active: (menu: Int, item: Int)?
+    @ObservationIgnored private var destination = MainDestination.ayla
+    @ObservationIgnored private var pendingSwipe: Task<Void, Never>?
 
     func start(at destination: MainDestination) async {
         guard !isOn, !isStarting else { return }
         isStarting = true
         defer { isStarting = false }
         problem = nil
+        self.destination = destination
         guard await Self.cameraAllowed() else {
             problem = .notAllowed
             return
         }
-        let selected = Self.destinations.firstIndex(of: destination) ?? 0
-        let result = await camera.start(
-            goTo: Self.destinations.map(\.title),
-            selected: selected,
-            ayla: AylaAction.allCases.map(\.title),
-            onGoTo: { [weak self] index in Task { @MainActor in self?.choseScreen(index) } },
-            onAyla: { [weak self] index in Task { @MainActor in self?.choseAyla(index) } }
-        )
-        switch result {
+        switch await camera.start() {
         case .started:
             isOn = true
+            apply(force: true)
         case .noCamera:
             problem = .noCamera
         case .noButton:
@@ -82,42 +104,88 @@ final class PaveCameraControl {
     }
 
     func stop() {
-        pendingGoTo?.cancel()
-        aylaChoice = nil
+        pendingSwipe?.cancel()
+        active = nil
         guard isOn else { return }
         isOn = false
         camera.stop()
     }
 
+    /// The menus of the screen that is in front; the newest screen wins until it goes away.
+    func setMenus(_ menus: [CameraMenu], press: (() -> Void)?, source: String) {
+        screens.removeAll { $0.source == source }
+        screens.append((source, menus, press))
+        apply()
+    }
+
+    func clearMenus(source: String) {
+        screens.removeAll { $0.source == source }
+        apply()
+    }
+
     /// A full press (or a volume button, which iOS treats the same while the camera is in use).
     func fullPress() {
         guard isOn else { return }
-        onAyla(aylaChoice ?? .talk)
-        aylaChoice = nil
-    }
-
-    /// The screen changed by a tap: the menu shows it the next time.
-    func show(_ destination: MainDestination) {
-        guard isOn, let index = Self.destinations.firstIndex(of: destination) else { return }
-        camera.select(goTo: index)
-    }
-
-    private func choseScreen(_ index: Int) {
-        guard isOn, Self.destinations.indices.contains(index) else { return }
-        // While swiping through the menu, only the screen it rests on opens.
-        pendingGoTo?.cancel()
-        pendingGoTo = Task {
-            try? await Task.sleep(for: .milliseconds(150))
-            guard !Task.isCancelled else { return }
-            onGoTo(Self.destinations[index])
+        defer { active = nil }
+        if let active, applied.indices.contains(active.menu), let onPress = applied[active.menu].onPress {
+            onPress(active.item)
+        } else if let press = screens.last?.press {
+            press()
+        } else {
+            onAyla(.talk)
         }
     }
 
-    private func choseAyla(_ index: Int) {
-        guard isOn else { return }
-        aylaChoice = AylaAction(rawValue: index)
+    /// The page changed by a tap: "Ga naar" shows it the next time.
+    func show(_ destination: MainDestination) {
+        self.destination = destination
+        guard isOn, let menu = applied.firstIndex(where: { $0.id == "goTo" }), let item = Self.destinations.firstIndex(of: destination) else { return }
+        applied[menu].selected = item
+        camera.select(menu: menu, item: item)
     }
 
+    private var allMenus: [CameraMenu] {
+        var menus = (screens.last?.menus ?? []).filter { !$0.items.isEmpty }
+        menus.append(CameraMenu(
+            id: "goTo", title: "Ga naar", symbol: "arrow.triangle.turn.up.right.circle",
+            items: Self.destinations.map(\.title), selected: Self.destinations.firstIndex(of: destination) ?? 0,
+            onSwipe: { [weak self] item in self?.onGoTo(Self.destinations[item]) }
+        ))
+        menus.append(CameraMenu(
+            id: "ayla", title: "Ayla", symbol: "waveform", items: AylaAction.allCases.map(\.title),
+            onPress: { [weak self] item in
+                guard let action = AylaAction(rawValue: item) else { return }
+                self?.onAyla(action)
+            }
+        ))
+        return Array(menus.prefix(camera.maximumMenus))
+    }
+
+    private func apply(force: Bool = false) {
+        guard isOn else { return }
+        let menus = allMenus
+        let changed = force || menus.map(\.signature) != applied.map(\.signature)
+        applied = menus
+        guard changed else { return }
+        active = nil
+        camera.apply(menus.map { .init(title: $0.title, symbol: $0.symbol, items: $0.items, selected: $0.selected) }) { [weak self] menu, item in
+            Task { @MainActor in self?.swiped(menu: menu, item: item) }
+        }
+    }
+
+    private func swiped(menu: Int, item: Int) {
+        guard isOn, applied.indices.contains(menu), applied[menu].items.indices.contains(item) else { return }
+        active = (menu, item)
+        applied[menu].selected = item
+        guard let onSwipe = applied[menu].onSwipe else { return }
+        // While swiping through a menu, only the item it rests on happens.
+        pendingSwipe?.cancel()
+        pendingSwipe = Task {
+            try? await Task.sleep(for: .milliseconds(150))
+            guard !Task.isCancelled else { return }
+            onSwipe(item)
+        }
+    }
 
     private static func cameraAllowed() async -> Bool {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
@@ -128,8 +196,7 @@ final class PaveCameraControl {
     }
 }
 
-
-/// The camera session behind the button: the back camera at the lowest quality, frames dropped at once, and the two
+/// The camera session behind the button: the back camera at the lowest quality, frames dropped at once, and the
 /// menus. Everything runs on its own queue, as AVFoundation wants.
 nonisolated final class CameraControlSession: NSObject, AVCaptureSessionControlsDelegate, @unchecked Sendable {
     enum StartResult {
@@ -138,27 +205,32 @@ nonisolated final class CameraControlSession: NSObject, AVCaptureSessionControls
         case noButton
     }
 
+    struct Menu: Sendable {
+        let title: String
+        let symbol: String
+        let items: [String]
+        let selected: Int
+    }
+
     private let session = AVCaptureSession()
     private let queue = DispatchQueue(label: "nl.fontys.pave.camera-control")
-    private var goToPicker: AVCaptureIndexPicker?
+    private var pickers: [AVCaptureIndexPicker] = []
+    private let lock = NSLock()
+    private var maximum = 7
 
-    func start(
-        goTo: [String], selected: Int, ayla: [String],
-        onGoTo: @escaping @Sendable (Int) -> Void, onAyla: @escaping @Sendable (Int) -> Void
-    ) async -> StartResult {
+    var maximumMenus: Int { lock.withLock { maximum } }
+
+    func start() async -> StartResult {
         await withCheckedContinuation { continuation in
             queue.async { [self] in
-                let result = configure(goTo: goTo, selected: selected, ayla: ayla, onGoTo: onGoTo, onAyla: onAyla)
+                let result = configure()
                 if result == .started { session.startRunning() }
                 continuation.resume(returning: result)
             }
         }
     }
 
-    private func configure(
-        goTo: [String], selected: Int, ayla: [String],
-        onGoTo: @escaping @Sendable (Int) -> Void, onAyla: @escaping @Sendable (Int) -> Void
-    ) -> StartResult {
+    private func configure() -> StartResult {
         session.beginConfiguration()
         defer { session.commitConfiguration() }
         session.sessionPreset = .low
@@ -171,19 +243,36 @@ nonisolated final class CameraControlSession: NSObject, AVCaptureSessionControls
             if session.canAddOutput(output) { session.addOutput(output) }
         }
         guard session.supportsControls else { return .noButton }
+        lock.withLock { maximum = session.maxControlsCount }
         session.setControlsDelegate(self, queue: queue)
-        session.controls.forEach(session.removeControl)
-
-        let goToPicker = AVCaptureIndexPicker("Ga naar", symbolName: "arrow.triangle.turn.up.right.circle", localizedIndexTitles: goTo)
-        goToPicker.selectedIndex = selected
-        goToPicker.setActionQueue(queue) { index in onGoTo(index) }
-        let aylaPicker = AVCaptureIndexPicker("Ayla", symbolName: "waveform", localizedIndexTitles: ayla)
-        aylaPicker.setActionQueue(queue) { index in onAyla(index) }
-        for control in [goToPicker, aylaPicker] where session.canAddControl(control) {
-            session.addControl(control)
-        }
-        self.goToPicker = goToPicker
         return .started
+    }
+
+    /// Puts these menus next to the button, in this order. `onSwipe` hears which menu and item a swipe rests on.
+    func apply(_ menus: [Menu], onSwipe: @escaping @Sendable (Int, Int) -> Void) {
+        queue.async { [self] in
+            session.beginConfiguration()
+            session.controls.forEach(session.removeControl)
+            pickers = []
+            for (index, menu) in menus.enumerated() where !menu.items.isEmpty {
+                let picker = AVCaptureIndexPicker(menu.title, symbolName: menu.symbol, localizedIndexTitles: menu.items)
+                picker.selectedIndex = min(max(menu.selected, 0), menu.items.count - 1)
+                picker.setActionQueue(queue) { item in onSwipe(index, item) }
+                guard session.canAddControl(picker) else { continue }
+                session.addControl(picker)
+                pickers.append(picker)
+            }
+            session.commitConfiguration()
+        }
+    }
+
+    /// The item a menu shows, when it changed elsewhere (a page opened by a tap).
+    func select(menu: Int, item: Int) {
+        queue.async { [self] in
+            guard pickers.indices.contains(menu), pickers[menu].selectedIndex != item,
+                  pickers[menu].localizedIndexTitles.indices.contains(item) else { return }
+            pickers[menu].selectedIndex = item
+        }
     }
 
     /// The camera's picture, for the layer behind PAVE's screen: iOS only treats an app as a camera app (and sends
@@ -192,13 +281,6 @@ nonisolated final class CameraControlSession: NSObject, AVCaptureSessionControls
         let layer = AVCaptureVideoPreviewLayer(session: session)
         layer.videoGravity = .resizeAspectFill
         return layer
-    }
-
-    func select(goTo index: Int) {
-        queue.async { [self] in
-            guard let goToPicker, goToPicker.selectedIndex != index else { return }
-            goToPicker.selectedIndex = index
-        }
     }
 
     func stop() {
@@ -212,4 +294,28 @@ nonisolated final class CameraControlSession: NSObject, AVCaptureSessionControls
     func sessionControlsWillEnterFullscreenAppearance(_ session: AVCaptureSession) {}
     func sessionControlsWillExitFullscreenAppearance(_ session: AVCaptureSession) {}
     func sessionControlsDidBecomeInactive(_ session: AVCaptureSession) {}
+}
+
+extension View {
+    /// The Camera Control menus of this screen while it is in front, and what a full press does here.
+    func cameraControlMenus(_ source: String, menus: [CameraMenu], press: (() -> Void)? = nil) -> some View {
+        modifier(CameraControlMenus(source: source, menus: menus, press: press))
+    }
+}
+
+private struct CameraControlMenus: ViewModifier {
+    let source: String
+    let menus: [CameraMenu]
+    let press: (() -> Void)?
+    @Environment(PaveCameraControl.self) private var control: PaveCameraControl?
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: menus.map(\.signature) + [press == nil ? "" : "press"], initial: true) {
+                control?.setMenus(menus, press: press, source: source)
+            }
+            // The newest closures each time the screen updates, without rebuilding the menus.
+            .onChange(of: control?.isOn) { control?.setMenus(menus, press: press, source: source) }
+            .onDisappear { control?.clearMenus(source: source) }
+    }
 }
