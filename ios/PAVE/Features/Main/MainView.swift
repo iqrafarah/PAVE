@@ -1,5 +1,4 @@
 import PAVECore
-import AVKit
 import SwiftUI
 
 /// The app after signing in. You can go to Ayla, your vault or your plans yourself with the menu, laid out like
@@ -113,15 +112,17 @@ struct MainView: View {
         // Knopmodus: a badge says it is on and stops it; a full press does Ayla's choice, or starts talking.
         .overlay(alignment: .top) {
             if cameraControl.isOn {
+                // The button's presses are caught on the badge, which only exists in knopmodus: on the whole screen,
+                // even switched off, iOS's catcher took every tap on the toolbar buttons.
                 PaveCameraControlBadge { cameraControl.stop() }
+                    .onCameraCaptureEvent { event in
+                        if event.phase == .ended { cameraControl.fullPress() }
+                    }
                     .padding(.top, 52)
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
         .animation(.spring(duration: 0.35, bounce: 0.2), value: cameraControl.isOn)
-        .onCameraCaptureEvent(isEnabled: cameraControl.isOn) { event in
-            if event.phase == .ended { cameraControl.fullPress() }
-        }
         .onAppear {
             cameraControl.onGoTo = { open($0) }
             cameraControl.onAyla = { action in

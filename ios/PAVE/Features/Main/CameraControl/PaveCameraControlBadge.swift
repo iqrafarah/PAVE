@@ -1,3 +1,4 @@
+import AVKit
 import SwiftUI
 
 /// While the Camera Control button steers PAVE: a small badge that says so (the camera is on for it, records
