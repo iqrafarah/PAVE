@@ -68,7 +68,7 @@ struct SettingsAylaScreen: View {
             }
             .tint(.paveAccent)
             .disabled(cameraControl.isStarting)
-            Text("Bedien PAVE met de cameraknop: druk licht voor Ga naar en veeg, druk twee keer licht voor Ayla, druk helemaal in om met Ayla te praten. De camera staat daarvoor aan (groen bolletje), maar neemt niets op. Na drie minuten zonder de knop gaat hij vanzelf uit. De volumeknoppen werken zolang als de cameraknop.")
+            Text("Bedien PAVE met de cameraknop: druk licht voor Ga naar en veeg, druk twee keer licht voor Ayla, druk helemaal in om met Ayla te praten. De camera staat daarvoor aan (het groene bolletje van iOS), maar neemt niets op. Zet het hier weer uit; na drie minuten zonder de knop gaat het vanzelf uit. De volumeknoppen werken zolang als de cameraknop.")
                 .textStyle(.caption)
                 .foregroundStyle(Color.inkMuted)
             if let problem = cameraControl.problem {

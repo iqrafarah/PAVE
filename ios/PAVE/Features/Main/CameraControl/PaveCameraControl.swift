@@ -3,7 +3,7 @@ import Observation
 
 /// Demo: going through PAVE with the Camera Control button. iOS only sends the button to an app that is using the
 /// camera, so while this "knopmodus" is on PAVE keeps a small camera session running that records and keeps nothing;
-/// the green dot shows it, and so does the badge in PAVE with Stop. It switches itself off after a few minutes
+/// the green dot of iOS shows it, and it is switched off in Instellingen › Ayla. It also switches itself off after a few minutes
 /// without the button, and when PAVE leaves the screen.
 /// - Light press: the menu "Ga naar" next to the button; swiping moves to that screen at once.
 /// - Double light press: the other menu, "Ayla" (talk, new chat, chats).
