@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A7C0FFEE00000000000000A2 /* AylaVoiceActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C0FFEE00000000000000A1 /* AylaVoiceActivity.swift */; };
+		A7C0FFEE00000000000000A3 /* AylaVoiceActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C0FFEE00000000000000A1 /* AylaVoiceActivity.swift */; };
 		065F48BE8B44293C4E61D3EA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 86B0195960554A0DF963D9CA /* Assets.xcassets */; };
 		15C5E62E401984801CF64CF7 /* PaveSplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C616F072C4F978843892A158 /* PaveSplashView.swift */; };
 		175A4414E0270FCA6C4A444D /* PixelWaveIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BFEE001DD9C244F3F78FC55 /* PixelWaveIcon.swift */; };
@@ -88,6 +90,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		A7C0FFEE00000000000000A1 /* AylaVoiceActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AylaVoiceActivity.swift; sourceTree = "<group>"; };
 		0AB30166B28926E8F8E28BC1 /* PAVEWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PAVEWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		21DFCA90681B57EE7EB6D389 /* Sora-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Sora-OFL.txt"; sourceTree = "<group>"; };
 		2BCD023CC7FE6F72343B2EF5 /* PAVE.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PAVE.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -209,6 +212,7 @@
 				3D477CAD46D6EF8EA4CDA6DA /* PaveMark.swift */,
 				C616F072C4F978843892A158 /* PaveSplashView.swift */,
 				3BFEE001DD9C244F3F78FC55 /* PixelWaveIcon.swift */,
+				A7C0FFEE00000000000000A1 /* AylaVoiceActivity.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -417,6 +421,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A7C0FFEE00000000000000A2 /* AylaVoiceActivity.swift in Sources */,
 				15C5E62E401984801CF64CF7 /* PaveSplashView.swift in Sources */,
 				D1A7C0FFEE0000000000000C /* AylaPixelOrb.swift in Sources */,
 				D1A7C0FFEE0000000000000F /* AylaPixelIcons.swift in Sources */,
@@ -450,6 +455,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A7C0FFEE00000000000000A3 /* AylaVoiceActivity.swift in Sources */,
 				98E635EA69087DC3097BE8A3 /* PaveMark.swift in Sources */,
 				E6583B2779788EDAA6A29D7C /* PixelWaveIcon.swift in Sources */,
 				67AD7CD53E595390E5886AFE /* PaveLink.swift in Sources */,

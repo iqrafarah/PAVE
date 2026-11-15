@@ -23,6 +23,15 @@ enum AylaMessages {
     static let conceptHint = "Vertel verder en Ayla vult het aan."
     static let conceptAdd = "Zet in de kluis"
     static let headHint = "Knik ja of schud nee"
+    static let vacancyHint = "Draai je hoofd voor de volgende, knik om te kiezen"
+    static let vacancyChoose = "Kies deze"
+    static func vacancyPosition(_ index: Int, of count: Int) -> String { "\(index + 1) van \(count)" }
+    static func vacancyAsk(_ vacancy: Vacancy) -> String {
+        "Vertel meer over \(vacancy.title) bij \(vacancy.company): waarom past die bij mij, en wat mis ik nog?"
+    }
+    static func photosAdded(_ count: Int, to title: String) -> String {
+        count == 1 ? "Ik heb een foto toegevoegd aan \(title)." : "Ik heb \(count) foto's toegevoegd aan \(title)."
+    }
     static let headHintVoice = "Zeg het, of knik ja of schud nee"
     static func headAnswer(_ isYes: Bool) -> String { isYes ? "Je knikte: Ja" : "Je schudde: Nee" }
     static let conceptRequestConfirmation = "Bevestiging aanvragen"

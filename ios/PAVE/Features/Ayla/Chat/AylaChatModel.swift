@@ -105,6 +105,27 @@ final class AylaChatModel {
     private(set) var addedReplies: Set<String> = []
     /// The vault item each added card made, so the card can ask for its confirmation.
     private(set) var addedItemIDs: [String: String] = [:]
+    /// The item that went into the vault last in this conversation, for Ayla's question right after it.
+    private(set) var lastAddedItemID: String?
+
+    /// What Ayla offers right after something went into the vault, as a question for Ja or Nee.
+    enum FollowUp: Equatable {
+        case photos(itemID: String)
+        case confirmation(itemID: String)
+    }
+
+    /// Ayla's question right after "Toegevoegd aan mijn kluis": a Ja to a photo or file opens the photos for that
+    /// item, a Ja to a confirmation opens asking someone for it.
+    var followUp: FollowUp? {
+        guard !isAnswering, let itemID = lastAddedItemID, entries.count >= 2, let last = entries.last, last.role == .ayla else { return nil }
+        let before = entries[entries.count - 2]
+        guard before.role == .user, before.text.contains(AylaMessages.addedToVault(nil).dropLast()),
+              AylaVaultOffer.endsWithYesNoQuestion(last.text),
+              let question = AylaVaultOffer.lastQuestionSentence(in: last.text)?.lowercased() else { return nil }
+        if question.contains("bevestig") { return .confirmation(itemID: itemID) }
+        if ["foto", "bestand", "afbeelding", "document"].contains(where: question.contains) { return .photos(itemID: itemID) }
+        return nil
+    }
     /// The last question and answer are being removed on the server; the next question waits for that.
     @ObservationIgnored private var removal: Task<Bool, Never>?
     @ObservationIgnored private var answerTask: Task<Void, Never>?
@@ -367,13 +388,16 @@ final class AylaChatModel {
 
     /// The item of this reply is in the vault: the card says so, its files are done, and Ayla hears it so the next
     /// item starts clean.
-    func markAdded(replyID: String, itemID: String? = nil, title: String, uploads: [VaultUpload], saying words: String? = nil) {
+    /// `deliver` sends the notice another way, such as out loud in a spoken conversation.
+    func markAdded(replyID: String, itemID: String? = nil, title: String, uploads: [VaultUpload], saying words: String? = nil, deliver: ((String) -> Void)? = nil) {
         addedReplies.insert(replyID)
         addedItemIDs[replyID] = itemID
+        if let itemID { lastAddedItemID = itemID }
         sentUploads.removeAll { upload in uploads.contains(upload) }
         let name = title.trimmingCharacters(in: .whitespacesAndNewlines)
         let notice = AylaMessages.addedToVault(name.isEmpty ? nil : name)
-        send(words.map { "\($0)\n\(notice)" } ?? notice)
+        let message = words.map { "\($0)\n\(notice)" } ?? notice
+        if let deliver { deliver(message) } else { send(message) }
     }
 
     /// Adds a file to the next message, with the file itself when the vault can keep it. Returns false when there is
@@ -522,6 +546,7 @@ final class AylaChatModel {
         analyses = [:]
         addedReplies = []
         addedItemIDs = [:]
+        lastAddedItemID = nil
     }
 
     func open(_ conversation: AylaConversation) async {
@@ -547,6 +572,7 @@ final class AylaChatModel {
             analyses = [:]
             addedReplies = []
         addedItemIDs = [:]
+        lastAddedItemID = nil
         } catch {
             phase = .failed(Self.message(for: AylaError(error)))
         }

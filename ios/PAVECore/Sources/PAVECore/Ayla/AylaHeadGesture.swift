@@ -4,6 +4,9 @@ import Foundation
 public enum AylaHeadGesture: Equatable, Sendable {
     case nod
     case shake
+    /// The head turned to one side and held there, to go to the previous or the next card.
+    case turnLeft
+    case turnRight
 }
 
 /// Recognises a nod or a shake in the head's attitude over the last second. A nod moves the head down (or up) and

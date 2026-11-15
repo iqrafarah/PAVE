@@ -55,7 +55,8 @@ test('the prompt supports building evidence: files, skills, a person who confirm
   assert.match(prompt, /vraag nooit open "welke vaardigheden\?"/)
   assert.match(prompt, /wie dit kan bevestigen/)
   assert.match(prompt, /beloof nooit dat er iets is verstuurd of bevestigd/)
-  assert.match(prompt, /hooguit twee vervolgstappen/)
+  assert.match(prompt, /één vervolgvraag die met ja of nee te beantwoorden is/)
+  assert.match(prompt, /Wil je er een foto bij doen\?/)
 })
 
 test('the prompt has the device style, the name and the open screen', () => {

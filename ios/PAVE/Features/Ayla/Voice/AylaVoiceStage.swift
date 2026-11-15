@@ -30,6 +30,8 @@ struct AylaVoiceStage: View {
     var onOrbFrame: (CGRect) -> Void = { _ in }
     /// Where the caption is on screen, so the field around the orb leaves it clear.
     var onCaptionFrame: (CGRect) -> Void = { _ in }
+    /// Cards to go through with the head, such as vacancies Ayla found, in place of the caption.
+    var card: AylaVoiceVacancyCard?
 
     var body: some View {
         // Well below the orb, clear of the ring that moves around it.
@@ -38,7 +40,10 @@ struct AylaVoiceStage: View {
                 .aspectRatio(1, contentMode: .fit)
                 .frame(maxWidth: 240)
                 .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { onOrbFrame($0) }
-            if showsText {
+            if let card {
+                card
+                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
+            } else if showsText {
                 Text(caption.text)
                     .textStyle(caption.kind == .status ? .bodyMedium : .listTitle)
                     .foregroundStyle(caption.kind == .status ? Color.inkMuted : .ink)

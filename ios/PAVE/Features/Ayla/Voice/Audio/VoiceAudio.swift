@@ -36,7 +36,9 @@ nonisolated final class VoiceAudio: @unchecked Sendable {
     ) throws {
         try queue.sync {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetoothHFP, .duckOthers])
+            // Not mixed with other audio (music pauses, as in ChatGPT's voice mode): only then does PAVE get the presses
+            // on the AirPods' stem and the pause when they come out.
+            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetoothHFP])
             try session.setActive(true)
 
             try? engine.inputNode.setVoiceProcessingEnabled(true)

@@ -55,3 +55,36 @@ struct AylaHeadGestureTests {
         #expect(!AylaVaultOffer.isNo("Ja"))
     }
 }
+
+struct AylaHeadTurnTests {
+    private func feed(_ detector: inout AylaHeadTurnDetector, seconds: Double, yaw: (Double) -> Double) -> [AylaHeadTurnDetector.Turn] {
+        var found: [AylaHeadTurnDetector.Turn] = []
+        var time = 0.0
+        while time <= seconds {
+            if let turn = detector.add(time: time, yaw: yaw(time)) { found.append(turn) }
+            time += 0.04
+        }
+        return found
+    }
+
+    @Test func turningRightAndHoldingIsOneTurn() {
+        var detector = AylaHeadTurnDetector()
+        #expect(feed(&detector, seconds: 1.5, yaw: { $0 < 0.3 ? 0 : -0.5 }) == [.right])
+    }
+
+    @Test func turningLeftThenBackThenLeftAgainIsTwoTurns() {
+        var detector = AylaHeadTurnDetector()
+        let found = feed(&detector, seconds: 2.4, yaw: { t in (0.3..<0.9).contains(t) || (1.5..<2.1).contains(t) ? 0.5 : 0 })
+        #expect(found == [.left, .left])
+    }
+
+    @Test func aQuickShakeIsNoTurn() {
+        var detector = AylaHeadTurnDetector()
+        #expect(feed(&detector, seconds: 1.2, yaw: { 0.45 * sin(2 * .pi * $0 / 0.25) * ($0 < 0.5 ? 1 : 0) }).isEmpty)
+    }
+
+    @Test func sittingALittleSidewaysIsNoTurn() {
+        var detector = AylaHeadTurnDetector()
+        #expect(feed(&detector, seconds: 3, yaw: { min(0.12, $0 * 0.1) }).isEmpty)
+    }
+}

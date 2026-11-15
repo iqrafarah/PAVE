@@ -116,6 +116,11 @@ public enum AylaVaultOffer {
 
     /// Ayla's last question is one for Ja or Nee: not a question for words ("Wat wil je toevoegen?") and not a choice
     /// between things ("Wil je een diploma of een stage toevoegen?").
+    /// Ayla's last question in her text, if she asked one.
+    public static func lastQuestionSentence(in text: String) -> String? {
+        sentences(of: text).last(where: { $0.hasSuffix("?") })
+    }
+
     public static func endsWithYesNoQuestion(_ text: String) -> Bool {
         guard let last = sentences(of: text).last(where: { $0.hasSuffix("?") }) else { return false }
         return !last.contains(openWords) && !last.lowercased().contains(" of ")

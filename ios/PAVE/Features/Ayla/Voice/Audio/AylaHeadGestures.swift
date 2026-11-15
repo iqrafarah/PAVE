@@ -14,12 +14,17 @@ final class AylaHeadGestures {
 
     @ObservationIgnored private let manager = CMHeadphoneMotionManager()
     @ObservationIgnored private var detector = AylaHeadGestureDetector()
+    @ObservationIgnored private var turns = AylaHeadTurnDetector()
+    /// Also turning the head to a side, to go through cards.
+    @ObservationIgnored private var followsTurns = false
     @ObservationIgnored private var onGesture: ((AylaHeadGesture) -> Void)?
 
     var isListening: Bool { onGesture != nil }
 
-    func start(onGesture: @escaping (AylaHeadGesture) -> Void) {
+    func start(followsTurns: Bool = false, onGesture: @escaping (AylaHeadGesture) -> Void) {
         self.onGesture = onGesture
+        if followsTurns != self.followsTurns { turns.reset() }
+        self.followsTurns = followsTurns
         guard manager.isDeviceMotionAvailable, !manager.isDeviceMotionActive else { return }
         switch CMHeadphoneMotionManager.authorizationStatus() {
         case .denied, .restricted:
@@ -31,6 +36,7 @@ final class AylaHeadGestures {
             break
         }
         detector.reset()
+        turns.reset()
         manager.startDeviceMotionUpdates(to: .main) { [weak self] motion, _ in
             guard let motion else { return }
             let time = motion.timestamp
@@ -49,6 +55,10 @@ final class AylaHeadGestures {
 
     private func received(time: TimeInterval, pitch: Double, yaw: Double) {
         if !isReceiving { isReceiving = true }
+        if followsTurns, let turn = turns.add(time: time, yaw: yaw) {
+            onGesture?(turn == .left ? .turnLeft : .turnRight)
+            return
+        }
         guard let gesture = detector.add(time: time, pitch: pitch, yaw: yaw) else { return }
         onGesture?(gesture)
     }

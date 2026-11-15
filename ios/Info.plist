@@ -38,6 +38,12 @@
 			<string>bubble.left.fill</string>
 		</dict>
 	</array>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>PAVE gebruikt de camera om een document te scannen, zoals een certificaat. De tekst wordt op je toestel gelezen; alleen die tekst gaat met je bericht naar Ayla.</string>
 	<key>NSFaceIDUsageDescription</key>

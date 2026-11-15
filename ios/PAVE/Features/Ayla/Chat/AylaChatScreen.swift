@@ -13,7 +13,6 @@ struct AylaChatScreen: View {
     private static let toolbarOffset: CGFloat = 4
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.hidesScreenButtons) private var hidesScreenButtons
     @Environment(VaultModel.self) private var vault: VaultModel?
@@ -103,6 +102,14 @@ struct AylaChatScreen: View {
     @State private var headGestures = AylaHeadGestures()
     @State private var headAnswer: Bool?
     @State private var waveFromOrb = false
+    /// The vacancy shown under the orb while talking, gone through by turning the head.
+    @State private var vacancyIndex = 0
+    /// Photos for an item that just went into the vault, after a Ja to Ayla's question for them.
+    @State private var photosForItemID: String?
+    @State private var photoTargetID: String?
+    @State private var itemPhotoItems: [PhotosPickerItem] = []
+    @State private var mutedForPhotos = false
+    @State private var isAddingItemPhotos = false
     @Environment(\.toolbarIsBeside) private var toolbarIsBeside
 
     private var openVacancies: [Vacancy]? {
@@ -224,6 +231,18 @@ struct AylaChatScreen: View {
             .presentationBackgroundInteraction(.enabled)
             .paveSheet(background: shelf == .vault ? .canvas : .white, clipsToColumn: shelf != .vault)
         }
+        .photosPicker(
+            isPresented: Binding(get: { photosForItemID != nil }, set: { if !$0 { itemPhotosClosed() } }),
+            selection: $itemPhotoItems,
+            maxSelectionCount: itemPhotosRoom,
+            matching: .images,
+            preferredItemEncoding: .compatible
+        )
+        .onChange(of: itemPhotoItems) { _, items in
+            guard !items.isEmpty, let itemID = photoTargetID else { return }
+            itemPhotoItems = []
+            Task { await addItemPhotos(items, to: itemID) }
+        }
         .sheet(item: $confirmationItem) { item in
             VaultRequestConfirmationSheet(item: item, documentCount: vault?.documents(of: item).count ?? 0)
                 .paveSheet()
@@ -265,13 +284,17 @@ struct AylaChatScreen: View {
             if old != nil { voice?.stop() }
         }
         // Only when the app really leaves: the permission prompts at the first start make it briefly inactive.
-        .onChange(of: asksYesNoByHead, initial: true) { _, asks in
-            if asks { headGestures.start(onGesture: answerByHead) } else { headGestures.stop() }
+        .onChange(of: headMode, initial: true) { _, mode in
+            if mode.yesNo || mode.browse {
+                headGestures.start(followsTurns: mode.browse, onGesture: answerByHead)
+            } else {
+                headGestures.stop()
+            }
         }
         .onDisappear { headGestures.stop() }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .background { voice?.stop() }
-        }
+        .onChange(of: model.lastAylaEntryID) { vacancyIndex = 0 }
+        // A spoken conversation goes on in the background, with the Lock Screen and the Dynamic Island showing it,
+        // so you can keep talking with the phone in your pocket.
         .transform(voiceReactions)
         .transform(prompts)
         .onDisappear {
@@ -432,7 +455,8 @@ struct AylaChatScreen: View {
                         motion: orbMotion,
                         showsText: showsVoiceText,
                         onOrbFrame: { place(.center, at: $0) },
-                        onCaptionFrame: { captionFrame = $0 }
+                        onCaptionFrame: { captionFrame = $0 },
+                        card: vacancyCard
                     )
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1003,6 +1027,7 @@ struct AylaChatScreen: View {
     /// Ja to "Wil je iets toevoegen?" opens adding evidence, filled with Ayla's proposal and skills; the answer still goes
     /// to Ayla, as on the web.
     private func choose(_ label: String) {
+        if AylaVaultOffer.isYes(label), handleYes(saying: label) { return }
         if model.pendingOffersEvidence, AylaVaultOffer.isYes(label) {
             openProposedEvidence(from: model.lastReply)
         }
@@ -1053,13 +1078,22 @@ struct AylaChatScreen: View {
     /// A nod is Ja, a head shake Nee: you feel it, the answer lights up and the line above says what was understood,
     /// a moment before it is sent, as if it was tapped or said.
     private func answerByHead(_ gesture: AylaHeadGesture) {
-        guard asksYesNoByHead, headAnswer == nil else { return }
+        if browsesByHead, !asksYesNoByHead {
+            switch gesture {
+            case .turnRight: moveVacancy(by: 1)
+            case .turnLeft: moveVacancy(by: -1)
+            case .nod: chooseVacancy()
+            case .shake: break
+            }
+            return
+        }
+        guard gesture == .nod || gesture == .shake, asksYesNoByHead, headAnswer == nil else { return }
         let isYes = gesture == .nod
         if isYes { PaveHaptics.success() } else { PaveHaptics.tap(.rigid) }
         headAnswer = isYes
         AccessibilityNotification.Announcement(AylaMessages.headAnswer(isYes)).post()
         if let voice, isTalking {
-            if isYes { startWave(fromOrb: true) }
+            voice.play(isYes ? .tick : .no)
             voice.send(typed: isYes ? "Ja" : "Nee")
             Task {
                 try? await Task.sleep(for: .seconds(1.2))
@@ -1082,12 +1116,157 @@ struct AylaChatScreen: View {
             return
         }
         let word = isYes ? "Ja" : "Nee"
-        if isYes, let reply = model.lastReply, model.pendingQuestionIsOnCard, !model.addedReplies.contains(reply.id), AylaVaultOffer.asksToPutInVault(reply) {
-            addEvidenceForUser(from: reply, saying: word)
-            return
-        }
+        if isYes, handleYes(saying: word) { return }
         guard connection.isOnline else { return }
         model.send(word)
+    }
+
+    /// A Ja that PAVE carries out itself: putting Ayla's evidence in the vault, adding photos to what just went in,
+    /// or asking someone to confirm it. True when it did; Ayla then hears what happened instead of the Ja.
+    private func handleYes(saying words: String) -> Bool {
+        if let reply = model.lastReply, model.pendingQuestionIsOnCard, !model.addedReplies.contains(reply.id), AylaVaultOffer.asksToPutInVault(reply) {
+            addEvidenceForUser(from: reply, saying: words)
+            return true
+        }
+        switch model.followUp {
+        case .photos(let itemID):
+            choosePhotos(for: itemID)
+            return true
+        case .confirmation(let itemID):
+            guard let item = vault?.items.first(where: { $0.id == itemID }) else { return false }
+            if isTalking { stopVoice() }
+            confirmationItem = item
+            return true
+        case nil:
+            break
+        }
+        // While talking, a Ja to adding evidence that is not complete yet opens the form; Ayla still hears the Ja.
+        if isTalking, model.pendingOffersEvidence, let reply = model.lastReply, !model.addedReplies.contains(reply.id) {
+            openProposedEvidence(from: reply)
+        }
+        return false
+    }
+
+    // MARK: Photos for an item that just went in
+
+    private var itemPhotosRoom: Int {
+        guard let photoTargetID, let item = vault?.items.first(where: { $0.id == photoTargetID }) else { return VaultAddEvidenceModel.maximumDocuments }
+        return max(1, VaultAddEvidenceModel.maximumDocuments - (vault?.documents(of: item).count ?? 0))
+    }
+
+    /// While choosing, a spoken conversation stops listening, so the room around you is not sent as a question.
+    private func choosePhotos(for itemID: String) {
+        if let voice, isTalking, !voice.isMuted {
+            voice.toggleMute()
+            mutedForPhotos = true
+        }
+        photoTargetID = itemID
+        photosForItemID = itemID
+    }
+
+    private func itemPhotosClosed() {
+        photosForItemID = nil
+        Task {
+            // The chosen photos arrive just after the picker closes; without any, listening goes on.
+            try? await Task.sleep(for: .milliseconds(300))
+            if itemPhotoItems.isEmpty, photoTargetID != nil, !isAddingItemPhotos { listenAgainAfterPhotos() }
+        }
+    }
+
+    private func listenAgainAfterPhotos() {
+        photoTargetID = nil
+        if mutedForPhotos, let voice, voice.isMuted { voice.toggleMute() }
+        mutedForPhotos = false
+    }
+
+    private func addItemPhotos(_ items: [PhotosPickerItem], to itemID: String) async {
+        guard let vault else { return }
+        isAddingItemPhotos = true
+        defer { isAddingItemPhotos = false }
+        let day = Date.now.formatted(.iso8601.year().month().day())
+        var added = 0
+        for item in items {
+            guard let data = try? await item.loadTransferable(type: Data.self), let jpeg = UIImage(data: data)?.jpegData(compressionQuality: 0.85) else { continue }
+            let upload = VaultUpload(data: jpeg, fileName: "Foto \(day) \(added + 1).jpeg", mimeType: "image/jpeg")
+            do {
+                try await vault.attach(upload, to: itemID)
+                added += 1
+            } catch {
+                break
+            }
+        }
+        listenAgainAfterPhotos()
+        guard added > 0 else {
+            fileProblem = AylaMessages.fileUnreadable
+            return
+        }
+        await vault.load()
+        PaveHaptics.success()
+        let title = vault.items.first { $0.id == itemID }?.title ?? "je bewijs"
+        let notice = AylaMessages.photosAdded(added, to: title)
+        if let voice, isTalking {
+            voice.play(.saved)
+            voice.send(typed: notice, checksYes: false)
+        } else {
+            model.send(notice)
+        }
+        startWave(fromOrb: isTalking)
+    }
+
+    // MARK: Vacancies while talking
+
+    /// Vacancies in Ayla's newest answer, gone through one by one under the orb while talking.
+    private var voiceVacancies: [Vacancy] {
+        guard isTalking, let last = model.entries.last(where: { $0.role == .ayla }) else { return [] }
+        return Self.vacancies(in: last)
+    }
+
+    private var browsesByHead: Bool {
+        isTalking && !orbMotion.isLow && !voiceVacancies.isEmpty && voice?.isActive == true
+    }
+
+    private struct HeadMode: Equatable {
+        let yesNo: Bool
+        let browse: Bool
+    }
+
+    private var headMode: HeadMode {
+        HeadMode(yesNo: asksYesNoByHead, browse: browsesByHead)
+    }
+
+    private var vacancyCard: AylaVoiceVacancyCard? {
+        let vacancies = voiceVacancies
+        guard browsesByHead, !vacancies.isEmpty else { return nil }
+        let index = min(vacancyIndex, vacancies.count - 1)
+        return AylaVoiceVacancyCard(
+            vacancy: vacancies[index],
+            index: index,
+            count: vacancies.count,
+            followsHead: headGestures.isReceiving,
+            onPrevious: { moveVacancy(by: -1) },
+            onNext: { moveVacancy(by: 1) },
+            onChoose: chooseVacancy
+        )
+    }
+
+    private func moveVacancy(by step: Int) {
+        let next = vacancyIndex + step
+        guard voiceVacancies.indices.contains(next) else {
+            PaveHaptics.tap(.soft)
+            return
+        }
+        withAnimation(.snappy(duration: 0.25)) { vacancyIndex = next }
+        PaveHaptics.selection()
+        voice?.play(.tick)
+    }
+
+    /// Ayla tells more about this one: why it fits and what is still missing.
+    private func chooseVacancy() {
+        let vacancies = voiceVacancies
+        guard let voice, !vacancies.isEmpty else { return }
+        PaveHaptics.tap(.medium)
+        voice.play(.tick)
+        voice.send(typed: AylaMessages.vacancyAsk(vacancies[min(vacancyIndex, vacancies.count - 1)]), checksYes: false)
     }
 
     /// A yes in words to "Zal ik het in je kluis zetten?": Ayla puts it in the vault, without the form. When something
@@ -1104,9 +1283,15 @@ struct AylaChatScreen: View {
             if vault.state != .ready { await vault.load() }
             let flow = VaultAddEvidenceModel.proposed(by: reply, vault: vault, documents: documents, analysis: excluded.isEmpty ? analysis : nil)
             if flow.aylaFill != .reading, flow.aylaProposals.count <= 1, await flow.saveFromChat() {
-                model.markAdded(replyID: reply.id, itemID: flow.savedItemID, title: flow.draft.title, uploads: flow.documents, saying: words)
-                startWave()
+                let talking = isTalking ? voice : nil
+                model.markAdded(
+                    replyID: reply.id, itemID: flow.savedItemID, title: flow.draft.title, uploads: flow.documents, saying: words,
+                    deliver: talking.map { voice in { voice.send(typed: $0, checksYes: false) } }
+                )
+                talking?.play(.saved)
+                startWave(fromOrb: talking != nil)
             } else {
+                if isTalking { stopVoice() }
                 addingFromReplyID = reply.id
                 addEvidence = flow
             }
@@ -1118,10 +1303,9 @@ struct AylaChatScreen: View {
         dictation.stop()
         isComposerFocused = false
         let message = text ?? model.draft
-        if text == nil, !model.isAnswering, let reply = model.lastReply, model.pendingQuestionIsOnCard, !model.addedReplies.contains(reply.id),
-           AylaVaultOffer.asksToPutInVault(reply), AylaVaultOffer.isConfirmation(message) {
+        let words = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        if text == nil, !model.isAnswering, AylaVaultOffer.isConfirmation(words), handleYes(saying: words) {
             model.draft = ""
-            addEvidenceForUser(from: reply, saying: message.trimmingCharacters(in: .whitespacesAndNewlines))
             return
         }
         model.send(message)
@@ -1240,7 +1424,7 @@ struct AylaChatScreen: View {
         isComposerFocused = false
         isAttachMenuOpen = false
         let session = voice ?? AylaVoiceSession(model: model)
-        session.onYesToEvidence = { openProposedEvidence(from: model.lastReply) }
+        session.onYes = { handleYes(saying: $0) }
         voice = session
         stageSlot = .zero
         barSlot = .zero
