@@ -10,6 +10,8 @@ struct CameraMenu {
     /// An SF Symbol, as iOS draws the menu.
     let symbol: String
     let items: [String]
+    /// What each item is (a folder's or a chat's id), so the screen can show which one is chosen.
+    var keys: [String] = []
     var selected = 0
     var onSwipe: ((Int) -> Void)?
     var onPress: ((Int) -> Void)?
@@ -55,8 +57,20 @@ final class PaveCameraControl {
     /// Knopmodus stays chosen: it starts again whenever PAVE is open and unlocked.
     static let enabledKey = "cameraControlEnabled"
 
+    /// The item a swipe rests on in a menu that waits for a full press, shown on the screen meanwhile.
+    struct Highlight: Equatable {
+        let menu: String
+        let key: String
+        let title: String
+        let menuTitle: String
+    }
+
     private(set) var isOn = false
     private(set) var isStarting = false
+    private(set) var highlight: Highlight?
+    /// iOS shows the menus next to the button: they are only rebuilt once it closes them, so a swipe that opens a
+    /// large page (with menus of its own) never closes them under your finger.
+    private(set) var isMenuOpen = false
     private(set) var problem: Problem?
     /// For a moment without the camera, such as while the document scanner of iOS uses it.
     var isSuspended = false
@@ -81,6 +95,8 @@ final class PaveCameraControl {
     @ObservationIgnored private var active: (menu: Int, item: Int)?
     @ObservationIgnored private var destination = MainDestination.ayla
     @ObservationIgnored private var pendingSwipe: Task<Void, Never>?
+    @ObservationIgnored private var needsApply = false
+    @ObservationIgnored private var highlightTimeout: Task<Void, Never>?
 
     func start(at destination: MainDestination) async {
         guard !isOn, !isStarting else { return }
@@ -92,7 +108,10 @@ final class PaveCameraControl {
             problem = .notAllowed
             return
         }
-        switch await camera.start() {
+        let visibility: @Sendable (Bool) -> Void = { [weak self] isOpen in
+            Task { @MainActor in self?.menuVisibilityChanged(isOpen) }
+        }
+        switch await camera.start(onMenuVisibility: visibility) {
         case .started:
             isOn = true
             apply(force: true)
@@ -106,6 +125,9 @@ final class PaveCameraControl {
     func stop() {
         pendingSwipe?.cancel()
         active = nil
+        clearHighlight()
+        isMenuOpen = false
+        needsApply = false
         guard isOn else { return }
         isOn = false
         camera.stop()
@@ -126,7 +148,10 @@ final class PaveCameraControl {
     /// A full press (or a volume button, which iOS treats the same while the camera is in use).
     func fullPress() {
         guard isOn else { return }
-        defer { active = nil }
+        defer {
+            active = nil
+            clearHighlight()
+        }
         if let active, applied.indices.contains(active.menu), let onPress = applied[active.menu].onPress {
             onPress(active.item)
         } else if let press = screens.last?.press {
@@ -152,7 +177,7 @@ final class PaveCameraControl {
             onSwipe: { [weak self] item in self?.onGoTo(Self.destinations[item]) }
         ))
         menus.append(CameraMenu(
-            id: "ayla", title: "Ayla", symbol: "waveform", items: AylaAction.allCases.map(\.title),
+            id: "ayla", title: "Ayla", symbol: "waveform", items: AylaAction.allCases.map(\.title), keys: AylaAction.allCases.map { String($0.rawValue) },
             onPress: { [weak self] item in
                 guard let action = AylaAction(rawValue: item) else { return }
                 self?.onAyla(action)
@@ -163,11 +188,16 @@ final class PaveCameraControl {
 
     private func apply(force: Bool = false) {
         guard isOn else { return }
+        if isMenuOpen, !force {
+            needsApply = true
+            return
+        }
         let menus = allMenus
         let changed = force || menus.map(\.signature) != applied.map(\.signature)
         applied = menus
         guard changed else { return }
         active = nil
+        clearHighlight()
         camera.apply(menus.map { .init(title: $0.title, symbol: $0.symbol, items: $0.items, selected: $0.selected) }) { [weak self] menu, item in
             Task { @MainActor in self?.swiped(menu: menu, item: item) }
         }
@@ -177,7 +207,25 @@ final class PaveCameraControl {
         guard isOn, applied.indices.contains(menu), applied[menu].items.indices.contains(item) else { return }
         active = (menu, item)
         applied[menu].selected = item
-        guard let onSwipe = applied[menu].onSwipe else { return }
+        guard let onSwipe = applied[menu].onSwipe else {
+            let chosen = applied[menu]
+            highlight = Highlight(
+                menu: chosen.id,
+                key: chosen.keys.indices.contains(item) ? chosen.keys[item] : String(item),
+                title: chosen.items[item],
+                menuTitle: chosen.title
+            )
+            // A choice nobody pressed for fades away after a while.
+            highlightTimeout?.cancel()
+            highlightTimeout = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(8))
+                guard !Task.isCancelled else { return }
+                self?.highlight = nil
+                self?.active = nil
+            }
+            return
+        }
+        clearHighlight()
         // While swiping through a menu, only the item it rests on happens.
         pendingSwipe?.cancel()
         pendingSwipe = Task {
@@ -185,6 +233,18 @@ final class PaveCameraControl {
             guard !Task.isCancelled else { return }
             onSwipe(item)
         }
+    }
+
+    private func menuVisibilityChanged(_ isOpen: Bool) {
+        isMenuOpen = isOpen
+        guard !isOpen, needsApply else { return }
+        needsApply = false
+        apply()
+    }
+
+    private func clearHighlight() {
+        highlightTimeout?.cancel()
+        highlight = nil
     }
 
     private static func cameraAllowed() async -> Bool {
@@ -217,12 +277,14 @@ nonisolated final class CameraControlSession: NSObject, AVCaptureSessionControls
     private var pickers: [AVCaptureIndexPicker] = []
     private let lock = NSLock()
     private var maximum = 7
+    private var onMenuVisibility: (@Sendable (Bool) -> Void)?
 
     var maximumMenus: Int { lock.withLock { maximum } }
 
-    func start() async -> StartResult {
+    func start(onMenuVisibility: @escaping @Sendable (Bool) -> Void) async -> StartResult {
         await withCheckedContinuation { continuation in
             queue.async { [self] in
+                self.onMenuVisibility = onMenuVisibility
                 let result = configure()
                 if result == .started { session.startRunning() }
                 continuation.resume(returning: result)
@@ -289,11 +351,10 @@ nonisolated final class CameraControlSession: NSObject, AVCaptureSessionControls
         }
     }
 
-    // The menus show and hide by themselves; PAVE needs nothing from these moments.
-    func sessionControlsDidBecomeActive(_ session: AVCaptureSession) {}
+    func sessionControlsDidBecomeActive(_ session: AVCaptureSession) { onMenuVisibility?(true) }
     func sessionControlsWillEnterFullscreenAppearance(_ session: AVCaptureSession) {}
     func sessionControlsWillExitFullscreenAppearance(_ session: AVCaptureSession) {}
-    func sessionControlsDidBecomeInactive(_ session: AVCaptureSession) {}
+    func sessionControlsDidBecomeInactive(_ session: AVCaptureSession) { onMenuVisibility?(false) }
 }
 
 extension View {

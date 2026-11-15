@@ -19,6 +19,7 @@ struct VaultLibraryPage: View {
     /// The open menu on the outer display of iPhone Duo puts its own buttons where search and add are.
     @Environment(\.hidesScreenButtons) private var hidesScreenButtons
     @Environment(\.vaultButtonsInPage) private var buttonsInPage
+    @Environment(PaveCameraControl.self) private var cameraControl: PaveCameraControl?
     @Environment(\.menuButtonFrame) private var menuFrame
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// How the vault opens, from Instellingen; switching here lasts until the vault is opened again.
@@ -61,8 +62,30 @@ struct VaultLibraryPage: View {
         return sorted.sorted { (liveItems.firstIndex(of: $0.id) ?? .max) < (liveItems.firstIndex(of: $1.id) ?? .max) }
     }
 
+    /// The folder or evidence chosen with the Camera Control button, lit up and scrolled into view.
+    private var chosenFolderID: String? {
+        cameraControl?.highlight.flatMap { $0.menu == "folders" ? $0.key : nil }
+    }
+
+    private var chosenItemID: String? {
+        cameraControl?.highlight.flatMap { $0.menu == "items" ? $0.key : nil }
+    }
+
     var body: some View {
-        library
+        ScrollViewReader { proxy in
+            library
+                .onChange(of: chosenItemID) { _, id in
+                    guard let id else { return }
+                    withAnimation(.snappy(duration: 0.3)) { proxy.scrollTo(id, anchor: .center) }
+                }
+        }
+            .onChange(of: chosenFolderID) { _, id in
+                guard let id, let index = shownFolders.firstIndex(where: { $0.id == id }), rowWidth > 0 else { return }
+                let slot = VaultFolderTile.width + Self.tileSpacing
+                let contentWidth = CGFloat(shownFolders.count) * slot - Self.tileSpacing
+                let x = min(max(CGFloat(index) * slot - (rowWidth - VaultFolderTile.width) / 2, 0), max(contentWidth - rowWidth, 0))
+                withAnimation(.snappy(duration: 0.3)) { rowPosition.scrollTo(x: x) }
+            }
             .overlay {
                 if buttonsInPage, !hidesScreenButtons { sideButtons }
             }
@@ -125,13 +148,13 @@ struct VaultLibraryPage: View {
         var menus: [CameraMenu] = []
         let folders = shownFolders
         if folder == nil, !folders.isEmpty {
-            menus.append(CameraMenu(id: "folders", title: "Map", symbol: "folder", items: folders.map(\.name), onPress: { index in
+            menus.append(CameraMenu(id: "folders", title: "Map", symbol: "folder", items: folders.map(\.name), keys: folders.map(\.id), onPress: { index in
                 if folders.indices.contains(index) { actions.openFolder(folders[index]) }
             }))
         }
         let items = Array(visibleItems.prefix(20))
         if !items.isEmpty {
-            menus.append(CameraMenu(id: "items", title: "Bewijs", symbol: "doc.text", items: items.map(\.title), onPress: { index in
+            menus.append(CameraMenu(id: "items", title: "Bewijs", symbol: "doc.text", items: items.map(\.title), keys: items.map(\.id), onPress: { index in
                 if items.indices.contains(index) { actions.open(items[index]) }
             }))
         }
@@ -355,7 +378,7 @@ struct VaultLibraryPage: View {
             color: style.color.color,
             surface: style.color.surface,
             count: model.count(in: .folder(folder.id)),
-            isSelected: false,
+            isSelected: chosenFolderID == folder.id,
             isDropTarget: dropTarget == folder.id,
             action: action
         )
@@ -481,8 +504,17 @@ struct VaultLibraryPage: View {
             actions.open(item)
         } label: {
             VaultLibraryCard(item: item, isGrid: isGrid)
+                .overlay {
+                    if chosenItemID == item.id {
+                        RoundedRectangle(cornerRadius: 16)
+                            .strokeBorder(Color.paveAccent, lineWidth: 3)
+                    }
+                }
+                .scaleEffect(chosenItemID == item.id ? 1.02 : 1)
+                .animation(.spring(duration: 0.3, bounce: 0.25), value: chosenItemID == item.id)
         }
         .buttonStyle(.pave)
+        .id(item.id)
         .accessibilityHint("Toont alles over dit item")
         .contextMenu {
             VaultItemActionButtons(

@@ -112,6 +112,7 @@ struct AylaChatScreen: View {
     @State private var itemPhotoItems: [PhotosPickerItem] = []
     @State private var mutedForPhotos = false
     @State private var isAddingItemPhotos = false
+    @Environment(PaveCameraControl.self) private var cameraControl: PaveCameraControl?
     @Environment(\.toolbarIsBeside) private var toolbarIsBeside
 
     private var openVacancies: [Vacancy]? {
@@ -861,7 +862,7 @@ struct AylaChatScreen: View {
                         isAboutVault: model.pendingOffersEvidence,
                         picked: headAnswer.flatMap { isYes in
                             voiceChoices.first { isYes ? AylaVaultOffer.isYes($0.label) : AylaVaultOffer.isNo($0.label) }?.id
-                        }
+                        } ?? buttonAnswerID
                     ) { choice in
                         chooseWhileTalking(choice)
                     }
@@ -951,7 +952,7 @@ struct AylaChatScreen: View {
                     isAboutVault: model.pendingOffersEvidence,
                     picked: headAnswer.flatMap { isYes in
                         question.choices.first { isYes ? AylaVaultOffer.isYes($0.label) : AylaVaultOffer.isNo($0.label) }?.id
-                    }
+                    } ?? buttonAnswerID
                 ) { choice in
                     choose(choice.label)
                 }
@@ -1258,7 +1259,7 @@ struct AylaChatScreen: View {
         var menus: [CameraMenu] = []
         let choices: [AylaChoice] = isTalking ? voiceChoices : (model.pendingQuestion?.choices.map { AylaChoice(id: $0.id, label: $0.label) } ?? [])
         if choices.count >= 2 {
-            menus.append(CameraMenu(id: "answer", title: "Antwoord", symbol: "checkmark.bubble", items: choices.map(\.label), onPress: { index in
+            menus.append(CameraMenu(id: "answer", title: "Antwoord", symbol: "checkmark.bubble", items: choices.map(\.label), keys: choices.map(\.id), onPress: { index in
                 guard choices.indices.contains(index) else { return }
                 answerByButton(choices[index])
             }))
@@ -1276,12 +1277,17 @@ struct AylaChatScreen: View {
         }
         let chats = Array(model.conversationList.conversations.prefix(8))
         if !chats.isEmpty, !isTalking {
-            menus.append(CameraMenu(id: "chats", title: "Chats", symbol: "bubble.left.and.bubble.right", items: chats.map { $0.title.isEmpty ? "Gesprek" : $0.title }, onPress: { index in
+            menus.append(CameraMenu(id: "chats", title: "Chats", symbol: "bubble.left.and.bubble.right", items: chats.map { $0.title.isEmpty ? "Gesprek" : $0.title }, keys: chats.map(\.id), onPress: { index in
                 guard chats.indices.contains(index) else { return }
                 Task { await model.open(chats[index]) }
             }))
         }
         return menus
+    }
+
+    /// The answer the Camera Control button rests on, lit up in the choices until a full press sends it.
+    private var buttonAnswerID: String? {
+        cameraControl?.highlight.flatMap { $0.menu == "answer" ? $0.key : nil }
     }
 
     /// An answer chosen with the Camera Control button: the same as tapping it.
