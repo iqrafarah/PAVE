@@ -23,6 +23,10 @@ enum AylaMessages {
     static let conceptHint = "Vertel verder en Ayla vult het aan."
     static let conceptAdd = "Zet in de kluis"
     static let headHint = "Knik ja of schud nee"
+    static let siriGoOn = "Zeg \"Praat met Ayla in PAVE\" om verder te gaan."
+    static let siriSignInFirst = "Log eerst in bij PAVE, dan kan Ayla je vragen beantwoorden."
+    static let siriUnavailable = "Ayla is er nu even niet. Probeer het straks nog eens in PAVE."
+    static let siriFailed = "Ayla kon nu geen antwoord geven. Probeer het zo nog eens."
     static let vacancyHint = "Draai je hoofd voor de volgende, knik om te kiezen"
     static let vacancyChoose = "Kies deze"
     static func vacancyPosition(_ index: Int, of count: Int) -> String { "\(index + 1) van \(count)" }

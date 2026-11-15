@@ -4,6 +4,7 @@ import Foundation
 import MediaPlayer
 import Observation
 import PAVECore
+import UIKit
 
 /// A spoken conversation with Ayla, like voice mode in ChatGPT and Claude: Ayla listens, sends the question after
 /// a short silence, reads her answer out loud and then listens again, until the user stops. The user can talk
@@ -484,6 +485,11 @@ final class AylaVoiceSession {
         }
     }
 
+    /// The screen is off or PAVE is not in front, such as with the iPhone in a pocket: the buttons cannot be seen.
+    private var isOutOfSight: Bool {
+        UIApplication.shared.applicationState != .active || !UIApplication.shared.isProtectedDataAvailable
+    }
+
     private func speak(_ reply: AylaReply) async {
         currentReply = reply
         if isPaused {
@@ -495,10 +501,15 @@ final class AylaVoiceSession {
         if model.pendingYesNo { await listenForHead(true) }
         _ = await micSwitch?.value
         guard !Task.isCancelled, state == .thinking || state == .speaking else { return }
-        let text = [reply.text, reply.question?.text]
+        var text = [reply.text, reply.question?.text]
             .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
             .joined(separator: " ")
+        // Out of sight, the choices that are buttons on screen are said too.
+        if isOutOfSight, let choices = model.pendingQuestion?.choices.map(\.label),
+           let line = AylaSpokenReply.choicesLine(choices, canNod: listensForHead) {
+            text += " " + line
+        }
         heard = ""
         cues = AylaVoiceCue.cues(in: text)
         answerLength = text.count
