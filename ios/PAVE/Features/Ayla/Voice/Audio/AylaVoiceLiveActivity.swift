@@ -1,4 +1,5 @@
 import ActivityKit
+import PAVECore
 
 /// Starts, updates and ends the Live Activity of a spoken conversation with Ayla. When Live Activities are off in
 /// Settings nothing happens, and the conversation simply goes on. Only the id is kept: the activity itself is looked up
@@ -13,7 +14,8 @@ final class AylaVoiceLiveActivity {
         guard activityID == nil, ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         self.status = status
         let content = ActivityContent(state: Attributes.ContentState(status: status), staleDate: nil)
-        activityID = (try? Activity.request(attributes: Attributes(), content: content))?.id
+        let accent = PaveThemeColor.hex(PaveHomeScreen.widgetAccent(theme: PaveAppearance.theme, customColor: PaveAppearance.customColor))
+        activityID = (try? Activity.request(attributes: Attributes(accentHex: accent), content: content))?.id
     }
 
     func update(status: Attributes.ContentState.Status) {

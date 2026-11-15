@@ -1,10 +1,20 @@
 import ActivityKit
 import Foundation
+import SwiftUI
 
 /// A spoken conversation with Ayla on the Lock Screen and in the Dynamic Island, so you can keep talking with the
 /// phone in your pocket and still see what Ayla is doing. Only her status shows, never what is said: the Lock Screen
 /// can be seen by others.
 nonisolated struct AylaVoiceActivityAttributes: ActivityAttributes {
+    /// The theme colour from Instellingen, as "#RRGGBB", like the widgets get it.
+    var accentHex = "#355D4C"
+
+    var accent: Color {
+        let fallback: UInt32 = 0x355D4C
+        let value = accentHex.count == 7 ? UInt32(accentHex.dropFirst(), radix: 16) ?? fallback : fallback
+        return Color(red: Double(value >> 16 & 0xFF) / 255, green: Double(value >> 8 & 0xFF) / 255, blue: Double(value & 0xFF) / 255)
+    }
+
     struct ContentState: Codable, Hashable {
         enum Status: String, Codable, Hashable {
             case listening

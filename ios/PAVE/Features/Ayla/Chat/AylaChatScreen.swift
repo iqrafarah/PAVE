@@ -862,7 +862,7 @@ struct AylaChatScreen: View {
                             voiceChoices.first { isYes ? AylaVaultOffer.isYes($0.label) : AylaVaultOffer.isNo($0.label) }?.id
                         }
                     ) { choice in
-                        answerYesNo(AylaVaultOffer.isYes(choice.label), byHead: false)
+                        chooseWhileTalking(choice)
                     }
                     .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .bottom)))
                 }
@@ -1250,13 +1250,28 @@ struct AylaChatScreen: View {
         return Self.vacancies(in: last)
     }
 
-    /// Ja and Nee in place of the voice bar while Ayla asks for one of them, even while she is still saying it.
+    /// Ayla's choices in place of the voice bar while she asks for one, even while she is still saying it: the same
+    /// as under the chat (also when the chat shows the question on the evidence card, which the orb covers), or Ja and
+    /// Nee for a question in her words that asks for one of them.
     private var voiceChoices: [AylaChoice] {
-        guard let voice, isTalking, voice.state == .listening || voice.state == .speaking, model.pendingYesNo else { return [] }
+        guard let voice, isTalking, voice.isActive, voice.state != .thinking else { return [] }
         if let choices = model.pendingQuestion?.choices, choices.count >= 2 {
             return choices.map { AylaChoice(id: $0.id, label: $0.label) }
         }
+        guard model.pendingYesNo else { return [] }
         return [AylaChoice(id: "yes", label: "Ja"), AylaChoice(id: "no", label: "Nee")]
+    }
+
+    /// A tap on one of those choices while talking: Ja and Nee get the same feedback as a nod; another choice is sent
+    /// as if it was said.
+    private func chooseWhileTalking(_ choice: AylaChoice) {
+        if AylaVaultOffer.isYes(choice.label) || AylaVaultOffer.isNo(choice.label) {
+            answerYesNo(AylaVaultOffer.isYes(choice.label), byHead: false)
+            return
+        }
+        PaveHaptics.selection()
+        voice?.play(.tick)
+        voice?.send(typed: choice.label)
     }
 
     private var browsesByHead: Bool {
