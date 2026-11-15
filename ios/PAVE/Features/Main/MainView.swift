@@ -1,5 +1,4 @@
 import PAVECore
-import AVKit
 import SwiftUI
 
 /// The app after signing in. You can go to Ayla, your vault or your plans yourself with the menu, laid out like
@@ -115,10 +114,8 @@ struct MainView: View {
         // took every tap on the toolbar buttons. iOS's own green dot shows the camera is on.
         .background {
             if cameraControl.isOn {
-                Color.clear
-                    .onCameraCaptureEvent { event in
-                        if event.phase == .ended { cameraControl.fullPress() }
-                    }
+                PaveCameraControlSurface(camera: cameraControl.camera) { cameraControl.fullPress() }
+                    .ignoresSafeArea()
                     .accessibilityHidden(true)
             }
         }
@@ -133,14 +130,20 @@ struct MainView: View {
             }
         }
         .onChange(of: destination) { _, destination in cameraControl.show(destination) }
+        // Knopmodus stays on: it starts whenever PAVE is in front and unlocked, and stops when it is not.
+        .onChange(of: CameraControlWanted(isEnabled: cameraControl.isEnabled, changed: cameraControl.enabledChanged, isActive: scenePhase != .background, isOpen: appState.isOpen), initial: true) { _, wanted in
+            if wanted.isEnabled, wanted.isActive, wanted.isOpen {
+                Task { await cameraControl.start(at: destination) }
+            } else {
+                cameraControl.stop()
+            }
+        }
         .task { await model.start() }
         .task { await memory.load() }
         .task { await model.followConversationChanges() }
         .onChange(of: hasSidebar) { isMenuOpen = false }
         // A deleted chat that could still be brought back is really deleted when the app goes away.
         .onChange(of: scenePhase) { _, phase in
-            // The camera cannot run in the background; knopmodus ends with it.
-            if phase != .active { cameraControl.stop() }
             if phase == .background {
                 model.commitPendingDeletion()
                 memory.commitPendingForget()
@@ -346,4 +349,12 @@ struct MainView: View {
 #Preview {
     MainView(service: nil, vaultService: nil)
         .environment(AppState())
+}
+
+/// When knopmodus should run: chosen, PAVE in front, and unlocked.
+private struct CameraControlWanted: Equatable {
+    let isEnabled: Bool
+    let changed: Int
+    let isActive: Bool
+    let isOpen: Bool
 }

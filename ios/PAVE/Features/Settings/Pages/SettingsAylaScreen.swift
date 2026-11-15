@@ -57,18 +57,15 @@ struct SettingsAylaScreen: View {
     private var cameraControlRow: some View {
         VStack(alignment: .leading, spacing: 8) {
             Toggle(isOn: Binding(
-                get: { cameraControl.isOn },
-                set: { isOn in
-                    if isOn { Task { await cameraControl.start(at: .settings) } } else { cameraControl.stop() }
-                }
+                get: { _ = cameraControl.enabledChanged; return cameraControl.isEnabled },
+                set: { cameraControl.isEnabled = $0 }
             )) {
                 Text("Knopmodus (demo)")
                     .textStyle(.listTitle)
                     .foregroundStyle(Color.ink)
             }
             .tint(.paveAccent)
-            .disabled(cameraControl.isStarting)
-            Text("Bedien PAVE met de cameraknop: druk licht voor Ga naar en veeg, druk twee keer licht voor Ayla, druk helemaal in om met Ayla te praten. De camera staat daarvoor aan (het groene bolletje van iOS), maar neemt niets op. Zet het hier weer uit; na drie minuten zonder de knop gaat het vanzelf uit. De volumeknoppen werken zolang als de cameraknop.")
+            Text("Bedien PAVE met de cameraknop: druk licht voor Ga naar en veeg, druk twee keer licht voor Ayla, druk helemaal in om met Ayla te praten. De camera staat daarvoor aan zolang PAVE open is (het groene bolletje van iOS), maar neemt niets op. Zet het hier weer uit. De volumeknoppen werken zolang als de cameraknop.")
                 .textStyle(.caption)
                 .foregroundStyle(Color.inkMuted)
             if let problem = cameraControl.problem {

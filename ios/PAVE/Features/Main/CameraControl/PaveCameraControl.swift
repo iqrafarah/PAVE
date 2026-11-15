@@ -33,7 +33,15 @@ final class PaveCameraControl {
     }
 
     static let destinations: [MainDestination] = [.ayla, .vault, .plan, .profile, .notifications, .settings]
-    static let idleTime = Duration.seconds(180)
+    /// Knopmodus stays chosen: it starts again whenever PAVE is open and unlocked.
+    static let enabledKey = "cameraControlEnabled"
+
+    var isEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: Self.enabledKey) }
+        set { UserDefaults.standard.set(newValue, forKey: Self.enabledKey); enabledChanged += 1 }
+    }
+    /// Read by views so they update when the choice changes.
+    private(set) var enabledChanged = 0
 
     private(set) var isOn = false
     private(set) var isStarting = false
@@ -42,10 +50,9 @@ final class PaveCameraControl {
     @ObservationIgnored var onGoTo: (MainDestination) -> Void = { _ in }
     @ObservationIgnored var onAyla: (AylaAction) -> Void = { _ in }
 
-    @ObservationIgnored private let camera = CameraControlSession()
+    @ObservationIgnored let camera = CameraControlSession()
     @ObservationIgnored private var aylaChoice: AylaAction?
     @ObservationIgnored private var pendingGoTo: Task<Void, Never>?
-    @ObservationIgnored private var idle: Task<Void, Never>?
 
     func start(at destination: MainDestination) async {
         guard !isOn, !isStarting else { return }
@@ -67,7 +74,6 @@ final class PaveCameraControl {
         switch result {
         case .started:
             isOn = true
-            touched()
         case .noCamera:
             problem = .noCamera
         case .noButton:
@@ -76,7 +82,6 @@ final class PaveCameraControl {
     }
 
     func stop() {
-        idle?.cancel()
         pendingGoTo?.cancel()
         aylaChoice = nil
         guard isOn else { return }
@@ -87,7 +92,6 @@ final class PaveCameraControl {
     /// A full press (or a volume button, which iOS treats the same while the camera is in use).
     func fullPress() {
         guard isOn else { return }
-        touched()
         onAyla(aylaChoice ?? .talk)
         aylaChoice = nil
     }
@@ -100,7 +104,6 @@ final class PaveCameraControl {
 
     private func choseScreen(_ index: Int) {
         guard isOn, Self.destinations.indices.contains(index) else { return }
-        touched()
         // While swiping through the menu, only the screen it rests on opens.
         pendingGoTo?.cancel()
         pendingGoTo = Task {
@@ -112,18 +115,9 @@ final class PaveCameraControl {
 
     private func choseAyla(_ index: Int) {
         guard isOn else { return }
-        touched()
         aylaChoice = AylaAction(rawValue: index)
     }
 
-    private func touched() {
-        idle?.cancel()
-        idle = Task { [weak self] in
-            try? await Task.sleep(for: Self.idleTime)
-            guard !Task.isCancelled else { return }
-            self?.stop()
-        }
-    }
 
     private static func cameraAllowed() async -> Bool {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
@@ -190,6 +184,14 @@ nonisolated final class CameraControlSession: NSObject, AVCaptureSessionControls
         }
         self.goToPicker = goToPicker
         return .started
+    }
+
+    /// The camera's picture, for the layer behind PAVE's screen: iOS only treats an app as a camera app (and sends
+    /// it the button) when it shows what the camera sees.
+    func makePreviewLayer() -> AVCaptureVideoPreviewLayer {
+        let layer = AVCaptureVideoPreviewLayer(session: session)
+        layer.videoGravity = .resizeAspectFill
+        return layer
     }
 
     func select(goTo index: Int) {
