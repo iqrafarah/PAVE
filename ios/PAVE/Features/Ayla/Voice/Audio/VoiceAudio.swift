@@ -36,9 +36,13 @@ nonisolated final class VoiceAudio: @unchecked Sendable {
     ) throws {
         try queue.sync {
             let session = AVAudioSession.sharedInstance()
-            // Not mixed with other audio (music pauses, as in ChatGPT's voice mode): only then does PAVE get the presses
-            // on the AirPods' stem and the pause when they come out.
-            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetoothHFP])
+            // Ayla's voice goes to AirPods as ordinary audio, while the iPhone's own microphone listens. Using the
+            // AirPods' microphone turns them into a headset for calls, and then iOS stops passing on the head's motion
+            // (no nod or head shake) and takes the press on the stem for itself. The voice chat mode would do that by
+            // itself, so the mode is the default one; voice processing still cancels Ayla's voice from the microphone.
+            // Not mixed with other audio (music pauses, as in ChatGPT's voice mode): only then does PAVE get the
+            // presses on the stem and the pause when they come out.
+            try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothA2DP])
             try session.setActive(true)
 
             try? engine.inputNode.setVoiceProcessingEnabled(true)

@@ -18,6 +18,8 @@ final class AylaHeadGestures {
     /// Also turning the head to a side, to go through cards.
     @ObservationIgnored private var followsTurns = false
     @ObservationIgnored private var onGesture: ((AylaHeadGesture) -> Void)?
+    @ObservationIgnored private var lastSampleAt = Date.distantPast
+    @ObservationIgnored private var watch: Task<Void, Never>?
 
     var isListening: Bool { onGesture != nil }
 
@@ -37,6 +39,16 @@ final class AylaHeadGestures {
         }
         detector.reset()
         turns.reset()
+        // When the motion stops coming in (iOS gives none while the AirPods' microphone is in use), the hint goes away
+        // instead of promising a nod that cannot be felt.
+        watch?.cancel()
+        watch = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                guard let self else { return }
+                if isReceiving, Date.now.timeIntervalSince(lastSampleAt) > 1.5 { isReceiving = false }
+            }
+        }
         manager.startDeviceMotionUpdates(to: .main) { [weak self] motion, _ in
             guard let motion else { return }
             let time = motion.timestamp
@@ -49,11 +61,14 @@ final class AylaHeadGestures {
     func stop() {
         onGesture = nil
         isReceiving = false
+        watch?.cancel()
+        watch = nil
         guard manager.isDeviceMotionActive else { return }
         manager.stopDeviceMotionUpdates()
     }
 
     private func received(time: TimeInterval, pitch: Double, yaw: Double) {
+        lastSampleAt = .now
         if !isReceiving { isReceiving = true }
         if followsTurns, let turn = turns.add(time: time, yaw: yaw) {
             onGesture?(turn == .left ? .turnLeft : .turnRight)
