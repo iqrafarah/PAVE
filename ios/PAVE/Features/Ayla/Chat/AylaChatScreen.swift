@@ -101,6 +101,8 @@ struct AylaChatScreen: View {
     /// Ja and Nee by nodding or shaking the head with AirPods on, and what the last nod or shake answered.
     @State private var headGestures = AylaHeadGestures()
     @State private var headAnswer: Bool?
+    /// Whether that answer came from the head or from a tap on Ja or Nee.
+    @State private var answeredByHead = true
     @State private var waveFromOrb = false
     /// The vacancy shown under the orb while talking, gone through by turning the head.
     @State private var vacancyIndex = 0
@@ -354,7 +356,7 @@ struct AylaChatScreen: View {
     private func aboveBottomBar(isOverPanel: Bool) -> some View {
         VStack(spacing: 10) {
             if !isTalking, !isOverPanel, headAnswer != nil || (asksYesNoByHead && headGestures.isReceiving) {
-                AylaHeadHint(text: headAnswer.map(AylaMessages.headAnswer) ?? AylaMessages.headHint, isAnswer: headAnswer != nil)
+                AylaHeadHint(text: headAnswer.map { AylaMessages.yesNoAnswer($0, byHead: answeredByHead) } ?? AylaMessages.headHint, isAnswer: headAnswer != nil)
                     .transition(.scale(scale: 0.8).combined(with: .opacity))
             }
             if isAwayFromBottom, !isTalking, !isOverPanel, !model.entries.isEmpty {
@@ -846,6 +848,26 @@ struct AylaChatScreen: View {
                 morph: barSpace
             )
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { voiceBarHeight = $0 }
+            // A question for Ja or Nee: the buttons take the place of the bar, for when you cannot talk right now. The
+            // bar stays underneath and keeps its height, so nothing moves.
+            .opacity(voiceChoices.isEmpty ? 1 : 0)
+            .allowsHitTesting(voiceChoices.isEmpty)
+            .accessibilityHidden(!voiceChoices.isEmpty)
+            .overlay(alignment: .bottom) {
+                if !voiceChoices.isEmpty {
+                    AylaChoiceBar(
+                        choices: voiceChoices,
+                        isAboutVault: model.pendingOffersEvidence,
+                        picked: headAnswer.flatMap { isYes in
+                            voiceChoices.first { isYes ? AylaVaultOffer.isYes($0.label) : AylaVaultOffer.isNo($0.label) }?.id
+                        }
+                    ) { choice in
+                        answerYesNo(AylaVaultOffer.isYes(choice.label), byHead: false)
+                    }
+                    .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .bottom)))
+                }
+            }
+            .animation(.spring(duration: 0.35, bounce: 0.15), value: voiceChoices.isEmpty)
             .overlay(alignment: .bottomLeading) {
                 if isAttachMenuOpen {
                     attachMenu
@@ -862,7 +884,7 @@ struct AylaChatScreen: View {
 
     /// The one line under the full-screen orb: what you say, Ayla's answer, or a hint while nothing is happening.
     private func stageCaption(_ voice: AylaVoiceSession, at date: Date) -> AylaVoiceCaption {
-        if let headAnswer { return .init(text: AylaMessages.headAnswer(headAnswer), kind: .heard) }
+        if let headAnswer { return .init(text: AylaMessages.yesNoAnswer(headAnswer, byHead: answeredByHead), kind: .heard) }
         if !voice.heard.isEmpty { return .init(text: voice.heard, kind: .heard) }
         if let sentence = voice.spokenSentence(at: date) {
             return .init(text: sentence, kind: .answer)
@@ -1087,11 +1109,18 @@ struct AylaChatScreen: View {
             }
             return
         }
-        guard gesture == .nod || gesture == .shake, asksYesNoByHead, headAnswer == nil else { return }
-        let isYes = gesture == .nod
+        guard gesture == .nod || gesture == .shake, asksYesNoByHead else { return }
+        answerYesNo(gesture == .nod, byHead: true)
+    }
+
+    /// Ja or Nee, by a nod or a head shake, or by a tap on the buttons that take the place of the voice bar: you feel
+    /// it, the answer lights up and the line says what was understood, then it is sent as if it was said.
+    private func answerYesNo(_ isYes: Bool, byHead: Bool) {
+        guard headAnswer == nil else { return }
         if isYes { PaveHaptics.success() } else { PaveHaptics.tap(.rigid) }
+        answeredByHead = byHead
         headAnswer = isYes
-        AccessibilityNotification.Announcement(AylaMessages.headAnswer(isYes)).post()
+        AccessibilityNotification.Announcement(AylaMessages.yesNoAnswer(isYes, byHead: byHead)).post()
         if let voice, isTalking {
             voice.play(isYes ? .tick : .no)
             voice.send(typed: isYes ? "Ja" : "Nee")
@@ -1219,6 +1248,15 @@ struct AylaChatScreen: View {
     private var voiceVacancies: [Vacancy] {
         guard isTalking, let last = model.entries.last(where: { $0.role == .ayla }) else { return [] }
         return Self.vacancies(in: last)
+    }
+
+    /// Ja and Nee in place of the voice bar while Ayla asks for one of them, even while she is still saying it.
+    private var voiceChoices: [AylaChoice] {
+        guard let voice, isTalking, voice.state == .listening || voice.state == .speaking, model.pendingYesNo else { return [] }
+        if let choices = model.pendingQuestion?.choices, choices.count >= 2 {
+            return choices.map { AylaChoice(id: $0.id, label: $0.label) }
+        }
+        return [AylaChoice(id: "yes", label: "Ja"), AylaChoice(id: "no", label: "Nee")]
     }
 
     private var browsesByHead: Bool {

@@ -74,6 +74,7 @@ nonisolated final class VoiceAudio: @unchecked Sendable {
                 return wasRunning
             }
             stopSpeech()
+            if AVAudioApplication.shared.isInputMuted { try? AVAudioApplication.shared.setInputMuted(false) }
             guard wasRunning else { return }
             removeTaps()
             engine.stop()
@@ -119,9 +120,12 @@ nonisolated final class VoiceAudio: @unchecked Sendable {
         lock.withLock { onRestart }?()
     }
 
+    /// Also the app-wide input mute of iOS, so the system knows PAVE's microphone is off: that is where the press on
+    /// the AirPods' stem lands while the microphone is in use.
     func setMuted(_ muted: Bool) {
         lock.withLock { isMuted = muted }
         if muted { meter.update(microphone: 0) }
+        if AVAudioApplication.shared.isInputMuted != muted { try? AVAudioApplication.shared.setInputMuted(muted) }
     }
 
     func play(_ blip: VoiceBlip) {
