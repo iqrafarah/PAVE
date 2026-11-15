@@ -155,6 +155,16 @@ final class AylaChatModel {
         entry.reply?.proposedAction?.vaultItem != nil && AylaVaultOffer.offersToAddEvidence(entry.reply, asked: askedText(before: entry))
     }
 
+    /// Ayla's last question can be answered with Ja or Nee: her choices are Ja and Nee, or she asked a question for
+    /// either. Her question whether she may look at your data is not one of them: that one is answered on its card.
+    var pendingYesNo: Bool {
+        guard !isAnswering, let last = entries.last, last.role == .ayla, last.reply?.accessRequest == nil else { return false }
+        if let choices = question(for: last)?.choices, !choices.isEmpty {
+            return choices.contains { AylaVaultOffer.isYes($0.label) } && choices.contains { AylaVaultOffer.isNo($0.label) }
+        }
+        return AylaVaultOffer.endsWithYesNoQuestion(last.text)
+    }
+
     var pendingQuestionIsOnCard: Bool {
         guard let last = entries.last, last.role == .ayla else { return false }
         return questionIsOnCard(for: last)

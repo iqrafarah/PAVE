@@ -108,6 +108,19 @@ public enum AylaVaultOffer {
         return starters.contains(cleaned[0])
     }
 
+    private static var noLabel: Regex<(Substring, Substring)> { #/^(nee|nee,? dank je|liever niet|niet nu|no)\b/#.ignoresCase() }
+
+    public static func isNo(_ label: String) -> Bool {
+        label.trimmingCharacters(in: .whitespacesAndNewlines).prefixMatch(of: noLabel) != nil
+    }
+
+    /// Ayla's last question is one for Ja or Nee: not a question for words ("Wat wil je toevoegen?") and not a choice
+    /// between things ("Wil je een diploma of een stage toevoegen?").
+    public static func endsWithYesNoQuestion(_ text: String) -> Bool {
+        guard let last = sentences(of: text).last(where: { $0.hasSuffix("?") }) else { return false }
+        return !last.contains(openWords) && !last.lowercased().contains(" of ")
+    }
+
     public static func isYes(_ label: String) -> Bool {
         label.trimmingCharacters(in: .whitespacesAndNewlines).prefixMatch(of: yesLabel) != nil
     }

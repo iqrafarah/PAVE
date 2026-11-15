@@ -42,6 +42,8 @@
 	<string>PAVE gebruikt de camera om een document te scannen, zoals een certificaat. De tekst wordt op je toestel gelezen; alleen die tekst gaat met je bericht naar Ayla.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>PAVE gebruikt Face ID om de app te ontgrendelen, zodat je je pincode niet hoeft in te typen.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>Met AirPods in kun je Ayla ja en nee antwoorden door te knikken of je hoofd te schudden. PAVE volgt je hoofd alleen als Ayla zo'n vraag stelt, en alleen op je toestel.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>PAVE gebruikt de microfoon zodat je je vraag aan Ayla kunt inspreken of met haar kunt praten.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>

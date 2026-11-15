@@ -99,6 +99,10 @@ struct AylaChatScreen: View {
     @State private var waveStartedAt: Date?
     @State private var isSavingForUser = false
     @State private var confirmationItem: VaultItem?
+    /// Ja and Nee by nodding or shaking the head with AirPods on, and what the last nod or shake answered.
+    @State private var headGestures = AylaHeadGestures()
+    @State private var headAnswer: Bool?
+    @State private var waveFromOrb = false
     @Environment(\.toolbarIsBeside) private var toolbarIsBeside
 
     private var openVacancies: [Vacancy]? {
@@ -156,7 +160,11 @@ struct AylaChatScreen: View {
                 }
 
                 if let waveStartedAt {
-                    AylaSuccessWave(startedAt: waveStartedAt, origin: CGPoint(x: proxy.size.width / 2, y: proxy.size.height - bottomBarHeight / 2))
+                    let place = proxy.frame(in: .global).origin
+                    let origin = waveFromOrb && !orbFrame.isEmpty
+                        ? CGPoint(x: orbFrame.midX - place.x, y: orbFrame.midY - place.y)
+                        : CGPoint(x: proxy.size.width / 2, y: proxy.size.height - bottomBarHeight / 2)
+                    AylaSuccessWave(startedAt: waveStartedAt, origin: origin)
                         .transition(.opacity)
                 }
 
@@ -257,6 +265,10 @@ struct AylaChatScreen: View {
             if old != nil { voice?.stop() }
         }
         // Only when the app really leaves: the permission prompts at the first start make it briefly inactive.
+        .onChange(of: asksYesNoByHead, initial: true) { _, asks in
+            if asks { headGestures.start(onGesture: answerByHead) } else { headGestures.stop() }
+        }
+        .onDisappear { headGestures.stop() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background { voice?.stop() }
         }
@@ -318,6 +330,10 @@ struct AylaChatScreen: View {
     /// The button back to the newest message, and the line that says you are offline.
     private func aboveBottomBar(isOverPanel: Bool) -> some View {
         VStack(spacing: 10) {
+            if !isTalking, !isOverPanel, headAnswer != nil || (asksYesNoByHead && headGestures.isReceiving) {
+                AylaHeadHint(text: headAnswer.map(AylaMessages.headAnswer) ?? AylaMessages.headHint, isAnswer: headAnswer != nil)
+                    .transition(.scale(scale: 0.8).combined(with: .opacity))
+            }
             if isAwayFromBottom, !isTalking, !isOverPanel, !model.entries.isEmpty {
                 ChatScrollDownButton { scrollToBottom() }
                     .transition(.scale(scale: 0.6).combined(with: .opacity))
@@ -332,6 +348,8 @@ struct AylaChatScreen: View {
         }
         .alignmentGuide(.top) { $0[.bottom] + 10 }
         .animation(.easeOut(duration: 0.2), value: isAwayFromBottom)
+        .animation(.spring(duration: 0.3, bounce: 0.2), value: headAnswer)
+        .animation(.easeOut(duration: 0.2), value: headGestures.isReceiving)
         .animation(.easeOut(duration: 0.25), value: connection.isOnline)
     }
 
@@ -820,12 +838,16 @@ struct AylaChatScreen: View {
 
     /// The one line under the full-screen orb: what you say, Ayla's answer, or a hint while nothing is happening.
     private func stageCaption(_ voice: AylaVoiceSession, at date: Date) -> AylaVoiceCaption {
+        if let headAnswer { return .init(text: AylaMessages.headAnswer(headAnswer), kind: .heard) }
         if !voice.heard.isEmpty { return .init(text: voice.heard, kind: .heard) }
         if let sentence = voice.spokenSentence(at: date) {
             return .init(text: sentence, kind: .answer)
         }
         if voice.state == .speaking, let answer = model.entries.last(where: { $0.role == .ayla })?.text, !answer.isEmpty {
             return .init(text: answer, kind: .answer)
+        }
+        if voice.state == .listening, asksYesNoByHead, headGestures.isReceiving {
+            return .init(text: AylaMessages.headHintVoice, kind: .status)
         }
         if voice.state == .listening, !model.entries.isEmpty, !voice.isMuted {
             return .init(text: "Ayla luistert…", kind: .status)
@@ -879,7 +901,10 @@ struct AylaChatScreen: View {
             } else if let question = model.pendingQuestion, question.choices.count >= 2, !model.pendingQuestionIsOnCard {
                 AylaChoiceBar(
                     choices: question.choices.map { AylaChoice(id: $0.id, label: $0.label) },
-                    isAboutVault: model.pendingOffersEvidence
+                    isAboutVault: model.pendingOffersEvidence,
+                    picked: headAnswer.flatMap { isYes in
+                        question.choices.first { isYes ? AylaVaultOffer.isYes($0.label) : AylaVaultOffer.isNo($0.label) }?.id
+                    }
                 ) { choice in
                     choose(choice.label)
                 }
@@ -1007,13 +1032,62 @@ struct AylaChatScreen: View {
         startWave()
     }
 
-    private func startWave() {
+    private func startWave(fromOrb: Bool = false) {
         let started = Date()
+        waveFromOrb = fromOrb
         waveStartedAt = started
         Task {
             try? await Task.sleep(for: .seconds(1.8))
             if waveStartedAt == started { waveStartedAt = nil }
         }
+    }
+
+    /// A question for Ja or Nee is open, so a nod or a head shake answers it: in the chat, or while talking once Ayla
+    /// has asked it and you have not started to answer in words.
+    private var asksYesNoByHead: Bool {
+        guard model.pendingYesNo, addEvidence == nil, shelf == nil, !isSavingForUser else { return false }
+        if let voice, isTalking { return voice.state == .listening && voice.heard.isEmpty }
+        return !dictation.isListening
+    }
+
+    /// A nod is Ja, a head shake Nee: you feel it, the answer lights up and the line above says what was understood,
+    /// a moment before it is sent, as if it was tapped or said.
+    private func answerByHead(_ gesture: AylaHeadGesture) {
+        guard asksYesNoByHead, headAnswer == nil else { return }
+        let isYes = gesture == .nod
+        if isYes { PaveHaptics.success() } else { PaveHaptics.tap(.rigid) }
+        headAnswer = isYes
+        AccessibilityNotification.Announcement(AylaMessages.headAnswer(isYes)).post()
+        if let voice, isTalking {
+            if isYes { startWave(fromOrb: true) }
+            voice.send(typed: isYes ? "Ja" : "Nee")
+            Task {
+                try? await Task.sleep(for: .seconds(1.2))
+                headAnswer = nil
+            }
+            return
+        }
+        Task {
+            try? await Task.sleep(for: .milliseconds(450))
+            answer(isYes)
+            try? await Task.sleep(for: .milliseconds(900))
+            headAnswer = nil
+        }
+    }
+
+    private func answer(_ isYes: Bool) {
+        if let question = model.pendingQuestion, question.choices.count >= 2, !model.pendingQuestionIsOnCard,
+           let choice = question.choices.first(where: { isYes ? AylaVaultOffer.isYes($0.label) : AylaVaultOffer.isNo($0.label) }) {
+            choose(choice.label)
+            return
+        }
+        let word = isYes ? "Ja" : "Nee"
+        if isYes, let reply = model.lastReply, model.pendingQuestionIsOnCard, !model.addedReplies.contains(reply.id), AylaVaultOffer.asksToPutInVault(reply) {
+            addEvidenceForUser(from: reply, saying: word)
+            return
+        }
+        guard connection.isOnline else { return }
+        model.send(word)
     }
 
     /// A yes in words to "Zal ik het in je kluis zetten?": Ayla puts it in the vault, without the form. When something

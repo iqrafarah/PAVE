@@ -22,6 +22,9 @@ enum AylaMessages {
     static let conceptReady = "Bewijs"
     static let conceptHint = "Vertel verder en Ayla vult het aan."
     static let conceptAdd = "Zet in de kluis"
+    static let headHint = "Knik ja of schud nee"
+    static let headHintVoice = "Zeg het, of knik ja of schud nee"
+    static func headAnswer(_ isYes: Bool) -> String { isYes ? "Je knikte: Ja" : "Je schudde: Nee" }
     static let conceptRequestConfirmation = "Bevestiging aanvragen"
     static let conceptUnknown = "nog niet bekend"
 

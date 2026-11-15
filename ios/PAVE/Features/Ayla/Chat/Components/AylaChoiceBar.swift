@@ -10,6 +10,8 @@ struct AylaChoice: Identifiable, Equatable {
 struct AylaChoiceBar: View {
     let choices: [AylaChoice]
     var isAboutVault = false
+    /// The choice a nod or a head shake picked: it lights up a moment before it is sent.
+    var picked: String?
     let onChoose: (AylaChoice) -> Void
 
     var body: some View {
@@ -42,12 +44,13 @@ struct AylaChoiceBar: View {
                 } label: {
                     Text(choice.label)
                         .textStyle(.choice)
-                        .foregroundStyle(Color.ink)
+                        .foregroundStyle(picked == choice.id ? Color.white : Color.ink)
                         .lineLimit(2)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 12)
                         .frame(maxWidth: .infinity, minHeight: 53)
-                        .background(Color.white, in: .rect(cornerRadius: 25))
+                        .background(picked == choice.id ? Color.paveAccent : Color.white, in: .rect(cornerRadius: 25))
+                        .scaleEffect(picked == choice.id ? 1.04 : 1)
                         .contentShape(.rect(cornerRadius: 25))
                 }
                 .buttonStyle(.pave)
@@ -55,6 +58,7 @@ struct AylaChoiceBar: View {
         }
         .padding(8.15)
         .background(Color.paveSurfaceTint, in: .capsule)
+        .animation(.spring(duration: 0.3, bounce: 0.3), value: picked)
     }
 }
 
