@@ -1,25 +1,31 @@
+import PAVECore
 import SwiftUI
 
 struct VerificationCodeField: View {
     static let length = 6
 
     @Binding var code: String
+    var title = "Code van 6 cijfers"
+    var hint: String? = "Vul de code in die je authenticator-app nu laat zien."
     var errorMessage: String?
+    var reservedErrors = AuthError.allMessages
     var isFocused: FocusState<Bool>.Binding
+    /// Runs as soon as the last digit is in, also when the code is pasted or filled in by iOS, so there is no button to tap.
+    var onComplete: (() -> Void)?
 
     private var isInvalid: Bool { errorMessage != nil }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Verificatiecode van 6 cijfers")
+            Text(title)
                 .textStyle(.label)
                 .foregroundStyle(Color.ink)
 
-            TextField("Verificatiecode van 6 cijfers", text: $code, prompt: Text("000000").foregroundStyle(Color.inkMuted))
+            TextField(title, text: $code, prompt: Text("000000").foregroundStyle(Color.inkMuted))
                 .textStyle(.code)
                 .tracking(8)
                 .foregroundStyle(Color.ink)
-                .tint(.brandGreen)
+                .tint(.paveAccent)
                 .keyboardType(.numberPad)
                 .textContentType(.oneTimeCode)
                 .focused(isFocused)
@@ -32,26 +38,31 @@ struct VerificationCodeField: View {
                 }
                 .background {
                     RoundedRectangle(cornerRadius: 7)
-                        .stroke(Color.focusRing, lineWidth: 6)
+                        .stroke(Color.paveFocusRing, lineWidth: 6)
                         .opacity(isFocused.wrappedValue && !isInvalid ? 1 : 0)
                 }
-                .onChange(of: code) { _, newValue in
+                .onChange(of: code) { oldValue, newValue in
                     let digits = String(newValue.filter(\.isNumber).prefix(Self.length))
                     if digits != newValue {
                         code = digits
                     }
+                    if digits.count == Self.length, oldValue.count < Self.length {
+                        onComplete?()
+                    }
                 }
                 .animation(.easeOut(duration: 0.15), value: isFocused.wrappedValue)
 
-            Text(errorMessage ?? "Vul de code in die je authenticator-app laat zien.")
-                .textStyle(.footnote)
-                .foregroundStyle(isInvalid ? Color.critical : .inkMuted)
+            MessageSlot(message: errorMessage ?? hint, reserving: [hint].compactMap { $0 } + reservedErrors) { text in
+                Text(text)
+                    .textStyle(.footnote)
+                    .foregroundStyle(isInvalid ? Color.critical : .inkMuted)
+            }
         }
     }
 
     private var borderColor: Color {
         if isInvalid { return .critical }
-        if isFocused.wrappedValue { return .brandGreen }
+        if isFocused.wrappedValue { return .paveAccent }
         return .hairline
     }
 }

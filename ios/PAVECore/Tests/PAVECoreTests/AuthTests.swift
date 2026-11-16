@@ -11,12 +11,38 @@ struct PasswordRequirementTests {
         ("Short!1a", PasswordRequirement.minimumLength),
         ("alllowercase!2026", .mixedCase),
         ("ALLUPPERCASE!2026", .mixedCase),
-        ("NoSymbolsHere2026", .numberAndSymbol),
-        ("NoNumbersHere!!!", .numberAndSymbol),
+        ("NoSymbolsHere2026", .symbol),
+        ("No Symbols Here 2026", .symbol),
+        ("NoNumbersHere!!!", .number),
     ])
     func weakPasswordMissesRequirement(password: String, requirement: PasswordRequirement) {
         #expect(!requirement.isMet(by: password))
         #expect(!PasswordRequirement.allMet(by: password))
+    }
+}
+
+struct PasswordInputTests {
+    @Test(arguments: [
+        ("BrightFuture!2026\n", "BrightFuture!2026"),
+        ("BrightFuture!2026\r\n", "BrightFuture!2026"),
+        ("\nBright\nFuture!2026", "BrightFuture!2026"),
+        ("Bright Future!2026 ", "Bright Future!2026 "),
+    ])
+    func leavesOutLineBreaksButKeepsSpaces(pasted: String, kept: String) {
+        #expect(PasswordInput.cleaned(pasted) == kept)
+    }
+}
+
+struct EmailMaskTests {
+    @Test(arguments: [
+        ("ravi@student.example.edu", "r***@student.example.edu"),
+        (" Ravi@student.example.edu ", "R***@student.example.edu"),
+        ("not-an-address", "not-an-address"),
+        ("@example.edu", "@example.edu"),
+        ("ravi@", "ravi@"),
+    ])
+    func showsOnlyTheFirstLetterAndTheDomain(email: String, masked: String) {
+        #expect(EmailMask.masked(email) == masked)
     }
 }
 
@@ -53,17 +79,62 @@ struct MockAuthServiceTests {
         }
     }
 
-    @Test func resetLinkAllowsNewPassword() async throws {
-        try await service.openPasswordResetLink(URL(string: "pave://reset-password")!)
+    @Test func resetCodeAllowsNewPassword() async throws {
+        try await service.requestPasswordReset(email: MockAuthService.verifiedAccount)
+        let resetOutcome = try await service.verifyPasswordResetCode(email: MockAuthService.verifiedAccount, code: MockAuthService.demoCode)
+        #expect(resetOutcome == .needsVerification)
+        try await service.verify(code: MockAuthService.demoCode)
         try await service.updatePassword("BrightFuture!2026")
 
         let outcome = try await service.signIn(email: MockAuthService.verifiedAccount, password: "BrightFuture!2026")
         #expect(outcome == .needsVerification)
     }
 
-    @Test func updatingPasswordWithoutLinkFails() async {
-        await #expect(throws: AuthError.invalidResetLink) {
+    @Test func wrongResetCodeIsRejected() async {
+        await #expect(throws: AuthError.invalidEmailCode) {
+            try await service.verifyPasswordResetCode(email: MockAuthService.verifiedAccount, code: "000000")
+        }
+    }
+
+    @Test func unknownEmailCannotUseAResetCode() async {
+        await #expect(throws: AuthError.invalidEmailCode) {
+            try await service.verifyPasswordResetCode(email: "nobody@student.example.edu", code: MockAuthService.demoCode)
+        }
+    }
+
+    @Test func updatingPasswordWithoutACodeFails() async {
+        await #expect(throws: AuthError.resetSessionExpired) {
             try await service.updatePassword("BrightFuture!2026")
+        }
+    }
+
+    @Test func accountWithVerificationNeedsTheCodeBeforeANewPassword() async throws {
+        _ = try await service.verifyPasswordResetCode(email: MockAuthService.verifiedAccount, code: MockAuthService.demoCode)
+        await #expect(throws: AuthError.insufficientAssurance) {
+            try await service.updatePassword("BrightFuture!2026")
+        }
+    }
+
+    @Test func accountWithoutVerificationGoesStraightToANewPassword() async throws {
+        let outcome = try await service.verifyPasswordResetCode(email: MockAuthService.newAccount, code: MockAuthService.demoCode)
+        #expect(outcome == .readyForNewPassword)
+        try await service.updatePassword("BrightFuture!2026")
+    }
+
+    @Test func newPasswordMustDifferFromTheCurrentOne() async throws {
+        _ = try await service.verifyPasswordResetCode(email: MockAuthService.verifiedAccount, code: MockAuthService.demoCode)
+        try await service.verify(code: MockAuthService.demoCode)
+        await #expect(throws: AuthError.samePassword) {
+            try await service.updatePassword(MockAuthService.demoPassword)
+        }
+    }
+
+    @Test func aResetCodeWorksOnlyOnce() async throws {
+        _ = try await service.verifyPasswordResetCode(email: MockAuthService.verifiedAccount, code: MockAuthService.demoCode)
+        try await service.verify(code: MockAuthService.demoCode)
+        try await service.updatePassword("BrightFuture!2026")
+        await #expect(throws: AuthError.resetSessionExpired) {
+            try await service.updatePassword("AnotherStrong!2027")
         }
     }
 }

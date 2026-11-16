@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "rep_04",
+  "conversationId": "conv_vault",
+  "text": "Bij je stage passen misschien deze vaardigheden. Je kunt ze toevoegen, aanpassen of weglaten.",
+  "blocks": [
+    {
+      "type": "skillSuggestions",
+      "itemId": "item_internship",
+      "skills": [
+        { "name": "Vue", "reason": "Je beschrijft dat je de website met Vue hebt gebouwd." },
+        { "name": "Presenteren", "reason": "Je hebt je resultaten aan de klant gepresenteerd." }
+      ]
+    }
+  ],
+  "proposedAction": {
+    "id": "act_skills",
+    "kind": "addVaultItem",
+    "summary": "2 vaardigheden toevoegen aan je stage",
+    "expiresAt": "2026-11-08T12:00:00Z"
+  },
+  "usedData": ["internships"]
+}

@@ -19,41 +19,40 @@ struct VerificationSetupView: View {
 
     var body: some View {
         AuthScreen {
+            AuthIntro(
+                eyebrow: "Eerste keer instellen",
+                title: "Beveilig je PAVE-account",
+                message: AuthMessages.verificationSetupInstruction
+            )
+        } content: {
             VStack(alignment: .leading, spacing: 24) {
-                AuthIntro(
-                    eyebrow: "Eerste keer instellen",
-                    title: "Beveilig je PAVE-account",
-                    message: "Tweestapsverificatie is verplicht. Zo blijven je persoonlijke gegevens, resultaten en certificaten veilig."
-                )
-
-                if setupFailed {
-                    PaveNotice(
-                        title: "Het instellen kon niet starten",
-                        message: "Ga terug naar inloggen en log opnieuw in. Blijft dit gebeuren? Neem contact op met de IT-support.",
-                        tone: .critical
-                    )
-                }
-
                 VStack(alignment: .leading, spacing: 16) {
                     SetupStepRow(
                         number: 1,
                         title: "Voeg PAVE toe aan je codes",
-                        message: "Je \(deviceName) kan de code van 6 cijfers voor je maken. Kies in Wachtwoorden je PAVE-inlog, of voeg een nieuwe toe."
+                        message: "Je toestel kan de code van 6 cijfers voor je maken. Kies in Wachtwoorden je PAVE-inlog, of voeg een nieuwe toe."
                     )
                     addToThisDevice
                     SetupStepRow(
                         number: 2,
                         title: "Vul de code in",
-                        message: "Kom terug naar PAVE en vul de code van 6 cijfers in. Je \(deviceName) stelt hem misschien boven het toetsenbord voor."
+                        message: "Kom terug naar PAVE en vul de code van 6 cijfers in. Je toestel stelt hem misschien boven het toetsenbord voor."
                     )
                 }
 
-                VerificationCodeField(code: $code, errorMessage: errorMessage, isFocused: $isCodeFocused)
+                VerificationCodeField(
+                    code: $code,
+                    title: AuthMessages.authenticatorCodeLabel,
+                    errorMessage: errorMessage,
+                    reservedErrors: [AuthMessages.setupCouldNotStart] + AuthError.allMessages,
+                    isFocused: $isCodeFocused,
+                    onComplete: submit
+                )
                     .onChange(of: code) { error = nil }
 
                 PavePrimaryButton(
-                    title: "Instellen afronden",
-                    loadingTitle: "Afronden…",
+                    title: "Instellen bevestigen",
+                    loadingTitle: "Bezig met bevestigen...",
                     isLoading: isSubmitting,
                     action: submit
                 )
@@ -62,7 +61,7 @@ struct VerificationSetupView: View {
                     otherDevice(setupURI: setupURI)
                 }
 
-                Text("Lukt het instellen niet? Neem contact op met de IT-support van je organisatie.")
+                Text(SupportText.sentence("Lukt het instellen niet? Neem contact op via "))
                     .textStyle(.footnote)
                     .foregroundStyle(Color.inkMuted)
 
@@ -89,7 +88,7 @@ struct VerificationSetupView: View {
     @ViewBuilder
     private var addToThisDevice: some View {
         if let setupURI = enrollment?.setupURI {
-            PaveSecondaryButton(title: "Instellen op deze \(deviceName)", icon: .iconShieldCheck) {
+            PaveSecondaryButton(title: "Instellen op dit toestel", icon: .iconShieldCheck) {
                 openURL(setupURI) { accepted in
                     didOpenAuthenticator = accepted
                     noAuthenticatorFound = !accepted
@@ -118,18 +117,20 @@ struct VerificationSetupView: View {
                 HStack {
                     Text("Een ander apparaat gebruiken")
                         .textStyle(.link)
-                        .foregroundStyle(Color.brandGreen)
+                        .foregroundStyle(Color.paveAccent)
                     Spacer()
-                    Image(systemName: "chevron.down")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Color.brandGreen)
+                    Image(.iconChevronDown)
+                        .resizable()
+                        .scaledToFit()
+                        .paveIconFrame(14)
+                        .foregroundStyle(Color.paveAccent)
                         .rotationEffect(.degrees(showsOtherDevice ? 180 : 0))
                         .accessibilityHidden(true)
                 }
                 .frame(minHeight: 44)
                 .contentShape(.rect)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pave)
             .accessibilityValue(showsOtherDevice ? "Uitgeklapt" : "Ingeklapt")
 
             if showsOtherDevice {
@@ -139,16 +140,8 @@ struct VerificationSetupView: View {
         }
     }
 
-    private var deviceName: String {
-        UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
-    }
-
     private var errorMessage: String? {
-        switch error {
-        case nil: nil
-        case .invalidCode: "Deze code klopt niet of is verlopen. Gebruik de nieuwste code en probeer het opnieuw."
-        default: "We konden het instellen niet afronden. Controleer je internetverbinding en probeer het opnieuw."
-        }
+        error?.message ?? (setupFailed ? AuthMessages.setupCouldNotStart : nil)
     }
 
     private func submit() {
@@ -159,8 +152,10 @@ struct VerificationSetupView: View {
             defer { isSubmitting = false }
             do {
                 try await flow.confirmVerificationSetup(code: code)
+                PaveHaptics.success()
             } catch {
                 self.error = AuthError(error)
+                PaveHaptics.error()
             }
         }
     }

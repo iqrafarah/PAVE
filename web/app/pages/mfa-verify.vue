@@ -1,48 +1,52 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'auth' });
 
-const INVALID_CODE_MESSAGE =
-  'This code is invalid or has expired. Use the latest code in your authenticator app and try again.';
-const LOAD_ERROR_MESSAGE =
-  'We could not load your two-step verification. Please try again.';
-
-const { signOut } = useAuth();
-const { getVerifiedFactorId, verifyTotp } = useMfa();
+const { isPasswordReset, signOut } = useAuth();
+const { verifyCode } = useMfa();
 
 const code = ref('');
 const errorMessage = ref('');
 const isVerifying = ref(false);
 
+const RESET_AUTHENTICATOR_STEP_INDEX = 2;
+
+const eyebrow = computed(() =>
+  isPasswordReset.value ? 'Wachtwoord herstellen' : 'Tweestapsverificatie',
+);
+const nextPath = computed(() =>
+  isPasswordReset.value ? SET_PASSWORD_PATH : HOME_PATH,
+);
 const buttonLabel = computed(() => {
-  if (isVerifying.value) return 'Verifying...';
-  if (errorMessage.value) return 'Try again';
-  return 'Verify';
+  if (isVerifying.value) return 'Bezig met controleren...';
+  if (errorMessage.value) return 'Opnieuw proberen';
+  return 'Bevestigen';
 });
 
-async function verify() {
-  const { data: factorId, error: factorError } = await getVerifiedFactorId();
-  if (factorError || !factorId) return LOAD_ERROR_MESSAGE;
-
-  const { error } = await verifyTotp(factorId, code.value);
-  if (error) return INVALID_CODE_MESSAGE;
-  return '';
-}
-
 async function handleSubmit() {
+  errorMessage.value = '';
   isVerifying.value = true;
-  errorMessage.value = await verify();
+  const { error } = await verifyCode(code.value);
   isVerifying.value = false;
 
-  if (!errorMessage.value) await navigateTo('/');
+  if (error) {
+    errorMessage.value = getAuthErrorMessage(error);
+    code.value = '';
+    return;
+  }
+  await navigateTo(nextPath.value);
 }
 </script>
 
 <template>
   <AuthCard
-    eyebrow="Two-step verification"
-    title="Verify your identity"
-    description="Open your authenticator app and enter the 6-digit code for your PAVE account."
+    :eyebrow="eyebrow"
+    :title="AUTHENTICATOR_HEADING"
+    :description="AUTHENTICATOR_INSTRUCTION"
   >
+    <template v-if="isPasswordReset" #steps>
+      <AuthSteps :steps="RESET_STEPS" :current-index="RESET_AUTHENTICATOR_STEP_INDEX" />
+    </template>
+
     <template #icon>
       <svg
         class="size-5"
@@ -55,7 +59,7 @@ async function handleSubmit() {
         <path
           stroke-linecap="round"
           stroke-linejoin="round"
-          d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"
+          d="M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3"
         />
       </svg>
     </template>
@@ -64,7 +68,9 @@ async function handleSubmit() {
       <AuthCodeInput
         id="verification-code"
         v-model="code"
-        hint="Enter the code shown in your authenticator app."
+        :label="AUTHENTICATOR_CODE_LABEL"
+        is-autofocused
+        :hint="AUTHENTICATOR_CODE_HINT"
         :error="errorMessage"
       />
       <AuthPrimaryButton type="submit" :disabled="isVerifying">
@@ -72,9 +78,8 @@ async function handleSubmit() {
       </AuthPrimaryButton>
     </form>
 
-    <AuthInfoBox title="Use your authenticator app">
-      Your code comes from your authenticator app, not by email or SMS. Can’t
-      access the app? Contact IT support.
+    <AuthInfoBox title="Kun je niet bij je authenticator-app?">
+      Neem contact op via <AuthSupportLink />.
     </AuthInfoBox>
 
     <AuthBackToLogin @click="signOut" />

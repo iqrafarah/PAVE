@@ -1,0 +1,7 @@
+{
+  "conversationId": "conv_career",
+  "text": "Welke banen passen bij mij?",
+  "device": "phone",
+  "input": "text",
+  "context": { "screen": "vault" }
+}

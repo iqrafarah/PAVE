@@ -3,7 +3,6 @@ import SwiftUI
 
 struct PinLockView: View {
     @Environment(AppState.self) private var appState
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var digits = ""
     @State private var errorMessage: String?
     @State private var shakes = 0
@@ -27,15 +26,15 @@ struct PinLockView: View {
                 onComplete: check
             )
             .disabled(isChecking)
-            .modifier(Shake(trigger: shakes, isEnabled: !reduceMotion))
+            .modifier(PinShake(trigger: shakes))
         } accessory: {
             VStack(spacing: 0) {
                 PinErrorSlot(message: errorMessage)
                 Button("Pincode vergeten?") { showsForgotPin = true }
                     .textStyle(.link)
-                    .foregroundStyle(Color.brandGreen)
+                    .foregroundStyle(Color.paveAccent)
                     .frame(maxWidth: .infinity, minHeight: 44)
-                    .buttonStyle(.plain)
+                    .buttonStyle(.pave)
             }
             .animation(.easeOut(duration: 0.2), value: errorMessage)
         }
@@ -58,7 +57,7 @@ struct PinLockView: View {
         case .correct, .lockedOut:
             break
         case .incorrect(let remaining):
-            let message = remaining == 1 ? "Onjuiste pincode. Nog 1 poging." : "Onjuiste pincode. Nog \(remaining) pogingen."
+            let message = PinMessages.incorrect(attemptsRemaining: remaining)
             errorMessage = message
             shakes += 1
             AccessibilityNotification.Announcement(message).post()
@@ -73,28 +72,6 @@ struct PinLockView: View {
 
     private func unlockWithBiometrics() {
         Task { await appState.unlockWithBiometrics() }
-    }
-}
-
-private struct Shake: ViewModifier {
-    let trigger: Int
-    let isEnabled: Bool
-
-    func body(content: Content) -> some View {
-        content
-            .keyframeAnimator(initialValue: 0.0, trigger: trigger) { view, offset in
-                view.offset(x: isEnabled ? offset : 0)
-            } keyframes: { _ in
-                KeyframeTrack {
-                    LinearKeyframe(0, duration: 0.01)
-                    LinearKeyframe(-12, duration: 0.07)
-                    LinearKeyframe(12, duration: 0.07)
-                    LinearKeyframe(-8, duration: 0.07)
-                    LinearKeyframe(8, duration: 0.07)
-                    LinearKeyframe(0, duration: 0.07)
-                }
-            }
-            .sensoryFeedback(.error, trigger: trigger)
     }
 }
 

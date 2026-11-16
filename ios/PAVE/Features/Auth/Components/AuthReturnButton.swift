@@ -9,16 +9,16 @@ struct AuthReturnButton: View {
             HStack(spacing: 8) {
                 Image(.iconArrowLeft)
                     .resizable()
-                    .frame(width: 18, height: 18)
+                    .paveIconFrame(18)
                     .accessibilityHidden(true)
                 Text(title)
                     .textStyle(.link)
-                    .foregroundStyle(Color.brandGreen)
+                    .foregroundStyle(Color.paveAccent)
             }
             .frame(maxWidth: .infinity, minHeight: 44)
             .contentShape(.rect)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pave)
     }
 }
 

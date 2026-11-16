@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "rep_02",
+  "conversationId": "conv_career",
+  "text": "Ik kijk graag mee naar richtingen die bij je passen. Daarvoor wil ik een paar onderdelen uit je kluis gebruiken. Jij kiest wat ik mag zien.",
+  "accessRequest": {
+    "id": "acc_career",
+    "purpose": "Passende richtingen en vacatures zoeken",
+    "categories": ["skills", "projects", "internships", "certificates"]
+  },
+  "blocks": [
+    {
+      "type": "vaultSelection",
+      "categories": [
+        { "category": "skills", "count": 12 },
+        { "category": "projects", "count": 6 },
+        { "category": "internships", "count": 1 },
+        { "category": "certificates", "count": 3 }
+      ]
+    }
+  ],
+  "usedData": []
+}

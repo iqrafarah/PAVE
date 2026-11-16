@@ -15,7 +15,9 @@ defineProps<{
       {{ number }}
     </span>
     <div class="flex-1">
-      <p class="text-sm font-semibold text-ink">{{ title }}</p>
+      <p class="text-sm font-semibold text-ink">
+        <span class="sr-only">Stap {{ number }}: </span>{{ title }}
+      </p>
       <p class="mt-0.5 text-sm text-muted">{{ description }}</p>
       <slot />
     </div>

@@ -4,9 +4,9 @@ definePageMeta({ layout: 'auth' });
 
 <template>
   <AuthCard
-    eyebrow="Setup complete"
-    title="You’re all set"
-    description="Two-step verification is now enabled for your PAVE account."
+    eyebrow="Instellen gelukt"
+    title="Alles staat klaar"
+    description="Tweestapsverificatie staat nu aan voor je PAVE-account."
   >
     <template #icon>
       <svg
@@ -25,11 +25,13 @@ definePageMeta({ layout: 'auth' });
       </svg>
     </template>
 
-    <AuthInfoBox title="Your portfolio has extra protection">
-      Next time you sign in, use your password and a code from your
-      authenticator app. Keep the app on your phone.
+    <AuthInfoBox title="Je portfolio is extra beveiligd">
+      Log je de volgende keer in? Gebruik dan je wachtwoord en een code uit je
+      authenticator-app. Houd de app op je telefoon.
     </AuthInfoBox>
 
-    <AuthPrimaryButton @click="navigateTo('/')">Continue to PAVE</AuthPrimaryButton>
+    <AuthPrimaryButton @click="navigateTo(HOME_PATH)">
+      Verder naar PAVE
+    </AuthPrimaryButton>
   </AuthCard>
 </template>

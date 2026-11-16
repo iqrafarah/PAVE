@@ -12,6 +12,7 @@
 - Onnodige comments, zoals AI-comments, verwijderen we.
 - We schrijven duidelijke en overzichtelijke code.
 - We gebruiken SwiftUI voor iOS en Nuxt (Vue + TypeScript) voor de website.
+- De interface van PAVE (web en iOS) is in het Nederlands, in gewone en vriendelijke taal met "je". Teksten en woordkeuze staan in `docs/ui-teksten.md`. Nieuwe teksten voegen we daar toe, zodat web en iOS dezelfde woorden gebruiken.
 
 ## Naamgevingsconventies
 - Classes, types en componenten gebruiken `PascalCase`, bijvoorbeeld `UserProfile`.

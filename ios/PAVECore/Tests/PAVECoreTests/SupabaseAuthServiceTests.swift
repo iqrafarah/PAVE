@@ -6,15 +6,19 @@ import Testing
 struct SupabaseAuthServiceTests {
     @Test(arguments: [
         (ErrorCode.invalidCredentials, PAVECore.AuthError.invalidCredentials),
-        (.emailNotConfirmed, .accountNotActive),
-        (.userBanned, .accountNotActive),
+        (.emailNotConfirmed, .emailNotConfirmed),
+        (.userBanned, .unavailable),
         (.mfaVerificationFailed, .invalidCode),
         (.mfaChallengeExpired, .invalidCode),
         (.weakPassword, .weakPassword),
-        (.samePassword, .weakPassword),
-        (.otpExpired, .invalidResetLink),
-        (.flowStateExpired, .invalidResetLink),
-        (.overRequestRateLimit, .unavailable),
+        (.samePassword, .samePassword),
+        (.otpExpired, .invalidEmailCode),
+        (.flowStateExpired, .resetSessionExpired),
+        (.sessionNotFound, .resetSessionExpired),
+        (.overRequestRateLimit, .tooManyAttempts),
+        (.overEmailSendRateLimit, .requestedTooSoon),
+        (.insufficientAAL, .insufficientAssurance),
+        (.validationFailed, .unavailable),
     ])
     func mapsSupabaseErrors(code: ErrorCode, expected: PAVECore.AuthError) {
         let error = Auth.AuthError.api(
@@ -30,14 +34,34 @@ struct SupabaseAuthServiceTests {
         #expect(SupabaseAuthService.normalized("  Ravi@Student.Example.edu \n") == "ravi@student.example.edu")
     }
 
-    @Test func networkErrorsAreUnavailable() {
-        #expect(SupabaseAuthService.authError(for: URLError(.notConnectedToInternet)) == .unavailable)
+}
+
+extension SupabaseAuthServiceTests {
+    @Test func networkErrorsAreNoConnection() {
+        #expect(SupabaseAuthService.authError(for: URLError(.notConnectedToInternet)) == .noConnection)
     }
 
-    @Test func rejectsForeignResetLinks() async {
-        let service = SupabaseAuthService(projectURL: URL(string: "https://example.supabase.co")!, publishableKey: "test")
-        await #expect(throws: PAVECore.AuthError.invalidResetLink) {
-            try await service.openPasswordResetLink(URL(string: "https://evil.example.com/reset-password")!)
-        }
+    @Test(arguments: [
+        (ErrorCode.sessionNotFound, SessionState.ended),
+        (.refreshTokenNotFound, .ended),
+        (.refreshTokenAlreadyUsed, .ended),
+        (.userNotFound, .ended),
+        (.userBanned, .ended),
+        (.overRequestRateLimit, .unknown),
+        (.unexpectedFailure, .unknown),
+    ])
+    func knowsWhenTheSessionEnded(code: ErrorCode, expected: SessionState) {
+        let error = Auth.AuthError.api(
+            message: "",
+            errorCode: code,
+            underlyingData: Data(),
+            underlyingResponse: HTTPURLResponse(url: URL(string: "https://example.com")!, statusCode: 403, httpVersion: nil, headerFields: nil)!
+        )
+        #expect(SupabaseAuthService.sessionState(after: error) == expected)
+    }
+
+    @Test func aRemovedSessionOrNoConnection() {
+        #expect(SupabaseAuthService.sessionState(after: Auth.AuthError.sessionMissing) == .ended)
+        #expect(SupabaseAuthService.sessionState(after: URLError(.notConnectedToInternet)) == .unknown)
     }
 }

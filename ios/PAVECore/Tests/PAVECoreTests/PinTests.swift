@@ -2,7 +2,7 @@ import Testing
 @testable import PAVECore
 
 struct PinPolicyTests {
-    @Test(arguments: ["482916", "135790", "908172"])
+    @Test(arguments: ["482916", "135790", "908172", "112233", "557799"])
     func acceptsHardToGuessPins(pin: String) {
         #expect(PinPolicy.isAcceptable(pin))
     }

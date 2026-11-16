@@ -7,7 +7,8 @@ enum AuthRoute: Hashable {
     case verificationSetup
     case verificationSetupComplete
     case forgotPassword
-    case resetEmailSent(email: String)
+    case resetCode(email: String)
+    case resetVerification
     case newPassword
     case passwordResetComplete
 }
@@ -59,18 +60,35 @@ final class AuthFlow {
 
     func requestPasswordReset(email: String) async throws {
         try await service.requestPasswordReset(email: email)
-        if path.last != .resetEmailSent(email: email) {
-            path.append(.resetEmailSent(email: email))
+        if path.last != .resetCode(email: email) {
+            path.append(.resetCode(email: email))
         }
     }
 
-    func openPasswordResetLink(_ url: URL) async {
-        do {
-            try await service.openPasswordResetLink(url)
-            path = [.newPassword]
-        } catch {
-            path = [.forgotPassword]
+    /// "Verkeerd e-mailadres? Terug": back to the email screen, which still holds what you typed.
+    func returnToResetEmail() {
+        if case .resetCode = path.last {
+            path.removeLast()
         }
+    }
+
+    /// The steps of the password reset: with the authenticator code when the account needed it on the way.
+    var resetSteps: [String] {
+        path.contains(.resetVerification) ? AuthMessages.resetSteps : AuthMessages.resetStepsWithoutAuthenticator
+    }
+
+    func verifyPasswordResetCode(email: String, code: String) async throws {
+        switch try await service.verifyPasswordResetCode(email: email, code: code) {
+        case .readyForNewPassword:
+            path.append(.newPassword)
+        case .needsVerification:
+            path.append(.resetVerification)
+        }
+    }
+
+    func verifyForPasswordReset(code: String) async throws {
+        try await service.verify(code: code)
+        path.append(.newPassword)
     }
 
     func updatePassword(_ newPassword: String) async throws {

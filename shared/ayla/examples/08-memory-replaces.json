@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "id": "rep_08",
+  "conversationId": "conv_phone",
+  "text": "Gefeliciteerd met je nieuwe baan bij Albert Heijn! Wat ga je daar doen?",
+  "memories": [
+    { "text": "Je werkt bij Albert Heijn.", "category": "work", "replaces": "Je werkt als leidinggevende bij de Plus." }
+  ],
+  "blocks": [],
+  "usedData": []
+}

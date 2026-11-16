@@ -2,6 +2,13 @@ import PAVECore
 import SwiftUI
 
 struct VerificationView: View {
+    enum Purpose {
+        case signIn
+        case passwordReset
+    }
+
+    var purpose: Purpose = .signIn
+
     @Environment(AuthFlow.self) private var flow
     @State private var code = ""
     @State private var isSubmitting = false
@@ -10,27 +17,36 @@ struct VerificationView: View {
 
     var body: some View {
         AuthScreen {
+            AuthIntro(
+                emblem: .iconDevicePhoneMobile,
+                eyebrow: "Tweestapsverificatie",
+                title: AuthMessages.authenticatorHeading,
+                message: AuthMessages.authenticatorInstruction,
+                steps: purpose == .passwordReset ? AuthMessages.resetSteps : nil,
+                currentStep: 2
+            )
+        } content: {
             VStack(alignment: .leading, spacing: 24) {
-                AuthIntro(
-                    emblem: .iconShieldCheck,
-                    eyebrow: "Tweestapsverificatie",
-                    title: "Bevestig dat jij het bent",
-                    message: "Open je authenticator-app en vul de code van 6 cijfers voor je PAVE-account in."
+                VerificationCodeField(
+                    code: $code,
+                    title: AuthMessages.authenticatorCodeLabel,
+                    hint: AuthMessages.authenticatorCodeHint,
+                    errorMessage: errorMessage,
+                    isFocused: $isCodeFocused,
+                    onComplete: submit
                 )
-
-                VerificationCodeField(code: $code, errorMessage: errorMessage, isFocused: $isCodeFocused)
-                    .onChange(of: code) { error = nil }
+                .onChange(of: code) { if !code.isEmpty { error = nil } }
 
                 PavePrimaryButton(
                     title: error == nil ? "Bevestigen" : "Opnieuw proberen",
-                    loadingTitle: "Controleren…",
+                    loadingTitle: "Bezig met controleren...",
                     isLoading: isSubmitting,
                     action: submit
                 )
 
                 PaveNotice(
-                    title: "Gebruik je authenticator-app",
-                    message: "Je code komt uit je authenticator-app, niet via e-mail of sms. Kun je niet bij de app? Neem contact op met de IT-support."
+                    title: "Kun je niet bij je authenticator-app?",
+                    message: SupportText.sentence("Neem contact op via ")
                 )
 
                 AuthReturnButton(action: flow.returnToLogin)
@@ -40,11 +56,7 @@ struct VerificationView: View {
     }
 
     private var errorMessage: String? {
-        switch error {
-        case nil: nil
-        case .invalidCode: "Deze code klopt niet of is verlopen. Gebruik de nieuwste code uit je authenticator-app en probeer het opnieuw."
-        default: "We konden je code niet controleren. Controleer je internetverbinding en probeer het opnieuw."
-        }
+        error?.message
     }
 
     private func submit() {
@@ -54,9 +66,19 @@ struct VerificationView: View {
             isSubmitting = true
             defer { isSubmitting = false }
             do {
-                try await flow.verify(code: code)
+                switch purpose {
+                case .signIn:
+                    try await flow.verify(code: code)
+                case .passwordReset:
+                    try await flow.verifyForPasswordReset(code: code)
+                }
+                PaveHaptics.success()
             } catch {
                 self.error = AuthError(error)
+                PaveHaptics.error()
+                // As on the web: a wrong code empties the field and puts the cursor back for the next try.
+                code = ""
+                isCodeFocused = true
             }
         }
     }

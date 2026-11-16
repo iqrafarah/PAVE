@@ -3,16 +3,17 @@ import Foundation
 import OSLog
 
 public struct SupabaseAuthService: AuthService {
-    public static let passwordResetRedirect = URL(string: "pave://reset-password")!
-
     private static let logger = Logger(subsystem: "nl.fontys.pave", category: "auth")
 
     private let client: AuthClient
 
-    public init(projectURL: URL, publishableKey: String) {
+    /// `userAgent` names this app in the list of signed-in devices, such as "PAVE-iOS/0.1 (iPhone; iOS 26.1)".
+    public init(projectURL: URL, publishableKey: String, userAgent: String? = nil) {
+        var headers = ["apikey": publishableKey]
+        if let userAgent { headers["User-Agent"] = userAgent }
         client = AuthClient(
             url: projectURL.appending(path: "auth/v1"),
-            headers: ["apikey": publishableKey],
+            headers: headers,
             localStorage: KeychainLocalStorage(),
             emitLocalSessionAsInitialSession: true
         )
@@ -60,18 +61,15 @@ public struct SupabaseAuthService: AuthService {
 
     public func requestPasswordReset(email: String) async throws {
         try await mapErrors {
-            try await client.resetPasswordForEmail(Self.normalized(email), redirectTo: Self.passwordResetRedirect)
+            try await client.resetPasswordForEmail(Self.normalized(email))
         }
     }
 
-    public func openPasswordResetLink(_ url: URL) async throws {
-        guard url.scheme == Self.passwordResetRedirect.scheme, url.host() == Self.passwordResetRedirect.host() else {
-            throw AuthError.invalidResetLink
-        }
-        do {
-            try await client.session(from: url)
-        } catch {
-            throw AuthError.invalidResetLink
+    public func verifyPasswordResetCode(email: String, code: String) async throws -> PasswordResetOutcome {
+        try await mapErrors {
+            try await client.verifyOTP(email: Self.normalized(email), token: code, type: .recovery)
+            let hasVerifiedFactor = try await !verifiedFactors().isEmpty
+            return hasVerifiedFactor ? .needsVerification : .readyForNewPassword
         }
     }
 
@@ -88,6 +86,19 @@ public struct SupabaseAuthService: AuthService {
 
     public func accountID() async -> String? {
         client.currentUser?.id.uuidString
+    }
+
+    public func accessToken() async -> String? {
+        try? await client.session.accessToken
+    }
+
+    public func sessionState() async -> SessionState {
+        do {
+            _ = try await client.user()
+            return .active
+        } catch {
+            return Self.sessionState(after: error)
+        }
     }
 
     private func mapErrors<Value>(
@@ -127,24 +138,49 @@ public struct SupabaseAuthService: AuthService {
         return (user.factors ?? []).filter { $0.factorType == "totp" && $0.status == status }
     }
 
+    /// The server removes a session when the password changes; the client then reports it as missing.
+    static func sessionState(after error: any Error) -> SessionState {
+        guard let supabaseError = error as? Auth.AuthError else { return .unknown }
+        switch supabaseError.errorCode {
+        case .sessionNotFound, .sessionExpired, .refreshTokenNotFound, .refreshTokenAlreadyUsed, .userNotFound, .userBanned:
+            return .ended
+        default:
+            return .unknown
+        }
+    }
+
     static func normalized(_ email: String) -> String {
         email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 
     static func authError(for error: any Error) -> AuthError {
+        if error is URLError { return .noConnection }
         guard let supabaseError = error as? Auth.AuthError else { return .unavailable }
         switch supabaseError.errorCode {
         case .invalidCredentials:
             return .invalidCredentials
-        case .emailNotConfirmed, .userBanned:
-            return .accountNotActive
+        case .emailNotConfirmed:
+            return .emailNotConfirmed
         case .mfaVerificationFailed, .mfaVerificationRejected, .mfaChallengeExpired:
             return .invalidCode
-        case .weakPassword, .samePassword:
+        case .weakPassword:
             return .weakPassword
-        case .otpExpired, .flowStateExpired, .badCodeVerifier, .sessionNotFound:
-            return .invalidResetLink
+        case .samePassword:
+            return .samePassword
+        case .otpExpired:
+            return .invalidEmailCode
+        case .flowStateExpired, .badCodeVerifier, .sessionNotFound:
+            return .resetSessionExpired
+        case .overEmailSendRateLimit:
+            return .requestedTooSoon
+        case .overRequestRateLimit:
+            return .tooManyAttempts
+        case .insufficientAAL:
+            return .insufficientAssurance
         default:
+            if case .api(_, _, _, let response) = supabaseError, response.statusCode == 429 {
+                return .tooManyAttempts
+            }
             return .unavailable
         }
     }

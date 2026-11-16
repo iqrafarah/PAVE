@@ -1,22 +1,29 @@
-const PUBLIC_PATHS = ['/login', '/confirm'];
-const SETUP_PATH = '/mfa-setup';
-const VERIFY_PATH = '/mfa-verify';
+import type { MfaStatus } from '~/utils/auth/mfaRoutes';
+
+const LOGIN_PATH = '/login';
+const PATHS_WITHOUT_MFA = ['/forgot-password', '/confirm', PASSWORD_UPDATED_PATH];
+const MFA_STEP_PATHS = [MFA_SETUP_PATH, MFA_VERIFY_PATH];
+
+function isAllowedBeforeMfa(path: string, status: MfaStatus | null) {
+  if (path === getMfaPath(status)) return true;
+  // Without a verified authenticator aal2 is impossible, so a password can still be set (invite, reset).
+  return path === SET_PASSWORD_PATH && status === 'needs-setup';
+}
 
 export default defineNuxtRouteMiddleware(async (to) => {
-  if (PUBLIC_PATHS.includes(to.path)) return;
+  if (PATHS_WITHOUT_MFA.includes(to.path)) return;
 
   const session = useSupabaseSession();
   if (!session.value) return;
 
   const { data: status } = await useMfa().getMfaStatus();
+  if (to.path === LOGIN_PATH) return navigateTo(getMfaPath(status));
 
   if (status === 'complete') {
-    const isOnMfaStep = to.path === SETUP_PATH || to.path === VERIFY_PATH;
-    if (isOnMfaStep) return navigateTo('/');
+    if (MFA_STEP_PATHS.includes(to.path)) return navigateTo(HOME_PATH);
     return;
   }
 
-  // Fail closed: if the status cannot be loaded, the user still has to verify.
-  const requiredPath = status === 'needs-setup' ? SETUP_PATH : VERIFY_PATH;
-  if (to.path !== requiredPath) return navigateTo(requiredPath);
+  if (isAllowedBeforeMfa(to.path, status)) return;
+  return navigateTo(getMfaPath(status));
 });

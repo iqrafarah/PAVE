@@ -1,13 +1,11 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'auth' });
 
-const INVALID_CODE_MESSAGE =
-  'This code is invalid or has expired. Use the latest code in your authenticator app and try again.';
-const SETUP_ERROR_MESSAGE =
-  'We could not start the setup. Go back to login and try again.';
+const SETUP_START_FAILED_MESSAGE =
+  'Het instellen kon niet starten. Ga terug naar inloggen en log opnieuw in.';
 
 const { signOut } = useAuth();
-const { enrollTotp, verifyTotp } = useMfa();
+const { startSetup, confirmSetup } = useMfa();
 
 const factorId = ref('');
 const qrCode = ref('');
@@ -19,16 +17,16 @@ const isLoading = ref(true);
 const isConfirming = ref(false);
 
 const buttonLabel = computed(() => {
-  if (isConfirming.value) return 'Confirming...';
-  if (codeError.value) return 'Try again';
-  return 'Confirm setup';
+  if (isConfirming.value) return 'Bezig met bevestigen...';
+  if (codeError.value) return 'Opnieuw proberen';
+  return 'Instellen bevestigen';
 });
 
-async function startSetup() {
-  const { data, error } = await enrollTotp();
+async function loadSetup() {
+  const { data, error } = await startSetup();
   isLoading.value = false;
   if (error) {
-    setupError.value = SETUP_ERROR_MESSAGE;
+    setupError.value = SETUP_START_FAILED_MESSAGE;
     return;
   }
   factorId.value = data.factorId;
@@ -37,51 +35,55 @@ async function startSetup() {
 }
 
 async function handleSubmit() {
+  codeError.value = '';
   isConfirming.value = true;
-  const { error } = await verifyTotp(factorId.value, code.value);
+  const { error } = await confirmSetup(factorId.value, code.value);
   isConfirming.value = false;
 
   if (error) {
-    codeError.value = INVALID_CODE_MESSAGE;
+    codeError.value = getAuthErrorMessage(error);
+    code.value = '';
     return;
   }
-  await navigateTo('/mfa-complete');
+  await navigateTo(MFA_COMPLETE_PATH);
 }
 
-onMounted(startSetup);
+onMounted(loadSetup);
 </script>
 
 <template>
   <AuthCard
-    eyebrow="First-time setup"
-    title="Protect your PAVE account"
-    description="Two-step verification is mandatory to keep your personal information, achievements and certificates safe."
+    eyebrow="Eerste keer instellen"
+    title="Beveilig je PAVE-account"
+    :description="MFA_SETUP_INSTRUCTION"
   >
-    <ol class="mt-6 space-y-4">
+    <ol class="space-y-4">
       <AuthSetupStep
         :number="1"
-        title="Get an authenticator app"
-        description="Install Google Authenticator or Microsoft Authenticator on your phone."
+        title="Download een authenticator-app"
+        description="Installeer bijvoorbeeld Google Authenticator of Microsoft Authenticator op je telefoon."
       />
       <AuthSetupStep
         :number="2"
-        title="Add your PAVE account"
-        description="In the app, add an account and scan this QR code."
+        title="Voeg je PAVE-account toe"
+        description="Open je authenticator-app, voeg een account toe en scan deze code."
       >
         <div class="mt-3 flex items-center gap-4 rounded-xl bg-tint p-4">
-          <p v-if="isLoading" class="text-sm text-muted">Loading QR code...</p>
+          <p v-if="isLoading" role="status" class="text-sm text-muted">
+            QR-code laden...
+          </p>
           <p v-else-if="setupError" role="alert" class="text-sm text-danger">
             {{ setupError }}
           </p>
           <template v-else>
             <img
               :src="qrCode"
-              alt="QR code to add PAVE to your authenticator app"
+              alt="QR-code voor je authenticator-app"
               class="size-28 shrink-0 rounded-lg bg-white p-1"
             />
             <div class="min-w-0 text-sm text-ink">
-              <p class="font-semibold">Can’t scan the code?</p>
-              <p class="mt-1 text-muted">Enter this key in your app instead:</p>
+              <p class="font-semibold">Lukt scannen niet?</p>
+              <p class="mt-1 text-muted">Vul dan deze instelsleutel in:</p>
               <p class="mt-1 break-all font-mono">{{ secret }}</p>
             </div>
           </template>
@@ -89,16 +91,17 @@ onMounted(startSetup);
       </AuthSetupStep>
       <AuthSetupStep
         :number="3"
-        title="Confirm the connection"
-        description="Enter the 6-digit code from your authenticator app."
+        title="Vul de code in"
+        description="Vul hieronder de code van 6 cijfers uit je authenticator-app in."
       />
     </ol>
 
-    <form @submit.prevent="handleSubmit">
+    <form class="mt-6" @submit.prevent="handleSubmit">
       <AuthCodeInput
         id="setup-code"
         v-model="code"
-        hint="Enter the code shown in your authenticator app."
+        :label="AUTHENTICATOR_CODE_LABEL"
+        hint="Vul de code in die je authenticator-app nu laat zien."
         :error="codeError"
       />
       <AuthPrimaryButton type="submit" :disabled="isConfirming || !factorId">
@@ -107,8 +110,7 @@ onMounted(startSetup);
     </form>
 
     <p class="mt-4 text-sm text-muted">
-      Can’t use an authenticator app? Contact your organization’s IT support for
-      help.
+      Lukt het instellen niet? Neem contact op via <AuthSupportLink />.
     </p>
 
     <AuthBackToLogin @click="signOut" />

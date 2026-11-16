@@ -6,7 +6,7 @@ struct LoadingView: View {
     var minimumDuration: Duration = .seconds(1.5)
 
     var body: some View {
-        PaveSplashView()
+        PaveSplashView(accent: .paveAccent)
             .task {
                 try? await Task.sleep(for: minimumDuration)
                 appState.finishLoading()

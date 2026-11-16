@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "id": "rep_09",
+  "conversationId": "conv_phone",
+  "text": "Met je studie ICT en je ervaring als leidinggevende past een rol als IT-consultant goed bij je.",
+  "usedMemories": [
+    { "text": "Je studeert ICT aan Fontys.", "category": "education" },
+    { "text": "Je werkt als leidinggevende bij de Plus.", "category": "work" }
+  ],
+  "blocks": [],
+  "usedData": []
+}
