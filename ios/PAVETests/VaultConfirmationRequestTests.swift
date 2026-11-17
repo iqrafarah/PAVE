@@ -13,15 +13,16 @@ struct VaultConfirmationRequestTests {
 
     @Test func itStartsWithNothingChosen() {
         let request = VaultConfirmationRequest(item: VaultItem(id: "s", category: .internships, title: "Eindstage"))
-        #expect(request.missingFields == [.organisation, .location, .contactType, .contact])
+        #expect(request.missingFields == [.organisation, .location, .contact])
     }
 
-    @Test func itNeedsAnOrganisationLocationContactTypeAndContact() throws {
+    @Test func itNeedsAnOrganisationLocationAndOnePerson() throws {
         var request = VaultConfirmationRequest(item: VaultItem(id: "s", category: .internships, title: "Eindstage"))
         request.organization = try Self.decode(VaultValidationOrganization.self, #"{"id":"o1","name":"LiveWall","kind":"company"}"#)
-        #expect(request.missingFields == [.location, .contactType, .contact])
+        #expect(request.missingFields == [.location, .contact])
         request.location = try Self.decode(VaultValidationLocation.self, #"{"id":"l1","organization_id":"o1","city":"Eindhoven"}"#)
-        #expect(request.missingFields == [.contactType, .contact])
+        #expect(request.missingFields == [.contact])
+        // The function only filters the list: without a person the request is still incomplete.
         request.contactType = "Stagebegeleider"
         #expect(request.missingFields == [.contact])
         request.contact = try Self.decode(
@@ -35,13 +36,25 @@ struct VaultConfirmationRequestTests {
         var request = VaultConfirmationRequest(item: VaultItem(id: "d", category: .diplomas, title: "Hbo-ICT"))
         request.organization = try Self.decode(VaultValidationOrganization.self, #"{"id":"o1","name":"Fontys","kind":"school"}"#)
         request.location = try Self.decode(VaultValidationLocation.self, #"{"id":"l1","organization_id":"o1","city":"Eindhoven"}"#)
-        request.contactType = "Docent"
         request.contact = try Self.decode(
             VaultValidationContact.self,
             #"{"id":"c1","organization_id":"o1","location_id":null,"department_id":null,"name":"Sanne","job_title":"Docent","is_active":true}"#
         )
         #expect(request.department == nil)
         #expect(request.missingFields.isEmpty)
+    }
+
+    @Test func aPersonWithoutAFunctionIsOverig() throws {
+        let withFunction = try Self.decode(
+            VaultValidationContact.self,
+            #"{"id":"c1","organization_id":"o1","location_id":null,"department_id":null,"name":"Sanne de Vries","job_title":" Docent ","is_active":true}"#
+        )
+        let without = try Self.decode(
+            VaultValidationContact.self,
+            #"{"id":"c2","organization_id":"o1","location_id":null,"department_id":null,"name":"Daan Jansen","job_title":null,"is_active":true}"#
+        )
+        #expect(VaultConfirmationRequest.function(of: withFunction) == "Docent")
+        #expect(VaultConfirmationRequest.function(of: without) == "Overig")
     }
 
     /// The directory rows come from Supabase in snake_case, exactly as `SupabaseVaultService` decodes them.

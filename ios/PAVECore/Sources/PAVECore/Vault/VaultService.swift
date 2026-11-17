@@ -301,11 +301,12 @@ public struct SupabaseVaultService: VaultService {
             ("select", "id,organization_id,location_id,department_id,name,job_title,is_active"),
             ("organization_id", "eq.\(organizationID)"),
             ("is_active", "eq.true"),
-            ("or", "(location_id.is.null,location_id.eq.\(locationID))"),
         ]
+        // Both conditions in one `and`: PostgREST does not combine two separate `or` parameters reliably.
         if let departmentID {
-            filters.append(("or", "(department_id.is.null,department_id.eq.\(departmentID))"))
+            filters.append(("and", "(or(location_id.is.null,location_id.eq.\(locationID)),or(department_id.is.null,department_id.eq.\(departmentID)))"))
         } else {
+            filters.append(("or", "(location_id.is.null,location_id.eq.\(locationID))"))
             filters.append(("department_id", "is.null"))
         }
         filters.append(("order", "name.asc"))

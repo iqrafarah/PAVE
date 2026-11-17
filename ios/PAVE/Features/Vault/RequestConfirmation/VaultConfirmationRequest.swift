@@ -22,7 +22,6 @@ struct VaultConfirmationRequest: Equatable {
     enum Field: Equatable {
         case organisation
         case location
-        case contactType
         case contact
     }
 
@@ -30,6 +29,7 @@ struct VaultConfirmationRequest: Equatable {
     var organization: VaultValidationOrganization?
     var location: VaultValidationLocation?
     var department: VaultValidationDepartment?
+    /// Only narrows the list of persons (docent, stagebegeleider); the request goes to the one chosen `contact`.
     var contactType: String?
     var contact: VaultValidationContact?
     var message = ""
@@ -42,8 +42,13 @@ struct VaultConfirmationRequest: Equatable {
         var fields = [Field]()
         if organization == nil { fields.append(.organisation) }
         if location == nil { fields.append(.location) }
-        if contactType == nil { fields.append(.contactType) }
         if contact == nil { fields.append(.contact) }
         return fields
+    }
+
+    /// "Docent", or "Overig" for a person without a function.
+    static func function(of contact: VaultValidationContact) -> String {
+        let value = contact.jobTitle?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (value?.isEmpty == false ? value : nil) ?? "Overig"
     }
 }

@@ -60,6 +60,7 @@ struct NotificationRejectSheet: View {
             .onAppear { isFocused = true }
         }
         .presentationDetents([.medium, .large])
+        .presentationBackground(Color.canvas)
         .interactiveDismissDisabled(isWorking || !cleanedReason.isEmpty)
     }
 

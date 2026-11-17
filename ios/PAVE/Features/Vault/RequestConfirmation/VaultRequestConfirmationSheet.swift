@@ -97,12 +97,12 @@ struct VaultRequestConfirmationSheet: View {
 
                     VStack(alignment: .leading, spacing: 22) {
                         pickerField(title: "Naam bedrijf", value: request.organization?.name, placeholder: "Kies een organisatie", error: error(.organisation)) { searchText = ""; choice = .organization }
-                        pickerField(title: "Locatie van het bedrijf", value: request.location?.city, placeholder: "Typ of kies een vestigingsplaats", error: error(.location)) { searchText = ""; choice = .location }
+                        pickerField(title: "Locatie van het bedrijf", value: request.location?.city, placeholder: "Typ of kies een vestigingsplaats", error: error(.location), isEnabled: request.organization != nil) { searchText = ""; choice = .location }
                         if request.organization?.kind == "school", !departments.isEmpty {
-                            pickerField(title: "Afdeling of opleiding", value: request.department?.name, placeholder: "Kies een afdeling of sla over") { searchText = ""; choice = .department }
+                            pickerField(title: "Afdeling of opleiding", value: request.department?.name, placeholder: "Kies een afdeling of sla over", isEnabled: request.location != nil) { searchText = ""; choice = .department }
                         }
-                        pickerField(title: "Type contactpersoon", value: request.contactType, placeholder: "Kies bijvoorbeeld docent of stagebegeleider", error: error(.contactType)) { searchText = ""; choice = .contactType }
-                        pickerField(title: "Betreffend persoon.", value: request.contact.map(\.name), placeholder: "Kies een persoon", error: error(.contact), isEnabled: request.contactType != nil) { searchText = ""; choice = .contact }
+                        pickerField(title: "Functie (optioneel)", value: request.contactType, placeholder: "Alle functies", isEnabled: request.location != nil && !contacts.isEmpty) { searchText = ""; choice = .contactType }
+                        pickerField(title: "Contactpersoon", value: request.contact.map(contactLine), placeholder: "Kies één persoon", error: error(.contact), isEnabled: request.location != nil) { searchText = ""; choice = .contact }
                     }
                     .padding(20)
                     .background(Color.white, in: .rect(cornerRadius: 16))
@@ -139,7 +139,7 @@ struct VaultRequestConfirmationSheet: View {
                 .overlay { RoundedRectangle(cornerRadius: 11).strokeBorder(Color.cardBorder) }
                 .contentShape(.rect(cornerRadius: 11))
             }
-            .buttonStyle(.pave).disabled(isLoading || !isEnabled || (title != "Naam bedrijf" && request.organization == nil) || (title != "Naam bedrijf" && title != "Locatie van het bedrijf" && request.location == nil))
+            .buttonStyle(.pave).disabled(isLoading || !isEnabled)
             .accessibilityLabel("\(title): \(value ?? placeholder)")
             if let error { PaveInlineError(message: error) }
         }
@@ -171,16 +171,23 @@ struct VaultRequestConfirmationSheet: View {
                             choiceRow("Overslaan", detail: "Geen afdeling of opleiding kiezen", selected: request.department == nil) { Task { await skipDepartment() } }
                             ForEach(filteredDepartments) { department in choiceRow(department.name, detail: nil, selected: request.department?.id == department.id) { Task { await select(department) } } }
                         case .contactType:
+                            choiceRow("Alle functies", detail: "Laat alle personen zien", selected: request.contactType == nil) { selectFunction(nil) }
                             ForEach(filteredContactTypes, id: \.self) { type in
-                                choiceRow(type, detail: "Filter contactpersonen op functie", selected: request.contactType == type) {
-                                    isDirty = true
-                                    request.contactType = type
-                                    request.contact = nil
-                                    choice = nil
-                                }
+                                choiceRow(type, detail: personCount(type), selected: request.contactType == type) { selectFunction(type) }
                             }
                         case .contact:
-                            ForEach(filteredContacts) { contact in choiceRow(contact.name, detail: contact.jobTitle, selected: request.contact?.id == contact.id) { isDirty = true; request.contact = contact; choice = nil } }
+                            // One section per function, so you see who is a docent and who a stagebegeleider.
+                            ForEach(filteredContactGroups, id: \.function) { group in
+                                Section(group.function) {
+                                    ForEach(group.contacts) { contact in
+                                        choiceRow(contact.name, detail: nil, selected: request.contact?.id == contact.id) {
+                                            isDirty = true
+                                            request.contact = contact
+                                            choice = nil
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                     .listStyle(.insetGrouped)
@@ -212,13 +219,40 @@ struct VaultRequestConfirmationSheet: View {
     private var filteredOrganizations: [VaultValidationOrganization] { organizations.filter { searchText.isEmpty || $0.name.localizedCaseInsensitiveContains(searchText) } }
     private var filteredLocations: [VaultValidationLocation] { locations.filter { searchText.isEmpty || $0.city.localizedCaseInsensitiveContains(searchText) } }
     private var filteredDepartments: [VaultValidationDepartment] { departments.filter { searchText.isEmpty || $0.name.localizedCaseInsensitiveContains(searchText) } }
-    private var contactTypes: [String] { Array(Set(contacts.map(contactTypeName))).sorted { $0.localizedStandardCompare($1) == .orderedAscending } }
+    private var contactTypes: [String] { Array(Set(contacts.map(VaultConfirmationRequest.function(of:)))).sorted { $0.localizedStandardCompare($1) == .orderedAscending } }
     private var filteredContactTypes: [String] { contactTypes.filter { searchText.isEmpty || $0.localizedCaseInsensitiveContains(searchText) } }
-    private var filteredContacts: [VaultValidationContact] { contacts.filter { contactTypeName($0) == request.contactType && (searchText.isEmpty || $0.name.localizedCaseInsensitiveContains(searchText)) } }
+    /// The persons of the chosen function (or all), found by name or by function.
+    private var filteredContacts: [VaultValidationContact] {
+        contacts.filter { contact in
+            let function = VaultConfirmationRequest.function(of: contact)
+            return (request.contactType == nil || function == request.contactType)
+                && (searchText.isEmpty || contact.name.localizedCaseInsensitiveContains(searchText) || function.localizedCaseInsensitiveContains(searchText))
+        }
+    }
+    private var filteredContactGroups: [(function: String, contacts: [VaultValidationContact])] {
+        Dictionary(grouping: filteredContacts, by: VaultConfirmationRequest.function(of:))
+            .map { (function: $0.key, contacts: $0.value) }
+            .sorted { $0.function.localizedStandardCompare($1.function) == .orderedAscending }
+    }
 
-    private func contactTypeName(_ contact: VaultValidationContact) -> String {
-        let value = contact.jobTitle?.trimmingCharacters(in: .whitespacesAndNewlines)
-        return (value?.isEmpty == false ? value : nil) ?? "Overig"
+    /// "Sanne de Vries · Docent".
+    private func contactLine(_ contact: VaultValidationContact) -> String {
+        "\(contact.name) · \(VaultConfirmationRequest.function(of: contact))"
+    }
+
+    private func personCount(_ function: String) -> String {
+        let count = contacts.filter { VaultConfirmationRequest.function(of: $0) == function }.count
+        return count == 1 ? "1 persoon" : "\(count) personen"
+    }
+
+    /// The function only narrows the list; a chosen person of another function is cleared, one that fits stays.
+    private func selectFunction(_ function: String?) {
+        isDirty = true
+        request.contactType = function
+        if let function, let contact = request.contact, VaultConfirmationRequest.function(of: contact) != function {
+            request.contact = nil
+        }
+        choice = nil
     }
 
     private func filteredChoiceCount(_ selected: Choice) -> Int {
@@ -226,7 +260,7 @@ struct VaultRequestConfirmationSheet: View {
         case .organization: return filteredOrganizations.count
         case .location: return filteredLocations.count
         case .department: return filteredDepartments.count + 1
-        case .contactType: return filteredContactTypes.count
+        case .contactType: return filteredContactTypes.count + 1
         case .contact: return filteredContacts.count
         }
     }
@@ -351,7 +385,7 @@ struct VaultRequestConfirmationSheet: View {
     private func send() {
         showsMissing = true
         guard request.missingFields.isEmpty else { PaveHaptics.error(); return }
-        guard let onSend, request.organization != nil, request.location != nil, request.contactType != nil, request.contact != nil else { return }
+        guard let onSend, request.organization != nil, request.location != nil, request.contact != nil else { return }
         isSending = true; sendError = nil
         Task {
             let error = await onSend(request)

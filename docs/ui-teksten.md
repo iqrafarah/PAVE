@@ -12,10 +12,13 @@
 | Vestigingsveld | Locatie van het bedrijf |
 | Vestigingsplaceholder | Typ of kies een vestigingsplaats |
 | Afdelingsveld (optioneel, alleen bij scholen) | Afdeling of opleiding |
-| Functiefilter | Type contactpersoon |
-| Functieplaceholder | Kies bijvoorbeeld docent of stagebegeleider |
-| Contactveld | Betreffend persoon. |
-| Contactplaceholder | Kies een persoon |
+| Functiefilter (optioneel) | Functie (optioneel) |
+| Functieplaceholder | Alle functies |
+| Functie: alles tonen | Alle functies — Laat alle personen zien |
+| Functie: aantal | 1 persoon / {n} personen |
+| Contactveld | Contactpersoon |
+| Contactplaceholder | Kies één persoon |
+| Gekozen persoon | {naam} · {functie} |
 | Zoeken | Zoeken |
 | Geen organisatie gevonden | Geen organisaties gevonden. Probeer een andere zoekopdracht. |
 | Geen vestigingen | Er zijn nog geen vestigingen voor deze organisatie ingesteld. |
@@ -28,8 +31,7 @@
 | Laden contacten mislukt | De contactpersonen konden niet worden geladen. Probeer het opnieuw. |
 | Ontbrekende organisatie | Kies een organisatie. |
 | Ontbrekende vestiging | Kies een vestigingsplaats. |
-| Ontbrekende functie | Kies eerst een functie, bijvoorbeeld docent of stagebegeleider. |
-| Ontbrekend contact | Kies een contactpersoon. |
+| Ontbrekend contact | Kies de persoon die je bewijs kan bevestigen. |
 | Knop | Aanvraag versturen |
 | Verzenden | Aanvraag versturen… |
 | Routeringsuitleg | Je aanvraag gaat naar de gekozen contactpersoon of naar de beoordelaars van de organisatie. |
