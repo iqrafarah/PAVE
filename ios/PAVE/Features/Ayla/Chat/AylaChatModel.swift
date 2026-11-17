@@ -72,6 +72,7 @@ final class AylaChatModel {
     let service: (any AylaService)?
     private let nameWait: Duration
     private let drafts: AylaDrafts
+    private let pendingFiles: AylaPendingFiles
     private var lastQuestion: String?
     /// The files sent with the last question, so it can be asked again with them.
     @ObservationIgnored private var lastFiles: [AylaAttachment] = []
@@ -81,7 +82,9 @@ final class AylaChatModel {
     @ObservationIgnored private var lastUploads: [String: VaultUpload] = [:]
     /// Every file sent in this conversation while the app is open, oldest first: evidence built up over several
     /// turns takes them all along.
-    @ObservationIgnored private var sentUploads: [VaultUpload] = []
+    @ObservationIgnored private var sentUploads: [VaultUpload] = [] {
+        didSet { savePendingFiles() }
+    }
 
     /// What "Laat Ayla invullen" made of the files of an item proposed in the chat: the same reading as in the vault,
     /// so the card and the form know the same, and "Zet in de kluis" does not read them again.
@@ -135,11 +138,13 @@ final class AylaChatModel {
     init(
         service: (any AylaService)?,
         drafts: AylaDrafts = AylaDrafts(),
+        pendingFiles: AylaPendingFiles = AylaPendingFiles(),
         nameWait: Duration = .seconds(1.5),
         undoWindow: Duration = .seconds(5)
     ) {
         self.service = service
         self.drafts = drafts
+        self.pendingFiles = pendingFiles
         self.nameWait = nameWait
         self.undoWindow = undoWindow
         isGreetingReady = service == nil
@@ -295,6 +300,7 @@ final class AylaChatModel {
                 switch event {
                 case .started(let id):
                     conversationID = id
+                    savePendingFiles()
                 case .text(let text):
                     if let writingIndex, entries.indices.contains(writingIndex) {
                         entries[writingIndex].text = text
@@ -305,6 +311,7 @@ final class AylaChatModel {
                     }
                 case .reply(let reply):
                     conversationID = reply.conversationId
+                    savePendingFiles()
                     let entry = Entry(id: reply.id, role: .ayla, text: reply.text, reply: reply)
                     if let writingIndex, entries.indices.contains(writingIndex) {
                         entries[writingIndex] = entry
@@ -345,6 +352,7 @@ final class AylaChatModel {
         do {
             let reply = try await turn.service.send(turn.request)
             conversationID = reply.conversationId
+            savePendingFiles()
             entries.append(Entry(id: reply.id, role: .ayla, text: reply.text, reply: reply))
             phase = .idle
             analyzeEvidenceIfNeeded(for: reply)
@@ -439,12 +447,12 @@ final class AylaChatModel {
         sentUploads
     }
 
-    /// The files that go with an item Ayla proposed: the ones she named as belonging to it; when she named none, the
-    /// files sent while this item was built up. Files of an item that went into the vault are no longer among them.
+    /// The files that go with an item Ayla proposed: all files sent while this item was built up, newest last. Her own
+    /// list of names is no filter: she tends to name the photos and leave out the pdfs, and a file left out would
+    /// silently stay behind. A file that does not belong can be taken out in the form. Files of an item that went into
+    /// the vault are no longer among them.
     func uploads(for proposal: AylaReply.VaultItemProposal?) -> [VaultUpload] {
-        let names = proposal?.attachments ?? []
-        let named = sentUploads.filter { names.contains($0.fileName) }
-        return Array((named.isEmpty ? sentUploads : named).suffix(5))
+        Array(sentUploads.suffix(VaultAddEvidenceModel.maximumDocuments))
     }
 
     /// Ayla answers the last question again, as if it was asked for the first time.
@@ -549,6 +557,12 @@ final class AylaChatModel {
         lastAddedItemID = nil
     }
 
+    /// Writes the files still meant for the vault to this device, as soon as the chat has an id to keep them under.
+    private func savePendingFiles() {
+        guard let conversationID else { return }
+        pendingFiles.save(sentUploads, for: conversationID)
+    }
+
     func open(_ conversation: AylaConversation) async {
         guard let service, !isAnswering else { return }
         clearContext()
@@ -568,7 +582,7 @@ final class AylaChatModel {
             phase = .idle
             draft = drafts[conversation.id]
             attachments = []
-            sentUploads = []
+            sentUploads = pendingFiles.load(for: conversation.id)
             analyses = [:]
             addedReplies = []
         addedItemIDs = [:]
@@ -694,6 +708,7 @@ final class AylaChatModel {
         let conversations = pendingDeletion
         pendingDeletion = []
         drafts.remove(conversations.map(\.id))
+        pendingFiles.remove(conversations.map(\.id))
         Task {
             var failed: [AylaConversation] = []
             for conversation in conversations {

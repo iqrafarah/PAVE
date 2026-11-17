@@ -38,7 +38,7 @@ struct MainView: View {
     private static let sidebarSize: CGFloat = 320
 
     init(service: (any AylaService)?, vaultService: (any VaultService)?, devicesService: (any DevicesService)? = nil, profileService: (any ProfileService)? = nil) {
-        _model = State(initialValue: AylaChatModel(service: service, drafts: .standard))
+        _model = State(initialValue: AylaChatModel(service: service, drafts: .standard, pendingFiles: .standard))
         _memory = State(initialValue: AylaMemoryModel(service: service))
         _vault = State(initialValue: VaultModel(service: vaultService))
         _devices = State(initialValue: SignedInDevicesModel(service: devicesService))
