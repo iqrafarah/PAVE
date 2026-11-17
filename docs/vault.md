@@ -46,7 +46,11 @@ What is in Supabase on 2026-11-10 (read-only check with the publishable key):
 | Table | From | Used by |
 | --- | --- | --- |
 | `profiles` (id, full_name, preferred_name, email, avatar_url, role, organization_id, program, created_at, updated_at) | web team, not in our migrations | Ayla function (name) |
-| `organizations` (id, name, created_at) | web team, not in our migrations | `profiles.organization_id` |
+| `organizations` (id, name, created_at, logo_url, kind) | web team, not in our migrations; `kind` and the places are added by `20261117120000_organisation_directory.sql` | `profiles.organization_id` |
+| `organization_locations` (organization_id, city) | `20261117120000_organisation_directory.sql` | The places of each organisation, for picking where to ask for verification. 37 organisations (15 schools, 22 companies), readable by signed-in users, written by trusted server code only. |
+| `organization_departments` (organization_id, location_id, name) | `20261117130000_organisation_contacts.sql` (not applied yet) | Departments or programmes of a school. Demo: ICT, Engineering and Pedagogiek at Fontys. Readable by signed-in users. |
+| `organization_contacts` (organization_id, location_id, department_id, name, job_title, is_active) | same | The person or desk a learner picks. Demo rows are roles (Stagebureau, Docent ICT, Stagebegeleider, HR-afdeling), not real people. Readable by signed-in users. |
+| `organization_contact_reviewers` (contact_id, organization_id, reviewer_id) | same | Private: the PAVE accounts behind a contact; each must be a `vault_validation_reviewers` row of the same organisation. A contact without one falls back to every reviewer of the organisation. |
 | `ayla_conversations`, `ayla_messages`, `ayla_memories`, `ayla_settings` | our migrations | iOS, Ayla function |
 | the 8 `vault_*` tables and the `pave-vault` bucket | `20261110120000_vault.sql` | iOS (items, files, skills, folders); web not yet |
 
