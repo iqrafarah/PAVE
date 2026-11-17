@@ -6,6 +6,7 @@ struct VaultItemDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(VaultModel.self) private var model
     let itemID: String
+    var onShowMenu: (() -> Void)? = nil
     @State private var isEditing = false
     @State private var requestsConfirmation = false
     @State private var confirmsDelete = false
@@ -37,11 +38,14 @@ struct VaultItemDetailView: View {
                     VaultRequestConfirmationSheet(
                         item: item,
                         documentCount: model.documents(of: item).count,
+                        onShowMenu: onShowMenu,
                         onSend: { request in
                             await model.requestValidation(
                                 for: item,
-                                organisationName: request.organisation,
-                                email: request.email,
+                                organizationID: request.organization!.id,
+                                locationID: request.location!.id,
+                                departmentID: request.department?.id,
+                                contactID: request.contact!.id,
                                 message: request.message
                             )
                         }

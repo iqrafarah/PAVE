@@ -76,7 +76,7 @@ struct VaultScreen: View {
                     if id == nil { handledOpenID = nil } else { openRequestedItem() }
                 }
                 .sheet(item: $openedItem) { item in
-                    VaultItemDetailView(itemID: item.id)
+                    VaultItemDetailView(itemID: item.id, onShowMenu: onShowMenu)
                         .paveSheet()
                 }
                 .sheet(item: $editedItem) { item in
@@ -87,11 +87,14 @@ struct VaultScreen: View {
                     VaultRequestConfirmationSheet(
                         item: item,
                         documentCount: model.documents(of: item).count,
+                        onShowMenu: onShowMenu,
                         onSend: { request in
                             await model.requestValidation(
                                 for: item,
-                                organisationName: request.organisation,
-                                email: request.email,
+                                organizationID: request.organization!.id,
+                                locationID: request.location!.id,
+                                departmentID: request.department?.id,
+                                contactID: request.contact!.id,
                                 message: request.message
                             )
                         }

@@ -33,10 +33,32 @@ public protocol VaultService: Sendable {
     func suggestSkills(for draft: VaultItemDraft, material: VaultSkillsMaterial, existing: [String]) async throws -> [VaultSkillSuggestion]
     /// Sends the item to the organisation's explicitly assigned reviewers through the trusted Edge Function.
     func requestValidation(itemID: String, organisationName: String, email: String, message: String?) async throws
+    /// Read-only, MFA-protected directory choices for the verification request form.
+    func validationOrganizations() async throws -> [VaultValidationOrganization]
+    func validationLocations(organizationID: String) async throws -> [VaultValidationLocation]
+    func validationDepartments(organizationID: String, locationID: String) async throws -> [VaultValidationDepartment]
+    func validationContacts(organizationID: String, locationID: String, departmentID: String?) async throws -> [VaultValidationContact]
+    /// Routes the request by trusted directory IDs. The server resolves recipients; the client never sends reviewer IDs.
+    func requestValidation(
+        itemID: String,
+        organizationID: String,
+        locationID: String,
+        departmentID: String?,
+        contactID: String,
+        message: String?
+    ) async throws
 }
 
 public extension VaultService {
     func requestValidation(itemID: String, organisationName: String, email: String, message: String?) async throws {
+        throw VaultError.notSetUp
+    }
+
+    func validationOrganizations() async throws -> [VaultValidationOrganization] { throw VaultError.notSetUp }
+    func validationLocations(organizationID: String) async throws -> [VaultValidationLocation] { throw VaultError.notSetUp }
+    func validationDepartments(organizationID: String, locationID: String) async throws -> [VaultValidationDepartment] { throw VaultError.notSetUp }
+    func validationContacts(organizationID: String, locationID: String, departmentID: String?) async throws -> [VaultValidationContact] { throw VaultError.notSetUp }
+    func requestValidation(itemID: String, organizationID: String, locationID: String, departmentID: String?, contactID: String, message: String?) async throws {
         throw VaultError.notSetUp
     }
 }
@@ -57,6 +79,7 @@ public enum VaultError: Error, Equatable, Sendable {
     case validationNoReviewer
     case validationAlreadyPending
     case validationItemUnavailable
+    case validationInvalidChoice
     case unavailable
 
     public init(_ error: any Error) { self = (error as? VaultError) ?? .unavailable }
@@ -245,6 +268,109 @@ public struct SupabaseVaultService: VaultService {
         _ = try await sendFunction(urlRequest)
     }
 
+    public func validationOrganizations() async throws -> [VaultValidationOrganization] {
+        try await directoryRows(
+            VaultValidationOrganization.self,
+            table: "organizations",
+            select: "id,name,kind",
+            filters: [("kind", "not.is.null"), ("order", "name.asc")]
+        )
+    }
+
+    public func validationLocations(organizationID: String) async throws -> [VaultValidationLocation] {
+        try await directoryRows(
+            VaultValidationLocation.self,
+            table: "organization_locations",
+            select: "id,organization_id,city",
+            filters: [("organization_id", "eq.\(organizationID)"), ("order", "city.asc")]
+        )
+    }
+
+    public func validationDepartments(organizationID: String, locationID: String) async throws -> [VaultValidationDepartment] {
+        try await directoryRows(
+            VaultValidationDepartment.self,
+            table: "organization_departments",
+            select: "id,organization_id,location_id,name",
+            filters: [
+                ("organization_id", "eq.\(organizationID)"),
+                ("or", "(location_id.is.null,location_id.eq.\(locationID))"),
+                ("order", "name.asc"),
+            ]
+        )
+    }
+
+    public func validationContacts(organizationID: String, locationID: String, departmentID: String?) async throws -> [VaultValidationContact] {
+        var filters = [
+            ("select", "id,organization_id,location_id,department_id,name,job_title,is_active"),
+            ("organization_id", "eq.\(organizationID)"),
+            ("is_active", "eq.true"),
+            ("or", "(location_id.is.null,location_id.eq.\(locationID))"),
+        ]
+        if let departmentID {
+            filters.append(("or", "(department_id.is.null,department_id.eq.\(departmentID))"))
+        } else {
+            filters.append(("department_id", "is.null"))
+        }
+        filters.append(("order", "name.asc"))
+        return try await directoryRows(VaultValidationContact.self, table: "organization_contacts", filters: filters)
+    }
+
+    private func directoryRows<Row: Decodable>(
+        _ type: Row.Type,
+        table: String,
+        select: String,
+        filters: [(String, String)]
+    ) async throws -> [Row] {
+        var query = [("select", select)]
+        query.append(contentsOf: filters)
+        let urlRequest = try await request(restURL.appending(path: table), query: query)
+        let data = try await send(urlRequest)
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        do {
+            return try decoder.decode([Row].self, from: data)
+        } catch {
+            throw VaultError.unavailable
+        }
+    }
+
+    private func directoryRows<Row: Decodable>(
+        _ type: Row.Type,
+        table: String,
+        filters: [(String, String)]
+    ) async throws -> [Row] {
+        let urlRequest = try await request(restURL.appending(path: table), query: filters)
+        let data = try await send(urlRequest)
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        do {
+            return try decoder.decode([Row].self, from: data)
+        } catch {
+            throw VaultError.unavailable
+        }
+    }
+
+    public func requestValidation(
+        itemID: String,
+        organizationID: String,
+        locationID: String,
+        departmentID: String?,
+        contactID: String,
+        message: String?
+    ) async throws {
+        let body: [String: Any] = [
+            "action": "create",
+            "itemId": itemID,
+            "organizationId": organizationID,
+            "locationId": locationID,
+            "departmentId": departmentID.map { $0 as Any } ?? NSNull(),
+            "contactId": contactID,
+            "message": message ?? "",
+        ]
+        let urlRequest = try await request(functionsURL.appending(path: "vault-review"), method: "POST", json: body)
+        _ = try await sendFunction(urlRequest)
+    }
+
     private func insertFile(_ row: [String: Any]) async throws {
         _ = try await send(try await request(restURL.appending(path: "vault_item_files"), method: "POST", json: row), accepting: [201])
     }
@@ -424,6 +550,7 @@ public struct SupabaseVaultService: VaultService {
             case .some("no_reviewers"): throw VaultError.validationNoReviewer
             case .some("already_pending"): throw VaultError.validationAlreadyPending
             case .some("item_not_awaiting_verification"): throw VaultError.validationItemUnavailable
+            case .some("invalid_choice"): throw VaultError.validationInvalidChoice
             default: throw Self.error(status: status, body: data)
             }
         }

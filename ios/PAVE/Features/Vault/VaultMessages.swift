@@ -43,6 +43,7 @@ enum VaultMessages {
         case .validationNoReviewer: "Er is nog geen beoordelaar ingesteld voor deze organisatie. Neem contact op met je organisatie."
         case .validationAlreadyPending: "Voor dit bewijs staat al een verificatieaanvraag open."
         case .validationItemUnavailable: "Dit bewijs kan niet meer worden aangevraagd. Vernieuw de kluis en probeer opnieuw."
+        case .validationInvalidChoice: "Deze organisatie-, vestigings- of contactkeuze is niet meer geldig. Kies de gegevens opnieuw."
         case .fileRejected: "Dit bestand kan niet in je kluis. Kies een PDF, Word-bestand, tekst of foto tot 20 MB."
         case .unavailable, .missingColumn: "Er ging iets mis. Probeer het zo nog een keer."
         }
@@ -148,8 +149,9 @@ enum VaultMessages {
 
     static func requestMissing(_ field: VaultConfirmationRequest.Field) -> String {
         switch field {
-        case .organisation: "Vul de naam van de organisatie in."
-        case .email: "Vul een geldig e-mailadres in, zoals naam@organisatie.nl."
+        case .organisation: "Kies een organisatie."
+        case .location: "Kies een vestigingsplaats."
+        case .contact: "Kies een contactpersoon."
         }
     }
 

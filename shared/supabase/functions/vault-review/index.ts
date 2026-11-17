@@ -1,5 +1,5 @@
-// Reviewer inbox and read-only evidence access for iOS. The service key is used only after
-// authenticating the caller and checking an explicit vault_validation_reviewers assignment.
+// Reviewer inbox, evidence access, and ID-bound verification requests for iOS. The service key is
+// used only after authenticating the caller and checking the request's trusted recipient set.
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { CORS, json, sessionLevel } from '../_shared/http.ts'
 
@@ -20,8 +20,9 @@ Deno.serve(async (req) => {
 
   const admin = createClient(URL, SERVICE, { auth: { persistSession: false, autoRefreshToken: false } })
   const body = await req.json().catch(() => null) as {
-    action?: string; requestId?: string; itemId?: string; organisationName?: string
-    email?: string; message?: string; outcome?: string; response?: string
+    action?: string; requestId?: string; itemId?: string; organizationId?: string
+    locationId?: string; departmentId?: string | null; contactId?: string
+    message?: string; outcome?: string; response?: string
   } | null
   if (!body || !['inbox', 'detail', 'create', 'resolve'].includes(body.action ?? '')) return json({ error: 'invalid_request' }, 400)
 
@@ -29,39 +30,69 @@ Deno.serve(async (req) => {
     const { data: assignments, error: assignmentError } = await admin
       .from('vault_validation_reviewers').select('organization_id').eq('reviewer_id', user.id)
     if (assignmentError) throw assignmentError
-    const organizationIds = (assignments ?? []).map((row) => row.organization_id as string)
+    const hasReviewerAssignment = (assignments ?? []).length > 0
 
     if (body.action === 'create') {
-      if (!body.itemId || !body.organisationName?.trim() || !body.email?.trim()) return json({ error: 'invalid_request' }, 400)
-      const email = body.email.trim()
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)) return json({ error: 'invalid_email' }, 400)
-      const [{ data: item }, { data: organizations, error: organizationError }] = await Promise.all([
+      if (!body.itemId || !body.organizationId || !body.locationId || !body.contactId) return json({ error: 'invalid_request' }, 400)
+      if (body.message !== undefined && body.message !== null && typeof body.message !== 'string') return json({ error: 'invalid_request' }, 400)
+      if (body.message && body.message.length > 2000) return json({ error: 'message_too_long' }, 400)
+      const [{ data: item }, { data: organization, error: organizationError }, { data: location, error: locationError }] = await Promise.all([
         authClient.from('vault_items').select('id,user_id,title,verification_status').eq('id', body.itemId).eq('user_id', user.id).maybeSingle(),
-        admin.from('organizations').select('id,name'),
+        admin.from('organizations').select('id,name,kind').eq('id', body.organizationId).not('kind', 'is', null).maybeSingle(),
+        admin.from('organization_locations').select('id,organization_id,city').eq('id', body.locationId).eq('organization_id', body.organizationId).maybeSingle(),
       ])
       if (organizationError) throw organizationError
+      if (locationError) throw locationError
       if (!item || item.verification_status !== 'toVerify') return json({ error: 'item_not_awaiting_verification' }, 409)
-      const normalize = (value: string) => value.trim().normalize('NFKC').toLocaleLowerCase('nl')
-      const organization = (organizations ?? []).find((row) => normalize(row.name) === normalize(body.organisationName!))
       if (!organization) return json({ error: 'organization_not_found' }, 404)
+
+      let department: { id: string; organization_id: string; location_id: string | null } | null = null
+      if (body.departmentId) {
+        const { data, error } = await admin.from('organization_departments')
+          .select('id,organization_id,location_id').eq('id', body.departmentId).eq('organization_id', organization.id).maybeSingle()
+        if (error) throw error
+        department = data
+        if (!department || (department.location_id !== null && department.location_id !== location.id)) {
+          return json({ error: 'invalid_choice' }, 400)
+        }
+      }
+
+      const { data: contact, error: contactError } = await admin.from('organization_contacts')
+        .select('id,organization_id,location_id,department_id,is_active')
+        .eq('id', body.contactId).eq('organization_id', organization.id).eq('is_active', true).maybeSingle()
+      if (contactError) throw contactError
+      if (!contact
+        || (contact.location_id !== null && contact.location_id !== location.id)
+        || (department
+          ? (contact.department_id !== null && contact.department_id !== department.id)
+          : contact.department_id !== null)) {
+        return json({ error: 'invalid_choice' }, 400)
+      }
+
       const { data: activeRequest, error: activeError } = await admin.from('vault_validation_requests')
         .select('id').eq('user_id', user.id).eq('item_id', item.id).eq('organization_id', organization.id).eq('status', 'pending').maybeSingle()
       if (activeError) throw activeError
       if (activeRequest) return json({ error: 'already_pending' }, 409)
-      const { data: reviewers, error: reviewerError } = await admin.from('vault_validation_reviewers')
-        .select('reviewer_id').eq('organization_id', organization.id)
-      if (reviewerError) throw reviewerError
-      if (!reviewers?.length) return json({ error: 'no_reviewers' }, 409)
       const { data: request, error: createError } = await admin.from('vault_validation_requests').insert({
         user_id: user.id, item_id: item.id, organisation_name: organization.name,
-        organization_id: organization.id, contact_email: email,
+        organization_id: organization.id, location_id: location.id,
+        department_id: department?.id ?? null, contact_id: contact.id,
         message: body.message?.trim() || null, status: 'pending',
       }).select('id,requested_at').single()
       // The database partial unique index is the race-safe duplicate guard; keep the
       // friendly response in sync when two submissions arrive at the same time.
       if (createError?.code === '23505') return json({ error: 'already_pending' }, 409)
       if (createError || !request) throw createError ?? new Error('request insert returned no row')
-      const notifications = reviewers.map(({ reviewer_id }) => ({
+      const { data: recipients, error: recipientError } = await admin.rpc('vault_validation_recipients', { p_request_id: request.id })
+      if (recipientError) {
+        await admin.from('vault_validation_requests').delete().eq('id', request.id).eq('status', 'pending')
+        throw recipientError
+      }
+      if (!recipients?.length) {
+        await admin.from('vault_validation_requests').delete().eq('id', request.id).eq('status', 'pending')
+        return json({ error: 'no_reviewers' }, 409)
+      }
+      const notifications = recipients.map(({ reviewer_id }: { reviewer_id: string }) => ({
         recipient_id: reviewer_id, kind: 'verification_request', title: 'Verificatie aanvraag',
         body: item.title, validation_request_id: request.id,
         dedupe_key: `vault-validation:${request.id}`,
@@ -80,7 +111,10 @@ Deno.serve(async (req) => {
       const { data: request, error: requestError } = await admin.from('vault_validation_requests')
         .select('id,organization_id,status').eq('id', body.requestId).maybeSingle()
       if (requestError) throw requestError
-      if (!request || request.status !== 'pending' || !request.organization_id || !organizationIds.includes(request.organization_id)) return json({ error: 'not_found' }, 404)
+      if (!request || request.status !== 'pending' || !request.organization_id) return json({ error: 'not_found' }, 404)
+      const { data: recipients, error: recipientError } = await admin.rpc('vault_validation_recipients', { p_request_id: request.id })
+      if (recipientError) throw recipientError
+      if (!(recipients ?? []).some((recipient: { reviewer_id: string }) => recipient.reviewer_id === user.id)) return json({ error: 'not_found' }, 404)
       const { data, error } = await admin.rpc('resolve_vault_validation_request', {
         p_request_id: body.requestId,
         p_action: body.outcome,
@@ -103,11 +137,14 @@ Deno.serve(async (req) => {
       const visible = []
       for (const notice of notices ?? []) {
         if (notice.kind === 'verification_request') {
-          if (!notice.validation_request_id || organizationIds.length === 0) continue
+          if (!notice.validation_request_id) continue
           const { data: request } = await admin.from('vault_validation_requests')
             .select('id,user_id,item_id,organization_id,organisation_name,message,status,requested_at')
             .eq('id', notice.validation_request_id).eq('status', 'pending').maybeSingle()
-          if (!request || !request.organization_id || !organizationIds.includes(request.organization_id)) continue
+          if (!request || !request.organization_id) continue
+          const { data: recipients, error: recipientError } = await admin.rpc('vault_validation_recipients', { p_request_id: request.id })
+          if (recipientError) throw recipientError
+          if (!(recipients ?? []).some((recipient: { reviewer_id: string }) => recipient.reviewer_id === user.id)) continue
           const [{ data: item }, { data: profile }] = await Promise.all([
             admin.from('vault_items').select('id,title,category,organisation_name,verification_status').eq('id', request.item_id).eq('user_id', request.user_id).maybeSingle(),
             admin.from('profiles').select('full_name,preferred_name').eq('id', request.user_id).maybeSingle(),
@@ -142,7 +179,7 @@ Deno.serve(async (req) => {
           })
         }
       }
-      return json({ audience: organizationIds.length > 0 ? 'administrator' : 'learner', notifications: visible })
+      return json({ audience: hasReviewerAssignment ? 'administrator' : 'learner', notifications: visible })
     }
 
     if (!body.requestId) return json({ error: 'invalid_request' }, 400)
@@ -150,9 +187,12 @@ Deno.serve(async (req) => {
       .select('id,user_id,item_id,organization_id,organisation_name,message,status,requested_at')
       .eq('id', body.requestId).maybeSingle()
     if (requestError) throw requestError
-    if (!request || request.status !== 'pending' || !request.organization_id || !organizationIds.includes(request.organization_id)) {
+    if (!request || request.status !== 'pending' || !request.organization_id) {
       return json({ error: 'not_found' }, 404)
     }
+    const { data: recipients, error: recipientError } = await admin.rpc('vault_validation_recipients', { p_request_id: request.id })
+    if (recipientError) throw recipientError
+    if (!(recipients ?? []).some((recipient: { reviewer_id: string }) => recipient.reviewer_id === user.id)) return json({ error: 'not_found' }, 404)
 
     const [{ data: item, error: itemError }, { data: profile }, { data: files, error: filesError }, { data: skills }] = await Promise.all([
       admin.from('vault_items').select('*').eq('id', request.item_id).eq('user_id', request.user_id).maybeSingle(),

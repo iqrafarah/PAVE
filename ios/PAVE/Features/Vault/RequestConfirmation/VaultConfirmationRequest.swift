@@ -1,8 +1,7 @@
 import Foundation
 import PAVECore
 
-/// The fields currently accepted by the request endpoint. The organisation directory and selected reviewer are not
-/// available yet, so the learner supplies the organisation name and a contact e-mail address.
+/// A verification request binds the evidence to trusted directory IDs, never learner-entered names.
 struct VaultConfirmationRequest: Equatable {
     enum Recipient: CaseIterable, Identifiable {
         case school
@@ -11,7 +10,6 @@ struct VaultConfirmationRequest: Equatable {
 
         var id: Self { self }
 
-        /// Who usually confirms this kind of evidence: a school for a diploma, an employer for an internship.
         static func suggested(for category: VaultCategory) -> Recipient {
             switch category {
             case .diplomas, .certificates, .badges: .school
@@ -23,28 +21,26 @@ struct VaultConfirmationRequest: Equatable {
 
     enum Field: Equatable {
         case organisation
-        case email
+        case location
+        case contact
     }
 
     var recipient: Recipient
-    var organisation: String
-    var email = ""
+    var organization: VaultValidationOrganization?
+    var location: VaultValidationLocation?
+    var department: VaultValidationDepartment?
+    var contact: VaultValidationContact?
     var message = ""
 
     init(item: VaultItem) {
         recipient = .suggested(for: item.category)
-        organisation = item.organisationName ?? ""
     }
 
     var missingFields: [Field] {
         var fields = [Field]()
-        if organisation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { fields.append(.organisation) }
-        if !Self.looksLikeEmail(email) { fields.append(.email) }
+        if organization == nil { fields.append(.organisation) }
+        if location == nil { fields.append(.location) }
+        if contact == nil { fields.append(.contact) }
         return fields
-    }
-
-    /// A rough check, as in a mail app: something before and after the @, and a dot in the domain.
-    static func looksLikeEmail(_ text: String) -> Bool {
-        text.trimmingCharacters(in: .whitespacesAndNewlines).wholeMatch(of: /[^@\s]+@[^@\s]+\.[^@\s]{2,}/) != nil
     }
 }

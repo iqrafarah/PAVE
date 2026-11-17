@@ -260,6 +260,58 @@ final class VaultModel {
         }
     }
 
+    func validationOrganizations() async throws -> [VaultValidationOrganization] {
+        guard let service else { throw VaultError.notSetUp }
+        return try await service.validationOrganizations()
+    }
+
+    func validationLocations(organizationID: String) async throws -> [VaultValidationLocation] {
+        guard let service else { throw VaultError.notSetUp }
+        return try await service.validationLocations(organizationID: organizationID)
+    }
+
+    func validationDepartments(organizationID: String, locationID: String) async throws -> [VaultValidationDepartment] {
+        guard let service else { throw VaultError.notSetUp }
+        return try await service.validationDepartments(organizationID: organizationID, locationID: locationID)
+    }
+
+    func validationContacts(organizationID: String, locationID: String, departmentID: String?) async throws -> [VaultValidationContact] {
+        guard let service else { throw VaultError.notSetUp }
+        return try await service.validationContacts(organizationID: organizationID, locationID: locationID, departmentID: departmentID)
+    }
+
+    func requestValidation(
+        for item: VaultItem,
+        organizationID: String,
+        locationID: String,
+        departmentID: String?,
+        contactID: String,
+        message: String?
+    ) async -> String? {
+        guard let service else {
+            problem = VaultMessages.requestNotActive
+            return problem
+        }
+        do {
+            try await service.requestValidation(
+                itemID: item.id,
+                organizationID: organizationID,
+                locationID: locationID,
+                departmentID: departmentID,
+                contactID: contactID,
+                message: message
+            )
+            problem = nil
+            PaveHaptics.success()
+            return nil
+        } catch {
+            let message = VaultMessages.message(for: VaultError(error))
+            problem = message
+            PaveHaptics.error()
+            return message
+        }
+    }
+
     /// Runs a change and then reads the vault again, so counts and folders are always what the server has.
     @discardableResult
     private func perform(_ change: (any VaultService) async throws -> Void) async -> Bool {
