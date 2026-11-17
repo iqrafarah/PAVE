@@ -46,7 +46,8 @@ What is in Supabase on 2026-11-10 (read-only check with the publishable key):
 | Table | From | Used by |
 | --- | --- | --- |
 | `profiles` (id, full_name, preferred_name, email, avatar_url, role, organization_id, program, created_at, updated_at) | web team, not in our migrations | Ayla function (name) |
-| `organizations` (id, name, created_at) | web team, not in our migrations | `profiles.organization_id` |
+| `organizations` (id, name, created_at, logo_url, kind) | web team, not in our migrations; `kind` and the places are added by `20261117120000_organisation_directory.sql` | `profiles.organization_id` |
+| `organization_locations` (organization_id, city) | `20261117120000_organisation_directory.sql` | The places of each organisation, for picking where to ask for verification. 37 organisations (15 schools, 22 companies), readable by signed-in users, written by trusted server code only. |
 | `ayla_conversations`, `ayla_messages`, `ayla_memories`, `ayla_settings` | our migrations | iOS, Ayla function |
 | the 8 `vault_*` tables and the `pave-vault` bucket | `20261110120000_vault.sql` | iOS (items, files, skills, folders); web not yet |
 
