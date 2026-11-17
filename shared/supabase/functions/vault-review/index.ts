@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
 
   try {
     const { data: assignments, error: assignmentError } = await admin
-      .from('vault_validation_reviewers').select('organization_id').eq('reviewer_id', user.id)
+      .from('organization_reviewers').select('organization_id').eq('reviewer_id', user.id)
     if (assignmentError) throw assignmentError
     const hasReviewerAssignment = (assignments ?? []).length > 0
 

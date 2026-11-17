@@ -256,7 +256,7 @@ public struct SupabaseVaultService: VaultService {
         return response.skills
     }
 
-    /// Through `validation_organizations()` (migration 20261117160000): `organizations` itself only lets you read your own
+    /// Through `validation_organizations()`: `organizations` itself only lets you read your own
     /// organisation. Before that migration the table is all there is, which then shows only your own.
     public func validationOrganizations() async throws -> [VaultValidationOrganization] {
         do {
