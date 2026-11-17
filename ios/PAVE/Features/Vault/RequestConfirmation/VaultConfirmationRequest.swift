@@ -22,6 +22,7 @@ struct VaultConfirmationRequest: Equatable {
     enum Field: Equatable {
         case organisation
         case location
+        case contactType
         case contact
     }
 
@@ -29,6 +30,7 @@ struct VaultConfirmationRequest: Equatable {
     var organization: VaultValidationOrganization?
     var location: VaultValidationLocation?
     var department: VaultValidationDepartment?
+    var contactType: String?
     var contact: VaultValidationContact?
     var message = ""
 
@@ -40,6 +42,7 @@ struct VaultConfirmationRequest: Equatable {
         var fields = [Field]()
         if organization == nil { fields.append(.organisation) }
         if location == nil { fields.append(.location) }
+        if contactType == nil { fields.append(.contactType) }
         if contact == nil { fields.append(.contact) }
         return fields
     }

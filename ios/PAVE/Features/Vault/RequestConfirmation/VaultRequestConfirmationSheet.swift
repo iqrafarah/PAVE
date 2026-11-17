@@ -12,13 +12,14 @@ struct VaultRequestConfirmationSheet: View {
     var onSend: ((VaultConfirmationRequest) async -> String?)?
 
     private enum Choice: String, Identifiable {
-        case organization, location, department, contact
+        case organization, location, department, contactType, contact
         var id: String { rawValue }
         var title: String {
             switch self {
             case .organization: "Organisatie kiezen"
             case .location: "Vestiging kiezen"
             case .department: "Afdeling of opleiding kiezen"
+            case .contactType: "Functie kiezen"
             case .contact: "Contactpersoon kiezen"
             }
         }
@@ -100,7 +101,8 @@ struct VaultRequestConfirmationSheet: View {
                         if request.organization?.kind == "school", !departments.isEmpty {
                             pickerField(title: "Afdeling of opleiding", value: request.department?.name, placeholder: "Kies een afdeling of sla over") { searchText = ""; choice = .department }
                         }
-                        pickerField(title: "Betreffend persoon.", value: request.contact.map(contactTitle), placeholder: "Typ of kies een contactpersoon", error: error(.contact)) { searchText = ""; choice = .contact }
+                        pickerField(title: "Type contactpersoon", value: request.contactType, placeholder: "Kies bijvoorbeeld docent of stagebegeleider", error: error(.contactType)) { searchText = ""; choice = .contactType }
+                        pickerField(title: "Betreffend persoon.", value: request.contact.map(\.name), placeholder: "Kies een persoon", error: error(.contact), isEnabled: request.contactType != nil) { searchText = ""; choice = .contact }
                     }
                     .padding(20)
                     .background(Color.white, in: .rect(cornerRadius: 16))
@@ -123,7 +125,7 @@ struct VaultRequestConfirmationSheet: View {
         }
     }
 
-    private func pickerField(title: String, value: String?, placeholder: String, error: String? = nil, action: @escaping () -> Void) -> some View {
+    private func pickerField(title: String, value: String?, placeholder: String, error: String? = nil, isEnabled: Bool = true, action: @escaping () -> Void) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title).textStyle(.label).foregroundStyle(Color.ink)
             Button(action: action) {
@@ -137,7 +139,7 @@ struct VaultRequestConfirmationSheet: View {
                 .overlay { RoundedRectangle(cornerRadius: 11).strokeBorder(Color.cardBorder) }
                 .contentShape(.rect(cornerRadius: 11))
             }
-            .buttonStyle(.pave).disabled(isLoading || (title != "Naam bedrijf" && request.organization == nil) || (title != "Naam bedrijf" && title != "Locatie van het bedrijf" && request.location == nil))
+            .buttonStyle(.pave).disabled(isLoading || !isEnabled || (title != "Naam bedrijf" && request.organization == nil) || (title != "Naam bedrijf" && title != "Locatie van het bedrijf" && request.location == nil))
             .accessibilityLabel("\(title): \(value ?? placeholder)")
             if let error { PaveInlineError(message: error) }
         }
@@ -168,6 +170,15 @@ struct VaultRequestConfirmationSheet: View {
                         case .department:
                             choiceRow("Overslaan", detail: "Geen afdeling of opleiding kiezen", selected: request.department == nil) { isDirty = true; request.department = nil; choice = nil; Task { await loadContacts() } }
                             ForEach(filteredDepartments) { department in choiceRow(department.name, detail: nil, selected: request.department?.id == department.id) { Task { await select(department) } } }
+                        case .contactType:
+                            ForEach(filteredContactTypes, id: \.self) { type in
+                                choiceRow(type, detail: "Filter contactpersonen op functie", selected: request.contactType == type) {
+                                    isDirty = true
+                                    request.contactType = type
+                                    request.contact = nil
+                                    choice = nil
+                                }
+                            }
                         case .contact:
                             ForEach(filteredContacts) { contact in choiceRow(contact.name, detail: contact.jobTitle, selected: request.contact?.id == contact.id) { isDirty = true; request.contact = contact; choice = nil } }
                         }
@@ -201,13 +212,21 @@ struct VaultRequestConfirmationSheet: View {
     private var filteredOrganizations: [VaultValidationOrganization] { organizations.filter { searchText.isEmpty || $0.name.localizedCaseInsensitiveContains(searchText) } }
     private var filteredLocations: [VaultValidationLocation] { locations.filter { searchText.isEmpty || $0.city.localizedCaseInsensitiveContains(searchText) } }
     private var filteredDepartments: [VaultValidationDepartment] { departments.filter { searchText.isEmpty || $0.name.localizedCaseInsensitiveContains(searchText) } }
-    private var filteredContacts: [VaultValidationContact] { contacts.filter { searchText.isEmpty || $0.name.localizedCaseInsensitiveContains(searchText) || ($0.jobTitle?.localizedCaseInsensitiveContains(searchText) ?? false) } }
+    private var contactTypes: [String] { Array(Set(contacts.map(contactTypeName))).sorted { $0.localizedStandardCompare($1) == .orderedAscending } }
+    private var filteredContactTypes: [String] { contactTypes.filter { searchText.isEmpty || $0.localizedCaseInsensitiveContains(searchText) } }
+    private var filteredContacts: [VaultValidationContact] { contacts.filter { contactTypeName($0) == request.contactType && (searchText.isEmpty || $0.name.localizedCaseInsensitiveContains(searchText)) } }
+
+    private func contactTypeName(_ contact: VaultValidationContact) -> String {
+        let value = contact.jobTitle?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (value?.isEmpty == false ? value : nil) ?? "Overig"
+    }
 
     private func filteredChoiceCount(_ selected: Choice) -> Int {
         switch selected {
         case .organization: return filteredOrganizations.count
         case .location: return filteredLocations.count
         case .department: return filteredDepartments.count + 1
+        case .contactType: return filteredContactTypes.count
         case .contact: return filteredContacts.count
         }
     }
@@ -216,6 +235,7 @@ struct VaultRequestConfirmationSheet: View {
         case .organization: return "Geen organisaties gevonden"
         case .location: return "Geen vestigingen gevonden"
         case .department: return "Geen afdelingen gevonden"
+        case .contactType: return "Geen functies gevonden"
         case .contact: return "Geen contactpersonen gevonden"
         }
     }
@@ -224,6 +244,7 @@ struct VaultRequestConfirmationSheet: View {
         case .organization: return "Probeer een andere zoekopdracht."
         case .location: return "Er zijn nog geen vestigingen voor deze organisatie ingesteld."
         case .department: return "Er zijn geen afdelingen of opleidingen voor deze vestiging."
+        case .contactType: return "Er zijn geen contactfuncties voor deze keuze."
         case .contact: return "Er zijn geen actieve contactpersonen voor deze keuze."
         }
     }
@@ -270,27 +291,22 @@ struct VaultRequestConfirmationSheet: View {
     private func select(_ organization: VaultValidationOrganization) async {
         isDirty = true
         directoryError = nil
-        request.organization = organization; request.location = nil; request.department = nil; request.contact = nil
+        request.organization = organization; request.location = nil; request.department = nil; request.contactType = nil; request.contact = nil
         locations = []; departments = []; contacts = []; searchText = ""; choice = nil
         isLoading = true; await loadLocations(); isLoading = false
     }
     private func select(_ location: VaultValidationLocation) async {
         isDirty = true
         directoryError = nil
-        request.location = location; request.department = nil; request.contact = nil
+        request.location = location; request.department = nil; request.contactType = nil; request.contact = nil
         departments = []; contacts = []; searchText = ""; choice = nil
         isLoading = true; await loadDepartmentsAndContacts(); isLoading = false
     }
     private func select(_ department: VaultValidationDepartment) async {
         isDirty = true
         directoryError = nil
-        request.department = department; request.contact = nil; contacts = []; searchText = ""; choice = nil
+        request.department = department; request.contactType = nil; request.contact = nil; contacts = []; searchText = ""; choice = nil
         isLoading = true; await loadContacts(); isLoading = false
-    }
-
-    private func contactTitle(_ contact: VaultValidationContact) -> String {
-        guard let role = contact.jobTitle, !role.isEmpty else { return contact.name }
-        return "\(contact.name) · \(role)"
     }
 
     private var evidenceSummary: some View {
@@ -329,7 +345,7 @@ struct VaultRequestConfirmationSheet: View {
     private func send() {
         showsMissing = true
         guard request.missingFields.isEmpty else { PaveHaptics.error(); return }
-        guard let onSend, request.organization != nil, request.location != nil, request.contact != nil else { return }
+        guard let onSend, request.organization != nil, request.location != nil, request.contactType != nil, request.contact != nil else { return }
         isSending = true; sendError = nil
         Task {
             let error = await onSend(request)
