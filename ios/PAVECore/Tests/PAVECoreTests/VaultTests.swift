@@ -157,6 +157,49 @@ struct SupabaseVaultServiceTests {
         #expect(item.createdAt != .distantPast)
     }
 
+    @Test func readsTheNewestValidationRequest() throws {
+        let json = """
+        [{"id":"a","category":"internships","title":"Stage","is_current":false,"verification_status":"rejected","source":"user",
+          "created_at":"2026-11-10T10:00:00Z","updated_at":"2026-11-10T10:00:00Z",
+          "vault_validation_requests":[
+            {"status":"rejected","organisation_name":"LiveWall","requested_at":"2026-11-12T10:00:00Z","response":"  De datum klopt niet. "},
+            {"status":"verified","organisation_name":"Fontys","requested_at":"2026-11-01T10:00:00Z","response":null},
+            {"status":"somethingNew","organisation_name":"X","requested_at":"2026-11-20T10:00:00Z","response":null}]},
+         {"id":"b","category":"projects","title":"App","is_current":false,"verification_status":"toVerify","source":"user",
+          "created_at":"2026-11-10T10:00:00Z","updated_at":"2026-11-10T10:00:00Z",
+          "vault_validation_requests":[{"status":"pending","organisation_name":"Fontys","requested_at":"2026-11-17T10:00:00Z","response":null}]},
+         {"id":"c","category":"projects","title":"Site","is_current":false,"verification_status":"toVerify","source":"user",
+          "created_at":"2026-11-10T10:00:00Z","updated_at":"2026-11-10T10:00:00Z"}]
+        """
+        let items = try JSONDecoder().decode([ItemRow].self, from: Data(json.utf8)).compactMap(\.item)
+        let rejected = try #require(items.first { $0.id == "a" })
+        #expect(rejected.lastRequest?.organisationName == "LiveWall")
+        #expect(rejected.rejectionReason == "De datum klopt niet.")
+        #expect(!rejected.isAwaitingReview)
+
+        let pending = try #require(items.first { $0.id == "b" })
+        #expect(pending.isAwaitingReview)
+        #expect(pending.rejectionReason == nil)
+
+        let none = try #require(items.first { $0.id == "c" })
+        #expect(none.lastRequest == nil)
+        #expect(!none.isAwaitingReview)
+    }
+
+    @Test func aChangedItemIsNoLongerRejectedOrAwaiting() {
+        let request = VaultItem.ValidationRequest(status: .rejected, organisationName: "LiveWall", requestedAt: .now, response: "Klopt niet")
+        // Changing rejected evidence makes it toVerify again: the old reason no longer applies.
+        let changed = VaultItem(id: "a", category: .internships, title: "Stage", status: .toVerify, lastRequest: request)
+        #expect(changed.rejectionReason == nil)
+        #expect(!changed.isAwaitingReview)
+        // Only evidence that is not confirmed yet can be awaiting a decision.
+        let decided = VaultItem(
+            id: "b", category: .internships, title: "Stage", status: .verified,
+            lastRequest: .init(status: .pending, organisationName: "Fontys", requestedAt: .now)
+        )
+        #expect(!decided.isAwaitingReview)
+    }
+
     @Test func mapsDatabaseErrors() {
         let duplicate = Data(#"{"code":"23505","message":"duplicate key"}"#.utf8)
         #expect(SupabaseVaultService.error(status: 409, body: duplicate) == .duplicateFolderName)
@@ -361,5 +404,6 @@ struct VaultFolderLinkTests {
         #expect(SupabaseVaultService.error(status: 400, body: Data(#"{"code":"PGRST200"}"#.utf8)) == .missingColumn)
         #expect(SupabaseVaultService.error(status: 404, body: Data(#"{"code":"42P01","message":"relation does not exist"}"#.utf8)) == .missingColumn)
         #expect(SupabaseVaultService.error(status: 400, body: Data(#"{"code":"42703"}"#.utf8)) == .missingColumn)
+        #expect(SupabaseVaultService.error(status: 404, body: Data(#"{"code":"PGRST202","message":"Could not find the function"}"#.utf8)) == .missingColumn)
     }
 }

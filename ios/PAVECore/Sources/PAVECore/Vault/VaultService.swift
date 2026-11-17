@@ -31,8 +31,6 @@ public protocol VaultService: Sendable {
     func removeSkills(_ names: [String], from itemID: String) async throws
     /// "Voorstel van Ayla": skills that fit the evidence. Only the fields of the draft go to Ayla, on request.
     func suggestSkills(for draft: VaultItemDraft, material: VaultSkillsMaterial, existing: [String]) async throws -> [VaultSkillSuggestion]
-    /// Sends the item to the organisation's explicitly assigned reviewers through the trusted Edge Function.
-    func requestValidation(itemID: String, organisationName: String, email: String, message: String?) async throws
     /// Read-only, MFA-protected directory choices for the verification request form.
     func validationOrganizations() async throws -> [VaultValidationOrganization]
     func validationLocations(organizationID: String) async throws -> [VaultValidationLocation]
@@ -50,10 +48,6 @@ public protocol VaultService: Sendable {
 }
 
 public extension VaultService {
-    func requestValidation(itemID: String, organisationName: String, email: String, message: String?) async throws {
-        throw VaultError.notSetUp
-    }
-
     func validationOrganizations() async throws -> [VaultValidationOrganization] { throw VaultError.notSetUp }
     func validationLocations(organizationID: String) async throws -> [VaultValidationLocation] { throw VaultError.notSetUp }
     func validationDepartments(organizationID: String, locationID: String) async throws -> [VaultValidationDepartment] { throw VaultError.notSetUp }
@@ -115,8 +109,14 @@ public struct SupabaseVaultService: VaultService {
     }
 
     public func contents() async throws -> VaultContents {
+        let base = "*,vault_item_skills(name,status),vault_item_files(*),vault_item_folders(folder_id)"
         do {
-            return try await contents(select: "*,vault_item_skills(name,status),vault_item_files(*),vault_item_folders(folder_id)")
+            return try await contents(select: base + ",vault_validation_requests(status,organisation_name,requested_at,response)")
+        } catch VaultError.missingColumn {
+            // Without the requests the vault still loads; only "In afwachting" and the reason are missing.
+        }
+        do {
+            return try await contents(select: base)
         } catch VaultError.missingColumn {
             // Before migration 20261112130000 there are no folder links yet: folder_id is the only folder.
             return try await contents(select: "*,vault_item_skills(name,status),vault_item_files(*)")
@@ -256,25 +256,22 @@ public struct SupabaseVaultService: VaultService {
         return response.skills
     }
 
-    public func requestValidation(itemID: String, organisationName: String, email: String, message: String?) async throws {
-        let body: [String: Any] = [
-            "action": "create",
-            "itemId": itemID,
-            "organisationName": organisationName,
-            "email": email,
-            "message": message ?? "",
-        ]
-        let urlRequest = try await request(functionsURL.appending(path: "vault-review"), method: "POST", json: body)
-        _ = try await sendFunction(urlRequest)
-    }
-
+    /// Through `validation_organizations()` (migration 20261117160000): `organizations` itself only lets you read your own
+    /// organisation. Before that migration the table is all there is, which then shows only your own.
     public func validationOrganizations() async throws -> [VaultValidationOrganization] {
-        try await directoryRows(
-            VaultValidationOrganization.self,
-            table: "organizations",
-            select: "id,name,kind",
-            filters: [("kind", "not.is.null"), ("order", "name.asc")]
-        )
+        do {
+            let urlRequest = try await request(restURL.appending(path: "rpc/validation_organizations"), method: "POST", json: [String: Any]())
+            let data = try await send(urlRequest)
+            guard let rows = try? JSONDecoder().decode([VaultValidationOrganization].self, from: data) else { throw VaultError.unavailable }
+            return rows
+        } catch VaultError.missingColumn {
+            return try await directoryRows(
+                VaultValidationOrganization.self,
+                table: "organizations",
+                select: "id,name,kind",
+                filters: [("kind", "not.is.null"), ("order", "name.asc")]
+            )
+        }
     }
 
     public func validationLocations(organizationID: String) async throws -> [VaultValidationLocation] {
@@ -563,7 +560,8 @@ public struct SupabaseVaultService: VaultService {
         let code = detail?.code
         if code == "23505" { return .duplicateFolderName }
         // A column, a table or a relation between tables that the database does not have yet (PostgREST or Postgres codes).
-        if ["PGRST204", "PGRST205", "PGRST200", "42P01", "42703"].contains(code) { return .missingColumn }
+        // PGRST202: a database function that is not there yet.
+        if ["PGRST204", "PGRST205", "PGRST200", "PGRST202", "42P01", "42703"].contains(code) { return .missingColumn }
         // A database that does not take a logo yet: its role check is older than the app (migration 20261112140000).
         if code == "23514", detail?.message?.contains("vault_item_files_role_check") == true { return .missingColumn }
         if code == "NOT_FOUND", status == 404 { return .notSetUp }
@@ -598,6 +596,13 @@ struct ItemRow: Decodable {
         let folder_id: String
     }
 
+    struct RequestRow: Decodable {
+        let status: String
+        let organisation_name: String
+        let requested_at: String
+        let response: String?
+    }
+
     struct FileRow: Decodable {
         let id: String
         let file_name: String
@@ -625,6 +630,7 @@ struct ItemRow: Decodable {
     let vault_item_skills: [SkillRow]?
     let vault_item_files: [FileRow]?
     let vault_item_folders: [FolderLinkRow]?
+    let vault_validation_requests: [RequestRow]?
 
     /// `nil` for a category or status this version of the app does not know yet.
     var item: VaultItem? {
@@ -660,8 +666,24 @@ struct ItemRow: Decodable {
             },
             aylaAllowedAt: ayla_allowed_at.map(SupabaseAylaService.date(from:)),
             createdAt: SupabaseAylaService.date(from: created_at),
-            updatedAt: SupabaseAylaService.date(from: updated_at)
+            updatedAt: SupabaseAylaService.date(from: updated_at),
+            lastRequest: Self.lastRequest(in: vault_validation_requests)
         )
+    }
+
+    /// The newest request; a status this version of the app does not know is skipped.
+    static func lastRequest(in rows: [RequestRow]?) -> VaultItem.ValidationRequest? {
+        (rows ?? [])
+            .compactMap { row -> VaultItem.ValidationRequest? in
+                guard let status = VaultItem.ValidationRequest.Status(rawValue: row.status) else { return nil }
+                return VaultItem.ValidationRequest(
+                    status: status,
+                    organisationName: row.organisation_name,
+                    requestedAt: SupabaseAylaService.date(from: row.requested_at),
+                    response: row.response
+                )
+            }
+            .max { $0.requestedAt < $1.requestedAt }
     }
 }
 

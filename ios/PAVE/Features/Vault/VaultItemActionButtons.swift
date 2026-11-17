@@ -13,9 +13,11 @@ struct VaultItemActionButtons: View {
         Button(action: onEdit) {
             SwiftUI.Label { Text("Aanpassen") } icon: { Image(.iconPencil) }
         }
-        if item.status != .verified {
+        if item.status != .verified, !item.isAwaitingReview {
             Button(action: onRequestConfirmation) {
-                SwiftUI.Label { Text(VaultMessages.requestAction) } icon: { Image(.iconCheckBadgeSolid) }
+                SwiftUI.Label {
+                    Text(item.status == .rejected ? VaultMessages.requestAgainAction : VaultMessages.requestAction)
+                } icon: { Image(.iconCheckBadgeSolid) }
             }
         }
         if !model.folders.isEmpty {

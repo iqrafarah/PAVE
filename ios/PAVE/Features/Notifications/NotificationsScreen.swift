@@ -72,7 +72,7 @@ struct NotificationsScreen: View {
     var onOpenConversation: ((String) -> Void)?
     var onOpenVerifiedEvidence: ((String) -> Void)?
     var onLoadReview: ((String) async -> (payload: NotificationReviewPayload?, error: String?))?
-    var onResolveRequest: ((String, String, String?) async -> Bool)?
+    var onResolveRequest: ((String, String, String?) async -> String?)?
 
     @State private var tab: NotificationTab = .all
     @State private var selectedKinds: Set<PaveNotificationKind> = []
@@ -138,7 +138,10 @@ struct NotificationsScreen: View {
             .scrollBounceBehavior(.basedOnSize)
             .background(Color.canvas.ignoresSafeArea())
             .mainScreenToolbar("Meldingen", onShowMenu: onShowMenu)
-            .sheet(isPresented: $showsFilters) {
+            .sheet(isPresented: $showsFilters, onDismiss: {
+                // Nothing ticked means no filter, so the list never ends up empty without a way back.
+                if selectedKinds.isEmpty { hasKindFilter = false }
+            }) {
                 NotificationFilterSheet(
                     audience: audience,
                     selectedKinds: $selectedKinds,
@@ -226,6 +229,7 @@ struct NotificationsScreen: View {
                 ForEach(Array(activeKinds).sorted { $0.rawValue < $1.rawValue }) { kind in
                     Button {
                         selectedKinds.remove(kind)
+                        if selectedKinds.isEmpty { hasKindFilter = false }
                         PaveHaptics.selection()
                     } label: {
                         HStack(spacing: 7) {
@@ -250,10 +254,11 @@ struct NotificationsScreen: View {
     @ViewBuilder
     private var notificationList: some View {
         if visibleNotifications.isEmpty {
+            let isFiltered = !searchText.isEmpty || hasKindFilter
             PaveEmptyState(
-                icon: searchText.isEmpty ? .iconMailOpen : .iconSearch,
-                title: searchText.isEmpty ? "Je bent helemaal bij" : "Geen meldingen gevonden",
-                message: searchText.isEmpty ? "Nieuwe meldingen verschijnen hier." : "Pas je zoekopdracht of filters aan."
+                icon: isFiltered ? .iconSearch : .iconMailOpen,
+                title: isFiltered ? "Geen meldingen gevonden" : "Je bent helemaal bij",
+                message: isFiltered ? "Pas je zoekopdracht of filters aan." : "Nieuwe meldingen verschijnen hier."
             )
             .padding(.top, 30)
             .frame(maxWidth: .infinity)
@@ -489,13 +494,15 @@ private struct NotificationFilterSheet: View {
 private struct VerificationRequestNotificationDetail: View {
     let notification: PaveNotification
     let onLoadReview: ((String) async -> (payload: NotificationReviewPayload?, error: String?))?
-    let onResolve: ((String, String, String?) async -> Bool)?
+    let onResolve: ((String, String, String?) async -> String?)?
     @Environment(\.dismiss) private var dismiss
     @State private var review: NotificationReviewPayload?
+    @State private var isLoadingReview = true
     @State private var isWorking = false
     @State private var errorMessage: String?
     @State private var previewURL: URL?
-    @State private var confirmsReject = false
+    @State private var writesRejection = false
+    @State private var isRejected = false
 
     private var requestID: String? { notification.validationRequestID }
 
@@ -567,8 +574,13 @@ private struct VerificationRequestNotificationDetail: View {
                             }
                             .buttonStyle(.pave)
                         }
-                    } else if review == nil {
+                    } else if isLoadingReview {
                         ProgressView().frame(maxWidth: .infinity).frame(height: 80)
+                    } else if review == nil {
+                        PaveSecondaryButton(title: "Opnieuw proberen") {
+                            Task { await loadReview() }
+                        }
+                        .frame(maxWidth: .infinity)
                     } else {
                         documentPlaceholder
                     }
@@ -582,10 +594,10 @@ private struct VerificationRequestNotificationDetail: View {
                     Text(errorMessage).textStyle(.caption).foregroundStyle(Color.statusRejected)
                 }
                 PavePrimaryButton(title: isWorking ? "Bezig…" : "Verifieer document") {
-                    Task { await resolve("verified") }
+                    Task { await verify() }
                 }
                 .disabled(isWorking || onResolve == nil || review == nil)
-                Button("Aanvraag afwijzen", role: .destructive) { confirmsReject = true }
+                Button("Aanvraag afwijzen", role: .destructive) { writesRejection = true }
                     .textStyle(.caption)
                     .frame(maxWidth: .infinity)
                     .buttonStyle(.pave)
@@ -598,15 +610,17 @@ private struct VerificationRequestNotificationDetail: View {
         .background(Color.canvas.ignoresSafeArea())
         .navigationBarBackButtonHidden()
         .toolbar(.hidden, for: .navigationBar)
-        .task(id: requestID) {
-            guard let requestID, let onLoadReview else { return }
-            let result = await onLoadReview(requestID)
-            review = result.payload
-            errorMessage = result.error
-        }
-        .confirmationDialog("Aanvraag afwijzen?", isPresented: $confirmsReject, titleVisibility: .visible) {
-            Button("Aanvraag afwijzen", role: .destructive) { Task { await resolve("rejected") } }
-            Button("Annuleren", role: .cancel) {}
+        .task(id: requestID) { await loadReview() }
+        .sheet(isPresented: $writesRejection, onDismiss: {
+            // Back to the notifications once the sheet is gone, not while it is still closing.
+            if isRejected { dismiss() }
+        }) {
+            NotificationRejectSheet(documentName: review?.item.title ?? notification.documentName ?? "dit bewijs") { reason in
+                guard let requestID, let onResolve else { return Self.notConnected }
+                let error = await onResolve(requestID, "rejected", reason)
+                if error == nil { isRejected = true }
+                return error
+            }
         }
         .vaultQuickLook($previewURL)
     }
@@ -721,6 +735,19 @@ private struct VerificationRequestNotificationDetail: View {
             .background(Color.white)
     }
 
+    private func loadReview() async {
+        guard let requestID, let onLoadReview else {
+            isLoadingReview = false
+            return
+        }
+        isLoadingReview = true
+        errorMessage = nil
+        let result = await onLoadReview(requestID)
+        review = result.payload
+        errorMessage = result.error
+        isLoadingReview = false
+    }
+
     private func open(_ file: NotificationReviewFile) async {
         guard let url = URL(string: file.url), let (temporary, _) = try? await URLSession.shared.download(from: url),
               let data = try? Data(contentsOf: temporary), let localURL = VaultPreviewFile.url(for: data, named: file.name) else {
@@ -730,14 +757,21 @@ private struct VerificationRequestNotificationDetail: View {
         previewURL = localURL
     }
 
-    private func resolve(_ action: String) async {
+    private static let notConnected = "Beoordelen werkt nu niet. Probeer het later opnieuw."
+
+    private func verify() async {
         guard let requestID, let onResolve else { return }
         isWorking = true
         errorMessage = nil
-        let complete = await onResolve(requestID, action, nil)
+        let error = await onResolve(requestID, "verified", nil)
         isWorking = false
-        if complete { dismiss() }
-        else { errorMessage = "De beslissing kon niet worden opgeslagen. Vernieuw de meldingen en probeer opnieuw." }
+        if let error {
+            errorMessage = error
+            PaveHaptics.error()
+        } else {
+            PaveHaptics.success()
+            dismiss()
+        }
     }
 
     private func detailField(_ title: String, value: String) -> some View {

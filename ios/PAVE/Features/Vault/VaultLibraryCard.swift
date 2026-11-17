@@ -67,7 +67,7 @@ struct VaultLibraryCard: View {
                         .offset(y: 22)
                 }
                 .overlay(alignment: .topTrailing) {
-                    VaultStatusBadge(status: item.status)
+                    VaultStatusBadge(item: item)
                         .padding(8)
                 }
             VStack(alignment: .leading, spacing: 8) {
@@ -99,7 +99,7 @@ struct VaultLibraryCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .layoutPriority(1)
-                    VaultStatusBadge(status: item.status)
+                    VaultStatusBadge(item: item)
                 }
                 details(lineLimit: 1)
                 if !item.skills.isEmpty {

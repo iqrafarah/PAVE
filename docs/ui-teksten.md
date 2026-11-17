@@ -37,3 +37,26 @@
 | Ongeldige keuze | Deze organisatie-, vestigings- of contactkeuze is niet meer geldig. Kies de gegevens opnieuw. |
 | Geen beoordelaars | Er is nog geen beoordelaar ingesteld voor deze organisatie. Neem contact op met je organisatie. |
 | Al aangevraagd | Voor dit bewijs staat al een verificatieaanvraag open. |
+
+## Status van een aanvraag in de kluis (iOS)
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Label terwijl een aanvraag loopt | In afwachting |
+| Uitleg terwijl een aanvraag loopt | Je aanvraag ligt bij {organisatie}. Je krijgt een melding zodra je bewijs is beoordeeld. |
+| Uitleg zonder organisatie | Je aanvraag is verstuurd. Je krijgt een melding zodra je bewijs is beoordeeld. |
+| Kop boven de reden | Reden van {organisatie} (zonder organisatie: Reden van afwijzing) |
+| Knop na afwijzing | Opnieuw bevestiging aanvragen |
+
+## Aanvraag afwijzen (iOS, beoordelaar)
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Titel | Aanvraag afwijzen |
+| Vraag | Waarom wijs je {bewijs} af? |
+| Placeholder | Bijvoorbeeld: De datum op het certificaat klopt niet met je stageperiode. |
+| Uitleg | De lerende ziet deze reden bij het bewijs in de kluis en kan daarna opnieuw een aanvraag doen. |
+| Knoppen | Annuleren / Afwijzen / Bezig… |
+| Reden ontbreekt | Schrijf waarom je de aanvraag afwijst. |
+| Al beoordeeld | Deze aanvraag is al beoordeeld of niet meer beschikbaar. Vernieuw je meldingen. |
+| Detail laden mislukt | Opnieuw proberen |

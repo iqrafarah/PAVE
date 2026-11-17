@@ -84,7 +84,7 @@ struct VaultItemDetailView: View {
                             .foregroundStyle(Color.ink)
                             .fixedSize(horizontal: false, vertical: true)
                             .accessibilityAddTraits(.isHeader)
-                        VaultStatusBadge(status: item.status)
+                        VaultStatusBadge(item: item)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     // In the content rather than the navigation bar: on the outer display of the iPhone Duo the bar puts
@@ -109,12 +109,29 @@ struct VaultItemDetailView: View {
 
                 section("Status") {
                     VStack(alignment: .leading, spacing: 14) {
-                        Text(item.status.explanation)
+                        Text(item.isAwaitingReview
+                             ? VaultMessages.awaitingReviewExplanation(item.lastRequest?.organisationName)
+                             : item.status.explanation)
                             .textStyle(.bodyMedium)
                             .foregroundStyle(Color.ink)
                             .fixedSize(horizontal: false, vertical: true)
+                        if let reason = item.rejectionReason {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(VaultMessages.rejectionReasonTitle(item.lastRequest?.organisationName))
+                                    .textStyle(.caption)
+                                    .foregroundStyle(Color.inkMuted)
+                                Text(reason)
+                                    .textStyle(.bodyMedium)
+                                    .foregroundStyle(Color.ink)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.statusRejectedSurface, in: .rect(cornerRadius: 12))
+                        }
                         // Also after a change: a confirmed item that was changed is Niet bevestigd again and can be sent anew.
-                        if item.status != .verified {
+                        // While a request is open there is nothing to send: the reviewer decides first.
+                        if item.status != .verified, !item.isAwaitingReview {
                             PaveSecondaryButton(
                                 title: item.status == .rejected ? VaultMessages.requestAgainAction : VaultMessages.requestAction,
                                 icon: .iconCheckBadgeSolid

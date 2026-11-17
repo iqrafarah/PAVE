@@ -168,7 +168,7 @@ struct VaultRequestConfirmationSheet: View {
                         case .location:
                             ForEach(filteredLocations) { location in choiceRow(location.city, detail: nil, selected: request.location?.id == location.id) { Task { await select(location) } } }
                         case .department:
-                            choiceRow("Overslaan", detail: "Geen afdeling of opleiding kiezen", selected: request.department == nil) { isDirty = true; request.department = nil; choice = nil; Task { await loadContacts() } }
+                            choiceRow("Overslaan", detail: "Geen afdeling of opleiding kiezen", selected: request.department == nil) { Task { await skipDepartment() } }
                             ForEach(filteredDepartments) { department in choiceRow(department.name, detail: nil, selected: request.department?.id == department.id) { Task { await select(department) } } }
                         case .contactType:
                             ForEach(filteredContactTypes, id: \.self) { type in
@@ -306,6 +306,12 @@ struct VaultRequestConfirmationSheet: View {
         isDirty = true
         directoryError = nil
         request.department = department; request.contactType = nil; request.contact = nil; contacts = []; searchText = ""; choice = nil
+        isLoading = true; await loadContacts(); isLoading = false
+    }
+    private func skipDepartment() async {
+        isDirty = true
+        directoryError = nil
+        request.department = nil; request.contactType = nil; request.contact = nil; contacts = []; searchText = ""; choice = nil
         isLoading = true; await loadContacts(); isLoading = false
     }
 

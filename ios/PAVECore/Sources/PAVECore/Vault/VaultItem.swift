@@ -17,6 +17,29 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
         case `import`
     }
 
+    /// The most recent request to confirm the item, as the learner may read it back.
+    public struct ValidationRequest: Equatable, Sendable {
+        public enum Status: String, Sendable {
+            case pending
+            case verified
+            case rejected
+            case cancelled
+        }
+
+        public let status: Status
+        public let organisationName: String
+        public let requestedAt: Date
+        /// The reviewer's reason; required when a request is rejected.
+        public let response: String?
+
+        public init(status: Status, organisationName: String, requestedAt: Date, response: String? = nil) {
+            self.status = status
+            self.organisationName = organisationName
+            self.requestedAt = requestedAt
+            self.response = response
+        }
+    }
+
     public struct File: Identifiable, Equatable, Sendable {
         public let id: String
         public let name: String
@@ -54,6 +77,7 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
     public var aylaAllowedAt: Date?
     public var createdAt: Date
     public var updatedAt: Date
+    public var lastRequest: ValidationRequest?
 
     public init(
         id: String,
@@ -73,7 +97,8 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
         files: [File] = [],
         aylaAllowedAt: Date? = nil,
         createdAt: Date = .now,
-        updatedAt: Date = .now
+        updatedAt: Date = .now,
+        lastRequest: ValidationRequest? = nil
     ) {
         self.id = id
         self.folderIDs = folderIDs
@@ -93,6 +118,20 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
         self.aylaAllowedAt = aylaAllowedAt
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.lastRequest = lastRequest
+    }
+
+    /// A request is open: shown as "In afwachting", and a new request cannot be sent until it is decided.
+    public var isAwaitingReview: Bool {
+        status == .toVerify && lastRequest?.status == .pending
+    }
+
+    /// Why the item was rejected, while it still is.
+    public var rejectionReason: String? {
+        guard status == .rejected, lastRequest?.status == .rejected,
+              let reason = lastRequest?.response?.trimmingCharacters(in: .whitespacesAndNewlines), !reason.isEmpty
+        else { return nil }
+        return reason
     }
 
     /// Every item can be changed, but a confirmed one is then no longer confirmed: it has to be confirmed again.

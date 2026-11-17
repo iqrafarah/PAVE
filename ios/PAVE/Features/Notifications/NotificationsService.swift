@@ -28,6 +28,10 @@ private enum NotificationsServiceError: Error, LocalizedError, Sendable {
             "Voor deze organisatie is nog geen beoordelaar ingesteld."
         case .httpStatus(409, "already_pending"):
             "Voor dit bewijs staat al een verificatieaanvraag open."
+        case .httpStatus(409, "decision_failed"):
+            "Deze aanvraag is al beoordeeld of niet meer beschikbaar. Vernieuw je meldingen."
+        case .httpStatus(400, "response_required"):
+            "Schrijf waarom je de aanvraag afwijst."
         case .httpStatus(500...599, _):
             "Supabase kon de meldingen niet ophalen. Controleer de logs van vault-review in Supabase."
         case let .httpStatus(status, _):
@@ -263,12 +267,19 @@ final class NotificationsModel {
         }
     }
 
-    func resolve(_ id: String, action: String, response: String?) async -> Bool {
-        guard let service else { return false }
+    /// Nil when the decision is saved; otherwise what went wrong, for the reviewer.
+    func resolve(_ id: String, action: String, response: String?) async -> String? {
+        guard let service else { return NotificationsServiceError.notConfigured.localizedDescription }
         do {
             try await service.resolve(requestID: id, action: action, response: response)
             await refresh()
-            return true
-        } catch { return false }
+            return nil
+        } catch let error as LocalizedError {
+            return error.errorDescription ?? Self.decisionFailed
+        } catch {
+            return Self.decisionFailed
+        }
     }
+
+    private static let decisionFailed = "De beslissing kon niet worden opgeslagen. Vernieuw de meldingen en probeer opnieuw."
 }

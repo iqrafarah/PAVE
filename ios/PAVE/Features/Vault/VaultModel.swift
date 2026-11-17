@@ -240,26 +240,6 @@ final class VaultModel {
         await perform { try await $0.deleteFolder(id: folder.id) }
     }
 
-    func requestValidation(for item: VaultItem, organisationName: String, email: String, message: String?) async -> String? {
-        guard let service else {
-            problem = VaultMessages.requestNotActive
-            return problem
-        }
-        do {
-            try await service.requestValidation(
-                itemID: item.id, organisationName: organisationName, email: email, message: message
-            )
-            problem = nil
-            PaveHaptics.success()
-            return nil
-        } catch {
-            let message = VaultMessages.message(for: VaultError(error))
-            problem = message
-            PaveHaptics.error()
-            return message
-        }
-    }
-
     func validationOrganizations() async throws -> [VaultValidationOrganization] {
         guard let service else { throw VaultError.notSetUp }
         return try await service.validationOrganizations()
@@ -303,6 +283,8 @@ final class VaultModel {
             )
             problem = nil
             PaveHaptics.success()
+            // So the item shows "In afwachting" straight away.
+            await load()
             return nil
         } catch {
             let message = VaultMessages.message(for: VaultError(error))

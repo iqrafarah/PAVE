@@ -43,8 +43,10 @@ Deno.serve(async (req) => {
       ])
       if (organizationError) throw organizationError
       if (locationError) throw locationError
-      if (!item || item.verification_status !== 'toVerify') return json({ error: 'item_not_awaiting_verification' }, 409)
+      // Rejected evidence may be sent again; verified evidence first has to change (which makes it toVerify).
+      if (!item || !['toVerify', 'rejected'].includes(item.verification_status)) return json({ error: 'item_not_awaiting_verification' }, 409)
       if (!organization) return json({ error: 'organization_not_found' }, 404)
+      if (!location) return json({ error: 'invalid_choice' }, 400)
 
       let department: { id: string; organization_id: string; location_id: string | null } | null = null
       if (body.departmentId) {
@@ -102,12 +104,24 @@ Deno.serve(async (req) => {
         await admin.from('vault_validation_requests').delete().eq('id', request.id).eq('status', 'pending')
         throw notificationError
       }
+      // A new request on rejected evidence: back to toVerify, so the reviewer can decide it again.
+      if (item.verification_status === 'rejected') {
+        const { error: resetError } = await admin.from('vault_items')
+          .update({ verification_status: 'toVerify', updated_at: new Date().toISOString() })
+          .eq('id', item.id).eq('user_id', user.id).eq('verification_status', 'rejected')
+        if (resetError) {
+          await admin.from('vault_validation_requests').delete().eq('id', request.id).eq('status', 'pending')
+          throw resetError
+        }
+      }
       return json({ id: request.id, requestedAt: request.requested_at })
     }
 
     if (body.action === 'resolve') {
       if (!body.requestId || !['verified', 'rejected'].includes(body.outcome ?? '')) return json({ error: 'invalid_request' }, 400)
+      if (body.response !== undefined && body.response !== null && typeof body.response !== 'string') return json({ error: 'invalid_request' }, 400)
       if (body.response && body.response.length > 2000) return json({ error: 'response_too_long' }, 400)
+      if (body.outcome === 'rejected' && !body.response?.trim()) return json({ error: 'response_required' }, 400)
       const { data: request, error: requestError } = await admin.from('vault_validation_requests')
         .select('id,organization_id,status').eq('id', body.requestId).maybeSingle()
       if (requestError) throw requestError

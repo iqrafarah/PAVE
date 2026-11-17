@@ -128,6 +128,19 @@ enum VaultMessages {
 
     static let requestAction = "Bevestiging aanvragen"
     static let requestAgainAction = "Opnieuw bevestiging aanvragen"
+    static let awaitingReviewTitle = "In afwachting"
+
+    static func awaitingReviewExplanation(_ organisation: String?) -> String {
+        if let organisation, !organisation.isEmpty {
+            return "Je aanvraag ligt bij \(organisation). Je krijgt een melding zodra je bewijs is beoordeeld."
+        }
+        return "Je aanvraag is verstuurd. Je krijgt een melding zodra je bewijs is beoordeeld."
+    }
+
+    static func rejectionReasonTitle(_ organisation: String?) -> String {
+        if let organisation, !organisation.isEmpty { return "Reden van \(organisation)" }
+        return "Reden van afwijzing"
+    }
     static let requestPreviewLabel = "Voorbeeld"
     static let requestPreviewAccessibility = "Voorbeeld, werkt nog niet"
     static let requestNotActive = "Bevestiging aanvragen werkt nog niet. Je kunt alvast kijken hoe het wordt, maar er wordt niets verstuurd."
