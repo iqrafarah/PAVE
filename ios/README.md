@@ -203,6 +203,8 @@ De iOS-meldingen gebruiken `NotificationsModel` en `SupabaseNotificationsService
 
 Bij het ophalen toont het scherm nu onderscheid tussen ontbrekende Supabase-configuratie, een verlopen sessie, ontbrekende MFA, een niet gedeployde `vault-review`-functie en een serverfout. De detailweergave toont ook waarom een aanvraag niet geladen kon worden. Verificatieaanvragen tonen afzonderlijke meldingen voor een onbekende organisatie, ontbrekende reviewers, een dubbele aanvraag en bewijs dat intussen niet meer openstaat. De functie moet wel gedeployed zijn en reviewers moeten aan de organisatie zijn toegewezen.
 
+Het aanvraagformulier volgt de wireframe met een bewijskaart, bedrijfsnaam, locatiecontext en contactveld. De locatie komt voorlopig alleen uit het bewijs zelf; er is nog geen locatiekeuzelijst. Het contactveld is nog een e-mailadres, geen gekozen directorypersoon. De app vermeldt dat dit adres niet wordt gemaild: alleen de aan de organisatie toegewezen reviewers ontvangen een in-app-melding. Zie `docs/vault.md` voor wat nodig is om de locatie- en persoonkeuze veilig aan backenddata te koppelen.
+
 Houd bij SwiftUI-wijzigingen de argumentvolgorde gelijk aan de initializer en splits samengestelde kaartweergaven op wanneer de compiler de expressie niet kan typechecken. `NotificationsScreen` gebruikt `VaultCategory` uit `PAVECore`.
 
 Voor een eerste visuele controle staan statisch gerenderde iPhone-previews in `ios/previews/`. Ze volgen de huidige iOS-layout met fictieve inhoud, maar zijn geen captures van een draaiende SwiftUI-app. `render-notifications.ps1` maakt ze opnieuw.

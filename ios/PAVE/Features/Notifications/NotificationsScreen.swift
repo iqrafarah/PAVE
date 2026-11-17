@@ -9,6 +9,7 @@ enum NotificationAudience: Equatable, Sendable {
 enum PaveNotificationKind: String, CaseIterable, Hashable, Identifiable, Sendable {
     case conversation
     case verifiedEvidence
+    case rejectedEvidence
     case verificationRequest
 
     var id: Self { self }
@@ -17,6 +18,7 @@ enum PaveNotificationKind: String, CaseIterable, Hashable, Identifiable, Sendabl
         switch self {
         case .conversation: "Gesprek"
         case .verifiedEvidence: "Verificatie"
+        case .rejectedEvidence: "Afgewezen bewijs"
         case .verificationRequest: "Verificatie aanvraag"
         }
     }
@@ -29,6 +31,7 @@ enum PaveNotificationKind: String, CaseIterable, Hashable, Identifiable, Sendabl
         switch self {
         case .conversation: "Berichten en antwoorden over gesprekken"
         case .verifiedEvidence: "Bewijs dat is geverifieerd"
+        case .rejectedEvidence: "Bewijs dat is afgewezen"
         case .verificationRequest: "Aanvragen die je kunt beoordelen"
         }
     }
@@ -37,6 +40,7 @@ enum PaveNotificationKind: String, CaseIterable, Hashable, Identifiable, Sendabl
         switch self {
         case .conversation: .iconChat
         case .verifiedEvidence, .verificationRequest: .iconCheckBadgeSolid
+        case .rejectedEvidence: .iconExclamationCircle
         }
     }
 }
@@ -80,7 +84,7 @@ struct NotificationsScreen: View {
 
     private var availableKinds: [PaveNotificationKind] {
         switch audience {
-        case .learner: [.conversation, .verifiedEvidence]
+        case .learner: [.conversation, .verifiedEvidence, .rejectedEvidence]
         case .administrator: [.conversation, .verificationRequest]
         }
     }
@@ -328,7 +332,7 @@ struct NotificationsScreen: View {
                     onOpenConversation(id)
                 } label: { content }
                 .buttonStyle(.pave)
-            } else if notification.kind == .verifiedEvidence, let id = notification.vaultItemID, let onOpenVerifiedEvidence {
+            } else if (notification.kind == .verifiedEvidence || notification.kind == .rejectedEvidence), let id = notification.vaultItemID, let onOpenVerifiedEvidence {
                 Button {
                     markRead(notification)
                     onOpenVerifiedEvidence(id)
@@ -401,7 +405,7 @@ private struct NotificationFilterSheet: View {
 
     private var availableKinds: [PaveNotificationKind] {
         switch audience {
-        case .learner: [.verifiedEvidence, .conversation]
+        case .learner: [.verifiedEvidence, .rejectedEvidence, .conversation]
         case .administrator: [.verificationRequest, .conversation]
         }
     }
@@ -791,6 +795,7 @@ private extension PaveNotification {
     static var previewLearner: [PaveNotification] {
         [
             .init(id: "verified-1", kind: .verifiedEvidence, title: "Bewijs geverifieerd", personName: "Middelbaar College", date: .now.addingTimeInterval(-3600), vaultItemID: "preview-item"),
+            .init(id: "rejected-1", kind: .rejectedEvidence, title: "Bewijs afgewezen", personName: "Middelbaar College", date: .now.addingTimeInterval(-7200), vaultItemID: "preview-item"),
             .init(id: "chat-1", kind: .conversation, title: "Gesprek voor stage", personName: "Ayla", date: .now.addingTimeInterval(-86_400), conversationID: "preview-chat"),
         ]
     }

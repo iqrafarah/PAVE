@@ -1,8 +1,8 @@
 import Foundation
 import PAVECore
 
-/// What a request to confirm evidence would hold: who confirms it, at which organisation and how to reach them. Only the
-/// form for now: nothing is sent or stored yet.
+/// The fields currently accepted by the request endpoint. The organisation directory and selected reviewer are not
+/// available yet, so the learner supplies the organisation name and a contact e-mail address.
 struct VaultConfirmationRequest: Equatable {
     enum Recipient: CaseIterable, Identifiable {
         case school

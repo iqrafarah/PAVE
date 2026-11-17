@@ -157,6 +157,7 @@ struct SupabaseNotificationsService: Sendable {
             switch row.kind {
             case "conversation": kind = .conversation
             case "evidence_verified": kind = .verifiedEvidence
+            case "evidence_rejected": kind = .rejectedEvidence
             case "verification_request": kind = .verificationRequest
             default: return nil
             }

@@ -57,6 +57,9 @@ Deno.serve(async (req) => {
         organization_id: organization.id, contact_email: email,
         message: body.message?.trim() || null, status: 'pending',
       }).select('id,requested_at').single()
+      // The database partial unique index is the race-safe duplicate guard; keep the
+      // friendly response in sync when two submissions arrive at the same time.
+      if (createError?.code === '23505') return json({ error: 'already_pending' }, 409)
       if (createError || !request) throw createError ?? new Error('request insert returned no row')
       const notifications = reviewers.map(({ reviewer_id }) => ({
         recipient_id: reviewer_id, kind: 'verification_request', title: 'Verificatie aanvraag',
@@ -119,10 +122,11 @@ Deno.serve(async (req) => {
             learnerOrganization: request.organisation_name,
             documentName: item.title, documentType: item.category,
           })
-        } else if (notice.kind === 'evidence_verified' && notice.validation_request_id && notice.vault_item_id) {
+        } else if ((notice.kind === 'evidence_verified' || notice.kind === 'evidence_rejected') && notice.validation_request_id && notice.vault_item_id) {
           const { data: item } = await admin.from('vault_items').select('id,organisation_name,verification_status')
             .eq('id', notice.vault_item_id).eq('user_id', user.id).maybeSingle()
-          if (!item || item.verification_status !== 'verified') continue
+          const expectedStatus = notice.kind === 'evidence_verified' ? 'verified' : 'rejected'
+          if (!item || item.verification_status !== expectedStatus) continue
           visible.push({
             id: notice.id, kind: notice.kind, title: notice.title, personName: item.organisation_name || 'Kluis',
             date: notice.created_at, isUnread: notice.read_at == null, vaultItemID: item.id,

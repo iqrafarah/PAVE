@@ -6,6 +6,7 @@ import SwiftUI
 struct VaultRequestConfirmationSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(VaultModel.self) private var vault
     let item: VaultItem
     let documentCount: Int
     var onSend: ((VaultConfirmationRequest) async -> String?)?
@@ -16,6 +17,7 @@ struct VaultRequestConfirmationSheet: View {
     @State private var isSending = false
     @State private var sendError: String?
     @State private var confirmsDiscard = false
+    @State private var evidenceLogo: VaultLogoLook?
     @FocusState private var focus: VaultConfirmationRequest.Field?
 
     init(item: VaultItem, documentCount: Int, onSend: ((VaultConfirmationRequest) async -> String?)? = nil) {
@@ -47,26 +49,28 @@ struct VaultRequestConfirmationSheet: View {
             Button("Weggooien", role: .destructive) { dismiss() }
             Button("Verder met invullen", role: .cancel) {}
         }
+        .task(id: item.id) {
+            evidenceLogo = nil
+            if let logo = vault.logo(of: item) {
+                evidenceLogo = await vault.look(of: logo)
+            }
+        }
     }
 
     private var header: some View {
-        HStack(spacing: 10) {
-            Text("Bevestiging aanvragen")
-                .textStyle(.listTitle)
+        VStack(alignment: .leading, spacing: 5) {
+            Text("Verificatie aanvraag")
+                .textStyle(.calloutTitle)
                 .foregroundStyle(Color.ink)
                 .accessibilityAddTraits(.isHeader)
-            Spacer(minLength: 8)
-            Text(VaultMessages.requestPreviewLabel)
-                .textStyle(.meta)
-                .foregroundStyle(Color.statusPending)
-                .padding(.horizontal, 8)
-                .frame(minHeight: 24)
-                .background(Color.statusPending.opacity(0.12), in: .capsule)
-                .accessibilityLabel(VaultMessages.requestPreviewAccessibility)
+            Text("Laat je gegevens bevestigen.")
+                .textStyle(.bodyMedium)
+                .foregroundStyle(Color.inkMuted)
         }
+        .frame(maxWidth: 560, alignment: .leading)
         .padding(.horizontal, 24)
-        .padding(.top, 22)
-        .padding(.bottom, 12)
+        .padding(.top, 26)
+        .padding(.bottom, 20)
     }
 
     private var form: some View {
@@ -76,51 +80,56 @@ struct VaultRequestConfirmationSheet: View {
                     if onSend == nil { PaveNotice(message: VaultMessages.requestNotActive) }
                     if let sendError { PaveNotice(message: sendError) }
 
-                    block(VaultMessages.requestWhoTitle) {
-                        VStack(spacing: 10) {
-                            ForEach(VaultConfirmationRequest.Recipient.allCases) { recipient in
-                                VaultRecipientCard(recipient: recipient, isSelected: request.recipient == recipient) {
-                                    request.recipient = recipient
-                                }
+                    evidenceSummary
+
+                    VStack(alignment: .leading, spacing: 18) {
+                        VaultFormField(title: "Naam bedrijf", error: error(.organisation)) {
+                            TextField("", text: $request.organisation, prompt: prompt(VaultMessages.requestOrganisationPrompt))
+                                .textStyle(.input)
+                                .foregroundStyle(Color.ink)
+                                .textContentType(.organizationName)
+                                .focused($focus, equals: .organisation)
+                                .submitLabel(.next)
+                                .onSubmit { focus = .email }
+                        }
+
+                        if let location = item.organisationLocation, !location.isEmpty {
+                            VaultFormField(title: "Locatie van het bedrijf", isRequired: false) {
+                                Text(location)
+                                    .textStyle(.input)
+                                    .foregroundStyle(Color.inkMuted)
                             }
                         }
-                    }
 
-                    VaultFormField(title: request.recipient.organisationLabel, error: error(.organisation)) {
-                        TextField("", text: $request.organisation, prompt: prompt(VaultMessages.requestOrganisationPrompt))
-                            .textStyle(.input)
-                            .foregroundStyle(Color.ink)
-                            .textContentType(.organizationName)
-                            .focused($focus, equals: .organisation)
-                            .submitLabel(.next)
-                            .onSubmit { focus = .email }
+                        VaultFormField(title: "Betreffende persoon", error: error(.email)) {
+                            TextField("", text: $request.email, prompt: prompt("naam@bedrijf.nl"))
+                                .textStyle(.input)
+                                .foregroundStyle(Color.ink)
+                                .keyboardType(.emailAddress)
+                                .textContentType(.emailAddress)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                                .focused($focus, equals: .email)
+                                .submitLabel(.done)
+                                .onSubmit { focus = nil }
+                        }
                     }
+                    .padding(18)
+                    .background(Color.white, in: .rect(cornerRadius: 16))
+                    .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder) }
 
-                    VaultFormField(title: VaultMessages.requestEmailTitle, error: error(.email)) {
-                        TextField("", text: $request.email, prompt: prompt("naam@organisatie.nl"))
-                            .textStyle(.input)
-                            .foregroundStyle(Color.ink)
-                            .keyboardType(.emailAddress)
-                            .textContentType(.emailAddress)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .focused($focus, equals: .email)
-                            .submitLabel(.done)
-                            .onSubmit { focus = nil }
-                    }
+                    Text("De ingestelde beoordelaars ontvangen de aanvraag. Het ingevulde e-mailadres wordt nog niet gemaild.")
+                        .textStyle(.caption)
+                        .foregroundStyle(Color.inkMuted)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
 
-                    VaultFormField(title: VaultMessages.requestMessageTitle, isRequired: false, minHeight: 96) {
-                        TextField("", text: $request.message, prompt: prompt(VaultMessages.requestMessagePrompt), axis: .vertical)
-                            .lineLimit(3...6)
-                            .textStyle(.input)
-                            .foregroundStyle(Color.ink)
-                            .padding(.vertical, 12)
-                            .frame(maxHeight: .infinity, alignment: .top)
-                    }
-
-                    block(VaultMessages.requestSharedTitle) {
+                    DisclosureGroup("Dit ziet de beoordelaar") {
                         VaultSharedPreview(item: item, documentCount: documentCount)
+                            .padding(.top, 10)
                     }
+                    .textStyle(.label)
+                    .foregroundStyle(Color.ink)
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 24)
@@ -136,6 +145,31 @@ struct VaultRequestConfirmationSheet: View {
                 .padding(.bottom, 12)
                 .frame(maxWidth: 560)
         }
+    }
+
+    private var evidenceSummary: some View {
+        HStack(spacing: 12) {
+            VaultLogoAvatar(look: evidenceLogo, name: item.organisationName ?? item.title, size: 56)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(item.title)
+                    .textStyle(.bodyMedium)
+                    .foregroundStyle(Color.ink)
+                    .lineLimit(2)
+                if let organisation = item.organisationName, !organisation.isEmpty {
+                    let location = item.organisationLocation.map { ", \($0)" } ?? ""
+                    PaveIconLabel(icon: .iconBuildingOfficeSolid, text: organisation + location)
+                }
+                if let period = item.period {
+                    PaveIconLabel(icon: .iconCalendarDaysSolid, text: period)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.white, in: .rect(cornerRadius: 14))
+        .overlay { RoundedRectangle(cornerRadius: 14).strokeBorder(Color.cardBorder) }
     }
 
     private var notSent: some View {
@@ -156,7 +190,7 @@ struct VaultRequestConfirmationSheet: View {
                     .foregroundStyle(Color.ink)
                     .multilineTextAlignment(.center)
                     .accessibilityAddTraits(.isHeader)
-                Text(onSend == nil ? VaultMessages.requestNotSentMessage(request.organisation) : "\(request.organisation) ontvangt het verzoek. Je krijgt een melding zodra het bewijs is geverifieerd.")
+                Text(onSend == nil ? VaultMessages.requestNotSentMessage(request.organisation) : "De ingestelde beoordelaars van \(request.organisation) ontvangen het verzoek. Je krijgt een melding zodra het bewijs is geverifieerd.")
                     .textStyle(.bodyMedium)
                     .foregroundStyle(Color.inkMuted)
                     .multilineTextAlignment(.center)
@@ -195,16 +229,6 @@ struct VaultRequestConfirmationSheet: View {
         }
     }
 
-    private func block(_ title: String, @ViewBuilder content: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .textStyle(.label)
-                .foregroundStyle(Color.ink)
-                .accessibilityAddTraits(.isHeader)
-            content()
-        }
-    }
-
     private func prompt(_ text: String) -> Text {
         Text(text).foregroundStyle(Color.inkMuted)
     }
@@ -218,5 +242,6 @@ struct VaultRequestConfirmationSheet: View {
 #Preview {
     Color.canvas.sheet(isPresented: .constant(true)) {
         VaultRequestConfirmationSheet(item: VaultContents.preview.items[0], documentCount: 2)
+            .environment(VaultModel(previewContents: VaultContents.preview))
     }
 }
