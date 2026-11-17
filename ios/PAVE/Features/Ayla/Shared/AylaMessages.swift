@@ -4,6 +4,58 @@ import PAVECore
 enum AylaMessages {
     /// Above Ja and Nee when Ayla offers to add something to the vault, as on the web (AYLA_VAULT_LABEL).
     static let vaultLabel = "Kluis"
+    static let attachItem = "Item uit je kluis"
+    static let vaultEmpty = "Je kluis is nog leeg"
+    static let pickItemTitle = "Kies uit je kluis"
+    static let pickItemHint = "Ayla gebruikt wat je kiest in dit gesprek."
+    static let allItems = "Alle items"
+    static func contextItems(_ count: Int) -> String { "\(count) items uit je kluis" }
+    static func askNotAllowedTitle(_ count: Int) -> String {
+        count == 1 ? askNotAllowedTitle : "Ayla mag \(count) van deze items nog niet gebruiken"
+    }
+    static let askAllowAll = "Toestaan en gebruiken"
+    static let askWithoutThem = "Gebruiken zonder die items"
+    static let conceptReading = "Ayla leest je bestanden…"
+    static let conceptFiles = "Bestanden hierbij"
+    static let conceptAdded = "Toegevoegd aan je kluis"
+    static let conceptTitle = "Bewijs in opbouw"
+    static let conceptReady = "Bewijs"
+    static let conceptHint = "Vertel verder en Ayla vult het aan."
+    static let conceptAdd = "Zet in de kluis"
+    static let headHint = "Knik ja of schud nee"
+    static let siriGoOn = "Zeg \"Praat met Ayla in PAVE\" om verder te gaan."
+    static let siriSignInFirst = "Log eerst in bij PAVE, dan kan Ayla je vragen beantwoorden."
+    static let siriUnavailable = "Ayla is er nu even niet. Probeer het straks nog eens in PAVE."
+    static let siriFailed = "Ayla kon nu geen antwoord geven. Probeer het zo nog eens."
+    static let vacancyHint = "Draai je hoofd voor de volgende, knik om te kiezen"
+    static let vacancyChoose = "Kies deze"
+    static func vacancyPosition(_ index: Int, of count: Int) -> String { "\(index + 1) van \(count)" }
+    static func vacancyAsk(_ vacancy: Vacancy) -> String {
+        "Vertel meer over \(vacancy.title) bij \(vacancy.company): waarom past die bij mij, en wat mis ik nog?"
+    }
+    static func photosAdded(_ count: Int, to title: String) -> String {
+        count == 1 ? "Ik heb een foto toegevoegd aan \(title)." : "Ik heb \(count) foto's toegevoegd aan \(title)."
+    }
+    static let headHintVoice = "Zeg het, of knik ja of schud nee"
+    static func headAnswer(_ isYes: Bool) -> String { isYes ? "Je knikte: Ja" : "Je schudde: Nee" }
+    static func yesNoAnswer(_ isYes: Bool, byHead: Bool) -> String {
+        byHead ? headAnswer(isYes) : isYes ? "Je koos: Ja" : "Je koos: Nee"
+    }
+    static let conceptRequestConfirmation = "Bevestiging aanvragen"
+    static let conceptUnknown = "nog niet bekend"
+
+    static func conceptFromFiles(logo: Bool, cover: Bool, items: Int) -> String? {
+        var parts: [String] = []
+        if logo { parts.append("logo") }
+        if cover { parts.append("omslag") }
+        var text = parts.isEmpty ? "" : "Uit je bestanden: \(parts.joined(separator: " en ")) gevonden."
+        if items > 1 { text += (text.isEmpty ? "" : " ") + "Ayla ziet \(items) bewijzen in je bestanden; je kiest in de volgende stap of je ze apart toevoegt." }
+        return text.isEmpty ? nil : text
+    }
+
+    static func addedToVault(_ title: String?) -> String {
+        title.map { "Toegevoegd aan mijn kluis: \($0)." } ?? "Toegevoegd aan mijn kluis."
+    }
     static let openVault = "Open je kluis"
     static let openSettings = "Open instellingen"
     static let clearContext = "Niet meer over dit bewijs vragen"

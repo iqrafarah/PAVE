@@ -54,6 +54,8 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
     public var aylaAllowedAt: Date?
     public var createdAt: Date
     public var updatedAt: Date
+    /// Its place in "Eigen volgorde", once you dragged your evidence into an order of your own.
+    public var position: Int?
 
     public init(
         id: String,
@@ -73,9 +75,11 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
         files: [File] = [],
         aylaAllowedAt: Date? = nil,
         createdAt: Date = .now,
-        updatedAt: Date = .now
+        updatedAt: Date = .now,
+        position: Int? = nil
     ) {
         self.id = id
+        self.position = position
         self.folderIDs = folderIDs
         self.category = category
         self.title = title

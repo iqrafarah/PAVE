@@ -36,7 +36,7 @@ nonisolated final class VoiceAudio: @unchecked Sendable {
     ) throws {
         try queue.sync {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetoothHFP, .duckOthers])
+            try Self.configure(session, headsetMicrophone: true)
             try session.setActive(true)
 
             try? engine.inputNode.setVoiceProcessingEnabled(true)
@@ -62,6 +62,30 @@ nonisolated final class VoiceAudio: @unchecked Sendable {
         }
     }
 
+    /// The AirPods' microphone hears you best, also with the iPhone in your pocket, but it turns them into a headset
+    /// for calls, and then iOS passes on no motion of the head (no nod or head shake). For a question for Ja or Nee
+    /// the iPhone's microphone listens for a moment, so the AirPods are ordinary headphones again; then back.
+    /// Not mixed with other audio (music pauses, as in ChatGPT's voice mode): only then does PAVE get the presses on
+    /// the stem and the pause when they come out.
+    private static func configure(_ session: AVAudioSession, headsetMicrophone: Bool) throws {
+        if headsetMicrophone {
+            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetoothHFP])
+        } else {
+            try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothA2DP])
+        }
+    }
+
+    /// Switches between the AirPods' and the iPhone's microphone during a conversation; the engine starts again on
+    /// the new route, and listening with it. Done between Ayla's answers, never while she talks: the restart would cut
+    /// her off.
+    func useHeadsetMicrophone(_ headset: Bool) {
+        queue.sync {
+            guard lock.withLock({ isRunning }) else { return }
+            try? Self.configure(AVAudioSession.sharedInstance(), headsetMicrophone: headset)
+            restart()
+        }
+    }
+
     func stop() {
         queue.sync {
             let wasRunning = lock.withLock {
@@ -72,6 +96,7 @@ nonisolated final class VoiceAudio: @unchecked Sendable {
                 return wasRunning
             }
             stopSpeech()
+            if AVAudioApplication.shared.isInputMuted { try? AVAudioApplication.shared.setInputMuted(false) }
             guard wasRunning else { return }
             removeTaps()
             engine.stop()
@@ -117,9 +142,12 @@ nonisolated final class VoiceAudio: @unchecked Sendable {
         lock.withLock { onRestart }?()
     }
 
+    /// Also the app-wide input mute of iOS, so the system knows PAVE's microphone is off: that is where the press on
+    /// the AirPods' stem lands while the microphone is in use.
     func setMuted(_ muted: Bool) {
         lock.withLock { isMuted = muted }
         if muted { meter.update(microphone: 0) }
+        if AVAudioApplication.shared.isInputMuted != muted { try? AVAudioApplication.shared.setInputMuted(muted) }
     }
 
     func play(_ blip: VoiceBlip) {

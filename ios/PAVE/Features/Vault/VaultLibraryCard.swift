@@ -7,6 +7,8 @@ import SwiftUI
 struct VaultLibraryCard: View {
     let item: VaultItem
     let isGrid: Bool
+    /// When choosing items (for Ayla): a checkbox instead of the status, and the outline of a chosen card.
+    var isSelected: Bool?
     @Environment(VaultModel.self) private var model: VaultModel?
     @State private var logoLook: VaultLogoLook?
     @State private var coverLook: VaultLogoLook?
@@ -35,7 +37,11 @@ struct VaultLibraryCard: View {
             }
         }
         .clipShape(.rect(cornerRadius: 16))
-        .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder, lineWidth: 1) }
+        .overlay {
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(isSelected == true ? Color.paveAccent : Color.cardBorder, lineWidth: isSelected == true ? 2 : 1)
+        }
+        .animation(.easeOut(duration: 0.15), value: isSelected)
         .contentShape(.rect(cornerRadius: 16))
         .accessibilityElement(children: .combine)
         .task(id: logo?.id) {
@@ -99,7 +105,11 @@ struct VaultLibraryCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .layoutPriority(1)
-                    VaultStatusBadge(status: item.status)
+                    if let isSelected {
+                        PaveCheckbox(isOn: isSelected)
+                    } else {
+                        VaultStatusBadge(status: item.status)
+                    }
                 }
                 details(lineLimit: 1)
                 if !item.skills.isEmpty {

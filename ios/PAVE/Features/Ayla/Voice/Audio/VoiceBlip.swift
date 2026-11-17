@@ -9,6 +9,12 @@ nonisolated enum VoiceBlip {
     case think
     /// The conversation ends: two falling notes.
     case end
+    /// Something went into the vault, or a Ja was understood: three rising notes.
+    case saved
+    /// A Nee was understood: one soft low note.
+    case no
+    /// The next card, while going through them with the head: one short tick.
+    case tick
 
     private struct Note {
         let frequency: Double
@@ -22,6 +28,9 @@ nonisolated enum VoiceBlip {
         case .listen: [Note(frequency: 659), Note(frequency: 988, at: 0.08)]
         case .think: [Note(frequency: 784, volume: 0.7), Note(frequency: 659, at: 0.07, volume: 0.6), Note(frequency: 784, at: 0.14, volume: 0.5)]
         case .end: [Note(frequency: 523), Note(frequency: 392, at: 0.1, length: 0.12)]
+        case .saved: [Note(frequency: 659), Note(frequency: 784, at: 0.08), Note(frequency: 1047, at: 0.16, length: 0.14)]
+        case .no: [Note(frequency: 392, length: 0.12, volume: 0.8)]
+        case .tick: [Note(frequency: 1175, length: 0.035, volume: 0.6)]
         }
     }
 

@@ -23,8 +23,8 @@ enum AylaShelf: String, Identifiable, CaseIterable {
     var hint: String {
         switch self {
         case .vault: "Vraag Ayla hieronder iets over je kluis."
-        case .plan: "Vraag Ayla hieronder iets over je plan."
-        case .profile: "Vraag Ayla hieronder iets over je profiel."
+        case .plan: "Veeg dit weg en vraag Ayla iets over je plan."
+        case .profile: "Veeg dit weg en vraag Ayla iets over je profiel."
         }
     }
 

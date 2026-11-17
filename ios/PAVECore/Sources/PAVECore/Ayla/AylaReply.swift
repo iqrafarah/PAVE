@@ -67,10 +67,17 @@ public struct AylaReply: Codable, Equatable, Sendable {
         public var endDate: String?
         public var issuedOn: String?
         public var isCurrent: Bool?
+        /// What the user did or achieved, as far as they told it.
+        public var description: String?
+        /// At most five skills that show in it.
+        public var skills: [String]?
+        /// The names of the files sent in the conversation that belong to this item.
+        public var attachments: [String]?
 
         public init(
             category: AylaVaultCategory, title: String, organisationName: String? = nil, organisationLocation: String? = nil,
-            startDate: String? = nil, endDate: String? = nil, issuedOn: String? = nil, isCurrent: Bool? = nil
+            startDate: String? = nil, endDate: String? = nil, issuedOn: String? = nil, isCurrent: Bool? = nil,
+            description: String? = nil, skills: [String]? = nil, attachments: [String]? = nil
         ) {
             self.category = category
             self.title = title
@@ -80,6 +87,9 @@ public struct AylaReply: Codable, Equatable, Sendable {
             self.endDate = endDate
             self.issuedOn = issuedOn
             self.isCurrent = isCurrent
+            self.description = description
+            self.skills = skills
+            self.attachments = attachments
         }
 
         /// What the app saves after Ja, or nil for a category this app does not know yet or a draft the vault refuses.
@@ -93,7 +103,22 @@ public struct AylaReply: Codable, Equatable, Sendable {
             draft.endDate = endDate.flatMap(VaultDay.init)
             draft.issuedOn = issuedOn.flatMap(VaultDay.init)
             draft.isCurrent = isCurrent ?? false
+            draft.description = String((description ?? "").prefix(VaultItemDraft.maximumDescriptionLength))
             return draft.problem == nil ? draft : nil
+        }
+
+        /// The draft as far as it goes, also while the title is still missing: what the chat shows growing.
+        public var partialDraft: VaultItemDraft {
+            var draft = VaultItemDraft(category: category.category ?? .other)
+            draft.title = title
+            draft.organisationName = organisationName ?? ""
+            draft.organisationLocation = organisationLocation ?? ""
+            draft.startDate = startDate.flatMap(VaultDay.init)
+            draft.endDate = endDate.flatMap(VaultDay.init)
+            draft.issuedOn = issuedOn.flatMap(VaultDay.init)
+            draft.isCurrent = isCurrent ?? false
+            draft.description = String((description ?? "").prefix(VaultItemDraft.maximumDescriptionLength))
+            return draft
         }
     }
 

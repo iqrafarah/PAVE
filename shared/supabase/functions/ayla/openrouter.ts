@@ -20,7 +20,19 @@ export interface CompleteOptions {
 
 export type Complete = (messages: ChatMessage[], options?: CompleteOptions) => Promise<{ model: string; content: string }>
 
-export function openRouterCompletion(apiKey: string, responseSchema: object, fetchImpl: typeof fetch = fetch, models = MODELS, hedgeMs = HEDGE_MS): Complete {
+/** A chat reply is short; a whole evidence item with its skills and sources needs more room, and more time with photos. */
+export interface CompletionLimits { maxTokens?: number; timeoutMs?: number }
+
+export function openRouterCompletion(
+  apiKey: string,
+  responseSchema: object,
+  fetchImpl: typeof fetch = fetch,
+  models = MODELS,
+  hedgeMs = HEDGE_MS,
+  limits: CompletionLimits = {},
+): Complete {
+  const maxTokens = limits.maxTokens ?? 600
+  const timeoutMs = limits.timeoutMs ?? TIMEOUT_MS
   return (messages, options = {}) => {
     const controllers: AbortController[] = []
     const streams = !!options.onContent
@@ -45,7 +57,7 @@ export function openRouterCompletion(apiKey: string, responseSchema: object, fet
         const controller = new AbortController()
         controllers.push(controller)
         const hedge = setTimeout(launch, hedgeMs)
-        const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS)
+        const timeout = setTimeout(() => controller.abort(), timeoutMs)
 
         fetchImpl('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
@@ -53,7 +65,7 @@ export function openRouterCompletion(apiKey: string, responseSchema: object, fet
           body: JSON.stringify({
             model,
             temperature: 0.4,
-            max_tokens: 600,
+            max_tokens: maxTokens,
             messages,
             ...(streams ? { stream: true } : {}),
             response_format: { type: 'json_schema', json_schema: { name: 'ayla_reply', strict: true, schema: responseSchema } },

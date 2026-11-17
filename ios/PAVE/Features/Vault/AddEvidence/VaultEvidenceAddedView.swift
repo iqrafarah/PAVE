@@ -29,6 +29,9 @@ struct VaultEvidenceAddedView: View {
             if flow.coverWaits || flow.logoWaits {
                 PaveNotice(message: VaultMessages.imagesNotYet(cover: flow.coverWaits, logo: flow.logoWaits))
             }
+            if let next = flow.nextEvidence.first {
+                PaveNotice(message: VaultMessages.nextEvidenceNote(next.proposal.title))
+            }
             Spacer(minLength: 0)
             VaultAylaConsentCard(isOn: $flow.allowsAyla, hasFile: flow.hasFile)
                 .opacity(consentShown ? 1 : 0)

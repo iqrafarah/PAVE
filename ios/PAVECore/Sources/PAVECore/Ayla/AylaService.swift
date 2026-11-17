@@ -431,7 +431,8 @@ public struct SupabaseAylaService: AylaService {
             guard let role = AylaStoredMessage.Role(rawValue: row.role) else { return nil }
             return AylaStoredMessage(
                 id: row.id, role: role, text: row.text, reply: row.reply,
-                sentAt: row.created_at.map(Self.date(from:)) ?? .distantPast
+                sentAt: row.created_at.map(Self.date(from:)) ?? .distantPast,
+                attachments: row.attachments
             )
         }
     }
@@ -744,12 +745,28 @@ private struct TurnRow: Decodable {
     let role: String
 }
 
+/// `reply` holds Ayla's whole reply on her messages and only the attachment names on the user's; a reply this version
+/// cannot read is left out rather than losing the conversation.
 private struct MessageRow: Decodable {
     let id: String
     let role: String
     let text: String
     let reply: AylaReply?
+    let attachments: [String]
     let created_at: String?
+
+    private enum CodingKeys: String, CodingKey { case id, role, text, reply, created_at }
+    private struct AttachmentNames: Decodable { let attachments: [String] }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        role = try container.decode(String.self, forKey: .role)
+        text = try container.decode(String.self, forKey: .text)
+        created_at = try container.decodeIfPresent(String.self, forKey: .created_at)
+        reply = try? container.decodeIfPresent(AylaReply.self, forKey: .reply)
+        attachments = (try? container.decodeIfPresent(AttachmentNames.self, forKey: .reply))?.attachments ?? []
+    }
 }
 
 private struct ProfileRow: Decodable {

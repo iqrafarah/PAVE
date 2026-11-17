@@ -59,7 +59,7 @@ struct VaultSkillsPicker: View {
     }
 
     private func askAyla() async {
-        await ayla.ask(for: draft, existing: VaultSkills.cleaned(skills + known))
+        await ayla.ask(for: draft, chosen: VaultSkills.cleaned(skills))
     }
 
     private var vaultSection: some View {

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// A folder above the vault list: one of the categories or a folder you made. Tapping it again shows everything.
+/// A folder above the vault list. Tapping it opens the folder; something dragged over it lights it up.
 struct VaultFolderTile: View {
     let title: String
     let icon: ImageResource
@@ -8,7 +8,12 @@ struct VaultFolderTile: View {
     var surface: Color = .paveSurfaceTint
     let count: Int
     let isSelected: Bool
+    var isDropTarget = false
+    /// When choosing items (for Ayla): whether everything in the folder is chosen.
+    var checkbox: Bool?
     let action: () -> Void
+
+    static let width: CGFloat = 140
 
     var body: some View {
         Button(action: action) {
@@ -50,19 +55,27 @@ struct VaultFolderTile: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.white)
             }
-            .frame(width: 140)
+            .frame(width: Self.width)
             .clipShape(.rect(cornerRadius: 16))
             .overlay {
                 RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(isSelected ? color : Color.cardBorder, lineWidth: isSelected ? 2 : 1)
+                    // Held over with a card, it shows the same outline as a chosen folder.
+                    .strokeBorder(isSelected || isDropTarget ? color : Color.cardBorder, lineWidth: isSelected || isDropTarget ? 2 : 1)
+            }
+            .overlay(alignment: .topTrailing) {
+                if let checkbox {
+                    PaveCheckbox(isOn: checkbox, size: 18)
+                        .padding(10)
+                }
             }
             .contentShape(.rect(cornerRadius: 16))
+            .animation(.easeOut(duration: 0.15), value: isDropTarget)
         }
         .buttonStyle(.pave)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(title), \(VaultMessages.itemCount(count))")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
-        .accessibilityHint(isSelected ? "Tik om alles te tonen" : "")
+        .accessibilityHint(isSelected ? "" : "Opent de map")
     }
 }
 

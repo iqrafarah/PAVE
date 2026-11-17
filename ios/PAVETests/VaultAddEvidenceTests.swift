@@ -54,7 +54,14 @@ struct VaultAddEvidenceTests {
         func removeFile(_ file: VaultItem.File) async throws { removedFiles.append(file.id) }
         func removeSkills(_ names: [String], from itemID: String) async throws { if !names.isEmpty { removedSkills.append(names) } }
         var material: [VaultSkillsMaterial] = []
-        func suggestSkills(for draft: VaultItemDraft, material: VaultSkillsMaterial, existing: [String]) async throws -> [VaultSkillSuggestion] {
+        var proposals: [VaultEvidenceProposal] = []
+        var readDocuments: [VaultEvidenceDocument] = []
+        func propose(_ proposals: [VaultEvidenceProposal]) { self.proposals = proposals }
+        func proposeEvidence(from documents: [VaultEvidenceDocument], folders: [String], known: [String]) async throws -> [VaultEvidenceProposal] {
+            readDocuments = documents
+            return proposals
+        }
+        func suggestSkills(for draft: VaultItemDraft, material: VaultSkillsMaterial, existing: [String], known: [String]) async throws -> [VaultSkillSuggestion] {
             self.material.append(material)
             return [VaultSkillSuggestion(name: "Presenteren", reason: "Je gaf een eindpresentatie")]
         }
@@ -70,6 +77,18 @@ struct VaultAddEvidenceTests {
         }
         func updateFolder(id: String, name: String, color: VaultFolderColor, icon: VaultFolderIcon) async throws -> Bool { true }
         func deleteFolder(id: String) async throws {}
+        var orders: [[String]] = []
+        var itemOrders: [[String]] = []
+        func setItemOrder(_ itemIDs: [String]) async throws {
+            guard orderColumnExists else { throw VaultError.missingColumn }
+            itemOrders.append(itemIDs)
+        }
+        var orderColumnExists = true
+        func dropOrderColumn() { orderColumnExists = false }
+        func setFolderOrder(_ folderIDs: [String]) async throws {
+            guard orderColumnExists else { throw VaultError.missingColumn }
+            orders.append(folderIDs)
+        }
     }
 
     private let pdf = VaultUpload(data: Data([1, 2, 3]), fileName: "LiveWall-eindstage-verslag.pdf", mimeType: "application/pdf")
@@ -84,6 +103,158 @@ struct VaultAddEvidenceTests {
         flow.draft.description = "Front-end voor campagnes"
         await flow.next()
         return flow
+    }
+
+    private let certificate = VaultEvidenceProposal(
+        category: .certificates, title: "Professional Scrum Master I", organisationName: "Scrum.org",
+        issuedOn: VaultDay(year: 2025, month: 6, day: 12), description: "Certificaat voor Scrum.",
+        skills: [VaultSkillSuggestion(name: "Scrum", reason: "Staat op het certificaat")], documents: [0],
+        sources: ["title": "pagina 1", "period": "pagina 1"]
+    )
+    private let grades = VaultEvidenceProposal(category: .diplomas, title: "Cijferlijst", organisationName: "Fontys", documents: [1])
+    private let second = VaultUpload(data: Data([9]), fileName: "cijferlijst.pdf", mimeType: "application/pdf")
+
+    private func aylaFilled(_ proposals: [VaultEvidenceProposal], uploads: [VaultUpload]) async -> (VaultAddEvidenceModel, FakeVault) {
+        let service = FakeVault()
+        await service.propose(proposals)
+        let flow = VaultAddEvidenceModel(vault: VaultModel(service: service), category: .projects, folderID: nil)
+        for upload in uploads { flow.pick(.success(upload)) }
+        flow.fillWithAyla()
+        while flow.aylaFill == .reading { await Task.yield() }
+        return (flow, service)
+    }
+
+    @Test func aylaFillsInWhatTheDocumentSays() async {
+        let (flow, service) = await aylaFilled([certificate], uploads: [pdf])
+        #expect(flow.aylaFill == .filled)
+        #expect(flow.page == .details)
+        #expect(flow.draft.title == "Professional Scrum Master I")
+        #expect(flow.draft.category == .certificates)
+        #expect(flow.draft.organisationName == "Scrum.org")
+        #expect(flow.draft.issuedOn == VaultDay(year: 2025, month: 6, day: 12))
+        #expect(flow.skills == ["Scrum"])
+        #expect(flow.documents == [pdf])
+        #expect(await service.readDocuments.count == 1)
+        #expect(flow.aylaNote(for: .title) == "Door Ayla · pagina 1")
+        #expect(flow.aylaNote(for: .organisation) == "Ingevuld door Ayla")
+        flow.draft.title = "PSM I"
+        #expect(flow.aylaNote(for: .title) == nil)
+    }
+
+    @Test func aProposalFromTheChatWithFilesStartsAylaReading() async {
+        let service = FakeVault()
+        await service.propose([certificate])
+        let reply = AylaReply(
+            id: "r", conversationId: "c", text: "Zal ik het toevoegen?",
+            proposedAction: AylaReply.ProposedAction(id: "a", kind: .addVaultItem, summary: "", expiresAt: .distantFuture, vaultItem: .init(category: .certificates, title: "PSM I"))
+        )
+        let flow = VaultAddEvidenceModel.proposed(by: reply, vault: VaultModel(service: service), documents: [pdf])
+        #expect(flow.documents == [pdf])
+        #expect(flow.aylaFill == .reading)
+        while flow.aylaFill == .reading { await Task.yield() }
+        #expect(flow.aylaFill == .filled)
+        #expect(flow.draft.title == "Professional Scrum Master I")
+    }
+
+    @Test func filesReadInTheChatAreNotReadAgain() async {
+        let service = FakeVault()
+        let chat = AylaReply.VaultItemProposal(category: .certificates, title: "PSM I", issuedOn: "2025-06-12")
+        let reply = AylaReply(id: "r", conversationId: "c", text: "Zo.", proposedAction: .init(id: "a", kind: .addVaultItem, summary: "", expiresAt: .distantFuture, vaultItem: chat))
+        let analysis = AylaChatModel.EvidenceAnalysis(uploads: [pdf], proposals: [certificate], isReading: false)
+        let flow = VaultAddEvidenceModel.proposed(by: reply, vault: VaultModel(service: service), documents: [pdf], analysis: analysis)
+        #expect(flow.page == .details)
+        #expect(flow.aylaFill == .filled)
+        #expect(flow.draft.title == "PSM I")
+        #expect(flow.draft.organisationName == "Scrum.org")
+        #expect(flow.skills == ["Scrum"])
+        #expect(await service.readDocuments.isEmpty)
+    }
+
+    @Test func nothingFoundLeavesTheFormToYou() async {
+        let (flow, _) = await aylaFilled([], uploads: [pdf])
+        #expect(flow.aylaFill == .failed(VaultMessages.aylaFillEmpty))
+        #expect(flow.page == .source)
+        #expect(flow.aylaProposal == nil)
+    }
+
+    @Test func twoItemsStayOneUnlessYouAddThemApart() async {
+        let (flow, _) = await aylaFilled([certificate, grades], uploads: [pdf, second])
+        #expect(flow.aylaSplitTitles == ["Professional Scrum Master I", "Cijferlijst"])
+        #expect(flow.documents == [pdf, second])
+        #expect(flow.nextEvidence.isEmpty)
+
+        flow.setAddsApart(true)
+        #expect(flow.documents == [pdf])
+        #expect(flow.nextEvidence.count == 1)
+        let next = flow.nextFlow()
+        #expect(next?.page == .details)
+        #expect(next?.draft.title == "Cijferlijst")
+        #expect(next?.documents == [second])
+        #expect(next?.nextEvidence.isEmpty == true)
+        #expect(next?.aylaSplitTitles == nil)
+
+        flow.setAddsApart(false)
+        #expect(flow.documents == [pdf, second])
+        #expect(flow.nextEvidence.isEmpty)
+        #expect(flow.nextFlow() == nil)
+    }
+
+    @Test func anotherFileUndoesTheSplitButKeepsTheFile() async {
+        let (flow, _) = await aylaFilled([certificate, grades], uploads: [pdf, second])
+        flow.setAddsApart(true)
+        let extra = VaultUpload(data: Data([5]), fileName: "bijlage.png", mimeType: "image/png")
+        flow.pick(.success(extra))
+        #expect(flow.aylaSplitTitles == nil)
+        #expect(flow.nextEvidence.isEmpty)
+        #expect(flow.addsApart == false)
+        #expect(flow.documents == [pdf, extra])
+        #expect(flow.aylaNote(for: .title) != nil)
+    }
+
+    @Test func changingTheFilesWhileAylaReadsStopsHer() {
+        let flow = VaultAddEvidenceModel(vault: VaultModel(service: FakeVault()), category: .projects, folderID: nil)
+        flow.pick(.success(pdf))
+        flow.fillWithAyla()
+        #expect(flow.aylaFill == .reading)
+        flow.remove(pdf)
+        #expect(flow.aylaFill == .idle)
+        #expect(flow.fillTask == nil)
+    }
+
+    @Test func aylaSeesThePageOfAPDFAndCutsOnlyWhatSheMarked() async throws {
+        let page = UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: 595, height: 842)).pdfData { context in
+            context.beginPage()
+            UIColor.systemOrange.setFill()
+            context.fill(CGRect(x: 30, y: 30, width: 120, height: 60))
+            ("Certificaat Professional Scrum Master I, behaald op 12 juni 2025" as NSString)
+                .draw(at: CGPoint(x: 40, y: 200), withAttributes: [.font: UIFont.systemFont(ofSize: 14)])
+        }
+        let certificate = VaultUpload(data: page, fileName: "psm.pdf", mimeType: "application/pdf")
+        let jpeg = UIGraphicsImageRenderer(size: CGSize(width: 400, height: 300)).jpegData(withCompressionQuality: 0.8) { context in
+            UIColor.systemTeal.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 400, height: 300))
+        }
+        let photo = VaultUpload(data: jpeg, fileName: "uitreiking.jpeg", mimeType: "image/jpeg")
+        let documents = await VaultEvidenceReader.read([certificate, photo]).documents
+        #expect(documents[0].text?.contains("Scrum Master") == true)
+        #expect(documents[0].image != nil)
+        #expect(documents[1].image != nil)
+
+        let box = VaultEvidenceProposal.Box(x: 0.04, y: 0.03, width: 0.22, height: 0.09)
+        let logo = try #require(VaultAddEvidenceModel.part(of: [certificate], at: 0, box: box).flatMap(UIImage.init(data:)))
+        #expect(abs(logo.size.width / logo.size.height - (0.22 * 595) / (0.09 * 842)) < 0.1)
+        // A whole PDF page is a document, never a logo or a cover; a whole photo may be.
+        #expect(VaultAddEvidenceModel.part(of: [certificate], at: 0, box: nil) == nil)
+        #expect(VaultAddEvidenceModel.part(of: [photo], at: 0, box: nil) != nil)
+        #expect(VaultAddEvidenceModel.part(of: [photo], at: 3, box: nil) == nil)
+    }
+
+    @Test func documentsAreCountedAgainForTheNextItem() {
+        let proposal = VaultEvidenceProposal(category: .projects, title: "Project", documents: [2, 4], coverDocument: 4, logoDocument: 1)
+        let renumbered = VaultAddEvidenceModel.renumbered(proposal, to: [2, 4])
+        #expect(renumbered.documents == [0, 1])
+        #expect(renumbered.coverDocument == 1)
+        #expect(renumbered.logoDocument == nil)
     }
 
     @Test func aFileGivesTheTitleAFirstGuess() async {
@@ -185,6 +356,86 @@ struct VaultAddEvidenceTests {
         #expect(await service.aylaAllowed == ["item-2"])
     }
 
+    private func vaultWithFolders(_ service: FakeVault) async -> VaultModel {
+        await service.store(VaultContents(
+            items: [VaultItem(id: "i", folderIDs: ["a", "c"], category: .projects, title: "App")],
+            folders: [VaultFolder(id: "a", name: "A"), VaultFolder(id: "b", name: "B"), VaultFolder(id: "c", name: "C")]
+        ))
+        let model = VaultModel(service: service)
+        await model.load()
+        return model
+    }
+
+    @Test func draggingOutOfAFolderMovesButFromTheVaultOnlyAdds() async {
+        let service = FakeVault()
+        let model = await vaultWithFolders(service)
+        let item = model.items[0]
+        await model.move(item, to: model.folders[1], from: "a")
+        #expect(await service.moved["i"] == ["c", "b"])
+        await model.move(item, to: model.folders[1], from: nil)
+        #expect(await service.moved["i"] == ["a", "c", "b"])
+    }
+
+    @Test func aDroppedFolderTakesThePlaceOfTheOther() async {
+        UserDefaults.standard.removeObject(forKey: "vaultFolderOrder")
+        defer { UserDefaults.standard.removeObject(forKey: "vaultFolderOrder") }
+        let service = FakeVault()
+        let model = await vaultWithFolders(service)
+        await model.moveFolder("c", onto: "a")
+        #expect(model.folders.map(\.id) == ["c", "a", "b"])
+        #expect(await service.orders == [["c", "a", "b"]])
+
+        // Without the column the order stays on this device and survives loading again.
+        await service.dropOrderColumn()
+        await model.moveFolder("b", onto: "c")
+        await model.load()
+        #expect(model.folders.map(\.id) == ["b", "c", "a"])
+    }
+
+    @Test func draggedCardsKeepTheirOrderAroundTheOthers() async {
+        UserDefaults.standard.removeObject(forKey: "vaultItemOrder")
+        defer { UserDefaults.standard.removeObject(forKey: "vaultItemOrder") }
+        let service = FakeVault()
+        let day = { (d: Int) in VaultDay(year: 2025, month: 1, day: d) }
+        await service.store(VaultContents(items: [
+            VaultItem(id: "a", folderIDs: ["f"], category: .projects, title: "A", issuedOn: day(4)),
+            VaultItem(id: "b", category: .projects, title: "B", issuedOn: day(3)),
+            VaultItem(id: "c", folderIDs: ["f"], category: .projects, title: "C", issuedOn: day(2)),
+            VaultItem(id: "d", category: .projects, title: "D", issuedOn: day(1)),
+        ]))
+        let model = VaultModel(service: service)
+        await model.load()
+        // In folder f only a and c show: c goes first, and b and d keep their places.
+        await model.setItemOrder(["c", "a"])
+        #expect(await service.itemOrders == [["c", "b", "a", "d"]])
+        var custom = VaultFilter()
+        custom.order = .custom
+        #expect(custom.apply(to: model.items).map(\.id) == ["c", "b", "a", "d"])
+
+        await service.dropOrderColumn()
+        await model.setItemOrder(["d", "c"])
+        await model.load()
+        #expect(custom.apply(to: model.items).map(\.id) == ["d", "b", "a", "c"])
+    }
+
+    @Test func aClosedDraftComesBackForHalfAMinuteOnce() {
+        let model = VaultModel(service: FakeVault())
+        let flow = VaultAddEvidenceModel(vault: model, category: .projects, folderID: nil)
+        let start = Date.now
+        model.keepDraft(flow, now: start)
+        #expect(model.takeDraft(now: start) == nil)
+
+        flow.draft.title = "Eindstage"
+        model.keepDraft(flow, now: start)
+        let back = model.takeDraft(now: start.addingTimeInterval(20))
+        #expect(back === flow)
+        #expect(back?.isResumed == true)
+        #expect(model.takeDraft(now: start.addingTimeInterval(21)) == nil)
+
+        model.keepDraft(flow, now: start)
+        #expect(model.takeDraft(now: start.addingTimeInterval(31)) == nil)
+    }
+
     @Test func anAccountWithoutFoldersGetsTheExampleFoldersOnce() async {
         UserDefaults.standard.removeObject(forKey: VaultModel.exampleFoldersKey)
         defer { UserDefaults.standard.removeObject(forKey: VaultModel.exampleFoldersKey) }
@@ -275,7 +526,7 @@ struct VaultAddEvidenceTests {
     @Test func aylaProposesSkillsOnlyWhenAsked() async {
         let ayla = VaultAylaSkills(vault: VaultModel(service: FakeVault()))
         #expect(ayla.state == .idle)
-        await ayla.ask(for: VaultItemDraft(category: .projects), existing: [])
+        await ayla.ask(for: VaultItemDraft(category: .projects), chosen: [])
         #expect(ayla.state == .loaded([VaultSkillSuggestion(name: "Presenteren", reason: "Je gaf een eindpresentatie")]))
     }
 
@@ -295,7 +546,7 @@ struct VaultAddEvidenceTests {
         flow.pick(.success(VaultUpload(data: large, fileName: "certificaat.jpeg", mimeType: "image/jpeg")))
         flow.draft.title = "Eindstage"
 
-        await flow.ayla.ask(for: flow.draft, existing: [])
+        await flow.ayla.ask(for: flow.draft, chosen: [])
         let material = await service.material.first
         #expect(material?.texts.first?.text.contains("front-end van drie campagnes") == true)
         #expect(material?.images.map(\.name) == ["certificaat.jpeg"])

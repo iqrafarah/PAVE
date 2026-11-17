@@ -112,6 +112,60 @@ enum VaultMessages {
         }
     }
 
+    // "Laat Ayla invullen"
+    static let aylaFillTitle = "Laat Ayla invullen"
+    static let aylaFillButtonReading = "Ayla leest…"
+    static let aylaFillReading = "Ayla leest je bestanden en vult alvast in…"
+    static let aylaFillStop = "Zelf invullen"
+    static let aylaFillAgain = "Opnieuw proberen"
+    static let aylaFillEmpty = "Ayla kon niets uit je bestand halen. Vul het zelf in."
+    static let aylaFilledTitle = "Ayla heeft dit ingevuld"
+    static let aylaFilledMessage = "Controleer alles voordat je verdergaat. Wat Ayla niet in je bestand zag, is leeg gebleven."
+    static let aylaFilledAnnouncement = "Ayla heeft het bewijs ingevuld. Controleer de velden."
+    static let aylaSplitOne = "Eén bewijs"
+    static let aylaSplitApart = "Apart toevoegen"
+    static let nextEvidence = "Volgende bewijs"
+    static let nextEvidenceSkip = "Klaar"
+
+    static let dragToFolder = "Laat los op een map om het daarheen te verplaatsen."
+
+    static func movedInto(_ title: String, folder: String) -> String {
+        "\(title) staat nu in \(folder)."
+    }
+    static let draftBack = "Je concept is terug, zoals je het net achterliet."
+    static let draftStartOver = "Opnieuw beginnen"
+    static let aylaCoverNote = "Foto uit je document, gekozen door Ayla"
+
+    static func aylaFill(_ error: VaultError) -> String {
+        switch error {
+        case .notSetUp: "Invullen door Ayla is nog niet beschikbaar. Vul het zelf in."
+        case .noConnection: "Geen verbinding. Probeer het zo nog een keer, of vul het zelf in."
+        default: "Ayla kon je bestand nu niet lezen. Probeer het zo nog een keer, of vul het zelf in."
+        }
+    }
+
+    /// "Door Ayla · pagina 1": short, so it fits under a field in two columns.
+    static func filledByAyla(source: String?) -> String {
+        source.map { "Door Ayla · \($0)" } ?? "Ingevuld door Ayla"
+    }
+
+    static func aylaSplitTitle(_ titles: [String]) -> String {
+        let list = titles.count > 1 ? titles.dropLast().joined(separator: ", ") + " en " + titles[titles.count - 1] : titles.first ?? ""
+        return "Ayla ziet \(titles.count) bewijzen: \(list)."
+    }
+
+    static func aylaSplitHint(apart: Bool, first: String) -> String {
+        apart ? "Je voegt ze na elkaar toe, elk al ingevuld. Eerst \(first)." : "Al je bestanden komen bij dit ene bewijs."
+    }
+
+    static func aylaLogoNote(source: String?) -> String {
+        source.map { "Logo van \($0), gevonden door Ayla" } ?? "Logo uit je document, gekozen door Ayla"
+    }
+
+    static func nextEvidenceNote(_ title: String) -> String {
+        "Ga verder met \(title), al ingevuld door Ayla. Of kies Klaar om te stoppen."
+    }
+
     static let added = "Bewijs toegevoegd"
     static let addedMessage = "Het staat als Niet bevestigd in je kluis, tot een school of werkgever het bevestigt."
     static let saving = "Toevoegen…"
@@ -264,6 +318,7 @@ extension VaultFilter.Order {
         switch self {
         case .newest: "Nieuwste eerst"
         case .oldest: "Oudste eerst"
+        case .custom: "Eigen volgorde"
         }
     }
 }

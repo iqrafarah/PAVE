@@ -12,6 +12,8 @@ public enum AylaVaultOffer {
 
     // Computed: a Regex is not Sendable, so it cannot be a shared constant.
     private static var addWords: Regex<Substring> { #/toevoeg|aanvul|bewaar|opsla|\bzet/# }
+    private static var openWords: Regex<Substring> { #/^(?:wat|welke?|hoe|wanneer|waar\w*|wie|waarom|hoeveel|hoelang)\b/#.ignoresCase() }
+    private static var consentAsk: Regex<Substring> { #/\bmag ik\b[^.?!]*\bkluis\b[^.?!]*\bkijken\b/#.ignoresCase() }
     private static var yesLabel: Regex<(Substring, Substring)> { #/^(ja|jazeker|ja graag|graag|ja,? graag|ja,? toevoegen|toevoegen|yes)\b/#.ignoresCase() }
 
     /// The question under Ayla's answer: her own, or "Wil je iets toevoegen?" when she answers about the vault without it.
@@ -19,17 +21,109 @@ public enum AylaVaultOffer {
     public static func question(for reply: AylaReply?, asked: String) -> AylaReply.Question? {
         guard let reply else { return nil }
         if let question = reply.question { return question }
-        return isVaultQuestion(reply, asked: asked) ? question : nil
+        guard isVaultQuestion(reply, asked: asked) else { return nil }
+        switch lastQuestion(in: reply.text) {
+        // "Wat wil je toevoegen?": the user answers in words.
+        case .open: return nil
+        // "Zal ik het toevoegen?": Ja and Nee, without asking it again.
+        case .yesNo: return AylaReply.Question(text: "", choices: question.choices)
+        case nil: return question
+        }
     }
 
-    /// Whether Ja to the question opens adding evidence.
+    /// Whether Ja to the question opens adding evidence. Not when Ayla asked whether she may look in the vault.
     public static func offersToAddEvidence(_ reply: AylaReply?, asked: String) -> Bool {
         guard let reply, reply.accessRequest == nil else { return false }
         if reply.navigation?.screen == .addEvidence || reply.proposedAction?.kind == .addVaultItem { return true }
-        if isVaultQuestion(reply, asked: asked) { return true }
-        guard let question = reply.question else { return false }
+        if isVaultQuestion(reply, asked: asked) { return lastQuestion(in: reply.text) != .open }
+        guard let question = reply.question, !question.text.contains(consentAsk) else { return false }
         let words = "\(question.text) \(reply.text)".lowercased()
         return words.contains("kluis") && words.contains(addWords)
+    }
+
+    /// Ayla's last question is whether she may put it in the vault ("Zal ik deze stage zo in je kluis zetten?"), not a
+    /// question about a detail of it. Only then does a yes in words count as the confirmation to save.
+    public static func asksToPutInVault(_ reply: AylaReply?) -> Bool {
+        guard let reply, reply.accessRequest == nil else { return false }
+        let text = [reply.text, reply.question?.text].compactMap { $0 }.joined(separator: " ")
+        guard let last = sentences(of: text).last(where: { $0.hasSuffix("?") })?.lowercased() else { return false }
+        return last.contains("kluis") && last.contains(addWords) && !last.contains(openWords)
+    }
+
+    public enum LastQuestion: Equatable {
+        case open
+        case yesNo
+    }
+
+    /// Ayla's last question: one the user answers in words, or one answered with Ja or Nee. A sentence after it
+    /// ("Bijvoorbeeld een diploma.") does not change that.
+    public static func lastQuestion(in text: String) -> LastQuestion? {
+        guard let last = sentences(of: text).last(where: { $0.hasSuffix("?") }) else { return nil }
+        return last.contains(openWords) ? .open : .yesNo
+    }
+
+    private static func sentences(of text: String) -> [String] {
+        var result: [String] = []
+        var current = ""
+        for character in text {
+            if character.isNewline {
+                result.append(current)
+                current = ""
+                continue
+            }
+            current.append(character)
+            if ".!?".contains(character) {
+                result.append(current)
+                current = ""
+            }
+        }
+        result.append(current)
+        return result.map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+    }
+
+    /// Ayla's text already contains her question (older conversations, or a model that asked it twice), so the question
+    /// is not shown a second time. Case and the punctuation at the end do not count.
+    public static func isAlreadyAsked(_ question: String, in text: String) -> Bool {
+        let asked = normalized(question)
+        return !asked.isEmpty && normalized(text).contains(asked)
+    }
+
+    private static func normalized(_ text: String) -> String {
+        text.lowercased()
+            .replacingOccurrences(of: #"[?.!…\s]+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespaces)
+    }
+
+    /// A short answer in words that says yes to what Ayla proposed ("Graag", "Zet er maar in", "Ja dat klopt"). Not when
+    /// it also holds a reservation ("ja, maar eerst de datum aanpassen"), a question, or more than a few words.
+    public static func isConfirmation(_ text: String) -> Bool {
+        let cleaned = text.lowercased()
+            .replacingOccurrences(of: #"[.,!…]+"#, with: " ", options: .regularExpression)
+            .split(whereSeparator: \.isWhitespace)
+            .map(String.init)
+        guard !cleaned.isEmpty, cleaned.count <= 7, !text.contains("?") else { return false }
+        let reservations: Set<String> = ["nee", "niet", "geen", "wacht", "eerst", "aanpassen", "verander", "veranderen", "anders", "nog", "toch", "alleen"]
+        guard cleaned.allSatisfy({ !reservations.contains($0) }), !(cleaned.count > 1 && cleaned[1] == "maar") else { return false }
+        let starters: Set<String> = ["ja", "jazeker", "graag", "klopt", "prima", "oké", "oke", "ok", "okay", "top", "goed", "perfect", "zeker", "natuurlijk", "yes", "akkoord", "doen", "doe", "zet", "toevoegen", "bewaar", "sla", "mooi"]
+        return starters.contains(cleaned[0])
+    }
+
+    private static var noLabel: Regex<(Substring, Substring)> { #/^(nee|nee,? dank je|liever niet|niet nu|no)\b/#.ignoresCase() }
+
+    public static func isNo(_ label: String) -> Bool {
+        label.trimmingCharacters(in: .whitespacesAndNewlines).prefixMatch(of: noLabel) != nil
+    }
+
+    /// Ayla's last question is one for Ja or Nee: not a question for words ("Wat wil je toevoegen?") and not a choice
+    /// between things ("Wil je een diploma of een stage toevoegen?").
+    /// Ayla's last question in her text, if she asked one.
+    public static func lastQuestionSentence(in text: String) -> String? {
+        sentences(of: text).last(where: { $0.hasSuffix("?") })
+    }
+
+    public static func endsWithYesNoQuestion(_ text: String) -> Bool {
+        guard let last = sentences(of: text).last(where: { $0.hasSuffix("?") }) else { return false }
+        return !last.contains(openWords) && !last.lowercased().contains(" of ")
     }
 
     public static func isYes(_ label: String) -> Bool {

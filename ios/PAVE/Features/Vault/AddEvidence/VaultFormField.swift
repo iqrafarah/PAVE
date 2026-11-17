@@ -1,11 +1,13 @@
 import SwiftUI
 
-/// A label above a bordered field, with a green star when it is required and a message below when it is missing.
+/// A label above a bordered field, with a green star when it is required and a message below when it is missing. A
+/// field Ayla filled in says so below it ("Door Ayla · pagina 1"), until the user changes it.
 struct VaultFormField<Content: View>: View {
     let title: String
     var isRequired = true
     var error: String?
     var minHeight: CGFloat = 44
+    var note: String?
     @ViewBuilder let content: Content
 
     var body: some View {
@@ -23,12 +25,18 @@ struct VaultFormField<Content: View>: View {
                         .strokeBorder(error == nil ? Color.railBorder : .critical, lineWidth: error == nil ? 1 : 1.5)
                 }
                 .accessibilityLabel(isRequired ? "\(title), verplicht" : title)
+                .accessibilityHint(note.map(VaultAylaNote.spoken) ?? "")
             if let error {
                 PaveInlineError(message: error)
                     .transition(.opacity.combined(with: .move(edge: .top)))
+            } else if let note {
+                VaultAylaNote(text: note)
+                    .accessibilityHidden(true)
+                    .transition(.opacity)
             }
         }
         .animation(.easeOut(duration: 0.2), value: error)
+        .animation(.easeOut(duration: 0.2), value: note)
     }
 }
 

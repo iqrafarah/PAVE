@@ -23,7 +23,7 @@ struct VaultFilterBar: View {
                         Toggle(origin.title, isOn: choice($filter.origin, origin))
                     }
                 }
-                Section("Datum") {
+                Section("Volgorde") {
                     ForEach(VaultFilter.Order.allCases, id: \.self) { order in
                         Toggle(order.title, isOn: Binding(get: { filter.order == order }, set: { if $0 { filter.order = order } }))
                     }

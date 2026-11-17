@@ -3,12 +3,17 @@ import SwiftUI
 extension View {
     /// How PAVE presents a sheet. On a phone it slides up but stops beside the status column of the iPhone Duo's outer
     /// display instead of running under it. On wider screens (iPad, the open iPhone Duo) it is a card in the middle.
-    func paveSheet() -> some View {
-        modifier(PaveSheet())
+    /// `background` is the colour of the page in it: the sheet itself takes it too, so where the system still shows the
+    /// sheet (beside the status column, at a lower height) it is the same surface instead of glass or white.
+    /// `clipsToColumn` off lets the content draw into the status column too, for a page that puts buttons there.
+    func paveSheet(background: Color? = nil, clipsToColumn: Bool = true) -> some View {
+        modifier(PaveSheet(background: background, clipsToColumn: clipsToColumn))
     }
 }
 
 private struct PaveSheet: ViewModifier {
+    let background: Color?
+    let clipsToColumn: Bool
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     private static let cornerRadius: CGFloat = 25
@@ -29,8 +34,9 @@ private struct PaveSheet: ViewModifier {
                         style: .continuous
                     )
                     .padding(.bottom, -200)
+                    .padding(.horizontal, clipsToColumn ? 0 : -200)
                 }
-            .presentationBackground(.clear)
+            .presentationBackground(background ?? .clear)
             .presentationCornerRadius(Self.cornerRadius)
         }
     }

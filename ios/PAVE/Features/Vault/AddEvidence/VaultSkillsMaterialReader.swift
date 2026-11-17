@@ -3,8 +3,8 @@ import PAVECore
 import PDFKit
 import UIKit
 
-/// Reads the documents of an evidence item into what Ayla can look at: the text of a PDF or text file, and a small photo
-/// of an image or of a PDF without text (a scan). A Word file cannot be read here and is left out.
+/// Reads the documents of an evidence item into what Ayla can look at: the text of a PDF, Word (.docx) or text file, and a
+/// small photo of an image or of a PDF without text (a scan). An old Word file (.doc) cannot be read here and is left out.
 enum VaultSkillsMaterialReader {
     nonisolated static let photoSide: CGFloat = 1024
     /// A PDF with less text than this is probably a scan: Ayla gets a photo of its first page instead.
@@ -27,6 +27,7 @@ enum VaultSkillsMaterialReader {
     nonisolated static func text(of upload: VaultUpload) -> String? {
         let raw: String? = switch upload.mimeType {
         case "application/pdf": PDFDocument(data: upload.data)?.string
+        case "application/vnd.openxmlformats-officedocument.wordprocessingml.document": VaultWordText.text(of: upload.data)
         case "text/plain": String(data: upload.data, encoding: .utf8) ?? String(data: upload.data, encoding: .isoLatin1)
         default: nil
         }
@@ -36,8 +37,8 @@ enum VaultSkillsMaterialReader {
         return String(clean.prefix(VaultSkillsMaterial.maximumTextLength))
     }
 
-    nonisolated static func photo(of upload: VaultUpload) -> Data? {
-        let size = CGSize(width: photoSide, height: photoSide)
+    nonisolated static func photo(of upload: VaultUpload, side: CGFloat = photoSide) -> Data? {
+        let size = CGSize(width: side, height: side)
         let image: UIImage?
         if upload.isImage, let original = UIImage(data: upload.data) {
             image = original.preparingThumbnail(of: fitting(original.size, in: size))

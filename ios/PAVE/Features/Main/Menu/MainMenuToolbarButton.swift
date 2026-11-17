@@ -14,6 +14,7 @@ struct MainMenuToolbarButton: View {
         } label: {
             Image(.iconMenu)
                 .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { reportFrame($0) }
+                .paveToolbarHitArea()
         }
         .accessibilityLabel("Menu")
     }

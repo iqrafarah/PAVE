@@ -38,7 +38,7 @@ struct MainView: View {
     private static let sidebarSize: CGFloat = 320
 
     init(service: (any AylaService)?, vaultService: (any VaultService)?, devicesService: (any DevicesService)? = nil, profileService: (any ProfileService)? = nil) {
-        _model = State(initialValue: AylaChatModel(service: service, drafts: .standard))
+        _model = State(initialValue: AylaChatModel(service: service, drafts: .standard, pendingFiles: .standard))
         _memory = State(initialValue: AylaMemoryModel(service: service))
         _vault = State(initialValue: VaultModel(service: vaultService))
         _devices = State(initialValue: SignedInDevicesModel(service: devicesService))
@@ -47,29 +47,21 @@ struct MainView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            Group {
-                if let fold = proxy.foldSplit(), fold.axis == .sideBySide {
-                    SplitPanes(split: fold) {
-                        sidebar(width: fold.first.width, canHide: false)
-                    } second: {
-                        screen(onShowMenu: nil)
-                    }
-                    .background(Color.canvas.ignoresSafeArea())
-                    .onAppear { isMenuOpen = false }
-                } else if hasSidebar {
-                    HStack(spacing: 0) {
-                        if !isSidebarHidden {
-                            sidebar(width: Self.sidebarSize, canHide: true)
-                                .transition(.move(edge: .leading))
-                        }
-                        screen(onShowMenu: isSidebarHidden ? { setSidebarHidden(false) } : nil)
-                    }
-                    .background(Color.canvas.ignoresSafeArea())
-                } else {
-                    // On the outer display of iPhone Duo the open menu draws its own close button in the menu button's
-                    // place; the real one hides meanwhile, so no second glass circle shows underneath.
-                    screen(onShowMenu: menuReplacesButtons ? nil : { isMenuOpen.toggle() })
-                        .overlay {
+            // One layout for every shape of screen, with the screen always in the same place in it: folding, turning
+            // or resizing only moves it, so what is open on it (a sheet, a half-filled form) stays open.
+            let fold = proxy.foldSplit().flatMap { $0.axis == .sideBySide ? $0 : nil }
+            let docksSidebar = fold == nil && hasSidebar && !isSidebarHidden
+            let usesDrawer = fold == nil && !hasSidebar
+            ZStack(alignment: .topLeading) {
+                screen(onShowMenu: menuAction(fold: fold))
+                    .frame(width: fold?.second.width, height: fold?.second.height)
+                    .offset(x: fold?.second.minX ?? 0, y: fold?.second.minY ?? 0)
+                    .padding(.leading, docksSidebar ? Self.sidebarSize : 0)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .overlay {
+                        // On the outer display of iPhone Duo the open menu draws its own close button in the menu
+                        // button's place; the real one hides meanwhile, so no second glass circle shows underneath.
+                        if usesDrawer {
                             MainMenuDrawer(
                                 isPresented: $isMenuOpen,
                                 selection: destination,
@@ -77,12 +69,26 @@ struct MainView: View {
                                 menuButtonFrame: menuButtonFrame,
                                 onSelect: open,
                                 onNewConversation: startNewConversation,
+                                onShowChats: openChats,
                                 onSignOut: appState.signOut
                             )
                         }
+                    }
+                if let fold {
+                    sidebar(width: fold.first.width, canHide: false)
+                        .frame(width: fold.first.width, height: fold.first.height)
+                        .offset(x: fold.first.minX, y: fold.first.minY)
+                } else if docksSidebar {
+                    sidebar(width: Self.sidebarSize, canHide: true)
+                        .transition(.move(edge: .leading))
                 }
             }
-            .onChange(of: proxy.foldSplit() != nil, initial: true) { _, folded in isFolded = folded }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(Color.canvas.ignoresSafeArea())
+            .onChange(of: fold != nil, initial: true) { _, folded in
+                isFolded = folded
+                if folded { isMenuOpen = false }
+            }
         }
         // Your look from Instellingen: the photo in the menu, the text size, and the name Ayla uses.
         .environment(profile)
@@ -94,6 +100,8 @@ struct MainView: View {
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .environment(\.reportMenuButtonFrame) { menuButtonFrame = $0 }
         .environment(\.hidesScreenButtons, menuReplacesButtons)
+        .environment(\.toolbarIsBeside, MainMenuDrawer.isButtonBeside(menuButtonFrame))
+        .environment(\.menuButtonFrame, menuButtonFrame)
         .environment(\.chatSearchRequestedAt, chatSearchRequestedAt)
         .focusedSceneValue(\.paveActions, keyboardActions)
         .tint(.paveAccent)
@@ -163,6 +171,13 @@ struct MainView: View {
         model.wantsToTalk = true
     }
 
+    /// The chats, from the menu on any screen.
+    private func openChats() {
+        destination = .ayla
+        isMenuOpen = false
+        showsChats = true
+    }
+
     private func searchChats() {
         destination = .ayla
         isMenuOpen = false
@@ -204,6 +219,14 @@ struct MainView: View {
                 }
                 .ignoresSafeArea()
         }
+    }
+
+    /// Next to a fold the menu is always there; next to a hidden sidebar the button brings it back; otherwise it opens
+    /// the menu over the screen.
+    private func menuAction(fold: FoldSplit?) -> (() -> Void)? {
+        if fold != nil { return nil }
+        if hasSidebar { return isSidebarHidden ? { setSidebarHidden(false) } : nil }
+        return menuReplacesButtons ? nil : { isMenuOpen.toggle() }
     }
 
     /// The open menu has taken over the buttons in the bar along the side (outer display of iPhone Duo).

@@ -71,8 +71,11 @@ Deno.serve(async (req) => {
 
   /** Stores the question and the answer together, and touches the conversation. */
   const save = async (reply: AylaReply) => {
+    // A user message keeps only the names of its files in `reply`, so the chat shows them again; the files' text
+    // is never stored.
+    const attachments = request.attachments?.length ? { attachments: request.attachments.map((file) => file.name) } : null
     const { error } = await supabase.from('ayla_messages').insert([
-      { conversation_id: conversationId, role: 'user', text: request.text, device: request.device },
+      { conversation_id: conversationId, role: 'user', text: request.text, device: request.device, reply: attachments },
       { conversation_id: conversationId, role: 'ayla', text: reply.text, device: request.device, reply },
     ])
     if (error) return false

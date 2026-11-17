@@ -24,13 +24,19 @@ final class VaultAylaSkills {
         self.vault = vault
     }
 
-    func ask(for draft: VaultItemDraft, existing: [String]) async {
+    /// Ayla's skills from "Laat Ayla invullen": shown at once, without asking her again.
+    func use(_ suggestions: [VaultSkillSuggestion], lookedAtFiles: Int) {
+        self.lookedAtFiles = lookedAtFiles
+        state = .loaded(suggestions)
+    }
+
+    func ask(for draft: VaultItemDraft, chosen: [String]) async {
         guard state != .loading else { return }
         state = .loading
         SupabaseVaultService.lastFailure = nil
         do {
             let material = await VaultSkillsMaterialReader.read(await documents())
-            let suggestions = try await vault.suggestSkills(for: draft, material: material, existing: existing)
+            let suggestions = try await vault.suggestSkills(for: draft, material: material, chosen: chosen)
             lookedAtFiles = material.fileCount
             state = .loaded(suggestions)
         } catch {

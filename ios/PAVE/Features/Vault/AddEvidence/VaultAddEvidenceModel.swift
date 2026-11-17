@@ -6,7 +6,7 @@ import PAVECore
 /// Vaardigheden and Toestemming. Nothing is saved until the skills step; after that the item exists and only what is
 /// still missing is tried again.
 @Observable
-final class VaultAddEvidenceModel {
+final class VaultAddEvidenceModel: Identifiable {
     enum Page: Int, Comparable {
         case source
         case details
@@ -54,9 +54,42 @@ final class VaultAddEvidenceModel {
     private(set) var coverWaits = false
     private(set) var logoWaits = false
 
+    // MARK: "Laat Ayla invullen" (see VaultAddEvidenceModel+Fill)
+
+    enum AylaFill: Equatable {
+        case idle
+        case reading
+        case filled
+        case failed(String)
+    }
+
+    /// Evidence Ayla proposed but that is added after this one, with its own documents.
+    struct NextEvidence {
+        let proposal: VaultEvidenceProposal
+        let documents: [VaultUpload]
+    }
+
+    var aylaFill = AylaFill.idle
+    /// What Ayla filled in, while it is used.
+    var aylaProposal: VaultEvidenceProposal?
+    /// The draft as Ayla left it: a field still the same is marked as hers.
+    var aylaDraft: VaultItemDraft?
+    /// The documents Ayla read, in the order she numbered them.
+    var aylaDocuments: [VaultUpload] = []
+    /// All items Ayla saw; more than one offers to add them apart.
+    var aylaProposals: [VaultEvidenceProposal] = []
+    var addsApart = false
+    /// Where the logo came from: a website such as "coolblue.nl", or nil when it came from a document.
+    var aylaLogoSource: String?
+    var aylaChoseLogo = false
+    var aylaChoseCover = false
+    var fillTask: Task<Void, Never>?
+    /// What to add after this one, when the user chose to add Ayla's items apart.
+    var nextEvidence: [NextEvidence] = []
+
     private var savedParts: Set<Part> = []
     private let initialDraft: VaultItemDraft
-    private let vault: VaultModel
+    let vault: VaultModel
     /// New evidence goes in the folder of its kind (a project in Projecten) and in the folder you add it from. The
     /// folder of the kind follows when you change the kind, until you choose folders yourself.
     private var folderFollowsCategory = true
@@ -64,8 +97,16 @@ final class VaultAddEvidenceModel {
     /// The kind has no folder yet: one with its name (such as Stages) is made when you save, unless you untick it.
     private(set) var newKindFolder: String?
 
+    /// What it started with, to start over from a draft that came back.
+    let startCategory: VaultCategory
+    let startFolderID: String?
+    /// This is a draft that was closed a moment ago and came back.
+    var isResumed = false
+
     init(vault: VaultModel, category: VaultCategory, folderID: String?) {
         self.vault = vault
+        startCategory = category
+        startFolderID = folderID
         ayla = VaultAylaSkills(vault: vault)
         let kindFolder = VaultExampleFolders.folder(for: category, in: vault.folders)?.id
         kindFolderID = kindFolder
@@ -131,13 +172,17 @@ final class VaultAddEvidenceModel {
         switch result {
         case .success(let upload) where upload.role == .cover:
             cover = upload
+            aylaChoseCover = false
             problem = nil
         case .success(let upload) where upload.role == .logo:
             logo = upload
+            aylaChoseLogo = false
+            aylaLogoSource = nil
             problem = nil
         case .success(let upload):
             guard canAddDocument, !documents.contains(upload) else { return }
             documents.append(upload)
+            documentsChangedByUser()
             if draft.title.trimmingCharacters(in: .whitespaces).isEmpty {
                 draft.title = String(upload.suggestedTitle.prefix(VaultItemDraft.maximumTitleLength))
             }
@@ -150,11 +195,31 @@ final class VaultAddEvidenceModel {
 
     func remove(_ upload: VaultUpload) {
         documents.removeAll { $0 == upload }
+        documentsChangedByUser()
     }
 
-    func removeCover() { cover = nil }
+    /// Ayla's choice of documents, when her items are added apart.
+    func setDocuments(_ uploads: [VaultUpload]) {
+        documents = uploads
+    }
 
-    func removeLogo() { logo = nil }
+    func setCover(_ upload: VaultUpload?) {
+        cover = upload
+        wantsCover = upload != nil
+    }
+
+    func setLogo(_ upload: VaultUpload?) { logo = upload }
+
+    func removeCover() {
+        cover = nil
+        aylaChoseCover = false
+    }
+
+    func removeLogo() {
+        logo = nil
+        aylaChoseLogo = false
+        aylaLogoSource = nil
+    }
 
     // MARK: Skills
 
@@ -271,6 +336,14 @@ final class VaultAddEvidenceModel {
         }
     }
 
+    /// Saving from the chat without the form, once the user said yes to what Ayla proposed. False when something
+    /// required is missing or the save failed: the form then opens, so nothing is saved halfway unseen.
+    func saveFromChat() async -> Bool {
+        guard savedItemID == nil, draft.problem == nil, draft.missingFields.isEmpty, !(wantsCover && cover == nil) else { return false }
+        await save()
+        return savedItemID != nil && problem == nil
+    }
+
     /// Afronden: only a ticked box changes anything; Ayla stays out otherwise.
     func finish() async -> Bool {
         guard let savedItemID, allowsAyla else { return true }
@@ -287,7 +360,7 @@ final class VaultAddEvidenceModel {
         }
     }
 
-    private func go(to page: Page) {
+    func go(to page: Page) {
         movesForward = page > self.page
         self.page = page
     }

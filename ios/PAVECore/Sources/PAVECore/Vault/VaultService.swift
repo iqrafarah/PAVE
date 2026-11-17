@@ -26,11 +26,34 @@ public protocol VaultService: Sendable {
     func updateFolder(id: String, name: String, color: VaultFolderColor, icon: VaultFolderIcon) async throws -> Bool
     /// The items in the folder stay in the vault.
     func deleteFolder(id: String) async throws
+    /// The folders in this order, the same on every device. Refused with `missingColumn` until `vault_folders` has a
+    /// `position` (migration 20261113120000).
+    func setFolderOrder(_ folderIDs: [String]) async throws
+    /// "Eigen volgorde": each item at its place in this list. Refused with `missingColumn` like the folder order.
+    func setItemOrder(_ itemIDs: [String]) async throws
     /// Removes one file of an item: first from storage, then its row.
     func removeFile(_ file: VaultItem.File) async throws
     func removeSkills(_ names: [String], from itemID: String) async throws
     /// "Voorstel van Ayla": skills that fit the evidence. Only the fields of the draft go to Ayla, on request.
-    func suggestSkills(for draft: VaultItemDraft, material: VaultSkillsMaterial, existing: [String]) async throws -> [VaultSkillSuggestion]
+    /// `existing` are the skills already chosen for this evidence; `known` the other skills in the vault, which Ayla may
+    /// propose again, written the same way.
+    func suggestSkills(for draft: VaultItemDraft, material: VaultSkillsMaterial, existing: [String], known: [String]) async throws -> [VaultSkillSuggestion]
+    /// "Laat Ayla invullen": the whole item, read from the documents. Only on request; nothing is stored.
+    func proposeEvidence(from documents: [VaultEvidenceDocument], folders: [String], known: [String]) async throws -> [VaultEvidenceProposal]
+}
+
+public extension VaultService {
+    func setFolderOrder(_ folderIDs: [String]) async throws {
+        throw VaultError.missingColumn
+    }
+
+    func setItemOrder(_ itemIDs: [String]) async throws {
+        throw VaultError.missingColumn
+    }
+
+    func proposeEvidence(from documents: [VaultEvidenceDocument], folders: [String], known: [String]) async throws -> [VaultEvidenceProposal] {
+        throw VaultError.unavailable
+    }
 }
 
 public enum VaultError: Error, Equatable, Sendable {
@@ -93,12 +116,8 @@ public struct SupabaseVaultService: VaultService {
             restURL.appending(path: "vault_items"),
             query: [("select", select), ("order", "updated_at.desc")]
         )
-        let folderRequest = try await request(
-            restURL.appending(path: "vault_folders"),
-            query: [("select", "*"), ("order", "created_at.asc")]
-        )
         async let itemData = send(itemRequest)
-        async let folderData = send(folderRequest)
+        async let folderData = folderRows()
         let (items, folders) = try await (itemData, folderData)
         guard
             let itemRows = try? JSONDecoder().decode([ItemRow].self, from: items),
@@ -204,13 +223,14 @@ public struct SupabaseVaultService: VaultService {
         ), accepting: [200, 204])
     }
 
-    public func suggestSkills(for draft: VaultItemDraft, material: VaultSkillsMaterial, existing: [String]) async throws -> [VaultSkillSuggestion] {
+    public func suggestSkills(for draft: VaultItemDraft, material: VaultSkillsMaterial, existing: [String], known: [String]) async throws -> [VaultSkillSuggestion] {
         let body: [String: Any] = [
             "category": draft.category.rawValue,
             "title": draft.title,
             "organisation": draft.organisationName,
             "description": draft.description,
             "existing": existing,
+            "known": known,
             "files": material.texts.map { ["name": $0.name, "text": $0.text] },
             "images": material.images.map { ["name": $0.name, "data": $0.jpeg.base64EncodedString()] },
         ]
@@ -219,6 +239,30 @@ public struct SupabaseVaultService: VaultService {
         let data = try await send(urlRequest)
         guard let response = try? JSONDecoder().decode(SkillSuggestionsResponse.self, from: data) else { throw VaultError.unavailable }
         return response.skills
+    }
+
+    public func proposeEvidence(from documents: [VaultEvidenceDocument], folders: [String], known: [String]) async throws -> [VaultEvidenceProposal] {
+        let today = Date.now.formatted(.iso8601.year().month().day())
+        let body: [String: Any] = [
+            "documents": documents.map { document -> [String: Any] in
+                var entry: [String: Any] = ["name": document.name]
+                if let text = document.text { entry["text"] = text }
+                if let image = document.image { entry["image"] = image.base64EncodedString() }
+                return entry
+            },
+            "folders": folders,
+            "today": today,
+            "known": known,
+        ]
+        var urlRequest = try await request(functionsURL.appending(path: "ayla-evidence"), method: "POST", json: body)
+        urlRequest.timeoutInterval = documents.contains { $0.image != nil } ? 75 : 50
+        let data = try await send(urlRequest)
+        guard let response = try? JSONDecoder().decode(EvidenceProposalsResponse.self, from: data) else { throw VaultError.unavailable }
+        return response.items
+    }
+
+    private struct EvidenceProposalsResponse: Decodable {
+        let items: [VaultEvidenceProposal]
     }
 
     private func insertFile(_ row: [String: Any]) async throws {
@@ -340,6 +384,39 @@ public struct SupabaseVaultService: VaultService {
         }
     }
 
+    /// In your own order; before migration 20261113120000 there is no order yet, so oldest first.
+    private func folderRows() async throws -> Data {
+        let rows = { (order: String) async throws -> Data in
+            try await self.send(try await self.request(self.restURL.appending(path: "vault_folders"), query: [("select", "*"), ("order", order)]))
+        }
+        do {
+            return try await rows("position.asc.nullslast,created_at.asc")
+        } catch VaultError.missingColumn {
+            return try await rows("created_at.asc")
+        }
+    }
+
+    public func setFolderOrder(_ folderIDs: [String]) async throws {
+        try await setPositions(folderIDs, table: "vault_folders")
+    }
+
+    public func setItemOrder(_ itemIDs: [String]) async throws {
+        try await setPositions(itemIDs, table: "vault_items")
+    }
+
+    private func setPositions(_ ids: [String], table: String) async throws {
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for (position, id) in ids.enumerated() {
+                group.addTask {
+                    _ = try await self.send(try await self.request(
+                        self.restURL.appending(path: table), query: [("id", "eq.\(id)")], method: "PATCH", json: ["position": position]
+                    ), accepting: [200, 204])
+                }
+            }
+            try await group.waitForAll()
+        }
+    }
+
     public func deleteFolder(id: String) async throws {
         _ = try await send(try await request(
             restURL.appending(path: "vault_folders"), query: [("id", "eq.\(id)")], method: "DELETE"
@@ -444,6 +521,7 @@ struct ItemRow: Decodable {
     let created_at: String
     let updated_at: String
     let ayla_allowed_at: String?
+    let position: Int?
     let vault_item_skills: [SkillRow]?
     let vault_item_files: [FileRow]?
     let vault_item_folders: [FolderLinkRow]?
@@ -482,7 +560,8 @@ struct ItemRow: Decodable {
             },
             aylaAllowedAt: ayla_allowed_at.map(SupabaseAylaService.date(from:)),
             createdAt: SupabaseAylaService.date(from: created_at),
-            updatedAt: SupabaseAylaService.date(from: updated_at)
+            updatedAt: SupabaseAylaService.date(from: updated_at),
+            position: position
         )
     }
 }

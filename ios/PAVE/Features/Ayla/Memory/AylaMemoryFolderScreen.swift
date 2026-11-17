@@ -50,6 +50,7 @@ struct AylaMemoryFolderScreen: View {
                 } label: {
                     Image(.iconPlus)
                         .renderingMode(.template)
+                        .paveToolbarHitArea()
                 }
                 .accessibilityLabel("Iets toevoegen aan \(category.title)")
             }
