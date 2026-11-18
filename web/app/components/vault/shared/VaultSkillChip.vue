@@ -7,8 +7,9 @@ defineProps<{
 </script>
 
 <template>
-  <span class="inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-md bg-chip px-2 text-xs font-medium text-heading">
-    <span :aria-hidden="label ? true : undefined">{{ text }}</span>
+  <span class="inline-flex h-6 min-w-0 items-center whitespace-nowrap rounded-md bg-chip px-2 text-xs font-medium text-heading"
+    :class="label ? 'shrink-0' : 'shrink'">
+    <span class="truncate" :aria-hidden="label ? true : undefined">{{ text }}</span>
     <span v-if="label" class="sr-only">{{ label }}</span>
   </span>
 </template>

@@ -463,6 +463,7 @@ async function saveItem() {
       cover: wantsCover.value ? cover.value : null,
       logo: logo.value,
       skills: skills.value,
+      isByAyla: aylaFill.value === 'filled',
     },
     progress.value,
   );

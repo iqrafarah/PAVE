@@ -66,7 +66,7 @@ watch(
               {{ period }}
             </span>
           </span>
-          <span v-if="item.skills.length" class="mt-auto flex flex-wrap gap-1.5 pt-1">
+          <span v-if="item.skills.length" class="mt-auto flex min-w-0 gap-1.5 pt-1">
             <VaultSkillChip v-for="skill in shownSkills" :key="skill" :text="skill" />
             <VaultSkillChip v-if="hiddenSkills > 0" :text="`+${hiddenSkills}`" :label="VAULT_MORE_SKILLS(hiddenSkills)" />
           </span>
@@ -91,7 +91,7 @@ watch(
               {{ period }}
             </span>
           </span>
-          <span v-if="item.skills.length" class="flex flex-wrap gap-1.5 pt-0.5">
+          <span v-if="item.skills.length" class="flex min-w-0 gap-1.5 pt-0.5">
             <VaultSkillChip v-for="skill in shownSkills" :key="skill" :text="skill" />
             <VaultSkillChip v-if="hiddenSkills > 0" :text="`+${hiddenSkills}`" :label="VAULT_MORE_SKILLS(hiddenSkills)" />
           </span>

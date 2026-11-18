@@ -179,7 +179,7 @@ const box = (isOn: boolean) => (isOn ? 'border-brand bg-brand text-white' : 'bor
         <span :class="box(folderIds.includes(entry.folder.id))" class="flex size-4.5 shrink-0 items-center justify-center rounded border" aria-hidden="true">
           <LayoutPaveIcon v-if="folderIds.includes(entry.folder.id)" name="check" class="size-3" />
         </span>
-        <VaultFolderBadge :icon="entry.iconSrc" :color="entry.hex" />
+        <VaultFolderBadge :icon="entry.iconSrc" :color="entry.hex" :icon-color="entry.iconColor" />
         <span class="min-w-0 flex-1 truncate">{{ entry.folder.name }}</span>
       </button>
       <p v-if="!newFolderName && !vault.shelves.value.length" class="px-2.5 py-2 text-xs text-subtle">{{ VAULT_NO_FOLDER }}</p>

@@ -45,6 +45,8 @@ export interface VaultSaveInput {
   cover: File | null;
   logo: File | null;
   skills: string[];
+  // Ayla filled in the form (or saved it from the chat): the item shows under "Bron: Via Ayla".
+  isByAyla: boolean;
 }
 
 /**
@@ -124,7 +126,7 @@ export function useVaultAdd() {
           const id = await kindFolderId(input.newFolderName, input.draft.category);
           if (id && !folderIds.includes(id)) folderIds.push(id);
         }
-        progress.itemId = await vault.addItem(input.draft, folderIds);
+        progress.itemId = await vault.addItem(input.draft, folderIds, input.isByAyla);
       }
       const itemId = progress.itemId;
       for (const [index, file] of input.documents.entries()) {
@@ -296,6 +298,7 @@ export function useVaultAdd() {
         cover: pictures.cover,
         logo: pictures.logo,
         skills: [...skills.values()],
+        isByAyla: true,
       },
       progress,
     );

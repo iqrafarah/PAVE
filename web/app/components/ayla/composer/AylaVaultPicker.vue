@@ -131,6 +131,7 @@ function handleBackdropClick(event: MouseEvent) {
               :icon="entry.iconSrc"
               :color="entry.hex"
               :surface="entry.surface"
+              :icon-color="entry.iconColor"
               :count="folderItems(entry.folder.id).length"
               :class="isGroupOn(folderItems(entry.folder.id)) ? 'rounded-2xl ring-2 ring-brand' : ''"
               @open="toggleGroup(folderItems(entry.folder.id))"

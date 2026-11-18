@@ -146,6 +146,13 @@ export const PAVE_ICONS = {
       { d: 'M12 2.25a.75.75 0 0 1 .75.75v16.19l6.22-6.22a.75.75 0 1 1 1.06 1.06l-7.5 7.5a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 1 1 1.06-1.06l6.22 6.22V3a.75.75 0 0 1 .75-.75Z', evenOdd: true },
     ] as IconPath[],
   },
+  // Heroicons "arrow-down-tray" (outline): saving a file on your device.
+  download: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3', stroke: 1.75 },
+    ] as IconPath[],
+  },
   check: {
     viewBox: '0 0 24 24',
     paths: [

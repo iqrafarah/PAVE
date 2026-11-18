@@ -84,6 +84,23 @@ async function openFile(file: VaultFile) {
   window.open(data.signedUrl, '_blank', 'noopener');
 }
 
+const isDownloading = ref(false);
+
+/** Saves the files on your device under their own names, one after the other. */
+async function download(files: VaultFile[]) {
+  fileProblem.value = null;
+  isDownloading.value = true;
+  for (const file of files) {
+    if (!(await vault.downloadFile(file))) {
+      fileProblem.value = VAULT_DOWNLOAD_FAILED;
+      break;
+    }
+    // A short pause, so the browser does not take several downloads at once for one.
+    if (files.length > 1) await new Promise((resolve) => setTimeout(resolve, 400));
+  }
+  isDownloading.value = false;
+}
+
 watch(
   () => props.itemId,
   () => {
@@ -156,16 +173,38 @@ watch(
       </section>
 
       <section v-if="documents.length" class="flex flex-col gap-2.5">
-        <h3 class="text-xs font-semibold text-subtle">{{ VAULT_DETAIL_FILES }}</h3>
+        <div class="flex items-center justify-between gap-2">
+          <h3 class="text-xs font-semibold text-subtle">{{ VAULT_DETAIL_FILES }}</h3>
+          <button
+            v-if="documents.length > 1"
+            type="button"
+            :disabled="isDownloading"
+            class="-my-1 flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold text-brand hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand disabled:opacity-60"
+            @click="download(documents)"
+          >
+            <LayoutPaveIcon name="download" class="size-3.5" />
+            {{ VAULT_DOWNLOAD_ALL }}
+          </button>
+        </div>
         <ul class="flex flex-col gap-1 rounded-2xl border border-card-border bg-white p-2">
-          <li v-for="file in documents" :key="file.id">
+          <li v-for="file in documents" :key="file.id" class="flex items-center gap-1">
             <button
               type="button"
-              class="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm font-medium text-heading hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand"
+              class="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm font-medium text-heading hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand"
               @click="openFile(file)"
             >
               <VaultIcon src="/images/vault/icons/DocumentSolid.svg" class="size-5 text-brand" />
               <span class="min-w-0 flex-1 truncate">{{ file.name }}</span>
+            </button>
+            <button
+              type="button"
+              :disabled="isDownloading"
+              :aria-label="VAULT_DOWNLOAD_FILE(file.name)"
+              :title="VAULT_DOWNLOAD_FILE(file.name)"
+              class="flex size-9 shrink-0 items-center justify-center rounded-lg text-brand hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand disabled:opacity-60"
+              @click="download([file])"
+            >
+              <LayoutPaveIcon name="download" class="size-4.5" />
             </button>
           </li>
         </ul>

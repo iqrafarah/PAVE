@@ -64,10 +64,14 @@ const cards = computed(() => {
   return order.flatMap((id) => shownItems.value.filter((item) => item.id === id));
 });
 
-const FOLDER_ACTIONS: RowMenuItem[] = [
-  { id: 'edit', label: VAULT_FOLDER_EDIT },
-  { id: 'delete', label: VAULT_FOLDER_DELETE, isDanger: true },
-];
+/** Like the menu of a chat: Vastzetten or Losmaken, then the rest. */
+function folderActions(folder: VaultFolder): RowMenuItem[] {
+  return [
+    { id: 'pin', label: folder.pinnedAt ? VAULT_FOLDER_UNPIN : VAULT_FOLDER_PIN },
+    { id: 'edit', label: VAULT_FOLDER_EDIT },
+    { id: 'delete', label: VAULT_FOLDER_DELETE, isDanger: true },
+  ];
+}
 
 const shelfFolder = computed(() => (filter.value.shelf.kind === 'folder' ? vault.folder(filter.value.shelf.id) : null));
 const openEntry = computed(() => vault.shelves.value.find((entry) => entry.folder.id === shelfFolder.value?.id) ?? null);
@@ -104,7 +108,14 @@ function clearFilters() {
   filter.value = createFilter();
 }
 
-function handleFolderAction(folder: VaultFolder, action: string) {
+async function handleFolderAction(folder: VaultFolder, action: string) {
+  if (action === 'pin') {
+    const isPinned = !folder.pinnedAt;
+    if (await vault.setFolderPinned(folder.id, isPinned)) {
+      announcement.value = (isPinned ? VAULT_FOLDER_PINNED_ANNOUNCEMENT : VAULT_FOLDER_UNPINNED_ANNOUNCEMENT)(folder.name);
+    }
+    return;
+  }
   if (action === 'edit') {
     folderSheet.value = folder;
     return;
@@ -405,13 +416,15 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
                 :icon="entry.iconSrc"
                 :color="entry.hex"
                 :surface="entry.surface"
+                :icon-color="entry.iconColor"
+                :is-pinned="Boolean(entry.folder.pinnedAt)"
                 :count="entry.count"
                 @open="openFolder(entry.folder.id)"
               >
                 <template #actions>
                   <AylaRowMenu
                     floats
-                    :items="FOLDER_ACTIONS"
+                    :items="folderActions(entry.folder)"
                     :label="VAULT_FOLDER_ACTIONS(entry.folder.name)"
                     @select="handleFolderAction(entry.folder, $event)"
                   />
@@ -432,7 +445,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
             {{ VAULT_BACK_TO_VAULT }}
           </button>
           <div class="flex w-full items-center gap-3">
-            <VaultFolderBadge v-if="openEntry" :icon="openEntry.iconSrc" :color="openEntry.hex" size="large" />
+            <VaultFolderBadge v-if="openEntry" :icon="openEntry.iconSrc" :color="openEntry.hex" :icon-color="openEntry.iconColor" size="large" />
             <div class="flex min-w-0 flex-1 flex-col">
               <h3 class="truncate font-heading text-xl font-semibold text-heading">{{ shelfFolder?.name }}</h3>
               <p class="text-xs font-medium text-ink-soft">{{ itemCount(vault.count(filter.shelf)) }}</p>
@@ -440,7 +453,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
             <AylaRowMenu
               v-if="openEntry"
               floats
-              :items="FOLDER_ACTIONS"
+              :items="folderActions(openEntry.folder)"
               :label="VAULT_FOLDER_ACTIONS(openEntry.folder.name)"
               @select="handleFolderAction(openEntry.folder, $event)"
             />

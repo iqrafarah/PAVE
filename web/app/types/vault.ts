@@ -78,7 +78,15 @@ export interface VaultItem {
   position: number | null;
 }
 
-export type VaultFolderColor = 'green' | 'blue' | 'purple' | 'rust' | 'rose' | 'slate';
+// The theme colours of Settings (green, blue, gold, rose = Roze, rust = Oranje, purple, red, lime), plus slate, which
+// older folders may still have.
+export type VaultFolderColor = 'green' | 'blue' | 'gold' | 'rose' | 'rust' | 'purple' | 'red' | 'lime' | 'slate';
+
+/** A colour you picked yourself, as `#rrggbb` in lower case (migration 20261119120000). */
+export type VaultFolderHex = `#${string}`;
+
+/** One of the named colours, or one of your own. */
+export type VaultFolderColorChoice = VaultFolderColor | VaultFolderHex;
 
 export type VaultFolderIcon =
   | 'folder'
@@ -105,11 +113,13 @@ export type VaultFolderIcon =
 export interface VaultFolder {
   id: string;
   name: string;
-  color: VaultFolderColor | null;
+  color: VaultFolderColorChoice | null;
   icon: VaultFolderIcon | null;
   createdAt: string;
   // Its place in the folder row once you dragged the folders into an order of your own (vault_folders.position).
   position: number | null;
+  // Pinned folders come first in the folder row (vault_folders.pinned_at); null when it is not pinned.
+  pinnedAt: string | null;
 }
 
 /** One folder in the row above the vault, ready to show. */
@@ -118,7 +128,9 @@ export interface VaultShelfEntry {
   iconSrc: string;
   hex: string;
   surface: string;
-  colorKey: VaultFolderColor;
+  // White, or dark on a light colour of your own, so the icon on the folder stays readable.
+  iconColor: string;
+  colorKey: VaultFolderColorChoice;
   iconKey: VaultFolderIcon;
   count: number;
 }

@@ -204,6 +204,9 @@ export const VAULT_DETAIL_DATA = 'Gegevens';
 export const VAULT_DETAIL_DESCRIPTION = 'Omschrijving';
 export const VAULT_DETAIL_SKILLS = 'Vaardigheden';
 export const VAULT_DETAIL_FILES = 'Bestanden';
+export const VAULT_DOWNLOAD_FILE = (name: string) => `${name} downloaden`;
+export const VAULT_DOWNLOAD_ALL = 'Alles downloaden';
+export const VAULT_DOWNLOAD_FAILED = 'Downloaden lukte niet. Probeer het opnieuw.';
 export const VAULT_DETAIL_DONE = 'Klaar';
 export const VAULT_EDIT = 'Aanpassen';
 export const VAULT_EDIT_TITLE = 'Bewijs aanpassen';
@@ -235,23 +238,34 @@ export const VAULT_FOLDER_CREATE = 'Map aanmaken';
 export const VAULT_FOLDER_NAME = 'Naam';
 export const VAULT_FOLDER_NAME_PLACEHOLDER = 'Bijvoorbeeld Stage of Bijbaan';
 export const VAULT_FOLDER_COLOR = 'Kleur';
+export const VAULT_FOLDER_CUSTOM_COLOR = 'Eigen kleur';
+export const VAULT_FOLDER_COLOR_NOT_READY = 'Deze kleur kan nog niet worden bewaard. Kies Groen, Blauw, Roze, Oranje of Paars.';
 export const VAULT_FOLDER_ICON = 'Icoon';
 export const VAULT_FOLDER_NAME_MISSING = 'Geef je map een naam.';
 export const VAULT_FOLDER_NAME_TAKEN = 'Je hebt al een map met deze naam. Kies een andere naam.';
 export const VAULT_FOLDER_EDIT = 'Map aanpassen';
 export const VAULT_FOLDER_DELETE = 'Map verwijderen';
+export const VAULT_FOLDER_PIN = 'Vastzetten';
+export const VAULT_FOLDER_UNPIN = 'Losmaken';
+export const VAULT_FOLDER_PINNED = 'Vastgezet';
+export const VAULT_FOLDER_PINNED_ANNOUNCEMENT = (name: string) => `${name} staat nu vooraan.`;
+export const VAULT_FOLDER_UNPINNED_ANNOUNCEMENT = (name: string) => `${name} is losgemaakt.`;
 export const VAULT_FOLDER_DELETE_TITLE = 'Map verwijderen?';
 export const VAULT_FOLDER_DELETE_MESSAGE = 'De items in deze map blijven gewoon in je kluis staan.';
 export const VAULT_FOLDER_EMPTY_TITLE = (name: string) => `${name} is nog leeg`;
 export const VAULT_FOLDER_ACTIONS = (name: string) => `Opties voor ${name}`;
 export const VAULT_ITEM_ACTIONS = (title: string) => `Opties voor ${title}`;
 
+// The names of the themes in Instellingen.
 export const VAULT_FOLDER_COLOR_TITLES = {
   green: 'Groen',
   blue: 'Blauw',
-  purple: 'Paars',
-  rust: 'Roest',
+  gold: 'Goud',
   rose: 'Roze',
+  rust: 'Oranje',
+  purple: 'Paars',
+  red: 'Rood',
+  lime: 'Limoen',
   slate: 'Grijs',
 } as const;
 export const VAULT_FOLDER_ICON_TITLES = {

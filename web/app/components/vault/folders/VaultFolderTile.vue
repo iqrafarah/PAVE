@@ -8,8 +8,10 @@ withDefaults(
     count: number;
     color?: string;
     surface?: string;
+    iconColor?: string;
+    isPinned?: boolean;
   }>(),
-  { color: 'var(--color-brand)', surface: 'var(--color-tint)' },
+  { color: 'var(--color-brand)', surface: 'var(--color-tint)', iconColor: 'white', isPinned: false },
 );
 
 const emit = defineEmits<{
@@ -27,11 +29,15 @@ const emit = defineEmits<{
       <span class="relative h-12.5 w-full shrink-0" :style="{ background: surface }" aria-hidden="true">
         <span class="absolute bottom-[-0.4375rem] left-3.25 h-9.5 w-11.5">
           <VaultIcon src="/images/vault/folder-shape.svg" class="size-full" :style="{ color }" />
-          <VaultIcon :src="icon" class="absolute left-1/2 top-1/2 size-4.5 -translate-x-1/2 -translate-y-[38%] text-white" />
+          <VaultIcon :src="icon" class="absolute left-1/2 top-1/2 size-4.5 -translate-x-1/2 -translate-y-[38%]" :style="{ color: iconColor }" />
         </span>
       </span>
       <span class="flex min-w-0 flex-col gap-0.5 px-3.25 pb-2.5 pt-3.25">
-        <span class="truncate text-sm font-semibold text-ink">{{ title }}</span>
+        <span class="flex min-w-0 items-center gap-1">
+          <span class="truncate text-sm font-semibold text-ink">{{ title }}</span>
+          <LayoutPaveIcon v-if="isPinned" name="pin" class="size-3.5 shrink-0 text-ink-soft" aria-hidden="true" />
+          <span v-if="isPinned" class="sr-only">, {{ VAULT_FOLDER_PINNED }}</span>
+        </span>
         <span class="text-xs font-medium text-ink-soft">{{ itemCount(count) }}</span>
       </span>
     </button>
