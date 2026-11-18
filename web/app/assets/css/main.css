@@ -140,6 +140,16 @@
         overscroll-behavior: contain;
     }
 
+    /*
+     * Room for the scrollbar is always kept, so the page does not jump sideways a little when a filter, a search or an
+     * open folder makes the content shorter or longer and the scrollbar appears or goes away. Screens with scrollbars
+     * that float above the content (phones, trackpads) are not affected.
+     */
+    .overflow-y-auto,
+    .overflow-auto {
+        scrollbar-gutter: stable;
+    }
+
     button:not(:disabled),
     [role="button"]:not([aria-disabled="true"]),
     [role="menuitem"],

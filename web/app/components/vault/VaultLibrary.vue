@@ -14,6 +14,8 @@ const vaultAdd = useVaultAdd();
 const personal = usePersonalisation();
 
 const PAGE_SIZE = 9;
+// The row on top shows this many folders (pinned ones first); "Alle mappen" shows every one in a grid.
+const ROW_FOLDERS = 5;
 // Moved further than this, a press on the folder row is a drag and not a click on a folder.
 const DRAG_DISTANCE = 6;
 const primaryButton =
@@ -34,6 +36,9 @@ const hasScrolled = ref(false);
 // The folder row has more to the left or right: its edge fades there, so a folder never looks cut off.
 const shelfFade = ref({ left: false, right: false });
 const folderSheet = ref<VaultFolder | 'new' | null>(null);
+// The screen "Alle mappen" is ?map=alle in the address, as an open folder is ?map=<id>.
+const ALL_FOLDERS = 'alle';
+const isAllFolders = computed(() => route.query.map === ALL_FOLDERS);
 const deletedFolder = ref<VaultFolder | null>(null);
 const deletedItem = ref<VaultItem | null>(null);
 const deleteFolderRef = useTemplateRef<{ open: () => void }>('confirmDeleteFolder');
@@ -58,6 +63,7 @@ const shelves = computed(() => {
   if (!order) return vault.shelves.value;
   return order.flatMap((id) => vault.shelves.value.filter((entry) => entry.folder.id === id));
 });
+const rowShelves = computed(() => shelves.value.slice(0, ROW_FOLDERS));
 const cards = computed(() => {
   const order = liveItems.value;
   if (!order) return shownItems.value;
@@ -90,13 +96,20 @@ function shelfFromRoute(): VaultShelf {
   return map && vault.folder(map) ? { kind: 'folder', id: map } : { kind: 'all' };
 }
 
+// A folder opened from "Alle mappen" remembers that (?van=alle): back goes there and not to the vault.
+const cameFromAll = computed(() => route.query.van === ALL_FOLDERS);
+
 function openFolder(folderId: string) {
-  router.push({ query: { ...route.query, map: folderId } });
+  router.push({ query: { ...route.query, map: folderId, ...(isAllFolders.value ? { van: ALL_FOLDERS } : {}) } });
+}
+
+function openAllFolders() {
+  router.push({ query: { ...route.query, map: ALL_FOLDERS } });
 }
 
 function closeShelf() {
-  const { map: _, ...query } = route.query;
-  router.push({ query });
+  const { map: _, van: __, ...query } = route.query;
+  router.push({ query: cameFromAll.value ? { ...query, map: ALL_FOLDERS } : query });
 }
 
 /** New evidence goes in the folder you look at, and in the folder of its kind (as on iOS). */
@@ -344,8 +357,8 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
     class="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-4 pb-[max(10rem,var(--ayla-float-height,10rem))] sm:px-13.25"
     @scroll.passive="hasScrolled = ($event.target as HTMLElement).scrollTop > 1"
   >
-    <!-- From the left edge, like the title above it and the content of every other page; as wide as the window allows. -->
-    <div class="flex w-full flex-col">
+    <!-- As wide as the window allows up to 60rem, in the middle: with the sidebar closed the folders and cards do not stretch across the whole screen. -->
+    <div class="mx-auto flex w-full max-w-240 flex-col">
       <h2 class="sr-only">{{ VAULT_TITLE }}</h2>
 
       <!-- Loading: grey shapes where the folders and cards will appear. -->
@@ -378,7 +391,17 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
           class="-mx-4 flex flex-col border-b border-transparent bg-white px-4 pb-3.5 pt-25.25 transition-colors sm:-mx-2 sm:px-2 [@media(min-height:44rem)]:sticky [@media(min-height:44rem)]:top-0 [@media(min-height:44rem)]:z-[5]"
         >
         <!-- Folders: standard ones first, then your own. Drag the row (or scroll it) to see the rest. -->
-        <section v-if="filter.shelf.kind === 'all'" class="flex flex-col gap-1" :aria-label="VAULT_FOLDERS">
+        <section v-if="filter.shelf.kind === 'all' && !isAllFolders" class="flex flex-col gap-1" :aria-label="VAULT_FOLDERS">
+          <div v-if="shelves.length" class="mb-1 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-heading">{{ VAULT_FOLDERS }}</h3>
+            <button
+              type="button"
+              class="-mr-2 rounded-lg px-2 py-1 text-sm font-medium text-brand hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand"
+              @click="openAllFolders"
+            >
+              {{ VAULT_ALL_FOLDERS(shelves.length) }}
+            </button>
+          </div>
           <ul
             ref="shelfRow"
             :class="drag?.isDragging ? 'cursor-grabbing select-none' : shelfFade.left || shelfFade.right ? 'cursor-grab' : ''"
@@ -394,7 +417,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
           >
             <!-- At least 9.5rem wide (six fit on a laptop); with room to spare the folders share the whole row, so it ends where the cards end. -->
             <li
-              v-for="entry in shelves"
+              v-for="entry in rowShelves"
               :id="`vault-folder-${entry.folder.id}`"
               :key="entry.folder.id"
               draggable="true"
@@ -434,6 +457,25 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
           </ul>
         </section>
 
+        <!-- "Alle mappen": back to the whole vault, the title and a new folder. -->
+        <div v-else-if="isAllFolders" class="flex flex-col items-start gap-3">
+          <button
+            type="button"
+            class="-ml-2 flex h-8 items-center gap-2 rounded-lg px-2 text-sm font-medium text-subtle hover:bg-surface hover:text-heading focus-visible:outline-2 focus-visible:outline-brand"
+            @click="closeShelf"
+          >
+            <VaultIcon src="/images/vault/icons/ArrowLeft.svg" class="size-4" />
+            {{ VAULT_BACK_TO_VAULT }}
+          </button>
+          <div class="flex w-full items-center gap-3">
+            <div class="flex min-w-0 flex-1 flex-col">
+              <h3 class="truncate font-heading text-xl font-semibold text-heading">{{ VAULT_ALL_FOLDERS_TITLE }}</h3>
+              <p class="text-xs font-medium text-ink-soft">{{ VAULT_FOLDERS_COUNT(shelves.length) }}</p>
+            </div>
+            <button type="button" :class="primaryButton" class="!min-w-0" @click="folderSheet = 'new'">{{ VAULT_FOLDER_CREATE }}</button>
+          </div>
+        </div>
+
         <!-- An open folder: back to the whole vault, its name and how much is in it. -->
         <div v-else class="flex flex-col items-start gap-3">
           <button
@@ -442,7 +484,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
             @click="closeShelf"
           >
             <VaultIcon src="/images/vault/icons/ArrowLeft.svg" class="size-4" />
-            {{ VAULT_BACK_TO_VAULT }}
+            {{ cameFromAll ? VAULT_BACK_TO_ALL_FOLDERS : VAULT_BACK_TO_VAULT }}
           </button>
           <div class="flex w-full items-center gap-3">
             <VaultFolderBadge v-if="openEntry" :icon="openEntry.iconSrc" :color="openEntry.hex" :icon-color="openEntry.iconColor" size="large" />
@@ -461,6 +503,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
         </div>
 
         <VaultToolbar
+          v-if="!isAllFolders"
           v-model:filter="filter"
           v-model:is-grid="isGrid"
           v-model:is-searching="isSearching"
@@ -488,6 +531,15 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
         <p class="sr-only" aria-live="polite">{{ itemCount(visibleItems.length) }}</p>
         <p class="sr-only" role="status" aria-live="polite">{{ announcement }}</p>
 
+        <VaultFoldersGrid
+          v-if="isAllFolders"
+          :entries="shelves"
+          :actions="folderActions"
+          @open="openFolder"
+          @action="handleFolderAction"
+        />
+
+        <template v-else>
         <!-- Nothing to show: what to do next depends on why, as on iOS. -->
         <div v-if="emptyKind" class="flex flex-col items-center gap-5 py-12">
           <template v-if="emptyKind === 'vault'">
@@ -537,6 +589,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
           {{ VAULT_SHOW_MORE }}
           <img src="/images/vault/chevron-down.svg" alt="" width="16" height="16" />
         </button>
+        </template>
       </template>
     </div>
 

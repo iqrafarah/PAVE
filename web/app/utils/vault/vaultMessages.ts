@@ -180,6 +180,7 @@ export const VAULT_ADD_BUTTON = 'Toevoegen';
 export const VAULT_ADD_ITEM = 'Bewijs toevoegen';
 export const VAULT_SHOW_MORE = 'Meer tonen';
 export const VAULT_BACK_TO_VAULT = 'Terug naar je kluis';
+export const VAULT_BACK_TO_ALL_FOLDERS = 'Terug naar alle mappen';
 export const VAULT_FOLDERS = 'Mappen';
 
 export const VAULT_STATUS_TITLES = { verified: 'Geverifieerd', toVerify: 'Niet bevestigd', rejected: 'Afgewezen' } as const;
@@ -253,6 +254,11 @@ export const VAULT_FOLDER_UNPINNED_ANNOUNCEMENT = (name: string) => `${name} is 
 export const VAULT_FOLDER_DELETE_TITLE = 'Map verwijderen?';
 export const VAULT_FOLDER_DELETE_MESSAGE = 'De items in deze map blijven gewoon in je kluis staan.';
 export const VAULT_FOLDER_EMPTY_TITLE = (name: string) => `${name} is nog leeg`;
+export const VAULT_ALL_FOLDERS = (count: number) => `Alle mappen (${count})`;
+export const VAULT_ALL_FOLDERS_TITLE = 'Alle mappen';
+export const VAULT_FOLDERS_COUNT = (count: number) => (count === 1 ? '1 map' : `${count} mappen`);
+export const VAULT_FOLDERS_SEARCH = 'Zoeken in je mappen';
+export const VAULT_FOLDERS_NONE_FOUND = (query: string) => `Geen mappen gevonden voor "${query}".`;
 export const VAULT_FOLDER_ACTIONS = (name: string) => `Opties voor ${name}`;
 export const VAULT_ITEM_ACTIONS = (title: string) => `Opties voor ${title}`;
 
