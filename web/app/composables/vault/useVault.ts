@@ -48,6 +48,8 @@ interface ItemRow {
   ayla_allowed_at?: string | null;
   created_at: string;
   updated_at: string;
+  // Added by migration 20261113120000; missing on a database without it.
+  position?: number | null;
   vault_item_skills: { name: string; status: string }[] | null;
   vault_item_files: { id: string; file_name: string; mime_type: string; storage_path: string; role?: string | null }[] | null;
   vault_item_folders?: { folder_id: string }[] | null;
@@ -59,6 +61,7 @@ interface FolderRow {
   color: string | null;
   icon: string | null;
   created_at: string;
+  position?: number | null;
 }
 
 interface ErrorLike {
@@ -105,6 +108,7 @@ function toItem(row: ItemRow): VaultItem | null {
     files,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    position: row.position ?? null,
   };
 }
 
@@ -115,7 +119,14 @@ function toFolder(row: FolderRow): VaultFolder {
     color: row.color && row.color in VAULT_FOLDER_COLORS ? (row.color as VaultFolderColor) : null,
     icon: row.icon && row.icon in VAULT_FOLDER_ICONS ? (row.icon as VaultFolderIcon) : null,
     createdAt: row.created_at,
+    position: row.position ?? null,
   };
+}
+
+/** `position asc nulls last, created_at asc`, as the migration says. */
+function compareFolders(left: VaultFolder, right: VaultFolder) {
+  const [a, b] = [left.position ?? Number.MAX_SAFE_INTEGER, right.position ?? Number.MAX_SAFE_INTEGER];
+  return a === b ? left.createdAt.localeCompare(right.createdAt) : a - b;
 }
 
 function messageFor(error: ErrorLike | null) {
@@ -189,7 +200,8 @@ export function useVault() {
         null,
       coverUrl: images.get(`cover:${item!.id}`) ?? null,
     }));
-    state.value.folders = (folders.data as FolderRow[]).map(toFolder);
+    // Your own order first, then the folders that were never moved, oldest first, as before.
+    state.value.folders = (folders.data as FolderRow[]).map(toFolder).sort(compareFolders);
     state.value.status = 'ready';
     await makeExampleFoldersIfNeeded();
   }
@@ -473,6 +485,50 @@ export function useVault() {
     return true;
   }
 
+  /**
+   * "Eigen volgorde": the cards that were on screen in the order they were dragged into. Cards that were not on screen
+   * (in another folder, or filtered out) keep their places around them. Saved for every device, and the web shows it at
+   * once.
+   */
+  async function setItemOrder(visible: string[]) {
+    const all = applyFilter(state.value.items, { ...createFilter(), order: 'custom' }).map((item) => item.id);
+    const slots = all.flatMap((id, index) => (visible.includes(id) ? [index] : []));
+    slots.forEach((slot, order) => (all[slot] = visible[order]!));
+    const positions = new Map(all.map((id, index) => [id, index]));
+    state.value.items = state.value.items.map((item) => ({ ...item, position: positions.get(item.id) ?? null }));
+    await savePositions('vault_items', all);
+  }
+
+  /** The folders in this order at once, as they were dragged. */
+  async function setFolderOrder(order: string[]) {
+    const known = state.value.folders;
+    const reordered = [...order.flatMap((id) => known.filter((folder) => folder.id === id)), ...known.filter((folder) => !order.includes(folder.id))];
+    if (reordered.map((folder) => folder.id).join() === known.map((folder) => folder.id).join()) return;
+    state.value.folders = reordered.map((folder, position) => ({ ...folder, position }));
+    await savePositions('vault_folders', reordered.map((folder) => folder.id));
+  }
+
+  async function savePositions(table: 'vault_items' | 'vault_folders', ids: string[]) {
+    const results = await Promise.all(ids.map((id, position) => supabase.from(table).update({ position }).eq('id', id)));
+    const failed = results.find((result) => result.error)?.error ?? null;
+    // Without the column (migration 20261113120000) the order only lasts for this visit.
+    if (failed && !isNotThereYet(failed)) {
+      state.value.problem = messageFor(failed);
+      await load();
+    }
+  }
+
+  /**
+   * Dragged onto a folder: into that folder, and out of the folder it was dragged from. From the whole vault it only
+   * goes in, and its other folders stay. Returns whether it moved.
+   */
+  async function moveToFolder(item: VaultItem, folderId: string, fromFolderId: string | null) {
+    const ids = item.folderIds.filter((id) => id !== fromFolderId);
+    if (!ids.includes(folderId)) ids.push(folderId);
+    if (ids.length === item.folderIds.length && ids.every((id, index) => id === item.folderIds[index])) return false;
+    return setFolders(item, ids);
+  }
+
   /** The files go first: the database cannot remove them from Storage itself. */
   async function remove(item: VaultItem) {
     if (item.files.length) {
@@ -524,6 +580,9 @@ export function useVault() {
     suggestSkills,
     toggleFolder,
     setFolders,
+    setItemOrder,
+    setFolderOrder,
+    moveToFolder,
     remove,
     createFolder,
     updateFolder,

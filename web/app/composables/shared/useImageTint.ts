@@ -1,13 +1,14 @@
 // The soft colour behind a vault card, taken from its logo or cover (Figma: the orange Frencken logo on apricot, the
 // green Plus logo on green): the band of a grid card and the fade of a list card. The strongest colour of the picture
 // is mixed with white, so text stays readable.
-// Null while the picture loads, when it cannot be read (another site that does not allow it) or when it has no colour:
-// the card then keeps the colour of its category.
+// Null while the picture loads or when it cannot be read (another site that does not allow it): the card then keeps the
+// colour of its category. A picture without colour gives the neutral tint.
 
 const SAMPLE_SIZE = 32;
 // How much of the picture's colour is in the tint; the rest is white. Low on purpose: an accent, not a strong colour.
 const STRENGTH = 0.16;
 const tints = new Map<string, Promise<string | null>>();
+const NEUTRAL_TINT = 'var(--color-tint)';
 
 function readTint(url: string) {
   return new Promise<string | null>((resolve) => {
@@ -23,7 +24,9 @@ function readTint(url: string) {
         const context = canvas.getContext('2d', { willReadFrequently: true });
         if (!context) return resolve(null);
         context.drawImage(image, 0, 0, SAMPLE_SIZE, SAMPLE_SIZE);
-        resolve(vividColour(context.getImageData(0, 0, SAMPLE_SIZE, SAMPLE_SIZE).data));
+        // A logo without colour (black, white, grey, like PXL) gets the neutral tint, as on iOS (.paveSurfaceTint), not the
+        // colour of its category: the band then still belongs to the logo.
+        resolve(vividColour(context.getImageData(0, 0, SAMPLE_SIZE, SAMPLE_SIZE).data) ?? NEUTRAL_TINT);
       } catch {
         // The picture comes from a site that does not allow reading it.
         resolve(null);

@@ -74,6 +74,8 @@ export interface VaultItem {
   files: VaultFile[];
   createdAt: string;
   updatedAt: string;
+  // Its place in "Eigen volgorde", once you dragged your evidence into an order of your own (vault_items.position).
+  position: number | null;
 }
 
 export type VaultFolderColor = 'green' | 'blue' | 'purple' | 'rust' | 'rose' | 'slate';
@@ -106,6 +108,8 @@ export interface VaultFolder {
   color: VaultFolderColor | null;
   icon: VaultFolderIcon | null;
   createdAt: string;
+  // Its place in the folder row once you dragged the folders into an order of your own (vault_folders.position).
+  position: number | null;
 }
 
 /** One folder in the row above the vault, ready to show. */
@@ -131,7 +135,8 @@ export interface VaultSkillSuggestion {
 /** "Zelf toegevoegd", "Van een organisatie" (also imports) or "Via Ayla". */
 export type VaultOrigin = 'own' | 'organisation' | 'ayla';
 
-export type VaultOrder = 'newest' | 'oldest';
+// 'custom' is the order you dragged your evidence into; what you never moved comes after it, newest first.
+export type VaultOrder = 'newest' | 'oldest' | 'custom';
 
 /** Status, Bron and Datum in the design, plus search (iOS VaultFilter). */
 export interface VaultFilter {
@@ -148,4 +153,47 @@ export interface VaultMenuOption {
   // Set for a choice (Status, Bron, Datum); left out for an action (Item toevoegen, Map aanmaken).
   isChecked?: boolean;
   icon?: string;
+}
+
+/** A part of a document's image, as fractions of its size from the top left corner (such as the logo on a certificate). */
+export interface VaultEvidenceBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** One document as "Laat Ayla invullen" sends it: the text that was read and/or a small photo (base64 JPEG). */
+export interface VaultEvidenceDocument {
+  name: string;
+  text?: string;
+  image?: string;
+}
+
+export type VaultEvidenceSourceField = 'title' | 'organisation' | 'period' | 'description';
+
+/** What Ayla proposes after reading the documents (Edge Function ayla-evidence). Dates are `YYYY-MM-DD`. */
+export interface VaultEvidenceProposal {
+  category: VaultItemCategory;
+  title: string;
+  organisationName: string | null;
+  organisationLocation: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  issuedOn: string | null;
+  isCurrent: boolean;
+  description: string | null;
+  skills: VaultSkillSuggestion[];
+  folder: string | null;
+  // The documents that belong to this item, counted from 0 in the order they were sent.
+  documents: number[];
+  coverDocument: number | null;
+  coverBox: VaultEvidenceBox | null;
+  logoDocument: number | null;
+  logoBox: VaultEvidenceBox | null;
+  website: string | null;
+  // Where each field was found, such as "pagina 1".
+  sources: Partial<Record<VaultEvidenceSourceField, string>>;
+  // The logo from the organisation's website, when the documents have none.
+  logo: { data: string; mimeType: string; source: string } | null;
 }

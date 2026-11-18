@@ -50,7 +50,8 @@ function openChats() {
 async function startNewConversation() {
   closeMenu();
   conversation.startNew();
-  await navigateTo('/');
+  await navigateTo(newChatPath(route));
+  conversation.focusComposer();
 }
 
 watch(isMenuOpen, async (isOpen) => {

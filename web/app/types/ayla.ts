@@ -39,6 +39,8 @@ export type MemoryCategory =
 export interface AylaAttachment {
   name: string;
   text: string;
+  // A small photo (base64 JPEG), so Ayla looks at a picture herself instead of asking what is on it.
+  image?: string;
 }
 
 export interface AylaRequest {
@@ -48,7 +50,7 @@ export interface AylaRequest {
   text: string;
   device: AylaDevice;
   input: AylaInput;
-  context?: { screen: AylaScreen; itemId?: string };
+  context?: { screen: AylaScreen; itemId?: string; itemIds?: string[] };
   attachments?: AylaAttachment[];
 }
 
@@ -120,6 +122,22 @@ export interface UsedMemory {
   category: MemoryCategory;
 }
 
+/** An item Ayla proposes for the vault from the chat, in the fields of vault_items; dates as YYYY-MM-DD or YYYY-MM. */
+export interface AylaVaultItemProposal {
+  category: string;
+  title: string;
+  organisationName?: string | null;
+  organisationLocation?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  issuedOn?: string | null;
+  isCurrent?: boolean | null;
+  description?: string | null;
+  skills?: string[] | null;
+  // The names of the files sent in the chat that belong to this item.
+  attachments?: string[] | null;
+}
+
 export interface AylaReply {
   version: 1;
   id: string;
@@ -132,6 +150,8 @@ export interface AylaReply {
     kind: 'addVaultItem' | 'updatePlan' | 'draftProfile' | 'requestValidation';
     summary: string;
     expiresAt: string;
+    // With addVaultItem: what Ayla knows from the chat, to put in the vault once the user confirms.
+    vaultItem?: AylaVaultItemProposal;
   };
   blocks: AylaBlock[];
   navigation?: { screen: AylaScreen; itemId?: string };

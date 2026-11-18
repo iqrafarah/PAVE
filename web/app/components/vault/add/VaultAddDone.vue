@@ -9,10 +9,13 @@ defineProps<{
   problem: string | null;
   // The logo or cover could not be kept yet (the vault is not ready for them).
   notice?: string | null;
+  // The next item Ayla saw when the files were added apart: "Volgende bewijs" continues with it, already filled in.
+  nextTitle?: string | null;
 }>();
 
 const emit = defineEmits<{
   finish: [];
+  next: [];
 }>();
 
 const allowsAyla = defineModel<boolean>('allowsAyla', { required: true });
@@ -58,13 +61,25 @@ onMounted(() => requestAnimationFrame(() => (hasLanded.value = true)));
     </label>
     <p v-if="problem" :id="problemId" role="alert" class="mt-2 text-xs text-danger">{{ problem }}</p>
 
-    <button
-      type="button"
-      :disabled="isSaving"
-      class="mt-4 min-h-11 w-full rounded-lg bg-brand text-base font-medium text-white hover:bg-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-60"
-      @click="emit('finish')"
-    >
-      {{ VAULT_DONE_FINISH }}
-    </button>
+    <p v-if="nextTitle" class="mt-3 text-xs font-medium text-subtle">{{ VAULT_NEXT_EVIDENCE_NOTE(nextTitle) }}</p>
+    <div class="mt-4 flex w-full gap-2.5">
+      <button
+        v-if="nextTitle"
+        type="button"
+        :disabled="isSaving"
+        class="min-h-11 min-w-25.75 rounded-lg bg-field-line px-4 text-base font-medium text-heading hover:bg-tile focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-60"
+        @click="emit('finish')"
+      >
+        {{ VAULT_NEXT_EVIDENCE_SKIP }}
+      </button>
+      <button
+        type="button"
+        :disabled="isSaving"
+        class="min-h-11 flex-1 rounded-lg bg-brand text-base font-medium text-white hover:bg-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-60"
+        @click="nextTitle ? emit('next') : emit('finish')"
+      >
+        {{ nextTitle ? VAULT_NEXT_EVIDENCE : VAULT_DONE_FINISH }}
+      </button>
+    </div>
   </div>
 </template>

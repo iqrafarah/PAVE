@@ -98,7 +98,7 @@ watch(
     <div v-if="item" class="flex flex-col gap-5">
       <img v-if="item.coverUrl" :src="item.coverUrl" alt="" class="h-40 w-full rounded-2xl object-cover" />
       <div class="flex items-start gap-3.5">
-        <VaultLogo :name="item.organisationName ?? item.title" :logo-url="item.logoUrl" :size="56" />
+        <VaultLogo :name="item.organisationName ?? item.title" :logo-url="item.logoUrl" :file-name="documents[0]?.name" :size="56" />
         <div class="flex min-w-0 flex-1 flex-col items-start gap-2">
           <p class="font-heading text-xl font-semibold text-heading">{{ item.title }}</p>
           <VaultStatusBadge :status="item.status" />

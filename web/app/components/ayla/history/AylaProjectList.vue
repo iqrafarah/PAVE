@@ -90,7 +90,9 @@ async function confirmDelete() {
 
 const status = computed(() => projects.state.value.status);
 const isShown = computed(() => status.value === 'ready' || status.value === 'unavailable');
-const activeChatId = computed(() => (route.path.startsWith('/ayla/') ? String(route.params.id) : null));
+const activeChatId = computed(() =>
+  route.path.startsWith('/ayla/') ? String(route.params.id) : typeof route.query.chat === 'string' ? route.query.chat : null,
+);
 const hasLockedChats = computed(() => lock.state.value.lockedIds.length > 0);
 const isUnlocked = computed(() => lock.state.value.isUnlocked);
 // Like a project: "Nu vergrendelen" and a new locked chat, both only while the chats are unlocked.

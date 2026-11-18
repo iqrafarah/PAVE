@@ -162,6 +162,8 @@ export function useAylaChats() {
     const isFailed = Boolean(error) || !data?.length;
     if (!isFailed) {
       state.value.conversations = state.value.conversations.filter((conversation) => conversation.id !== id);
+      // Its files kept on this device go with it.
+      forgetChatFiles(id);
     }
     unhide(id);
     return { isFailed };

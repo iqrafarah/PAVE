@@ -218,9 +218,13 @@ export function applyFilter(items: VaultItem[], filter: VaultFilter) {
       return !query || searchableText(item).includes(query);
     })
     .sort((left, right) => {
+      // "Eigen volgorde": what you dragged keeps its place; what you never moved comes after it.
+      if (filter.order === 'custom' && left.position !== right.position) {
+        return (left.position ?? Number.MAX_SAFE_INTEGER) - (right.position ?? Number.MAX_SAFE_INTEGER);
+      }
       const [a, b] = [sortDay(left), sortDay(right)];
       if (a === b) return right.updatedAt.localeCompare(left.updatedAt);
-      return filter.order === 'newest' ? b.localeCompare(a) : a.localeCompare(b);
+      return filter.order === 'oldest' ? a.localeCompare(b) : b.localeCompare(a);
     });
 }
 

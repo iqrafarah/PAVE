@@ -93,7 +93,7 @@ onMounted(scrollToBottom);
           </p>
           <ul v-if="message.attachmentNames.length" class="mt-1 flex flex-wrap justify-end gap-1" aria-label="Bijlagen">
             <li v-for="name in message.attachmentNames" :key="name" class="max-w-full">
-              <AylaAttachmentChip :name="name" />
+              <AylaAttachmentChip :name="name" is-compact />
             </li>
           </ul>
           <!-- Every message can be copied, Ayla's can be read out loud; only the last question can be edited. -->

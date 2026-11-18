@@ -134,17 +134,103 @@ const ADD_EVIDENCE_QUESTION = {
  * it (accessRequest). The same as `AylaVaultOffer` on iOS. `asked` is the user's question this reply answers.
  */
 function isVaultQuestion(reply: AylaReply, asked = '') {
-  if (reply.question || reply.accessRequest) return false;
+  if (reply.question || reply.accessRequest || isAppVaultMessage(asked)) return false;
   if (reply.navigation?.screen === 'addEvidence') return true;
   const question = asked.toLowerCase();
   return question.includes('kluis') && ADD_WORDS.test(question);
 }
 
-/** The question under Ayla's answer: her own, or "Wil je iets toevoegen?" (Figma 976:7971) when she was asked to add. */
+// A question for words starts with one of these ("Wat wil je toevoegen?"); every other question is one for Ja or Nee.
+const OPEN_WORDS = /^(?:wat|welke?|hoe|wanneer|waar\w*|wie|waarom|hoeveel|hoelang)\b/i;
+
+/** The sentences of Ayla's text, each ending at . ! ? or a new line (iOS AylaVaultOffer.sentences). */
+function sentences(text: string) {
+  const result: string[] = [];
+  let current = '';
+  for (const character of text) {
+    if (character === '\n') {
+      result.push(current);
+      current = '';
+      continue;
+    }
+    current += character;
+    if ('.!?'.includes(character)) {
+      result.push(current);
+      current = '';
+    }
+  }
+  result.push(current);
+  return result.map((sentence) => sentence.trim()).filter(Boolean);
+}
+
+/** Ayla's last question in her text, if she asked one. A sentence after it ("Bijvoorbeeld een diploma.") does not count. */
+export function lastQuestionSentence(text: string) {
+  return sentences(text).findLast((sentence) => sentence.endsWith('?')) ?? null;
+}
+
+/**
+ * Ayla's last question is one for Ja or Nee: not a question for words ("Wat wil je toevoegen?") and not a choice between
+ * things ("Wil je een diploma of een stage toevoegen?"). The same as iOS (endsWithYesNoQuestion).
+ */
+export function endsWithYesNoQuestion(text: string) {
+  const last = lastQuestionSentence(text);
+  return Boolean(last) && !OPEN_WORDS.test(last!) && !last!.toLowerCase().includes(' of ');
+}
+
+/**
+ * The app's own messages to Ayla after something went into the vault ("Toegevoegd aan mijn kluis: …", "Ik heb 1 foto
+ * toegevoegd aan …"). Her answer to them is a follow-up about that item, never a new offer to add something.
+ */
+export function isAppVaultMessage(text: string) {
+  return /^(Toegevoegd aan mijn kluis|Ik heb \d+ foto)/.test(text.trim());
+}
+
+/** She still asks for something in words in this message ("Wanneer heb je het behaald?"): she is not done asking. */
+export function stillAsks(text: string) {
+  return sentences(text).some((sentence) => sentence.endsWith('?') && OPEN_WORDS.test(sentence));
+}
+
+/** Her last question is whether she may put it in the vault ("Wil je dit diploma toevoegen aan je kluis?"). */
+export function asksToPutInVault(reply: AylaReply | null | undefined) {
+  if (!reply || reply.accessRequest || stillAsks(reply.text)) return false;
+  const last = lastQuestionSentence([reply.text, reply.question?.text].filter(Boolean).join(' '))?.toLowerCase();
+  return Boolean(last) && last!.includes('kluis') && ADD_WORDS.test(last!) && !OPEN_WORDS.test(last!);
+}
+
+const YES_NO_CHOICES = ADD_EVIDENCE_QUESTION.choices;
+
+const RESERVATIONS = new Set(['nee', 'niet', 'geen', 'wacht', 'eerst', 'aanpassen', 'verander', 'veranderen', 'anders', 'nog', 'toch', 'alleen']);
+const CONFIRMATION_STARTS = new Set([
+  'ja', 'jazeker', 'graag', 'klopt', 'prima', 'oké', 'oke', 'ok', 'okay', 'top', 'goed', 'perfect', 'zeker', 'natuurlijk', 'yes',
+  'akkoord', 'doen', 'doe', 'zet', 'toevoegen', 'bewaar', 'sla', 'mooi',
+]);
+
+/**
+ * A short typed yes to what Ayla proposed ("Graag", "Zet er maar in", "Ja dat klopt"). Not with a reservation ("ja,
+ * maar eerst de datum aanpassen"), a question, or more than a few words (iOS AylaVaultOffer.isConfirmation).
+ */
+export function isConfirmation(text: string) {
+  const words = text.toLowerCase().replace(/[.,!…]+/g, ' ').split(/\s+/).filter(Boolean);
+  if (!words.length || words.length > 7 || text.includes('?')) return false;
+  if (words.some((word) => RESERVATIONS.has(word)) || (words.length > 1 && words[1] === 'maar')) return false;
+  return CONFIRMATION_STARTS.has(words[0]!);
+}
+
+/**
+ * The question under Ayla's answer, with its choices: her own; "Wil je iets toevoegen?" (Figma 976:7971) when she was
+ * asked to add; or Ja and Nee for any question in her words that asks for one of them (as iOS pendingYesNo).
+ */
 export function getReplyQuestion(reply: AylaReply | null | undefined, asked?: string) {
   if (!reply) return null;
   if (reply.question) return reply.question;
-  return isVaultQuestion(reply, asked) ? ADD_EVIDENCE_QUESTION : null;
+  const last = lastQuestionSentence(reply.text);
+  if (isVaultQuestion(reply, asked)) {
+    // "Wat wil je toevoegen?": answered in words. "Zal ik het toevoegen?": Ja and Nee, without asking it again.
+    if (!last) return ADD_EVIDENCE_QUESTION;
+    return endsWithYesNoQuestion(reply.text) ? { text: last, choices: YES_NO_CHOICES } : null;
+  }
+  if (!reply.accessRequest && endsWithYesNoQuestion(reply.text)) return { text: last!, choices: YES_NO_CHOICES };
+  return null;
 }
 const YES_LABEL = /^(ja|jazeker|ja graag|graag|ja,? graag|ja,? toevoegen|toevoegen|yes)\b/i;
 
@@ -154,9 +240,15 @@ const YES_LABEL = /^(ja|jazeker|ja graag|graag|ja,? graag|ja,? toevoegen|toevoeg
  * them yet, so a question about adding to the vault counts too.
  */
 export function offersToAddEvidence(reply: AylaReply | null | undefined, asked?: string) {
-  if (!reply || reply.accessRequest) return false;
+  // Only once she has asked everything: with a question for words still open, the answer comes first.
+  if (!reply || reply.accessRequest || stillAsks(reply.text)) return false;
+  // Her last question is about something else ("Wil je iemand vragen dit diploma te bevestigen?"): a plain Ja or Nee,
+  // even when the reply still carries the item she was building.
+  const last = lastQuestionSentence([reply.text, reply.question?.text].filter(Boolean).join(' '))?.toLowerCase();
+  if (last && !last.includes('kluis') && !ADD_WORDS.test(last)) return false;
   if (reply.navigation?.screen === 'addEvidence' || reply.proposedAction?.kind === 'addVaultItem') return true;
-  if (isVaultQuestion(reply, asked)) return true;
+  if (asksToPutInVault(reply)) return true;
+  if (isVaultQuestion(reply, asked)) return !lastQuestionSentence(reply.text) || endsWithYesNoQuestion(reply.text);
   if (!reply.question) return false;
   const words = `${reply.question.text} ${reply.text}`.toLowerCase();
   return words.includes('kluis') && ADD_WORDS.test(words);

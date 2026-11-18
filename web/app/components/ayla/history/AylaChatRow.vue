@@ -22,6 +22,17 @@ const renameInputRef = useTemplateRef<HTMLInputElement>('renameInput');
 
 const lock = useAylaChatLock();
 const projects = useAylaProjects();
+const route = useRoute();
+
+/**
+ * On the vault a chat opens right there (/kluis?chat=<id>), as a question asked there does; the page stays where it is.
+ * A locked chat still goes to its own page, which asks for the PIN first.
+ */
+const link = computed(() =>
+  isOnVault(route) && !lock.isLocked(props.conversation.id)
+    ? { path: route.path, query: { ...route.query, chat: props.conversation.id } }
+    : `/ayla/${props.conversation.id}`,
+);
 // Only chats begun on the iPhone say where; chats from the web say nothing, and the watch stays hidden for now.
 const isStartedOnPhone = computed(() => props.conversation.startedOn === 'phone');
 
@@ -105,7 +116,7 @@ function handleMenuChoice(id: string) {
     </form>
     <template v-else>
       <NuxtLink
-        :to="`/ayla/${conversation.id}`"
+        :to="link"
         :aria-current="isActive ? 'page' : undefined"
         :title="conversation.title"
         class="flex min-w-0 flex-1 flex-col rounded-md px-2 py-1 max-md:pr-18 focus-visible:outline-2 focus-visible:outline-brand"

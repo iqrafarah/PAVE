@@ -34,6 +34,41 @@ export const AYLA_STOP_LABEL = 'Stop Ayla';
 export const AYLA_DICTATE_LABEL = 'Inspreken';
 export const AYLA_STOP_DICTATE_LABEL = 'Stop met inspreken';
 export const AYLA_ADD_FILE_LABEL = 'Bestand toevoegen';
+export const AYLA_ADD_PHOTO_LABEL = 'Foto toevoegen';
+export const AYLA_VAULT_SAVING = 'Ayla zet het in je kluis…';
+export const AYLA_VAULT_ADDED = 'Toegevoegd aan je kluis';
+export const AYLA_PHOTOS_ADDED = (count: number, title: string) =>
+  count === 1 ? `Ik heb 1 foto toegevoegd aan ${title}.` : `Ik heb ${count} foto's toegevoegd aan ${title}.`;
+export const AYLA_LOOK_MISSING = (logo: boolean, cover: boolean) =>
+  logo && cover
+    ? 'Ayla vond geen logo of omslag. Wil je er zelf een kiezen?'
+    : logo
+      ? 'Ayla vond geen logo. Wil je er zelf een kiezen?'
+      : 'Nog geen omslag. Wil je er een kiezen?';
+export const AYLA_LOOK_LOGO = 'Logo kiezen';
+export const AYLA_LOOK_DONE = 'Klaar';
+export const AYLA_FILL_BY_AYLA = 'Ayla vult het in';
+export const AYLA_FILL_MYSELF = 'Zelf invullen';
+export const AYLA_ADDED_CAPTION = (title: string) => `${title} staat in je kluis.`;
+export const AYLA_LOOK_COVER = 'Omslag kiezen';
+export const AYLA_LOOK_FAILED = 'Die afbeelding kon niet bij je bewijs worden gezet. Kies een JPG of PNG.';
+export const AYLA_PHOTOS_FAILED = 'De foto kon niet bij je bewijs worden gezet. Probeer het zo nog een keer.';
+/** What the chat tells Ayla after saving (iOS AylaMessages.added): her instructions wait for these words. */
+export const AYLA_VAULT_ADDED_MESSAGE = (title: string, files: string[] = []) =>
+  files.length ? `Toegevoegd aan mijn kluis: ${title} (met ${files.join(', ')}).` : `Toegevoegd aan mijn kluis: ${title}.`;
+/** What is sent with a file and no question of your own. */
+export const AYLA_FILES_ONLY_QUESTION = (count: number) => (count === 1 ? 'Bekijk dit bestand.' : 'Bekijk deze bestanden.');
+export const AYLA_ATTACH_ITEM_LABEL = 'Item uit je kluis';
+export const AYLA_PICK_ITEM_TITLE = 'Kies uit je kluis';
+export const AYLA_PICK_ITEM_HINT = 'Ayla gebruikt wat je kiest in dit gesprek.';
+export const AYLA_ALL_ITEMS = 'Alle items';
+export const AYLA_CONTEXT_ITEMS = (count: number) => `${count} items uit je kluis`;
+export const AYLA_PICK_NOT_ALLOWED_TITLE = (count: number) =>
+  count === 1 ? AYLA_ASK_NOT_ALLOWED_TITLE : `Ayla mag ${count} van deze items nog niet gebruiken`;
+export const AYLA_ASK_ALLOW_ALL = 'Toestaan en gebruiken';
+export const AYLA_ASK_WITHOUT_THEM = 'Gebruiken zonder die items';
+export const AYLA_PICK_CONTINUE = (count: number) => (count === 0 ? 'Kies items' : count === 1 ? 'Verder met 1 item' : `Verder met ${count} items`);
+export const AYLA_PICK_CLOSE = 'Sluiten';
 export const AYLA_ADD_ITEM_LABEL = 'Item toevoegen';
 export const AYLA_ADD_PLAN_LABEL = 'Plan toevoegen';
 export const AYLA_NOT_AVAILABLE_YET = 'Nog niet beschikbaar';
@@ -143,10 +178,10 @@ export const MEMORY_LOADING = 'Laden…';
 export const AYLA_OPEN_CHATS = 'Gesprekken openen';
 export const AYLA_TEXT_TOO_LONG = 'Je bericht is zo lang als het kan zijn: 4000 tekens.';
 export const AYLA_FILE_TYPE_UNSUPPORTED =
-  'Dit bestandstype kan ik nog niet lezen. Probeer een .txt-, .md- of .csv-bestand.';
+  'Dit bestandstype kan ik nog niet lezen. Probeer een pdf, foto, .txt-, .md- of .csv-bestand.';
 export const AYLA_FILE_EMPTY = 'In dit bestand staat geen tekst.';
 export const AYLA_FILE_TOO_LONG = 'Dit bestand is te lang. Ayla leest maximaal 20.000 tekens per bestand.';
-export const AYLA_TOO_MANY_FILES = 'Je kunt 3 bestanden tegelijk toevoegen.';
+export const AYLA_TOO_MANY_FILES = 'Je kunt 5 bestanden tegelijk toevoegen.';
 export const AYLA_REMOVE_FILE = 'Bestand weghalen';
 export const AYLA_COPIED = 'Gekopieerd';
 export const AYLA_VAULT_LABEL = 'Kluis';

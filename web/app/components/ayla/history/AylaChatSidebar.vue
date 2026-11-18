@@ -58,6 +58,11 @@ function resizeWithKeys(event: KeyboardEvent) {
 function startFreshChat() {
   projects.state.value.newChatProjectId = null;
   closeDrawer();
+  // On the vault the link may point at the page you are on already: the chat starts fresh here.
+  if (isOnVault(route)) {
+    conversation.startNew();
+    conversation.focusComposer();
+  }
 }
 const projects = useAylaProjects();
 const { isDrawerOpen, isCollapsed, setCollapsed, closeDrawer } = useAylaPanel();
@@ -85,7 +90,10 @@ const openMenu = useAylaOpenMenu();
 const deleteTarget = ref<Conversation | null>(null);
 const deleteConfirmRef = useTemplateRef<{ open: () => void }>('deleteConfirm');
 
-const activeId = computed(() => (typeof route.params.id === 'string' ? route.params.id : null));
+// On the vault the open chat is the one in the page, not one in the address.
+const activeId = computed(() =>
+  typeof route.params.id === 'string' ? route.params.id : isOnVault(route) ? conversation.state.value.conversationId : null,
+);
 const trimmedSearch = computed(() => search.value.trim().toLocaleLowerCase('nl'));
 const shownConversations = computed(() => {
   if (!trimmedSearch.value) return chats.visibleConversations.value;
@@ -126,7 +134,7 @@ async function confirmDelete() {
   deleteTarget.value = null;
   if (!item) return;
   chats.hide(item.id);
-  if (activeId.value === item.id) await navigateTo('/');
+  if (activeId.value === item.id) await navigateTo(newChatPath(route));
   const { isFailed } = await chats.deleteHidden(item.id);
   if (isFailed) actionError.value = AYLA_DELETE_FAILED;
 }
@@ -173,7 +181,7 @@ async function lockSelected() {
   const { isFailed } = await lock.lockChat(item.id);
   lockTarget.value = null;
   if (isFailed) actionError.value = AYLA_LOCK_FAILED;
-  else if (activeId.value === item.id) await navigateTo('/');
+  else if (activeId.value === item.id) await navigateTo(newChatPath(route));
 }
 
 async function toggleSearch() {
@@ -277,7 +285,7 @@ onBeforeUnmount(() => {
       >
         <div class="flex items-center pl-5.5 pr-5.25 pt-4.75">
           <NuxtLink
-            to="/"
+            :to="newChatPath(route)"
             class="flex flex-1 items-center gap-2 rounded-md text-sm font-medium text-heading focus-visible:outline-2 focus-visible:outline-brand"
             @click="startFreshChat"
           >

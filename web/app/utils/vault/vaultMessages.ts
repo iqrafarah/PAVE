@@ -195,7 +195,9 @@ export const VAULT_SOURCE_TITLES = {
   import: 'Geïmporteerd',
 } as const;
 export const VAULT_ORIGIN_TITLES = { own: 'Zelf toegevoegd', organisation: 'Van een organisatie', ayla: 'Via Ayla' } as const;
-export const VAULT_ORDER_TITLES = { newest: 'Nieuwste eerst', oldest: 'Oudste eerst' } as const;
+export const VAULT_ORDER_TITLES = { newest: 'Nieuwste eerst', oldest: 'Oudste eerst', custom: 'Eigen volgorde' } as const;
+export const VAULT_DRAG_TO_FOLDER = 'Laat los op een map om het daarheen te verplaatsen.';
+export const VAULT_MOVED_INTO = (title: string, folder: string) => `${title} staat nu in ${folder}.`;
 
 export const VAULT_DETAIL_STATUS = 'Status';
 export const VAULT_DETAIL_DATA = 'Gegevens';
@@ -325,3 +327,37 @@ export const VAULT_SHARED_DESCRIPTION = 'Je omschrijving';
 export const VAULT_SHARED_TITLE = (title: string, kind: string) => `${title} (${kind.toLowerCase()})`;
 export const VAULT_SHARED_FILES = (count: number) => (count === 1 ? '1 bestand' : `${count} bestanden`);
 export const VAULT_SHARED_SKILLS = (count: number) => (count === 1 ? '1 vaardigheid' : `${count} vaardigheden`);
+
+// "Laat Ayla invullen" (iOS VaultMessages, aylaFill...)
+export const VAULT_AYLA_FILL = 'Laat Ayla invullen';
+export const VAULT_AYLA_FILL_READING_BUTTON = 'Ayla leest…';
+export const VAULT_AYLA_FILL_READING = 'Ayla leest je bestanden en vult alvast in…';
+export const VAULT_AYLA_FILL_STOP = 'Zelf invullen';
+export const VAULT_AYLA_FILL_AGAIN = 'Opnieuw proberen';
+export const VAULT_AYLA_FILL_EMPTY = 'Ayla kon niets uit je bestand halen. Vul het zelf in.';
+export const VAULT_AYLA_FILL_NOT_READY = 'Invullen door Ayla is nog niet beschikbaar. Vul het zelf in.';
+export const VAULT_AYLA_FILL_NO_CONNECTION = 'Geen verbinding. Probeer het zo nog een keer, of vul het zelf in.';
+export const VAULT_AYLA_FILL_FAILED = 'Ayla kon je bestand nu niet lezen. Probeer het zo nog een keer, of vul het zelf in.';
+export const VAULT_AYLA_FILLED_TITLE = 'Ayla heeft dit ingevuld';
+export const VAULT_AYLA_FILLED_MESSAGE = 'Controleer alles voordat je verdergaat. Wat Ayla niet in je bestand zag, is leeg gebleven.';
+export const VAULT_AYLA_FILLED_ANNOUNCEMENT = 'Ayla heeft het bewijs ingevuld. Controleer de velden.';
+export const VAULT_AYLA_SPLIT_ONE = 'Eén bewijs';
+export const VAULT_AYLA_SPLIT_APART = 'Apart toevoegen';
+export const VAULT_AYLA_COVER_NOTE = 'Foto uit je document, gekozen door Ayla';
+export const VAULT_NEXT_EVIDENCE = 'Volgende bewijs';
+export const VAULT_NEXT_EVIDENCE_SKIP = 'Klaar';
+
+/** "Door Ayla · pagina 1": short, so it fits under a field in two columns. */
+export const VAULT_FILLED_BY_AYLA = (source: string | null) => (source ? `Door Ayla · ${source}` : 'Ingevuld door Ayla');
+export const VAULT_AYLA_SPLIT_TITLE = (titles: string[]) => {
+  const list = titles.length > 1 ? `${titles.slice(0, -1).join(', ')} en ${titles[titles.length - 1]}` : (titles[0] ?? '');
+  return `Ayla ziet ${titles.length} bewijzen: ${list}.`;
+};
+export const VAULT_AYLA_SPLIT_HINT = (apart: boolean, first: string) =>
+  apart ? `Je voegt ze na elkaar toe, elk al ingevuld. Eerst ${first}.` : 'Al je bestanden komen bij dit ene bewijs.';
+export const VAULT_AYLA_LOGO_NOTE = (source: string | null) =>
+  source ? `Logo van ${source}, gevonden door Ayla` : 'Logo uit je document, gekozen door Ayla';
+export const VAULT_NEXT_EVIDENCE_NOTE = (title: string) => `Ga verder met ${title}, al ingevuld door Ayla. Of kies Klaar om te stoppen.`;
+
+export const VAULT_DRAFT_BACK = 'Je concept is terug, zoals je het net achterliet.';
+export const VAULT_DRAFT_START_OVER = 'Opnieuw beginnen';

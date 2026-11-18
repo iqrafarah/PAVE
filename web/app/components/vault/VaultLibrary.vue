@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { RowMenuItem } from '~/types/ayla';
-import type { VaultFilter, VaultFolder, VaultItem, VaultShelf } from '~/types/vault';
+import type { VaultFilter, VaultFolder, VaultItem, VaultShelf, VaultShelfEntry } from '~/types/vault';
 
 // Your vault (iOS VaultScreen, Figma 1209:55066 and 1209:53998): a row of folders on top that you can drag sideways,
 // then everything in it as tiles or a list. The folders and the filter bar stay in place; only the evidence scrolls.
@@ -44,6 +44,25 @@ const searchId = useId();
 const state = computed(() => vault.state.value);
 const visibleItems = computed(() => applyFilter(state.value.items, filter.value));
 const shownItems = computed(() => visibleItems.value.slice(0, shownCount.value));
+
+// Dragging with the mouse (iOS VaultDrag): folders and cards change places live while you hold them; a card let go on a
+// folder goes into it. What you moved stays where it was moved to, and moving cards puts the vault in "Eigen volgorde".
+const dragged = ref<{ kind: 'folder' | 'item'; id: string } | null>(null);
+const liveFolders = ref<string[] | null>(null);
+const liveItems = ref<string[] | null>(null);
+const dropFolderId = ref<string | null>(null);
+const announcement = ref('');
+let droppedOnFolder = false;
+const shelves = computed(() => {
+  const order = liveFolders.value;
+  if (!order) return vault.shelves.value;
+  return order.flatMap((id) => vault.shelves.value.filter((entry) => entry.folder.id === id));
+});
+const cards = computed(() => {
+  const order = liveItems.value;
+  if (!order) return shownItems.value;
+  return order.flatMap((id) => shownItems.value.filter((item) => item.id === id));
+});
 
 const FOLDER_ACTIONS: RowMenuItem[] = [
   { id: 'edit', label: VAULT_FOLDER_EDIT },
@@ -109,7 +128,8 @@ function folderCreated(folder: VaultFolder) {
 
 // The folder row scrolls sideways by dragging it with the mouse, like swiping on a phone (touch already scrolls).
 function startDrag(event: PointerEvent) {
-  if (event.pointerType !== 'mouse' || event.button !== 0 || !shelfRowRef.value) return;
+  // A folder itself is dragged to another place (below); the empty parts of the row scroll it.
+  if (event.pointerType !== 'mouse' || event.button !== 0 || !shelfRowRef.value || (event.target as Element).closest('[draggable="true"]')) return;
   drag.value = { x: event.clientX, scrollLeft: shelfRowRef.value.scrollLeft, isDragging: false };
 }
 
@@ -132,6 +152,91 @@ function stopClickAfterDrag(event: MouseEvent) {
   if (!drag.value?.isDragging) return;
   event.preventDefault();
   event.stopPropagation();
+}
+
+function moveWithin(order: string[], id: string, targetId: string) {
+  const from = order.indexOf(id);
+  const to = order.indexOf(targetId);
+  if (from === -1 || to === -1 || from === to) return order;
+  const next = [...order];
+  next.splice(from, 1);
+  next.splice(to, 0, id);
+  return next;
+}
+
+function startDragging(kind: 'folder' | 'item', id: string, event: DragEvent) {
+  dragged.value = { kind, id };
+  droppedOnFolder = false;
+  if (kind === 'folder') liveFolders.value = vault.shelves.value.map((entry) => entry.folder.id);
+  else liveItems.value = shownItems.value.map((item) => item.id);
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', id);
+  }
+}
+
+/** Over another folder or card: the dragged one takes its place straight away. */
+function dragOverSibling(kind: 'folder' | 'item', targetId: string, event: DragEvent) {
+  if (dragged.value?.kind !== kind) return;
+  event.preventDefault();
+  const list = kind === 'folder' ? liveFolders : liveItems;
+  if (list.value) list.value = moveWithin(list.value, dragged.value.id, targetId);
+}
+
+/** Over a folder with a card: it will go into the folder. */
+function dragOverFolder(folderId: string, event: DragEvent) {
+  if (dragged.value?.kind === 'item') {
+    event.preventDefault();
+    dropFolderId.value = folderId;
+  } else dragOverSibling('folder', folderId, event);
+}
+
+async function dropOnFolder(folder: VaultFolder, event: DragEvent) {
+  const current = dragged.value;
+  if (current?.kind !== 'item') return;
+  event.preventDefault();
+  droppedOnFolder = true;
+  const item = state.value.items.find((candidate) => candidate.id === current.id);
+  const from = filter.value.shelf.kind === 'folder' ? filter.value.shelf.id : null;
+  if (item && (await vault.moveToFolder(item, folder.id, from))) announcement.value = VAULT_MOVED_INTO(item.title, folder.name);
+}
+
+/** The mouse is let go: what was dragged stays where it was moved to, wherever it was let go. */
+async function endDragging() {
+  const ended = dragged.value;
+  const folders = liveFolders.value;
+  const items = liveItems.value;
+  dragged.value = null;
+  dropFolderId.value = null;
+  if (ended?.kind === 'folder' && folders) await vault.setFolderOrder(folders);
+  else if (ended?.kind === 'item' && items && !droppedOnFolder) {
+    const before = shownItems.value.map((item) => item.id);
+    if (items.join() !== before.join()) {
+      await vault.setItemOrder(items);
+      filter.value.order = 'custom';
+    }
+  }
+  liveFolders.value = null;
+  liveItems.value = null;
+}
+
+/** A folder held near the edge of the row scrolls it, so it can be dragged to the far end. */
+function scrollShelfWhileDragging(event: DragEvent) {
+  const row = shelfRowRef.value;
+  if (!row || !dragged.value) return;
+  const { left, right } = row.getBoundingClientRect();
+  if (event.clientX < left + 48) row.scrollLeft -= 14;
+  else if (event.clientX > right - 48) row.scrollLeft += 14;
+}
+
+/** The keyboard way to move a folder (VoiceOver's "Naar voren" and "Naar achteren" on iOS). */
+async function nudgeFolder(entry: VaultShelfEntry, step: -1 | 1) {
+  const order = vault.shelves.value.map((candidate) => candidate.folder.id);
+  const target = order[order.indexOf(entry.folder.id) + step];
+  if (!target) return;
+  await vault.setFolderOrder(moveWithin(order, entry.folder.id, target));
+  await nextTick();
+  (document.getElementById(`vault-folder-${entry.folder.id}`)?.querySelector('button') as HTMLElement | null)?.focus();
 }
 
 function updateShelfFade() {
@@ -225,7 +330,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
 
 <template>
   <div
-    class="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-4 pb-40 sm:px-13.25"
+    class="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-4 pb-[max(10rem,var(--ayla-float-height,10rem))] sm:px-13.25"
     @scroll.passive="hasScrolled = ($event.target as HTMLElement).scrollTop > 1"
   >
     <!-- From the left edge, like the title above it and the content of every other page; as wide as the window allows. -->
@@ -274,10 +379,27 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
             @pointerup="endDrag"
             @pointercancel="endDrag"
             @click.capture="stopClickAfterDrag"
-            @dragstart.prevent
+            @dragover="scrollShelfWhileDragging"
           >
             <!-- At least 9.5rem wide (six fit on a laptop); with room to spare the folders share the whole row, so it ends where the cards end. -->
-            <li v-for="entry in vault.shelves.value" :key="entry.folder.id" class="min-w-0 max-w-64 flex-[1_0_9.5rem]">
+            <li
+              v-for="entry in shelves"
+              :id="`vault-folder-${entry.folder.id}`"
+              :key="entry.folder.id"
+              draggable="true"
+              :class="[
+                dragged?.kind === 'folder' && dragged.id === entry.folder.id ? 'opacity-40' : '',
+                dropFolderId === entry.folder.id ? 'scale-[1.03] rounded-2xl ring-2 ring-brand' : '',
+              ]"
+              class="min-w-0 max-w-64 flex-[1_0_9.5rem] transition-transform"
+              @dragstart="startDragging('folder', entry.folder.id, $event)"
+              @dragover="dragOverFolder(entry.folder.id, $event)"
+              @dragleave="dropFolderId === entry.folder.id && (dropFolderId = null)"
+              @drop="dropOnFolder(entry.folder, $event)"
+              @dragend="endDragging"
+              @keydown.alt.left.prevent="nudgeFolder(entry, -1)"
+              @keydown.alt.right.prevent="nudgeFolder(entry, 1)"
+            >
               <VaultFolderTile
                 :title="entry.folder.name"
                 :icon="entry.iconSrc"
@@ -351,6 +473,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
         </div>
 
         <p class="sr-only" aria-live="polite">{{ itemCount(visibleItems.length) }}</p>
+        <p class="sr-only" role="status" aria-live="polite">{{ announcement }}</p>
 
         <!-- Nothing to show: what to do next depends on why, as on iOS. -->
         <div v-if="emptyKind" class="flex flex-col items-center gap-5 py-12">
@@ -373,7 +496,16 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
           :class="isGrid ? 'grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-4' : 'flex flex-col gap-2.5'"
           class="mt-1.5"
         >
-          <li v-for="item in shownItems" :key="item.id" class="flex">
+          <li
+            v-for="item in cards"
+            :key="item.id"
+            draggable="true"
+            :class="dragged?.kind === 'item' && dragged.id === item.id ? 'opacity-40' : ''"
+            class="flex"
+            @dragstart="startDragging('item', item.id, $event)"
+            @dragover="dragOverSibling('item', item.id, $event)"
+            @dragend="endDragging"
+          >
             <VaultItemCard
               :item="item"
               :is-grid="isGrid"

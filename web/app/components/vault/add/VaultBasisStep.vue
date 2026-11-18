@@ -3,6 +3,8 @@
 // keeps you on this step, so you can add more (up to five) before going on with Volgende.
 const props = defineProps<{
   files: File[];
+  // Ayla is reading the files: the shape of the form shows instead of the drop zone (iOS VaultAylaFillSkeleton).
+  isReading?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -27,8 +29,9 @@ function pick(file: File) {
       <div class="flex flex-col gap-2.5">
         <VaultFileChip v-for="(file, index) in files" :key="`${file.name}-${file.size}-${index}`" :file="file" @remove="emit('removeFile', index)" />
       </div>
+      <VaultAylaFillSkeleton v-if="isReading" class="mt-4" />
       <VaultDropZone
-        v-if="canAddMore"
+        v-else-if="canAddMore"
         class="mt-3"
         kind="evidence"
         is-compact
@@ -37,7 +40,7 @@ function pick(file: File) {
         @pick="pick"
         @problem="problem = $event"
       />
-      <p v-else class="mt-3 text-xs text-subtle">{{ VAULT_DOCUMENTS_FULL(MAX_DOCUMENTS) }}</p>
+      <p v-else-if="!isReading" class="mt-3 text-xs text-subtle">{{ VAULT_DOCUMENTS_FULL(MAX_DOCUMENTS) }}</p>
       <p v-if="problem" :id="problemId" role="alert" class="mt-2 text-xs text-danger">{{ problem }}</p>
     </template>
 
