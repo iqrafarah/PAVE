@@ -40,6 +40,7 @@ function sortForList(conversations: Conversation[]) {
 
 /** The user's conversations with Ayla (docs/ayla.md, section 4). */
 export function useAylaChats() {
+  const openMenu = useAylaOpenMenu();
   const supabase = useUntypedSupabase();
   const signedIn = useSupabaseUser();
   const state = useState<ChatsState>('ayla-chats', () => ({
@@ -49,8 +50,13 @@ export function useAylaChats() {
     hiddenIds: [],
   }));
 
+  const lock = useAylaChatLock();
+
+  // Locked chats stay out of the list and the search until the PIN is entered on the locked chats page.
   const visibleConversations = computed(() =>
-    state.value.conversations.filter((conversation) => !state.value.hiddenIds.includes(conversation.id)),
+    state.value.conversations.filter(
+      (conversation) => !state.value.hiddenIds.includes(conversation.id) && !lock.isLocked(conversation.id),
+    ),
   );
 
   function selectConversations(columns: string) {
@@ -62,6 +68,10 @@ export function useAylaChats() {
   }
 
   async function load() {
+    if (openMenu.openCount.value > 0) {
+      openMenu.hasPendingReload.value = true;
+      return;
+    }
     // After a refresh the chats show at once as they were, and are checked against the database right after.
     if (state.value.status !== 'ready') {
       const kept = readKept<{ conversations: Conversation[]; canPin: boolean }>('chats', signedIn.value?.sub);
@@ -169,7 +179,8 @@ export function useAylaChats() {
     if (error || !data) return { conversationIds: [], isFailed: true };
 
     const rows = data as { conversation_id: string }[];
-    return { conversationIds: [...new Set(rows.map((row) => row.conversation_id))], isFailed: false };
+    const ids = rows.map((row) => row.conversation_id).filter((id) => !lock.isLocked(id));
+    return { conversationIds: [...new Set(ids)], isFailed: false };
   }
 
   return {

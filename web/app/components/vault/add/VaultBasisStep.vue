@@ -60,7 +60,7 @@ function pick(file: File) {
           <span class="text-sm font-semibold text-heading">{{ VAULT_WITHOUT_FILE_TITLE }}</span>
           <span class="text-xs font-medium text-subtle">{{ VAULT_WITHOUT_FILE_MESSAGE }}</span>
         </span>
-        <VaultIcon src="/images/vault/chevron-right.svg" :width="8.14407" :height="14.2767" class="text-heading" />
+        <VaultIcon src="/images/vault/chevron-right.svg" :width="8.14407" :height="14.2767" class="text-brand" />
       </button>
     </template>
   </div>

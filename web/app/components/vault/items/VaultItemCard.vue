@@ -57,11 +57,11 @@ watch(
           <span class="line-clamp-2 break-words pr-7 text-[0.9375rem]/snug font-semibold text-heading">{{ item.title }}</span>
           <span class="flex flex-col gap-1 text-[0.8125rem] font-medium text-heading">
             <span v-if="place" class="flex items-start gap-2">
-              <VaultIcon src="/images/vault/building.svg" class="mt-px size-4.5 text-subtle" />
+              <VaultIcon src="/images/vault/building.svg" class="mt-px size-4.5 text-brand" />
               <span class="line-clamp-2">{{ place }}</span>
             </span>
             <span v-if="period" class="flex items-center gap-2">
-              <VaultIcon src="/images/vault/calendar.svg" class="size-4.5 text-subtle" />
+              <VaultIcon src="/images/vault/calendar.svg" class="size-4.5 text-brand" />
               {{ period }}
             </span>
           </span>
@@ -82,11 +82,11 @@ watch(
           </span>
           <span class="flex flex-wrap gap-x-5 gap-y-1 text-[0.8125rem] font-medium text-heading">
             <span v-if="place" class="flex min-w-0 items-center gap-2">
-              <VaultIcon src="/images/vault/building.svg" class="size-4.5 text-subtle" />
+              <VaultIcon src="/images/vault/building.svg" class="size-4.5 text-brand" />
               <span class="truncate">{{ place }}</span>
             </span>
             <span v-if="period" class="flex items-center gap-2">
-              <VaultIcon src="/images/vault/calendar.svg" class="size-4.5 text-subtle" />
+              <VaultIcon src="/images/vault/calendar.svg" class="size-4.5 text-brand" />
               {{ period }}
             </span>
           </span>

@@ -30,6 +30,7 @@ const emit = defineEmits<{
       :read-aloud-id="message.id"
       is-aligned-right
       is-above
+      is-always-visible
       @answer-again="emit('answerAgain')"
     />
     <div class="flex max-h-40 gap-2 overflow-y-auto rounded-bubble bg-tint px-4.5 py-3">

@@ -43,6 +43,8 @@ export interface AylaAttachment {
 
 export interface AylaRequest {
   conversationId?: string;
+  // Starts the new conversation inside this project.
+  projectId?: string;
   text: string;
   device: AylaDevice;
   input: AylaInput;
@@ -159,6 +161,15 @@ export interface Conversation {
   startedOn: AylaDevice;
 }
 
+/** A folder for chats, with instructions Ayla follows in every chat inside it. */
+export interface Project {
+  id: string;
+  name: string;
+  instructions: string;
+  updatedAt: string;
+  pinnedAt: string | null;
+}
+
 export interface MemoryNote {
   id: string;
   text: string;
@@ -175,6 +186,7 @@ export type AylaErrorCode =
   | 'not_signed_in'
   | 'insufficient_aal'
   | 'conversation_not_found'
+  | 'project_not_found'
   | 'unavailable'
   | 'offline';
 
@@ -183,4 +195,6 @@ export interface RowMenuItem {
   id: string;
   label: string;
   isDanger?: boolean;
+  // Opens a panel next to the menu (the `submenu` slot of the menu) instead of choosing something.
+  hasSubmenu?: boolean;
 }

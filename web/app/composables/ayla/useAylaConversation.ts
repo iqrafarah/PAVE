@@ -23,6 +23,8 @@ export interface SendOptions {
   input?: AylaInput;
   // What the user has open, such as the vault, so Ayla knows where the question comes from.
   context?: { screen: AylaScreen; itemId?: string };
+  // Starts a new chat inside this project; ignored when the chat already exists.
+  projectId?: string;
   onConversationStarted?: (conversationId: string) => void;
 }
 
@@ -137,7 +139,11 @@ export function useAylaConversation() {
         text,
         device: 'web',
         input: options.input ?? 'text',
-        ...(state.value.conversationId ? { conversationId: state.value.conversationId } : {}),
+        ...(state.value.conversationId
+          ? { conversationId: state.value.conversationId }
+          : options.projectId
+            ? { projectId: options.projectId }
+            : {}),
         ...(attachments.length ? { attachments } : {}),
         ...(context ? { context } : {}),
       },

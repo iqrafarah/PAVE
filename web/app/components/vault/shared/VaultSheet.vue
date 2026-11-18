@@ -5,6 +5,8 @@ withDefaults(
   defineProps<{
     title: string;
     width?: 'narrow' | 'wide';
+    // The window shows the title itself (like the PIN window, under its lock); it stays the name of the window.
+    hidesTitle?: boolean;
   }>(),
   { width: 'wide' },
 );
@@ -54,15 +56,18 @@ function handleClick(event: MouseEvent) {
   >
     <div v-if="isOpen" class="flex max-h-[calc(100dvh-2rem)] flex-col">
       <div class="flex items-start justify-between gap-4 px-9 pt-8 max-sm:px-5">
-        <h2 :id="titleId" class="min-w-0 font-heading text-2xl font-semibold text-heading">{{ title }}</h2>
+        <h2 :id="titleId" :class="hidesTitle ? 'sr-only' : 'min-w-0'" class="font-heading text-2xl font-semibold text-heading">
+          {{ title }}
+        </h2>
+        <span v-if="hidesTitle" aria-hidden="true" />
         <button
           type="button"
           :aria-label="VAULT_ADD_CLOSE"
           :title="VAULT_ADD_CLOSE"
-          class="flex h-9.25 w-8.75 shrink-0 items-center justify-center rounded-field border border-field-line hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand"
+          class="-mr-2 flex size-9 shrink-0 items-center justify-center rounded-field hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand"
           @click="requestClose"
         >
-          <VaultIcon src="/images/vault/close.svg" :width="13.6909" :height="13.6909" class="text-heading" />
+          <VaultIcon src="/images/vault/close.svg" :width="13.6909" :height="13.6909" class="text-brand" />
         </button>
       </div>
       <div tabindex="-1" autofocus class="min-h-0 flex-1 overflow-y-auto px-9 pb-1 pt-6 focus:outline-none max-sm:px-5">

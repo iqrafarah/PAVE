@@ -269,10 +269,10 @@ function handleClose() {
           type="button"
           :aria-label="VAULT_ADD_CLOSE"
           :title="VAULT_ADD_CLOSE"
-          class="flex h-9.25 w-8.75 shrink-0 items-center justify-center rounded-field border border-field-line hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand"
+          class="-mr-2 flex size-9 shrink-0 items-center justify-center rounded-field hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand"
           @click="requestClose"
         >
-          <VaultIcon src="/images/vault/close.svg" :width="13.6909" :height="13.6909" class="text-heading" />
+          <VaultIcon src="/images/vault/close.svg" :width="13.6909" :height="13.6909" class="text-brand" />
         </button>
       </div>
 

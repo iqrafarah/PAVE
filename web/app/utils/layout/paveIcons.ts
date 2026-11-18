@@ -87,6 +87,29 @@ export const PAVE_ICONS = {
       { d: 'M8.5 1V8.5M8.5 8.5V16M8.5 8.5H16M8.5 8.5H1', stroke: 2 },
     ] as IconPath[],
   },
+  // A lock (Heroicons, MIT).
+  lock: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M12 1.5a5.25 5.25 0 0 0-5.25 5.25v3a3 3 0 0 0-3 3v6.75a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3v-6.75a3 3 0 0 0-3-3v-3c0-2.9-2.35-5.25-5.25-5.25Zm3.75 8.25v-3a3.75 3.75 0 1 0-7.5 0v3h7.5Z', evenOdd: true },
+    ] as IconPath[],
+  },
+  // An open lock, for locked chats while they are unlocked (Heroicons "lock-open", MIT).
+  lockOpen: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M18 1.5c2.9 0 5.25 2.35 5.25 5.25v3.75a.75.75 0 0 1-1.5 0V6.75a3.75 3.75 0 1 0-7.5 0v3a3 3 0 0 1 3 3v6.75a3 3 0 0 1-3 3H3.75a3 3 0 0 1-3-3v-6.75a3 3 0 0 1 3-3h9v-3c0-2.9 2.35-5.25 5.25-5.25Z' },
+    ] as IconPath[],
+  },
+  // The tilted push pin of a pinned chat or project (Tabler "pin", MIT).
+  pin: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M15 4.5l-4 4l-4 1.5l-1.5 1.5l7 7l1.5 -1.5l1.5 -4l4 -4', stroke: 1.75 },
+      { d: 'M9 15l-4.5 4.5', stroke: 1.75 },
+      { d: 'M14.5 4l5.5 5.5', stroke: 1.75 },
+    ] as IconPath[],
+  },
   chevronRight: {
     viewBox: '0 0 9 16',
     paths: [

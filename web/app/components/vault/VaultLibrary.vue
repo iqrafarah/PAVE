@@ -335,7 +335,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
         />
 
         <div v-if="isSearching" class="mt-3 flex h-9.5 items-center gap-3 rounded-field border border-field-line bg-white px-3 focus-within:border-brand">
-          <VaultIcon src="/images/vault/toolbar-search.svg" class="size-5 text-subtle" />
+          <VaultIcon src="/images/vault/toolbar-search.svg" class="size-5 text-brand" />
           <label :for="searchId" class="sr-only">{{ VAULT_SEARCH }}</label>
           <input
             :id="searchId"

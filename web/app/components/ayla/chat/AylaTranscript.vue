@@ -61,7 +61,7 @@ onMounted(scrollToBottom);
 <template>
   <div class="relative min-h-0 flex-1">
     <div ref="scroller" class="flex h-full flex-col overflow-y-auto px-4.75 pb-4" @scroll="updateIsAtBottom">
-      <ol class="mt-auto flex flex-col gap-2.5 pt-4" aria-label="Berichten">
+      <ol class="mt-auto flex flex-col gap-1 pt-4" aria-label="Berichten">
         <li
           v-for="message in messages"
           :key="message.id"
@@ -96,11 +96,14 @@ onMounted(scrollToBottom);
               <AylaAttachmentChip :name="name" />
             </li>
           </ul>
+          <!-- Every message can be copied, Ayla's can be read out loud; only the last question can be edited. -->
           <AylaMessageActions
-            v-if="message.role === 'user' && message.id === lastQuestionId && !isWriting"
+            v-if="message.text && !message.isWriting"
             :text="message.text"
-            can-edit-question
-            is-aligned-right
+            :read-aloud-id="message.role === 'ayla' ? message.id : undefined"
+            :can-edit-question="message.id === lastQuestionId && !isWriting"
+            :is-aligned-right="message.role === 'user'"
+            :is-always-visible="message.id === messages.at(-1)?.id"
             @edit-question="emit('editQuestion')"
           />
         </li>

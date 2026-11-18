@@ -149,3 +149,16 @@
         cursor: not-allowed;
     }
 }
+
+/*
+ * The chat history panel has two parts that scroll (the list and the open chat). Their scrollbars stay hidden until
+ * the pointer is over that part, so the panel does not show two bars next to each other.
+ */
+.quiet-scroll .overflow-y-auto {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+}
+
+.quiet-scroll .overflow-y-auto:hover {
+    scrollbar-color: color-mix(in srgb, var(--color-ink) 28%, transparent) transparent;
+}

@@ -4,6 +4,8 @@ import type { AylaAttachment, AylaErrorCode, AylaScreen } from '~/types/ayla';
 const props = defineProps<{
   // The screen this chat sits on, such as the vault: the chatbox then says so and Ayla hears it with the question.
   screen?: AylaScreen;
+  // A new chat started here belongs to this project.
+  projectId?: string;
 }>();
 
 interface ErrorAction {
@@ -21,6 +23,16 @@ const conversation = useAylaConversation();
 const voice = useAylaVoice();
 const memory = useAylaMemory();
 const vaultAdd = useVaultAdd();
+const projects = useAylaProjects();
+const router = useRouter();
+// A chat started with "Nieuwe chat" on a project belongs to it; the chip above the chatbox says so, ✕ undoes it.
+const newChatProject = computed(() =>
+  conversationId.value ? null : (projects.find(projects.state.value.newChatProjectId ?? '') ?? null),
+);
+// "Nieuwe vergrendelde chat": the chip says so, and the chat is locked as soon as it exists.
+const lock = useAylaChatLock();
+const isNewChatLocked = computed(() => !conversationId.value && lock.state.value.isNewChatLocked);
+const chatProjectId = computed(() => props.projectId ?? newChatProject.value?.id);
 const { readDraft, saveDraft } = useAylaDraft();
 
 const text = ref('');
@@ -69,6 +81,8 @@ function restoreFailed(failedText: string | null, failedAttachments: AylaAttachm
 async function send(questionText: string, input: 'text' | 'voice' = 'text') {
   const sentAttachments = attachments.value;
   const startedWithoutConversation = !conversationId.value;
+  // Decided when sending, so nothing that happens while Ayla answers can drop it.
+  const shouldLock = isNewChatLocked.value;
   conversation.redoError.value = null;
   text.value = '';
   attachments.value = [];
@@ -78,12 +92,22 @@ async function send(questionText: string, input: 'text' | 'voice' = 'text') {
     attachments: sentAttachments,
     input,
     ...(props.screen ? { context: { screen: props.screen } } : {}),
+    ...(chatProjectId.value ? { projectId: chatProjectId.value } : {}),
     onConversationStarted(newId) {
       if (startedWithoutConversation) saveDraft(null, '');
+      if (chatProjectId.value) projects.setMembership(newId, chatProjectId.value);
+      if (shouldLock) lockNewChat(newId);
+      projects.state.value.newChatProjectId = null;
+      lock.state.value.isNewChatLocked = false;
       navigateTo(`/ayla/${newId}`);
     },
   });
   restoreFailed(failedText, failedAttachments);
+}
+
+async function lockNewChat(id: string) {
+  const { isFailed } = await lock.lockChat(id);
+  if (isFailed) projects.showNotice(AYLA_LOCK_FAILED, true);
 }
 
 // While talking the field stays the same; a typed question is answered out loud too.
@@ -128,6 +152,15 @@ onMounted(() => {
   if (memory.state.value.status === 'idle') memory.load();
 });
 
+// Leaving the home screen for another page drops the choice; arriving from a chat on the way to it keeps it.
+// useRoute() is still the route of the page that is closing; the router knows where we are going.
+onBeforeUnmount(() => {
+  if (router.currentRoute.value.path !== '/') {
+    projects.state.value.newChatProjectId = null;
+    lock.state.value.isNewChatLocked = false;
+  }
+});
+
 defineExpose({ openFilePicker });
 </script>
 
@@ -145,7 +178,7 @@ defineExpose({ openFilePicker });
     <!-- Over a screen such as the vault, the chatbox floats: what is behind it stays visible around it. -->
     <div
       :class="isFloating ? 'pointer-events-none absolute inset-x-0 bottom-0 *:pointer-events-auto' : 'relative'"
-      class="flex flex-col items-center px-4 pb-8.25"
+      class="flex flex-col items-center px-4 pb-4"
     >
       <!-- Only while talking is on: Ayla's small orb, above her answer and the text field. -->
       <AylaVoiceDock v-if="voice.isActive.value" class="relative mb-3" />
@@ -181,6 +214,22 @@ defineExpose({ openFilePicker });
         :message="conversation.redoError.value"
       />
 
+      <AylaContextChip
+        v-if="newChatProject"
+        class="relative mb-2.5"
+        :title="newChatProject.name"
+        :label="getProjectChipLabel(newChatProject.name)"
+        icon="folder"
+        @clear="projects.state.value.newChatProjectId = null"
+      />
+      <AylaContextChip
+        v-else-if="isNewChatLocked"
+        class="relative mb-2.5"
+        :title="AYLA_LOCKED_CHATS"
+        :label="AYLA_LOCKED_CHIP"
+        icon="lock"
+        @clear="lock.state.value.isNewChatLocked = false"
+      />
       <AylaContextChip v-if="itemContext" class="relative mb-2.5" :title="itemContext.title" @clear="clearItemContext" />
       <AylaChoiceBar
         v-if="openQuestion && !voice.isActive.value"

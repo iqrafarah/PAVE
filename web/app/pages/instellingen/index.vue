@@ -31,7 +31,7 @@ onMounted(() => {
           <span class="truncate font-heading text-xl font-semibold text-heading">{{ account.state.value.fullName ?? SETTINGS_YOUR_ACCOUNT }}</span>
           <span class="truncate text-xs text-subtle">{{ account.state.value.email ?? SETTINGS_ACCOUNT_SUBTITLE }}</span>
         </span>
-        <LayoutPaveIcon name="chevronRight" class="size-3.5 text-subtle" />
+        <LayoutPaveIcon name="chevronRight" class="size-3.5 text-brand" />
       </NuxtLink>
 
       <section :aria-labelledby="generalHeadingId" class="flex flex-col gap-3 pt-2">

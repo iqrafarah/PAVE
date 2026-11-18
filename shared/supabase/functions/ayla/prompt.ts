@@ -121,6 +121,8 @@ export interface PromptInput {
   firstName?: string
   context?: { screen: Screen; itemId?: string; itemIds?: string[] }
   memory?: Memory
+  /** The project this conversation belongs to, with the instructions the user wrote for it. */
+  project?: { name: string; instructions: string }
   vault?: AllowedVault
   /** Whether the user let Ayla look in the vault in this conversation. Missing means yes, as before consent existed. */
   vaultConsent?: VaultConsent
@@ -133,9 +135,18 @@ export function buildSystemPrompt(input: PromptInput): string {
   const layers = [CORE_PROMPT, DEVICE_PROMPTS[input.device], DATA_PROMPT, vaultPrompt(input.vault, input.vaultConsent), memoryPrompt(input.memory ?? { status: 'unavailable' })]
   if (input.input === 'voice' && input.device !== 'watch') layers.push(VOICE_PROMPT)
   if (input.firstName) layers.push(`De gebruiker heet ${input.firstName}.`)
+  const project = projectLayer(input.project)
+  if (project) layers.push(project)
   if (input.context) layers.push(contextLayer(input.context, input.vault))
   layers.push(OUTPUT_PROMPT)
   return layers.join('\n\n')
+}
+
+/** The user's own instructions for a project. They steer tone and focus; they never override the rules above. */
+export function projectLayer(project: PromptInput['project']): string | null {
+  const instructions = project?.instructions.trim()
+  if (!project || !instructions) return null
+  return `Dit gesprek hoort bij het project "${project.name}". De gebruiker schreef hier zelf instructies voor. Volg ze zolang ze niet in strijd zijn met de regels hierboven:\n${instructions}`
 }
 
 /** What the user has open. An item from the vault is named only when the user allowed Ayla to see it. */

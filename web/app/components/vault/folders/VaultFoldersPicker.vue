@@ -148,7 +148,7 @@ const box = (isOn: boolean) => (isOn ? 'border-brand bg-brand text-white' : 'bor
         </span>
       </span>
       <span v-else class="flex-1 pl-1.5 text-subtle/70">{{ VAULT_NO_FOLDER }}</span>
-      <LayoutPaveIcon name="chevronDown" :class="isOpen ? 'rotate-180' : ''" class="size-3.5 shrink-0 text-subtle transition-transform" />
+      <LayoutPaveIcon name="chevronDown" :class="isOpen ? 'rotate-180' : ''" class="size-3.5 shrink-0 text-brand transition-transform" />
     </button>
     <div
       v-if="isOpen"
