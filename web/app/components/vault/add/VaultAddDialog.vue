@@ -49,6 +49,7 @@ interface NextEvidence {
   reading: VaultEvidenceReading;
 }
 const aylaFill = ref<AylaFill>('idle');
+const isByAyla = ref(false);
 const aylaProposal = ref<VaultEvidenceProposal | null>(null);
 const aylaProposals = ref<VaultEvidenceProposal[]>([]);
 const aylaDraft = ref<VaultItemDraft | null>(null);
@@ -77,6 +78,7 @@ interface KeptDraft {
   cover: File | null;
   logo: File | null;
   skills: string[];
+  isByAyla: boolean;
 }
 const kept = useState<KeptDraft | null>('vault-add-kept-draft', () => null);
 const isResumed = ref(false);
@@ -126,6 +128,7 @@ function reset() {
   isResumed.value = false;
   fillRun += 1;
   aylaFill.value = 'idle';
+  isByAyla.value = false;
   aylaProposal.value = null;
   aylaProposals.value = [];
   aylaDraft.value = null;
@@ -214,6 +217,7 @@ function keepDraft() {
     cover: cover.value,
     logo: logo.value,
     skills: skills.value,
+    isByAyla: isByAyla.value,
   };
 }
 
@@ -229,6 +233,7 @@ async function resumeDraft() {
   cover.value = back.cover;
   logo.value = back.logo;
   skills.value = back.skills;
+  isByAyla.value = back.isByAyla;
   step.value = back.step;
   // The step watcher below clears the notice for a step change; this one is not the user's.
   await nextTick();
@@ -349,6 +354,7 @@ function announce(message: string) {
 /** Fills the form with one of Ayla's items, with its folder, skills, logo and cover. */
 async function applyAyla(proposal: VaultEvidenceProposal, files: File[], reading: VaultEvidenceReading) {
   draft.value = applyProposal(proposal, draft.value);
+  isByAyla.value = true;
   const named = proposal.folder?.toLowerCase();
   const folder = named ? vault.state.value.folders.find((candidate) => candidate.name.toLowerCase() === named) : null;
   if (folder && !folderIds.value.includes(folder.id)) folderIds.value = [...folderIds.value, folder.id];
@@ -463,7 +469,7 @@ async function saveItem() {
       cover: wantsCover.value ? cover.value : null,
       logo: logo.value,
       skills: skills.value,
-      isByAyla: aylaFill.value === 'filled',
+      isByAyla: isByAyla.value,
     },
     progress.value,
   );

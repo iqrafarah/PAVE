@@ -4,8 +4,9 @@
 -- user's own, unconfirmed and not linked to an organisation, and 'organization' and 'import' stay for trusted server
 -- code. The rest of guard_vault_item_authority is unchanged (20261112120000).
 --
--- Run after 20261112120000_vault_cover_example_folders_reverify.sql. Safe to run more than once. Until this runs, the web
--- saves such items with source 'user', as before. Part of the shared schema: run it together with the iOS team.
+-- Run after 20261112120000_vault_cover_example_folders_reverify.sql. Safe to run more than once. Required before the web
+-- saves Ayla-filled evidence; failed inserts must not silently change its source to 'user'.
+-- Existing mislabelled items need a targeted correction after their origin has been confirmed.
 
 create or replace function public.guard_vault_item_authority()
 returns trigger

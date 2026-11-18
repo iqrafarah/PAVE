@@ -348,17 +348,13 @@ export function useVault() {
 
   /**
    * A new item, always your own and not confirmed; returns its id. Filled in by Ayla it says so ("Bron: Via Ayla").
-   * Before migration 20261119130000 the database only takes 'user', so it is saved that way, as before.
    */
   async function addItem(draft: VaultItemDraft, folderIds: string[], isByAyla = false) {
-    const insert = (source: 'user' | 'ayla') =>
-      supabase
-        .from('vault_items')
-        .insert({ ...toVaultItemRow(draft), folder_id: folderIds[0] ?? null, source })
-        .select('id')
-        .single();
-    let { data, error } = await insert(isByAyla ? 'ayla' : 'user');
-    if (isByAyla && error?.code === '42501') ({ data, error } = await insert('user'));
+    const { data, error } = await supabase
+      .from('vault_items')
+      .insert({ ...toVaultItemRow(draft), folder_id: folderIds[0] ?? null, source: isByAyla ? 'ayla' : 'user' })
+      .select('id')
+      .single();
     if (error || !data) fail(error);
     const id = (data as { id: string }).id;
     // The item exists and folder_id holds its first folder; extra folder links must never undo that (as on iOS).
