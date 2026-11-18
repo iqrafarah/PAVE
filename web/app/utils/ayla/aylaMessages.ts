@@ -119,6 +119,7 @@ export const AYLA_TOO_MANY_FILES = 'Je kunt 3 bestanden tegelijk toevoegen.';
 export const AYLA_REMOVE_FILE = 'Bestand weghalen';
 export const AYLA_COPIED = 'Gekopieerd';
 export const AYLA_VAULT_LABEL = 'Kluis';
+export const AYLA_DISCLAIMER = 'AYLA is AI en kan fouten maken.';
 export const AYLA_ERROR_LOADING_CHAT = 'Dit gesprek kon niet worden geladen. Probeer het opnieuw.';
 export const AYLA_MICROPHONE_BLOCKED =
   'Geef je browser toegang tot je microfoon om je vraag in te spreken.';

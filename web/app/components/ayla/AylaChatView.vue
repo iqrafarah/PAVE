@@ -208,6 +208,7 @@ defineExpose({ openFilePicker });
         @stop-talking="voice.stop"
         @reading-files="isComposerReading = $event"
       />
+      <p class="relative mt-2 text-center text-xs text-muted">{{ AYLA_DISCLAIMER }}</p>
     </div>
 
     <!-- Announces Ayla's answer once it is complete, not every word while she writes. -->
