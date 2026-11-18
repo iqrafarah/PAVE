@@ -14,7 +14,7 @@ const emit = defineEmits<{
 }>();
 
 const vault = useVault();
-const supabase = useUntypedSupabase();
+const preview = useFilePreview();
 const conversation = useAylaConversation();
 const deleteRef = useTemplateRef<{ open: () => void }>('confirmDelete');
 const askRef = useTemplateRef<{ open: () => void }>('confirmAsk');
@@ -71,17 +71,6 @@ async function allowAndAsk() {
 
 function askWithoutPermission() {
   if (item.value) startAsking(item.value);
-}
-
-/** Opens a file in a new tab through a link that works for one minute; the bucket itself is private. */
-async function openFile(file: VaultFile) {
-  fileProblem.value = null;
-  const { data, error } = await supabase.storage.from('pave-vault').createSignedUrl(file.storagePath, 60);
-  if (error || !data) {
-    fileProblem.value = VAULT_ERROR_GENERIC;
-    return;
-  }
-  window.open(data.signedUrl, '_blank', 'noopener');
 }
 
 const isDownloading = ref(false);
@@ -191,7 +180,7 @@ watch(
             <button
               type="button"
               class="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm font-medium text-heading hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand"
-              @click="openFile(file)"
+              @click="preview.open(file)"
             >
               <VaultIcon src="/images/vault/icons/DocumentSolid.svg" class="size-5 text-brand" />
               <span class="min-w-0 flex-1 truncate">{{ file.name }}</span>

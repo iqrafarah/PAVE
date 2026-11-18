@@ -112,7 +112,7 @@ export function useVaultAdd() {
 
   /** Makes the folder of the kind just before saving, or finds it when it was made meanwhile. */
   async function kindFolderId(name: string, category: VaultItemCategory) {
-    const made = await vault.createFolder(name, 'green', CATEGORY_FOLDER_ICON_KEYS[category]);
+    const made = await vault.createFolder(name, vault.defaultFolderColor.value, CATEGORY_FOLDER_ICON_KEYS[category]);
     vault.state.value.problem = null;
     return made?.id ?? vault.state.value.folders.find((folder) => folder.name.toLowerCase() === name.toLowerCase())?.id ?? null;
   }

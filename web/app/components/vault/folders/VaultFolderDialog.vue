@@ -45,11 +45,13 @@ watch(
   () => props.folder,
   (folder) => {
     if (!folder) return;
-    const style = folder === 'new' ? null : folderStyle(folder);
+    // A new folder starts in the colour of the theme; one of your own colour keeps it for going back to.
+    const style = folder === 'new' ? null : folderStyle(folder, vault.defaultFolderColor.value);
+    const start = style?.color ?? vault.defaultFolderColor.value;
     name.value = folder === 'new' ? '' : folder.name;
-    color.value = style?.color ?? 'green';
-    customColor.value = style && isFolderHex(style.color) ? style.color : DEFAULT_CUSTOM_COLOR;
-    hasPickedCustom.value = Boolean(style && isFolderHex(style.color));
+    color.value = start;
+    customColor.value = isFolderHex(start) ? start : DEFAULT_CUSTOM_COLOR;
+    hasPickedCustom.value = isFolderHex(start);
     icon.value = style?.icon ?? 'folder';
     problem.value = null;
     colorProblem.value = null;

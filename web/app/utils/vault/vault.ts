@@ -128,6 +128,16 @@ export function isFolderHex(color: string): color is VaultFolderHex {
   return /^#[0-9a-f]{6}$/.test(color);
 }
 
+// The theme colours of Settings that have another name in the folder colours.
+const THEME_FOLDER_COLORS: Record<string, VaultFolderColor> = { pink: 'rose', orange: 'rust' };
+
+/** The colour a folder gets when you pick none: the theme colour of Settings (or your own colour when you chose one). */
+export function folderColorForTheme(theme: string, customColor: string | null): VaultFolderColorChoice {
+  if (theme === 'custom' && customColor && /^#[0-9a-f]{6}$/i.test(customColor)) return customColor.toLowerCase() as VaultFolderHex;
+  const named = THEME_FOLDER_COLORS[theme] ?? theme;
+  return (VAULT_FOLDER_PICKER_COLORS as string[]).includes(named) ? (named as VaultFolderColor) : 'green';
+}
+
 /** The colour itself: a named colour from the list, or the one you picked. */
 export function folderHex(color: VaultFolderColorChoice) {
   return isFolderHex(color) ? color : VAULT_FOLDER_COLORS[color];
@@ -143,8 +153,8 @@ export function folderIconColor(_color: VaultFolderColorChoice) {
   return 'white';
 }
 
-export function folderStyle(folder: VaultFolder) {
-  const color: VaultFolderColorChoice = folder.color ?? 'green';
+export function folderStyle(folder: VaultFolder, fallback: VaultFolderColorChoice = 'green') {
+  const color: VaultFolderColorChoice = folder.color ?? fallback;
   return {
     color,
     icon: folder.icon ?? 'folder',
@@ -315,9 +325,9 @@ export function kindFolder(category: VaultItemCategory, folders: VaultFolder[]) 
 }
 
 /** The folders above the vault, in the order they were made, each with its look and how many items it holds. */
-export function buildShelves(items: VaultItem[], folders: VaultFolder[]): VaultShelfEntry[] {
+export function buildShelves(items: VaultItem[], folders: VaultFolder[], fallback: VaultFolderColorChoice = 'green'): VaultShelfEntry[] {
   return folders.map((folder) => {
-    const style = folderStyle(folder);
+    const style = folderStyle(folder, fallback);
     return {
       folder,
       iconSrc: VAULT_FOLDER_ICONS[style.icon],

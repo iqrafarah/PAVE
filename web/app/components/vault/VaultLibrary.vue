@@ -43,8 +43,7 @@ const deletedFolder = ref<VaultFolder | null>(null);
 const deletedItem = ref<VaultItem | null>(null);
 const deleteFolderRef = useTemplateRef<{ open: () => void }>('confirmDeleteFolder');
 const deleteItemRef = useTemplateRef<{ open: () => void }>('confirmDeleteItem');
-const searchRef = useTemplateRef<HTMLInputElement>('search');
-const searchId = useId();
+const searchRef = useTemplateRef<{ focus: () => void }>('search');
 
 const state = computed(() => vault.state.value);
 const visibleItems = computed(() => applyFilter(state.value.items, filter.value));
@@ -342,6 +341,18 @@ watch(
   (isVaultGrid) => (isGrid.value = isVaultGrid),
 );
 
+// Opened from the search (/kluis?item=<id>): that piece of evidence opens, and the address is clean again.
+watch(
+  () => [route.query.item, state.value.status] as const,
+  ([id, status]) => {
+    if (typeof id !== 'string' || status !== 'ready') return;
+    const { item: _, ...query } = route.query;
+    router.replace({ query });
+    if (state.value.items.some((item) => item.id === id)) openedId.value = id;
+  },
+  { immediate: true },
+);
+
 onMounted(() => {
   personal.load();
   isGrid.value = personal.state.value.isVaultGrid;
@@ -368,7 +379,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
           <span v-for="index in 4" :key="index" class="h-27.5 rounded-2xl bg-tile" />
         </div>
         <span class="h-9 w-72 rounded-lg bg-tile" aria-hidden="true" />
-        <div class="grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-4" aria-hidden="true">
+        <div class="grid grid-cols-[repeat(auto-fill,minmax(13.5rem,1fr))] gap-4" aria-hidden="true">
           <span v-for="index in 3" :key="index" class="h-56 rounded-2xl bg-tile" />
         </div>
       </div>
@@ -512,19 +523,15 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
           @add="add"
         />
 
-        <div v-if="isSearching" class="mt-3 flex h-9.5 items-center gap-3 rounded-field border border-field-line bg-white px-3 focus-within:border-brand">
-          <VaultIcon src="/images/vault/toolbar-search.svg" class="size-5 text-brand" />
-          <label :for="searchId" class="sr-only">{{ VAULT_SEARCH }}</label>
-          <input
-            :id="searchId"
-            ref="search"
-            v-model="filter.searchText"
-            type="search"
-            :placeholder="VAULT_SEARCH_PLACEHOLDER"
-            class="min-w-0 flex-1 bg-transparent text-sm font-medium text-heading placeholder:text-subtle/50 focus:outline-none"
-            @keydown.esc="isSearching = false"
-          />
-        </div>
+        <LayoutSearchInput
+          v-if="isSearching"
+          ref="search"
+          v-model="filter.searchText"
+          :label="VAULT_SEARCH"
+          :placeholder="VAULT_SEARCH_PLACEHOLDER"
+          class="mt-3"
+          @escape="isSearching = false"
+        />
 
         </div>
 
@@ -558,7 +565,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
 
         <ul
           v-else
-          :class="isGrid ? 'grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-4' : 'flex flex-col gap-2.5'"
+          :class="isGrid ? 'grid grid-cols-[repeat(auto-fill,minmax(13.5rem,1fr))] gap-4' : 'flex flex-col gap-2.5'"
           class="mt-1.5"
         >
           <li

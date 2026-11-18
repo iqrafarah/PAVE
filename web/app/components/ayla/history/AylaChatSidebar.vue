@@ -2,8 +2,6 @@
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import type { Conversation } from '~/types/ayla';
 
-const SEARCH_MESSAGES_FROM = 2;
-const SEARCH_DELAY_MS = 300;
 const CLOCK_INTERVAL_MS = 60_000;
 
 const route = useRoute();
@@ -68,10 +66,7 @@ const projects = useAylaProjects();
 const { isDrawerOpen, isCollapsed, setCollapsed, closeDrawer } = useAylaPanel();
 
 const isSearching = ref(false);
-const search = ref('');
-const messageMatchIds = ref<string[]>([]);
 const actionError = ref<string | null>(null);
-const searchInputRef = useTemplateRef<HTMLInputElement>('searchInput');
 // Locking a chat: the question first, then the PIN when the account has none yet.
 const lockTarget = ref<Conversation | null>(null);
 const isMakingPin = ref(false);
@@ -80,7 +75,6 @@ const lockConfirmRef = useTemplateRef<{ open: () => void }>('lockConfirm');
 const asideRef = useTemplateRef<HTMLElement>('aside');
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
 let channel: RealtimeChannel | null = null;
-let searchTimer: ReturnType<typeof setTimeout> | undefined;
 let clockTimer: ReturnType<typeof setInterval> | undefined;
 // The groups and times move along with the clock, so a chat from before midnight moves to "Gisteren".
 const now = ref(new Date());
@@ -94,15 +88,7 @@ const deleteConfirmRef = useTemplateRef<{ open: () => void }>('deleteConfirm');
 const activeId = computed(() =>
   typeof route.params.id === 'string' ? route.params.id : isOnVault(route) ? conversation.state.value.conversationId : null,
 );
-const trimmedSearch = computed(() => search.value.trim().toLocaleLowerCase('nl'));
-const shownConversations = computed(() => {
-  if (!trimmedSearch.value) return chats.visibleConversations.value;
-  return chats.visibleConversations.value.filter(
-    (conversation) =>
-      conversation.title.toLocaleLowerCase('nl').includes(trimmedSearch.value) ||
-      messageMatchIds.value.includes(conversation.id),
-  );
-});
+const shownConversations = computed(() => chats.visibleConversations.value);
 const sections = computed(() => groupConversations(shownConversations.value, now.value));
 // Vastgezet first, then Projecten, then one "Recent" group (all the other chats, newest first), like ChatGPT.
 const pinnedSections = computed(() => sections.value.filter((section) => section.kind === 'pinned'));
@@ -111,7 +97,7 @@ const recentSections = computed(() => {
   const conversations = sections.value
     .filter((section) => section.kind !== 'pinned')
     .flatMap((section) => section.conversations)
-    .filter((conversation) => Boolean(trimmedSearch.value) || !projects.state.value.chatProjects[conversation.id]);
+    .filter((conversation) => !projects.state.value.chatProjects[conversation.id]);
   return conversations.length ? [{ kind: 'recent', title: AYLA_RECENT, conversations }] : [];
 });
 const transcript = computed(() => {
@@ -121,7 +107,6 @@ const transcript = computed(() => {
 });
 const status = computed(() => chats.state.value.status);
 const hasNoChats = computed(() => status.value === 'ready' && chats.visibleConversations.value.length === 0);
-const hasNoResults = computed(() => Boolean(trimmedSearch.value) && shownConversations.value.length === 0);
 
 function removeChat(item: Conversation) {
   actionError.value = null;
@@ -184,14 +169,6 @@ async function lockSelected() {
   else if (activeId.value === item.id) await navigateTo(newChatPath(route));
 }
 
-async function toggleSearch() {
-  isSearching.value = !isSearching.value;
-  search.value = '';
-  if (!isSearching.value) return;
-  await nextTick();
-  searchInputRef.value?.focus();
-}
-
 const asideClass = computed(() => {
   if (isDrawerOpen.value) return 'visible translate-x-0 shadow-xl';
   if (isCollapsed.value) return 'invisible -translate-x-full';
@@ -231,20 +208,6 @@ watch(isDrawerOpen, async (isOpen) => {
   getFocusable()[0]?.focus();
 });
 
-async function searchInMessages() {
-  if (trimmedSearch.value.length < SEARCH_MESSAGES_FROM) {
-    messageMatchIds.value = [];
-    return;
-  }
-  const { conversationIds } = await chats.searchMessages(search.value);
-  messageMatchIds.value = conversationIds;
-}
-
-watch(search, () => {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(searchInMessages, SEARCH_DELAY_MS);
-});
-
 onMounted(async () => {
   clockTimer = setInterval(() => {
     if (openMenu.openCount.value === 0) now.value = new Date();
@@ -259,7 +222,6 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
-  clearTimeout(searchTimer);
   clearInterval(clockTimer);
   chats.unsubscribe(channel);
 });
@@ -294,9 +256,9 @@ onBeforeUnmount(() => {
           </NuxtLink>
           <button
             type="button"
-            :aria-pressed="isSearching"
+            aria-haspopup="dialog"
             class="flex size-6 items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-brand"
-            @click="toggleSearch"
+            @click="isSearching = true"
           >
             <LayoutPaveIcon name="search" class="size-4 text-brand" />
             <span class="sr-only">{{ AYLA_SEARCH_CHATS }}</span>
@@ -309,19 +271,6 @@ onBeforeUnmount(() => {
             <AylaPanelIcon />
             <span class="sr-only">{{ AYLA_CLOSE_PANEL }}</span>
           </button>
-        </div>
-
-        <div v-if="isSearching" class="px-5.5 pt-3">
-          <label for="ayla-chat-search" class="sr-only">{{ AYLA_SEARCH_CHATS }}</label>
-          <input
-            id="ayla-chat-search"
-            ref="searchInput"
-            v-model="search"
-            type="search"
-            :placeholder="AYLA_SEARCH_CHATS"
-            @keydown.esc.stop="search ? (search = '') : toggleSearch()"
-            class="w-full rounded-lg border border-rail-line bg-white px-3 py-2 text-sm text-heading placeholder:text-subtle focus-visible:outline-2 focus-visible:outline-brand"
-          />
         </div>
 
         <div class="min-h-0 flex-1 space-y-5.25 overflow-y-auto px-5.5 pb-4 pt-9.5">
@@ -337,7 +286,6 @@ onBeforeUnmount(() => {
             <p class="font-medium text-heading">{{ AYLA_NO_CHATS }}</p>
             <p class="mt-1 text-subtle">{{ AYLA_NO_CHATS_BODY }}</p>
           </div>
-          <p v-else-if="hasNoResults" class="text-sm text-subtle">{{ getNoChatsFoundMessage(search) }}</p>
 
           <AylaChatSection
             v-for="section in pinnedSections"
@@ -407,6 +355,8 @@ onBeforeUnmount(() => {
         @keydown="resizeWithKeys"
       />
     </aside>
+
+    <AylaSearchDialog :open="isSearching" @close="isSearching = false" />
 
     <LayoutConfirmSheet
       ref="lockConfirm"

@@ -178,11 +178,21 @@ export function useAylaChats() {
       .ilike('text', pattern)
       .order('created_at', { ascending: false })
       .limit(SEARCH_LIMIT);
-    if (error || !data) return { conversationIds: [], isFailed: true };
+    if (error || !data) return { conversationIds: [], snippets: {} as Record<string, string>, isFailed: true };
 
-    const rows = data as { conversation_id: string }[];
-    const ids = rows.map((row) => row.conversation_id).filter((id) => !lock.isLocked(id));
-    return { conversationIds: [...new Set(ids)], isFailed: false };
+    const rows = data as { conversation_id: string; text: string }[];
+    const visible = rows.filter((row) => !lock.isLocked(row.conversation_id));
+    const needle = words.trim().toLocaleLowerCase('nl');
+    // A short piece of the newest message that holds the words, with a little around it, for the search results.
+    const snippets: Record<string, string> = {};
+    for (const row of visible) {
+      if (snippets[row.conversation_id]) continue;
+      const text = row.text.replace(/\s+/g, ' ');
+      const at = Math.max(0, text.toLocaleLowerCase('nl').indexOf(needle));
+      const start = Math.max(0, at - 40);
+      snippets[row.conversation_id] = `${start > 0 ? '… ' : ''}${text.slice(start, start + 140)}${start + 140 < text.length ? ' …' : ''}`;
+    }
+    return { conversationIds: Object.keys(snippets), snippets, isFailed: false };
   }
 
   return {

@@ -168,7 +168,10 @@ export function useVault() {
     pinsOnServer: false,
     problem: null,
   }));
-  const shelves = computed(() => buildShelves(state.value.items, state.value.folders));
+  const personal = usePersonalisation();
+  // A new folder, and one without a colour of its own, has the colour of the theme.
+  const defaultFolderColor = computed(() => folderColorForTheme(personal.state.value.theme, personal.state.value.customColor));
+  const shelves = computed(() => buildShelves(state.value.items, state.value.folders, defaultFolderColor.value));
 
   /** The items with their folder links; before migration 20261112130000 folder_id is the only folder. */
   async function readItems() {
@@ -653,6 +656,17 @@ export function useVault() {
     return true;
   }
 
+  /**
+   * The file as a blob address, to show it inside the site (a picture or PDF). It is read once from the private bucket
+   * and typed with what the vault knows of it, so the browser shows it whatever the storage says. The caller releases
+   * it with URL.revokeObjectURL. Returns null when it could not be read.
+   */
+  async function readFile(file: VaultFile) {
+    const { data, error } = await supabase.storage.from(BUCKET).download(file.storagePath);
+    if (error || !data) return null;
+    return URL.createObjectURL(new Blob([data], { type: file.mimeType || data.type }));
+  }
+
   /** The items in the folder stay in the vault. */
   function deleteFolder(id: string) {
     return perform(() => supabase.from('vault_folders').delete().eq('id', id));
@@ -661,6 +675,7 @@ export function useVault() {
   return {
     state,
     shelves,
+    defaultFolderColor,
     load,
     retry,
     count,
@@ -686,6 +701,7 @@ export function useVault() {
     setFolderPinned,
     deleteFolder,
     downloadFile,
+    readFile,
   };
 }
 

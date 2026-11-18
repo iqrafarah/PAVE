@@ -381,3 +381,11 @@ export const VAULT_NEXT_EVIDENCE_NOTE = (title: string) => `Ga verder met ${titl
 
 export const VAULT_DRAFT_BACK = 'Je concept is terug, zoals je het net achterliet.';
 export const VAULT_DRAFT_START_OVER = 'Opnieuw beginnen';
+
+export const SEARCH_CLEAR = 'Zoekopdracht wissen';
+
+export const VAULT_FILE_DOWNLOAD = 'Downloaden';
+export const VAULT_FILE_CLOSE = 'Bestand sluiten';
+export const VAULT_FILE_LOADING = 'Bestand laden…';
+export const VAULT_FILE_FAILED = 'Dit bestand kon niet worden geopend. Probeer het opnieuw.';
+export const VAULT_FILE_NO_PREVIEW = 'Dit bestandstype kan hier niet worden getoond. Download het om het te openen.';

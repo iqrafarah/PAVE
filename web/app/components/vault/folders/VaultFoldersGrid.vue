@@ -21,7 +21,6 @@ const query = ref('');
 // While a folder is dragged the others make room at once; the order is saved when it is let go.
 const dragged = ref<string | null>(null);
 const liveOrder = ref<string[] | null>(null);
-const searchId = useId();
 
 // Accents and capitals do not matter ("Ontwikkeling" is found with "ontwikkeling", "Café" with "cafe").
 const fold = (text: string) => text.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase();
@@ -81,17 +80,7 @@ async function nudge(entry: VaultShelfEntry, step: -1 | 1) {
 
 <template>
   <div class="flex flex-col gap-5 pt-1.5">
-      <div v-if="entries.length >= SEARCH_FROM" class="flex flex-col">
-        <label :for="searchId" class="sr-only">{{ VAULT_FOLDERS_SEARCH }}</label>
-        <input
-          :id="searchId"
-          v-model="query"
-          type="search"
-          autocomplete="off"
-          :placeholder="VAULT_FOLDERS_SEARCH"
-          class="h-11 rounded-field border border-field-line bg-white px-3.5 text-sm font-medium text-heading placeholder:text-subtle/50 focus:border-brand focus:outline-none"
-        />
-      </div>
+      <LayoutSearchInput v-if="entries.length >= SEARCH_FROM" v-model="query" :label="VAULT_FOLDERS_SEARCH" :placeholder="VAULT_FOLDERS_SEARCH" />
 
       <ul v-if="shown.length" class="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-3">
         <template v-for="entry in shown" :key="entry.folder.id">
