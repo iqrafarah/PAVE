@@ -18,6 +18,14 @@ struct AylaVaultOfferTests {
         #expect(AylaVaultOffer.lastQuestion(in: "Wat een stage. Zal ik hem toevoegen?") == .yesNo)
     }
 
+    @Test func afterNoTheAppDoesNotOfferItAgain() {
+        let reply = AylaReply(id: "r", conversationId: "c", text: "Prima. Ik zie geen stage in je kluis.")
+        #expect(AylaVaultOffer.question(for: reply, asked: "Kunnen we iets toevoegen aan mijn kluis?") != nil)
+        #expect(AylaVaultOffer.question(for: reply, asked: "Nee") == nil)
+        #expect(AylaVaultOffer.question(for: reply, asked: "Nee, liever niet") == nil)
+        #expect(!AylaVaultOffer.offersToAddEvidence(reply, asked: "Nee"))
+    }
+
     @Test func aConsentQuestionInWordsDoesNotOpenAddingEvidence() {
         let choices = [AylaReply.Choice(id: "y", label: "Ja"), AylaReply.Choice(id: "n", label: "Nee")]
         let consent = AylaReply(

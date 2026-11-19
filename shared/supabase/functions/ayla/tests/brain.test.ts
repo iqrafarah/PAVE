@@ -619,3 +619,11 @@ test('project sources are named when Ayla may see them, and nothing else leaks',
   assert.doesNotMatch(buildSystemPrompt({ device: 'web', project, vault, vaultConsent: 'declined' }), /bronnen van het project/)
   assert.doesNotMatch(buildSystemPrompt({ device: 'web', project: { ...project, sourceIds: ['zzz'] }, vault, vaultConsent: 'granted' }), /bronnen van het project/)
 })
+
+test('declinedOffer: a nee after an Ayla turn', async () => {
+  const { declinedOffer } = await import('../brain.ts')
+  const history = [{ role: 'ayla' as const, text: 'Wil je dit toevoegen?' }]
+  assert.ok(declinedOffer(history, 'Nee'))
+  assert.ok(!declinedOffer(history, 'Ja'))
+  assert.ok(!declinedOffer([{ role: 'user' as const, text: 'hoi' }], 'Nee'))
+})

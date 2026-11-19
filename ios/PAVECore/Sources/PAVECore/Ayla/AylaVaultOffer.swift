@@ -21,7 +21,8 @@ public enum AylaVaultOffer {
     public static func question(for reply: AylaReply?, asked: String) -> AylaReply.Question? {
         guard let reply else { return nil }
         if let question = reply.question { return question }
-        guard isVaultQuestion(reply, asked: asked) else { return nil }
+        // Just said no to her offer: the app does not offer it again by itself (web brain declinedOffer).
+        guard !isNo(asked), isVaultQuestion(reply, asked: asked) else { return nil }
         switch lastQuestion(in: reply.text) {
         // "Wat wil je toevoegen?": the user answers in words.
         case .open: return nil
@@ -35,6 +36,7 @@ public enum AylaVaultOffer {
     public static func offersToAddEvidence(_ reply: AylaReply?, asked: String) -> Bool {
         guard let reply, reply.accessRequest == nil else { return false }
         if reply.navigation?.screen == .addEvidence || reply.proposedAction?.kind == .addVaultItem { return true }
+        if isNo(asked) { return false }
         if isVaultQuestion(reply, asked: asked) { return lastQuestion(in: reply.text) != .open }
         guard let question = reply.question, !question.text.contains(consentAsk) else { return false }
         let words = "\(question.text) \(reply.text)".lowercased()
