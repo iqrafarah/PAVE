@@ -165,6 +165,15 @@ struct AylaScreenRequestTests {
         #expect(AylaScreenRequest.screen(confirmedBy: "Ja", after: AylaReply(id: "r", conversationId: "c", text: "Je kluis is leeg.")) == nil)
     }
 
+    @Test func onlyOpeningNeedsNoAnswer() {
+        #expect(AylaScreenRequest.screenOnlyAsked(in: "Open kluis") == .vault)
+        #expect(AylaScreenRequest.screenOnlyAsked(in: "Hey Ayla, kun je mijn instellingen openen?") == .settings)
+        #expect(AylaScreenRequest.screenOnlyAsked(in: "Meldingen") == .notifications)
+        #expect(AylaScreenRequest.screenOnlyAsked(in: "Open instellingen en zet donker aan") == nil)
+        #expect(AylaScreenRequest.screenOnlyAsked(in: "Open mijn kluis en zoek mijn stage") == nil)
+        #expect(AylaScreenRequest.screenOnlyAsked(in: "Wat staat er in mijn kluis?") == nil)
+    }
+
     @Test func onlyPagesTheBrainKnowsGoAlongAsContext() {
         #expect(!AylaScreenRequest.knownToBrain.contains(.notifications))
         #expect(AylaScreenRequest.knownToBrain.contains(.settings))

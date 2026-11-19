@@ -21,6 +21,21 @@ public enum AylaScreenRequest {
         }?.screen
     }
 
+    /// The page when the request is nothing but opening it ("open kluis", "kun je mijn instellingen openen?"): the app
+    /// then just opens it, without an answer from Ayla. Nil when more is asked ("open instellingen en zet donker aan").
+    public static func screenOnlyAsked(in text: String) -> AylaScreen? {
+        guard let screen = screen(askedIn: text) else { return nil }
+        let names = screens.flatMap { $0.names.split(separator: "|").map(String.init) }
+        let isOnlyOpening = normalized(text).split(separator: " ").allSatisfy { openingWords.contains(String($0)) || names.contains(String($0)) }
+        return isOnlyOpening ? screen : nil
+    }
+
+    private static let openingWords: Set<String> = [
+        "open", "opent", "openen", "toon", "tonen", "bekijk", "bekijken", "ga", "gaan", "naar", "breng", "neem", "mee", "laat",
+        "zien", "wil", "wou", "mag", "kan", "kun", "kunt", "ik", "je", "jij", "ayla", "hey", "hé", "hoi", "eens", "even", "ff",
+        "me", "mij", "mijn", "m'n", "mn", "de", "het", "jouw", "maar", "dan", "nu", "graag", "alsjeblieft", "aub",
+    ]
+
     /// "Ja" or "Graag" to Ayla's own "Wil je naar je instellingen gaan?": the page she offered to open.
     public static func screen(confirmedBy answer: String, after reply: AylaReply?) -> AylaReply.Navigation? {
         guard let reply, AylaVaultOffer.isYes(answer), reply.accessRequest == nil,

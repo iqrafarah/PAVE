@@ -94,6 +94,8 @@ struct AylaChatScreen: View {
     /// What a button of the chat does once that sheet has slid away: the menu and the chats open over the chat,
     /// never under a sheet.
     @State private var afterShelf: (() -> Void)?
+    /// Ayla's answer shows on top of the page that is open, until it is tapped or dragged away.
+    @State private var showsShelfReply = false
     /// The wave of blocks after something went into the vault, and the save that is busy after a yes in words.
     @State private var waveStartedAt: Date?
     @State private var isSavingForUser = false
@@ -209,6 +211,7 @@ struct AylaChatScreen: View {
             if model.isAnswering == false { try? await Task.sleep(for: .milliseconds(600)) }
             guard !Task.isCancelled else { return }
             openPage(request.navigation)
+            showsShelfReply = true
         }
         // The places from the start chips, as they are in the app: up from the bottom, pulled up to the full screen,
         // swiped away, with the chat still there behind them. The vault is the vault itself.
@@ -239,13 +242,23 @@ struct AylaChatScreen: View {
                     .background(Color.white.ignoresSafeArea(edges: .bottom))
                 }
             }
-            // Keep talking with Ayla while the page is open: her answer shows in the chat above the panel.
+            // Keep talking with Ayla while the page is open: her answer shows on top of the page.
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 AylaShelfComposer(text: $model.draft, place: shelf.title, isAnswering: model.isAnswering) {
-                    vaultDetent = .fraction(0.62)
+                    showsShelfReply = true
                     send()
                 }
             }
+            .overlay(alignment: .top) {
+                if showsShelfReply, let reply = shelfReply {
+                    AylaShelfReply(text: reply.text, choices: reply.choices, onChoose: { choose($0) }) {
+                        showsShelfReply = false
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+            .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.4, bounce: 0.15), value: showsShelfReply)
+            .animation(.easeOut(duration: 0.2), value: model.phase)
             .presentationDetents([.fraction(0.62), .large], selection: $vaultDetent)
             .presentationDragIndicator(.visible)
             .presentationBackgroundInteraction(.enabled)
@@ -296,7 +309,8 @@ struct AylaChatScreen: View {
             openVacanciesID = last.id
         }
         .onChange(of: model.conversationID) { old, _ in
-            shelf = nil
+            // A new conversation getting its id while Ayla answers is still the same chat: the page stays open.
+            if !model.isAnswering { shelf = nil }
             dictation.stop()
             readAloud.stop()
             isAttachMenuOpen = false
@@ -1438,6 +1452,15 @@ struct AylaChatScreen: View {
     }
 
     private func send(_ text: String? = nil) {
+        // Nothing but "open kluis": the page opens, and Ayla does not answer on top of that.
+        if text == nil, !model.isAnswering, model.attachments.isEmpty, let screen = AylaScreenRequest.screenOnlyAsked(in: model.draft) {
+            dictation.stop()
+            isComposerFocused = false
+            model.draft = ""
+            showsShelfReply = false
+            openPage(AylaReply.Navigation(screen: screen))
+            return
+        }
         guard connection.isOnline, !isSavingForUser else { return }
         dictation.stop()
         isComposerFocused = false
@@ -1797,7 +1820,16 @@ struct AylaChatScreen: View {
         openShelf(place)
     }
 
+    /// What the card on top of an open page says: nothing yet while Ayla thinks, then her answer as it comes in.
+    private var shelfReply: (text: String?, choices: [String])? {
+        if model.phase == .thinking { return (nil, []) }
+        guard let last = model.entries.last, last.role == .ayla else { return nil }
+        let choices = model.isAnswering ? [] : (model.question(for: last)?.choices.map(\.label) ?? [])
+        return (last.text, choices)
+    }
+
     private func closeShelf() {
+        showsShelfReply = false
         guard let shelf else { return }
         model.hideScreen(shelf.screen)
         self.shelf = nil
