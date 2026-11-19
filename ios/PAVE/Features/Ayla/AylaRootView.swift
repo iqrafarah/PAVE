@@ -140,12 +140,13 @@ struct AylaRootView: View {
             search: model.searchMessages,
             preview: model.preview,
             projects: AylaProjectActions(
-                create: { await model.createProject(name: $0, instructions: $1) },
+                create: { await model.createProject(name: $0, instructions: $1, icon: $2, color: $3) },
                 update: { await model.updateProject($0) },
                 togglePin: model.toggleProjectPin,
                 delete: model.deleteProject,
                 newChat: startNewConversation(in:),
-                move: { model.move($0, to: $1) }
+                move: { model.move($0, to: $1) },
+                open: openProject
             ),
             locks: AylaLockActions(
                 showsLocked: model.showsLockedChats,
@@ -168,6 +169,12 @@ struct AylaRootView: View {
 
     private var chatsProblemBinding: Binding<Bool> {
         Binding(get: { model.chatsProblem != nil }, set: { if !$0 { model.chatsProblem = nil } })
+    }
+
+    /// The start page of a project, in the place of the chat; on a narrow screen the chats page closes for it.
+    private func openProject(_ project: AylaProject) {
+        model.openPage(of: project)
+        if !isWide { showsChats = false }
     }
 
     private func toggleChats() {

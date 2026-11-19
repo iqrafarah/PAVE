@@ -117,6 +117,8 @@ public struct AylaConversationList: Equatable, Sendable {
     public var canUseProjects: Bool
     public var canLock: Bool
     public var canArchive: Bool
+    /// False until projects have their own icon and colour (migration 20261119150000).
+    public var canStyleProjects = false
 
     public init(
         conversations: [AylaConversation] = [], canPin: Bool = false,

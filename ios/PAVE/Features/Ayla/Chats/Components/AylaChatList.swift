@@ -27,12 +27,14 @@ struct AylaRetentionActions {
 
 /// "Projecten": folders for chats with Ayla's own instructions (web useAylaProjects).
 struct AylaProjectActions {
-    var create: (_ name: String, _ instructions: String) async -> AylaProject?
+    var create: (_ name: String, _ instructions: String, _ icon: VaultFolderIcon?, _ color: VaultFolderColor?) async -> AylaProject?
     var update: (AylaProject) async -> Bool
     var togglePin: (AylaProject) -> Void
     var delete: (AylaProject) -> Void
     var newChat: (AylaProject) -> Void
     var move: (AylaConversation, AylaProject?) -> Void
+    /// The start page of the project, with its chats and sources.
+    var open: (AylaProject) -> Void
 }
 
 /// "Vergrendelde chats": one PIN of four digits for every locked chat (web useAylaChatLock).
@@ -671,6 +673,9 @@ struct AylaChatList: View {
             isOpen: isOpen
         ) {
             PaveHaptics.selection()
+            actions.projects?.open(project)
+        } onToggle: {
+            PaveHaptics.selection()
             withAnimation(listAnimation) {
                 if isOpen { openProjects.remove(project.id) } else { openProjects.insert(project.id) }
             }
@@ -710,16 +715,18 @@ struct AylaChatList: View {
     private func projectEditorSheet(_ editing: ProjectEditing) -> some View {
         switch editing {
         case .new:
-            AylaProjectEditor(project: nil) { name, instructions in
-                guard let project = await actions.projects?.create(name, instructions) else { return false }
+            AylaProjectEditor(project: nil, canStyle: list.canStyleProjects) { name, instructions, icon, color in
+                guard let project = await actions.projects?.create(name, instructions, icon, color) else { return false }
                 openProjects.insert(project.id)
                 return true
             }
         case .edit(let project):
-            AylaProjectEditor(project: project) { name, instructions in
+            AylaProjectEditor(project: project, canStyle: list.canStyleProjects) { name, instructions, icon, color in
                 var changed = project
                 changed.name = name
                 changed.instructions = instructions
+                changed.icon = icon
+                changed.color = color
                 return await actions.projects?.update(changed) ?? false
             } onDelete: {
                 actions.projects?.delete(project)

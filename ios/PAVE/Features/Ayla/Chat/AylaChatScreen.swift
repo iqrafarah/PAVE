@@ -527,7 +527,19 @@ struct AylaChatScreen: View {
 
     @ViewBuilder
     private func conversation(height: CGFloat, bottomMargin: CGFloat) -> some View {
-        if model.entries.isEmpty, !model.isLoadingConversation {
+        if model.entries.isEmpty, !model.isLoadingConversation, let project = model.openProject {
+            // The start page of a project: its chats and sources, and the text field below starts a chat in it.
+            ScrollView {
+                AylaProjectStart(project: project, model: model) { chat in
+                    Task { await model.open(chat) }
+                }
+                .opacity(isTalking ? 0 : 1)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .scrollDismissesKeyboard(.interactively)
+            .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: bottomMargin) }
+            .transition(.opacity)
+        } else if model.entries.isEmpty, !model.isLoadingConversation {
             ScrollView {
                 AylaWelcome(firstName: model.firstName, isAvailable: model.isAvailable, isTyping: model.isGreetingReady, onStarter: openShelf)
                     .padding(.top, (height * 0.174).rounded())

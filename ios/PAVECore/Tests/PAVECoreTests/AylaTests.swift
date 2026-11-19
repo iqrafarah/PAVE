@@ -288,6 +288,41 @@ extension SupabaseAylaServiceTests {
         await #expect(throws: AylaChatPinError.tooManyAttempts) { try await blocked.checkChatPin("1234") }
     }
 
+    @Test func aProjectHasItsOwnLookOnceTheColumnsExist() async throws {
+        let ayla = service { urlRequest in
+            if urlRequest.url?.path.hasSuffix("ayla_projects") == true {
+                return (200, Data(#"""
+                [{"id":"p1","name":"Stage","updated_at":"2026-11-05T10:00:00+00:00","icon":"rocket-launch","color":"#c2410c"},
+                 {"id":"p2","name":"Cv","updated_at":"2026-11-04T10:00:00+00:00","icon":null,"color":"blue"}]
+                """#.utf8))
+            }
+            return (200, Data("[]".utf8))
+        }
+        let list = try await ayla.conversations()
+        #expect(list.canStyleProjects)
+        #expect(list.projects.first?.icon == .rocket)
+        #expect(list.projects.first?.color == .custom(0xC2410C))
+        #expect(list.projects.last?.icon == nil && list.projects.last?.color == .blue)
+    }
+
+    @Test func projectSourcesAreLinksToVaultItems() async throws {
+        let captured = Captured()
+        let ayla = service { urlRequest in
+            captured.request = urlRequest
+            return (200, Data(#"[{"item_id":"i2"},{"item_id":"i1"}]"#.utf8))
+        }
+        #expect(try await ayla.projectSources(projectID: "p1") == ["i2", "i1"])
+        #expect(captured.request?.url?.query?.contains("project_id=eq.p1") == true)
+        try await ayla.addProjectSources(["i3"], projectID: "p1")
+        let add = try #require(captured.request)
+        #expect(add.httpMethod == "POST")
+        #expect(add.value(forHTTPHeaderField: "Prefer")?.contains("ignore-duplicates") == true)
+        try await ayla.removeProjectSource("i3", projectID: "p1")
+        #expect(captured.request?.httpMethod == "DELETE")
+        let missing = service { _ in (404, Data(#"{"code":"PGRST205"}"#.utf8)) }
+        await #expect(throws: AylaError.notSetUp) { try await missing.projectSources(projectID: "p1") }
+    }
+
     @Test func movingAChatSetsOnlyItsProject() async throws {
         let captured = Captured()
         let ayla = service { urlRequest in

@@ -9,10 +9,19 @@ public struct AylaProject: Equatable, Sendable, Identifiable {
     public var instructions: String
     public var updatedAt: Date
     public var pinnedAt: Date?
+    /// The project's own icon and colour (migration 20261119150000), from the set of the vault folders; nil shows the
+    /// folder in the theme colour.
+    public var icon: VaultFolderIcon?
+    public var color: VaultFolderColor?
 
     public var isPinned: Bool { pinnedAt != nil }
 
-    public init(id: String, name: String, instructions: String = "", updatedAt: Date = .now, pinnedAt: Date? = nil) {
+    public init(
+        id: String, name: String, instructions: String = "", updatedAt: Date = .now, pinnedAt: Date? = nil,
+        icon: VaultFolderIcon? = nil, color: VaultFolderColor? = nil
+    ) {
+        self.icon = icon
+        self.color = color
         self.id = id
         self.name = name
         self.instructions = instructions

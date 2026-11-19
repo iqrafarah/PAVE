@@ -28,6 +28,14 @@ public protocol AylaService: Sendable {
     func updateProject(_ project: AylaProject) async throws
     func setProjectPinned(_ isPinned: Bool, projectID: String) async throws
     func deleteProject(id: String) async throws
+    /// The project's own icon and colour; nil goes back to the folder in the theme colour.
+    func setProjectLook(icon: VaultFolderIcon?, color: VaultFolderColor?, projectID: String) async throws
+    /// "Bronnen" (migration 20261119160000): vault items Ayla uses in every chat of the project, newest first.
+    /// `notSetUp` until the table exists.
+    func projectSources(projectID: String) async throws -> [String]
+    func addProjectSources(_ itemIDs: [String], projectID: String) async throws
+    /// Only the link goes; the item stays in the vault.
+    func removeProjectSource(_ itemID: String, projectID: String) async throws
     /// Puts a chat in a project, or takes it out with nil.
     func move(conversationID: String, toProject projectID: String?) async throws
     /// "Chat vergrendelen" (migration 20261118130000). One PIN of four digits for every locked chat, checked only in the
@@ -102,6 +110,10 @@ extension AylaService {
     public func updateProject(_ project: AylaProject) async throws { throw AylaError.notSetUp }
     public func setProjectPinned(_ isPinned: Bool, projectID: String) async throws { throw AylaError.notSetUp }
     public func deleteProject(id: String) async throws { throw AylaError.notSetUp }
+    public func setProjectLook(icon: VaultFolderIcon?, color: VaultFolderColor?, projectID: String) async throws { throw AylaError.notSetUp }
+    public func projectSources(projectID: String) async throws -> [String] { throw AylaError.notSetUp }
+    public func addProjectSources(_ itemIDs: [String], projectID: String) async throws { throw AylaError.notSetUp }
+    public func removeProjectSource(_ itemID: String, projectID: String) async throws { throw AylaError.notSetUp }
     public func move(conversationID: String, toProject projectID: String?) async throws { throw AylaError.notSetUp }
     public func setLocked(_ isLocked: Bool, conversationID: String) async throws { throw AylaError.notSetUp }
     public func chatPinExists() async throws -> Bool { throw AylaError.notSetUp }
@@ -354,7 +366,7 @@ public struct SupabaseAylaService: AylaService {
         async let lockedRequest: [LockedRow]? = try? select("ayla_locked_chats", query: [("select", "conversation_id")], token: token)
         let (rows, projectRows, lockedRows) = try await (rowsRequest, projectsRequest, lockedRequest)
         let locked = Set((lockedRows ?? []).map(\.conversationID))
-        return AylaConversationList(
+        var list = AylaConversationList(
             conversations: rows.map {
                 AylaConversation(
                     id: $0.id,
@@ -375,6 +387,14 @@ public struct SupabaseAylaService: AylaService {
             canLock: lockedRows != nil,
             canArchive: rows.contains(where: \.hasArchiveColumn)
         )
+        // Without any project yet, a request for the column itself says whether it exists.
+        if let projectRows, projectRows.isEmpty {
+            let probe: [IDRow]? = try? await select("ayla_projects", query: [("select", "id,icon,color"), ("limit", "0")], token: token)
+            list.canStyleProjects = probe != nil
+        } else {
+            list.canStyleProjects = (projectRows ?? []).contains(where: \.hasLook)
+        }
+        return list
     }
 
     // MARK: Projects
@@ -402,6 +422,38 @@ public struct SupabaseAylaService: AylaService {
             body: try JSONEncoder().encode(body), returning: true
         )
         try await expectRow(from: urlRequest)
+    }
+
+    public func setProjectLook(icon: VaultFolderIcon?, color: VaultFolderColor?, projectID: String) async throws {
+        let body: [String: String?] = ["icon": icon?.rawValue, "color": color?.rawValue]
+        let urlRequest = try await authorized(
+            "ayla_projects", query: [("id", "eq.\(projectID)"), ("select", "id")], method: "PATCH",
+            body: try JSONEncoder().encode(body), returning: true
+        )
+        try await expectRow(from: urlRequest)
+    }
+
+    public func projectSources(projectID: String) async throws -> [String] {
+        let rows: [SourceRow] = try await select(
+            "ayla_project_sources",
+            query: [("select", "item_id"), ("project_id", "eq.\(projectID)"), ("order", "created_at.desc")]
+        )
+        return rows.map(\.itemID)
+    }
+
+    public func addProjectSources(_ itemIDs: [String], projectID: String) async throws {
+        guard !itemIDs.isEmpty else { return }
+        let body = itemIDs.map { ["project_id": projectID, "item_id": $0] }
+        var urlRequest = try await authorized("ayla_project_sources", query: [], method: "POST", body: try JSONEncoder().encode(body))
+        urlRequest.setValue("resolution=ignore-duplicates", forHTTPHeaderField: "Prefer")
+        _ = try await perform(urlRequest, accepting: [200, 201, 204])
+    }
+
+    public func removeProjectSource(_ itemID: String, projectID: String) async throws {
+        let urlRequest = try await authorized(
+            "ayla_project_sources", query: [("project_id", "eq.\(projectID)"), ("item_id", "eq.\(itemID)")], method: "DELETE"
+        )
+        _ = try await perform(urlRequest, accepting: [200, 204])
     }
 
     public func setProjectPinned(_ isPinned: Bool, projectID: String) async throws {
@@ -909,12 +961,41 @@ private struct ProjectRow: Decodable {
     let instructions: String?
     let updated_at: String
     let pinned_at: String?
+    let icon: String?
+    let color: String?
+    /// False before the migration with the icon and colour (20261119150000).
+    let hasLook: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, instructions, updated_at, pinned_at, icon, color
+    }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        instructions = try container.decodeIfPresent(String.self, forKey: .instructions)
+        updated_at = try container.decode(String.self, forKey: .updated_at)
+        pinned_at = try container.decodeIfPresent(String.self, forKey: .pinned_at)
+        icon = try container.decodeIfPresent(String.self, forKey: .icon)
+        color = try container.decodeIfPresent(String.self, forKey: .color)
+        hasLook = container.contains(.icon)
+    }
 
     var project: AylaProject {
         AylaProject(
             id: id, name: name, instructions: instructions ?? "",
-            updatedAt: SupabaseAylaService.date(from: updated_at), pinnedAt: pinned_at.map(SupabaseAylaService.date(from:))
+            updatedAt: SupabaseAylaService.date(from: updated_at), pinnedAt: pinned_at.map(SupabaseAylaService.date(from:)),
+            icon: icon.flatMap(VaultFolderIcon.init(rawValue:)), color: color.flatMap(VaultFolderColor.init(rawValue:))
         )
+    }
+}
+
+private struct SourceRow: Decodable {
+    let itemID: String
+
+    private enum CodingKeys: String, CodingKey {
+        case itemID = "item_id"
     }
 }
 

@@ -144,6 +144,23 @@ enum AylaMessages {
     static let pinResetBody = "Al je vergrendelde chats worden verwijderd. Dit kan niet terug."
     static let pinResetConfirm = "Resetten en verwijderen"
 
+    // The page of a project (web /project/<id>).
+    static let projectTabChats = "Chats"
+    static let projectSources = "Bronnen"
+    static let projectEmpty = "Nog geen chats in dit project. Stel hierboven je eerste vraag."
+    static let sourcesEmpty = "Nog geen bronnen. Voeg bewijsstukken uit je kluis toe, dan gebruikt Ayla ze in elke chat van dit project."
+    static let sourcesAdd = "Toevoegen"
+    static let sourcesPickTitle = "Bronnen toevoegen"
+    static let sourcesPickEmpty = "Je kluis is nog leeg. Voeg eerst iets toe aan je kluis."
+    static let sourcesRemove = "Uit project halen"
+    static let sourcesFailed = "De bronnen konden niet worden bijgewerkt. Probeer het opnieuw."
+    static let sourcesSortNewest = "Nieuwste eerst"
+    static let sourcesSortOldest = "Oudste eerst"
+    static let sourcesSortName = "Naam"
+    static let sourcesAllKinds = "Alle soorten"
+    static let sourcesHint = "Ayla gebruikt deze bronnen in elke chat van dit project, als ze in je kluis mag kijken."
+    static let projectLook = "Icoon en kleur"
+
     // Accountpincode (web Privacy): the same PIN on every device, so it can be changed or reset from here too.
     static let accountPinTitle = "Accountpincode"
     static let accountPinIntro = "Gebruik je accountpincode om je vergrendelde chats op al je apparaten te beveiligen."

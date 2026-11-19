@@ -1,28 +1,43 @@
 import PAVECore
 import SwiftUI
 
-/// Making a project or changing one (web AylaProjectEditor): a name and the instructions Ayla follows in every chat of
-/// the project. Deleting keeps the chats; they only no longer belong to a project.
+/// Making a project or changing one (web AylaProjectEditor): a name, its own icon and colour, and the instructions Ayla
+/// follows in every chat of the project. Deleting keeps the chats; they only no longer belong to a project.
 struct AylaProjectEditor: View {
     @Environment(\.dismiss) private var dismiss
     let project: AylaProject?
-    let onSave: (_ name: String, _ instructions: String) async -> Bool
+    /// False until projects can have an icon and colour of their own.
+    var canStyle = false
+    let onSave: (_ name: String, _ instructions: String, _ icon: VaultFolderIcon?, _ color: VaultFolderColor?) async -> Bool
     var onDelete: (() -> Void)?
 
     @State private var name: String
     @State private var instructions: String
+    @State private var icon: VaultFolderIcon?
+    @State private var color: VaultFolderColor?
     @State private var isSaving = false
     @State private var confirmsDelete = false
     @FocusState private var focus: Field?
 
     private enum Field { case name, instructions }
 
-    init(project: AylaProject?, onSave: @escaping (String, String) async -> Bool, onDelete: (() -> Void)? = nil) {
+    init(
+        project: AylaProject?, canStyle: Bool = false,
+        onSave: @escaping (String, String, VaultFolderIcon?, VaultFolderColor?) async -> Bool, onDelete: (() -> Void)? = nil
+    ) {
         self.project = project
+        self.canStyle = canStyle
         self.onSave = onSave
         self.onDelete = onDelete
         _name = State(initialValue: project?.name ?? "")
         _instructions = State(initialValue: project?.instructions ?? "")
+        _icon = State(initialValue: project?.icon)
+        _color = State(initialValue: project?.color)
+    }
+
+    /// How the project will look, with the name typed so far.
+    private var preview: AylaProject {
+        AylaProject(id: project?.id ?? "new", name: name, icon: icon, color: color)
     }
 
     private var cleanName: String? { AylaProject.cleanName(name) }
@@ -31,6 +46,12 @@ struct AylaProjectEditor: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
+                    if canStyle {
+                        AylaProjectBadge(project: preview, size: 64)
+                            .frame(maxWidth: .infinity)
+                            .animation(.snappy(duration: 0.2), value: icon)
+                            .animation(.snappy(duration: 0.2), value: color)
+                    }
                     VStack(alignment: .leading, spacing: 8) {
                         Text(AylaMessages.projectNameLabel)
                             .textStyle(.label)
@@ -82,6 +103,10 @@ struct AylaProjectEditor: View {
                             .accessibilityLabel("\(instructions.count) van \(AylaProject.maxInstructionsLength) tekens")
                     }
 
+                    if canStyle {
+                        AylaLookPicker(icon: $icon, color: $color)
+                    }
+
                     if project != nil, onDelete != nil {
                         Button(AylaMessages.projectDelete, role: .destructive) { confirmsDelete = true }
                             .textStyle(.action)
@@ -122,7 +147,7 @@ struct AylaProjectEditor: View {
         guard let cleanName, !isSaving else { return }
         isSaving = true
         Task {
-            let saved = await onSave(cleanName, instructions.trimmingCharacters(in: .whitespacesAndNewlines))
+            let saved = await onSave(cleanName, instructions.trimmingCharacters(in: .whitespacesAndNewlines), icon, color)
             isSaving = false
             if saved { dismiss() }
         }
@@ -130,5 +155,5 @@ struct AylaProjectEditor: View {
 }
 
 #Preview {
-    AylaProjectEditor(project: nil) { _, _ in true }
+    AylaProjectEditor(project: nil, canStyle: true) { _, _, _, _ in true }
 }

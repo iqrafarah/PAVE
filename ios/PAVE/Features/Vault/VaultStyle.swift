@@ -97,6 +97,28 @@ extension VaultFolderColor {
 }
 
 extension VaultFolderIcon {
+    /// Filled, for projects (web: every project icon is filled).
+    var solidImage: ImageResource {
+        switch self {
+        case .folder: .iconFolderSolid
+        case .briefcase: .iconBriefcaseSolid
+        case .academicCap: .iconAcademicCapSolid
+        case .checkBadge: .iconCheckBadgeSolid
+        case .wrenchScrewdriver: .iconWrenchScrewdriverSolid
+        case .chatBubble: .iconChatBubbleLeftEllipsisSolid
+        case .star: .iconStarSolid
+        case .heart: .iconHeartSolid
+        case .codeBracket: .iconCodeBracketSolid
+        case .lightBulb: .iconLightBulbSolid
+        case .rocket: .iconRocketLaunchSolid
+        case .globe: .iconGlobeEuropeAfricaSolid
+        case .paintBrush: .iconPaintBrushSolid
+        case .documentText: .iconDocumentTextSolid
+        case .userGroup: .iconUserGroupSolid
+        case .trophy: .iconTrophySolid
+        }
+    }
+
     /// Outline, like the icons on the category folders.
     var image: ImageResource {
         switch self {

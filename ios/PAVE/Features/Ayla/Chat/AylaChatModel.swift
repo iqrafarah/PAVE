@@ -301,6 +301,7 @@ final class AylaChatModel {
         }
         lastQuestion = text
         lastFiles = files
+        openProject = nil
         // "Open instellingen": the page opens at once, while Ayla answers, as on the web.
         if let navigation = AylaScreenRequest.screen(askedIn: text).map({ AylaReply.Navigation(screen: $0) }) ?? offered {
             opensPageAlready = true
@@ -592,6 +593,7 @@ final class AylaChatModel {
 
     func newConversation(in project: AylaProject? = nil) {
         guard !isAnswering else { return }
+        openProject = nil
         newChatProject = project
         clearContext()
         entries = []
@@ -615,6 +617,7 @@ final class AylaChatModel {
     }
 
     func open(_ conversation: AylaConversation) async {
+        openProject = nil
         guard let service, !isAnswering else { return }
         clearContext()
         isLoadingConversation = true
@@ -826,10 +829,15 @@ final class AylaChatModel {
     // MARK: Projects
 
     /// "Nieuw project": the list shows it at once; nil when it could not be made.
-    func createProject(name: String, instructions: String) async -> AylaProject? {
+    func createProject(name: String, instructions: String, icon: VaultFolderIcon? = nil, color: VaultFolderColor? = nil) async -> AylaProject? {
         guard let service else { return nil }
         do {
-            let project = try await service.createProject(name: name, instructions: instructions)
+            var project = try await service.createProject(name: name, instructions: instructions)
+            if conversationList.canStyleProjects, icon != nil || color != nil,
+               (try? await service.setProjectLook(icon: icon, color: color, projectID: project.id)) != nil {
+                project.icon = icon
+                project.color = color
+            }
             conversationList.projects.insert(project, at: 0)
             PaveHaptics.success()
             return project
@@ -842,9 +850,14 @@ final class AylaChatModel {
     func updateProject(_ project: AylaProject) async -> Bool {
         guard let service, let index = conversationList.projects.firstIndex(where: { $0.id == project.id }) else { return false }
         let before = conversationList
+        let old = conversationList.projects[index]
         conversationList.projects[index] = project
+        if openProject?.id == project.id { openProject = project }
         do {
             try await service.updateProject(project)
+            if conversationList.canStyleProjects, old.icon != project.icon || old.color != project.color {
+                try await service.setProjectLook(icon: project.icon, color: project.color, projectID: project.id)
+            }
             PaveHaptics.success()
             return true
         } catch {
@@ -869,9 +882,66 @@ final class AylaChatModel {
         }
     }
 
+    // MARK: The page of a project
+
+    /// The start page of a project (web /project/<id>): its chats and its sources, with a box to start a chat in it.
+    var openProject: AylaProject?
+    /// The sources of each project that was opened: vault item ids, newest first.
+    private(set) var projectSources: [String: [String]] = [:]
+    /// False until the table of the sources exists (migration 20261119160000); then there is no Bronnen tab.
+    private(set) var canUseSources = true
+
+    func openPage(of project: AylaProject) {
+        newConversation(in: project)
+        openProject = project
+        Task { await loadSources(of: project) }
+    }
+
+    func loadSources(of project: AylaProject) async {
+        guard let service else { return }
+        do {
+            projectSources[project.id] = try await service.projectSources(projectID: project.id)
+            canUseSources = true
+        } catch AylaError.notSetUp {
+            canUseSources = false
+        } catch {
+            if projectSources[project.id] == nil { chatsProblem = AylaMessages.sourcesFailed }
+        }
+    }
+
+    func addSources(_ itemIDs: [String], to project: AylaProject) async {
+        guard let service else { return }
+        let known = projectSources[project.id] ?? []
+        let fresh = itemIDs.filter { !known.contains($0) }
+        guard !fresh.isEmpty else { return }
+        projectSources[project.id] = fresh + known
+        do {
+            try await service.addProjectSources(fresh, projectID: project.id)
+            PaveHaptics.success()
+        } catch {
+            projectSources[project.id] = known
+            chatsProblem = AylaMessages.sourcesFailed
+        }
+    }
+
+    func removeSource(_ itemID: String, from project: AylaProject) {
+        guard let service else { return }
+        let before = projectSources[project.id] ?? []
+        projectSources[project.id] = before.filter { $0 != itemID }
+        Task {
+            do {
+                try await service.removeProjectSource(itemID, projectID: project.id)
+            } catch {
+                projectSources[project.id] = before
+                chatsProblem = AylaMessages.sourcesFailed
+            }
+        }
+    }
+
     /// The chats stay; they only no longer belong to a project.
     func deleteProject(_ project: AylaProject) {
         guard let service else { return }
+        if openProject?.id == project.id { openProject = nil }
         let before = conversationList
         conversationList.projects.removeAll { $0.id == project.id }
         for chat in conversationList.conversations where chat.projectID == project.id {
