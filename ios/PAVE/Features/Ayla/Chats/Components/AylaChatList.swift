@@ -66,6 +66,11 @@ struct AylaChatList: View {
     @State private var lockTarget: AylaConversation?
     @State private var pinSetupFor: AylaConversation?
     @State private var showsLockedChats = false
+    /// The chat being dragged, from the moment iOS lifts it until it is let go.
+    @State private var draggedChat: String?
+    @State private var rowFrames: [String: CGRect] = [:]
+    @State private var dragEnd: Task<Void, Never>?
+    private static let listSpace = "chatList"
     @FocusState private var isSearchFocused: Bool
     @Environment(\.chatSearchRequestedAt) private var searchRequestedAt
     /// The vault, so the search also finds evidence, documents and pictures, as on the web.
@@ -155,34 +160,11 @@ struct AylaChatList: View {
                 emptyState
             } else {
                 ForEach(items) { item in
-                    switch item {
-                    case .header(let title):
-                        header(title)
-                            .selectionDisabled()
-                            .moveDisabled(true)
-                    case .chat(let conversation):
-                        row(conversation)
-                    case .projectsHeader:
-                        projectsHeader
-                            .selectionDisabled()
-                            .moveDisabled(true)
-                    case .project(let project):
-                        projectRow(project)
-                            .selectionDisabled()
-                            .moveDisabled(true)
-                    case .projectChat(let conversation):
-                        row(conversation)
-                            .padding(.leading, 22)
-                    case .locked(let count):
-                        lockedRow(count)
-                            .selectionDisabled()
-                            .moveDisabled(true)
-                    }
-                }
-                // Hold a chat and drag it, as on the web: onto a project (or among its chats) to put it there, among
-                // the pinned chats to pin it, among the other chats to take it out of its project and unpin it.
-                .onMove { source, destination in
-                    move(source, to: destination)
+                    itemRow(item)
+                        // Where each row is, so a chat let go over the list lands in the right place.
+                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.listSpace)) } action: { frame in
+                            rowFrames[item.id] = frame
+                        }
                 }
                 if canLoadMore {
                     ProgressView()
@@ -197,6 +179,23 @@ struct AylaChatList: View {
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.interactively)
         .environment(\.editMode, .constant(isSelecting ? .active : .inactive))
+        .coordinateSpace(.named(Self.listSpace))
+        // A list takes no drops on its own rows, so while a chat is dragged a clear layer over it catches the drop and
+        // the place decides where it goes (tested in the simulator: drops on rows inside a List never arrive).
+        .overlay {
+            Color.clear
+                .contentShape(.rect)
+                .allowsHitTesting(draggedChat != nil)
+                .dropDestination(for: String.self) { ids, point in
+                    defer { draggedChat = nil }
+                    guard let id = ids.first else { return false }
+                    return drop(id, at: point)
+                } isTargeted: { isOver in
+                    if isOver { dragEnd?.cancel() } else { endDragSoon() }
+                }
+                // If a drag ended somewhere the layer did not hear, the first tap clears it.
+                .onTapGesture { draggedChat = nil }
+        }
         .refreshable { await actions.refresh() }
         // Asked for with ⌘K: only a fresh request, not one from earlier.
         .task(id: searchRequestedAt) {
@@ -314,6 +313,16 @@ struct AylaChatList: View {
             menu(for: conversation)
         } preview: {
             AylaChatPreview(title: conversation.title) { await actions.preview(conversation) }
+        }
+        // Hold a chat and drag it, as on the web: onto a project to put it there, onto Vastgezet to pin it, among the
+        // other chats to take it out of its project and unpin it.
+        .draggable(conversation.id) {
+            AylaChatDragPreview(title: conversation.title)
+                .onAppear {
+                    dragEnd?.cancel()
+                    draggedChat = conversation.id
+                    PaveHaptics.tap(.light)
+                }
         }
         .accessibilityActions {
             menu(for: conversation)
@@ -559,6 +568,29 @@ struct AylaChatList: View {
         }
     }
 
+    @ViewBuilder
+    private func itemRow(_ item: Item) -> some View {
+        switch item {
+        case .header(let title):
+            header(title)
+                .selectionDisabled()
+        case .chat(let conversation):
+            row(conversation)
+        case .projectsHeader:
+            projectsHeader
+                .selectionDisabled()
+        case .project(let project):
+            projectRow(project)
+                .selectionDisabled()
+        case .projectChat(let conversation):
+            row(conversation)
+                .padding(.leading, 22)
+        case .locked(let count):
+            lockedRow(count)
+                .selectionDisabled()
+        }
+    }
+
     // MARK: Projects
 
     private var projectsHeader: some View {
@@ -653,44 +685,53 @@ struct AylaChatList: View {
     }
 
     /// Where a dragged chat was let go decides what happens to it; the list keeps its own order (pinned, then by date).
-    private func move(_ source: IndexSet, to destination: Int) {
-        let all = items
-        guard let from = source.first, all.indices.contains(from) else { return }
-        let chat: AylaConversation
-        switch all[from] {
-        case .chat(let conversation), .projectChat(let conversation): chat = conversation
-        default: return
+    private func drop(_ id: String, at point: CGPoint) -> Bool {
+        guard let chat = list.visible.first(where: { $0.id == id }) else { return false }
+        let shown = items
+        // The row under the finger, or else the nearest row above it.
+        let under = shown.last { item in
+            guard let frame = rowFrames[item.id] else { return false }
+            return frame.minY <= point.y
         }
-        var rest = all
-        rest.remove(at: from)
-        let index = destination > from ? destination - 1 : destination
-        let above = index > 0 && index <= rest.count ? rest[index - 1] : nil
         let pinnedTitle = "Vastgezet"
 
         enum Target { case pinned, project(AylaProject), plain, nothing }
-        let target: Target = switch above {
-        case nil: .pinned
+        let target: Target = switch under {
         case .header(let title) where title == pinnedTitle: .pinned
         case .chat(let conversation) where conversation.isPinned: .pinned
         case .project(let project): .project(project)
         case .projectChat(let conversation): list.project(of: conversation).map(Target.project) ?? .plain
-        case .projectsHeader: .nothing
+        case .projectsHeader, .locked, nil: .nothing
         default: .plain
         }
 
-        PaveHaptics.success()
         switch target {
         case .pinned:
-            if !chat.isPinned, list.canPin { pin([chat]) }
+            guard !chat.isPinned, list.canPin else { return false }
+            pin([chat])
         case .project(let project):
+            guard chat.projectID != project.id else { return false }
             if chat.isPinned, list.canPin { pin([chat]) }
             actions.projects?.move(chat, project)
             withAnimation(listAnimation) { _ = openProjects.insert(project.id) }
         case .plain:
+            guard chat.isPinned || chat.projectID != nil else { return false }
             if chat.isPinned, list.canPin { pin([chat]) }
             if chat.projectID != nil { actions.projects?.move(chat, nil) }
         case .nothing:
-            break
+            return false
+        }
+        PaveHaptics.success()
+        return true
+    }
+
+    /// Leaving the list ends the drag after a moment, unless the finger comes back over it.
+    private func endDragSoon() {
+        dragEnd?.cancel()
+        dragEnd = Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            guard !Task.isCancelled else { return }
+            draggedChat = nil
         }
     }
 

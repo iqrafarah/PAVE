@@ -85,6 +85,7 @@ final class PaveCameraControl {
     var isEnabled: Bool {
         get { UserDefaults.standard.bool(forKey: Self.enabledKey) }
         set {
+            print("[knop] setting: \(newValue)")
             UserDefaults.standard.set(newValue, forKey: Self.enabledKey)
             enabledChanged += 1
         }
@@ -104,6 +105,7 @@ final class PaveCameraControl {
     @ObservationIgnored private var highlightTimeout: Task<Void, Never>?
 
     func start(at destination: MainDestination) async {
+        print("[knop] start asked, on: \(isOn), starting: \(isStarting), camera: \(AVCaptureDevice.authorizationStatus(for: .video).rawValue)")
         guard !isOn, !isStarting else { return }
         isStarting = true
         defer { isStarting = false }

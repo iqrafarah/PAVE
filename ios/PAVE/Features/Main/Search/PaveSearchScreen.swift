@@ -99,25 +99,27 @@ struct PaveSearchScreen: View {
 
     @ViewBuilder
     private var results: some View {
-        if needle.isEmpty {
+        if needle.isEmpty, tab == .all {
             let recent = Array(list.visible.sorted { $0.updatedAt > $1.updatedAt }.prefix(8))
-            if !recent.isEmpty, tab.shows(.chats) {
+            if recent.isEmpty {
+                emptyText("Typ om te zoeken in je chats en je kluis.")
+            } else {
                 sectionTitle("Recente chats")
                 ForEach(recent) { chat in
                     row(.chat, chat.title, list.project(of: chat)?.name, chat.updatedAt) { open(chat) }
                 }
-            } else {
-                emptyText("Typ om te zoeken in je chats en je kluis.")
             }
         } else {
-            let titles = tab.shows(.chats) ? list.matching(needle).conversations.sorted { $0.updatedAt > $1.updatedAt } : []
+            // A tab without search words shows everything of its kind, as on the web.
+            let chats = needle.isEmpty ? list.visible : list.matching(needle).conversations
+            let titles = tab.shows(.chats) ? chats.sorted { $0.updatedAt > $1.updatedAt } : []
             let titleIDs = Set(titles.map(\.id))
             let inMessages = tab.shows(.chats) ? hits.filter { !titleIDs.contains($0.conversation.id) } : []
             let projects = tab.shows(.projects) ? PaveSearch.projects(list, matching: needle) : []
             let items = tab.shows(.items) ? PaveSearch.items(vault, matching: needle) : []
             let files = PaveSearch.files(vault, matching: needle, tab: tab)
             if titles.isEmpty, inMessages.isEmpty, projects.isEmpty, items.isEmpty, files.isEmpty {
-                emptyText("Geen resultaten voor “\(needle)”.")
+                emptyText(needle.isEmpty ? "Hier staat nog niets." : "Geen resultaten voor “\(needle)”.")
             }
             ForEach(titles) { chat in
                 row(.chat, chat.title, list.project(of: chat)?.name, chat.updatedAt) { open(chat) }

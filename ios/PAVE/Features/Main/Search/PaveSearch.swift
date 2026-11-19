@@ -22,8 +22,10 @@ enum PaveSearchTab: String, CaseIterable, Identifiable {
 
 /// What the search finds besides chat titles and messages; capitals and accents do not matter ("cafe" finds "Café").
 enum PaveSearch {
+    /// Without search words everything matches, so a tab alone shows all of its kind.
     static func contains(_ text: String, _ needle: String) -> Bool {
-        text.range(of: needle, options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "nl_NL")) != nil
+        guard !needle.isEmpty else { return true }
+        return text.range(of: needle, options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "nl_NL")) != nil
     }
 
     static func projects(_ list: AylaConversationList, matching needle: String) -> [AylaProject] {
@@ -35,7 +37,7 @@ enum PaveSearch {
         guard let vault, vault.state == .ready else { return [] }
         return Array(vault.items.filter { item in
             contains(item.title, needle) || contains(item.organisationName ?? "", needle) || item.skills.contains { contains($0, needle) }
-        }.prefix(20))
+        }.prefix(needle.isEmpty ? 100 : 20))
     }
 
     /// Documents and pictures in the vault whose name matches, for the tabs that show them.
@@ -52,6 +54,6 @@ enum PaveSearch {
             case .images: return isImage
             default: return true
             }
-        }.prefix(20))
+        }.prefix(needle.isEmpty ? 100 : 20))
     }
 }
