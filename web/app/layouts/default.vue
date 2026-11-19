@@ -30,7 +30,7 @@ const showsChats = computed(() => route.meta.showsChats === true);
     <LayoutIconRail class="max-md:hidden" />
     <LayoutMenuDrawer />
     <AylaChatSidebar v-if="showsChats" />
-    <div class="flex min-w-0 flex-1 flex-col bg-white">
+    <div class="flex min-w-0 flex-1 flex-col bg-canvas">
       <!-- A page that breaks while it is drawn is replaced by a message; the menu around it keeps working. -->
       <NuxtErrorBoundary>
         <slot />

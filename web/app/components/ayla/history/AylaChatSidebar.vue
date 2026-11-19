@@ -237,7 +237,7 @@ onBeforeUnmount(() => {
       :aria-modal="isDrawerOpen ? 'true' : undefined"
       :class="[asideClass, { 'md:hidden': isCollapsed && !isDrawerOpen }]"
       :style="{ '--ayla-sidebar-w': `${width}px` }"
-      class="quiet-scroll fixed inset-y-0 left-0 z-40 flex w-66.5 flex-col border-r md:w-(--ayla-sidebar-w) border-rail-line bg-white transition-transform motion-reduce:transition-none"
+      class="quiet-scroll fixed inset-y-0 left-0 z-40 flex w-66.5 flex-col border-r md:w-(--ayla-sidebar-w) border-rail-line bg-sidebar transition-transform motion-reduce:transition-none"
       @keydown.esc="closeDrawerAndReturnFocus"
       @keydown="trapFocus"
     >

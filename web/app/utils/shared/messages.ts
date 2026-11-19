@@ -61,3 +61,8 @@ export function getRemainingRulesMessage(remainingCount: number) {
   if (remainingCount === 1) return 'Nog 1 eis te gaan';
   return `Nog ${remainingCount} eisen te gaan`;
 }
+
+export const SIGNUP_DISABLED_MESSAGE = `Account aanmaken is op dit moment niet mogelijk. Neem contact op via ${SUPPORT_EMAIL}.`;
+export const INVALID_EMAIL_MESSAGE = 'Dit e-mailadres klopt niet. Controleer het en probeer het opnieuw.';
+export const EMAIL_ALREADY_REGISTERED_MESSAGE =
+  "Er bestaat al een account met dit e-mailadres. Log in, of kies 'Wachtwoord vergeten?' als je je wachtwoord kwijt bent.";

@@ -1,4 +1,4 @@
-export type EmailLinkType = 'invite' | 'email';
+export type EmailLinkType = 'invite' | 'email' | 'signup';
 
 export function useAuth() {
   const supabase = useSupabaseClient();
@@ -12,6 +12,30 @@ export function useAuth() {
       email,
       password,
     });
+    return { error };
+  }
+
+  /** Self sign-up. The account only works after the link in the confirmation email (then two-step setup follows). */
+  async function signUp(fields: { email: string; password: string; firstName: string; lastName: string }) {
+    const firstName = fields.firstName.trim();
+    const lastName = fields.lastName.trim();
+    const { data, error } = await supabase.auth.signUp({
+      email: fields.email,
+      password: fields.password,
+      options: {
+        emailRedirectTo: confirmUrl,
+        data: { first_name: firstName, last_name: lastName, full_name: `${firstName} ${lastName}` },
+      },
+    });
+    // With email confirmation switched off Supabase signs the user in at once (a session): no email is sent then.
+    // For an address that already has an account Supabase answers as if it worked, but the user has no identities.
+    const isExisting = !error && data?.user?.identities?.length === 0;
+    return { error, hasSession: Boolean(data?.session), isExisting };
+  }
+
+  /** The 6-digit code from the sign-up email. Confirms the address and signs the user in (aal1). */
+  async function verifySignUpCode(email: string, code: string) {
+    const { error } = await supabase.auth.verifyOtp({ email, token: code, type: 'signup' });
     return { error };
   }
 
@@ -72,6 +96,8 @@ export function useAuth() {
     user,
     isPasswordReset,
     signIn,
+    signUp,
+    verifySignUpCode,
     resendVerificationEmail,
     signOut,
     sendPasswordResetCode,

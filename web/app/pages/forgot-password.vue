@@ -110,7 +110,7 @@ onBeforeUnmount(stopResendCountdown);
 </script>
 
 <template>
-  <AuthCard
+  <AuthEduidCard
     v-if="!isCodeSent"
     title="Wachtwoord vergeten?"
     :description="RESET_EMAIL_INSTRUCTION"
@@ -147,9 +147,9 @@ onBeforeUnmount(stopResendCountdown);
     </form>
 
     <AuthBackToLogin @click="navigateTo('/login')" />
-  </AuthCard>
+  </AuthEduidCard>
 
-  <AuthCard v-else title="Check je inbox" :description="RESET_CODE_INSTRUCTION">
+  <AuthEduidCard v-else title="Check je inbox" :description="RESET_CODE_INSTRUCTION">
     <template #steps>
       <AuthSteps :steps="RESET_STEPS" :current-index="EMAIL_CODE_STEP_INDEX" />
     </template>
@@ -217,5 +217,5 @@ onBeforeUnmount(stopResendCountdown);
     </p>
 
     <AuthBackToLogin @click="navigateTo('/login')" />
-  </AuthCard>
+  </AuthEduidCard>
 </template>

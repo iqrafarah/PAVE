@@ -13,7 +13,7 @@ async function handleBackToLogin() {
 </script>
 
 <template>
-  <AuthCard
+  <AuthEduidCard
     eyebrow="Wachtwoord hersteld"
     title="Wachtwoord gewijzigd"
     description="Je nieuwe wachtwoord is opgeslagen. Je kunt er nu mee inloggen bij PAVE."
@@ -46,5 +46,5 @@ async function handleBackToLogin() {
     <AuthPrimaryButton @click="handleBackToLogin">
       Terug naar inloggen
     </AuthPrimaryButton>
-  </AuthCard>
+  </AuthEduidCard>
 </template>

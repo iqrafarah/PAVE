@@ -17,7 +17,7 @@ type Field = keyof typeof VAULT_REQUEST_MISSING;
 
 const RECIPIENTS = Object.keys(VAULT_REQUEST_RECIPIENTS) as Recipient[];
 const fieldClass =
-  'min-h-9.75 w-full rounded-field border border-field-line bg-white px-4 text-sm font-medium text-heading placeholder:text-subtle/60 focus:border-brand focus:outline-none aria-invalid:border-danger';
+  'min-h-9.75 w-full rounded-field border border-field-line bg-white px-4 text-sm font-medium text-heading placeholder:text-subtle/60 focus:border-subtle focus:outline-none aria-invalid:border-danger';
 
 const vault = useVault();
 const discardRef = useTemplateRef<{ open: () => void }>('discard');

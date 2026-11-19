@@ -47,7 +47,7 @@ onMounted(() => (isOpen.value = true));
           autocomplete="off"
           autofocus
           :placeholder="AYLA_PROJECT_NAME_PLACEHOLDER"
-          class="h-11 rounded-field border border-field-line bg-white px-3.5 text-sm font-medium text-heading placeholder:text-subtle/50 focus:border-brand focus:outline-none"
+          class="h-11 rounded-field border border-field-line bg-white px-3.5 text-sm font-medium text-heading placeholder:text-subtle/50 focus:border-subtle focus:outline-none"
         />
       </div>
 
@@ -60,7 +60,7 @@ onMounted(() => (isOpen.value = true));
           :maxlength="AYLA_PROJECT_INSTRUCTIONS_MAX"
           :placeholder="AYLA_PROJECT_INSTRUCTIONS_PLACEHOLDER"
           :aria-describedby="hintId"
-          class="resize-none rounded-field border border-field-line bg-white px-3.5 py-3 text-sm font-medium text-heading placeholder:text-subtle/50 focus:border-brand focus:outline-none"
+          class="resize-none rounded-field border border-field-line bg-white px-3.5 py-3 text-sm font-medium text-heading placeholder:text-subtle/50 focus:border-subtle focus:outline-none"
         />
         <p :id="hintId" class="mt-1.5 text-xs text-subtle">{{ AYLA_PROJECT_INSTRUCTIONS_HINT }}</p>
       </div>

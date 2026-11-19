@@ -29,6 +29,7 @@ const coverTint = useImageTint(() => (props.isGrid || props.item.logoUrl ? null 
 const tint = computed(
   () => logoTint.value ?? coverTint.value ?? `var(--color-${CATEGORY_TINTS[props.item.category].replace('bg-', '')})`,
 );
+const surfaceTint = computed(() => `color-mix(in srgb, ${tint.value} var(--vault-tint-strength, 100%), var(--color-panel))`);
 const hasCoverFailed = ref(false);
 const coverUrl = computed(() => (hasCoverFailed.value ? null : props.item.coverUrl));
 watch(
@@ -42,14 +43,14 @@ watch(
   <div class="group relative flex w-full">
     <button
       type="button"
-      :style="isGrid ? undefined : { background: `linear-gradient(to bottom right, ${tint} 0%, white 55%)` }"
+      :style="isGrid ? undefined : { background: `linear-gradient(to bottom right, ${surfaceTint} 0%, var(--color-panel) 55%)` }"
       class="relative flex w-full overflow-hidden rounded-2xl border border-card-line bg-white text-left transition-shadow hover:shadow-[0_2px_10px_rgb(0_0_0/0.07)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       :class="isGrid ? 'flex-col' : 'items-center gap-3.5 p-3.5 pr-12'"
       @click="emit('open')"
     >
       <!-- Grid: the band (cover, or the logo's colour) with the status on it and the logo over its edge. -->
       <template v-if="isGrid">
-        <span :style="{ background: tint }" class="relative h-12 w-full shrink-0 overflow-hidden" aria-hidden="true">
+        <span :style="{ background: surfaceTint }" class="relative h-12 w-full shrink-0 overflow-hidden" aria-hidden="true">
           <img v-if="coverUrl" :src="coverUrl" alt="" class="size-full object-cover" loading="lazy" @error="hasCoverFailed = true" />
         </span>
         <VaultStatusBadge :status="item.status" class="absolute right-2 top-2" />

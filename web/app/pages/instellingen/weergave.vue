@@ -3,13 +3,15 @@ import type { TextSize, ThemeId } from '~/utils/settings/appearance';
 
 useHead({ title: `${PERSONAL_TITLE} - PAVE` });
 const personal = usePersonalisation();
+const { mode } = useDisplayMode();
+const AUTO_ICON = 'M12 3a9 9 0 1 0 0 18V3Z M12 3v18';
 const sync = computed(() => personal.sync.value);
 const syncMessage = computed(() => {
   if (sync.value.isLoading) return PERSONAL_SYNC_LOADING;
   if (sync.value.isSaving) return PERSONAL_SYNC_SAVING;
   return sync.value.canSave ? PERSONAL_SYNCED : PERSONAL_DEVICE_NOTE;
 });
-const ids = { theme: useId(), view: useId(), size: useId() };
+const ids = { theme: useId(), view: useId(), size: useId(), mode: useId() };
 const TEXT_SIZE_ICONS: Record<TextSize, string> = { small: 'h-3 w-2.75', normal: 'h-4 w-3.5', large: 'h-5 w-4.5' };
 const theme = computed({
   get: () => personal.state.value.theme,
@@ -34,6 +36,24 @@ onMounted(personal.load);
 
 <template>
   <SettingsPage :title="PERSONAL_TITLE" wide>
+    <section :aria-labelledby="ids.mode" :class="section">
+      <h2 :id="ids.mode" :class="heading">{{ PERSONAL_DISPLAY_MODE }}</h2>
+      <div role="radiogroup" :aria-labelledby="ids.mode" class="flex flex-wrap gap-2.5 [&>*]:flex-1">
+        <SettingsChoice v-model="mode" name="pave-display-mode" value="auto" :label="PERSONAL_DISPLAY_AUTO">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="size-6"><circle cx="12" cy="12" r="9" /><path :d="AUTO_ICON" fill="currentColor" /></svg>
+        </SettingsChoice>
+        <SettingsChoice v-model="mode" name="pave-display-mode" value="light" :label="PERSONAL_DISPLAY_LIGHT">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="size-6"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg>
+        </SettingsChoice>
+        <SettingsChoice v-model="mode" name="pave-display-mode" value="dark" :label="PERSONAL_DISPLAY_DARK">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="size-6"><path d="M20.5 14.3A8.8 8.8 0 0 1 9.7 3.5a8.8 8.8 0 1 0 10.8 10.8Z" /></svg>
+        </SettingsChoice>
+      </div>
+      <p class="text-xs/normal text-subtle">
+        <template v-if="mode === 'auto'">{{ PERSONAL_DISPLAY_AUTO_HINT }} </template>{{ sync.supportsDisplayMode ? PERSONAL_DISPLAY_SYNCED : PERSONAL_DISPLAY_LOCAL }}
+      </p>
+    </section>
+
     <section :aria-labelledby="ids.theme" :class="section">
       <h2 :id="ids.theme" :class="heading">{{ PERSONAL_THEME }}</h2>
       <SettingsThemePicker v-model="theme" :custom-color="personal.state.value.customColor" @custom="setCustomColor" @commit="personal.saveAccount()" />

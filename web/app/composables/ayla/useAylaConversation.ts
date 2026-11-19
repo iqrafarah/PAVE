@@ -1,4 +1,4 @@
-import type { AylaAttachment, AylaErrorCode, AylaInput, ChatMessage, AylaScreen } from '~/types/ayla';
+import type { AylaAttachment, AylaErrorCode, AylaInput, ChatMessage, AylaReply, AylaScreen } from '~/types/ayla';
 
 export type ConversationLoadStatus = 'idle' | 'loading' | 'ready' | 'notFound' | 'failed';
 
@@ -24,6 +24,8 @@ export interface SendOptions {
   attachments?: AylaAttachment[];
   // Files sent earlier in this chat that go along again, so Ayla still sees them; they are not shown under the message.
   carriedAttachments?: AylaAttachment[];
+  // The same, read only after the question is on screen, so answering never waits for the files.
+  getCarriedAttachments?: () => Promise<AylaAttachment[]>;
   input?: AylaInput;
   // What the user has open, such as the vault, so Ayla knows where the question comes from.
   context?: { screen: AylaScreen; itemId?: string; itemIds?: string[] };
@@ -57,6 +59,7 @@ function createEmptyState(): ConversationState {
  * screen keeps streaming while the app moves to /ayla/<id>.
  */
 export function useAylaConversation() {
+  const router = useRouter();
   const state = useState<ConversationState>('ayla-conversation', createEmptyState);
   // A question taken back with "Aanpassen", waiting for the composer to pick it up.
   const questionToEdit = useState<string | null>('ayla-question-to-edit', () => null);
@@ -155,6 +158,8 @@ export function useAylaConversation() {
     stopController = new AbortController();
     const { questionId, answer } = addTurn(text, attachments);
     const context = getRequestContext(options);
+    // Read only now, after the question is already on screen, so a click never waits for the files.
+    const carried = options.carriedAttachments ?? (await options.getCarriedAttachments?.()) ?? [];
 
     const result = await streamQuestion(
       {
@@ -166,8 +171,8 @@ export function useAylaConversation() {
           : options.projectId
             ? { projectId: options.projectId }
             : {}),
-        ...(attachments.length || options.carriedAttachments?.length
-          ? { attachments: [...attachments, ...(options.carriedAttachments ?? [])] }
+        ...(attachments.length || carried.length
+          ? { attachments: [...attachments, ...carried] }
           : {}),
         ...(context ? { context } : {}),
       },
@@ -186,6 +191,7 @@ export function useAylaConversation() {
           answer.reply = reply;
           answer.isWriting = false;
           state.value.announcement = `${AYLA_NAME}: ${reply.text}`;
+          openRequestedScreen(reply, text);
         },
       },
       stopController.signal,
@@ -204,6 +210,21 @@ export function useAylaConversation() {
     if (result.error === 'conversation_not_found') state.value.loadStatus = 'notFound';
     state.value.error = result.error;
     return { failedText: text, failedAttachments: attachments };
+  }
+
+  /** The user asked Ayla to open a part of PAVE ("ga naar mijn kluis"): opening changes nothing, so no confirmation. */
+  function openRequestedScreen(reply: AylaReply, asked: string) {
+    // The model does not always fill in `navigation`; a plain "open mijn kluis" is understood from the question itself.
+    const screen = reply.navigation?.screen ?? screenAskedFor(asked);
+    if (!screen || offersToAddEvidence(reply)) return;
+    const route = getScreenRoute(screen);
+    if (!route || !hasPageAt(router.getRoutes(), route.path)) return;
+    if (router.currentRoute.value.path === route.path) return;
+    // A short pause so the answer ("Ik open je kluis") can be read first.
+    // The vault keeps the chat open next to it (?chat=<id>), so the conversation carries on there without reloading.
+    const chat = state.value.conversationId;
+    const to = screen === 'vault' && chat ? { path: route.path, query: { chat } } : route.path;
+    setTimeout(() => navigateTo(to), 800);
   }
 
   /** "Nieuw antwoord" (asks the last question again) or "Aanpassen" (puts it back in the composer). */

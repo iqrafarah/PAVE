@@ -50,6 +50,7 @@ onMounted(focusInput);
       ref="field"
       v-model="code"
       class="mt-2"
+      is-fluid
       :length="CODE_LENGTH"
       autocomplete="one-time-code"
       :is-invalid="hasError"

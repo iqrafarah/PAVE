@@ -171,7 +171,7 @@ defineExpose({ openFilePicker, focus });
       <div class="absolute inset-x-6 bottom-0 top-9.25 rounded-composer bg-bubble shadow-composer sm:inset-x-12.5">
         <AylaHomeActions class="absolute inset-x-0 bottom-0 h-9.25" @add-file="openFilePicker" />
       </div>
-      <div class="relative flex min-h-27.25 flex-col rounded-composer bg-white px-4.5 pb-2.75 pt-4.25 shadow-composer focus-within:outline-2 focus-within:outline-brand">
+      <div class="relative flex min-h-27.25 flex-col rounded-composer bg-white px-4.5 pb-2.75 pt-4.25 shadow-composer">
         <div class="flex flex-1 gap-2">
           <AylaSlashIcon :blocks="4" class="mt-0.5 h-4.25 w-2.75" />
           <textarea
@@ -227,7 +227,7 @@ defineExpose({ openFilePicker, focus });
           @remove="removeAttachment(index)"
         />
       </template>
-      <div class="flex min-h-13.25 items-center gap-3 rounded-composer bg-white py-2 pl-4.5 pr-2.75 focus-within:outline-2 focus-within:outline-brand">
+      <div class="flex min-h-13.25 items-center gap-3 rounded-composer bg-white py-2 pl-4.5 pr-2.75">
         <AylaAttachMenu @add-file="openFilePicker" @add-photo="openPhotoPicker" @pick-item="emit('pickItem')" />
         <AylaSlashIcon :blocks="4" class="h-4.25 w-2.75" />
         <textarea

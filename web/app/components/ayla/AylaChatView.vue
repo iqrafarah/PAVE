@@ -201,12 +201,12 @@ async function send(questionText: string, input: 'text' | 'voice' = 'text') {
   text.value = '';
   attachments.value = [];
   // Without new files, the ones sent earlier in this chat go along again, so Ayla keeps seeing the photo.
-  const carriedAttachments = sentAttachments.length ? [] : await chatAttachmentsOf(conversationId.value);
+  const chatId = conversationId.value;
 
   const { failedText, failedAttachments } = await conversation.send({
     text: questionText,
     attachments: sentAttachments,
-    carriedAttachments,
+    ...(sentAttachments.length ? { carriedAttachments: [] } : { getCarriedAttachments: () => chatAttachmentsOf(chatId) }),
     input,
     ...(props.screen ? { context: { screen: props.screen } } : {}),
     ...(chatProjectId.value ? { projectId: chatProjectId.value } : {}),
@@ -218,6 +218,13 @@ async function send(questionText: string, input: 'text' | 'voice' = 'text') {
       projects.state.value.newChatProjectId = null;
       lock.state.value.isNewChatLocked = false;
       // On a screen such as the vault the chat stays where it was opened; only the home screen moves to /ayla/<id>.
+      // Asked to open a screen ("open kluis"): Ayla takes you straight there, without a stop on /ayla/<id> first.
+      const askedScreen = props.screen ? null : screenAskedFor(questionText);
+      const askedRoute = askedScreen && getScreenRoute(askedScreen);
+      if (askedRoute && hasPageAt(router.getRoutes(), askedRoute.path)) {
+        navigateTo(askedScreen === 'vault' ? { path: askedRoute.path, query: { chat: newId } } : askedRoute.path);
+        return;
+      }
       if (!props.screen) navigateTo(`/ayla/${newId}`);
       else navigateTo({ query: { ...router.currentRoute.value.query, chat: newId } }, { replace: true });
     },
@@ -288,13 +295,15 @@ function finishLook() {
 
 async function addToVault(label: string, suggestedSkills: string[], chatItem?: AylaVaultItemProposal) {
   if (isSavingToVault.value) return;
+  // The loader shows at once; looking up the files happens behind it.
+  isSavingToVault.value = true;
   const files = await itemFiles(chatItem);
   if (!files.length && !chatItem?.title) {
+    isSavingToVault.value = false;
     vaultAdd.open({ suggestedSkills });
     send(label);
     return;
   }
-  isSavingToVault.value = true;
   const result = await vaultAdd.saveFromChat(files, suggestedSkills, chatItem);
   isSavingToVault.value = false;
   if (result.status === 'saved') {
@@ -446,8 +455,8 @@ defineExpose({ openFilePicker });
         isFloating
           ? [
               'pointer-events-none absolute inset-x-0 bottom-0 *:pointer-events-auto',
-              // Over the vault, Ayla's answer and the chatbox get a white fade behind them, so the cards never show through.
-              hasMessages || isSavingToVault ? 'bg-linear-to-t from-white from-75% to-transparent pt-12' : '',
+              // Over the vault, the chatbox always has a fade behind it (white, or the dark page), so the cards never show through.
+              'bg-linear-to-t from-white from-75% to-transparent pt-12',
             ]
           : 'relative'
       "
@@ -513,13 +522,14 @@ defineExpose({ openFilePicker });
         :label="itemContext.itemIds ? itemContext.title : undefined"
         @clear="clearItemContext"
       />
+      <Transition name="tray-swap" mode="out-in">
       <AylaChoiceBar
         v-if="trayQuestion && !voice.isActive.value"
+        :key="`choices-${latestAnswer?.id ?? ''}-${trayQuestion.choices.map((choice) => choice.id).join('-')}-${trayQuestion.caption ? 'c' : ''}`"
         class="relative"
         :question="trayQuestion.text"
         :choices="trayQuestion.choices"
         :caption="trayQuestion.caption"
-        :is-about-vault="isVaultOffer"
         @choose="choose"
       />
       <AylaComposer
@@ -541,6 +551,7 @@ defineExpose({ openFilePicker });
         @reading-files="isComposerReading = $event"
         @pick-item="pickerRef?.open()"
       />
+      </Transition>
       <p class="relative mt-2 text-center text-xs text-muted">{{ AYLA_DISCLAIMER }}</p>
     </div>
 

@@ -38,7 +38,7 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <AuthCard
+  <AuthEduidCard
     :eyebrow="eyebrow"
     :title="AUTHENTICATOR_HEADING"
     :description="AUTHENTICATOR_INSTRUCTION"
@@ -83,5 +83,5 @@ async function handleSubmit() {
     </AuthInfoBox>
 
     <AuthBackToLogin @click="signOut" />
-  </AuthCard>
+  </AuthEduidCard>
 </template>
