@@ -36,7 +36,7 @@ extension Color {
         let accent = PaveThemeStore.shared.accent
         let light = accent.map { UIColor(hex: $0) } ?? UIColor(resource: .brandGreen)
         let dark = PaveDarkColors.fill(for: accent ?? PaveDarkColors.green)
-        return Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? dark : light })
+        return Color(uiColor: .dynamic(light: light, dark: dark))
     }
 
     /// The theme colour of PAVE, also on the eduID screens: for the logo and the background around the card.
@@ -44,11 +44,11 @@ extension Color {
         let accent = PaveThemeStore.shared.themeAccent
         let light = accent.map { UIColor(hex: $0) } ?? UIColor(resource: .brandGreen)
         let dark = PaveDarkColors.fill(for: accent ?? PaveDarkColors.green)
-        return Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? dark : light })
+        return Color(uiColor: .dynamic(light: light, dark: dark))
     }
 
     /// Cards, fields, sheets and other raised surfaces: white, and an almost black grey in dark mode (web --color-panel).
-    static let panel = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: 0x161616) : .white })
+    static let panel = Color(uiColor: .dynamic(light: .white, dark: UIColor(hex: 0x161616)))
 }
 
 /// The dark versions of the theme colour, worked out as the web does (themeColours.ts, darkThemeColours): filled
@@ -141,7 +141,7 @@ extension Color {
         guard let accent = PaveThemeStore.shared.accent else { return green }
         let light = UIColor(Color(uiColor: UIColor(hex: accent)).mix(with: .white, by: whiteness))
         let night = dark.map { PaveDarkColors.surface(for: accent, lightness: $0) } ?? PaveDarkColors.text(for: accent)
-        return Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? night : light })
+        return Color(uiColor: .dynamic(light: light, dark: night))
     }
 
     static var paveSurfaceTint: Color { paveTint(0.89, dark: 0.135, green: .surfaceTint) }
@@ -161,6 +161,11 @@ extension Color {
 }
 
 extension UIColor {
+    /// A colour for light and one for dark mode. Nonisolated: UIKit and SwiftUI resolve it on any thread while drawing.
+    nonisolated static func dynamic(light: UIColor, dark: UIColor) -> UIColor {
+        UIColor { $0.userInterfaceStyle == .dark ? dark : light }
+    }
+
     convenience init(hex: UInt32) {
         self.init(red: CGFloat(hex >> 16 & 0xFF) / 255, green: CGFloat(hex >> 8 & 0xFF) / 255, blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
     }

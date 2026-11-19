@@ -38,7 +38,7 @@ enum SettingsMessages {
     static let displayMode = "Licht of donker"
     static let displayAutoHint = "Automatisch volgt de instelling van je apparaat."
     static let displaySynced = "Deze keuze volgt je account, ook op het web."
-    static let displayLocal = "Deze keuze geldt alleen voor deze iPhone."
+    static let displayLocal = "Deze keuze geldt alleen op dit apparaat."
 
     static func title(_ mode: PaveDisplayMode) -> String {
         switch mode {

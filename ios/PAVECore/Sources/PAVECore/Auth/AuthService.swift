@@ -29,6 +29,16 @@ public enum SessionState: Equatable, Sendable {
     case unknown
 }
 
+/// Services that cannot make accounts (test stubs) say so.
+public extension AuthService {
+    func signUp(email: String, password: String, firstName: String, lastName: String) async throws -> SignUpOutcome {
+        throw AuthError.signupDisabled
+    }
+
+    func verifySignUpCode(email: String, code: String) async throws { throw AuthError.unavailable }
+    func resendSignUpCode(email: String) async throws { throw AuthError.unavailable }
+}
+
 /// After "Account aanmaken": a 6-digit code was mailed, or (with e-mail confirmation off) the account is signed in.
 public enum SignUpOutcome: Equatable, Sendable {
     case needsEmailCode
