@@ -18,13 +18,13 @@ const emit = defineEmits<{
     <div class="flex min-w-0 flex-1 basis-0">
       <NuxtLink
         :to="backTo"
-        class="flex min-h-11 min-w-0 items-center gap-1.5 rounded-lg px-2 text-base text-brand hover:underline focus-visible:outline-2 focus-visible:outline-brand"
+        class="flex min-h-11 min-w-11 items-center gap-1 rounded-lg px-1 text-sm font-medium text-brand hover:bg-tint focus-visible:outline-2 focus-visible:outline-brand"
       >
-        <LayoutPaveIcon name="chevronRight" class="h-4 w-2.25 rotate-180" />
-        <span class="truncate max-sm:sr-only">{{ backLabel }}</span>
+        <LayoutPaveIcon name="chevronRight" class="size-5 rotate-180" />
+        <span class="hidden truncate sm:inline">{{ backLabel }}</span>
       </NuxtLink>
     </div>
-    <h1 class="truncate text-base font-semibold text-heading">{{ title }}</h1>
+    <h1 class="truncate text-center text-base font-semibold text-heading">{{ title }}</h1>
     <div class="flex flex-1 basis-0 justify-end">
       <button
         v-if="addLabel"

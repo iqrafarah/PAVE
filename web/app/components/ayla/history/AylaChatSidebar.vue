@@ -306,6 +306,7 @@ onBeforeUnmount(() => {
             :can-pin="chats.state.value.canPin"
             :now="now"
             collapse-key="pinned"
+            show-icons
             @open="closeDrawer"
             @toggle-pin="togglePin"
             @rename="renameChat"

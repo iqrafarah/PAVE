@@ -117,7 +117,7 @@ onMounted(() => {
       <LayoutEmptyState icon="database" :title="MEMORY_NOT_LOADED" :message="MEMORY_LOAD_FAILED">
         <button
           type="button"
-          class="mt-4 min-h-11 rounded-lg px-3 text-sm font-semibold text-brand hover:underline focus-visible:outline-2 focus-visible:outline-brand"
+          class="mt-4 min-h-11 rounded-lg px-3 text-sm font-semibold text-brand hover:bg-tint focus-visible:outline-2 focus-visible:outline-brand"
           @click="memory.load"
         >
           {{ AYLA_RETRY }}

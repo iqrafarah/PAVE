@@ -60,7 +60,7 @@ onMounted(() => {
         <div class="flex flex-1 basis-0">
           <button
             type="button"
-            class="min-h-11 rounded-lg px-1 text-base text-brand hover:underline focus-visible:outline-2 focus-visible:outline-brand"
+            class="min-h-11 rounded-lg px-3 text-base text-brand hover:bg-tint focus-visible:outline-2 focus-visible:outline-brand"
             @click="cancel"
           >
             {{ AYLA_CANCEL }}
@@ -71,7 +71,7 @@ onMounted(() => {
           <button
             type="submit"
             :disabled="!canSave"
-            class="min-h-11 rounded-lg px-1 text-base font-semibold text-brand hover:underline focus-visible:outline-2 focus-visible:outline-brand disabled:text-ink-soft disabled:no-underline"
+            class="min-h-11 rounded-lg px-3 text-base font-semibold text-brand hover:bg-tint focus-visible:outline-2 focus-visible:outline-brand disabled:text-ink-soft disabled:hover:bg-transparent"
           >
             {{ AYLA_SAVE }}
           </button>

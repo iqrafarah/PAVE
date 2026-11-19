@@ -50,7 +50,7 @@ onMounted(personal.load);
         </SettingsChoice>
       </div>
       <p class="text-xs/normal text-subtle">
-        <template v-if="mode === 'auto'">{{ PERSONAL_DISPLAY_AUTO_HINT }} </template>{{ sync.supportsDisplayMode ? PERSONAL_DISPLAY_SYNCED : PERSONAL_DISPLAY_LOCAL }}
+        <template v-if="mode === 'auto'">{{ PERSONAL_DISPLAY_AUTO_HINT }}{{ ' ' }}</template>{{ sync.supportsDisplayMode ? PERSONAL_DISPLAY_SYNCED : PERSONAL_DISPLAY_LOCAL }}
       </p>
     </section>
 

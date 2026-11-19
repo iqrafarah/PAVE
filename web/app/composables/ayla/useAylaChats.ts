@@ -7,6 +7,7 @@ interface ChatsState {
   conversations: Conversation[];
   status: ChatsStatus;
   canPin: boolean;
+  canArchive: boolean;
   hiddenIds: string[];
 }
 
@@ -15,11 +16,13 @@ interface ConversationRow {
   title: string | null;
   updated_at: string;
   pinned_at?: string | null;
+  archived_at?: string | null;
   started_on: AylaDevice;
 }
 
 const LIST_LIMIT = 50;
 const SEARCH_LIMIT = 30;
+const COLUMNS_WITH_ARCHIVE = 'id,title,updated_at,pinned_at,archived_at,started_on';
 const COLUMNS_WITH_PIN = 'id,title,updated_at,pinned_at,started_on';
 const COLUMNS_WITHOUT_PIN = 'id,title,updated_at,started_on';
 const LIKE_SPECIAL_CHARACTERS = /[\\%_]/g;
@@ -30,6 +33,7 @@ function toConversation(row: ConversationRow): Conversation {
     title: row.title || AYLA_NEW_CONVERSATION_TITLE,
     updatedAt: row.updated_at,
     pinnedAt: row.pinned_at ?? null,
+    archivedAt: row.archived_at ?? null,
     startedOn: row.started_on,
   };
 }
@@ -47,6 +51,7 @@ export function useAylaChats() {
     conversations: [],
     status: 'idle',
     canPin: true,
+    canArchive: true,
     hiddenIds: [],
   }));
 
@@ -55,8 +60,19 @@ export function useAylaChats() {
   // Locked chats stay out of the list and the search until the PIN is entered on the locked chats page.
   const visibleConversations = computed(() =>
     state.value.conversations.filter(
-      (conversation) => !state.value.hiddenIds.includes(conversation.id) && !lock.isLocked(conversation.id),
+      (conversation) =>
+        !state.value.hiddenIds.includes(conversation.id) && !lock.isLocked(conversation.id) && !conversation.archivedAt,
     ),
+  );
+
+  // Archived chats are kept apart, under "Gearchiveerd". A locked chat stays hidden behind its PIN.
+  const archivedConversations = computed(() =>
+    state.value.conversations
+      .filter(
+        (conversation) =>
+          conversation.archivedAt && !state.value.hiddenIds.includes(conversation.id) && !lock.isLocked(conversation.id),
+      )
+      .sort((first, second) => second.updatedAt.localeCompare(first.updatedAt)),
   );
 
   function selectConversations(columns: string) {
@@ -79,7 +95,13 @@ export function useAylaChats() {
     }
     if (state.value.status !== 'ready') state.value.status = 'loading';
 
-    let { data, error } = await selectConversations(COLUMNS_WITH_PIN);
+    let { data, error } = await selectConversations(COLUMNS_WITH_ARCHIVE);
+    // Until the archived_at migration runs, archiving is hidden and the list still loads.
+    state.value.canArchive = true;
+    if (isMissingColumn(error)) {
+      state.value.canArchive = false;
+      ({ data, error } = await selectConversations(COLUMNS_WITH_PIN));
+    }
     // Until the pinned_at migration runs, pinning is hidden and the list still loads.
     if (isMissingColumn(error)) {
       state.value.canPin = false;
@@ -142,6 +164,11 @@ export function useAylaChats() {
     return updateConversation(id, { pinnedAt }, { pinned_at: pinnedAt });
   }
 
+  function setArchived(id: string, isArchived: boolean) {
+    const archivedAt = isArchived ? new Date().toISOString() : null;
+    return updateConversation(id, { archivedAt }, { archived_at: archivedAt });
+  }
+
   function rename(id: string, title: string) {
     const trimmedTitle = title.trim().replace(/\s+/g, ' ').slice(0, AYLA_MAX_TITLE_LENGTH);
     if (!trimmedTitle) return Promise.resolve({ isFailed: true });
@@ -198,10 +225,12 @@ export function useAylaChats() {
   return {
     state,
     visibleConversations,
+    archivedConversations,
     load,
     subscribe,
     unsubscribe,
     setPinned,
+    setArchived,
     rename,
     hide,
     unhide,

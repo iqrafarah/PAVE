@@ -178,6 +178,7 @@ export interface Conversation {
   title: string;
   updatedAt: string;
   pinnedAt: string | null;
+  archivedAt: string | null;
   startedOn: AylaDevice;
 }
 
