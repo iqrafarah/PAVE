@@ -10,7 +10,8 @@ const pinError = ref<string | null>(null);
 const isBusy = ref(false);
 const isAskingPin = ref(false);
 const actionError = ref<string | null>(null); // set when resetting the PIN fails
-const resetRef = useTemplateRef<{ open: () => void }>('reset');
+const isRecovering = ref(false);
+const deleteRef = useTemplateRef<{ open: () => void }>('deleteAll');
 
 const isUnlocked = computed(() => lock.state.value.isUnlocked);
 const lockedChats = computed(() =>
@@ -28,7 +29,18 @@ async function check(pin: string) {
   else pinError.value = { wrong: AYLA_PIN_WRONG, blocked: AYLA_PIN_BLOCKED, failed: AYLA_PINCODE_FAILED }[result];
 }
 
+function recovered() {
+  isRecovering.value = false;
+  isAskingPin.value = false;
+}
+
+function recoverFailed() {
+  isRecovering.value = false;
+  actionError.value = AYLA_PINCODE_FAILED;
+}
+
 async function reset() {
+  isRecovering.value = false;
   const { isFailed } = await lock.resetPin();
   isAskingPin.value = false;
   if (isFailed) actionError.value = AYLA_PINCODE_FAILED;
@@ -86,13 +98,20 @@ onMounted(async () => {
       :error="pinError"
       :is-busy="isBusy"
       @complete="check"
-      @forgot="resetRef?.open()"
+      @forgot="isRecovering = true"
       @close="cancelPin"
     />
+    <AylaPinRecover
+      v-if="isRecovering"
+      @done="recovered"
+      @failed="recoverFailed"
+      @close="isRecovering = false"
+      @delete-all="deleteRef?.open()"
+    />
     <LayoutConfirmSheet
-      ref="reset"
+      ref="deleteAll"
       :title="AYLA_PIN_RESET_QUESTION"
-      :message="AYLA_PIN_RESET_BODY"
+      :message="ACCOUNT_PIN_DELETE_BODY"
       :confirm-label="AYLA_PIN_RESET_CONFIRM"
       @confirm="reset"
     />

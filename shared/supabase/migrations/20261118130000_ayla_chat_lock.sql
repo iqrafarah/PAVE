@@ -81,7 +81,7 @@ begin
 end;
 $$;
 
--- "Pincode vergeten": the locked chats are deleted for good and the PIN is removed, so a new one can be made.
+-- "Alles verwijderen en opnieuw beginnen": the locked chats are deleted for good and the PIN is removed, so a new one can be made.
 create function public.ayla_reset_chat_pin() returns void
 language plpgsql security definer set search_path = '' as $$
 begin
@@ -93,5 +93,38 @@ begin
 end;
 $$;
 
-revoke all on function public.ayla_chat_pin_exists(), public.ayla_set_chat_pin(text), public.ayla_check_chat_pin(text), public.ayla_reset_chat_pin() from public, anon;
-grant execute on function public.ayla_chat_pin_exists(), public.ayla_set_chat_pin(text), public.ayla_check_chat_pin(text), public.ayla_reset_chat_pin() to authenticated;
+-- "Pincode wijzigen": checks the current PIN (with the same wait after five wrong tries) and stores the new one. The
+-- locked chats stay locked. Works from any device, because the PIN belongs to the account.
+create function public.ayla_change_chat_pin(pin text, new_pin text) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if new_pin !~ '^[0-9]{4}$' then raise exception 'invalid_pin'; end if;
+  if not public.ayla_check_chat_pin(pin) then raise exception 'wrong_pin'; end if;
+  update public.ayla_chat_pins
+    set pin_hash = extensions.crypt(new_pin, extensions.gen_salt('bf', 10))
+    where user_id = auth.uid();
+end;
+$$;
+
+-- "Pincode vergeten": proof of identity instead of the old PIN. Only a two-step code typed in the last five minutes
+-- counts (the session token lists when each sign-in method was used). The locked chats stay; only the PIN is replaced
+-- and the wait after wrong tries is cleared.
+create function public.ayla_recover_chat_pin(new_pin text) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_mfa_verified() then raise exception 'mfa_required'; end if;
+  if not exists (
+    select 1 from jsonb_array_elements(coalesce(auth.jwt() -> 'amr', '[]'::jsonb)) as entry
+    where entry ->> 'method' = 'totp'
+      and (entry ->> 'timestamp')::bigint > extract(epoch from now())::bigint - 300
+  ) then raise exception 'recent_mfa_required'; end if;
+  if new_pin !~ '^[0-9]{4}$' then raise exception 'invalid_pin'; end if;
+  update public.ayla_chat_pins
+    set pin_hash = extensions.crypt(new_pin, extensions.gen_salt('bf', 10)), failed_attempts = 0, blocked_until = null
+    where user_id = auth.uid();
+  if not found then raise exception 'no_pin'; end if;
+end;
+$$;
+
+revoke all on function public.ayla_chat_pin_exists(), public.ayla_set_chat_pin(text), public.ayla_check_chat_pin(text), public.ayla_change_chat_pin(text, text), public.ayla_recover_chat_pin(text), public.ayla_reset_chat_pin() from public, anon;
+grant execute on function public.ayla_chat_pin_exists(), public.ayla_set_chat_pin(text), public.ayla_check_chat_pin(text), public.ayla_change_chat_pin(text, text), public.ayla_recover_chat_pin(text), public.ayla_reset_chat_pin() to authenticated;

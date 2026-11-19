@@ -337,6 +337,29 @@ export const AYLA_PIN_RESET_QUESTION = 'Pincode resetten?';
 export const AYLA_PIN_RESET_BODY = 'Al je vergrendelde chats worden verwijderd. Dit kan niet terug.';
 export const AYLA_PIN_RESET_CONFIRM = 'Resetten en verwijderen';
 
+// Accountpincode in Privacy: dezelfde pincode op al je apparaten, dus ook vanaf je laptop te wijzigen of te resetten.
+export const ACCOUNT_PIN_TITLE = 'Accountpincode';
+export const ACCOUNT_PIN_INTRO = 'Gebruik je accountpincode om je vergrendelde chats op al je apparaten te beveiligen.';
+export const ACCOUNT_PIN_NONE = 'Je hebt nog geen accountpincode. Die kies je zodra je een chat vergrendelt.';
+export const ACCOUNT_PIN_CHANGE_TITLE = 'Pincode wijzigen';
+export const ACCOUNT_PIN_CHANGE_BODY = 'Kies een nieuwe pincode voor je vergrendelde chats.';
+export const ACCOUNT_PIN_CHANGE_BUTTON = 'Wijzigen';
+export const ACCOUNT_PIN_RESET_TITLE = 'Pincode resetten';
+export const ACCOUNT_PIN_RESET_BODY = 'Reset je pincode alleen als je je huidige pincode bent vergeten. Je vergrendelde chats blijven bewaard.';
+export const ACCOUNT_PIN_RESET_BUTTON = 'Resetten';
+export const ACCOUNT_PIN_CURRENT_TITLE = 'Huidige pincode';
+export const ACCOUNT_PIN_CURRENT_BODY = 'Typ je huidige pincode om een nieuwe te kiezen.';
+export const ACCOUNT_PIN_NEW_TITLE = 'Kies een nieuwe pincode';
+export const ACCOUNT_PIN_NEW_BODY = 'Kies 4 nieuwe cijfers. Daarmee open je vanaf nu je vergrendelde chats.';
+export const ACCOUNT_PIN_CHANGED = 'Je pincode is gewijzigd.';
+export const ACCOUNT_PIN_WAS_RESET = 'Je pincode is gereset. Je vergrendelde chats zijn bewaard.';
+export const ACCOUNT_PIN_DELETED = 'Je pincode en je vergrendelde chats zijn verwijderd.';
+export const ACCOUNT_PIN_VERIFY_TITLE = 'Bevestig dat jij het bent';
+export const ACCOUNT_PIN_VERIFY_BODY = 'Typ de code uit je authenticator-app. Daarna kies je een nieuwe pincode. Je vergrendelde chats blijven bewaard.';
+export const ACCOUNT_PIN_CODE_LABEL = 'Code uit je authenticator-app';
+export const ACCOUNT_PIN_DELETE_ALL = 'Of verwijder alles en begin opnieuw';
+export const ACCOUNT_PIN_DELETE_BODY = 'Je pincode wordt gewist en al je vergrendelde chats worden definitief verwijderd. Dit kan niet ongedaan worden gemaakt.';
+
 // Menu's van projecten en chats, en verplaatsen naar een project.
 export const AYLA_RECENT = 'Recent';
 export const AYLA_PROJECT_SETTINGS = 'Projectinstellingen';
