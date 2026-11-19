@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import PAVECore
+import SwiftUI
 
 @Observable
 final class AylaChatModel {
@@ -35,6 +36,8 @@ final class AylaChatModel {
     private(set) var contextTitle: String?
     private(set) var phase = Phase.idle
     private(set) var conversationID: String?
+    /// "Nieuwe chat in project": the next question starts the conversation inside this project.
+    private(set) var newChatProject: AylaProject?
     private(set) var firstName: String?
 
     /// The name changed in Instellingen: the welcome and the menu use it at once.
@@ -279,7 +282,10 @@ final class AylaChatModel {
         sentUploads += files.compactMap { uploads[$0.name] }.filter { upload in !sentUploads.contains(upload) }
         uploads = [:]
         phase = .thinking
-        let request = AylaRequest(conversationId: conversationID, text: text, device: .phone, input: input, context: context, attachments: files)
+        let request = AylaRequest(
+            conversationId: conversationID, text: text, device: .phone, input: input, context: context, attachments: files,
+            projectId: newChatProject?.id
+        )
         return Turn(service: service, request: request, text: text, files: files)
     }
 
@@ -300,6 +306,7 @@ final class AylaChatModel {
                 switch event {
                 case .started(let id):
                     conversationID = id
+                    newChatProject = nil
                     savePendingFiles()
                 case .text(let text):
                     if let writingIndex, entries.indices.contains(writingIndex) {
@@ -471,7 +478,10 @@ final class AylaChatModel {
                 phase = .failed(AylaMessages.redoFailed)
                 return
             }
-            let request = AylaRequest(conversationId: conversationID, text: question.text, device: .phone, input: .text, context: context, attachments: files)
+            let request = AylaRequest(
+                conversationId: conversationID, text: question.text, device: .phone, input: .text, context: context, attachments: files,
+                projectId: newChatProject?.id
+            )
             await stream(Turn(service: service, request: request, text: question.text, files: files))
         }
     }
@@ -540,8 +550,9 @@ final class AylaChatModel {
         context = nil
     }
 
-    func newConversation() {
+    func newConversation(in project: AylaProject? = nil) {
         guard !isAnswering else { return }
+        newChatProject = project
         clearContext()
         entries = []
         conversationID = nil
@@ -733,13 +744,165 @@ final class AylaChatModel {
         }
     }
 
-    /// Messages that contain `text`, with the conversation each is in. Only conversations in the list are shown.
+    // MARK: Projects
+
+    /// "Nieuw project": the list shows it at once; nil when it could not be made.
+    func createProject(name: String, instructions: String) async -> AylaProject? {
+        guard let service else { return nil }
+        do {
+            let project = try await service.createProject(name: name, instructions: instructions)
+            conversationList.projects.insert(project, at: 0)
+            PaveHaptics.success()
+            return project
+        } catch {
+            chatsProblem = AylaMessages.projectFailed
+            return nil
+        }
+    }
+
+    func updateProject(_ project: AylaProject) async -> Bool {
+        guard let service, let index = conversationList.projects.firstIndex(where: { $0.id == project.id }) else { return false }
+        let before = conversationList
+        conversationList.projects[index] = project
+        do {
+            try await service.updateProject(project)
+            PaveHaptics.success()
+            return true
+        } catch {
+            conversationList = before
+            chatsProblem = AylaMessages.projectFailed
+            return false
+        }
+    }
+
+    func toggleProjectPin(_ project: AylaProject) {
+        guard let service, let index = conversationList.projects.firstIndex(where: { $0.id == project.id }) else { return }
+        let before = conversationList
+        conversationList.projects[index].pinnedAt = project.isPinned ? nil : .now
+        PaveHaptics.tap(.medium)
+        Task {
+            do {
+                try await service.setProjectPinned(!project.isPinned, projectID: project.id)
+            } catch {
+                conversationList = before
+                chatsProblem = AylaMessages.pinFailed
+            }
+        }
+    }
+
+    /// The chats stay; they only no longer belong to a project.
+    func deleteProject(_ project: AylaProject) {
+        guard let service else { return }
+        let before = conversationList
+        conversationList.projects.removeAll { $0.id == project.id }
+        for chat in conversationList.conversations where chat.projectID == project.id {
+            conversationList.setProject(nil, id: chat.id)
+        }
+        if newChatProject?.id == project.id { newChatProject = nil }
+        PaveHaptics.tap(.heavy)
+        Task {
+            do {
+                try await service.deleteProject(id: project.id)
+            } catch {
+                conversationList = before
+                chatsProblem = AylaMessages.projectFailed
+            }
+        }
+    }
+
+    /// Puts a chat in a project, or takes it out with nil. The list changes at once and goes back if Supabase refuses.
+    func move(_ conversation: AylaConversation, to project: AylaProject?) {
+        guard let service, conversation.projectID != project?.id else { return }
+        let before = conversationList
+        conversationList.setProject(project?.id, id: conversation.id)
+        PaveHaptics.success()
+        AccessibilityNotification.Announcement(project.map { AylaMessages.movedToProject($0.name) } ?? AylaMessages.removedFromProject).post()
+        Task {
+            do {
+                try await service.move(conversationID: conversation.id, toProject: project?.id)
+            } catch {
+                conversationList = before
+                chatsProblem = AylaMessages.moveFailed
+            }
+        }
+    }
+
+    // MARK: Locked chats
+
+    /// The locked chats show while this is true: after the right PIN, until "Nu vergrendelen" or leaving the app.
+    var showsLockedChats = false
+
+    /// "Chat vergrendelen": it leaves the list and the search. The open chat closes, as it now needs the PIN.
+    func setLocked(_ isLocked: Bool, _ conversation: AylaConversation) async -> Bool {
+        guard let service else { return false }
+        do {
+            try await service.setLocked(isLocked, conversationID: conversation.id)
+            conversationList.setLocked(isLocked, id: conversation.id)
+            if isLocked, conversation.id == conversationID { newConversation() }
+            PaveHaptics.success()
+            return true
+        } catch {
+            chatsProblem = isLocked ? AylaMessages.lockFailed : AylaMessages.unlockFailed
+            return false
+        }
+    }
+
+    func chatPinExists() async -> Bool? {
+        guard let service else { return nil }
+        return try? await service.chatPinExists()
+    }
+
+    /// Nil when it worked, otherwise what to tell the user.
+    func setChatPin(_ pin: String) async -> String? {
+        guard let service else { return AylaMessages.pinCodeFailed }
+        do {
+            try await service.setChatPin(pin)
+            return nil
+        } catch {
+            return AylaMessages.pinCodeFailed
+        }
+    }
+
+    /// Nil when the PIN is right; otherwise what to tell the user.
+    func checkChatPin(_ pin: String) async -> String? {
+        guard let service else { return AylaMessages.pinCodeFailed }
+        do {
+            if try await service.checkChatPin(pin) {
+                showsLockedChats = true
+                return nil
+            }
+            return AylaMessages.pinWrong
+        } catch AylaChatPinError.tooManyAttempts {
+            return AylaMessages.pinBlocked
+        } catch {
+            return AylaMessages.pinCodeFailed
+        }
+    }
+
+    /// "Pincode vergeten": every locked chat is deleted for good, then a new PIN can be chosen.
+    func resetChatPin() async -> Bool {
+        guard let service else { return false }
+        do {
+            try await service.resetChatPin()
+            let locked = Set(conversationList.locked.map(\.id))
+            conversationList.conversations.removeAll { locked.contains($0.id) }
+            if let conversationID, locked.contains(conversationID) { newConversation() }
+            showsLockedChats = false
+            return true
+        } catch {
+            chatsProblem = AylaMessages.pinCodeFailed
+            return false
+        }
+    }
+
+    /// Messages that contain `text`, with the conversation each is in. Only conversations in the list are shown, and
+    /// never a locked one.
     func searchMessages(_ text: String) async -> [(hit: AylaSearchHit, conversation: AylaConversation)] {
         guard let service, let hits = try? await service.searchMessages(text) else { return [] }
         var seen = Set<String>()
         return hits.compactMap { hit in
             guard !seen.contains(hit.conversationID),
-                  let conversation = conversationList.conversations.first(where: { $0.id == hit.conversationID })
+                  let conversation = conversationList.visible.first(where: { $0.id == hit.conversationID })
             else { return nil }
             seen.insert(hit.conversationID)
             return (hit, conversation)

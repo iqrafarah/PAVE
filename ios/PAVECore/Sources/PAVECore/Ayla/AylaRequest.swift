@@ -15,6 +15,8 @@ public struct AylaRequest: Codable, Equatable, Sendable {
     }
 
     public var conversationId: String?
+    /// Starts a new conversation inside this project; ignored when `conversationId` is given.
+    public var projectId: String?
     public var text: String
     public var device: AylaDevice
     public var input: AylaInput
@@ -27,9 +29,11 @@ public struct AylaRequest: Codable, Equatable, Sendable {
         device: AylaDevice,
         input: AylaInput,
         context: Context? = nil,
-        attachments: [AylaAttachment] = []
+        attachments: [AylaAttachment] = [],
+        projectId: String? = nil
     ) {
         self.conversationId = conversationId
+        self.projectId = conversationId == nil ? projectId : nil
         self.text = text
         self.device = device
         self.input = input

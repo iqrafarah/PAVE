@@ -18,6 +18,22 @@ public protocol AylaService: Sendable {
     func conversations(limit: Int) async throws -> AylaConversationList
     func messages(in conversationID: String) async throws -> [AylaStoredMessage]
     func setPinned(_ isPinned: Bool, conversationID: String) async throws
+    /// "Projecten" (migration 20261118120000): make, change, pin and delete; deleting keeps the chats.
+    func createProject(name: String, instructions: String) async throws -> AylaProject
+    func updateProject(_ project: AylaProject) async throws
+    func setProjectPinned(_ isPinned: Bool, projectID: String) async throws
+    func deleteProject(id: String) async throws
+    /// Puts a chat in a project, or takes it out with nil.
+    func move(conversationID: String, toProject projectID: String?) async throws
+    /// "Chat vergrendelen" (migration 20261118130000). One PIN of four digits for every locked chat, checked only in the
+    /// database.
+    func setLocked(_ isLocked: Bool, conversationID: String) async throws
+    func chatPinExists() async throws -> Bool
+    func setChatPin(_ pin: String) async throws
+    /// True for the right PIN; throws `AylaChatPinError.tooManyAttempts` during the wait after five wrong tries.
+    func checkChatPin(_ pin: String) async throws -> Bool
+    /// "Pincode vergeten": deletes every locked chat for good and removes the PIN.
+    func resetChatPin() async throws
     func rename(_ title: String, conversationID: String) async throws
     /// Removes the conversation and its messages for good.
     func delete(conversationID: String) async throws
@@ -70,6 +86,16 @@ extension AylaService {
     public func delete(conversationID: String) async throws { throw AylaError.unavailable }
     public func removeLastTurn(in conversationID: String) async throws { throw AylaError.unavailable }
     public func searchMessages(_ text: String) async throws -> [AylaSearchHit] { [] }
+    public func createProject(name: String, instructions: String) async throws -> AylaProject { throw AylaError.notSetUp }
+    public func updateProject(_ project: AylaProject) async throws { throw AylaError.notSetUp }
+    public func setProjectPinned(_ isPinned: Bool, projectID: String) async throws { throw AylaError.notSetUp }
+    public func deleteProject(id: String) async throws { throw AylaError.notSetUp }
+    public func move(conversationID: String, toProject projectID: String?) async throws { throw AylaError.notSetUp }
+    public func setLocked(_ isLocked: Bool, conversationID: String) async throws { throw AylaError.notSetUp }
+    public func chatPinExists() async throws -> Bool { throw AylaError.notSetUp }
+    public func setChatPin(_ pin: String) async throws { throw AylaError.notSetUp }
+    public func checkChatPin(_ pin: String) async throws -> Bool { throw AylaError.notSetUp }
+    public func resetChatPin() async throws { throw AylaError.notSetUp }
     public func conversationChanges() -> AsyncStream<Void> { AsyncStream { $0.finish() } }
 
     /// Without a voice, the stream ends at once with `unavailable`, and the app falls back to the device voice.
@@ -303,10 +329,17 @@ public struct SupabaseAylaService: AylaService {
     }
 
     public func conversations(limit: Int) async throws -> AylaConversationList {
-        let rows: [ConversationRow] = try await select(
+        let token = await accessToken()
+        async let rowsRequest: [ConversationRow] = select(
             "ayla_conversations",
-            query: [("select", "*"), ("order", "updated_at.desc"), ("limit", String(limit))]
+            query: [("select", "*"), ("order", "updated_at.desc"), ("limit", String(limit))],
+            token: token
         )
+        // Before their migrations there are no projects or locked chats: the list simply has none.
+        async let projectsRequest: [ProjectRow]? = try? select("ayla_projects", query: [("select", "*"), ("order", "updated_at.desc")], token: token)
+        async let lockedRequest: [LockedRow]? = try? select("ayla_locked_chats", query: [("select", "conversation_id")], token: token)
+        let (rows, projectRows, lockedRows) = try await (rowsRequest, projectsRequest, lockedRequest)
+        let locked = Set((lockedRows ?? []).map(\.conversationID))
         return AylaConversationList(
             conversations: rows.map {
                 AylaConversation(
@@ -314,11 +347,126 @@ public struct SupabaseAylaService: AylaService {
                     title: $0.title,
                     updatedAt: Self.date(from: $0.updatedAt),
                     pinnedAt: $0.pinnedAt.map(Self.date(from:)),
-                    startedOn: $0.startedOn.flatMap(AylaDevice.init(rawValue:))
+                    startedOn: $0.startedOn.flatMap(AylaDevice.init(rawValue:)),
+                    projectID: $0.projectID,
+                    isLocked: locked.contains($0.id)
                 )
             },
-            canPin: rows.contains(where: \.hasPinColumn)
+            canPin: rows.contains(where: \.hasPinColumn),
+            projects: (projectRows ?? []).map(\.project),
+            canUseProjects: projectRows != nil,
+            canLock: lockedRows != nil
         )
+    }
+
+    // MARK: Projects
+
+    public func createProject(name: String, instructions: String) async throws -> AylaProject {
+        guard let name = AylaProject.cleanName(name) else { throw AylaError.unavailable }
+        let body = ["name": name, "instructions": String(instructions.prefix(AylaProject.maxInstructionsLength))]
+        let urlRequest = try await authorized(
+            "ayla_projects", query: [("select", "*")], method: "POST", body: try JSONEncoder().encode(body), returning: true
+        )
+        let data = try await perform(urlRequest, accepting: [201])
+        guard let row = try? AylaCoding.decoder.decode([ProjectRow].self, from: data).first else { throw AylaError.unavailable }
+        return row.project
+    }
+
+    public func updateProject(_ project: AylaProject) async throws {
+        guard let name = AylaProject.cleanName(project.name) else { throw AylaError.unavailable }
+        let body = [
+            "name": name,
+            "instructions": String(project.instructions.prefix(AylaProject.maxInstructionsLength)),
+            "updated_at": Date.now.ISO8601Format(),
+        ]
+        let urlRequest = try await authorized(
+            "ayla_projects", query: [("id", "eq.\(project.id)"), ("select", "id")], method: "PATCH",
+            body: try JSONEncoder().encode(body), returning: true
+        )
+        try await expectRow(from: urlRequest)
+    }
+
+    public func setProjectPinned(_ isPinned: Bool, projectID: String) async throws {
+        let body = ["pinned_at": isPinned ? Date.now.ISO8601Format() : nil]
+        let urlRequest = try await authorized(
+            "ayla_projects", query: [("id", "eq.\(projectID)")], method: "PATCH", body: try JSONEncoder().encode(body)
+        )
+        _ = try await perform(urlRequest, accepting: [200, 204])
+    }
+
+    public func deleteProject(id: String) async throws {
+        let urlRequest = try await authorized(
+            "ayla_projects", query: [("id", "eq.\(id)"), ("select", "id")], method: "DELETE", returning: true
+        )
+        try await expectRow(from: urlRequest)
+    }
+
+    public func move(conversationID: String, toProject projectID: String?) async throws {
+        let body = ["project_id": projectID]
+        let urlRequest = try await authorized(
+            "ayla_conversations", query: [("id", "eq.\(conversationID)"), ("select", "id")], method: "PATCH",
+            body: try JSONEncoder().encode(body), returning: true
+        )
+        try await expectRow(from: urlRequest)
+    }
+
+    // MARK: Locked chats
+
+    public func setLocked(_ isLocked: Bool, conversationID: String) async throws {
+        if isLocked {
+            let urlRequest = try await authorized(
+                "ayla_locked_chats", query: [], method: "POST", body: try JSONEncoder().encode(["conversation_id": conversationID])
+            )
+            _ = try await perform(urlRequest, accepting: [201, 204, 409])
+        } else {
+            let urlRequest = try await authorized(
+                "ayla_locked_chats", query: [("conversation_id", "eq.\(conversationID)")], method: "DELETE"
+            )
+            _ = try await perform(urlRequest, accepting: [200, 204])
+        }
+    }
+
+    public func chatPinExists() async throws -> Bool {
+        let data = try await rpc("ayla_chat_pin_exists", body: [:])
+        return (try? JSONDecoder().decode(Bool.self, from: data)) ?? false
+    }
+
+    public func setChatPin(_ pin: String) async throws {
+        _ = try await rpc("ayla_set_chat_pin", body: ["pin": pin])
+    }
+
+    public func checkChatPin(_ pin: String) async throws -> Bool {
+        let data = try await rpc("ayla_check_chat_pin", body: ["pin": pin])
+        return (try? JSONDecoder().decode(Bool.self, from: data)) ?? false
+    }
+
+    public func resetChatPin() async throws {
+        _ = try await rpc("ayla_reset_chat_pin", body: [:])
+    }
+
+    /// Calls a database function. Its own errors (`raise exception 'too_many_attempts'`) come back as their message.
+    private func rpc(_ name: String, body: [String: String]) async throws -> Data {
+        let urlRequest = try await authorized("rpc/\(name)", query: [], method: "POST", body: try JSONEncoder().encode(body), returning: true)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: urlRequest)
+        } catch is URLError {
+            throw AylaError.noConnection
+        }
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        if (200..<300).contains(status) { return data }
+        switch (try? JSONDecoder().decode(PostgrestError.self, from: data))?.message {
+        case "too_many_attempts": throw AylaChatPinError.tooManyAttempts
+        case "no_pin": throw AylaChatPinError.noPin
+        case "pin_exists": throw AylaChatPinError.alreadySet
+        case "invalid_pin": throw AylaChatPinError.wrong
+        case "mfa_required": throw AylaError.insufficientAssurance
+        default: break
+        }
+        if Self.isMissingTable(status: status, body: data) || status == 404 { throw AylaError.notSetUp }
+        if status == 401 { throw AylaError.notSignedIn }
+        throw AylaError.unavailable
     }
 
     public func rename(_ title: String, conversationID: String) async throws {
@@ -645,6 +793,7 @@ private struct ConversationRow: Decodable {
     let updatedAt: String
     let pinnedAt: String?
     let startedOn: String?
+    let projectID: String?
     /// False while the `pinned_at` column has not been added yet.
     let hasPinColumn: Bool
 
@@ -654,6 +803,7 @@ private struct ConversationRow: Decodable {
         case updatedAt = "updated_at"
         case pinnedAt = "pinned_at"
         case startedOn = "started_on"
+        case projectID = "project_id"
     }
 
     init(from decoder: any Decoder) throws {
@@ -663,6 +813,7 @@ private struct ConversationRow: Decodable {
         updatedAt = try container.decode(String.self, forKey: .updatedAt)
         pinnedAt = try container.decodeIfPresent(String.self, forKey: .pinnedAt)
         startedOn = try container.decodeIfPresent(String.self, forKey: .startedOn)
+        projectID = try container.decodeIfPresent(String.self, forKey: .projectID)
         hasPinColumn = container.contains(.pinnedAt)
     }
 }
@@ -687,6 +838,30 @@ private struct MissingColumn: Error {}
 
 private struct PostgrestError: Decodable {
     let code: String?
+    var message: String?
+}
+
+private struct ProjectRow: Decodable {
+    let id: String
+    let name: String
+    let instructions: String?
+    let updated_at: String
+    let pinned_at: String?
+
+    var project: AylaProject {
+        AylaProject(
+            id: id, name: name, instructions: instructions ?? "",
+            updatedAt: SupabaseAylaService.date(from: updated_at), pinnedAt: pinned_at.map(SupabaseAylaService.date(from:))
+        )
+    }
+}
+
+private struct LockedRow: Decodable {
+    let conversationID: String
+
+    private enum CodingKeys: String, CodingKey {
+        case conversationID = "conversation_id"
+    }
 }
 
 private struct SettingsRow: Decodable {

@@ -3,6 +3,8 @@ import SwiftUI
 
 struct PinPad: View {
     @Binding var digits: String
+    /// Six for the app's PIN; the locked chats use four, as on the web.
+    var length = PinPolicy.length
     var isError = false
     var keySize: CGFloat = 76
     var biometricKind: BiometricKind?
@@ -11,7 +13,7 @@ struct PinPad: View {
 
     var body: some View {
         VStack(spacing: keySize * 0.4) {
-            PinDots(filled: digits.count, isError: isError)
+            PinDots(filled: digits.count, length: length, isError: isError)
             PinKeypad(
                 keySize: keySize,
                 biometricKind: biometricKind,
@@ -25,9 +27,9 @@ struct PinPad: View {
     }
 
     private func append(_ digit: Int) {
-        guard digits.count < PinPolicy.length else { return }
+        guard digits.count < length else { return }
         digits.append(String(digit))
-        if digits.count == PinPolicy.length {
+        if digits.count == length {
             onComplete(digits)
         }
     }
@@ -40,11 +42,12 @@ struct PinPad: View {
 
 struct PinDots: View {
     let filled: Int
+    var length = PinPolicy.length
     var isError = false
 
     var body: some View {
         HStack(spacing: 16) {
-            ForEach(0..<PinPolicy.length, id: \.self) { index in
+            ForEach(0..<length, id: \.self) { index in
                 Circle()
                     .fill(index < filled ? tint : .clear)
                     .overlay {
@@ -56,7 +59,7 @@ struct PinDots: View {
         .animation(.easeOut(duration: 0.12), value: filled)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Pincode")
-        .accessibilityValue("\(filled) van \(PinPolicy.length) cijfers ingevuld")
+        .accessibilityValue("\(filled) van \(length) cijfers ingevuld")
     }
 
     private var tint: Color {

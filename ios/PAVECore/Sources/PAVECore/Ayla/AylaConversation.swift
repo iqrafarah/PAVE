@@ -7,15 +7,24 @@ public struct AylaConversation: Equatable, Sendable, Identifiable {
     public var pinnedAt: Date?
     /// Where the conversation began: on the phone, the web or the Watch.
     public var startedOn: AylaDevice?
+    /// The project it belongs to; nil for an ordinary chat.
+    public var projectID: String?
+    /// "Chat vergrendelen": it leaves the list and the search, and opens only after the PIN.
+    public var isLocked: Bool
 
     public var isPinned: Bool { pinnedAt != nil }
 
-    public init(id: String, title: String, updatedAt: Date, pinnedAt: Date? = nil, startedOn: AylaDevice? = nil) {
+    public init(
+        id: String, title: String, updatedAt: Date, pinnedAt: Date? = nil, startedOn: AylaDevice? = nil,
+        projectID: String? = nil, isLocked: Bool = false
+    ) {
         self.id = id
         self.title = title
         self.updatedAt = updatedAt
         self.pinnedAt = pinnedAt
         self.startedOn = startedOn
+        self.projectID = projectID
+        self.isLocked = isLocked
     }
 
     /// The longest title someone can give a conversation.
@@ -57,34 +66,87 @@ public struct AylaConversationSection: Equatable, Sendable, Identifiable {
     }
 }
 
-/// The user's conversations. `canPin` stays false until the `pinned_at` column exists in Supabase.
+/// The user's conversations and projects. `canPin` stays false until the `pinned_at` column exists in Supabase;
+/// `canUseProjects` and `canLock` until the tables of the projects and the locked chats exist.
 public struct AylaConversationList: Equatable, Sendable {
     public var conversations: [AylaConversation]
     public var canPin: Bool
+    public var projects: [AylaProject]
+    public var canUseProjects: Bool
+    public var canLock: Bool
 
-    public init(conversations: [AylaConversation] = [], canPin: Bool = false) {
+    public init(
+        conversations: [AylaConversation] = [], canPin: Bool = false,
+        projects: [AylaProject] = [], canUseProjects: Bool = false, canLock: Bool = false
+    ) {
         self.conversations = conversations
         self.canPin = canPin
+        self.projects = projects
+        self.canUseProjects = canUseProjects
+        self.canLock = canLock
+    }
+
+    /// Everything but the locked chats: those show only after the PIN.
+    public var visible: [AylaConversation] {
+        conversations.filter { !$0.isLocked }
+    }
+
+    /// The locked chats, the most recent first.
+    public var locked: [AylaConversation] {
+        conversations.filter(\.isLocked).sorted { $0.updatedAt > $1.updatedAt }
     }
 
     /// Pinned conversations, the most recently pinned first.
     public var pinned: [AylaConversation] {
-        conversations.filter(\.isPinned).sorted { ($0.pinnedAt ?? .distantPast) > ($1.pinnedAt ?? .distantPast) }
+        visible.filter(\.isPinned).sorted { ($0.pinnedAt ?? .distantPast) > ($1.pinnedAt ?? .distantPast) }
     }
 
-    /// The other conversations, the most recent first.
+    /// The other conversations, the most recent first. Chats in a project show under the project instead.
     public var others: [AylaConversation] {
-        conversations.filter { !$0.isPinned }.sorted { $0.updatedAt > $1.updatedAt }
+        visible.filter { !$0.isPinned && project(of: $0) == nil }.sorted { $0.updatedAt > $1.updatedAt }
     }
 
-    /// Conversations whose title contains the search text, ignoring case and accents.
+    /// The projects, pinned ones first, then the most recently changed.
+    public var orderedProjects: [AylaProject] {
+        projects.sorted { first, second in
+            switch (first.pinnedAt, second.pinnedAt) {
+            case let (a?, b?): a > b
+            case (.some, nil): true
+            case (nil, .some): false
+            case (nil, nil): first.updatedAt > second.updatedAt
+            }
+        }
+    }
+
+    public func project(of conversation: AylaConversation) -> AylaProject? {
+        conversation.projectID.flatMap { id in projects.first { $0.id == id } }
+    }
+
+    /// The chats of a project that are not pinned (a pinned chat stays on top), the most recent first.
+    public func chats(in projectID: String) -> [AylaConversation] {
+        visible.filter { $0.projectID == projectID && !$0.isPinned }.sorted { $0.updatedAt > $1.updatedAt }
+    }
+
+    /// Conversations whose title contains the search text, ignoring case and accents. Locked chats are never found.
     public func matching(_ search: String) -> AylaConversationList {
         let search = search.trimmingCharacters(in: .whitespaces)
         guard !search.isEmpty else { return self }
-        let found = conversations.filter {
+        let found = visible.filter {
             $0.title.range(of: search, options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "nl_NL")) != nil
         }
-        return AylaConversationList(conversations: found, canPin: canPin)
+        var result = self
+        result.conversations = found
+        return result
+    }
+
+    public mutating func setProject(_ projectID: String?, id: String) {
+        guard let index = conversations.firstIndex(where: { $0.id == id }) else { return }
+        conversations[index].projectID = projectID
+    }
+
+    public mutating func setLocked(_ isLocked: Bool, id: String) {
+        guard let index = conversations.firstIndex(where: { $0.id == id }) else { return }
+        conversations[index].isLocked = isLocked
     }
 
     public mutating func setPinned(_ isPinned: Bool, id: String, at date: Date = .now) {
@@ -104,13 +166,17 @@ public struct AylaConversationList: Equatable, Sendable {
     /// Whether `other` would show exactly the same list: the same groups, chats, names and order. Small differences
     /// that do not show, such as the fraction of a second a chat was pinned at, do not count.
     public func looksTheSame(as other: AylaConversationList, now: Date = .now, calendar: Calendar = .current) -> Bool {
-        guard canPin == other.canPin else { return false }
+        guard canPin == other.canPin, canUseProjects == other.canUseProjects, canLock == other.canLock else { return false }
         func shown(_ list: AylaConversationList) -> [[String]] {
-            list.sections(now: now, calendar: calendar).map { section in
+            let chats = list.sections(now: now, calendar: calendar).map { section in
                 ["\(section.kind)"] + section.conversations.map {
                     "\($0.id)|\($0.title)|\($0.startedOn?.rawValue ?? "")|\(Int($0.updatedAt.timeIntervalSince1970 / 60))"
                 }
             }
+            let projects = list.orderedProjects.map { project in
+                ["project|\(project.id)|\(project.name)|\(project.isPinned)"] + list.chats(in: project.id).map { "\($0.id)|\($0.title)" }
+            }
+            return chats + projects + [list.locked.map(\.id)]
         }
         return shown(self) == shown(other)
     }
