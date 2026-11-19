@@ -1,28 +1,24 @@
 import SwiftUI
 
-/// "Zoeken" in the menu, above your account and the bell: looks like a search field and opens "Zoeken in PAVE".
+/// "Zoeken in PAVE" as an icon next to the bell, as ChatGPT has search next to your account. Inside the glass capsule
+/// (`isPlain`) only the magnifier; on its own it gets the same grey circle as the bell.
 struct MainSearchButton: View {
+    var isPlain = false
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
-                Image(.iconSearch)
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .paveIconFrame(18)
-                    .foregroundStyle(Color.inkMuted)
-                Text("Zoeken")
-                    .textStyle(.bodyMedium)
-                    .foregroundStyle(Color.inkMuted)
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 14)
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .background(Color.white, in: .capsule)
-            .overlay { Capsule().strokeBorder(Color.cardBorder) }
-            .contentShape(.capsule)
+            Image(.iconSearch)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .paveIconFrame(20)
+                .foregroundStyle(Color.ink)
+                .frame(width: 44, height: 44)
+                .background {
+                    if !isPlain { Circle().fill(Color.cardBorder) }
+                }
+                .contentShape(.circle)
         }
         .buttonStyle(.pave)
         .hoverEffect(.highlight)
