@@ -141,6 +141,8 @@ struct AylaChatScreen: View {
                         )
                     }
                     .ignoresSafeArea()
+                    // A page over the chat: Ayla steps back, and only the glow along the page's edge shows her.
+                    .opacity(shelf == nil ? 1 : 0)
                 }
 
                 content(
@@ -250,7 +252,8 @@ struct AylaChatScreen: View {
                 }
             }
             .safeAreaInset(edge: .top, spacing: 0) {
-                if showsShelfReply, let reply = shelfReply {
+                // While talking the bubble follows "Tekst bij de stem" in Settings: off means her voice and the glow only.
+                if showsShelfReply, !isTalking || showsVoiceText, let reply = shelfReply {
                     AylaShelfReply(text: reply.text, choices: reply.choices, onChoose: { choose($0) }) {
                         showsShelfReply = false
                     }
@@ -503,6 +506,7 @@ struct AylaChatScreen: View {
                 .contentShape(.rect)
                 .gesture(orbDragGesture, isEnabled: canDragOrb)
                 .allowsHitTesting(!orbMotion.isLow)
+                .opacity(shelf == nil ? 1 : 0)
                 // Down to the voice bar: the room for the small orb is only for when it is small.
                 .padding(.bottom, voiceBarHeight + bottomGap)
                 .transition(.opacity)
@@ -836,7 +840,7 @@ struct AylaChatScreen: View {
             icon: { voice.icon(at: $0) },
             position: position
         )
-            .opacity(isOrbHidden ? 0 : 1)
+            .opacity(isOrbHidden || shelf != nil ? 0 : 1)
             // Fades in while the intro's blocks fade out.
             .animation(isOrbHidden ? nil : .easeOut(duration: 0.3), value: isOrbHidden)
             .contentShape(.circle)
@@ -1811,7 +1815,7 @@ struct AylaChatScreen: View {
         PaveHaptics.selection()
         if let shelf { model.hideScreen(shelf.screen) }
         openVacanciesID = nil
-        vaultDetent = .fraction(0.62)
+        vaultDetent = .large
         shelf = next
         model.showScreen(next.screen)
     }
