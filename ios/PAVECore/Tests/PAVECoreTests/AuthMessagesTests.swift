@@ -16,12 +16,13 @@ struct AuthMessagesTests {
 
     private func webConstants() throws -> [String: String] {
         let source = try String(contentsOf: Self.webRoot.appending(path: "shared/messages.ts"), encoding: .utf8)
-        let pattern = #"export const (\w+) =\s*(['"])(.*?)\2;"#
+        let pattern = #"export const (\w+) =\s*(['"`])(.*?)\2;"#
         let regex = try NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators])
         var result: [String: String] = [:]
         for match in regex.matches(in: source, range: NSRange(source.startIndex..., in: source)) {
             guard let name = Range(match.range(at: 1), in: source), let value = Range(match.range(at: 3), in: source) else { continue }
             result[String(source[name])] = String(source[value]).replacingOccurrences(of: "\\'", with: "'")
+                .replacingOccurrences(of: "${SUPPORT_EMAIL}", with: PaveSupport.email)
         }
         return result
     }
@@ -58,6 +59,7 @@ struct AuthMessagesTests {
             "PASSWORDS_MATCH_MESSAGE": AuthMessages.passwordsMatch,
             "PASSWORDS_NOT_EQUAL_MESSAGE": AuthMessages.passwordsNotEqual,
             "INVALID_EMAIL_MESSAGE": AuthMessages.invalidEmail,
+            "SIGNUP_DISABLED_MESSAGE": AuthMessages.signupDisabled,
             "EMAIL_ALREADY_REGISTERED_MESSAGE": AuthMessages.emailAlreadyRegistered,
         ]
         for (name, text) in ios {

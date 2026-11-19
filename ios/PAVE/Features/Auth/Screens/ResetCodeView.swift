@@ -79,6 +79,7 @@ struct ResetCodeView: View {
                                 .textStyle(.link)
                                 .foregroundStyle(secondsLeft > 0 ? Color.inkMuted : .paveAccent)
                                 .frame(minHeight: 44, alignment: .leading)
+                                .contentShape(.rect)
                                 .contentTransition(.numericText(countsDown: true))
                         }
                         .buttonStyle(.pave)

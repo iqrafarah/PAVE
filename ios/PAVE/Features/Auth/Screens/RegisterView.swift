@@ -25,16 +25,14 @@ struct RegisterView: View {
         AuthScreen {
             AuthIntro(title: "Maak je eduID aan", message: "Vul je gegevens in om een account aan te maken.")
         } content: {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 20) {
                 PaveTextField(label: "E-mailadres", placeholder: "E-mailadres", text: $email, kind: .email, focus: $focus, field: .email)
                     .submitLabel(.next)
                     .onSubmit { focus = .firstName }
 
-                // Next to each other where there is room, under each other where there is not.
-                ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .top, spacing: 12) { nameFields }
-                    VStack(alignment: .leading, spacing: 20) { nameFields }
-                }
+                // Under each other, as on the web.
+                nameFields
 
                 PaveTextField(
                     label: "Wachtwoord",
@@ -64,6 +62,7 @@ struct RegisterView: View {
                 )
                 .submitLabel(.done)
                 .onSubmit(submit)
+                }
 
                 MessageSlot(message: error?.message, reserving: Self.errors) { PaveNotice(message: $0, tone: .critical) }
 
@@ -153,9 +152,14 @@ struct RegisterCodeView: View {
 
     var body: some View {
         AuthScreen {
-            AuthIntro(emblem: .iconMailOpen, title: "Check je inbox", message: AuthMessages.resetCodeSent(to: EmailMask.masked(email)))
+            AuthIntro(title: "Maak je eduID aan", message: "Vul je gegevens in om een account aan te maken.")
         } content: {
             VStack(alignment: .leading, spacing: 24) {
+                Text(AuthMessages.resetCodeSent(to: EmailMask.masked(email)))
+                    .textStyle(.footnote)
+                    .foregroundStyle(Color.inkMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 VerificationCodeField(
                     code: $code,
                     title: AuthMessages.emailCodeLabel,
@@ -164,7 +168,8 @@ struct RegisterCodeView: View {
                     isFocused: $isCodeFocused,
                     onComplete: check
                 )
-                .onChange(of: code) { codeError = nil }
+                // Emptying the field after a wrong code keeps the error; typing again clears it.
+                .onChange(of: code) { if !code.isEmpty { codeError = nil } }
 
                 PavePrimaryButton(title: "Code bevestigen", loadingTitle: "Bezig met controleren...", isLoading: isChecking, action: check)
 
@@ -180,17 +185,35 @@ struct RegisterCodeView: View {
                             .underline()
                             .foregroundStyle(Color.paveAccent)
                             .frame(minHeight: 44, alignment: .leading)
+                            .contentShape(.rect)
                     }
                     .buttonStyle(.pave)
                     .disabled(isResending || isChecking)
                     MessageSlot(message: resendMessage, reserving: [AuthMessages.emailCodeResent] + AuthError.allMessages) { text in
-                        Text(text)
-                            .textStyle(.footnote)
-                            .foregroundStyle(text == AuthMessages.emailCodeResent ? Color.paveAccent : .critical)
+                        if text == AuthMessages.emailCodeResent {
+                            Text(text)
+                                .textStyle(.footnote)
+                                .foregroundStyle(Color.paveAccent)
+                        } else {
+                            PaveInlineError(message: text)
+                        }
                     }
                 }
 
-                AuthReturnButton(action: flow.returnToLogin)
+                HStack(spacing: 4) {
+                    Text("Heb je al een eduID?")
+                        .textStyle(.footnote)
+                        .foregroundStyle(Color.inkMuted)
+                    Button(action: flow.returnToLogin) {
+                        Text("Inloggen")
+                            .textStyle(.link)
+                            .underline()
+                            .foregroundStyle(Color.paveAccent)
+                            .frame(minHeight: 44)
+                            .contentShape(.rect)
+                    }
+                    .buttonStyle(.pave)
+                }
             }
         }
         .onAppear { isCodeFocused = true }

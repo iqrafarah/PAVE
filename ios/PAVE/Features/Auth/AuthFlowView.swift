@@ -14,9 +14,9 @@ struct AuthFlowView: View {
                 .navigationDestination(for: AuthRoute.self, destination: screen)
         }
         .environment(flow)
-        // Signing in goes with eduID: its blue on the controls, as on the web.
+        // Signing in goes with eduID: its blue on the controls, as on the web. RootView turns it off as soon as the
+        // app leaves signing in, so the PIN screen after it never shows eduID.
         .onAppear { PaveThemeStore.shared.usesEduID = true }
-        .onDisappear { PaveThemeStore.shared.usesEduID = false }
     }
 
     @ViewBuilder

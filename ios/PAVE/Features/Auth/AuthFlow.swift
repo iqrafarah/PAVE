@@ -118,6 +118,11 @@ final class AuthFlow {
         path.append(.verificationSetup)
     }
 
+    /// Back to typing the e-mail code, for an account that was made but never confirmed.
+    func showSignUpCode(email: String) {
+        if path.last != .registerCode(email: email) { path.append(.registerCode(email: email)) }
+    }
+
     func resendSignUpCode(email: String) async throws {
         try await service.resendSignUpCode(email: email)
     }

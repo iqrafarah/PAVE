@@ -38,6 +38,9 @@ struct RootView: View {
         .environment(\.paveAccentColor, Color.paveAccent)
         .environment(\.paveOrbPalette, PaveAppearance.orbPalette)
         .tint(Color.paveAccent)
+        .onChange(of: appState.phase) { _, phase in
+            if phase != .signedOut { PaveThemeStore.shared.usesEduID = false }
+        }
         // Licht or Donker as chosen in Instellingen, from the very first screen.
         .onAppear { PaveAppearance.apply(PaveAppearance.displayMode) }
         .animation(.easeInOut(duration: 0.4), value: appState.phase)
