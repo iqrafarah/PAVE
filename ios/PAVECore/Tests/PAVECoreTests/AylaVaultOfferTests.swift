@@ -189,41 +189,63 @@ struct AylaAppCommandTests {
     private let folders = [AylaAppCommand.Named(id: "f1", name: "Stages"), .init(id: "f2", name: "Diploma’s")]
     private let items = [AylaAppCommand.Named(id: "i1", name: "Eindstage bij Philips"), .init(id: "i2", name: "Scrum-certificaat")]
 
-    private func command(_ text: String) -> AylaAppCommand? {
-        AylaAppCommand.command(in: text, folders: folders, items: items)
+    private func command(_ text: String, inSettings: Bool = false) -> AylaAppCommand? {
+        AylaAppCommand.command(in: text, folders: folders, items: items, inSettings: inSettings)
     }
 
     @Test func changesTheAppearance() {
         #expect(command("Zet het thema op blauw") == .theme(.blue))
         #expect(command("Maak het paars") == .theme(.purple))
-        #expect(command("Kleuren thema groen") == .theme(.green))
-        #expect(command("Roze") == .theme(.pink))
-        #expect(command("Maak de tekst groter") == .textSize(.large))
+        #expect(command("Kies groen") == .theme(.green))
+        #expect(command("Thema groen") == .theme(.green))
+        #expect(command("Kun je het thema rood maken?") == .theme(.red))
+        #expect(command("Open instellingen en zet het thema op goud") == .theme(.gold))
+        #expect(command("Wil je de themakleur op oranje zetten alsjeblieft") == .theme(.orange))
+        #expect(command("Maak de tekst groter") == .textSizeStep(1))
+        #expect(command("De letters mogen kleiner") == .textSizeStep(-1))
+        #expect(command("Zet de tekst op groot") == .textSize(.large))
         #expect(command("Tekstgrootte standaard") == .textSize(.standard))
         #expect(command("Toon mijn kluis als lijst") == .vaultLayout(.list))
+        #expect(command("Kluisweergave raster") == .vaultLayout(.grid))
         #expect(command("Zet tekst bij praten uit") == .voiceText(false))
+        #expect(command("Tekst bij praten aan") == .voiceText(true))
         #expect(command("Maak mijn chats vindbaar, aan") == .chatsInSearch(true))
+        #expect(command("Chats niet vindbaar in iPhone-zoeken") == .chatsInSearch(false))
     }
 
     @Test func goesSomewhere() {
         #expect(command("Open weergave") == .settingsPage(.appearance))
-        #expect(command("Privacy") == .settingsPage(.privacy))
         #expect(command("Ga naar ingelogde apparaten") == .settingsPage(.devices))
+        #expect(command("Laat privacy zien") == .settingsPage(.privacy))
         #expect(command("Open de map stages") == .vaultFolder(id: "f1"))
         #expect(command("Open diploma's") == .vaultFolder(id: "f2"))
         #expect(command("Laat eindstage bij philips zien") == .vaultItem(id: "i1"))
         #expect(command("Selecteer scrum-certificaat") == .vaultItem(id: "i2"))
+        #expect(command("Kun je het bewijs Scrum-certificaat openen") == .vaultItem(id: "i2"))
         #expect(command("Ga terug") == .back)
+        #expect(command("Terug") == .back)
         #expect(command("Sluit maar") == .close)
+        #expect(command("Sluit de instellingen") == .close)
+    }
+
+    @Test func oneWordOnlyCountsOnThePageItself() {
+        #expect(command("Privacy") == nil)
+        #expect(command("Roze") == nil)
+        #expect(command("Privacy", inSettings: true) == .settingsPage(.privacy))
+        #expect(command("Roze", inSettings: true) == .theme(.pink))
+        #expect(command("Weergave", inSettings: true) == .settingsPage(.appearance))
     }
 
     @Test func aQuestionStillGoesToAyla() {
-        #expect(command("Welke kleur heeft mijn thema?") == nil)
-        #expect(command("Waarom is mijn kluis groen?") == nil)
-        #expect(command("Ik vind blauw een mooie kleur voor een logo, wat vind jij?") == nil)
-        #expect(command("Wat staat er in mijn stages?") == nil)
-        #expect(command("Kun je me helpen met mijn eindstage bij Philips beschrijven?") == nil)
-        #expect(command("Hoe was mijn dag") == nil)
-        #expect(command("Maak een cv met een blauwe kop") == nil)
+        let questions = [
+            "Welke kleur heeft mijn thema?", "Waarom is mijn kluis groen?", "Ik vind blauw een mooie kleur voor een logo, wat vind jij?",
+            "Wat staat er in mijn stages?", "Kun je me helpen met mijn eindstage bij Philips beschrijven?", "Hoe was mijn dag",
+            "Maak een cv met een blauwe kop", "Ik ga naar mijn stages kijken morgen", "Ik heb een grote tekst geschreven over mijn stage bij Philips en wil die korter",
+            "Mijn privacy is belangrijk voor mij", "Zet mijn stage in de kluis", "Ja", "Nee", "Graag", "Klaar", "Ik ben terug",
+            "Maak een lijst van wat er in mijn kluis mist", "Welke apparaten zijn ingelogd?",
+        ]
+        for text in questions {
+            #expect(command(text) == nil, "\(text)")
+        }
     }
 }

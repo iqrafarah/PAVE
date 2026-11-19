@@ -33,6 +33,7 @@ struct SignedInDevicesScreen: View {
         }
         .background(Color.canvas.ignoresSafeArea())
         .navigationTitle(DevicesMessages.title)
+        .aylaBackStep()
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await watch.refresh()

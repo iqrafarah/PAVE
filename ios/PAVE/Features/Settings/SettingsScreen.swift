@@ -39,22 +39,14 @@ struct SettingsScreen: View {
 
                     SettingsSectionTitle(title: SettingsMessages.general)
                     SettingsGroup {
-                        SettingsRow(icon: .iconPaintBrushSolid, title: SettingsMessages.appearance, value: SettingsMessages.title(profile.theme)) {
-                            SettingsAppearanceScreen()
-                        }
-                        SettingsRow(icon: .iconDevicePhoneMobileSolid, title: DevicesMessages.title) {
-                            SignedInDevicesScreen()
-                        }
+                        SettingsRow(icon: .iconPaintBrushSolid, title: SettingsMessages.appearance, value: SettingsMessages.title(profile.theme), opens: .appearance)
+                        SettingsRow(icon: .iconDevicePhoneMobileSolid, title: DevicesMessages.title, opens: .devices)
                     }
 
                     SettingsSectionTitle(title: SettingsMessages.aylaAndPrivacy)
                     SettingsGroup {
-                        SettingsRow(icon: .iconChatBubbleLeftEllipsisSolid, title: "Ayla", value: SettingsAylaScreen.memorySummary(memory).shortened) {
-                            SettingsAylaScreen()
-                        }
-                        SettingsRow(icon: .iconShieldCheckSolid, title: "Privacy", value: SettingsPrivacyScreen.lockTitle(lockAfter)) {
-                            SettingsPrivacyScreen()
-                        }
+                        SettingsRow(icon: .iconChatBubbleLeftEllipsisSolid, title: "Ayla", value: SettingsAylaScreen.memorySummary(memory).shortened, opens: .ayla)
+                        SettingsRow(icon: .iconShieldCheckSolid, title: "Privacy", value: SettingsPrivacyScreen.lockTitle(lockAfter), opens: .privacy)
                     }
                 }
                 .padding(.horizontal, 23)
@@ -79,9 +71,6 @@ struct SettingsScreen: View {
                 guard let page = driver?.settingsPage else { return }
                 driver?.settingsPage = nil
                 if path != [page] { path = [page] }
-            }
-            .onChange(of: driver?.backSteps) {
-                if !path.isEmpty { path.removeLast() }
             }
             // Knopmodus: swipe through the pages, a full press opens the one it rests on.
             .cameraControlMenus("settings", menus: [

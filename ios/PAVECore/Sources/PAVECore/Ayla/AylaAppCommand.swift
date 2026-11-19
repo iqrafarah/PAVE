@@ -11,6 +11,8 @@ public enum AylaAppCommand: Equatable, Sendable {
     case settingsPage(SettingsPage)
     case theme(PaveThemeColor)
     case textSize(PaveTextSize)
+    /// "Groter" or "kleiner": one size up or down from what it is now.
+    case textSizeStep(Int)
     case vaultLayout(PaveVaultLayout)
     case voiceText(Bool)
     case chatsInSearch(Bool)
@@ -33,67 +35,87 @@ public enum AylaAppCommand: Equatable, Sendable {
     /// Only changing something says so afterwards; going somewhere just happens.
     public var changesSomething: Bool {
         switch self {
-        case .theme, .textSize, .vaultLayout, .voiceText, .chatsInSearch: true
+        case .theme, .textSize, .textSizeStep, .vaultLayout, .voiceText, .chatsInSearch: true
         case .settingsPage, .vaultFolder, .vaultItem, .back, .close: false
         }
     }
 
-    public static func command(in text: String, folders: [Named] = [], items: [Named] = []) -> AylaAppCommand? {
-        let asked = AylaScreenRequest.normalized(text).folding(options: .diacriticInsensitive, locale: nil)
-        guard !asked.isEmpty, asked.count <= 120 else { return nil }
+    /// `inSettings`: Instellingen is open, so a bare "blauw" or "privacy" is about what is on screen. Elsewhere a
+    /// single word is an answer to Ayla, and only a whole instruction counts.
+    public static func command(in text: String, folders: [Named] = [], items: [Named] = [], inSettings: Bool = false) -> AylaAppCommand? {
+        let asked = plain(text)
+        let words = asked.split(separator: " ").count
+        guard words > 0, asked.count <= 120 else { return nil }
         func has(_ pattern: String) -> Bool { AylaScreenRequest.matches(asked, pattern) }
-        let isQuestion = has(#"^(wat|welke|welk|waarom|hoe|wanneer|wie|waar|is|staat|heb|kan ik|kun je me vertellen)\b"#)
-        let changes = has(#"\b(zet|maak|kies|verander|wijzig|wissel|doe|selecteer|pas|gebruik|neem|stel)\b"#)
-        let opens = has(#"\b(open|opent|openen|toon|bekijk|ga naar|naar|kies|selecteer|klik op|tik op|druk op|laat)\b"#)
-        let on = has(#"\b(aan|aanzetten|inschakelen|wel)\b"#) && !has(#"\b(uit|uitzetten|uitschakelen|niet)\b"#)
+        /// "open X", "ga naar de map X", "laat X zien", "X openen": the thing itself is what is opened.
+        func opens(_ name: String) -> Bool {
+            // Nothing may follow but a polite word, so "ik ga naar mijn stages kijken" stays a sentence for Ayla.
+            let end = "(?: (?:alsjeblieft|aub|graag|even|eens|maar))*$"
+            return has("\\b(?:open|opent|toon|bekijk|naar|kies|selecteer|klik op|tik op|druk op) \(fillers)(?:\(name))\(end)")
+                || has("\\blaat \(fillers)(?:\(name)) zien\(end)")
+                || has("\\b(?:\(name)) \(fillers)(?:openen|bekijken|tonen|open)\(end)")
+        }
+        func isOnly(_ name: String) -> Bool { has("^\(fillers)(?:\(name))$") }
+
+        if has(#"^(ga )?(even |eens )?(een (stap|pagina) )?terug$|^vorige( pagina)?$"#) { return .back }
+        if has(#"^(sluit|sluiten|doe dicht)( (dit|het|maar|de pagina|het scherm|de kluis|instellingen|de instellingen))*$"#) { return .close }
+        guard !has(#"^(wat|welke|welk|waarom|hoe|wanneer|wie|waar|is|staat|heb|kan ik|zijn)\b"#) else { return nil }
+
+        let changes = has(#"\b(zet|zetten|maak|maken|kies|kiezen|verander|veranderen|wijzig|wijzigen|wissel|doe|selecteer|pas|gebruik|neem|stel)\b"#)
         let off = has(#"\b(uit|uitzetten|uitschakelen|niet)\b"#)
+        let on = !off && has(#"\b(aan|aanzetten|inschakelen|wel)\b"#)
 
-        if has(#"^(ga )?(even )?terug$|^vorige( pagina)?$|^ga een (stap|pagina) terug$"#) { return .back }
-        if has(#"^(sluit|sluiten|doe dicht|dicht|klaar|sluit (dit|het|maar|de pagina|het scherm))( maar)?$"#) { return .close }
-        guard !isQuestion else { return nil }
-
-        if has(#"\b(tekst bij (het )?praten|tekst bij de stem|ondertiteling|meelezen)\b"#), on || off { return .voiceText(!off) }
-        if has(#"\b(vindbaar|iphone-zoeken|iphone zoeken|spotlight)\b"#), on || off { return .chatsInSearch(!off) }
+        if has(#"\b(tekst bij (het )?praten|tekst bij de stem|ondertiteling|meelezen)\b"#), on || off { return .voiceText(on) }
+        if has(#"\b(vindbaar|iphone-zoeken|iphone zoeken|spotlight)\b"#), on || off { return .chatsInSearch(on) }
 
         if let theme = themes.first(where: { has("\\b(?:\($0.words))\\b") })?.theme {
-            let onlyColour = has("^(?:(?:het|de|thema|kleur|themakleur|naar|op|in|graag|alsjeblieft) )*(?:\(themes.map(\.words).joined(separator: "|")))$")
             // Short and about the app itself, so "maak een cv met een blauwe kop" stays a question for Ayla.
-            let words = asked.split(separator: " ").count
-            let aboutTheme = has(#"\b(thema|kleur|kleuren|themakleur|kleurenthema)\b"#)
+            let aboutTheme = has(#"\b(thema|themakleur|kleurenthema|kleur van (de app|pave)|kleuren thema)\b"#)
             let aboutApp = has(#"\b(het|alles|pave|app)\b"#)
-            if onlyColour || (aboutTheme && words <= 6) || (changes && (words <= 3 || (aboutApp && words <= 6))) { return .theme(theme) }
+            let onlyColour = isOnly("(?:(?:thema|kleur|themakleur|naar|op|in) )*(?:\(themes.map(\.words).joined(separator: "|")))")
+            if (onlyColour && (inSettings || words > 1)) || (aboutTheme && words <= 10) || (changes && (words <= 3 || (aboutApp && words <= 6))) {
+                return .theme(theme)
+            }
         }
-        if has(#"\b(tekst|letters|letter|lettergrootte|tekstgrootte)\b"#) {
-            if has(#"\b(groot|groter|grote|grotere)\b"#) { return .textSize(.large) }
-            if has(#"\b(klein|kleiner|kleine|kleinere)\b"#) { return .textSize(.small) }
+        if has(#"\b(tekst|letters|letter|lettergrootte|tekstgrootte)\b"#), words <= 8 {
+            if has(#"\b(groter|grotere)\b"#) { return .textSizeStep(1) }
+            if has(#"\b(kleiner|kleinere)\b"#) { return .textSizeStep(-1) }
+            if has(#"\b(groot|grote)\b"#) { return .textSize(.large) }
+            if has(#"\b(klein|kleine)\b"#) { return .textSize(.small) }
             if has(#"\b(standaard|normaal|normale|gewoon|gewone)\b"#) { return .textSize(.standard) }
         }
-        if has(#"\b(kluis|kluisweergave|weergave)\b"#) {
+        if has(#"\b(kluis|kluisweergave|weergave)\b"#), words <= 8 {
             if has(#"\b(lijst|lijstweergave)\b"#) { return .vaultLayout(.list) }
             if has(#"\b(raster|rasterweergave|tegels|grid|blokken)\b"#) { return .vaultLayout(.grid) }
         }
 
-        if let page = pages.first(where: { names, _ in
-            has("^(?:(?:de|het|mijn|naar) )*(?:\(names))$") || (opens && has("\\b(?:\(names))\\b"))
-        })?.page {
+        if let page = pages.first(where: { opens($0.names) || (inSettings && isOnly($0.names)) })?.page {
             return .settingsPage(page)
         }
 
-        guard opens else { return nil }
-        func mentioned(_ things: [Named]) -> Named? {
+        func mentioned(_ things: [Named], as kind: String) -> Named? {
             things
                 .filter { thing in
-                    let name = AylaScreenRequest.normalized(thing.name).folding(options: .diacriticInsensitive, locale: nil)
-                    return name.count >= 3 && asked.contains(name)
+                    let name = plain(thing.name)
+                    guard name.count >= 3 else { return false }
+                    return opens("(?:(?:\(kind)) )?" + NSRegularExpression.escapedPattern(for: name))
                 }
                 .max { $0.name.count < $1.name.count }
         }
-        let folder = mentioned(folders)
-        let item = mentioned(items)
+        let folder = mentioned(folders, as: "map|de map|mijn map")
+        let item = mentioned(items, as: "bewijs|het bewijs|mijn bewijs|bewijsstuk|het bewijsstuk")
         if let folder, has(#"\bmap\b"#) || (item?.name.count ?? 0) <= folder.name.count { return .vaultFolder(id: folder.id) }
         if let item { return .vaultItem(id: item.id) }
         return nil
     }
+
+    /// Lowercase, without punctuation or accents, so "Diploma’s" is found by "diploma's" and "diplomas" alike.
+    private static func plain(_ text: String) -> String {
+        AylaScreenRequest.normalized(text).folding(options: .diacriticInsensitive, locale: nil)
+    }
+
+    /// Small words that may stand between "open" and the thing.
+    private static let fillers = "(?:(?:eens|even|ff|me|mij|mijn|m'n|mn|de|het|je|jouw|maar|dan|nu|graag|alsjeblieft|aub|naar|op) )*"
 
     private static let themes: [(words: String, theme: PaveThemeColor)] = [
         ("groen|groene", .green), ("blauw|blauwe", .blue), ("goud|gouden|geel|gele", .gold), ("roze", .pink),

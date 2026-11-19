@@ -93,6 +93,10 @@ struct VaultScreen: View {
                 .onChange(of: driver?.backSteps) {
                     if openedItem != nil { openedItem = nil } else if !path.isEmpty { path.removeLast() }
                 }
+                .onChange(of: path.count + (openedItem == nil ? 0 : 1), initial: true) { _, depth in
+                    driver?.vaultDepth = depth
+                }
+                .onDisappear { driver?.vaultDepth = 0 }
                 // A folder that is gone (deleted here or on another device) closes.
                 .onChange(of: model.folders.map(\.id)) { _, ids in
                     path.removeAll { $0 != .all && !ids.contains($0.id) }

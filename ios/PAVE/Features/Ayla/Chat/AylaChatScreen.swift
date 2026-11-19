@@ -318,6 +318,8 @@ struct AylaChatScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
         .onChange(of: model.entries.last?.id) {
+            // A new answer from Ayla replaces what she said about something she did in the app.
+            localReply = nil
             guard !isVoiceActive, let last = model.entries.last, last.role == .ayla, !Self.vacancies(in: last).isEmpty else { return }
             closeShelf()
             openVacanciesID = last.id
@@ -1476,6 +1478,11 @@ struct AylaChatScreen: View {
             openPage(AylaReply.Navigation(screen: screen))
             return
         }
+        // Something she does in the app herself needs no answer, and mostly no connection either.
+        if text == nil, model.attachments.isEmpty, runAppCommand(model.draft) != nil {
+            model.draft = ""
+            return
+        }
         guard connection.isOnline, !isSavingForUser else { return }
         localReply = nil
         dictation.stop()
@@ -1838,7 +1845,7 @@ struct AylaChatScreen: View {
 
     /// What the card on top of an open page says: nothing yet while Ayla thinks, then her answer as it comes in.
     private var shelfReply: (text: String?, choices: [String])? {
-        if let localReply { return (localReply, []) }
+        if let localReply, !model.isAnswering { return (localReply, []) }
         if model.phase == .thinking { return (nil, []) }
         guard let last = model.entries.last, last.role == .ayla else { return nil }
         let choices = model.isAnswering ? [] : (model.question(for: last)?.choices.map(\.label) ?? [])
@@ -1851,16 +1858,21 @@ struct AylaChatScreen: View {
         guard addEvidence == nil, !isSavingForUser else { return nil }
         let folders = vault?.folders.map { AylaAppCommand.Named(id: $0.id, name: $0.name) } ?? []
         let items = vault?.items.map { AylaAppCommand.Named(id: $0.id, name: $0.title) } ?? []
-        guard let command = AylaAppCommand.command(in: text, folders: folders, items: items) else { return nil }
+        guard let command = AylaAppCommand.command(in: text, folders: folders, items: items, inSettings: shelf == .settings) else { return nil }
         if command == .back || command == .close, shelf == nil { return nil }
-        if case .theme = command, profile == nil { return nil }
-        if case .textSize = command, profile == nil { return nil }
-        if case .vaultLayout = command, profile == nil { return nil }
+        switch command {
+        case .theme, .textSize, .textSizeStep, .vaultLayout:
+            if profile == nil { return nil }
+        default:
+            break
+        }
         dictation.stop()
         isComposerFocused = false
         let said = perform(command)
         localReply = command.changesSomething ? said : nil
         showsShelfReply = command.changesSomething
+        // Typed, the change is only seen; VoiceOver hears it. Spoken, Ayla says it herself.
+        if !isTalking { AccessibilityNotification.Announcement(said).post() }
         return said
     }
 
@@ -1876,6 +1888,16 @@ struct AylaChatScreen: View {
         case .textSize(let size):
             inSettings(.appearance) { await profile?.setTextSize(size) }
             return "Je tekst staat nu op \(SettingsMessages.title(size).lowercased())."
+        case .textSizeStep(let step):
+            let sizes = PaveTextSize.allCases
+            let now = sizes.firstIndex(of: profile?.textSize ?? .standard) ?? 1
+            let next = sizes[min(max(now + step, 0), sizes.count - 1)]
+            guard next != sizes[now] else {
+                inSettings(.appearance) {}
+                return step > 0 ? "Je tekst staat al op de grootste stand." : "Je tekst staat al op de kleinste stand."
+            }
+            inSettings(.appearance) { await profile?.setTextSize(next) }
+            return "Je tekst staat nu op \(SettingsMessages.title(next).lowercased())."
         case .vaultLayout(let layout):
             inSettings(.appearance) { await profile?.setVaultLayout(layout) }
             return "Je kluis opent nu als \(layout == .list ? "lijst" : "raster")."
@@ -1893,6 +1915,12 @@ struct AylaChatScreen: View {
             openPage(AylaReply.Navigation(screen: .vaultItem, itemId: id))
             return "Ik open \(vault?.items.first { $0.id == id }?.title ?? "het")."
         case .back:
+            // Nothing to go back from: the page itself closes.
+            let depth = shelf == .settings ? pageDriver.settingsDepth : shelf == .vault ? pageDriver.vaultDepth : 0
+            guard depth > 0 else {
+                closeShelf()
+                return "Ik sluit het."
+            }
             PaveHaptics.selection()
             pageDriver.backSteps += 1
             return "Ik ga een stap terug."

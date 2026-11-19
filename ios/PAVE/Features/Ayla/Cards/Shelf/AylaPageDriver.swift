@@ -8,4 +8,7 @@ final class AylaPageDriver {
     var vaultFolderID: String?
     /// Goes up once for every step back.
     var backSteps = 0
+    /// How many pages deep Instellingen and the vault are, so a step back at the start closes the page instead.
+    var settingsDepth = 0
+    var vaultDepth = 0
 }
