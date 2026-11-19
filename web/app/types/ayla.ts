@@ -196,7 +196,10 @@ export interface Project {
 export interface MemoryNote {
   id: string;
   text: string;
+  /** The main category, the first of `categories`. */
   category: MemoryCategory;
+  /** Every folder the note is in, at least one (a note can be in more than one, as on iOS). */
+  categories: MemoryCategory[];
   source: 'ayla' | 'user';
   conversationId: string | null;
   createdAt: string;

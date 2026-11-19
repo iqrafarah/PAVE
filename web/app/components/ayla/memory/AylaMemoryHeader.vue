@@ -14,7 +14,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <header class="flex min-h-14 items-center gap-2 px-2 pt-2 sm:px-4">
+  <header class="mx-auto flex min-h-16 w-full max-w-168 items-center gap-2 px-4 py-2">
     <div class="flex min-w-0 flex-1 basis-0">
       <NuxtLink
         :to="backTo"

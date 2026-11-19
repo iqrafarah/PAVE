@@ -244,6 +244,7 @@ export const MEMORY_FORGET = 'Vergeten';
 export const MEMORY_ADD = 'Iets toevoegen';
 export const MEMORY_ADD_PLACEHOLDER = 'Bijvoorbeeld: Je wilt werken in de zorg-ICT…';
 export const MEMORY_CATEGORY_LABEL = 'Categorie';
+export const MEMORY_CATEGORY_FOOTER = "Kies er één of meer, zoals Werk en stages én Interesses en hobby's.";
 export const MEMORY_SUGGESTED_BY_AYLA = 'Voorgesteld door Ayla';
 export const MEMORY_ADDED_BY_USER = 'Zelf toegevoegd';
 export const MEMORY_EMPTY_FOLDER = 'Nog leeg';

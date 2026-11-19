@@ -6,7 +6,7 @@ import type { MemoryCategory, MemoryNote } from '~/types/ayla';
 interface EditorState {
   title: string;
   note: MemoryNote | null;
-  category: MemoryCategory;
+  categories: MemoryCategory[];
 }
 
 const route = useRoute();
@@ -26,13 +26,13 @@ const status = computed(() => memory.state.value.status);
 const isEnabled = computed(() => memory.state.value.isEnabled);
 const notes = computed(() => memory.state.value.notes.filter((note) => !hiddenIds.value.includes(note.id)));
 const openFolder = computed(() => MEMORY_CATEGORIES.find((category) => category.id === route.query.map) ?? null);
-const folderNotes = computed(() => notes.value.filter((note) => note.category === openFolder.value?.id));
+const folderNotes = computed(() => notes.value.filter((note) => openFolder.value && note.categories.includes(openFolder.value.id)));
 const pageTitle = computed(() => openFolder.value?.title ?? MEMORY_PAGE_TITLE);
 
 useHead({ title: () => `${pageTitle.value} - PAVE` });
 
 function countNotes(category: MemoryCategory) {
-  return notes.value.filter((note) => note.category === category).length;
+  return notes.value.filter((note) => note.categories.includes(category)).length;
 }
 
 function unhide(id: string) {
@@ -53,17 +53,17 @@ function forget(id: string) {
 }
 
 function startAdding() {
-  editor.value = { title: MEMORY_ADD, note: null, category: openFolder.value?.id ?? 'personal' };
+  editor.value = { title: MEMORY_ADD, note: null, categories: [openFolder.value?.id ?? 'personal'] };
 }
 
 function startEditing(note: MemoryNote) {
-  editor.value = { title: MEMORY_EDIT, note, category: note.category };
+  editor.value = { title: MEMORY_EDIT, note, categories: note.categories };
 }
 
-async function save(text: string, category: MemoryCategory) {
+async function save(text: string, categories: MemoryCategory[]) {
   const note = editor.value?.note;
   problem.value = null;
-  const { isFailed } = note ? await memory.updateNote(note.id, text, category) : await memory.addNote(text, category);
+  const { isFailed } = note ? await memory.updateNote(note.id, text, categories) : await memory.addNote(text, categories);
   if (isFailed) problem.value = AYLA_MEMORY_SAVE_FAILED;
 }
 
@@ -126,7 +126,7 @@ onMounted(() => {
     </div>
 
     <div v-else class="min-h-0 flex-1 overflow-y-auto">
-      <div class="mx-auto w-full max-w-160 px-5 pb-8 pt-4 @container">
+      <div class="mx-auto w-full max-w-168 px-5.75 pb-8 pt-4 @container">
         <p v-if="problem" role="alert" class="mb-4 rounded-2xl bg-white px-4 py-3 text-sm font-medium text-critical">
           {{ problem }}
         </p>
@@ -141,12 +141,13 @@ onMounted(() => {
             />
           </div>
           <template v-else>
-            <ul class="divide-y divide-line overflow-hidden rounded-xl bg-white">
+            <ul class="flex flex-col gap-2.5">
               <AylaMemoryNoteItem
                 v-for="note in folderNotes"
                 :key="note.id"
                 :note="note"
                 :is-enabled="isEnabled"
+                :category="openFolder.id"
                 @edit="startEditing(note)"
                 @forget="forget(note.id)"
               />
@@ -206,7 +207,7 @@ onMounted(() => {
       :key="editor.note?.id ?? 'new'"
       :title="editor.title"
       :initial-text="editor.note?.text ?? ''"
-      :initial-category="editor.category"
+      :initial-categories="editor.categories"
       @save="save"
       @close="editor = null"
     />

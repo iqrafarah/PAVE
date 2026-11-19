@@ -2,25 +2,26 @@
 import type { MemoryCategory } from '~/types/ayla';
 
 // Writing a note yourself, or changing one (iOS AylaMemoryEditor, a sheet): "Annuleren", the title and "Bewaren" on
-// top, the text with its footer, and the category as a list with a check. Opens as soon as it is shown.
+// top, the text with its footer, and the folders as tiles to tick: a note can be in more than one, as on iOS. Opens as soon as it is shown.
 const props = defineProps<{
   title: string;
   initialText: string;
-  initialCategory: MemoryCategory;
+  initialCategories: MemoryCategory[];
 }>();
 
 const emit = defineEmits<{
-  save: [text: string, category: MemoryCategory];
+  save: [text: string, categories: MemoryCategory[]];
   close: [];
 }>();
 
 const text = ref(props.initialText);
-const category = ref<MemoryCategory>(props.initialCategory);
+const categories = ref<MemoryCategory[]>(props.initialCategories.length ? [...props.initialCategories] : ['personal']);
 const dialogRef = useTemplateRef<HTMLDialogElement>('dialog');
 const textareaRef = useTemplateRef<HTMLTextAreaElement>('textarea');
 const titleId = useId();
 const textId = useId();
 const footerId = useId();
+const categoryHintId = useId();
 
 const canSave = computed(() => text.value.trim().length > 0);
 
@@ -28,9 +29,15 @@ function cancel() {
   dialogRef.value?.close();
 }
 
+/** Ticking adds the folder at the end; the last one cannot be unticked, a note always belongs somewhere. */
+function toggle(id: MemoryCategory) {
+  if (!categories.value.includes(id)) categories.value = [...categories.value, id];
+  else if (categories.value.length > 1) categories.value = categories.value.filter((value) => value !== id);
+}
+
 function save() {
   if (!canSave.value) return;
-  emit('save', text.value.trim(), category.value);
+  emit('save', text.value.trim(), categories.value);
   dialogRef.value?.close();
 }
 
@@ -86,18 +93,40 @@ onMounted(() => {
         <p :id="footerId" class="mt-2 px-4 text-xs/normal text-subtle">{{ MEMORY_EDITOR_FOOTER }}</p>
 
         <fieldset class="mt-6">
-          <legend class="mb-2 px-4 text-sm font-medium text-subtle">{{ MEMORY_CATEGORY_LABEL }}</legend>
-          <div class="divide-y divide-line overflow-hidden rounded-xl bg-white">
-            <label
-              v-for="option in MEMORY_CATEGORIES"
-              :key="option.id"
-              class="flex min-h-11 cursor-pointer items-center gap-3 px-4 py-2.5 hover:bg-surface has-focus-visible:outline-2 has-focus-visible:-outline-offset-2 has-focus-visible:outline-brand"
-            >
-              <input v-model="category" type="radio" name="memory-category" :value="option.id" class="sr-only" />
-              <span class="flex-1 text-sm text-heading">{{ option.title }}</span>
-              <LayoutPaveIcon v-if="category === option.id" name="check" class="size-4.5 text-brand" />
-            </label>
-          </div>
+          <legend class="mb-1 px-4 text-sm font-medium text-subtle">{{ MEMORY_CATEGORY_LABEL }}</legend>
+          <p :id="categoryHintId" class="mb-3 px-4 text-xs/normal text-subtle">{{ MEMORY_CATEGORY_FOOTER }}</p>
+          <ul class="grid grid-cols-2 gap-2">
+            <li v-for="option in MEMORY_CATEGORIES" :key="option.id">
+              <label
+                :class="
+                  categories.includes(option.id) ? 'border-brand bg-brand-soft' : 'border-card-border bg-white hover:bg-tint'
+                "
+                class="flex min-h-14 cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand"
+              >
+                <input
+                  type="checkbox"
+                  :checked="categories.includes(option.id)"
+                  :aria-describedby="categoryHintId"
+                  class="sr-only"
+                  @change="toggle(option.id)"
+                />
+                <span
+                  :class="MEMORY_CATEGORY_STYLES[option.id].tintClass"
+                  class="flex size-8 shrink-0 items-center justify-center rounded-lg text-brand"
+                  aria-hidden="true"
+                >
+                  <LayoutPaveIcon :name="MEMORY_CATEGORY_STYLES[option.id].icon" class="size-4" />
+                </span>
+                <span class="min-w-0 flex-1 text-sm font-medium leading-tight text-heading">{{ option.title }}</span>
+                <LayoutPaveIcon
+                  v-if="categories.includes(option.id)"
+                  name="check"
+                  class="size-4 shrink-0 text-brand"
+                  aria-hidden="true"
+                />
+              </label>
+            </li>
+          </ul>
         </fieldset>
       </div>
     </form>
