@@ -257,6 +257,11 @@ struct AylaChatScreen: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
+            .overlay {
+                if let voice, isTalking {
+                    AylaVoiceEdgeGlow(mode: orbMode(voice.state), meter: voice.meter)
+                }
+            }
             .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.4, bounce: 0.15), value: showsShelfReply)
             .animation(.easeOut(duration: 0.2), value: model.phase)
             .presentationDetents([.fraction(0.62), .large], selection: $vaultDetent)
