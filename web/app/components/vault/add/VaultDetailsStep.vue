@@ -42,7 +42,7 @@ function choosePeriod(isPeriod: boolean) {
 }
 
 const fieldClass =
-  'h-9.75 w-full min-w-0 rounded-field border border-field-line bg-white px-3 text-sm font-medium text-heading focus:border-brand focus:outline-none aria-invalid:border-danger';
+  'h-9.75 w-full min-w-0 rounded-field border border-field-line bg-white px-3 text-sm font-medium text-heading focus:border-subtle focus:outline-none aria-invalid:border-danger';
 
 function problemId(field: string) {
   return `${field}-problem`;
@@ -149,7 +149,7 @@ function focusFirstProblem(field: DraftField) {
           role="group"
           :aria-labelledby="`${ids.period}-label`"
           :aria-describedby="problems.period ? problemId(ids.period) : undefined"
-          :class="problems.period ? 'border-danger' : 'border-field-line focus-within:border-brand'"
+          :class="problems.period ? 'border-danger' : 'border-field-line focus-within:border-subtle'"
           class="flex h-9.75 items-center gap-1 rounded-field border bg-white px-2"
         >
           <label :for="ids.period" class="sr-only">{{ VAULT_FIELD_START }}</label>
@@ -197,7 +197,7 @@ function focusFirstProblem(field: DraftField) {
         rows="4"
         :aria-invalid="Boolean(problems.description)"
         :aria-describedby="problems.description ? problemId(ids.description) : undefined"
-        class="h-28.5 w-full resize-none rounded-field border border-field-line bg-white px-3 py-2.5 text-sm font-medium text-heading focus:border-brand focus:outline-none aria-invalid:border-danger"
+        class="h-28.5 w-full resize-none rounded-field border border-field-line bg-white px-3 py-2.5 text-sm font-medium text-heading focus:border-subtle focus:outline-none aria-invalid:border-danger"
       />
     </VaultField>
   </div>

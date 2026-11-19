@@ -28,7 +28,7 @@ defineExpose({ focus: () => inputRef.value?.focus() });
 </script>
 
 <template>
-  <div class="flex h-10 items-center gap-2.5 rounded-field border border-field-line bg-white pl-3 pr-1.5 focus-within:border-brand">
+  <div class="flex h-10 items-center gap-2.5 rounded-field border border-field-line bg-white pl-3 pr-1.5 focus-within:border-subtle">
     <LayoutPaveIcon name="search" class="size-4 shrink-0 text-brand" aria-hidden="true" />
     <label :for="id" class="sr-only">{{ label }}</label>
     <input

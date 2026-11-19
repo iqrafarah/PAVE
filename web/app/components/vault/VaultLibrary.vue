@@ -399,7 +399,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
         <!-- The folders and the filter bar stay in place (under the title); the evidence scrolls away under them. -->
         <div
           :class="hasScrolled ? '[@media(min-height:44rem)]:border-card-line' : ''"
-          class="-mx-4 flex flex-col border-b border-transparent bg-white px-4 pb-3.5 pt-25.25 transition-colors sm:-mx-2 sm:px-2 [@media(min-height:44rem)]:sticky [@media(min-height:44rem)]:top-0 [@media(min-height:44rem)]:z-[5]"
+          class="-mx-4 flex flex-col border-b border-transparent bg-canvas px-4 pb-3.5 pt-25.25 transition-colors sm:-mx-2 sm:px-2 [@media(min-height:44rem)]:sticky [@media(min-height:44rem)]:top-0 [@media(min-height:44rem)]:z-[5]"
         >
         <!-- Folders: standard ones first, then your own. Drag the row (or scroll it) to see the rest. -->
         <section v-if="filter.shelf.kind === 'all' && !isAllFolders" class="flex flex-col gap-1" :aria-label="VAULT_FOLDERS">

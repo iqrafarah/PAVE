@@ -129,7 +129,7 @@ function takeProblem() {
           :placeholder="VAULT_FOLDER_NAME_PLACEHOLDER"
           :aria-invalid="Boolean(problem)"
           :aria-describedby="problem ? problemId : undefined"
-          class="h-11 rounded-field border border-field-line bg-white px-3.5 text-sm font-medium text-heading placeholder:text-subtle/50 focus:border-brand focus:outline-none aria-invalid:border-danger"
+          class="h-11 rounded-field border border-field-line bg-white px-3.5 text-sm font-medium text-heading placeholder:text-subtle/50 focus:border-subtle focus:outline-none aria-invalid:border-danger"
         />
         <p v-if="problem" :id="problemId" role="alert" class="mt-1.5 text-xs text-danger">{{ problem }}</p>
       </div>
