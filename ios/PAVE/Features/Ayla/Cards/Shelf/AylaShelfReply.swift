@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Ayla's answer while a page is open over the chat: a card on top of the page, so you read it without closing the
-/// page. Tap it or drag it away, like her orb; the answer stays in the chat.
+/// Ayla's answer while a page is open over the chat: her chat bubble above the page, so you read it without closing the
+/// page and without it covering anything. Tap it or drag it away, like her orb; the answer stays in the chat.
 struct AylaShelfReply: View {
     /// Nil while she is still thinking.
     let text: String?
@@ -20,8 +20,8 @@ struct AylaShelfReply: View {
                     .padding(.top, 2)
                     .accessibilityHidden(true)
                 Text(text ?? "Ayla denkt na…")
-                    .textStyle(.bodyMedium)
-                    .foregroundStyle(text == nil ? Color.inkMuted : Color.ink)
+                    .textStyle(.bubble)
+                    .foregroundStyle(Color.paveAccent.opacity(text == nil ? 0.6 : 1))
                     .lineLimit(6)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Image(.iconXMark)
@@ -29,8 +29,8 @@ struct AylaShelfReply: View {
                     .resizable()
                     .scaledToFit()
                     .paveIconFrame(10)
-                    .foregroundStyle(Color.inkMuted)
-                    .padding(.top, 5)
+                    .foregroundStyle(Color.paveAccent.opacity(0.6))
+                    .padding(.top, 6)
                     .accessibilityHidden(true)
             }
             if !choices.isEmpty {
@@ -41,17 +41,16 @@ struct AylaShelfReply: View {
                             .foregroundStyle(Color.paveAccent)
                             .padding(.horizontal, 16)
                             .frame(minHeight: 44)
-                            .background(Color.paveSurfaceTint, in: .capsule)
+                            .background(Color.white, in: .capsule)
                             .buttonStyle(.pave)
                     }
                 }
                 .padding(.leading, 28)
             }
         }
-        .padding(14)
-        .background(Color.white, in: .rect(cornerRadius: 18))
-        .overlay { RoundedRectangle(cornerRadius: 18).strokeBorder(Color.cardBorder) }
-        .shadow(color: .black.opacity(0.12), radius: 16, y: 6)
+        .padding(.horizontal, 15)
+        .padding(.vertical, 14)
+        .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 18))
         .contentShape(.rect(cornerRadius: 18))
         .offset(drag)
         .opacity(1 - min(1, Double(abs(drag.width) + abs(drag.height)) / 240))
@@ -68,9 +67,11 @@ struct AylaShelfReply: View {
                     }
                 }
         )
-        .frame(maxWidth: 560)
-        .padding(.horizontal, 12)
-        .padding(.top, 8)
+        .frame(maxWidth: 600)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 20)
+        .padding(.top, 26)
+        .padding(.bottom, 4)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Antwoord van Ayla")
         .accessibilityAction(named: "Sluiten", onDismiss)

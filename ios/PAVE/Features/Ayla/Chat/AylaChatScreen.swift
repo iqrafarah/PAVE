@@ -249,7 +249,7 @@ struct AylaChatScreen: View {
                     send()
                 }
             }
-            .overlay(alignment: .top) {
+            .safeAreaInset(edge: .top, spacing: 0) {
                 if showsShelfReply, let reply = shelfReply {
                     AylaShelfReply(text: reply.text, choices: reply.choices, onChoose: { choose($0) }) {
                         showsShelfReply = false
