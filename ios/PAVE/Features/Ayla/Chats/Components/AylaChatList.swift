@@ -166,6 +166,8 @@ struct AylaChatList: View {
                         .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.listSpace)) } action: { frame in
                             rowFrames.frames[item.id] = frame
                         }
+                        // The row settings have to sit on the outside, or the list shows its own background and lines.
+                        .plainRow()
                 }
                 if canLoadMore {
                     ProgressView()
