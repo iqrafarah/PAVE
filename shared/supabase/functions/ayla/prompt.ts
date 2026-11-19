@@ -124,7 +124,7 @@ export interface PromptInput {
   context?: { screen: Screen; itemId?: string; itemIds?: string[] }
   memory?: Memory
   /** The project this conversation belongs to, with the instructions the user wrote for it. */
-  project?: { name: string; instructions: string }
+  project?: { name: string; instructions: string; sourceIds?: string[] }
   vault?: AllowedVault
   /** Whether the user let Ayla look in the vault in this conversation. Missing means yes, as before consent existed. */
   vaultConsent?: VaultConsent
@@ -139,6 +139,8 @@ export function buildSystemPrompt(input: PromptInput): string {
   if (input.firstName) layers.push(`De gebruiker heet ${input.firstName}.`)
   const project = projectLayer(input.project)
   if (project) layers.push(project)
+  const sources = projectSourcesLayer(input.project, input.vault, input.vaultConsent)
+  if (sources) layers.push(sources)
   if (input.context) layers.push(contextLayer(input.context, input.vault))
   layers.push(OUTPUT_PROMPT)
   return layers.join('\n\n')
@@ -149,6 +151,17 @@ export function projectLayer(project: PromptInput['project']): string | null {
   const instructions = project?.instructions.trim()
   if (!project || !instructions) return null
   return `Dit gesprek hoort bij het project "${project.name}". De gebruiker schreef hier zelf instructies voor. Volg ze zolang ze niet in strijd zijn met de regels hierboven:\n${instructions}`
+}
+
+/** The vault items the user added to the project as sources. Only items Ayla may see are named, as with a chosen item. */
+export function projectSourcesLayer(project: PromptInput['project'], vault: AllowedVault | undefined, consent: VaultConsent | undefined): string | null {
+  if (!project?.sourceIds?.length || vault?.status !== 'on' || (consent !== 'granted' && consent !== 'justGranted')) return null
+  const named = project.sourceIds
+    .map((id) => vault.items.findIndex((item) => item.id === id))
+    .filter((index) => index >= 0)
+    .map((index) => `${index + 1} (${vault.items[index].title})`)
+  if (!named.length) return null
+  return `De gebruiker voegde deze items uit de kluis toe als bronnen van het project "${project.name}": ${named.join(', ')}. Gebruik ze voor je antwoorden in dit project, zonder te zeggen dat je de inhoud van de bestanden ziet.`
 }
 
 /** What the user has open. An item from the vault is named only when the user allowed Ayla to see it. */

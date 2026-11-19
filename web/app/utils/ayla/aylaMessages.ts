@@ -342,6 +342,7 @@ export const AYLA_RECENT = 'Recent';
 export const AYLA_PROJECT_SETTINGS = 'Projectinstellingen';
 export const AYLA_PROJECT_PIN = 'Vastzetten';
 export const AYLA_PROJECT_UNPIN = 'Losmaken';
+export const AYLA_PROJECT_PINNED = 'Vastgezet';
 export const AYLA_MOVE_TO_PROJECT = 'Naar project verplaatsen';
 export const AYLA_MOVE_TITLE = 'Verplaatsen naar project';
 export const AYLA_MOVE_NO_PROJECT = 'Geen project';
@@ -349,6 +350,7 @@ export const AYLA_MOVE_NO_PROJECT_HINT = 'Haal de chat uit zijn project';
 export const AYLA_MOVE_EMPTY = 'Je hebt nog geen projecten. Maak er een met de + bij Projecten.';
 export const AYLA_REMOVE_FROM_PROJECT = 'Uit project halen';
 export const AYLA_REMOVED_FROM_PROJECT = 'Chat uit het project gehaald';
+export const AYLA_PROJECT_EMPTY = 'Nog geen chats. Chats in dit project verschijnen hier.';
 export const AYLA_PROJECT_NEW_CHAT = 'Nieuwe chat in project';
 export function getProjectChipLabel(name: string) {
   return `Nieuwe chat in ${name}`;
@@ -359,3 +361,23 @@ export const AYLA_MOVE_NOTHING_FOUND = 'Geen project gevonden.';
 export function AYLA_MOVE_CREATE(name: string) {
   return `Nieuw project “${name}”`;
 }
+
+// Bronnen of a project: vault items that belong to it, used by Ayla in every chat of the project.
+export const AYLA_PROJECT_TAB_CHATS = 'Chats';
+export const AYLA_PROJECT_SOURCES = 'Bronnen';
+export const AYLA_SOURCES_ADD = 'Bronnen toevoegen';
+export const AYLA_SOURCES_EMPTY_TITLE = 'Geef Ayla meer context';
+export const AYLA_SOURCES_SORT_NEWEST = 'Nieuwste';
+export const AYLA_SOURCES_SORT_OLDEST = 'Oudste';
+export const AYLA_SOURCES_SORT_NAME = 'Naam';
+export const AYLA_SOURCES_FILTER_ALL = 'Alles';
+export const AYLA_SOURCES_SORT_LABEL = 'Sorteren';
+export const AYLA_SOURCES_FILTER_LABEL = 'Filteren';
+export const AYLA_SOURCES_UPLOAD = 'Bestand uploaden';
+export const AYLA_SOURCES_FROM_VAULT = 'Uit kluis halen';
+export const AYLA_SOURCES_REMOVE = 'Verwijderen uit project';
+export const AYLA_SOURCES_EMPTY = 'Voeg bronnen toe om Ayla meer context over je project te geven. Ayla gebruikt ze in alle chats van dit project.';
+export const AYLA_SOURCES_NO_MATCH = 'Geen bronnen met dit filter.';
+export const AYLA_SOURCES_LOADING = 'Bronnen laden…';
+export const AYLA_SOURCES_FAILED = 'Dit is niet gelukt. Probeer het opnieuw.';
+export const AYLA_SOURCES_ALLOW_FAILED = 'De bron is toegevoegd, maar Ayla mag hem nog niet gebruiken. Zet "Ayla mag dit bekijken en gebruiken" aan bij het item.';

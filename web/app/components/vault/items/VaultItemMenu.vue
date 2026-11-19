@@ -179,7 +179,7 @@ const row =
             @keydown.right.prevent="setFolders(true)"
             @keydown.left.prevent="setFolders(false)"
           >
-            <VaultIcon src="/images/vault/icons/FolderOutline.svg" class="size-4.5 text-brand" />
+            <VaultIcon src="/images/vault/icons/FolderClosedSolid.svg" class="size-4.5 text-brand" />
             <span class="flex-1">{{ VAULT_IN_FOLDERS }}</span>
             <LayoutPaveIcon name="chevronDown" :class="foldersOnRight ? 'sm:-rotate-90' : 'sm:rotate-90'" class="size-3 text-brand max-sm:hidden" />
           </button>

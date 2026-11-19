@@ -58,7 +58,7 @@ export const CATEGORY_FOLDER_ICONS: Record<VaultItemCategory, string> = {
   skills: `${ICONS}/PaintBrushOutline.svg`,
   feedback: `${ICONS}/ChatBubbleLeftEllipsisOutline.svg`,
   reflections: `${ICONS}/DocumentTextOutline.svg`,
-  other: `${ICONS}/FolderOutline.svg`,
+  other: `${ICONS}/FolderClosedSolid.svg`,
 };
 
 /** The coloured band on top of a card (iOS VaultCategory.tint). */
@@ -106,7 +106,7 @@ export const VAULT_FOLDER_COLORS: Record<VaultFolderColor, VaultFolderHex> = {
 export const VAULT_FOLDER_PICKER_COLORS: VaultFolderColor[] = ['green', 'blue', 'gold', 'rose', 'rust', 'purple', 'red', 'lime'];
 
 export const VAULT_FOLDER_ICONS: Record<VaultFolderIcon, string> = {
-  folder: `${ICONS}/FolderOutline.svg`,
+  folder: `${ICONS}/FolderClosedSolid.svg`,
   briefcase: `${ICONS}/BriefcaseOutline.svg`,
   'academic-cap': `${ICONS}/AcademicCapOutline.svg`,
   'check-badge': `${ICONS}/CheckBadgeOutline.svg`,

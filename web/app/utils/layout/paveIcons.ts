@@ -110,6 +110,13 @@ export const PAVE_ICONS = {
       { d: 'M14.5 4l5.5 5.5', stroke: 1.75 },
     ] as IconPath[],
   },
+  // The same pin, filled: shown on the button of something that is pinned (Tabler "pin-filled", MIT).
+  pinFilled: {
+    viewBox: '0 0 24 24',
+    paths: [
+      { d: 'M15.113 3.21l.094.083 5.5 5.5a1 1 0 0 1-1.175 1.59l-3.172 3.171-1.424 3.797a1 1 0 0 1-.158.277l-.07.08-1.5 1.5a1 1 0 0 1-1.32.082l-.095-.083-2.793-2.792-3.793 3.792a1 1 0 0 1-1.497-1.32l.083-.094 3.792-3.793-2.792-2.793a1 1 0 0 1-.083-1.32l.083-.094 1.5-1.5a1 1 0 0 1 .258-.187l.098-.042 3.796-1.425 3.171-3.17a1 1 0 0 1 1.497-1.26z' },
+    ] as IconPath[],
+  },
   chevronRight: {
     viewBox: '0 0 9 16',
     paths: [

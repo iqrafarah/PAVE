@@ -92,6 +92,15 @@ const shownConversations = computed(() => chats.visibleConversations.value);
 const sections = computed(() => groupConversations(shownConversations.value, now.value));
 // Vastgezet first, then Projecten, then one "Recent" group (all the other chats, newest first), like ChatGPT.
 const pinnedSections = computed(() => sections.value.filter((section) => section.kind === 'pinned'));
+// "Vastgezet" also shows when only a project is pinned.
+const hasPinnedProjects = computed(() => projects.state.value.projects.some((project) => project.pinnedAt));
+const pinnedGroups = computed(() =>
+  pinnedSections.value.length
+    ? pinnedSections.value
+    : hasPinnedProjects.value
+      ? [{ kind: 'pinned', title: AYLA_SECTION_TITLES.pinned, conversations: [] as Conversation[] }]
+      : [],
+);
 const recentSections = computed(() => {
   // Chats in a project show under the project; searching still finds them.
   const conversations = sections.value
@@ -287,8 +296,9 @@ onBeforeUnmount(() => {
             <p class="mt-1 text-subtle">{{ AYLA_NO_CHATS_BODY }}</p>
           </div>
 
+          <!-- Vastgezet: pinned projects first, then pinned chats. -->
           <AylaChatSection
-            v-for="section in pinnedSections"
+            v-for="section in pinnedGroups"
             :key="section.kind"
             :title="section.title"
             :conversations="section.conversations"
@@ -301,9 +311,22 @@ onBeforeUnmount(() => {
             @rename="renameChat"
             @remove="removeChat"
             @lock="askToLock"
-          />
+          >
+            <AylaProjectList
+              mode="pinned"
+              :conversations="chats.visibleConversations.value"
+              :can-pin="chats.state.value.canPin"
+              :now="now"
+              @open="closeDrawer"
+              @toggle-pin="togglePin"
+              @rename="renameChat"
+              @remove="removeChat"
+              @lock="askToLock"
+            />
+          </AylaChatSection>
 
           <AylaProjectList
+            mode="rest"
             :conversations="chats.visibleConversations.value"
             :can-pin="chats.state.value.canPin"
             :now="now"

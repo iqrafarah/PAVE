@@ -10,15 +10,22 @@ import { MODEL_OUTPUT_SCHEMA } from './prompt.ts'
 import { adzunaSearch } from './vacancies.ts'
 import { CORS, json, sessionLevel } from '../_shared/http.ts'
 
-/** The project's name and instructions. Before the projects migration runs the query fails and there is none. */
+/**
+ * The project's name, instructions and the vault items the user added as sources (ids; which of them Ayla may see is
+ * up to vault.ts). Before the projects migration runs the query fails and there is none; before the sources migration
+ * there are no sources.
+ */
 async function loadProject(supabase: ReturnType<typeof createClient>, conversationId: string) {
   const { data, error } = await supabase
     .from('ayla_conversations')
-    .select('ayla_projects(name, instructions)')
+    .select('project_id, ayla_projects(name, instructions)')
     .eq('id', conversationId)
     .maybeSingle()
-  const project = error ? null : (data as { ayla_projects: { name: string; instructions: string } | null } | null)?.ayla_projects
-  return project ?? undefined
+  const row = error ? null : (data as { project_id: string | null; ayla_projects: { name: string; instructions: string } | null } | null)
+  if (!row?.ayla_projects) return undefined
+  const { data: sources, error: sourcesError } = await supabase.from('ayla_project_sources').select('item_id').eq('project_id', row.project_id)
+  const sourceIds = sourcesError ? [] : ((sources ?? []) as { item_id: string }[]).map((source) => source.item_id)
+  return { ...row.ayla_projects, sourceIds }
 }
 
 Deno.serve(async (req) => {

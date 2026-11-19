@@ -608,3 +608,14 @@ test('project instructions join the prompt, and an empty project adds nothing', 
   assert.doesNotMatch(buildSystemPrompt({ ...base, project: { name: 'Stage', instructions: '  ' } }), /project "Stage"/)
   assert.equal(parseRequest({ ...request, projectId: 'nope' }), 'projectId is not valid')
 })
+
+test('project sources are named when Ayla may see them, and nothing else leaks', () => {
+  const item = (id: string, title: string) => ({ id, kind: 'diplomas', category: 'Diploma', title, status: 'bevestigd', skills: [], files: [] })
+  const vault = { status: 'on' as const, items: [item('a', 'Diploma PXL'), item('b', 'Stage')] }
+  const project = { name: 'Solliciteren', instructions: '', sourceIds: ['b', 'zzz'] }
+  const prompt = buildSystemPrompt({ device: 'web', project, vault, vaultConsent: 'granted' })
+  assert.match(prompt, /bronnen van het project "Solliciteren": 2 \(Stage\)/)
+  assert.doesNotMatch(prompt, /bronnen van het project[^\n]*Diploma PXL/)
+  assert.doesNotMatch(buildSystemPrompt({ device: 'web', project, vault, vaultConsent: 'declined' }), /bronnen van het project/)
+  assert.doesNotMatch(buildSystemPrompt({ device: 'web', project: { ...project, sourceIds: ['zzz'] }, vault, vaultConsent: 'granted' }), /bronnen van het project/)
+})
