@@ -52,7 +52,7 @@ onMounted(loadSetup);
 </script>
 
 <template>
-  <AuthCard
+  <AuthEduidCard
     eyebrow="Eerste keer instellen"
     title="Beveilig je PAVE-account"
     :description="MFA_SETUP_INSTRUCTION"
@@ -114,5 +114,5 @@ onMounted(loadSetup);
     </p>
 
     <AuthBackToLogin @click="signOut" />
-  </AuthCard>
+  </AuthEduidCard>
 </template>
