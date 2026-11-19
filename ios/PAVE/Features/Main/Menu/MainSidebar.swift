@@ -23,6 +23,8 @@ struct MainSidebar: View {
     let onSignOut: () -> Void
     /// Closes the drawer, or hides the docked sidebar.
     let onClose: () -> Void
+    /// "Zoeken in PAVE", above your account and the bell, as on the web.
+    var onSearch: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -61,6 +63,11 @@ struct MainSidebar: View {
             .scrollBounceBehavior(.basedOnSize)
             .scrollIndicators(.hidden)
             .padding(.bottom, 16)
+
+            if let onSearch {
+                MainSearchButton(action: onSearch)
+                    .padding(.bottom, 12)
+            }
 
             if style != .beside {
                 HStack(spacing: 12) {

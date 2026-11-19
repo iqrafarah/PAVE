@@ -58,16 +58,19 @@ struct AylaSearchResultRow: View {
     @ViewBuilder
     private var iconView: some View {
         switch icon {
-        case .chat: symbol("bubble.left")
-        case .project: symbol("folder")
-        case .item: symbol("doc.text")
+        case .chat: symbol(.iconChat)
+        case .project: symbol(.iconFolderSolid)
+        case .item: symbol(.iconDocumentText)
         case .file(let kind): VaultFileTypeIcon(kind: kind, size: 30)
         }
     }
 
-    private func symbol(_ name: String) -> some View {
-        Image(systemName: name)
-            .font(.system(size: 14, weight: .semibold))
+    private func symbol(_ icon: ImageResource) -> some View {
+        Image(icon)
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .paveIconFrame(16)
             .foregroundStyle(Color.paveAccent)
             .accessibilityHidden(true)
     }

@@ -80,7 +80,7 @@ struct VaultLogoAvatar: View {
                 .overlay { Circle().strokeBorder(Color.cardBorder, lineWidth: 1) }
                 .transition(.opacity)
                 .accessibilityHidden(true)
-        } else if let fileName, !fileName.isEmpty {
+        } else if let fileName {
             VaultFileTypeIcon(kind: .init(fileName: fileName), size: size * 0.6)
                 .frame(width: size, height: size)
                 .background(Color.white, in: .circle)

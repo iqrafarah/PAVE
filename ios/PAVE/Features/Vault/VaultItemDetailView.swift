@@ -80,7 +80,7 @@ struct VaultItemDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 HStack(alignment: .top, spacing: 14) {
-                    VaultLogoAvatar(look: look, name: item.organisationName ?? item.title, fileName: item.firstDocumentName, size: 56)
+                    VaultLogoAvatar(look: look, name: item.organisationName ?? item.title, fileName: item.firstDocumentName ?? "", size: 56)
                         .task(id: model.logo(of: item)?.id) {
                             guard let logo = model.logo(of: item) else { look = nil; return }
                             let loaded = await model.look(of: logo)
@@ -180,7 +180,16 @@ struct VaultItemDetailView: View {
                             Button {
                                 downloadAll(documents)
                             } label: {
-                                Label(VaultMessages.downloadAll, systemImage: isDownloading ? "hourglass" : "arrow.down.circle")
+                                Label {
+                                    Text(VaultMessages.downloadAll)
+                                } icon: {
+                                    Image(.iconDownload)
+                                        .renderingMode(.template)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .paveIconFrame(18)
+                                        .opacity(isDownloading ? 0.4 : 1)
+                                }
                                     .textStyle(.label)
                                     .foregroundStyle(Color.paveAccent)
                                     .frame(minHeight: 44)

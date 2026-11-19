@@ -37,7 +37,8 @@ struct VaultEvidenceEditor: View {
                         category: edit.draft.category,
                         onPick: { edit.pick($0) },
                         onRemoveLogo: edit.removeLogo,
-                        onRemoveCover: edit.removeCover
+                        onRemoveCover: edit.removeCover,
+                        fileName: edit.keptDocuments.first?.name ?? edit.newDocuments.first?.fileName ?? ""
                     )
                     VaultDocumentsSection(
                         count: edit.keptDocuments.count + edit.newDocuments.count,

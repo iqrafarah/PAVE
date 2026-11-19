@@ -77,13 +77,15 @@ struct VaultAllFoldersPage: View {
             actions.openFolder(folder)
         }
         .contextMenu {
-            Button(folder.isPinned ? VaultMessages.unpinFolder : VaultMessages.pinFolder, systemImage: folder.isPinned ? "pin.slash" : "pin") {
+            Button {
                 Task { await model.setPinned(!folder.isPinned, folder: folder) }
+            } label: {
+                Label { Text(folder.isPinned ? VaultMessages.unpinFolder : VaultMessages.pinFolder) } icon: { Image(folder.isPinned ? .iconPinSlash : .iconPin) }
             }
             if query.isEmpty {
-                Button("Naar voren", systemImage: "arrow.backward") { move(folder, by: -1) }
+                Button { move(folder, by: -1) } label: { Label { Text("Naar voren") } icon: { Image(.iconArrowLeft) } }
                     .disabled(model.folders.first == folder)
-                Button("Naar achteren", systemImage: "arrow.forward") { move(folder, by: 1) }
+                Button { move(folder, by: 1) } label: { Label { Text("Naar achteren") } icon: { Image(.iconArrowRight) } }
                     .disabled(model.folders.last == folder)
             }
             Button { actions.editFolder(folder) } label: {

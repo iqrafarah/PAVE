@@ -6,7 +6,7 @@ struct VaultFileTypeIcon: View {
     enum Kind {
         case pdf, word, text, image
 
-        /// By the extension of the file name, as on the web; anything unknown is text.
+        /// By the extension of the file name, as on the web; anything unknown, or no file at all, is text.
         init(fileName: String) {
             switch (fileName as NSString).pathExtension.lowercased() {
             case "pdf": self = .pdf
@@ -43,10 +43,10 @@ struct VaultFileTypeIcon: View {
         ZStack(alignment: .topLeading) {
             PageShape()
                 .fill(.white)
-                .overlay { PageShape().stroke(Color.cardBorder, lineWidth: 1.5 * unit) }
+                .overlay { PageShape().stroke(Color(.fileIconLine), lineWidth: 1.5 * unit) }
             FoldShape()
-                .fill(Color.canvas)
-                .overlay { FoldShape().stroke(Color.cardBorder, style: StrokeStyle(lineWidth: 1.5 * unit, lineJoin: .round)) }
+                .fill(Color(.fileIconFold))
+                .overlay { FoldShape().stroke(Color(.fileIconLine), style: StrokeStyle(lineWidth: 1.5 * unit, lineJoin: .round)) }
             if let label = kind.label {
                 Text(label)
                     .font(.system(size: 8.2 * unit, weight: .heavy))

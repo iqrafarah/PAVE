@@ -24,8 +24,11 @@ struct AylaProjectRow: View {
                     .foregroundStyle(Color.ink)
                     .lineLimit(1)
                 if project.isPinned {
-                    Image(systemName: "pin.fill")
-                        .font(.system(size: 10, weight: .semibold))
+                    Image(.iconPin)
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 12, height: 12)
                         .foregroundStyle(Color.inkMuted)
                         .accessibilityHidden(true)
                 }
@@ -35,8 +38,11 @@ struct AylaProjectRow: View {
                         .textStyle(.caption)
                         .foregroundStyle(Color.inkMuted)
                 }
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
+                Image(.iconChevronRight)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 10, height: 10)
                     .foregroundStyle(Color.inkMuted)
                     .rotationEffect(.degrees(isOpen ? 90 : 0))
                     .accessibilityHidden(true)

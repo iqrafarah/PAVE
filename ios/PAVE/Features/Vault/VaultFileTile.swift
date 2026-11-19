@@ -35,7 +35,7 @@ struct VaultFileTile: View {
         .disabled(isOpening)
         .vaultQuickLook($previewURL)
         .contextMenu {
-            Button(VaultMessages.download, systemImage: "arrow.down.circle") { startDownload() }
+            Button { startDownload() } label: { Label { Text(VaultMessages.download) } icon: { Image(.iconDownload) } }
         }
         .sheet(item: $download) { VaultShareSheet(urls: $0.urls).presentationDetents([.medium, .large]) }
         .accessibilityAction(named: VaultMessages.downloadFile(file.name)) { startDownload() }

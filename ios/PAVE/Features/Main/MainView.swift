@@ -29,6 +29,7 @@ struct MainView: View {
     @State private var isFolded = false
     /// When "Zoeken in chats" was asked for, so the search field of the chats takes the keyboard.
     @State private var chatSearchRequestedAt: Date?
+    @State private var showsSearch = false
     private let connection = PaveConnection.shared
 
     /// Wide enough to show the chats next to the conversation.
@@ -54,6 +55,7 @@ struct MainView: View {
             let usesDrawer = fold == nil && !hasSidebar
             ZStack(alignment: .topLeading) {
                 screen(onShowMenu: menuAction(fold: fold))
+                    .sheet(isPresented: $showsSearch) { searchScreen }
                     .frame(width: fold?.second.width, height: fold?.second.height)
                     .offset(x: fold?.second.minX ?? 0, y: fold?.second.minY ?? 0)
                     .padding(.leading, docksSidebar ? Self.sidebarSize : 0)
@@ -70,7 +72,8 @@ struct MainView: View {
                                 onSelect: open,
                                 onNewConversation: startNewConversation,
                                 onShowChats: openChats,
-                                onSignOut: appState.signOut
+                                onSignOut: appState.signOut,
+                                onSearch: { showsSearch = true }
                             )
                         }
                     }
@@ -203,7 +206,8 @@ struct MainView: View {
             onSelect: open,
             onNewConversation: startNewConversation,
             onSignOut: appState.signOut,
-            onClose: { setSidebarHidden(true) }
+            onClose: { setSidebarHidden(true) },
+            onSearch: { showsSearch = true }
         )
         // The content starts at the top; the buttons sit at the bottom, as far from the bottom edge as from the side,
         // so they follow the rounded corner of the screen.
@@ -293,6 +297,29 @@ struct MainView: View {
         case .settings: open(.settings)
         default: break
         }
+    }
+
+    /// "Zoeken in PAVE" from the menu.
+    private var searchScreen: some View {
+        PaveSearchScreen(
+            list: model.conversationList,
+            searchMessages: model.searchMessages,
+            onOpenChat: { openFromSearch($0.id) },
+            onOpenProject: { project in
+                if let chat = model.conversationList.chats(in: project.id).first {
+                    openFromSearch(chat.id)
+                } else {
+                    model.newConversation(in: project)
+                    destination = .ayla
+                    if !isWide { showsChats = false }
+                }
+            },
+            onOpenItem: { item in
+                vault.itemToOpen = item.id
+                open(.vault)
+            }
+        )
+        .environment(vault)
     }
 
     /// A chat tapped in the iPhone's search.

@@ -80,14 +80,18 @@ struct AylaLockedChatsScreen: View {
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button(AylaMessages.unlockMenu, systemImage: "lock.open") {
+                        Button {
                             Task { _ = await locks.unlock(chat) }
+                        } label: {
+                            Label { Text(AylaMessages.unlockMenu) } icon: { Image(.iconLockOpenSolid) }
                         }
                         .tint(.paveAccent)
                     }
                     .contextMenu {
-                        Button(AylaMessages.unlockMenu, systemImage: "lock.open") {
+                        Button {
                             Task { _ = await locks.unlock(chat) }
+                        } label: {
+                            Label { Text(AylaMessages.unlockMenu) } icon: { Image(.iconLockOpenSolid) }
                         }
                     }
                 }

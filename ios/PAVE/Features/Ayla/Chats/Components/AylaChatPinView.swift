@@ -35,8 +35,11 @@ struct AylaChatPinView: View {
     var body: some View {
         VStack(spacing: 24) {
             Spacer(minLength: 0)
-            Image(systemName: "lock.fill")
-                .font(.system(size: 28, weight: .semibold))
+            Image(.iconLockClosedSolid)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .paveIconFrame(28)
                 .foregroundStyle(Color.paveAccent)
                 .frame(width: 64, height: 64)
                 .background(Color.paveSurfaceTint, in: .circle)

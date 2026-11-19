@@ -354,8 +354,10 @@ struct VaultLibraryPage: View {
             // The spot the dragged folder will take stays visible but faint, as on the Home Screen.
             .opacity(isDragging && drag == .folder(folder.id) ? 0.35 : 1)
             .contextMenu {
-                Button(folder.isPinned ? VaultMessages.unpinFolder : VaultMessages.pinFolder, systemImage: folder.isPinned ? "pin.slash" : "pin") {
+                Button {
                     Task { await model.setPinned(!folder.isPinned, folder: folder) }
+                } label: {
+                    Label { Text(folder.isPinned ? VaultMessages.unpinFolder : VaultMessages.pinFolder) } icon: { Image(folder.isPinned ? .iconPinSlash : .iconPin) }
                 }
                 Button { actions.editFolder(folder) } label: {
                     Label { Text("Map aanpassen") } icon: { Image(.iconPencil) }
