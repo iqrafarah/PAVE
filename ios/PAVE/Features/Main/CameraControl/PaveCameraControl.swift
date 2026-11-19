@@ -85,7 +85,6 @@ final class PaveCameraControl {
     var isEnabled: Bool {
         get { UserDefaults.standard.bool(forKey: Self.enabledKey) }
         set {
-            print("[knop] setting: \(newValue)")
             UserDefaults.standard.set(newValue, forKey: Self.enabledKey)
             enabledChanged += 1
         }
@@ -105,14 +104,12 @@ final class PaveCameraControl {
     @ObservationIgnored private var highlightTimeout: Task<Void, Never>?
 
     func start(at destination: MainDestination) async {
-        print("[knop] start asked, on: \(isOn), starting: \(isStarting), camera: \(AVCaptureDevice.authorizationStatus(for: .video).rawValue)")
         guard !isOn, !isStarting else { return }
         isStarting = true
         defer { isStarting = false }
         problem = nil
         self.destination = destination
         guard await Self.cameraAllowed() else {
-            print("[knop] camera not allowed")
             problem = .notAllowed
             return
         }
@@ -131,7 +128,6 @@ final class PaveCameraControl {
     }
 
     func stop() {
-        print("[knop] stop, was on: \(isOn)")
         pendingSwipe?.cancel()
         active = nil
         clearHighlight()
@@ -158,7 +154,6 @@ final class PaveCameraControl {
 
     /// A full press (or a volume button, which iOS treats the same while the camera is in use).
     func fullPress() {
-        print("[knop] full press, on: \(isOn), active: \(String(describing: active)), screen: \(screens.last?.source ?? "-")")
         guard isOn else { return }
         defer {
             active = nil
@@ -299,16 +294,6 @@ nonisolated final class CameraControlSession: NSObject, AVCaptureSessionControls
                 self.onMenuVisibility = onMenuVisibility
                 let result = configure()
                 if result == .started { session.startRunning() }
-                print("[knop] start: \(result), running: \(session.isRunning), max menus: \(session.maxControlsCount)")
-                NotificationCenter.default.addObserver(forName: AVCaptureSession.wasInterruptedNotification, object: session, queue: nil) { note in
-                    print("[knop] interrupted: \(note.userInfo?[AVCaptureSessionInterruptionReasonKey] ?? "?")")
-                }
-                NotificationCenter.default.addObserver(forName: AVCaptureSession.interruptionEndedNotification, object: session, queue: nil) { _ in
-                    print("[knop] interruption ended")
-                }
-                NotificationCenter.default.addObserver(forName: AVCaptureSession.runtimeErrorNotification, object: session, queue: nil) { note in
-                    print("[knop] runtime error: \(String(describing: note.userInfo?[AVCaptureSessionErrorKey]))")
-                }
                 continuation.resume(returning: result)
             }
         }
@@ -342,15 +327,11 @@ nonisolated final class CameraControlSession: NSObject, AVCaptureSessionControls
                 let picker = AVCaptureIndexPicker(menu.title, symbolName: menu.symbol, localizedIndexTitles: menu.items)
                 picker.selectedIndex = min(max(menu.selected, 0), menu.items.count - 1)
                 picker.setActionQueue(queue) { item in onSwipe(index, item) }
-                guard session.canAddControl(picker) else {
-                    print("[knop] cannot add menu \(menu.title)")
-                    continue
-                }
+                guard session.canAddControl(picker) else { continue }
                 session.addControl(picker)
                 pickers.append(picker)
             }
             session.commitConfiguration()
-            print("[knop] menus: \(pickers.map(\.localizedTitle)), running: \(session.isRunning)")
         }
     }
 
@@ -378,13 +359,11 @@ nonisolated final class CameraControlSession: NSObject, AVCaptureSessionControls
     }
 
     func sessionControlsDidBecomeActive(_ session: AVCaptureSession) {
-        print("[knop] controls active")
         onMenuVisibility?(true)
     }
     func sessionControlsWillEnterFullscreenAppearance(_ session: AVCaptureSession) {}
     func sessionControlsWillExitFullscreenAppearance(_ session: AVCaptureSession) {}
     func sessionControlsDidBecomeInactive(_ session: AVCaptureSession) {
-        print("[knop] controls inactive")
         onMenuVisibility?(false)
     }
 }

@@ -68,7 +68,8 @@ struct AylaChatList: View {
     @State private var showsLockedChats = false
     /// The chat being dragged, from the moment iOS lifts it until it is let go.
     @State private var draggedChat: String?
-    @State private var rowFrames: [String: CGRect] = [:]
+    /// Where each row is; kept outside SwiftUI's state, so scrolling does not redraw the list.
+    @State private var rowFrames = RowFrames()
     @State private var dragEnd: Task<Void, Never>?
     private static let listSpace = "chatList"
     @FocusState private var isSearchFocused: Bool
@@ -163,7 +164,7 @@ struct AylaChatList: View {
                     itemRow(item)
                         // Where each row is, so a chat let go over the list lands in the right place.
                         .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.listSpace)) } action: { frame in
-                            rowFrames[item.id] = frame
+                            rowFrames.frames[item.id] = frame
                         }
                 }
                 if canLoadMore {
@@ -317,7 +318,7 @@ struct AylaChatList: View {
         // Hold a chat and drag it, as on the web: onto a project to put it there, onto Vastgezet to pin it, among the
         // other chats to take it out of its project and unpin it.
         .draggable(conversation.id) {
-            AylaChatDragPreview(title: conversation.title)
+            AylaChatDragPreview(conversation: conversation)
                 .onAppear {
                     dragEnd?.cancel()
                     draggedChat = conversation.id
@@ -690,7 +691,7 @@ struct AylaChatList: View {
         let shown = items
         // The row under the finger, or else the nearest row above it.
         let under = shown.last { item in
-            guard let frame = rowFrames[item.id] else { return false }
+            guard let frame = rowFrames.frames[item.id] else { return false }
             return frame.minY <= point.y
         }
         let pinnedTitle = "Vastgezet"
@@ -833,6 +834,11 @@ struct AylaChatList: View {
     private var isRenaming: Binding<Bool> {
         Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })
     }
+}
+
+/// The places of the rows, read only when a chat is let go.
+private final class RowFrames {
+    var frames: [String: CGRect] = [:]
 }
 
 private extension View {
