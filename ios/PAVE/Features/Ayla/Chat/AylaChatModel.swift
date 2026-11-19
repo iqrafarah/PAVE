@@ -958,7 +958,40 @@ final class AylaChatModel {
         }
     }
 
-    /// "Pincode vergeten": every locked chat is deleted for good, then a new PIN can be chosen.
+    /// "Pincode wijzigen". Nil when it worked, otherwise what to tell the user.
+    func changeChatPin(from pin: String, to newPin: String) async -> String? {
+        guard let service else { return AylaMessages.pinCodeFailed }
+        do {
+            try await service.changeChatPin(from: pin, to: newPin)
+            return nil
+        } catch {
+            return Self.pinMessage(for: error)
+        }
+    }
+
+    /// "Pincode vergeten" after a fresh code from the authenticator app: a new PIN, and the locked chats stay.
+    func recoverChatPin(_ newPin: String) async -> String? {
+        guard let service else { return AylaMessages.pinCodeFailed }
+        do {
+            try await service.recoverChatPin(newPin)
+            showsLockedChats = true
+            return nil
+        } catch {
+            return Self.pinMessage(for: error)
+        }
+    }
+
+    static func pinMessage(for error: any Error) -> String {
+        switch error {
+        case AylaChatPinError.wrong: AylaMessages.pinWrong
+        case AylaChatPinError.tooManyAttempts: AylaMessages.pinBlocked
+        case AylaChatPinError.needsRecentVerification: AylaMessages.accountPinVerifyAgain
+        case AylaError.notSetUp: AylaMessages.accountPinNotReady
+        default: AylaMessages.pinCodeFailed
+        }
+    }
+
+    /// "Alles verwijderen en opnieuw beginnen": every locked chat is deleted for good, then a new PIN can be chosen.
     func resetChatPin() async -> Bool {
         guard let service else { return false }
         do {

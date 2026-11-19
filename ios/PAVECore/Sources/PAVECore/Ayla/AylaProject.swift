@@ -38,4 +38,6 @@ public enum AylaChatPinError: Error, Equatable, Sendable {
     case tooManyAttempts
     case noPin
     case alreadySet
+    /// "Pincode vergeten" needs a code from the authenticator app typed in the last five minutes.
+    case needsRecentVerification
 }

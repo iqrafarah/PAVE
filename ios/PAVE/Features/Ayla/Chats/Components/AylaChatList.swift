@@ -46,6 +46,8 @@ struct AylaLockActions {
     var checkPin: (String) async -> String?
     var resetPin: () async -> Bool
     var relock: () -> Void
+    /// For "Pincode vergeten": resetting with the authenticator app keeps the locked chats.
+    var model: AylaChatModel
 }
 
 /// The chats with Ayla (Figma "Chats"), as in Mail and ChatGPT: search, then pinned and by when they were last used.

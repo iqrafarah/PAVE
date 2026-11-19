@@ -155,7 +155,8 @@ struct AylaRootView: View {
                 setPin: model.setChatPin,
                 checkPin: model.checkChatPin,
                 resetPin: model.resetChatPin,
-                relock: { model.showsLockedChats = false }
+                relock: { model.showsLockedChats = false },
+                model: model
             ),
             retention: AylaRetentionActions(
                 accountExpiry: profile?.retention?.chatExpiry ?? ChatExpiry(),

@@ -2,7 +2,8 @@ import PAVECore
 import SwiftUI
 
 /// "Vergrendelde chats" (web /vergrendeld): first the PIN, then the locked chats. They stay visible until "Nu
-/// vergrendelen" or until PAVE closes. "Pincode vergeten?" deletes every locked chat for good, after asking.
+/// vergrendelen" or until PAVE closes. "Pincode vergeten?" resets the PIN with the authenticator app, and the locked chats
+/// stay; only without it are they deleted.
 struct AylaLockedChatsScreen: View {
     @Environment(\.dismiss) private var dismiss
     let chats: [AylaConversation]
@@ -10,7 +11,8 @@ struct AylaLockedChatsScreen: View {
     let onOpen: (AylaConversation) -> Void
 
     @State private var hasPin: Bool?
-    @State private var confirmsReset = false
+    @State private var recovers = false
+    @State private var notice: String?
 
     var body: some View {
         NavigationStack {
@@ -24,7 +26,7 @@ struct AylaLockedChatsScreen: View {
                         return failure
                     }
                 } else if hasPin == true {
-                    AylaChatPinView(mode: .enter, onPin: locks.checkPin) { confirmsReset = true }
+                    AylaChatPinView(mode: .enter, onPin: locks.checkPin) { recovers = true }
                 } else {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -46,14 +48,15 @@ struct AylaLockedChatsScreen: View {
                     }
                 }
             }
-            .confirmationDialog(AylaMessages.pinResetQuestion, isPresented: $confirmsReset, titleVisibility: .visible) {
-                Button(AylaMessages.pinResetConfirm, role: .destructive) {
-                    Task {
-                        if await locks.resetPin() { hasPin = false }
-                    }
+            .sheet(isPresented: $recovers) {
+                AylaAccountPinSheet(purpose: .recover, model: locks.model) { message in
+                    notice = message
+                    if message == AylaMessages.accountPinDeleted { hasPin = false }
                 }
-            } message: {
-                Text(AylaMessages.pinResetBody)
+                .paveSheet()
+            }
+            .alert(notice ?? "", isPresented: Binding(get: { notice != nil }, set: { if !$0 { notice = nil } })) {
+                Button("OK", role: .cancel) {}
             }
             .task {
                 guard hasPin == nil else { return }

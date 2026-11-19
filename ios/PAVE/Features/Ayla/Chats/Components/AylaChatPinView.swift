@@ -7,6 +7,9 @@ struct AylaChatPinView: View {
     enum Mode { case create, enter }
 
     let mode: Mode
+    /// Other words for the first step, such as "Huidige pincode" or "Kies een nieuwe pincode".
+    var title: String?
+    var subtitle: String?
     /// Returns nil when it worked, otherwise what to say.
     let onPin: (String) async -> String?
     var onForgot: (() -> Void)?
@@ -18,17 +21,17 @@ struct AylaChatPinView: View {
 
     private static let length = 4
 
-    private var title: String {
+    private var shownTitle: String {
         switch mode {
-        case .create: firstChoice == nil ? AylaMessages.pinCreateTitle : AylaMessages.pinConfirmTitle
-        case .enter: AylaMessages.pinEnterTitle
+        case .create: firstChoice == nil ? title ?? AylaMessages.pinCreateTitle : AylaMessages.pinConfirmTitle
+        case .enter: title ?? AylaMessages.pinEnterTitle
         }
     }
 
     private var message: String {
         switch mode {
-        case .create: firstChoice == nil ? AylaMessages.pinCreateBody : AylaMessages.pinConfirmBody
-        case .enter: AylaMessages.pinEnterBody
+        case .create: firstChoice == nil ? subtitle ?? AylaMessages.pinCreateBody : AylaMessages.pinConfirmBody
+        case .enter: subtitle ?? AylaMessages.pinEnterBody
         }
     }
 
@@ -45,7 +48,7 @@ struct AylaChatPinView: View {
                 .background(Color.paveSurfaceTint, in: .circle)
                 .accessibilityHidden(true)
             VStack(spacing: 6) {
-                Text(title)
+                Text(shownTitle)
                     .textStyle(.emptyTitle)
                     .foregroundStyle(Color.ink)
                     .accessibilityAddTraits(.isHeader)

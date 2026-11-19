@@ -37,7 +37,11 @@ public protocol AylaService: Sendable {
     func setChatPin(_ pin: String) async throws
     /// True for the right PIN; throws `AylaChatPinError.tooManyAttempts` during the wait after five wrong tries.
     func checkChatPin(_ pin: String) async throws -> Bool
-    /// "Pincode vergeten": deletes every locked chat for good and removes the PIN.
+    /// "Pincode wijzigen": the database checks the current PIN (with the same wait after five wrong tries) first.
+    func changeChatPin(from pin: String, to newPin: String) async throws
+    /// "Pincode vergeten" without losing chats: after a fresh two-step code the PIN is replaced and the locked chats stay.
+    func recoverChatPin(_ newPin: String) async throws
+    /// "Alles verwijderen en opnieuw beginnen": deletes every locked chat for good and removes the PIN.
     func resetChatPin() async throws
     func rename(_ title: String, conversationID: String) async throws
     /// Removes the conversation and its messages for good.
@@ -104,6 +108,8 @@ extension AylaService {
     public func setChatPin(_ pin: String) async throws { throw AylaError.notSetUp }
     public func checkChatPin(_ pin: String) async throws -> Bool { throw AylaError.notSetUp }
     public func resetChatPin() async throws { throw AylaError.notSetUp }
+    public func changeChatPin(from pin: String, to newPin: String) async throws { throw AylaError.notSetUp }
+    public func recoverChatPin(_ newPin: String) async throws { throw AylaError.notSetUp }
     public func conversationChanges() -> AsyncStream<Void> { AsyncStream { $0.finish() } }
 
     /// Without a voice, the stream ends at once with `unavailable`, and the app falls back to the device voice.
@@ -456,6 +462,14 @@ public struct SupabaseAylaService: AylaService {
         _ = try await rpc("ayla_reset_chat_pin", body: [:])
     }
 
+    public func changeChatPin(from pin: String, to newPin: String) async throws {
+        _ = try await rpc("ayla_change_chat_pin", body: ["pin": pin, "new_pin": newPin])
+    }
+
+    public func recoverChatPin(_ newPin: String) async throws {
+        _ = try await rpc("ayla_recover_chat_pin", body: ["new_pin": newPin])
+    }
+
     /// Calls a database function. Its own errors (`raise exception 'too_many_attempts'`) come back as their message.
     private func rpc(_ name: String, body: [String: String]) async throws -> Data {
         let urlRequest = try await authorized("rpc/\(name)", query: [], method: "POST", body: try JSONEncoder().encode(body), returning: true)
@@ -472,7 +486,8 @@ public struct SupabaseAylaService: AylaService {
         case "too_many_attempts": throw AylaChatPinError.tooManyAttempts
         case "no_pin": throw AylaChatPinError.noPin
         case "pin_exists": throw AylaChatPinError.alreadySet
-        case "invalid_pin": throw AylaChatPinError.wrong
+        case "invalid_pin", "wrong_pin": throw AylaChatPinError.wrong
+        case "recent_mfa_required": throw AylaChatPinError.needsRecentVerification
         case "mfa_required": throw AylaError.insufficientAssurance
         default: break
         }
