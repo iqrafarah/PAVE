@@ -55,7 +55,7 @@ struct ArchiveScreen: View {
 
     private var isLoading: Bool {
         switch kind {
-        case .chats: !(chats?.hasLoadedList ?? true)
+        case .chats: chats.map { $0.isAvailable && !$0.hasLoadedList } ?? false
         case .evidence: vault.map { $0.state == .loading } ?? false
         }
     }
@@ -71,15 +71,10 @@ struct ArchiveScreen: View {
                 .foregroundStyle(Color.inkMuted)
                 .padding(.horizontal, 8)
                 .fixedSize(horizontal: false, vertical: true)
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 10) {
-                    PaveSearchField(text: $query, prompt: kind == .chats ? "Zoek in gearchiveerde chats" : "Zoek in gearchiveerde bewijsstukken", isFocused: $isSearchFocused)
-                    sortMenu
-                }
-                VStack(alignment: .leading, spacing: 10) {
-                    PaveSearchField(text: $query, prompt: kind == .chats ? "Zoek in gearchiveerde chats" : "Zoek in gearchiveerde bewijsstukken", isFocused: $isSearchFocused)
-                    sortMenu
-                }
+            HStack(spacing: 10) {
+                PaveSearchField(text: $query, prompt: kind == .chats ? "Zoek in chats" : "Zoek in bewijsstukken", isFocused: $isSearchFocused)
+                sortMenu
+                    .fixedSize()
             }
             content
         }
