@@ -48,14 +48,14 @@ const OPTIONS = [
 ];
 
 const LOGO_ACTIONS: VaultMenuOption[] = [
-  { id: 'reframe', label: VAULT_REFRAME, icon: '/images/vault/icons/PencilOutline.svg' },
-  { id: 'replace', label: VAULT_LOGO_REPLACE, icon: '/images/vault/icons/PhotoOutline.svg' },
-  { id: 'remove', label: VAULT_LOGO_REMOVE, icon: '/images/vault/icons/TrashOutline.svg' },
+  { id: 'reframe', label: VAULT_REFRAME, icon: '/images/vault/icons/Pencil.svg' },
+  { id: 'replace', label: VAULT_LOGO_REPLACE, icon: '/images/vault/icons/PhotoSolid.svg' },
+  { id: 'remove', label: VAULT_LOGO_REMOVE, icon: '/images/vault/icons/Trash.svg' },
 ];
 const COVER_ACTIONS: VaultMenuOption[] = [
-  { id: 'reframe', label: VAULT_REFRAME, icon: '/images/vault/icons/PencilOutline.svg' },
-  { id: 'replace', label: VAULT_COVER_REPLACE, icon: '/images/vault/icons/PhotoOutline.svg' },
-  { id: 'remove', label: VAULT_COVER_REMOVE, icon: '/images/vault/icons/TrashOutline.svg' },
+  { id: 'reframe', label: VAULT_REFRAME, icon: '/images/vault/icons/Pencil.svg' },
+  { id: 'replace', label: VAULT_COVER_REPLACE, icon: '/images/vault/icons/PhotoSolid.svg' },
+  { id: 'remove', label: VAULT_COVER_REMOVE, icon: '/images/vault/icons/Trash.svg' },
 ];
 
 const tint = useImageTint(() => (props.hasLogo || props.hasOrganisationLogo ? props.logoUrl : null));

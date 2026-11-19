@@ -22,7 +22,12 @@ interface OpenOptions {
   prefill?: VaultAylaPrefill | null;
   // "Zelf invullen" in the chat: the files come along, but Ayla reads nothing and fills in nothing.
   fillsMyself?: boolean;
+  // Called once with the id of the new item when it is saved, e.g. to link it to a project as a source.
+  onSaved?: (itemId: string) => void;
 }
+
+// Kept outside the state (a function cannot be stored in it); there is only one dialog at a time.
+let savedHandler: ((itemId: string) => void) | null = null;
 
 interface VaultAddState {
   isOpen: boolean;
@@ -82,6 +87,7 @@ export function useVaultAdd() {
   }));
 
   function open(options: OpenOptions = {}) {
+    savedHandler = options.onSaved ?? null;
     state.value = {
       isOpen: true,
       session: state.value.session + 1,
@@ -146,6 +152,10 @@ export function useVaultAdd() {
       }
       // The vault page shows the new item straight away.
       vault.load();
+      if (!progress.savedParts.has('notified')) {
+        progress.savedParts.add('notified');
+        savedHandler?.(itemId);
+      }
       return null;
     } catch (error) {
       return error instanceof VaultSaveError ? error.message : VAULT_SAVE_FAILED;

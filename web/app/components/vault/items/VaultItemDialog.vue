@@ -138,7 +138,7 @@ watch(
             <VaultIcon src="/images/vault/calendar.svg" class="size-5" />{{ period }}
           </li>
           <li v-if="folderNames.length" class="flex items-center gap-2.5">
-            <VaultIcon src="/images/vault/icons/FolderSolid.svg" class="size-5" />{{ inFolders(folderNames) }}
+            <VaultIcon src="/images/vault/icons/FolderClosedSolid.svg" class="size-5" />{{ inFolders(folderNames) }}
           </li>
           <li class="flex items-center gap-2.5">
             <VaultIcon src="/images/vault/icons/InformationCircle.svg" class="size-5" />

@@ -328,19 +328,19 @@ export const VAULT_REQUEST_RECIPIENTS = {
     title: 'School of opleiding',
     example: "Voor diploma's, cijfers en certificaten.",
     organisationLabel: 'School of opleiding',
-    icon: '/images/vault/icons/AcademicCapOutline.svg',
+    icon: '/images/vault/icons/AcademicCapSolid.svg',
   },
   employer: {
     title: 'Werkgever of stagebedrijf',
     example: 'Voor werkervaring en stages.',
     organisationLabel: 'Werkgever of stagebedrijf',
-    icon: '/images/vault/icons/BriefcaseOutline.svg',
+    icon: '/images/vault/icons/BriefcaseSolid.svg',
   },
   mentor: {
     title: 'Docent of begeleider',
     example: 'Voor projecten, feedback en vaardigheden.',
     organisationLabel: 'School of organisatie van je begeleider',
-    icon: '/images/vault/icons/UserGroupOutline.svg',
+    icon: '/images/vault/icons/UserGroupSolid.svg',
   },
 } as const;
 export const VAULT_SHARED_DESCRIPTION = 'Je omschrijving';

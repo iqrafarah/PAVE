@@ -145,7 +145,7 @@ function handleMenuChoice(id: string) {
           class="flex size-7 items-center justify-center rounded-lg text-brand hover:text-ink focus-visible:outline-2 focus-visible:outline-brand"
           @click="emit('togglePin')"
         >
-          <LayoutPaveIcon name="pin" class="size-3.5" />
+          <LayoutPaveIcon :name="conversation.pinnedAt ? 'pinFilled' : 'pin'" class="size-3.5" />
           <span class="sr-only">{{ conversation.pinnedAt ? AYLA_UNPIN : AYLA_PIN }}: {{ conversation.title }}</span>
         </button>
         <AylaRowMenu

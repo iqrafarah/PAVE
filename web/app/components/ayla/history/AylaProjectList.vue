@@ -10,6 +10,9 @@ const props = defineProps<{
   conversations: Conversation[];
   canPin: boolean;
   now: Date;
+  // 'pinned' lists only the pinned projects, without heading, to sit inside "Vastgezet"; 'rest' is the Projecten list
+  // with the others.
+  mode?: 'pinned' | 'rest';
 }>();
 
 const emit = defineEmits<{
@@ -71,10 +74,10 @@ async function startChat(projectId: string) {
   await projects.startChatIn(projectId);
 }
 
-async function saveSettings(name: string, instructions: string) {
+async function saveSettings(name: string, instructions: string, icon: string | null, color: string | null) {
   if (!editing.value) return;
   editError.value = null;
-  const { isFailed } = await projects.update(editing.value.id, { name, instructions });
+  const { isFailed } = await projects.update(editing.value.id, { name, instructions, ...(projects.state.value.canStyle ? { icon, color } : {}) });
   if (isFailed) editError.value = AYLA_PROJECT_FAILED;
   else editing.value = null;
 }
@@ -89,7 +92,14 @@ async function confirmDelete() {
 }
 
 const status = computed(() => projects.state.value.status);
-const isShown = computed(() => status.value === 'ready' || status.value === 'unavailable');
+const isPinnedMode = computed(() => props.mode === 'pinned');
+// A pinned project moves up to Vastgezet and comes back here when it is unpinned.
+const listedProjects = computed(() =>
+  projects.state.value.projects.filter((project) => (isPinnedMode.value ? Boolean(project.pinnedAt) : !project.pinnedAt)),
+);
+const isShown = computed(() =>
+  isPinnedMode.value ? listedProjects.value.length > 0 : status.value === 'ready' || status.value === 'unavailable',
+);
 const activeChatId = computed(() =>
   route.path.startsWith('/ayla/') ? String(route.params.id) : typeof route.query.chat === 'string' ? route.query.chat : null,
 );
@@ -118,9 +128,11 @@ const lockedChats = computed(() =>
     .sort((first, second) => second.updatedAt.localeCompare(first.updatedAt)),
 );
 
-function toggleLocked() {
+async function toggleLocked() {
   if (isUnlocked.value) {
-    isLockedOpen.value = !isLockedOpen.value;
+    isLockedOpen.value = true;
+    emit('open');
+    await navigateTo('/vergrendeld');
     return;
   }
   pinError.value = null;
@@ -135,6 +147,8 @@ async function checkPin(pin: string) {
   if (result === 'right') {
     isAskingPin.value = false;
     isLockedOpen.value = true;
+    emit('open');
+    await navigateTo('/vergrendeld');
   } else {
     pinError.value = { wrong: AYLA_PIN_WRONG, blocked: AYLA_PIN_BLOCKED, failed: AYLA_PINCODE_FAILED }[result];
   }
@@ -172,8 +186,13 @@ function isOpen(projectId: string) {
   return openIds.value.includes(projectId);
 }
 
-function toggleOpen(projectId: string) {
-  openIds.value = isOpen(projectId) ? openIds.value.filter((id) => id !== projectId) : [...openIds.value, projectId];
+// A click on the name opens the start page of the project, like ChatGPT, and opens its chats in the list too.
+async function openProject(projectId: string) {
+  // Clicking the project you are already on closes its chats again.
+  const isHere = route.path === `/project/${projectId}`;
+  openIds.value = isOpen(projectId) && isHere ? openIds.value.filter((id) => id !== projectId) : [...new Set([...openIds.value, projectId])];
+  emit('open');
+  await navigateTo(`/project/${projectId}`);
 }
 
 function chatsOf(projectId: string) {
@@ -198,14 +217,14 @@ function startCreating() {
   isCreating.value = true;
 }
 
-async function create(name: string, instructions: string) {
+async function create(name: string, instructions: string, icon: string | null, color: string | null) {
   error.value = null;
   if (status.value === 'unavailable') await projects.load();
   if (status.value === 'unavailable') {
     error.value = AYLA_PROJECTS_NOT_READY;
     return;
   }
-  const { project, isFailed } = await projects.create(name);
+  const { project, isFailed } = await projects.create(name, { icon, color });
   if (isFailed || !project) {
     error.value = AYLA_PROJECT_FAILED;
     return;
@@ -239,6 +258,7 @@ async function drop(event: DragEvent, project: { id: string; name: string }) {
 }
 
 onMounted(async () => {
+  if (isPinnedMode.value) return;
   await projects.load();
   await projects.loadMembership();
 });
@@ -246,8 +266,8 @@ onBeforeUnmount(() => clearTimeout(dropTimer));
 </script>
 
 <template>
-  <section v-if="isShown" :aria-labelledby="headingId">
-    <div class="group/heading flex h-6 items-center justify-between">
+  <component :is="isPinnedMode ? 'div' : 'section'" v-if="isShown" :aria-labelledby="isPinnedMode ? undefined : headingId">
+    <div v-if="!isPinnedMode" class="group/heading flex h-6 items-center justify-between">
       <h2 :id="headingId" class="text-xs font-medium text-subtle">
         <button
           type="button"
@@ -271,8 +291,8 @@ onBeforeUnmount(() => clearTimeout(dropTimer));
       </button>
     </div>
 
-    <ul v-show="!isCollapsed" :id="listId" class="mt-2 space-y-0.5">
-      <li v-for="project in projects.state.value.projects" :key="project.id">
+    <ul v-show="isPinnedMode || !isCollapsed" :id="listId" :class="isPinnedMode ? 'space-y-0.5' : 'mt-2 space-y-0.5'">
+      <li v-for="project in listedProjects" :key="project.id">
         <div
           class="group relative -mx-2 flex items-center rounded-md hover:bg-surface"
           :class="dropTargetId === project.id ? 'bg-tint outline-2 outline-brand' : ''"
@@ -284,9 +304,9 @@ onBeforeUnmount(() => clearTimeout(dropTimer));
             type="button"
             :aria-expanded="isOpen(project.id)"
             class="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1 text-left max-md:pr-18 focus-visible:outline-2 focus-visible:outline-brand"
-            @click="toggleOpen(project.id)"
+            @click="openProject(project.id)"
           >
-            <VaultIcon src="/images/vault/icons/FolderOutline.svg" class="size-4 shrink-0 text-brand" />
+            <VaultIcon :src="projectLook(project).iconSrc" :style="{ color: projectLook(project).hex ?? undefined }" class="size-4 shrink-0 text-brand" />
             <span class="min-w-0 flex-1 truncate text-sm font-medium text-heading">{{ project.name }}</span>
           </button>
           <!-- Like ChatGPT: on hover the ⋯ menu and a new chat in this project show over the end of the row, so
@@ -295,6 +315,17 @@ onBeforeUnmount(() => clearTimeout(dropTimer));
             :class="project.id === dropTargetId ? 'from-tint' : 'from-surface'"
             class="absolute inset-y-0 right-0 flex items-center rounded-r-md bg-linear-to-l from-70% to-transparent pl-5 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
           >
+            <button
+              v-if="projects.state.value.canPin"
+              type="button"
+              :aria-pressed="Boolean(project.pinnedAt)"
+              :title="project.pinnedAt ? AYLA_PROJECT_UNPIN : AYLA_PROJECT_PIN"
+              class="flex size-7 items-center justify-center rounded-lg text-brand hover:text-ink focus-visible:outline-2 focus-visible:outline-brand"
+              @click="handleMenuChoice(project, 'pin')"
+            >
+              <LayoutPaveIcon :name="project.pinnedAt ? 'pinFilled' : 'pin'" class="size-3.5" />
+              <span class="sr-only">{{ `${project.pinnedAt ? AYLA_PROJECT_UNPIN : AYLA_PROJECT_PIN}: ${project.name}` }}</span>
+            </button>
             <AylaRowMenu
               floats
               :items="menuItemsFor(project)"
@@ -329,7 +360,7 @@ onBeforeUnmount(() => clearTimeout(dropTimer));
           />
         </ul>
       </li>
-      <li v-if="hasLockedChats">
+      <li v-if="hasLockedChats && !isPinnedMode">
         <div class="group relative -mx-2 flex items-center rounded-md hover:bg-surface">
           <button
             type="button"
@@ -402,6 +433,7 @@ onBeforeUnmount(() => clearTimeout(dropTimer));
       :confirm-label="AYLA_PROJECT_CREATE"
       initial-name=""
       initial-instructions=""
+      :can-style="projects.state.value.canStyle"
       :error="error"
       @save="create"
       @close="isCreating = false"
@@ -412,6 +444,9 @@ onBeforeUnmount(() => clearTimeout(dropTimer));
       :confirm-label="AYLA_SAVE"
       :initial-name="editing.name"
       :initial-instructions="editing.instructions"
+      :initial-icon="editing.icon"
+      :initial-color="editing.color"
+      :can-style="projects.state.value.canStyle"
       :error="editError"
       @save="saveSettings"
       @close="editing = null"
@@ -439,5 +474,5 @@ onBeforeUnmount(() => clearTimeout(dropTimer));
       :confirm-label="AYLA_PIN_RESET_CONFIRM"
       @confirm="resetPin"
     />
-  </section>
+  </component>
 </template>

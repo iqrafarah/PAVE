@@ -6,6 +6,11 @@ const props = defineProps<{
   screen?: AylaScreen;
   // A new chat started here belongs to this project.
   projectId?: string;
+  // The start page of Vergrendelde chats: a new chat started here is locked.
+  isLocked?: boolean;
+  // The start page of a project or of Vergrendelde chats: the chatbox sits at the top, the chat list under it.
+  hasComposerOnTop?: boolean;
+  placeholder?: string;
 }>();
 
 interface ErrorAction {
@@ -32,7 +37,7 @@ const newChatProject = computed(() =>
 );
 // "Nieuwe vergrendelde chat": the chip says so, and the chat is locked as soon as it exists.
 const lock = useAylaChatLock();
-const isNewChatLocked = computed(() => !conversationId.value && lock.state.value.isNewChatLocked);
+const isNewChatLocked = computed(() => !conversationId.value && (props.isLocked || lock.state.value.isNewChatLocked));
 const chatProjectId = computed(() => props.projectId ?? newChatProject.value?.id);
 const { readDraft, saveDraft } = useAylaDraft();
 
@@ -456,11 +461,13 @@ defineExpose({ openFilePicker });
           ? [
               'pointer-events-none absolute inset-x-0 bottom-0 *:pointer-events-auto',
               // Over the vault, the chatbox always has a fade behind it (white, or the dark page), so the cards never show through.
-              'bg-linear-to-t from-white from-75% to-transparent pt-12',
+              'bg-linear-to-t from-white from-75% to-transparent pt-12 pb-4',
             ]
-          : 'relative'
+          : hasComposerOnTop
+            ? 'relative pb-4'
+            : 'relative pb-4'
       "
-      class="flex flex-col items-center px-4 pb-4"
+      class="flex flex-col items-center px-4"
     >
       <!-- Only while talking is on: Ayla's small orb, above her answer and the text field. -->
       <AylaVoiceDock v-if="voice.isActive.value" class="relative mb-3" />
@@ -500,15 +507,16 @@ defineExpose({ openFilePicker });
       />
 
       <AylaContextChip
-        v-if="newChatProject"
+        v-if="newChatProject && !hasComposerOnTop"
         class="relative mb-2.5"
         :title="newChatProject.name"
         :label="getProjectChipLabel(newChatProject.name)"
         icon="folder"
+        :look="projectLook(newChatProject)"
         @clear="projects.state.value.newChatProjectId = null"
       />
       <AylaContextChip
-        v-else-if="isNewChatLocked"
+        v-else-if="isNewChatLocked && !hasComposerOnTop"
         class="relative mb-2.5"
         :title="AYLA_LOCKED_CHATS"
         :label="AYLA_LOCKED_CHIP"
@@ -538,8 +546,10 @@ defineExpose({ openFilePicker });
         v-model:text="text"
         v-model:attachments="attachments"
         class="relative"
-        :variant="hasMessages || screen ? 'chat' : 'home'"
+        :variant="hasMessages || screen || hasComposerOnTop ? 'chat' : 'home'"
         :context-label="screen === 'vault' ? AYLA_VAULT_LABEL : undefined"
+        :placeholder="placeholder"
+        :is-plain="hasComposerOnTop"
         :is-writing="state.isWriting"
         :is-talking="voice.isActive.value"
         :is-muted="voice.session.value.isMuted"
@@ -552,7 +562,7 @@ defineExpose({ openFilePicker });
         @pick-item="pickerRef?.open()"
       />
       </Transition>
-      <p class="relative mt-2 text-center text-xs text-muted">{{ AYLA_DISCLAIMER }}</p>
+      <p v-if="!hasComposerOnTop" class="relative mt-2 text-center text-xs text-muted">{{ AYLA_DISCLAIMER }}</p>
     </div>
 
     <input

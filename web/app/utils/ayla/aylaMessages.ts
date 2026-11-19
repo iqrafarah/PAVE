@@ -337,11 +337,35 @@ export const AYLA_PIN_RESET_QUESTION = 'Pincode resetten?';
 export const AYLA_PIN_RESET_BODY = 'Al je vergrendelde chats worden verwijderd. Dit kan niet terug.';
 export const AYLA_PIN_RESET_CONFIRM = 'Resetten en verwijderen';
 
+// Accountpincode in Privacy: dezelfde pincode op al je apparaten, dus ook vanaf je laptop te wijzigen of te resetten.
+export const ACCOUNT_PIN_TITLE = 'Accountpincode';
+export const ACCOUNT_PIN_INTRO = 'Gebruik je accountpincode om je vergrendelde chats op al je apparaten te beveiligen.';
+export const ACCOUNT_PIN_NONE = 'Je hebt nog geen accountpincode. Die kies je zodra je een chat vergrendelt.';
+export const ACCOUNT_PIN_CHANGE_TITLE = 'Pincode wijzigen';
+export const ACCOUNT_PIN_CHANGE_BODY = 'Kies een nieuwe pincode voor je vergrendelde chats.';
+export const ACCOUNT_PIN_CHANGE_BUTTON = 'Wijzigen';
+export const ACCOUNT_PIN_RESET_TITLE = 'Pincode resetten';
+export const ACCOUNT_PIN_RESET_BODY = 'Reset je pincode alleen als je je huidige pincode bent vergeten. Je vergrendelde chats blijven bewaard.';
+export const ACCOUNT_PIN_RESET_BUTTON = 'Resetten';
+export const ACCOUNT_PIN_CURRENT_TITLE = 'Huidige pincode';
+export const ACCOUNT_PIN_CURRENT_BODY = 'Typ je huidige pincode om een nieuwe te kiezen.';
+export const ACCOUNT_PIN_NEW_TITLE = 'Kies een nieuwe pincode';
+export const ACCOUNT_PIN_NEW_BODY = 'Kies 4 nieuwe cijfers. Daarmee open je vanaf nu je vergrendelde chats.';
+export const ACCOUNT_PIN_CHANGED = 'Je pincode is gewijzigd.';
+export const ACCOUNT_PIN_WAS_RESET = 'Je pincode is gereset. Je vergrendelde chats zijn bewaard.';
+export const ACCOUNT_PIN_DELETED = 'Je pincode en je vergrendelde chats zijn verwijderd.';
+export const ACCOUNT_PIN_VERIFY_TITLE = 'Bevestig dat jij het bent';
+export const ACCOUNT_PIN_VERIFY_BODY = 'Typ de code uit je authenticator-app. Daarna kies je een nieuwe pincode. Je vergrendelde chats blijven bewaard.';
+export const ACCOUNT_PIN_CODE_LABEL = 'Code uit je authenticator-app';
+export const ACCOUNT_PIN_DELETE_ALL = 'Of verwijder alles en begin opnieuw';
+export const ACCOUNT_PIN_DELETE_BODY = 'Je pincode wordt gewist en al je vergrendelde chats worden definitief verwijderd. Dit kan niet ongedaan worden gemaakt.';
+
 // Menu's van projecten en chats, en verplaatsen naar een project.
 export const AYLA_RECENT = 'Recent';
 export const AYLA_PROJECT_SETTINGS = 'Projectinstellingen';
 export const AYLA_PROJECT_PIN = 'Vastzetten';
 export const AYLA_PROJECT_UNPIN = 'Losmaken';
+export const AYLA_PROJECT_PINNED = 'Vastgezet';
 export const AYLA_MOVE_TO_PROJECT = 'Naar project verplaatsen';
 export const AYLA_MOVE_TITLE = 'Verplaatsen naar project';
 export const AYLA_MOVE_NO_PROJECT = 'Geen project';
@@ -349,6 +373,7 @@ export const AYLA_MOVE_NO_PROJECT_HINT = 'Haal de chat uit zijn project';
 export const AYLA_MOVE_EMPTY = 'Je hebt nog geen projecten. Maak er een met de + bij Projecten.';
 export const AYLA_REMOVE_FROM_PROJECT = 'Uit project halen';
 export const AYLA_REMOVED_FROM_PROJECT = 'Chat uit het project gehaald';
+export const AYLA_PROJECT_EMPTY = 'Nog geen chats. Chats in dit project verschijnen hier.';
 export const AYLA_PROJECT_NEW_CHAT = 'Nieuwe chat in project';
 export function getProjectChipLabel(name: string) {
   return `Nieuwe chat in ${name}`;
@@ -359,3 +384,23 @@ export const AYLA_MOVE_NOTHING_FOUND = 'Geen project gevonden.';
 export function AYLA_MOVE_CREATE(name: string) {
   return `Nieuw project “${name}”`;
 }
+
+// Bronnen of a project: vault items that belong to it, used by Ayla in every chat of the project.
+export const AYLA_PROJECT_TAB_CHATS = 'Chats';
+export const AYLA_PROJECT_SOURCES = 'Bronnen';
+export const AYLA_SOURCES_ADD = 'Bronnen toevoegen';
+export const AYLA_SOURCES_EMPTY_TITLE = 'Geef Ayla meer context';
+export const AYLA_SOURCES_SORT_NEWEST = 'Nieuwste';
+export const AYLA_SOURCES_SORT_OLDEST = 'Oudste';
+export const AYLA_SOURCES_SORT_NAME = 'Naam';
+export const AYLA_SOURCES_FILTER_ALL = 'Alles';
+export const AYLA_SOURCES_SORT_LABEL = 'Sorteren';
+export const AYLA_SOURCES_FILTER_LABEL = 'Filteren';
+export const AYLA_SOURCES_UPLOAD = 'Bestand uploaden';
+export const AYLA_SOURCES_FROM_VAULT = 'Uit kluis halen';
+export const AYLA_SOURCES_REMOVE = 'Verwijderen uit project';
+export const AYLA_SOURCES_EMPTY = 'Voeg bronnen toe om Ayla meer context over je project te geven. Ayla gebruikt ze in alle chats van dit project.';
+export const AYLA_SOURCES_NO_MATCH = 'Geen bronnen met dit filter.';
+export const AYLA_SOURCES_LOADING = 'Bronnen laden…';
+export const AYLA_SOURCES_FAILED = 'Dit is niet gelukt. Probeer het opnieuw.';
+export const AYLA_SOURCES_ALLOW_FAILED = 'De bron is toegevoegd, maar Ayla mag hem nog niet gebruiken. Zet "Ayla mag dit bekijken en gebruiken" aan bij het item.';

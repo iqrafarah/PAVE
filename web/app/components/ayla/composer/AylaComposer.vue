@@ -13,6 +13,10 @@ const props = defineProps<{
   isMuted?: boolean;
   // Shown above the field when the chat sits on a screen, such as "Kluis" (Figma 1209:55066).
   contextLabel?: string;
+  // Replaces "Vraag het aan Ayla", such as "Nieuwe chat in Project" on the start page of a project.
+  placeholder?: string;
+  // No strip above the field (and no empty room for it): the tray is a plain bar.
+  isPlain?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -156,7 +160,7 @@ defineExpose({ openFilePicker, focus });
       aria-hidden="true"
       @change="handleFileChange"
     />
-    <label for="ayla-question" class="sr-only">{{ AYLA_PLACEHOLDER }}</label>
+    <label for="ayla-question" class="sr-only">{{ placeholder ?? AYLA_PLACEHOLDER }}</label>
 
     <!-- While dictating the bar takes the place of the text field, as on the iPhone. -->
     <AylaDictationBar
@@ -180,7 +184,7 @@ defineExpose({ openFilePicker, focus });
             v-model="text"
             rows="2"
             :maxlength="MAX_TEXT_LENGTH"
-            :placeholder="AYLA_PLACEHOLDER"
+            :placeholder="placeholder ?? AYLA_PLACEHOLDER"
             aria-describedby="ayla-composer-notice"
             class="h-10 flex-1 resize-none overflow-y-auto bg-transparent text-xs font-semibold text-heading placeholder:text-subtle/40 focus:outline-none"
             @keydown="handleKeydown"
@@ -214,7 +218,7 @@ defineExpose({ openFilePicker, focus });
 
     <!-- Figma Kluis doorzoeken: one-line white field (591 x 53) in the tray. -->
     <AylaTray v-else>
-      <template #strip>
+      <template v-if="!isPlain || attachments.length" #strip>
         <span v-if="contextLabel && !attachments.length" class="flex items-center gap-1.75 font-heading text-xs font-semibold text-heading">
           <VaultIcon src="/images/ayla/pill-vault.svg" :width="20.3122" :height="18" class="text-brand" />
           {{ contextLabel }}
@@ -236,7 +240,7 @@ defineExpose({ openFilePicker, focus });
           v-model="text"
           rows="1"
           :maxlength="MAX_TEXT_LENGTH"
-          :placeholder="AYLA_PLACEHOLDER"
+          :placeholder="placeholder ?? AYLA_PLACEHOLDER"
           aria-describedby="ayla-composer-notice"
           class="h-7 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent py-1 text-sm font-medium text-heading placeholder:text-subtle/40 focus:outline-none"
           @keydown="handleKeydown"
