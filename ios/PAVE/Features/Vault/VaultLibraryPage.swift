@@ -49,6 +49,8 @@ struct VaultLibraryPage: View {
     @State private var rowPosition = ScrollPosition()
     @State private var rowScroller: Task<Void, Never>?
     private static let tileSpacing: CGFloat = 9
+    /// The row shows this many folders; with more, it ends with "Alle mappen" (as on the web).
+    private static let rowLimit = 5
     private static let scrollEdge: CGFloat = 56
     @Namespace private var dragSpace
 
@@ -232,10 +234,14 @@ struct VaultLibraryPage: View {
     private var shelves: some View {
         ScrollView(.horizontal) {
             HStack(spacing: Self.tileSpacing) {
-                ForEach(shownFolders) { folder in
+                ForEach(shownFolders.prefix(Self.rowLimit)) { folder in
                     shelf(folder)
                 }
+                if model.folders.count > Self.rowLimit {
+                    VaultAllFoldersTile(count: model.folders.count, action: actions.openAllFolders)
+                }
             }
+            .fixedSize(horizontal: false, vertical: true)
             .padding(.vertical, 2)
             .vaultDragContainer(in: dragSpace, onStart: startDrag, onActive: { isDragging = true }, onEnd: endDrag)
             // While a folder is dragged, a still layer over the row measures where the finger is.
@@ -278,7 +284,7 @@ struct VaultLibraryPage: View {
         guard case .folder(let id) = drag, let fingerX, var order = liveOrder, let from = order.firstIndex(of: id) else { return }
         let slotWidth = VaultFolderTile.width + Self.tileSpacing
         let x = fingerX
-        let slot = min(max(Int(x / slotWidth), 0), order.count - 1)
+        let slot = min(max(Int(x / slotWidth), 0), min(order.count, Self.rowLimit) - 1)
         let inSlot = x - CGFloat(slot) * slotWidth
         let pastMiddle = slot > from ? inSlot > VaultFolderTile.width / 2 : inSlot < VaultFolderTile.width / 2
         guard slot != from, pastMiddle else { return }
@@ -294,7 +300,7 @@ struct VaultLibraryPage: View {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(16))
                 guard case .folder = drag, let visibleX = fingerVisibleX, rowWidth > 0 else { continue }
-                let contentWidth = CGFloat(shownFolders.count) * (VaultFolderTile.width + Self.tileSpacing) - Self.tileSpacing
+                let contentWidth = CGFloat(min(shownFolders.count, Self.rowLimit)) * (VaultFolderTile.width + Self.tileSpacing) - Self.tileSpacing
                 let step: CGFloat = visibleX < Self.scrollEdge ? -6 : visibleX > rowWidth - Self.scrollEdge ? 6 : 0
                 guard step != 0 else { continue }
                 let next = min(max(rowOffset + step, 0), max(contentWidth - rowWidth, 0))
@@ -334,6 +340,8 @@ struct VaultLibraryPage: View {
             icon: style.icon.image,
             color: style.color.color,
             surface: style.color.surface,
+            iconColor: style.color.foreground,
+            isPinned: folder.isPinned,
             count: model.count(in: .folder(folder.id)),
             isSelected: false,
             isDropTarget: dropTarget == folder.id,
@@ -346,6 +354,9 @@ struct VaultLibraryPage: View {
             // The spot the dragged folder will take stays visible but faint, as on the Home Screen.
             .opacity(isDragging && drag == .folder(folder.id) ? 0.35 : 1)
             .contextMenu {
+                Button(folder.isPinned ? VaultMessages.unpinFolder : VaultMessages.pinFolder, systemImage: folder.isPinned ? "pin.slash" : "pin") {
+                    Task { await model.setPinned(!folder.isPinned, folder: folder) }
+                }
                 Button { actions.editFolder(folder) } label: {
                     Label { Text("Map aanpassen") } icon: { Image(.iconPencil) }
                 }

@@ -183,8 +183,18 @@ struct SupabaseVaultServiceTests {
             .deletingLastPathComponent().deletingLastPathComponent()
             .appending(path: "shared/supabase/migrations/20261110170000_vault_cleanup_and_evidence_flow.sql")
         let sql = try String(contentsOf: migration, encoding: .utf8)
-        for color in VaultFolderColor.allCases { #expect(sql.contains("'\(color.rawValue)'")) }
         for icon in VaultFolderIcon.allCases { #expect(sql.contains("'\(icon.rawValue)'")) }
+        let colors = try String(contentsOf: migration.deletingLastPathComponent().appending(path: "20261119120000_vault_folder_custom_color_and_pin.sql"), encoding: .utf8)
+        for color in VaultFolderColor.named { #expect(colors.contains("'\(color.rawValue)'")) }
+    }
+
+    @Test func folderColorsReadNamesAndOwnColours() {
+        #expect(VaultFolderColor(rawValue: "lime") == .lime)
+        #expect(VaultFolderColor(rawValue: "#C2410C") == .custom(0xC2410C))
+        #expect(VaultFolderColor.custom(0xC2410C).rawValue == "#c2410c")
+        #expect(VaultFolderColor(rawValue: "#c2410") == nil)
+        #expect(VaultFolderColor(rawValue: "teal") == nil)
+        #expect(!VaultFolderColor.presets.contains(.slate))
     }
 
     @Test func aylaCategoriesMapToVaultCategories() {

@@ -68,7 +68,7 @@ struct VaultLibraryCard: View {
                 .frame(height: 48)
                 .clipped()
                 .overlay(alignment: .bottomLeading) {
-                    VaultLogoAvatar(look: logoLook, name: item.organisationName ?? item.title, size: 44)
+                    VaultLogoAvatar(look: logoLook, name: item.organisationName ?? item.title, fileName: item.firstDocumentName, size: 44)
                         .padding(.leading, 12)
                         .offset(y: 22)
                 }
@@ -95,7 +95,7 @@ struct VaultLibraryCard: View {
 
     private var listCard: some View {
         HStack(alignment: .center, spacing: 14) {
-            VaultLogoAvatar(look: logoLook, name: item.organisationName ?? item.title, size: 64)
+            VaultLogoAvatar(look: logoLook, name: item.organisationName ?? item.title, fileName: item.firstDocumentName, size: 64)
             VStack(alignment: .leading, spacing: 7) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(item.title)

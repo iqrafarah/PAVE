@@ -8,6 +8,7 @@ struct VaultFileTile: View {
     @State private var previewURL: URL?
     @State private var isOpening = false
     @State private var failed = false
+    @State private var download: VaultDownload?
 
     var body: some View {
         Button(action: open) {
@@ -33,8 +34,27 @@ struct VaultFileTile: View {
         .buttonStyle(.pave)
         .disabled(isOpening)
         .vaultQuickLook($previewURL)
+        .contextMenu {
+            Button(VaultMessages.download, systemImage: "arrow.down.circle") { startDownload() }
+        }
+        .sheet(item: $download) { VaultShareSheet(urls: $0.urls).presentationDetents([.medium, .large]) }
+        .accessibilityAction(named: VaultMessages.downloadFile(file.name)) { startDownload() }
         .accessibilityLabel(file.name)
         .accessibilityHint(failed ? "Openen lukte niet. Tik om het opnieuw te proberen." : "Tik om te openen")
+    }
+
+    private func startDownload() {
+        isOpening = true
+        Task {
+            defer { isOpening = false }
+            guard let ready = await model.download([file]) else {
+                failed = true
+                PaveHaptics.error()
+                AccessibilityNotification.Announcement(VaultMessages.downloadFailed).post()
+                return
+            }
+            download = ready
+        }
     }
 
     private func open() {

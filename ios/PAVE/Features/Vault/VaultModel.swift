@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import SwiftUI
 import PAVECore
 
 /// Your vault as the app shows it. Everything comes from and goes to Supabase; there is nothing stored on the phone.
@@ -119,12 +120,25 @@ final class VaultModel {
                 result.items[index].position = itemOrder.firstIndex(of: result.items[index].id)
             }
         }
-        guard let order = localStyles.stringArray(forKey: Self.localOrderKey) else { return result }
-        let place = { (folder: VaultFolder) in order.firstIndex(of: folder.id) ?? Int.max }
-        result.folders = result.folders.enumerated()
-            .sorted { (place($0.element), $0.offset) < (place($1.element), $1.offset) }
-            .map(\.element)
+        if let order = localStyles.stringArray(forKey: Self.localOrderKey) {
+            let place = { (folder: VaultFolder) in order.firstIndex(of: folder.id) ?? Int.max }
+            result.folders = result.folders.enumerated()
+                .sorted { (place($0.element), $0.offset) < (place($1.element), $1.offset) }
+                .map(\.element)
+        }
+        // Pinned folders first, each group in its own order, as on the web.
+        result.folders = result.folders.filter(\.isPinned) + result.folders.filter { !$0.isPinned }
         return result
+    }
+
+    /// "Vastzetten": the folder moves to the front at once; the server keeps it there on every device.
+    func setPinned(_ pinned: Bool, folder: VaultFolder) async {
+        guard let index = contents.folders.firstIndex(where: { $0.id == folder.id }) else { return }
+        contents.folders[index].pinnedAt = pinned ? .now : nil
+        contents = ordered(contents)
+        if await perform({ try await $0.setFolderPinned(pinned, folderID: folder.id) }) {
+            AccessibilityNotification.Announcement(pinned ? VaultMessages.folderPinned(folder.name) : VaultMessages.folderUnpinned(folder.name)).post()
+        }
     }
 
     // MARK: Moving

@@ -12,6 +12,7 @@ extension VaultAddEvidenceModel {
         let draft = proposal?.partialDraft
         let flow = VaultAddEvidenceModel(vault: vault, category: draft?.category ?? .projects, folderID: nil)
         if let draft {
+            flow.draft.filledByAyla = true
             flow.draft.title = draft.title
             flow.draft.organisationName = draft.organisationName
             flow.draft.organisationLocation = draft.organisationLocation

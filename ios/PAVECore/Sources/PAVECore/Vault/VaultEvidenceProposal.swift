@@ -134,6 +134,7 @@ public struct VaultEvidenceProposal: Equatable, Sendable, Decodable {
     /// The draft with what Ayla found; the folders stay as they are, and what she did not find stays empty.
     public func applied(to draft: VaultItemDraft) -> VaultItemDraft {
         var result = draft
+        result.filledByAyla = true
         result.category = category
         result.title = String(title.prefix(VaultItemDraft.maximumTitleLength))
         result.organisationName = organisationName ?? ""
