@@ -701,13 +701,14 @@ struct AylaChatList: View {
         }
         let pinnedTitle = "Vastgezet"
 
-        enum Target { case pinned, project(AylaProject), plain, nothing }
+        enum Target { case pinned, project(AylaProject), locked, plain, nothing }
         let target: Target = switch under {
         case .header(let title) where title == pinnedTitle: .pinned
         case .chat(let conversation) where conversation.isPinned: .pinned
         case .project(let project): .project(project)
         case .projectChat(let conversation): list.project(of: conversation).map(Target.project) ?? .plain
-        case .projectsHeader, .locked, nil: .nothing
+        case .locked: list.canLock ? .locked : .nothing
+        case .projectsHeader, nil: .nothing
         default: .plain
         }
 
@@ -724,6 +725,10 @@ struct AylaChatList: View {
             guard chat.isPinned || chat.projectID != nil else { return false }
             if chat.isPinned, list.canPin { pin([chat]) }
             if chat.projectID != nil { actions.projects?.move(chat, nil) }
+        case .locked:
+            // The same question as from the menu, and a PIN first when there is none yet.
+            lockTarget = chat
+            return true
         case .nothing:
             return false
         }

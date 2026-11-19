@@ -203,10 +203,10 @@ struct AylaChatScreen: View {
             photoItems = []
             Task { await addPhotos(items) }
         }
-        // Asked to open a page: after a moment, so her answer ("Ik open je kluis") can be read first.
+        // Asked to open a page: at once when you asked for it, a moment after her answer when she points to it.
         .task(id: model.screenRequest?.id) {
             guard let request = model.screenRequest else { return }
-            try? await Task.sleep(for: .milliseconds(800))
+            if model.isAnswering == false { try? await Task.sleep(for: .milliseconds(600)) }
             guard !Task.isCancelled else { return }
             openPage(request.navigation)
         }
@@ -237,6 +237,13 @@ struct AylaChatScreen: View {
                             .padding(.bottom, 24)
                     }
                     .background(Color.white.ignoresSafeArea(edges: .bottom))
+                }
+            }
+            // Keep talking with Ayla while the page is open: her answer shows in the chat above the panel.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                AylaShelfComposer(text: $model.draft, place: shelf.title, isAnswering: model.isAnswering) {
+                    vaultDetent = .fraction(0.62)
+                    send()
                 }
             }
             .presentationDetents([.fraction(0.62), .large], selection: $vaultDetent)

@@ -285,6 +285,10 @@ final class AylaChatModel {
         }
         lastQuestion = text
         lastFiles = files
+        // "Open instellingen": the page opens at once, while Ayla answers, as on the web.
+        if let screen = AylaScreenRequest.screen(askedIn: text) {
+            screenRequest = ScreenRequest(id: UUID().uuidString, navigation: AylaReply.Navigation(screen: screen))
+        }
         lastUploads = uploads
         sentUploads += files.compactMap { uploads[$0.name] }.filter { upload in !sentUploads.contains(upload) }
         uploads = [:]
@@ -334,7 +338,9 @@ final class AylaChatModel {
                     }
                     phase = .idle
                     analyzeEvidenceIfNeeded(for: reply)
-                    if let navigation = AylaScreenRequest.screenToOpen(after: reply, asked: turn.text) {
+                    // What she points to herself; a page asked for in so many words is already open.
+                    if AylaScreenRequest.screen(askedIn: turn.text) == nil,
+                       let navigation = AylaScreenRequest.screenToOpen(after: reply, asked: turn.text) {
                         screenRequest = ScreenRequest(id: reply.id, navigation: navigation)
                     }
                 }
