@@ -9,9 +9,18 @@ final class PaveThemeStore {
     static let shared = PaveThemeStore()
     var theme = PaveAppearance.theme
     var customColor = PaveAppearance.customColor
+    /// While signing in or making an account: the controls take eduID's blue, as on the web (AuthEduidCard). The
+    /// logo and the background around them stay PAVE.
+    var usesEduID = false
+    static let eduIDBlue: UInt32 = 0x0077C8
 
     /// The accent as a colour value, or nil for PAVE green, which uses its own colour tokens.
     var accent: UInt32? {
+        usesEduID ? Self.eduIDBlue : themeAccent
+    }
+
+    /// The theme colour itself, also while eduID's blue is in use.
+    var themeAccent: UInt32? {
         switch theme {
         case .green: nil
         case .custom: customColor.map(PaveThemeColor.readableAccent(for:))
@@ -25,6 +34,14 @@ extension Color {
     /// widgets keep PAVE green. In dark mode a livelier shade that still carries white text (web darkThemeColours).
     static var paveAccent: Color {
         let accent = PaveThemeStore.shared.accent
+        let light = accent.map { UIColor(hex: $0) } ?? UIColor(resource: .brandGreen)
+        let dark = PaveDarkColors.fill(for: accent ?? PaveDarkColors.green)
+        return Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? dark : light })
+    }
+
+    /// The theme colour of PAVE, also on the eduID screens: for the logo and the background around the card.
+    static var paveThemeAccent: Color {
+        let accent = PaveThemeStore.shared.themeAccent
         let light = accent.map { UIColor(hex: $0) } ?? UIColor(resource: .brandGreen)
         let dark = PaveDarkColors.fill(for: accent ?? PaveDarkColors.green)
         return Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? dark : light })

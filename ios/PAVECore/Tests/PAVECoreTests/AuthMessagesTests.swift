@@ -57,6 +57,8 @@ struct AuthMessagesTests {
             "PASSWORD_RULES_ALL_MET_MESSAGE": AuthMessages.passwordRulesAllMet,
             "PASSWORDS_MATCH_MESSAGE": AuthMessages.passwordsMatch,
             "PASSWORDS_NOT_EQUAL_MESSAGE": AuthMessages.passwordsNotEqual,
+            "INVALID_EMAIL_MESSAGE": AuthMessages.invalidEmail,
+            "EMAIL_ALREADY_REGISTERED_MESSAGE": AuthMessages.emailAlreadyRegistered,
         ]
         for (name, text) in ios {
             #expect(web[name] == text, "\(name) differs from the web")

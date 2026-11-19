@@ -18,7 +18,7 @@ struct SignInView: View {
     var body: some View {
         AuthScreen {
             AuthIntro(
-                title: "Welkom bij PAVE",
+                title: "Inloggen met eduID",
                 message: AuthMessages.loginInstruction
             )
         } content: {
@@ -97,9 +97,26 @@ struct SignInView: View {
     }
 
     private var supportLine: some View {
-        Text(SupportText.sentence("Heb je geen account of lukt inloggen niet? Mail naar "))
-            .textStyle(.footnote)
-            .foregroundStyle(Color.inkMuted)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 4) {
+                Text("Nog geen eduID?")
+                    .textStyle(.footnote)
+                    .foregroundStyle(Color.inkMuted)
+                Button(action: flow.showRegister) {
+                    Text("Account aanmaken")
+                        .textStyle(.link)
+                        .underline()
+                        .foregroundStyle(Color.paveAccent)
+                        .frame(minHeight: 44)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.pave)
+                .disabled(isSubmitting)
+            }
+            Text(SupportText.sentence("Lukt inloggen niet? Mail naar "))
+                .textStyle(.footnote)
+                .foregroundStyle(Color.inkMuted)
+        }
     }
 
     private func submit() {

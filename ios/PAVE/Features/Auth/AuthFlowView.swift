@@ -14,6 +14,9 @@ struct AuthFlowView: View {
                 .navigationDestination(for: AuthRoute.self, destination: screen)
         }
         .environment(flow)
+        // Signing in goes with eduID: its blue on the controls, as on the web.
+        .onAppear { PaveThemeStore.shared.usesEduID = true }
+        .onDisappear { PaveThemeStore.shared.usesEduID = false }
     }
 
     @ViewBuilder
@@ -35,6 +38,10 @@ struct AuthFlowView: View {
             NewPasswordView()
         case .passwordResetComplete:
             PasswordResetCompleteView()
+        case .register:
+            RegisterView()
+        case .registerCode(let email):
+            RegisterCodeView(email: email)
         }
     }
 }

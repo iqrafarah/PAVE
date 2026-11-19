@@ -36,6 +36,7 @@ struct AuthScreen<Intro: View, Content: View>: View {
 
     private var stacked: some View {
         VStack(alignment: .leading, spacing: 24) {
+            AuthEduIDMark()
             intro
             content
         }
@@ -76,7 +77,7 @@ struct AuthScreen<Intro: View, Content: View>: View {
                 .frame(maxWidth: 520)
                 .fixedSize(horizontal: false, vertical: true)
                 .background(Color.panel, in: .rect(cornerRadius: 28))
-                .shadow(color: Color.paveAccent.opacity(0.08), radius: 32, y: 12)
+                .shadow(color: Color.paveThemeAccent.opacity(0.08), radius: 32, y: 12)
                 .padding(.horizontal, 32)
                 Spacer(minLength: 24)
                 AuthFooter()
@@ -94,6 +95,8 @@ struct AuthScreen<Intro: View, Content: View>: View {
                     AuthLogo()
                         .padding(.top, 8)
                     Spacer(minLength: 24)
+                    AuthEduIDMark()
+                        .padding(.bottom, 20)
                     intro
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 24)
@@ -131,8 +134,22 @@ struct AuthLogo: View {
             .resizable()
             .scaledToFit()
             .frame(width: width)
-            .foregroundStyle(Color.paveAccent)
+            .foregroundStyle(Color.paveThemeAccent)
             .accessibilityLabel("PAVE")
+    }
+}
+
+/// The eduID logo above the sign-in steps (web AuthEduidCard): you sign in to PAVE with your eduID.
+struct AuthEduIDMark: View {
+    var body: some View {
+        // Only in the sign-in flow; the PIN and "Je bent uitgelogd" screens are PAVE's own.
+        if PaveThemeStore.shared.usesEduID {
+            Image(.eduIDLogo)
+                .resizable()
+                .scaledToFit()
+                .frame(height: 32)
+                .accessibilityLabel("eduID")
+        }
     }
 }
 
@@ -158,7 +175,7 @@ struct AuthTopAtmosphere: View {
             Color.canvas
             LinearGradient(
                 stops: [
-                    .init(color: .paveAccent, location: 0),
+                    .init(color: .paveThemeAccent, location: 0),
                     .init(color: .canvas, location: 0.6),
                     .init(color: .canvas, location: 1),
                 ],
@@ -176,10 +193,10 @@ struct PaveCornerGradient: View {
     var body: some View {
         LinearGradient(
             stops: [
-                .init(color: .paveAccent, location: 0),
+                .init(color: .paveThemeAccent, location: 0),
                 .init(color: .canvas, location: 0.25),
                 .init(color: .canvas, location: 0.74),
-                .init(color: .paveAccent, location: 1),
+                .init(color: .paveThemeAccent, location: 1),
             ],
             startPoint: .topTrailing,
             endPoint: .bottomLeading
