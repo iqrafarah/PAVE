@@ -184,3 +184,46 @@ struct AylaScreenRequestTests {
         #expect(AylaScreenRequest.screen(askedIn: "Kun je een plan voor me maken waarin ik open en eerlijk leer communiceren met collega's op mijn stage?") == nil)
     }
 }
+
+struct AylaAppCommandTests {
+    private let folders = [AylaAppCommand.Named(id: "f1", name: "Stages"), .init(id: "f2", name: "Diploma’s")]
+    private let items = [AylaAppCommand.Named(id: "i1", name: "Eindstage bij Philips"), .init(id: "i2", name: "Scrum-certificaat")]
+
+    private func command(_ text: String) -> AylaAppCommand? {
+        AylaAppCommand.command(in: text, folders: folders, items: items)
+    }
+
+    @Test func changesTheAppearance() {
+        #expect(command("Zet het thema op blauw") == .theme(.blue))
+        #expect(command("Maak het paars") == .theme(.purple))
+        #expect(command("Kleuren thema groen") == .theme(.green))
+        #expect(command("Roze") == .theme(.pink))
+        #expect(command("Maak de tekst groter") == .textSize(.large))
+        #expect(command("Tekstgrootte standaard") == .textSize(.standard))
+        #expect(command("Toon mijn kluis als lijst") == .vaultLayout(.list))
+        #expect(command("Zet tekst bij praten uit") == .voiceText(false))
+        #expect(command("Maak mijn chats vindbaar, aan") == .chatsInSearch(true))
+    }
+
+    @Test func goesSomewhere() {
+        #expect(command("Open weergave") == .settingsPage(.appearance))
+        #expect(command("Privacy") == .settingsPage(.privacy))
+        #expect(command("Ga naar ingelogde apparaten") == .settingsPage(.devices))
+        #expect(command("Open de map stages") == .vaultFolder(id: "f1"))
+        #expect(command("Open diploma's") == .vaultFolder(id: "f2"))
+        #expect(command("Laat eindstage bij philips zien") == .vaultItem(id: "i1"))
+        #expect(command("Selecteer scrum-certificaat") == .vaultItem(id: "i2"))
+        #expect(command("Ga terug") == .back)
+        #expect(command("Sluit maar") == .close)
+    }
+
+    @Test func aQuestionStillGoesToAyla() {
+        #expect(command("Welke kleur heeft mijn thema?") == nil)
+        #expect(command("Waarom is mijn kluis groen?") == nil)
+        #expect(command("Ik vind blauw een mooie kleur voor een logo, wat vind jij?") == nil)
+        #expect(command("Wat staat er in mijn stages?") == nil)
+        #expect(command("Kun je me helpen met mijn eindstage bij Philips beschrijven?") == nil)
+        #expect(command("Hoe was mijn dag") == nil)
+        #expect(command("Maak een cv met een blauwe kop") == nil)
+    }
+}

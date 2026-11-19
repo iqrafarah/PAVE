@@ -17,6 +17,7 @@ struct AylaChatScreen: View {
     @Environment(\.hidesScreenButtons) private var hidesScreenButtons
     @Environment(VaultModel.self) private var vault: VaultModel?
     @Environment(AppState.self) private var appState
+    @Environment(ProfileModel.self) private var profile: ProfileModel?
     /// Adding evidence after Ja to Ayla's "Wil je iets toevoegen?", filled with what she proposed.
     @State private var addEvidence: VaultAddEvidenceModel?
     @State private var dictation = SpeechDictation()
@@ -96,6 +97,9 @@ struct AylaChatScreen: View {
     @State private var afterShelf: (() -> Void)?
     /// Ayla's answer shows on top of the page that is open, until it is tapped or dragged away.
     @State private var showsShelfReply = false
+    /// What Ayla says after doing something in the app herself; it is not part of the conversation.
+    @State private var localReply: String?
+    @State private var pageDriver = AylaPageDriver()
     /// The wave of blocks after something went into the vault, and the save that is busy after a yes in words.
     @State private var waveStartedAt: Date?
     @State private var isSavingForUser = false
@@ -244,6 +248,7 @@ struct AylaChatScreen: View {
                     .background(Color.white.ignoresSafeArea(edges: .bottom))
                 }
             }
+            .environment(pageDriver)
             // Keep talking with Ayla while the page is open: her answer shows on top of the page.
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 AylaShelfComposer(text: $model.draft, place: shelf.title, isAnswering: model.isAnswering) {
@@ -295,6 +300,7 @@ struct AylaChatScreen: View {
                     .paveSheet(background: .white)
             }
         }
+        .onAppear { model.appCommand = { runAppCommand($0) } }
         .task {
             guard let vault else { return }
             model.analyzeEvidence = { uploads in
@@ -1471,6 +1477,7 @@ struct AylaChatScreen: View {
             return
         }
         guard connection.isOnline, !isSavingForUser else { return }
+        localReply = nil
         dictation.stop()
         isComposerFocused = false
         let message = text ?? model.draft
@@ -1831,14 +1838,85 @@ struct AylaChatScreen: View {
 
     /// What the card on top of an open page says: nothing yet while Ayla thinks, then her answer as it comes in.
     private var shelfReply: (text: String?, choices: [String])? {
+        if let localReply { return (localReply, []) }
         if model.phase == .thinking { return (nil, []) }
         guard let last = model.entries.last, last.role == .ayla else { return nil }
         let choices = model.isAnswering ? [] : (model.question(for: last)?.choices.map(\.label) ?? [])
         return (last.text, choices)
     }
 
+    /// "Zet het thema op blauw", "open de map Stages", "ga terug": Ayla does it in the app, where you can see it.
+    /// Returns what she says, or nil when the words are not something to do here.
+    private func runAppCommand(_ text: String) -> String? {
+        guard addEvidence == nil, !isSavingForUser else { return nil }
+        let folders = vault?.folders.map { AylaAppCommand.Named(id: $0.id, name: $0.name) } ?? []
+        let items = vault?.items.map { AylaAppCommand.Named(id: $0.id, name: $0.title) } ?? []
+        guard let command = AylaAppCommand.command(in: text, folders: folders, items: items) else { return nil }
+        if command == .back || command == .close, shelf == nil { return nil }
+        if case .theme = command, profile == nil { return nil }
+        if case .textSize = command, profile == nil { return nil }
+        if case .vaultLayout = command, profile == nil { return nil }
+        dictation.stop()
+        isComposerFocused = false
+        let said = perform(command)
+        localReply = command.changesSomething ? said : nil
+        showsShelfReply = command.changesSomething
+        return said
+    }
+
+    private func perform(_ command: AylaAppCommand) -> String {
+        switch command {
+        case .settingsPage(let page):
+            let destination = SettingsScreen.SettingsDestination(rawValue: page.rawValue) ?? .appearance
+            inSettings(destination) {}
+            return "Ik open \(destination.title)."
+        case .theme(let theme):
+            inSettings(.appearance) { await profile?.setTheme(theme) }
+            return "Je thema is nu \(SettingsMessages.title(theme).lowercased())."
+        case .textSize(let size):
+            inSettings(.appearance) { await profile?.setTextSize(size) }
+            return "Je tekst staat nu op \(SettingsMessages.title(size).lowercased())."
+        case .vaultLayout(let layout):
+            inSettings(.appearance) { await profile?.setVaultLayout(layout) }
+            return "Je kluis opent nu als \(layout == .list ? "lijst" : "raster")."
+        case .voiceText(let isOn):
+            inSettings(.ayla) { showsVoiceText = isOn }
+            return "Tekst bij praten met Ayla staat nu \(isOn ? "aan" : "uit")."
+        case .chatsInSearch(let isOn):
+            inSettings(.privacy) { UserDefaults.standard.set(isOn, forKey: AylaSpotlight.settingKey) }
+            return isOn ? "Je chats zijn nu vindbaar in iPhone-zoeken." : "Je chats zijn niet meer vindbaar in iPhone-zoeken."
+        case .vaultFolder(let id):
+            openPage(AylaReply.Navigation(screen: .vault))
+            pageDriver.vaultFolderID = id
+            return "Ik open de map \(vault?.folders.first { $0.id == id }?.name ?? "")."
+        case .vaultItem(let id):
+            openPage(AylaReply.Navigation(screen: .vaultItem, itemId: id))
+            return "Ik open \(vault?.items.first { $0.id == id }?.title ?? "het")."
+        case .back:
+            PaveHaptics.selection()
+            pageDriver.backSteps += 1
+            return "Ik ga een stap terug."
+        case .close:
+            closeShelf()
+            return "Ik sluit het."
+        }
+    }
+
+    /// Opens Instellingen on the right page and then makes the change, a moment apart, so you see Ayla do it.
+    private func inSettings(_ page: SettingsScreen.SettingsDestination, change: @escaping () async -> Void) {
+        let wasOpen = shelf == .settings
+        openPage(AylaReply.Navigation(screen: .settings))
+        pageDriver.settingsPage = page
+        Task {
+            try? await Task.sleep(for: .milliseconds(wasOpen ? 700 : 1300))
+            await change()
+            PaveHaptics.success()
+        }
+    }
+
     private func closeShelf() {
         showsShelfReply = false
+        localReply = nil
         guard let shelf else { return }
         model.hideScreen(shelf.screen)
         self.shelf = nil

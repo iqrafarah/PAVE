@@ -72,7 +72,7 @@ public enum AylaScreenRequest {
     /// Small words that may stand between "open" and the page.
     private static let fillers = "(?:(?:eens|even|ff|me|mij|mijn|m'n|mn|de|het|je|jouw|maar|dan|nu|graag|alsjeblieft|aub) )*"
 
-    private static func normalized(_ text: String) -> String {
+    static func normalized(_ text: String) -> String {
         text.lowercased()
             .replacingOccurrences(of: "’", with: "'")
             .replacingOccurrences(of: #"[.,!?;:]"#, with: " ", options: .regularExpression)
@@ -80,7 +80,7 @@ public enum AylaScreenRequest {
             .trimmingCharacters(in: .whitespaces)
     }
 
-    private static func matches(_ text: String, _ pattern: String) -> Bool {
+    static func matches(_ text: String, _ pattern: String) -> Bool {
         text.range(of: pattern, options: .regularExpression) != nil
     }
 }

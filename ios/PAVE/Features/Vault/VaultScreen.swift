@@ -9,6 +9,7 @@ struct VaultScreen: View {
     let onShowMenu: (() -> Void)?
 
     @State private var path: [FolderRoute] = []
+    @Environment(AylaPageDriver.self) private var driver: AylaPageDriver?
     @State private var openedItem: VaultItem?
     @State private var editedItem: VaultItem?
     @State private var confirmedItem: VaultItem?
@@ -82,6 +83,16 @@ struct VaultScreen: View {
                 // Ayla pointed to one item: open it once the vault is there.
                 .onChange(of: model.itemToOpen, initial: true) { openRequestedItem() }
                 .onChange(of: model.state) { openRequestedItem() }
+                // Ayla opens a folder or goes back when you ask her to.
+                .onChange(of: driver?.vaultFolderID, initial: true) {
+                    guard let id = driver?.vaultFolderID else { return }
+                    driver?.vaultFolderID = nil
+                    openedItem = nil
+                    if path != [FolderRoute(id: id)] { path = [FolderRoute(id: id)] }
+                }
+                .onChange(of: driver?.backSteps) {
+                    if openedItem != nil { openedItem = nil } else if !path.isEmpty { path.removeLast() }
+                }
                 // A folder that is gone (deleted here or on another device) closes.
                 .onChange(of: model.folders.map(\.id)) { _, ids in
                     path.removeAll { $0 != .all && !ids.contains($0.id) }

@@ -248,7 +248,15 @@ final class AylaChatModel {
     /// Ayla is thinking or writing; the send button is a stop button meanwhile.
     var isAnswering: Bool { phase == .thinking || phase == .writing }
 
+    /// Something Ayla does in the app herself ("zet het thema op blauw"): the screen carries it out and returns what
+    /// she says, or nil when the words are a question for Ayla after all.
+    @ObservationIgnored var appCommand: ((String) -> String?)?
+
     func send(_ text: String) {
+        if !isAnswering, attachments.isEmpty, appCommand?(text) != nil {
+            draft = ""
+            return
+        }
         guard let turn = prepare(text, input: .text) else { return }
         answerTask = Task { await stream(turn) }
     }
@@ -261,6 +269,10 @@ final class AylaChatModel {
     /// Sends a question and waits for Ayla's answer, for the voice conversation. Nil when it failed;
     /// the chat then shows what went wrong, just like after a typed question.
     func ask(_ text: String, input: AylaInput) async -> AylaReply? {
+        // Spoken, she says what she did; nothing goes to the brain.
+        if !isAnswering, attachments.isEmpty, let said = appCommand?(text) {
+            return AylaReply(id: UUID().uuidString, conversationId: conversationID ?? "", text: said)
+        }
         guard let turn = prepare(text, input: input) else { return nil }
         return await complete(turn)
     }

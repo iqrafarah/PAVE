@@ -12,6 +12,7 @@ struct SettingsScreen: View {
     @Environment(AylaMemoryModel.self) private var memory
     @Environment(ProfileModel.self) private var profile
     @State private var path: [SettingsDestination] = []
+    @Environment(AylaPageDriver.self) private var driver: AylaPageDriver?
 
     /// The pages the Camera Control button can open, as the rows do.
     enum SettingsDestination: String, CaseIterable, Hashable {
@@ -72,6 +73,15 @@ struct SettingsScreen: View {
                 case .ayla: SettingsAylaScreen()
                 case .privacy: SettingsPrivacyScreen()
                 }
+            }
+            // Ayla opens a page or goes back when you ask her to.
+            .onChange(of: driver?.settingsPage, initial: true) {
+                guard let page = driver?.settingsPage else { return }
+                driver?.settingsPage = nil
+                if path != [page] { path = [page] }
+            }
+            .onChange(of: driver?.backSteps) {
+                if !path.isEmpty { path.removeLast() }
             }
             // Knopmodus: swipe through the pages, a full press opens the one it rests on.
             .cameraControlMenus("settings", menus: [
