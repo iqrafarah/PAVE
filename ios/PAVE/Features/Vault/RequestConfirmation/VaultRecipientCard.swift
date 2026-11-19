@@ -19,7 +19,7 @@ struct VaultRecipientCard: View {
                     .paveIconFrame(20)
                     .foregroundStyle(isSelected ? Color.white : .paveAccent)
                     .paveIconFrame(40)
-                    .background(isSelected ? Color.paveAccent : .paveDropZone, in: .rect(cornerRadius: 10))
+                    .background(isSelected ? Color.paveAccentFill : .paveDropZone, in: .rect(cornerRadius: 10))
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(recipient.title)

@@ -51,7 +51,7 @@ struct AylaDictationBar: View {
                         .paveIconFrame(18)
                         .foregroundStyle(Color.white)
                         .paveIconFrame(30)
-                        .background(Color.paveAccent, in: .circle)
+                        .background(Color.paveAccentFill, in: .circle)
                         .shadow(color: .black.opacity(0.25), radius: 2)
                         .frame(width: AylaComposer.roundButtonWidth, height: 53)
                         .contentShape(.rect)

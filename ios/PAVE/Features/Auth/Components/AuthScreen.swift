@@ -77,7 +77,7 @@ struct AuthScreen<Intro: View, Content: View>: View {
                 .frame(maxWidth: 520)
                 .fixedSize(horizontal: false, vertical: true)
                 .background(Color.panel, in: .rect(cornerRadius: 28))
-                .shadow(color: Color.paveThemeAccent.opacity(0.08), radius: 32, y: 12)
+                .shadow(color: Color.paveThemeAccentFill.opacity(0.08), radius: 32, y: 12)
                 .padding(.horizontal, 32)
                 Spacer(minLength: 24)
                 AuthFooter()
@@ -175,7 +175,7 @@ struct AuthTopAtmosphere: View {
             Color.canvas
             LinearGradient(
                 stops: [
-                    .init(color: .paveThemeAccent, location: 0),
+                    .init(color: .paveThemeAccentFill, location: 0),
                     .init(color: .canvas, location: 0.6),
                     .init(color: .canvas, location: 1),
                 ],
@@ -193,10 +193,10 @@ struct PaveCornerGradient: View {
     var body: some View {
         LinearGradient(
             stops: [
-                .init(color: .paveThemeAccent, location: 0),
+                .init(color: .paveThemeAccentFill, location: 0),
                 .init(color: .canvas, location: 0.25),
                 .init(color: .canvas, location: 0.74),
-                .init(color: .paveThemeAccent, location: 1),
+                .init(color: .paveThemeAccentFill, location: 1),
             ],
             startPoint: .topTrailing,
             endPoint: .bottomLeading

@@ -27,6 +27,8 @@ final class ProfileModel {
     private(set) var vaultLayout = PaveAppearance.vaultLayout
     /// How long chats stay and what Ayla may do with the archive; nil before the migration, so there is nothing to choose.
     private(set) var retention: PaveRetention?
+    enum RetentionState: Equatable { case loading, ready, notSetUp, failed }
+    private(set) var retentionState = RetentionState.loading
     /// Licht, Donker or Automatisch; it applies at once and is kept in the account and on this device.
     private(set) var displayMode = PaveAppearance.displayMode
     /// False until the account can keep it (migration 20261119140000); it is then kept on this device only.
@@ -52,7 +54,10 @@ final class ProfileModel {
     var savesInAccount: Bool { profile.canChangeSettings }
 
     func load() async {
-        guard let service else { return }
+        guard let service else {
+            retentionState = .notSetUp
+            return
+        }
         do {
             let loaded = try await service.profile()
             profile = loaded
@@ -62,7 +67,12 @@ final class ProfileModel {
                 apply(theme: loaded.theme, textSize: loaded.textSize, vaultLayout: loaded.vaultLayout)
                 onThemeChosen(theme, customColor)
             }
-            retention = (try? await service.retention()) ?? retention
+            do {
+                retention = try await service.retention()
+                retentionState = retention == nil ? .notSetUp : .ready
+            } catch {
+                if retention == nil { retentionState = .failed }
+            }
             if let mode = try? await service.displayMode() {
                 savesDisplayMode = true
                 applyDisplayMode(mode)
@@ -70,6 +80,7 @@ final class ProfileModel {
             await loadAvatar()
         } catch {
             if state != .ready { state = .failed }
+            if retention == nil { retentionState = .failed }
         }
     }
 

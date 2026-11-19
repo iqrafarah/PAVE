@@ -57,7 +57,7 @@ struct SettingsRow<Destination: View>: View {
                     .paveIconFrame(17)
                     .foregroundStyle(Color.white)
                     .paveIconFrame(32)
-                    .background(Color.paveAccent, in: .rect(cornerRadius: 8))
+                    .background(Color.paveAccentFill, in: .rect(cornerRadius: 8))
                     .accessibilityHidden(true)
                 Text(title)
                     .textStyle(.listTitle)

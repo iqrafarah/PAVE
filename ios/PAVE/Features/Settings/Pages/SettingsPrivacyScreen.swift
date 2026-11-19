@@ -9,6 +9,7 @@ struct SettingsPrivacyScreen: View {
     @State private var hasPin: Bool?
     @State private var pinSheet: AylaAccountPinSheet.Purpose?
     @State private var pinNotice: String?
+    @State private var pinCheckFailed = false
 
     static func lockTitle(_ seconds: Int) -> String {
         switch seconds {
@@ -60,7 +61,16 @@ struct SettingsPrivacyScreen: View {
                 accountPinCard
             }
         }
-        .task { if hasPin == nil { hasPin = await chats?.chatPinExists() } }
+        .task {
+            guard hasPin == nil, let chats else { return }
+            hasPin = await chats.chatPinExists()
+            pinCheckFailed = hasPin == nil
+        }
+        .alert("Dat lukte niet", isPresented: Binding(get: { chats?.chatsProblem != nil && pinSheet == nil }, set: { if !$0 { chats?.chatsProblem = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(chats?.chatsProblem ?? "")
+        }
         .sheet(item: $pinSheet) { purpose in
             if let chats {
                 AylaAccountPinSheet(purpose: purpose, model: chats) { message in
@@ -89,13 +99,15 @@ struct SettingsPrivacyScreen: View {
             }
             if hasPin == true {
                 Divider()
-                pinRow(AylaMessages.accountPinChangeTitle, AylaMessages.accountPinChangeBody, AylaMessages.accountPinChangeButton) {
+                pinRow(AylaMessages.accountPinChangeTitle, AylaMessages.accountPinChangeBody, AylaMessages.accountPinChangeButton, isDanger: false) {
                     pinSheet = .change
                 }
                 Divider()
-                pinRow(AylaMessages.accountPinResetTitle, AylaMessages.accountPinResetBody, AylaMessages.accountPinResetButton) {
+                pinRow(AylaMessages.accountPinResetTitle, AylaMessages.accountPinResetBody, AylaMessages.accountPinResetButton, isDanger: true) {
                     pinSheet = .recover
                 }
+            } else if pinCheckFailed {
+                PaveInlineError(message: AylaMessages.pinCheckFailed)
             }
         }
         .padding(12)
@@ -103,16 +115,16 @@ struct SettingsPrivacyScreen: View {
     }
 
     /// The text beside the button where there is room, the button under it where there is not.
-    private func pinRow(_ title: String, _ body: String, _ button: String, action: @escaping () -> Void) -> some View {
+    private func pinRow(_ title: String, _ body: String, _ button: String, isDanger: Bool, action: @escaping () -> Void) -> some View {
         ViewThatFits(in: .horizontal) {
             HStack(alignment: .center, spacing: 12) {
                 pinText(title, body)
                 Spacer(minLength: 8)
-                pinButton(button, title, action)
+                pinButton(button, title, isDanger, action)
             }
             VStack(alignment: .leading, spacing: 8) {
                 pinText(title, body)
-                pinButton(button, title, action)
+                pinButton(button, title, isDanger, action)
             }
         }
     }
@@ -130,13 +142,14 @@ struct SettingsPrivacyScreen: View {
         .frame(maxWidth: 360, alignment: .leading)
     }
 
-    private func pinButton(_ title: String, _ label: String, _ action: @escaping () -> Void) -> some View {
+    /// Resetten is in red, as on the web: it is for when you forgot the PIN.
+    private func pinButton(_ title: String, _ label: String, _ isDanger: Bool, _ action: @escaping () -> Void) -> some View {
         Button(title, action: action)
             .textStyle(.link)
-            .foregroundStyle(Color.paveAccent)
+            .foregroundStyle(isDanger ? Color.critical : Color.paveAccent)
             .padding(.horizontal, 16)
             .frame(minHeight: 44)
-            .background(Color.paveSurfaceTint, in: .capsule)
+            .background(isDanger ? Color.criticalSurface : Color.paveSurfaceTint, in: .capsule)
             .buttonStyle(.pave)
             .accessibilityLabel(label)
     }

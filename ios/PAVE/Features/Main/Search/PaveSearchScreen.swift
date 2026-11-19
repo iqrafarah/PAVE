@@ -86,7 +86,7 @@ struct PaveSearchScreen: View {
                             .foregroundStyle(tab == option ? Color.white : Color.ink)
                             .padding(.horizontal, 14)
                             .frame(minHeight: 36)
-                            .background(tab == option ? Color.paveAccent : Color.panel, in: .capsule)
+                            .background(tab == option ? Color.paveAccentFill : Color.panel, in: .capsule)
                             .overlay { Capsule().strokeBorder(tab == option ? .clear : Color.cardBorder) }
                             .frame(minHeight: 44)
                             .contentShape(.rect)

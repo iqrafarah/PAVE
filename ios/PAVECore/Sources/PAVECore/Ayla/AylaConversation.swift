@@ -144,7 +144,7 @@ public struct AylaConversationList: Equatable, Sendable {
 
     /// The archive, the most recently archived first.
     public var archived: [AylaConversation] {
-        conversations.filter(\.isArchived).sorted { ($0.archivedAt ?? .distantPast) > ($1.archivedAt ?? .distantPast) }
+        conversations.filter { $0.isArchived && !$0.isLocked }.sorted { ($0.archivedAt ?? .distantPast) > ($1.archivedAt ?? .distantPast) }
     }
 
     /// Archiving takes a chat out of the list; it is no longer pinned, so it comes back as an ordinary chat.
@@ -229,7 +229,8 @@ public struct AylaConversationList: Equatable, Sendable {
     /// Whether `other` would show exactly the same list: the same groups, chats, names and order. Small differences
     /// that do not show, such as the fraction of a second a chat was pinned at, do not count.
     public func looksTheSame(as other: AylaConversationList, now: Date = .now, calendar: Calendar = .current) -> Bool {
-        guard canPin == other.canPin, canUseProjects == other.canUseProjects, canLock == other.canLock, canArchive == other.canArchive else { return false }
+        guard canPin == other.canPin, canUseProjects == other.canUseProjects, canLock == other.canLock, canArchive == other.canArchive,
+              canStyleProjects == other.canStyleProjects else { return false }
         func shown(_ list: AylaConversationList) -> [[String]] {
             let chats = list.sections(now: now, calendar: calendar).map { section in
                 ["\(section.kind)"] + section.conversations.map {
@@ -237,7 +238,7 @@ public struct AylaConversationList: Equatable, Sendable {
                 }
             }
             let projects = list.orderedProjects.map { project in
-                ["project|\(project.id)|\(project.name)|\(project.isPinned)"] + list.chats(in: project.id).map { "\($0.id)|\($0.title)" }
+                ["project|\(project.id)|\(project.name)|\(project.isPinned)|\(project.icon?.rawValue ?? "")|\(project.color?.rawValue ?? "")|\(project.instructions)"] + list.chats(in: project.id).map { "\($0.id)|\($0.title)" }
             }
             let expiries = list.conversations.map { "\($0.id)|\($0.expiry)" }
             return chats + projects + [list.locked.map(\.id), list.archived.map { "\($0.id)|\($0.title)" }, expiries]

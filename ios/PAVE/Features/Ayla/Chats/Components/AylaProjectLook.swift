@@ -85,7 +85,7 @@ struct AylaLookPicker: View {
             PaveHaptics.selection()
         } label: {
             Circle()
-                .fill(Color.paveAccent)
+                .fill(Color.paveAccentFill)
                 .padding(4)
                 .overlay { Circle().strokeBorder(isOn ? Color.paveAccent : .clear, lineWidth: 2) }
                 .frame(minWidth: 28, maxWidth: 44)
@@ -145,7 +145,7 @@ struct AylaLookPicker: View {
 
     private func iconButton(_ option: VaultFolderIcon) -> some View {
         let isOn = option == (icon ?? .folder)
-        let tint = color?.color ?? .paveAccent
+        let tint = color?.color ?? .paveAccentFill
         let onTint = color?.foreground ?? .white
         return Button {
             icon = option == .folder ? nil : option

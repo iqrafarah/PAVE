@@ -2,25 +2,67 @@ import PAVECore
 import SwiftUI
 
 /// Instellingen › Gegevens bewaren: after how long chats disappear by themselves ("verval", as in WhatsApp), which
-/// chats stay anyway, and what Ayla may do with your archive. Nothing expires unless you choose it; deleting is final.
+/// chats stay anyway, and what Ayla may do with your archive. Nothing expires unless you choose it; deleting is final,
+/// so a choice that can delete chats at once is asked first, as on the web.
 struct SettingsRetentionScreen: View {
     @Environment(ProfileModel.self) private var profile
+    /// A choice that deletes more than before, waiting for Ja.
+    @State private var pending: PaveRetention?
 
     var body: some View {
         SettingsPage(title: RetentionMessages.title) {
-            if let retention = profile.retention {
-                expiryCard(retention)
-                archiveCard(retention)
-            } else {
-                Text(RetentionMessages.notAvailable)
-                    .textStyle(.bodyMedium)
-                    .foregroundStyle(Color.inkMuted)
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.panel, in: .rect(cornerRadius: 14))
+            switch profile.retentionState {
+            case .ready:
+                if let retention = profile.retention {
+                    expiryCard(retention)
+                    archiveCard(retention)
+                }
+            case .loading:
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text(RetentionMessages.loading)
+                        .textStyle(.bodyMedium)
+                        .foregroundStyle(Color.inkMuted)
+                }
+                .padding(12)
+            case .notSetUp:
+                note(RetentionMessages.notAvailable)
+            case .failed:
+                VStack(alignment: .leading, spacing: 8) {
+                    PaveInlineError(message: RetentionMessages.loadFailed)
+                    Button("Opnieuw proberen") { Task { await profile.load() } }
+                        .textStyle(.link)
+                        .foregroundStyle(Color.paveAccent)
+                        .frame(minHeight: 44)
+                }
+                .padding(12)
             }
         }
         .task { await profile.load() }
+        .confirmationDialog(
+            RetentionMessages.confirmTitle,
+            isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }),
+            titleVisibility: .visible,
+            presenting: pending
+        ) { chosen in
+            Button(RetentionMessages.confirmButton, role: .destructive) { save(chosen) }
+        } message: { chosen in
+            Text(RetentionMessages.confirmMessage(chosen.chatExpiry))
+        }
+        .alert("Dat lukte niet", isPresented: Binding(get: { profile.problem != nil }, set: { if !$0 { profile.problem = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(profile.problem ?? "")
+        }
+    }
+
+    private func note(_ text: String) -> some View {
+        Text(text)
+            .textStyle(.bodyMedium)
+            .foregroundStyle(Color.inkMuted)
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.panel, in: .rect(cornerRadius: 14))
     }
 
     private func expiryCard(_ retention: PaveRetention) -> some View {
@@ -93,11 +135,11 @@ struct SettingsRetentionScreen: View {
 
     private func toggle(_ title: String, _ isOn: Binding<Bool>) -> some View {
         Toggle(isOn: isOn) { rowTitle(title) }
-            .tint(.paveAccent)
+            .tint(.paveAccentFill)
             .frame(minHeight: 44)
     }
 
-    /// One choice of the settings; choosing saves at once.
+    /// One choice of the settings; it saves at once, unless it can delete chats that were kept until now.
     private func binding<Value: Equatable>(_ retention: PaveRetention, _ keyPath: WritableKeyPath<PaveRetention, Value>) -> Binding<Value> {
         Binding(
             get: { retention[keyPath: keyPath] },
@@ -105,9 +147,28 @@ struct SettingsRetentionScreen: View {
                 var chosen = retention
                 chosen[keyPath: keyPath] = value
                 PaveHaptics.selection()
-                Task { await profile.setRetention(chosen) }
+                if Self.deletesMore(chosen.chatExpiry, than: retention.chatExpiry) {
+                    pending = chosen
+                } else {
+                    save(chosen)
+                }
             }
         )
+    }
+
+    private func save(_ chosen: PaveRetention) {
+        Task { await profile.setRetention(chosen) }
+    }
+
+    /// A shorter time, counting from making the chat instead of its last message, or no longer keeping pinned or
+    /// locked chats: chats that stayed until now can go at once.
+    static func deletesMore(_ new: ChatExpiry, than old: ChatExpiry) -> Bool {
+        guard let days = new.days else { return false }
+        if old.days.map({ days < $0 }) ?? true { return true }
+        if new.start == .created, old.start == .lastMessage { return true }
+        if !new.keepsPinned, old.keepsPinned { return true }
+        if !new.keepsLocked, old.keepsLocked { return true }
+        return false
     }
 }
 

@@ -49,7 +49,7 @@ struct AylaChoiceBar: View {
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 12)
                         .frame(maxWidth: .infinity, minHeight: 53)
-                        .background(picked == choice.id ? Color.paveAccent : Color.panel, in: .rect(cornerRadius: 25))
+                        .background(picked == choice.id ? Color.paveAccentFill : Color.panel, in: .rect(cornerRadius: 25))
                         .scaleEffect(picked == choice.id ? 1.04 : 1)
                         .contentShape(.rect(cornerRadius: 25))
                 }

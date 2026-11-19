@@ -21,7 +21,8 @@ enum AylaSpotlight {
     private static let domain = "nl.fontys.pave.ayla-chats"
 
     static func update(_ list: AylaConversationList) {
-        let items = list.conversations.map { conversation in
+        // Locked and archived chats never go into the iPhone's search.
+        let items = list.visible.map { conversation in
             let attributes = CSSearchableItemAttributeSet(contentType: .text)
             attributes.title = conversation.title
             attributes.contentDescription = "Chat met Ayla in PAVE"

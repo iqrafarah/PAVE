@@ -11,7 +11,7 @@ struct AylaColumnResizeHandle: View {
 
     var body: some View {
         Capsule()
-            .fill(isDragging ? Color.paveAccent : Color.hairline)
+            .fill(isDragging ? Color.paveAccentFill : Color.hairline)
             .frame(width: 4, height: 40)
             .opacity(isDragging ? 1 : 0.8)
             .frame(width: 20)

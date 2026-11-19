@@ -44,7 +44,7 @@ struct DeviceRow: View {
                 .paveIconFrame(20)
                 .foregroundStyle(isHighlighted ? Color.white : .paveAccent)
                 .paveIconFrame(40)
-                .background(isHighlighted ? Color.paveAccent : .paveDropZone, in: .rect(cornerRadius: 10))
+                .background(isHighlighted ? Color.paveAccentFill : .paveDropZone, in: .rect(cornerRadius: 10))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)

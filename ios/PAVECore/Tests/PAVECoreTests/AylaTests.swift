@@ -219,7 +219,7 @@ extension SupabaseAylaServiceTests {
         let rows = #"[{"id":"c1","title":"Banen zoeken","updated_at":"2026-11-05T22:13:55.123456+00:00"}]"#
         let captured = Captured()
         let ayla = service { urlRequest in
-            if urlRequest.url?.path.hasSuffix("ayla_conversations") == true { captured.request = urlRequest }
+            if urlRequest.url?.path.hasSuffix("ayla_conversations") == true, urlRequest.url?.query?.contains("archived_at") != true { captured.request = urlRequest }
             return (200, Data(rows.utf8))
         }
         let list = try await ayla.conversations()
@@ -362,7 +362,7 @@ extension SupabaseAylaServiceTests {
         let rows = #"[{"id":"c1","title":"Banen zoeken","updated_at":"2026-11-05T22:00:00+00:00","started_on":"web"}]"#
         let captured = Captured()
         let ayla = service { urlRequest in
-            if urlRequest.url?.path.hasSuffix("ayla_conversations") == true { captured.request = urlRequest }
+            if urlRequest.url?.path.hasSuffix("ayla_conversations") == true, urlRequest.url?.query?.contains("archived_at") != true { captured.request = urlRequest }
             return (200, Data(rows.utf8))
         }
         let list = try await ayla.conversations(limit: 100)

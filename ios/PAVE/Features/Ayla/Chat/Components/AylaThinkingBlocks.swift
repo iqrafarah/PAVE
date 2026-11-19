@@ -23,7 +23,7 @@ struct AylaThinkingBlocks: View {
             ZStack(alignment: .topLeading) {
                 ForEach(Self.blocks.indices, id: \.self) { index in
                     Rectangle()
-                        .fill(Color.paveAccent)
+                        .fill(Color.paveAccentFill)
                         .frame(width: Self.size, height: Self.size)
                         .offset(x: Self.blocks[index].x, y: Self.blocks[index].y)
                         .opacity(Self.opacity(of: index, at: progress))

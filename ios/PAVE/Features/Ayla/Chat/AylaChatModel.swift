@@ -391,6 +391,7 @@ final class AylaChatModel {
         do {
             let reply = try await turn.service.send(turn.request)
             conversationID = reply.conversationId
+            newChatProject = nil
             savePendingFiles()
             entries.append(Entry(id: reply.id, role: .ayla, text: reply.text, reply: reply))
             phase = .idle
@@ -832,17 +833,13 @@ final class AylaChatModel {
     func createProject(name: String, instructions: String, icon: VaultFolderIcon? = nil, color: VaultFolderColor? = nil) async -> AylaProject? {
         guard let service else { return nil }
         do {
-            var project = try await service.createProject(name: name, instructions: instructions)
-            if conversationList.canStyleProjects, icon != nil || color != nil,
-               (try? await service.setProjectLook(icon: icon, color: color, projectID: project.id)) != nil {
-                project.icon = icon
-                project.color = color
-            }
+            let project = try await service.createProject(
+                name: name, instructions: instructions, icon: icon, color: color, withLook: conversationList.canStyleProjects
+            )
             conversationList.projects.insert(project, at: 0)
             PaveHaptics.success()
             return project
         } catch {
-            chatsProblem = AylaMessages.projectFailed
             return nil
         }
     }
@@ -850,19 +847,16 @@ final class AylaChatModel {
     func updateProject(_ project: AylaProject) async -> Bool {
         guard let service, let index = conversationList.projects.firstIndex(where: { $0.id == project.id }) else { return false }
         let before = conversationList
-        let old = conversationList.projects[index]
+        let openBefore = openProject
         conversationList.projects[index] = project
         if openProject?.id == project.id { openProject = project }
         do {
-            try await service.updateProject(project)
-            if conversationList.canStyleProjects, old.icon != project.icon || old.color != project.color {
-                try await service.setProjectLook(icon: project.icon, color: project.color, projectID: project.id)
-            }
+            try await service.updateProject(project, withLook: conversationList.canStyleProjects)
             PaveHaptics.success()
             return true
         } catch {
             conversationList = before
-            chatsProblem = AylaMessages.projectFailed
+            openProject = openBefore
             return false
         }
     }
@@ -890,22 +884,27 @@ final class AylaChatModel {
     private(set) var projectSources: [String: [String]] = [:]
     /// False until the table of the sources exists (migration 20261119160000); then there is no Bronnen tab.
     private(set) var canUseSources = true
+    /// Loading, adding or removing a source did not work; the project page says so where it happened.
+    var sourcesProblem: String?
 
+    /// Its sources load when the page shows; while Ayla is still answering the page waits.
     func openPage(of project: AylaProject) {
+        guard !isAnswering else { return }
         newConversation(in: project)
         openProject = project
-        Task { await loadSources(of: project) }
     }
 
     func loadSources(of project: AylaProject) async {
         guard let service else { return }
+        sourcesProblem = nil
         do {
             projectSources[project.id] = try await service.projectSources(projectID: project.id)
             canUseSources = true
         } catch AylaError.notSetUp {
             canUseSources = false
         } catch {
-            if projectSources[project.id] == nil { chatsProblem = AylaMessages.sourcesFailed }
+            if projectSources[project.id] == nil { projectSources[project.id] = [] }
+            sourcesProblem = AylaMessages.sourcesFailed
         }
     }
 
@@ -920,7 +919,7 @@ final class AylaChatModel {
             PaveHaptics.success()
         } catch {
             projectSources[project.id] = known
-            chatsProblem = AylaMessages.sourcesFailed
+            sourcesProblem = AylaMessages.sourcesFailed
         }
     }
 
@@ -933,7 +932,7 @@ final class AylaChatModel {
                 try await service.removeProjectSource(itemID, projectID: project.id)
             } catch {
                 projectSources[project.id] = before
-                chatsProblem = AylaMessages.sourcesFailed
+                sourcesProblem = AylaMessages.sourcesFailed
             }
         }
     }
@@ -1025,6 +1024,16 @@ final class AylaChatModel {
             return AylaMessages.pinBlocked
         } catch {
             return AylaMessages.pinCodeFailed
+        }
+    }
+
+    /// The current PIN before a new one is chosen, without opening the locked chats; wrong tries count as at the door.
+    func verifyChatPin(_ pin: String) async -> String? {
+        guard let service else { return AylaMessages.pinCodeFailed }
+        do {
+            return try await service.checkChatPin(pin) ? nil : AylaMessages.pinWrong
+        } catch {
+            return Self.pinMessage(for: error)
         }
     }
 

@@ -95,7 +95,7 @@ struct AylaMemoryCard: View {
                     .foregroundStyle(Color.white)
                     .frame(minWidth: 96, minHeight: 36)
                     .padding(.horizontal, 14)
-                    .background(Color.paveAccent, in: .capsule)
+                    .background(Color.paveAccentFill, in: .capsule)
                     .opacity(chosen.isEmpty ? 0.4 : 1)
                 }
                 .buttonStyle(.pave)

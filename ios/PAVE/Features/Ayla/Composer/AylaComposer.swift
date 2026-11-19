@@ -67,7 +67,7 @@ struct AylaComposer: View {
             }
             field
         }
-        .glassEffect(isOverPanel ? .regular.tint(.white.opacity(0.8)) : .clear, in: .rect(cornerRadius: 25))
+        .glassEffect(isOverPanel ? .regular.tint(Color.panel.opacity(0.8)) : .clear, in: .rect(cornerRadius: 25))
         .matchedFrame("field", in: morph)
     }
 
@@ -123,7 +123,7 @@ struct AylaComposer: View {
                         .paveIconFrame(13)
                         .foregroundStyle(Color.white)
                         .paveIconFrame(30)
-                        .background(Color.paveAccent, in: .circle)
+                        .background(Color.paveAccentFill, in: .circle)
                         .shadow(color: .black.opacity(0.25), radius: 2)
                         .frame(width: Self.roundButtonWidth, height: 53)
                         .contentShape(.rect)
@@ -135,7 +135,7 @@ struct AylaComposer: View {
                 Button(action: onVoice) {
                     PixelWaveIcon()
                         .frame(width: 30, height: 30)
-                        .background(Color.paveAccent, in: .circle)
+                        .background(Color.paveAccentFill, in: .circle)
                         .shadow(color: .black.opacity(0.25), radius: 2)
                         .frame(width: Self.roundButtonWidth, height: 53)
                         .contentShape(.rect)
@@ -149,7 +149,7 @@ struct AylaComposer: View {
                 Button(action: send) {
                     Image(.iconSend)
                         .paveIconFrame(30)
-                        .background(Color.paveAccent, in: .circle)
+                        .background(Color.paveAccentFill, in: .circle)
                         .shadow(color: .black.opacity(0.25), radius: 2)
                         .frame(width: Self.roundButtonWidth, height: 53)
                         .contentShape(.rect)

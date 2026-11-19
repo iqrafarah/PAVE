@@ -76,6 +76,14 @@ struct AylaChatList: View {
     @State private var selection = Set<String>()
     @State private var openProjects = Set<String>()
     @State private var projectEditor: ProjectEditing?
+    @State private var projectToDelete: AylaProject?
+    @State private var pendingExpiry: PendingExpiry?
+
+    private struct PendingExpiry {
+        let conversation: AylaConversation
+        let expiry: AylaConversation.Expiry
+        let date: Date
+    }
     @State private var lockTarget: AylaConversation?
     @State private var pinSetupFor: AylaConversation?
     @State private var showsLockedChats = false
@@ -257,6 +265,28 @@ struct AylaChatList: View {
         .onChange(of: selection) { old, new in
             if !old.isEmpty || !new.isEmpty { PaveHaptics.selection() }
         }
+        .confirmationDialog(
+            RetentionMessages.confirmTitle,
+            isPresented: Binding(get: { pendingExpiry != nil }, set: { if !$0 { pendingExpiry = nil } }),
+            titleVisibility: .visible,
+            presenting: pendingExpiry
+        ) { pending in
+            Button(RetentionMessages.confirmButton, role: .destructive) {
+                actions.retention?.setExpiry(pending.conversation, pending.expiry)
+            }
+        } message: { pending in
+            Text(RetentionMessages.chatExpiresMessage(pending.conversation.title, at: pending.date))
+        }
+        .confirmationDialog(
+            AylaMessages.projectDeleteQuestion,
+            isPresented: Binding(get: { projectToDelete != nil }, set: { if !$0 { projectToDelete = nil } }),
+            titleVisibility: .visible,
+            presenting: projectToDelete
+        ) { project in
+            Button(AylaMessages.projectDelete, role: .destructive) { actions.projects?.delete(project) }
+        } message: { _ in
+            Text(AylaMessages.projectDeleteBody)
+        }
         .sheet(item: $projectEditor) { editing in
             projectEditorSheet(editing)
         }
@@ -404,7 +434,17 @@ struct AylaChatList: View {
                     let choices: [AylaConversation.Expiry] = [.followsAccount, .never] + ChatExpiry.periods.map { .days($0) }
                     Picker(RetentionMessages.expiry, selection: Binding(
                         get: { conversation.expiry },
-                        set: { retention.setExpiry(conversation, $0) }
+                        set: { chosen in
+                            // A time that can delete this chat sooner than before is asked first.
+                            var changed = conversation
+                            changed.expiry = chosen
+                            let before = retention.accountExpiry.expiresAt(conversation) ?? .distantFuture
+                            if let after = retention.accountExpiry.expiresAt(changed), after < before {
+                                pendingExpiry = PendingExpiry(conversation: conversation, expiry: chosen, date: after)
+                            } else {
+                                retention.setExpiry(conversation, chosen)
+                            }
+                        }
                     )) {
                         ForEach(choices, id: \.storedDays) { choice in
                             Text(RetentionMessages.title(choice)).tag(choice)
@@ -490,7 +530,7 @@ struct AylaChatList: View {
                             .foregroundStyle(searchTab == tab ? Color.white : Color.ink)
                             .padding(.horizontal, 12)
                             .frame(minHeight: 32)
-                            .background(searchTab == tab ? Color.paveAccent : Color.paveSurfaceTint, in: .capsule)
+                            .background(searchTab == tab ? Color.paveAccentFill : Color.paveSurfaceTint, in: .capsule)
                             .frame(minHeight: 44)
                             .contentShape(.rect)
                     }
@@ -684,7 +724,7 @@ struct AylaChatList: View {
         .contextMenu { projectMenu(project) }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button(role: .destructive) {
-                actions.projects?.delete(project)
+                projectToDelete = project
             } label: {
                 Label(AylaMessages.projectDelete, image: .iconTrash)
             }
@@ -708,7 +748,7 @@ struct AylaChatList: View {
         } label: {
             Label { Text(project.isPinned ? "Losmaken" : "Vastzetten") } icon: { Image(systemName: project.isPinned ? "pin.slash.fill" : "pin.fill") }
         }
-        Button(role: .destructive) { actions.projects?.delete(project) } label: { Label { Text(AylaMessages.projectDelete) } icon: { Image(.iconTrash) } }
+        Button(role: .destructive) { projectToDelete = project } label: { Label { Text(AylaMessages.projectDelete) } icon: { Image(.iconTrash) } }
     }
 
     @ViewBuilder

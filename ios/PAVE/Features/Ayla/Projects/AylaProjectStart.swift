@@ -18,20 +18,22 @@ struct AylaProjectStart: View {
     @State private var kind: VaultCategory?
     @State private var editsProject = false
     @State private var picksSources = false
+    @State private var fileSource: VaultFileSource?
+    @State private var uploadFlow: VaultAddEvidenceModel?
     @State private var openedItem: VaultItem?
 
     private var chats: [AylaConversation] {
         model.conversationList.visible.filter { $0.projectID == project.id }.sorted { $0.updatedAt > $1.updatedAt }
     }
 
-    private var sourceItems: [VaultItem] {
-        let ids = model.projectSources[project.id] ?? []
-        let items = ids.compactMap { id in vault?.items.first { $0.id == id } }
-        return items
+    /// Nil while the sources or the vault are still loading.
+    private var sourceItems: [VaultItem]? {
+        guard let ids = model.projectSources[project.id], let vault, vault.state == .ready else { return nil }
+        return ids.compactMap { id in vault.items.first { $0.id == id } }
     }
 
-    private var shownSources: [VaultItem] {
-        let filtered = sourceItems.filter { kind == nil || $0.category == kind }
+    private func shown(_ items: [VaultItem]) -> [VaultItem] {
+        let filtered = items.filter { kind == nil || $0.category == kind }
         switch sort {
         case .newest: return filtered
         case .oldest: return filtered.reversed()
@@ -40,7 +42,7 @@ struct AylaProjectStart: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 20) {
             header
             if !project.instructions.isEmpty {
                 Text(project.instructions)
@@ -64,11 +66,17 @@ struct AylaProjectStart: View {
         }
         .padding(.horizontal, 20)
         .padding(.top, 24)
+        .padding(.bottom, 16)
         .frame(maxWidth: 680, alignment: .leading)
         .frame(maxWidth: .infinity)
         .task(id: project.id) {
+            async let sources: Void = model.loadSources(of: project)
             if let vault, vault.state != .ready { await vault.load() }
-            await model.loadSources(of: project)
+            await sources
+        }
+        .onChange(of: sourceItems?.map(\.category)) { _, categories in
+            // The kind that was filtered on is gone: show everything again.
+            if let kind, let categories, !categories.contains(kind) { self.kind = nil }
         }
         .sheet(isPresented: $editsProject) {
             AylaProjectEditor(project: project, canStyle: model.conversationList.canStyleProjects) { name, instructions, icon, color in
@@ -88,6 +96,17 @@ struct AylaProjectStart: View {
                 Task { await model.addSources(ids, to: project) }
             }
             .paveSheet()
+        }
+        .vaultFilePicker(source: $fileSource, role: .document) { result in
+            guard let vault else { return }
+            // An uploaded file becomes evidence in the vault, filled in by Ayla, and a source of this project.
+            let flow = VaultAddEvidenceModel(vault: vault, category: .projects, folderID: nil)
+            flow.pick(result)
+            if case .success = result { flow.fillWithAyla() }
+            uploadFlow = flow
+        }
+        .sheet(item: $uploadFlow, onDismiss: addUploadedSource) { flow in
+            VaultAddEvidenceSheet(flow: flow)
         }
         .sheet(item: $openedItem) { item in
             if let vault {
@@ -135,55 +154,67 @@ struct AylaProjectStart: View {
                     AylaChatRow(conversation: chat, isCurrent: false) { onOpenChat(chat) }
                 }
             }
+            .padding(.horizontal, -8)
         }
     }
 
     @ViewBuilder
     private var sources: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Sort and filter where there is room next to the button; under it where there is not.
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 8) {
-                    sortMenu
-                    kindMenu
-                    Spacer(minLength: 8)
-                    addButton
-                }
-                VStack(alignment: .leading, spacing: 8) {
-                    addButton
-                    HStack(spacing: 8) {
-                        sortMenu
-                        kindMenu
+        VStack(alignment: .leading, spacing: 14) {
+            if let problem = model.sourcesProblem {
+                PaveInlineError(message: problem)
+            }
+            if let items = sourceItems {
+                if items.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(AylaMessages.sourcesEmptyTitle)
+                            .textStyle(.listTitle)
+                            .foregroundStyle(Color.ink)
+                        Text(AylaMessages.sourcesEmpty)
+                            .textStyle(.bodyMedium)
+                            .foregroundStyle(Color.inkMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.top, 4)
+                    addMenu
+                } else {
+                    // Sort and filter where there is room next to the button; under it where there is not.
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 8) {
+                            sortMenu
+                            kindMenu(items)
+                            Spacer(minLength: 8)
+                            addMenu
+                        }
+                        VStack(alignment: .leading, spacing: 8) {
+                            addMenu
+                            HStack(spacing: 8) {
+                                sortMenu
+                                kindMenu(items)
+                            }
+                        }
+                    }
+                    let visible = shown(items)
+                    if visible.isEmpty {
+                        emptyText(AylaMessages.sourcesNoMatch)
+                    } else {
+                        VStack(spacing: 8) {
+                            ForEach(visible) { item in
+                                sourceRow(item)
+                            }
+                        }
                     }
                 }
-            }
-            Text(AylaMessages.sourcesHint)
-                .textStyle(.caption)
-                .foregroundStyle(Color.inkMuted)
-                .fixedSize(horizontal: false, vertical: true)
-            if sourceItems.isEmpty {
-                emptyText(AylaMessages.sourcesEmpty)
             } else {
-                VStack(spacing: 8) {
-                    ForEach(shownSources) { item in
-                        sourceRow(item)
-                    }
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text(AylaMessages.sourcesLoading)
+                        .textStyle(.bodyMedium)
+                        .foregroundStyle(Color.inkMuted)
                 }
+                .padding(.vertical, 12)
             }
         }
-    }
-
-    private var sortMenu: some View {
-        Menu {
-            Picker("Sorteren", selection: $sort) {
-                Text(AylaMessages.sourcesSortNewest).tag(SourceSort.newest)
-                Text(AylaMessages.sourcesSortOldest).tag(SourceSort.oldest)
-                Text(AylaMessages.sourcesSortName).tag(SourceSort.name)
-            }
-        } label: {
-            menuLabel(sortTitle)
-        }
-        .accessibilityLabel("Sorteren")
     }
 
     private var sortTitle: String {
@@ -194,19 +225,35 @@ struct AylaProjectStart: View {
         }
     }
 
-    private var kindMenu: some View {
-        let kinds = VaultCategory.allCases.filter { category in sourceItems.contains { $0.category == category } }
+    private var sortMenu: some View {
+        Menu {
+            Picker(AylaMessages.sourcesSortLabel, selection: $sort) {
+                Text(AylaMessages.sourcesSortNewest).tag(SourceSort.newest)
+                Text(AylaMessages.sourcesSortOldest).tag(SourceSort.oldest)
+                Text(AylaMessages.sourcesSortName).tag(SourceSort.name)
+            }
+        } label: {
+            menuLabel(sortTitle)
+        }
+        .accessibilityLabel(AylaMessages.sourcesSortLabel)
+        .accessibilityValue(sortTitle)
+    }
+
+    private func kindMenu(_ items: [VaultItem]) -> some View {
+        let kinds = VaultCategory.allCases.filter { category in items.contains { $0.category == category } }
+        let title = kind?.title ?? AylaMessages.sourcesAllKinds
         return Menu {
-            Picker("Soort", selection: $kind) {
+            Picker(AylaMessages.sourcesFilterLabel, selection: $kind) {
                 Text(AylaMessages.sourcesAllKinds).tag(VaultCategory?.none)
                 ForEach(kinds) { category in
                     Text(category.title).tag(VaultCategory?.some(category))
                 }
             }
         } label: {
-            menuLabel(kind?.title ?? AylaMessages.sourcesAllKinds)
+            menuLabel(title)
         }
-        .accessibilityLabel("Soort")
+        .accessibilityLabel(AylaMessages.sourcesFilterLabel)
+        .accessibilityValue(title)
     }
 
     private func menuLabel(_ text: String) -> some View {
@@ -227,58 +274,82 @@ struct AylaProjectStart: View {
         .contentShape(.rect)
     }
 
-    private var addButton: some View {
-        Button {
-            picksSources = true
+    /// "Bronnen toevoegen": a file, which becomes evidence in the vault, or items already in the vault.
+    private var addMenu: some View {
+        Menu {
+            Button {
+                picksSources = true
+            } label: {
+                Label { Text(AylaMessages.sourcesFromVault) } icon: { Image(.iconFolderSolid) }
+            }
+            Button {
+                fileSource = .files
+            } label: {
+                Label { Text(AylaMessages.sourcesUpload) } icon: { Image(.iconCloudArrowUpSolid) }
+            }
         } label: {
-            Label {
+            HStack(spacing: 6) {
+                Image(.iconPlus)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .paveIconFrame(12)
+                    .accessibilityHidden(true)
                 Text(AylaMessages.sourcesAdd)
-            } icon: {
-                Image(.iconPlus).renderingMode(.template)
+                    .lineLimit(1)
             }
             .textStyle(.caption)
             .foregroundStyle(.white)
             .padding(.horizontal, 14)
             .frame(minHeight: 36)
-            .background(Color.paveAccent, in: .capsule)
+            .background(Color.paveAccentFill, in: .capsule)
             .frame(minHeight: 44)
             .contentShape(.rect)
         }
-        .buttonStyle(.pave)
     }
 
     private func sourceRow(_ item: VaultItem) -> some View {
-        Button {
-            openedItem = item
-        } label: {
-            HStack(spacing: 12) {
-                VaultLogoAvatar(look: nil, name: item.organisationName ?? item.title, fileName: item.firstDocumentName ?? "", size: 40)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.title)
-                        .textStyle(.listTitle)
-                        .foregroundStyle(Color.ink)
-                        .lineLimit(1)
-                    Text([item.category.title, item.organisationName].compactMap { $0 }.joined(separator: " · "))
-                        .textStyle(.caption)
-                        .foregroundStyle(Color.inkMuted)
-                        .lineLimit(1)
+        HStack(spacing: 4) {
+            Button {
+                openedItem = item
+            } label: {
+                HStack(spacing: 12) {
+                    VaultLogoAvatar(look: nil, name: item.organisationName ?? item.title, fileName: item.firstDocumentName ?? "", size: 40)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.title)
+                            .textStyle(.listTitle)
+                            .foregroundStyle(Color.ink)
+                            .lineLimit(1)
+                        Text([item.category.singularTitle, item.createdAt.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "nl_NL")))].joined(separator: " · "))
+                            .textStyle(.caption)
+                            .foregroundStyle(Color.inkMuted)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
                 }
-                Spacer(minLength: 8)
+                .contentShape(.rect)
             }
-            .padding(10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.panel, in: .rect(cornerRadius: 14))
-            .contentShape(.rect(cornerRadius: 14))
-        }
-        .buttonStyle(.pave)
-        .contextMenu {
-            Button(role: .destructive) {
+            .buttonStyle(.pave)
+            .accessibilityHint("Opent het bewijsstuk")
+
+            Button {
                 model.removeSource(item.id, from: project)
             } label: {
-                Label { Text(AylaMessages.sourcesRemove) } icon: { Image(.iconXMark) }
+                Image(.iconXMark)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .paveIconFrame(12)
+                    .foregroundStyle(Color.inkMuted)
+                    .frame(width: 44, height: 44)
+                    .contentShape(.rect)
             }
+            .buttonStyle(.pave)
+            .accessibilityLabel("\(AylaMessages.sourcesRemove): \(item.title)")
         }
-        .accessibilityAction(named: AylaMessages.sourcesRemove) { model.removeSource(item.id, from: project) }
+        .padding(.leading, 10)
+        .padding(.vertical, 6)
+        .background(Color.panel, in: .rect(cornerRadius: 14))
     }
 
     private func emptyText(_ text: String) -> some View {
@@ -286,12 +357,18 @@ struct AylaProjectStart: View {
             .textStyle(.bodyMedium)
             .foregroundStyle(Color.inkMuted)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 12)
+            .padding(.vertical, 8)
             .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func addUploadedSource() {
+        guard let id = uploadFlow?.savedItemID else { return }
+        Task { await model.addSources([id], to: project) }
     }
 }
 
-/// "Bronnen toevoegen": pick items from the vault, several at once. Items that are already a source are ticked.
+/// "Uit kluis halen": pick items from the vault, several at once. Items that are already a source are ticked. Items Ayla
+/// may not use yet are asked about first, as on the web: otherwise she would not see them.
 struct AylaSourcePicker: View {
     let chosen: Set<String>
     let onAdd: ([String]) -> Void
@@ -300,6 +377,7 @@ struct AylaSourcePicker: View {
     @Environment(VaultModel.self) private var vault: VaultModel?
     @State private var picked: Set<String> = []
     @State private var query = ""
+    @State private var asksPermission: [VaultItem]?
     @FocusState private var isSearchFocused: Bool
 
     private var items: [VaultItem] {
@@ -316,11 +394,14 @@ struct AylaSourcePicker: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     PaveSearchField(text: $query, prompt: "Zoek in je kluis", isFocused: $isSearchFocused)
-                    if vault?.items.isEmpty ?? true {
-                        Text(AylaMessages.sourcesPickEmpty)
-                            .textStyle(.bodyMedium)
-                            .foregroundStyle(Color.inkMuted)
+                    if vault?.state != .ready {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
                             .padding(.top, 24)
+                    } else if vault?.items.isEmpty ?? true {
+                        note(AylaMessages.sourcesPickEmpty)
+                    } else if items.isEmpty {
+                        note(AylaMessages.sourcesPickNoMatch)
                     }
                     ForEach(items) { item in
                         row(item)
@@ -339,16 +420,50 @@ struct AylaSourcePicker: View {
                     Button("Annuleren") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(picked.isEmpty ? AylaMessages.sourcesAdd : "\(AylaMessages.sourcesAdd) (\(picked.count))") {
-                        onAdd(Array(picked))
-                        dismiss()
-                    }
-                    .disabled(picked.isEmpty)
+                    Button(picked.isEmpty ? "Toevoegen" : "Toevoegen (\(picked.count))", action: add)
+                        .disabled(picked.isEmpty)
                 }
             }
             .task { if let vault, vault.state != .ready { await vault.load() } }
+            .confirmationDialog(
+                AylaMessages.askNotAllowedTitle(asksPermission?.count ?? 1),
+                isPresented: Binding(get: { asksPermission != nil }, set: { if !$0 { asksPermission = nil } }),
+                titleVisibility: .visible,
+                presenting: asksPermission
+            ) { notAllowed in
+                Button(AylaMessages.askAllowAll) {
+                    Task {
+                        for item in notAllowed { try? await vault?.setAylaAllowed(true, itemID: item.id) }
+                        await vault?.load()
+                        finish(Array(picked))
+                    }
+                }
+                Button(AylaMessages.askWithoutThem) {
+                    finish(Array(picked.subtracting(notAllowed.map(\.id))))
+                }
+                Button("Annuleren", role: .cancel) {}
+            } message: { _ in
+                Text(AylaMessages.askNotAllowedMessage)
+            }
         }
         .tint(.paveAccent)
+    }
+
+    private func note(_ text: String) -> some View {
+        Text(text)
+            .textStyle(.bodyMedium)
+            .foregroundStyle(Color.inkMuted)
+            .padding(.top, 24)
+    }
+
+    private func add() {
+        let notAllowed = (vault?.items ?? []).filter { picked.contains($0.id) && $0.aylaAllowedAt == nil }
+        if notAllowed.isEmpty { finish(Array(picked)) } else { asksPermission = notAllowed }
+    }
+
+    private func finish(_ ids: [String]) {
+        if !ids.isEmpty { onAdd(ids) }
+        dismiss()
     }
 
     private func row(_ item: VaultItem) -> some View {
@@ -366,7 +481,7 @@ struct AylaSourcePicker: View {
                         .textStyle(.listTitle)
                         .foregroundStyle(Color.ink)
                         .lineLimit(1)
-                    Text(item.category.title)
+                    Text(item.category.singularTitle)
                         .textStyle(.caption)
                         .foregroundStyle(Color.inkMuted)
                 }

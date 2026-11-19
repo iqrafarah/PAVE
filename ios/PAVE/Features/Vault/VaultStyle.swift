@@ -82,7 +82,7 @@ extension VaultItem.Status {
 extension VaultFolderColor {
     /// Green follows the accent of the app; the others are the theme colours, as on the web.
     var color: Color {
-        self == .green ? .paveAccent : Color(uiColor: UIColor(hex: hex))
+        self == .green ? .paveAccentFill : Color(uiColor: UIColor(hex: hex))
     }
 
     /// The light band behind the folder: 11% of the colour on white, which for green is exactly the surface tint.
@@ -92,7 +92,7 @@ extension VaultFolderColor {
 
     /// White on the colour when that reads well (WCAG AA for the icon), otherwise ink, as for lime or a light own colour.
     var foreground: Color {
-        self == .green || PaveThemeColor.contrastWithWhite(hex) >= 3 ? .white : .ink
+        self == .green || PaveThemeColor.contrastWithWhite(hex) >= 3 ? .white : Color(uiColor: UIColor(hex: 0x2B2B2B))
     }
 }
 

@@ -24,7 +24,7 @@ private struct PaveShimmer: ViewModifier {
                     let progress = timeline.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1.4) / 1.4
                     GeometryReader { proxy in
                         let width = proxy.size.width
-                        LinearGradient(colors: [Color.panel.opacity(0), Color.panel.opacity(0.7), Color.panel.opacity(0)], startPoint: .leading, endPoint: .trailing)
+                        LinearGradient(colors: [Color.shimmerLight.opacity(0), Color.shimmerLight, Color.shimmerLight.opacity(0)], startPoint: .leading, endPoint: .trailing)
                             .frame(width: width * 0.45)
                             .offset(x: -width * 0.45 + (width * 1.45) * progress)
                     }

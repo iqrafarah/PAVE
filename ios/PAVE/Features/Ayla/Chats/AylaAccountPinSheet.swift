@@ -29,11 +29,11 @@ struct AylaAccountPinSheet: View {
     @Environment(AppState.self) private var appState
     @State private var step: Step
     @State private var currentPin = ""
-    @State private var stepProblem: String?
     @State private var code = ""
     @State private var codeError: String?
     @State private var isChecking = false
     @State private var confirmsDeleteAll = false
+    @State private var deleteProblem: String?
     @FocusState private var isCodeFocused: Bool
 
     init(purpose: Purpose, model: AylaChatModel, onDone: @escaping (String) -> Void) {
@@ -48,9 +48,10 @@ struct AylaAccountPinSheet: View {
             Group {
                 switch step {
                 case .current:
-                    AylaChatPinView(mode: .enter, title: AylaMessages.accountPinCurrentTitle, subtitle: stepProblem ?? AylaMessages.accountPinCurrentBody) { pin in
+                    // The current PIN is checked first, as on the web, so a wrong one is said at once and counts.
+                    AylaChatPinView(mode: .enter, title: AylaMessages.accountPinCurrentTitle, subtitle: AylaMessages.accountPinCurrentBody) { pin in
+                        if let problem = await model.verifyChatPin(pin) { return problem }
                         currentPin = pin
-                        stepProblem = nil
                         step = .newPin
                         return nil
                     } onForgot: {
@@ -85,11 +86,14 @@ struct AylaAccountPinSheet: View {
                     Task {
                         if await model.resetChatPin() {
                             finish(AylaMessages.accountPinDeleted)
+                        } else {
+                            model.chatsProblem = nil
+                            deleteProblem = AylaMessages.pinCodeFailed
                         }
                     }
                 }
             } message: {
-                Text(AylaMessages.pinResetBody)
+                    Text(AylaMessages.accountPinDeleteBody)
             }
         }
         .tint(.paveAccent)
@@ -150,6 +154,9 @@ struct AylaAccountPinSheet: View {
                 .textStyle(.link)
                 .foregroundStyle(Color.critical)
                 .frame(minHeight: 44)
+                if let deleteProblem {
+                    PaveInlineError(message: deleteProblem)
+                }
             }
         }
         .padding(.horizontal, 24)
@@ -181,10 +188,9 @@ struct AylaAccountPinSheet: View {
                 finish(AylaMessages.accountPinChanged)
                 return nil
             }
-            // A wrong current PIN: start again with that step.
+            // The current PIN stopped working meanwhile (changed on another device): start again with it.
             if problem == AylaMessages.pinWrong || problem == AylaMessages.pinBlocked {
                 currentPin = ""
-                stepProblem = problem
                 step = .current
             }
             return problem

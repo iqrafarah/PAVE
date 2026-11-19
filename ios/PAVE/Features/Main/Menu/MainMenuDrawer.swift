@@ -45,7 +45,7 @@ struct MainMenuDrawer: View {
 
             ZStack(alignment: .topLeading) {
                 if isPresented {
-                    Color.black.opacity(0.18)
+                    Color.backdrop
                         .contentShape(.rect)
                         .onTapGesture(perform: close)
                         .accessibilityLabel("Menu sluiten")
@@ -147,7 +147,7 @@ struct MainMenuDrawer: View {
                 .renderingMode(.template)
                 .foregroundStyle(Color.white)
                 .frame(width: Self.buttonSize, height: Self.buttonSize)
-                .background(Color.paveAccent, in: .circle)
+                .background(Color.paveAccentFill, in: .circle)
                 .contentShape(.circle)
         }
         .buttonStyle(.pave)

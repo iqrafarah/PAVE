@@ -24,12 +24,11 @@ public protocol AylaService: Sendable {
     /// Deletes the chats whose time is up, for good. Returns how many went.
     func expireChats() async throws -> Int
     /// "Projecten" (migration 20261118120000): make, change, pin and delete; deleting keeps the chats.
-    func createProject(name: String, instructions: String) async throws -> AylaProject
-    func updateProject(_ project: AylaProject) async throws
+    /// `withLook`: send the icon and colour too, once projects have them (migration 20261119150000).
+    func createProject(name: String, instructions: String, icon: VaultFolderIcon?, color: VaultFolderColor?, withLook: Bool) async throws -> AylaProject
+    func updateProject(_ project: AylaProject, withLook: Bool) async throws
     func setProjectPinned(_ isPinned: Bool, projectID: String) async throws
     func deleteProject(id: String) async throws
-    /// The project's own icon and colour; nil goes back to the folder in the theme colour.
-    func setProjectLook(icon: VaultFolderIcon?, color: VaultFolderColor?, projectID: String) async throws
     /// "Bronnen" (migration 20261119160000): vault items Ayla uses in every chat of the project, newest first.
     /// `notSetUp` until the table exists.
     func projectSources(projectID: String) async throws -> [String]
@@ -106,11 +105,10 @@ extension AylaService {
     public func delete(conversationID: String) async throws { throw AylaError.unavailable }
     public func removeLastTurn(in conversationID: String) async throws { throw AylaError.unavailable }
     public func searchMessages(_ text: String) async throws -> [AylaSearchHit] { [] }
-    public func createProject(name: String, instructions: String) async throws -> AylaProject { throw AylaError.notSetUp }
-    public func updateProject(_ project: AylaProject) async throws { throw AylaError.notSetUp }
+    public func createProject(name: String, instructions: String, icon: VaultFolderIcon?, color: VaultFolderColor?, withLook: Bool) async throws -> AylaProject { throw AylaError.notSetUp }
+    public func updateProject(_ project: AylaProject, withLook: Bool) async throws { throw AylaError.notSetUp }
     public func setProjectPinned(_ isPinned: Bool, projectID: String) async throws { throw AylaError.notSetUp }
     public func deleteProject(id: String) async throws { throw AylaError.notSetUp }
-    public func setProjectLook(icon: VaultFolderIcon?, color: VaultFolderColor?, projectID: String) async throws { throw AylaError.notSetUp }
     public func projectSources(projectID: String) async throws -> [String] { throw AylaError.notSetUp }
     public func addProjectSources(_ itemIDs: [String], projectID: String) async throws { throw AylaError.notSetUp }
     public func removeProjectSource(_ itemID: String, projectID: String) async throws { throw AylaError.notSetUp }
@@ -364,7 +362,13 @@ public struct SupabaseAylaService: AylaService {
         // Before their migrations there are no projects or locked chats: the list simply has none.
         async let projectsRequest: [ProjectRow]? = try? select("ayla_projects", query: [("select", "*"), ("order", "updated_at.desc")], token: token)
         async let lockedRequest: [LockedRow]? = try? select("ayla_locked_chats", query: [("select", "conversation_id")], token: token)
-        let (rows, projectRows, lockedRows) = try await (rowsRequest, projectsRequest, lockedRequest)
+        // The archive in full, also chats older than the most recent ones; none before its migration.
+        async let archivedRequest: [ConversationRow]? = try? select(
+            "ayla_conversations", query: [("select", "*"), ("archived_at", "not.is.null"), ("order", "archived_at.desc")], token: token
+        )
+        let (recentRows, projectRows, lockedRows, archivedRows) = try await (rowsRequest, projectsRequest, lockedRequest, archivedRequest)
+        let recentIDs = Set(recentRows.map(\.id))
+        let rows = recentRows + (archivedRows ?? []).filter { !recentIDs.contains($0.id) }
         let locked = Set((lockedRows ?? []).map(\.conversationID))
         var list = AylaConversationList(
             conversations: rows.map {
@@ -399,9 +403,13 @@ public struct SupabaseAylaService: AylaService {
 
     // MARK: Projects
 
-    public func createProject(name: String, instructions: String) async throws -> AylaProject {
+    public func createProject(name: String, instructions: String, icon: VaultFolderIcon?, color: VaultFolderColor?, withLook: Bool) async throws -> AylaProject {
         guard let name = AylaProject.cleanName(name) else { throw AylaError.unavailable }
-        let body = ["name": name, "instructions": String(instructions.prefix(AylaProject.maxInstructionsLength))]
+        var body: [String: String?] = ["name": name, "instructions": String(instructions.prefix(AylaProject.maxInstructionsLength))]
+        if withLook {
+            body["icon"] = icon?.rawValue
+            body["color"] = color?.rawValue
+        }
         let urlRequest = try await authorized(
             "ayla_projects", query: [("select", "*")], method: "POST", body: try JSONEncoder().encode(body), returning: true
         )
@@ -410,24 +418,19 @@ public struct SupabaseAylaService: AylaService {
         return row.project
     }
 
-    public func updateProject(_ project: AylaProject) async throws {
+    public func updateProject(_ project: AylaProject, withLook: Bool) async throws {
         guard let name = AylaProject.cleanName(project.name) else { throw AylaError.unavailable }
-        let body = [
+        var body: [String: String?] = [
             "name": name,
             "instructions": String(project.instructions.prefix(AylaProject.maxInstructionsLength)),
             "updated_at": Date.now.ISO8601Format(),
         ]
+        if withLook {
+            body["icon"] = project.icon?.rawValue
+            body["color"] = project.color?.rawValue
+        }
         let urlRequest = try await authorized(
             "ayla_projects", query: [("id", "eq.\(project.id)"), ("select", "id")], method: "PATCH",
-            body: try JSONEncoder().encode(body), returning: true
-        )
-        try await expectRow(from: urlRequest)
-    }
-
-    public func setProjectLook(icon: VaultFolderIcon?, color: VaultFolderColor?, projectID: String) async throws {
-        let body: [String: String?] = ["icon": icon?.rawValue, "color": color?.rawValue]
-        let urlRequest = try await authorized(
-            "ayla_projects", query: [("id", "eq.\(projectID)"), ("select", "id")], method: "PATCH",
             body: try JSONEncoder().encode(body), returning: true
         )
         try await expectRow(from: urlRequest)

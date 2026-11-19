@@ -326,7 +326,7 @@ struct VaultFolderEditor: View {
                 .paveIconFrame(44)
                 .foregroundStyle(.white)
                 .paveIconFrame(112)
-                .background(Color.paveAccent, in: .circle)
+                .background(Color.paveAccentFill, in: .circle)
                 .accessibilityHidden(true)
             VaultFolderTile(title: folder.name, icon: icon.image, color: color.color, surface: color.surface, iconColor: color.foreground, count: 0, isSelected: false) {}
                 .allowsHitTesting(false)

@@ -316,6 +316,12 @@ struct MainView: View {
         case .settings:
             SettingsScreen(name: model.firstName, onShowMenu: onShowMenu, onSignOut: appState.signOut)
                 .environment(model)
+                .environment(\.openAylaChat) { chat in
+                    destination = .ayla
+                    isMenuOpen = false
+                    if !isWide { showsChats = false }
+                    Task { await model.open(chat) }
+                }
                 .environment(vault)
                 .environment(devices)
                 .environment(profile)
@@ -375,8 +381,13 @@ struct MainView: View {
         destination = .ayla
         isMenuOpen = false
         if !isWide { showsChats = false }
-        let conversation = model.conversationList.conversations.first { $0.id == id }
-            ?? AylaConversation(id: id, title: "", updatedAt: .now)
+        let known = model.conversationList.conversations.first { $0.id == id }
+        // A locked chat opens only through the PIN, and an archived one from the archive.
+        if let known, (known.isLocked && !model.showsLockedChats) || known.isArchived {
+            if known.isLocked { showsChats = true }
+            return
+        }
+        let conversation = known ?? AylaConversation(id: id, title: "", updatedAt: .now)
         Task { await model.open(conversation) }
     }
 

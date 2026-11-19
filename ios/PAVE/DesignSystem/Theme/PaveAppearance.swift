@@ -32,7 +32,18 @@ final class PaveThemeStore {
 extension Color {
     /// The accent of the app: PAVE green, or the theme colour chosen in Instellingen. Ayla's orb, the Watch and the
     /// widgets keep PAVE green. In dark mode a livelier shade that still carries white text (web darkThemeColours).
+    /// In dark mode this is a light shade, for text, icons, lines and the focus ring (web --dark-accent-text); a filled
+    /// control with white text on it uses `paveAccentFill`.
     static var paveAccent: Color {
+        let accent = PaveThemeStore.shared.accent
+        let light = accent.map { UIColor(hex: $0) } ?? UIColor(resource: .brandGreen)
+        let dark = PaveDarkColors.text(for: accent ?? PaveDarkColors.green)
+        return Color(uiColor: .dynamic(light: light, dark: dark))
+    }
+
+    /// The accent behind white text and icons: buttons, badges, selected chips. In dark mode the liveliest shade that
+    /// still carries white text (web --dark-brand).
+    static var paveAccentFill: Color {
         let accent = PaveThemeStore.shared.accent
         let light = accent.map { UIColor(hex: $0) } ?? UIColor(resource: .brandGreen)
         let dark = PaveDarkColors.fill(for: accent ?? PaveDarkColors.green)
@@ -43,9 +54,23 @@ extension Color {
     static var paveThemeAccent: Color {
         let accent = PaveThemeStore.shared.themeAccent
         let light = accent.map { UIColor(hex: $0) } ?? UIColor(resource: .brandGreen)
+        let dark = PaveDarkColors.text(for: accent ?? PaveDarkColors.green)
+        return Color(uiColor: .dynamic(light: light, dark: dark))
+    }
+
+    /// The theme colour behind content, for glows and gradients around the sign-in and loading screens.
+    static var paveThemeAccentFill: Color {
+        let accent = PaveThemeStore.shared.themeAccent
+        let light = accent.map { UIColor(hex: $0) } ?? UIColor(resource: .brandGreen)
         let dark = PaveDarkColors.fill(for: accent ?? PaveDarkColors.green)
         return Color(uiColor: .dynamic(light: light, dark: dark))
     }
+
+    /// The band of light that moves over a skeleton: bright on light grey, faint on dark grey.
+    static let shimmerLight = Color(uiColor: .dynamic(light: UIColor.white.withAlphaComponent(0.7), dark: UIColor.white.withAlphaComponent(0.1)))
+
+    /// The dimming behind a drawer or a sheet; stronger in dark mode, where a light veil does not show (web --color-backdrop).
+    static let backdrop = Color(uiColor: .dynamic(light: UIColor.black.withAlphaComponent(0.18), dark: UIColor.black.withAlphaComponent(0.6)))
 
     /// Cards, fields, sheets and other raised surfaces: white, and an almost black grey in dark mode (web --color-panel).
     static let panel = Color(uiColor: .dynamic(light: .white, dark: UIColor(hex: 0x161616)))
@@ -126,6 +151,7 @@ enum PaveDarkColors {
 
 extension ShapeStyle where Self == Color {
     static var paveAccent: Color { Color.paveAccent }
+    static var paveAccentFill: Color { Color.paveAccentFill }
     static var paveSurfaceTint: Color { Color.paveSurfaceTint }
     static var paveDropZone: Color { Color.paveDropZone }
     static var paveFocusRing: Color { Color.paveFocusRing }

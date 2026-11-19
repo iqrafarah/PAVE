@@ -30,9 +30,10 @@ struct SignInView: View {
 
                 PavePrimaryButton(title: "Inloggen", loadingTitle: "Bezig met inloggen...", isLoading: isSubmitting, action: submit)
 
-                helpOrError
-
                 accountLine
+                    .padding(.top, -12)
+
+                helpOrError
             }
             .animation(.easeOut(duration: 0.2), value: error)
             .animation(.easeOut(duration: 0.2), value: isSubmitting)

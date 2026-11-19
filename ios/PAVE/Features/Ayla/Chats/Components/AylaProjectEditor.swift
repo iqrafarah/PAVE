@@ -16,6 +16,7 @@ struct AylaProjectEditor: View {
     @State private var icon: VaultFolderIcon?
     @State private var color: VaultFolderColor?
     @State private var isSaving = false
+    @State private var problem: String?
     @State private var confirmsDelete = false
     @FocusState private var focus: Field?
 
@@ -107,6 +108,10 @@ struct AylaProjectEditor: View {
                         AylaLookPicker(icon: $icon, color: $color)
                     }
 
+                    if let problem {
+                        PaveInlineError(message: problem)
+                    }
+
                     if project != nil, onDelete != nil {
                         Button(AylaMessages.projectDelete, role: .destructive) { confirmsDelete = true }
                             .textStyle(.action)
@@ -149,7 +154,12 @@ struct AylaProjectEditor: View {
         Task {
             let saved = await onSave(cleanName, instructions.trimmingCharacters(in: .whitespacesAndNewlines), icon, color)
             isSaving = false
-            if saved { dismiss() }
+            if saved {
+                dismiss()
+            } else {
+                problem = AylaMessages.projectFailed
+                AccessibilityNotification.Announcement(AylaMessages.projectFailed).post()
+            }
         }
     }
 }

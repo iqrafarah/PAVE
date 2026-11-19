@@ -229,6 +229,10 @@ struct AylaChatScreen: View {
                 if shelf == .settings {
                     SettingsScreen(name: model.firstName, onShowMenu: nil, onSignOut: appState.signOut)
                         .environment(model)
+                        .environment(\.openAylaChat) { chat in
+                            closeShelf()
+                            Task { await model.open(chat) }
+                        }
                         .environment(vault)
                 } else if shelf == .vault {
                     if let vault {
@@ -1090,7 +1094,7 @@ struct AylaChatScreen: View {
     }
 
     private func placeholderColor(sheetOpen: Bool) -> Color {
-        if sheetOpen { return Color.black.opacity(0.41) }
+        if sheetOpen { return Color.inkMuted.opacity(0.7) }
         return model.phase == .idle || model.phase == .writing ? Color.inkMuted.opacity(0.41) : Color.white.opacity(0.41)
     }
 
@@ -1355,7 +1359,7 @@ struct AylaChatScreen: View {
                 openProposedEvidence(from: reply)
             }))
         }
-        let chats = Array(model.conversationList.conversations.prefix(8))
+        let chats = Array(model.conversationList.visible.sorted { $0.updatedAt > $1.updatedAt }.prefix(8))
         if !chats.isEmpty, !isTalking {
             menus.append(CameraMenu(id: "chats", title: "Chats", symbol: "bubble.left.and.bubble.right", items: chats.map { $0.title.isEmpty ? "Gesprek" : $0.title }, keys: chats.map(\.id), onPress: { index in
                 guard chats.indices.contains(index) else { return }

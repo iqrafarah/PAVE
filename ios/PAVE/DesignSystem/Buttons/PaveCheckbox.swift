@@ -10,7 +10,7 @@ struct PaveCheckbox: View {
             if isOn {
                 ZStack {
                     RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.paveAccent)
+                        .fill(Color.paveAccentFill)
                     Path { path in
                         path.move(to: CGPoint(x: size * 4 / 18, y: size * 9.2 / 18))
                         path.addLine(to: CGPoint(x: size * 6.857 / 18, y: size * 12 / 18))

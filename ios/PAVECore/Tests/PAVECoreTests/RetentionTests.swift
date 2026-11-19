@@ -68,3 +68,15 @@ struct RetentionTests {
         #expect(chosen == PaveRetention(chatExpiry: ChatExpiry(days: 7, start: .created, keepsPinned: false), aylaUsesArchive: true))
     }
 }
+
+struct ArchiveListTests {
+    @Test func aLockedChatInTheArchiveStaysBehindThePin() {
+        let now = Date.now
+        let list = AylaConversationList(conversations: [
+            AylaConversation(id: "a", title: "Archief", updatedAt: now, archivedAt: now),
+            AylaConversation(id: "b", title: "Geheim", updatedAt: now, isLocked: true, archivedAt: now),
+        ])
+        #expect(list.archived.map(\.id) == ["a"])
+        #expect(list.visible.isEmpty)
+    }
+}

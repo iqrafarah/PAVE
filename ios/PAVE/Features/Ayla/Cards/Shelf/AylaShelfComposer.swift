@@ -32,7 +32,7 @@ struct AylaShelfComposer: View {
                     .paveIconFrame(16)
                     .foregroundStyle(.white)
                     .frame(width: 36, height: 36)
-                    .background(canSend ? Color.paveAccent : Color.paveAccent.opacity(0.35), in: .circle)
+                    .background(canSend ? Color.paveAccentFill : Color.paveAccent.opacity(0.35), in: .circle)
                     .frame(width: 44, height: 44)
                     .contentShape(.circle)
             }
