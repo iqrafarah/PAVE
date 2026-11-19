@@ -16,7 +16,7 @@ struct AylaChatScreen: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.hidesScreenButtons) private var hidesScreenButtons
     @Environment(VaultModel.self) private var vault: VaultModel?
-    @Environment(\.openFromAyla) private var openFromAyla
+    @Environment(AppState.self) private var appState
     /// Adding evidence after Ja to Ayla's "Wil je iets toevoegen?", filled with what she proposed.
     @State private var addEvidence: VaultAddEvidenceModel?
     @State private var dictation = SpeechDictation()
@@ -203,6 +203,13 @@ struct AylaChatScreen: View {
             photoItems = []
             Task { await addPhotos(items) }
         }
+        // Asked to open a page: after a moment, so her answer ("Ik open je kluis") can be read first.
+        .task(id: model.screenRequest?.id) {
+            guard let request = model.screenRequest else { return }
+            try? await Task.sleep(for: .milliseconds(800))
+            guard !Task.isCancelled else { return }
+            openPage(request.navigation)
+        }
         // The places from the start chips, as they are in the app: up from the bottom, pulled up to the full screen,
         // swiped away, with the chat still there behind them. The vault is the vault itself.
         .sheet(item: Binding(get: { shelf }, set: { if $0 == nil { closeShelf() } }), onDismiss: {
@@ -210,7 +217,9 @@ struct AylaChatScreen: View {
             afterShelf = nil
         }) { shelf in
             Group {
-                if shelf == .vault {
+                if shelf == .settings {
+                    SettingsScreen(name: model.firstName, onShowMenu: nil, onSignOut: appState.signOut)
+                } else if shelf == .vault {
                     if let vault {
                         VaultScreen(onShowMenu: nil)
                             .environment(vault)
@@ -233,7 +242,7 @@ struct AylaChatScreen: View {
             .presentationDetents([.fraction(0.62), .large], selection: $vaultDetent)
             .presentationDragIndicator(.visible)
             .presentationBackgroundInteraction(.enabled)
-            .paveSheet(background: shelf == .vault ? .canvas : .white, clipsToColumn: shelf != .vault)
+            .paveSheet(background: shelf.isFullPage ? .canvas : .white, clipsToColumn: !shelf.isFullPage)
         }
         .photosPicker(
             isPresented: Binding(get: { photosForItemID != nil }, set: { if !$0 { itemPhotosClosed() } }),
@@ -607,9 +616,9 @@ struct AylaChatScreen: View {
                 // Adding evidence opens from Ja under the question; the vault, an item in it and the settings open from a
                 // button, like on the web; other parts of PAVE are not in the app yet.
                 if let navigation = entry.reply?.navigation, navigation.screen != .chat, navigation.screen != .addEvidence {
-                    if let openFromAyla, AylaNavigationButton.canOpen(navigation.screen) {
+                    if AylaNavigationButton.canOpen(navigation.screen) {
                         AylaNavigationButton(navigation: navigation, itemTitle: itemTitle(navigation.itemId)) {
-                            openFromAyla(navigation)
+                            openPage(navigation)
                         }
                     } else {
                         Text("Dit onderdeel komt later in de app.")
@@ -1770,6 +1779,15 @@ struct AylaChatScreen: View {
         vaultDetent = .fraction(0.62)
         shelf = next
         model.showScreen(next.screen)
+    }
+
+    /// A page Ayla opens, from her answer or the button under it: over the chat, like the start chips, so the
+    /// conversation stays where it is. A vault item opens inside the vault.
+    private func openPage(_ navigation: AylaReply.Navigation) {
+        guard let place = AylaShelf(navigation.screen) else { return }
+        if navigation.screen == .vaultItem, let id = navigation.itemId { vault?.itemToOpen = id }
+        if shelf == place { return }
+        openShelf(place)
     }
 
     private func closeShelf() {

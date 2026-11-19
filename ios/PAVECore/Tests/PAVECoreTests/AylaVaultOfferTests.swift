@@ -115,3 +115,16 @@ struct AylaVaultOfferTests {
         #expect(AylaVaultOffer.suggestedSkills(in: reply("", blocks: blocks)) == ["Scrum", "Presenteren"])
     }
 }
+
+struct AylaScreenRequestTests {
+    @Test func aShortRequestOpensThatPage() {
+        #expect(AylaScreenRequest.screen(askedIn: "Open mijn kluis") == .vault)
+        #expect(AylaScreenRequest.screen(askedIn: "ga naar mijn plan") == .plans)
+        #expect(AylaScreenRequest.screen(askedIn: "Breng me naar mijn profiel") == .profile)
+    }
+
+    @Test func aQuestionAboutThePageDoesNot() {
+        #expect(AylaScreenRequest.screen(askedIn: "Wat staat er in mijn kluis?") == nil)
+        #expect(AylaScreenRequest.screen(askedIn: "Kun je een plan voor me maken waarin ik open en eerlijk leer communiceren met collega's op mijn stage?") == nil)
+    }
+}

@@ -36,6 +36,13 @@ final class AylaChatModel {
     private(set) var contextTitle: String?
     private(set) var phase = Phase.idle
     private(set) var conversationID: String?
+    /// A page Ayla opens over the chat after her answer ("open mijn kluis"), as on the web; the id is her answer's.
+    struct ScreenRequest: Equatable {
+        let id: String
+        let navigation: AylaReply.Navigation
+    }
+    private(set) var screenRequest: ScreenRequest?
+
     /// "Nieuwe chat in project": the next question starts the conversation inside this project.
     private(set) var newChatProject: AylaProject?
     private(set) var firstName: String?
@@ -327,6 +334,9 @@ final class AylaChatModel {
                     }
                     phase = .idle
                     analyzeEvidenceIfNeeded(for: reply)
+                    if let navigation = AylaScreenRequest.screenToOpen(after: reply, asked: turn.text) {
+                        screenRequest = ScreenRequest(id: reply.id, navigation: navigation)
+                    }
                 }
             }
             if Task.isCancelled { phase = .idle }

@@ -297,6 +297,10 @@ struct MainView: View {
         case .ayla:
             AylaRootView(model: model, onShowMenu: onShowMenu, isWide: isWide, showsChats: $showsChats)
                 .environment(vault)
+                // Settings can open over the chat when you ask Ayla for them.
+                .environment(devices)
+                .environment(profile)
+                .environment(watchConnection)
                 .environment(\.openFromAyla, openFromAyla)
         case .vault:
             VaultScreen(onShowMenu: onShowMenu)
