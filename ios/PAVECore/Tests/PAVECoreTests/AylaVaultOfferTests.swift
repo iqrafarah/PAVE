@@ -123,6 +123,53 @@ struct AylaScreenRequestTests {
         #expect(AylaScreenRequest.screen(askedIn: "Breng me naar mijn profiel") == .profile)
     }
 
+    @Test func everydayWaysOfAskingOpenThePage() {
+        let asked: [(String, AylaScreen)] = [
+            ("Open instellingen", .settings), ("open m’n kluis even", .vault), ("Kun je mijn kluis openen?", .vault),
+            ("Laat mijn plan zien", .plans), ("Laat me mijn profiel zien", .profile), ("Ik wil naar mijn instellingen", .settings),
+            ("Naar de kluis", .vault), ("Kluis", .vault), ("Mijn meldingen", .notifications), ("Toon mijn notificaties", .notifications),
+            ("Bekijk mijn plannen", .plans), ("Mag ik mijn profiel zien?", .profile), ("Instellingen openen", .settings),
+            ("Ga even naar mijn kluis", .vault), ("Open de settings", .settings),
+        ]
+        for (text, screen) in asked {
+            #expect(AylaScreenRequest.screen(askedIn: text) == screen, "\(text)")
+        }
+    }
+
+    @Test func aPageThatIsOnlyMentionedDoesNotOpen() {
+        let asked = [
+            "Toon vacatures die bij mijn profiel passen", "Kijk naar mijn plan en zeg wat beter kan", "Kun je mijn kluis zien?",
+            "Zet mijn stage in de kluis", "Open een nieuw plan", "Ik ben benieuwd naar mijn plan", "Open de kluis niet",
+            "Ga mijn plan maken", "Sluit de kluis",
+        ]
+        for text in asked {
+            #expect(AylaScreenRequest.screen(askedIn: text) == nil, "\(text)")
+        }
+    }
+
+    @Test func yesToHerOfferOpensThePage() {
+        let choices = [AylaReply.Choice(id: "y", label: "Ja"), AylaReply.Choice(id: "n", label: "Nee")]
+        let inWords = AylaReply(id: "r", conversationId: "c", text: "Wil je naar je instellingen gaan?")
+        #expect(AylaScreenRequest.screen(confirmedBy: "Graag", after: inWords)?.screen == .settings)
+        #expect(AylaScreenRequest.screen(confirmedBy: "Nee", after: inWords) == nil)
+        let pointed = AylaReply(
+            id: "r", conversationId: "c", text: "Je eindstage staat in je kluis.",
+            question: AylaReply.Question(text: "Zal ik hem openen?", choices: choices), navigation: AylaReply.Navigation(screen: .vaultItem, itemId: "i")
+        )
+        #expect(AylaScreenRequest.screen(confirmedBy: "Ja", after: pointed) == AylaReply.Navigation(screen: .vaultItem, itemId: "i"))
+        let evidence = AylaReply(
+            id: "r", conversationId: "c", text: "Ik zie je stage niet in je kluis.",
+            question: AylaReply.Question(text: "Wil je hem toevoegen?", choices: choices), navigation: AylaReply.Navigation(screen: .addEvidence)
+        )
+        #expect(AylaScreenRequest.screen(confirmedBy: "Ja", after: evidence) == nil)
+        #expect(AylaScreenRequest.screen(confirmedBy: "Ja", after: AylaReply(id: "r", conversationId: "c", text: "Je kluis is leeg.")) == nil)
+    }
+
+    @Test func onlyPagesTheBrainKnowsGoAlongAsContext() {
+        #expect(!AylaScreenRequest.knownToBrain.contains(.notifications))
+        #expect(AylaScreenRequest.knownToBrain.contains(.settings))
+    }
+
     @Test func aQuestionAboutThePageDoesNot() {
         #expect(AylaScreenRequest.screen(askedIn: "Wat staat er in mijn kluis?") == nil)
         #expect(AylaScreenRequest.screen(askedIn: "Kun je een plan voor me maken waarin ik open en eerlijk leer communiceren met collega's op mijn stage?") == nil)

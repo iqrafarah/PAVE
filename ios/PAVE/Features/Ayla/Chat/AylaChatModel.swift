@@ -42,6 +42,7 @@ final class AylaChatModel {
         let navigation: AylaReply.Navigation
     }
     private(set) var screenRequest: ScreenRequest?
+    private var opensPageAlready = false
 
     /// "Nieuwe chat in project": the next question starts the conversation inside this project.
     private(set) var newChatProject: AylaProject?
@@ -276,6 +277,8 @@ final class AylaChatModel {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let service, !text.isEmpty, !isAnswering else { return nil }
         let files = attachments
+        // "Ja" or "Graag" to her own "Wil je naar je instellingen gaan?" opens that page too.
+        let offered = pendingOffersEvidence || followUp != nil ? nil : AylaScreenRequest.screen(confirmedBy: text, after: entries.last?.reply)
         draft = ""
         attachments = []
         if case .failed = phase, lastQuestion == text, entries.last?.role == .user, entries.last?.attachments == files.map(\.name) {
@@ -286,8 +289,11 @@ final class AylaChatModel {
         lastQuestion = text
         lastFiles = files
         // "Open instellingen": the page opens at once, while Ayla answers, as on the web.
-        if let screen = AylaScreenRequest.screen(askedIn: text) {
-            screenRequest = ScreenRequest(id: UUID().uuidString, navigation: AylaReply.Navigation(screen: screen))
+        if let navigation = AylaScreenRequest.screen(askedIn: text).map({ AylaReply.Navigation(screen: $0) }) ?? offered {
+            opensPageAlready = true
+            screenRequest = ScreenRequest(id: UUID().uuidString, navigation: navigation)
+        } else {
+            opensPageAlready = false
         }
         lastUploads = uploads
         sentUploads += files.compactMap { uploads[$0.name] }.filter { upload in !sentUploads.contains(upload) }
@@ -338,11 +344,7 @@ final class AylaChatModel {
                     }
                     phase = .idle
                     analyzeEvidenceIfNeeded(for: reply)
-                    // What she points to herself; a page asked for in so many words is already open.
-                    if AylaScreenRequest.screen(askedIn: turn.text) == nil,
-                       let navigation = AylaScreenRequest.screenToOpen(after: reply, asked: turn.text) {
-                        screenRequest = ScreenRequest(id: reply.id, navigation: navigation)
-                    }
+                    openPage(after: reply, asked: turn.text)
                 }
             }
             if Task.isCancelled { phase = .idle }
@@ -379,6 +381,7 @@ final class AylaChatModel {
             entries.append(Entry(id: reply.id, role: .ayla, text: reply.text, reply: reply))
             phase = .idle
             analyzeEvidenceIfNeeded(for: reply)
+            openPage(after: reply, asked: turn.text)
             await refreshConversations()
             return reply
         } catch {
@@ -387,6 +390,14 @@ final class AylaChatModel {
             if attachments.isEmpty { attachments = turn.files }
             return nil
         }
+    }
+
+    /// What she points to herself; a page asked for in so many words is already open. One item from the vault still
+    /// opens: only her answer knows which.
+    private func openPage(after reply: AylaReply, asked: String) {
+        guard let navigation = AylaScreenRequest.screenToOpen(after: reply, asked: asked) else { return }
+        if opensPageAlready, navigation.itemId == nil { return }
+        screenRequest = ScreenRequest(id: reply.id, navigation: navigation)
     }
 
     func analysis(for reply: AylaReply?) -> EvidenceAnalysis? {
@@ -557,7 +568,7 @@ final class AylaChatModel {
 
     /// Kluis, Plan or Profiel is open over the chat: questions are about that place, unless they are about one item.
     func showScreen(_ screen: AylaScreen) {
-        guard contextTitle == nil else { return }
+        guard contextTitle == nil, AylaScreenRequest.knownToBrain.contains(screen) else { return }
         context = AylaRequest.Context(screen: screen)
     }
 
