@@ -21,5 +21,5 @@ export function projectIconSrc(project: { icon?: string | null; color?: string |
 }
 
 export const PROJECT_ICON_SEARCH_PLACEHOLDER = 'Pictogrammen zoeken';
-export const PROJECT_ICON_PICKER_LABEL = 'Icoon en kleur kiezen';
+export const PROJECT_ICON_PICKER_LABEL = 'Pictogram en kleur kiezen';
 export const PROJECT_ICON_NONE_FOUND = 'Geen pictogram gevonden';

@@ -12,7 +12,7 @@ export const SETTINGS_AYLA = 'Ayla';
 export const SETTINGS_MEMORY_LINK = 'Wat Ayla over je weet';
 export const SETTINGS_VOICE_TEXT = 'Tekst bij praten met Ayla';
 export const SETTINGS_VOICE_TEXT_EXPLANATION =
-  'Je leest zin voor zin mee met wat Ayla zegt. Zet je dit uit, dan zie je alleen de orb.';
+  'Je leest zin voor zin mee met wat Ayla zegt. Zet je dit uit, dan zie je alleen de bewegende cirkel.';
 
 /** The line under "Wat Ayla over je weet" (iOS SettingsScreen.memorySummary). */
 export function getMemorySummary(status: MemoryStatus, isEnabled: boolean, noteCount: number) {
@@ -57,7 +57,7 @@ export const PERSONAL_CUSTOM_COLOR_HINT = 'Kies je eigen kleur';
 export const PERSONAL_VAULT_VIEW = 'Weergave kluis';
 export const PERSONAL_VIEW_LIST = 'Lijstweergave';
 export const PERSONAL_VIEW_GRID = 'Rasterweergave';
-export const PERSONAL_VAULT_HINT = 'Zo opent je kluis. In de kluis kun je even wisselen; de volgende keer opent hij weer zo.';
+export const PERSONAL_VAULT_HINT = 'Zo ziet je kluis eruit als je hem opent. In de kluis kun je dit tijdelijk veranderen. De volgende keer ziet hij er weer zo uit.';
 export const PERSONAL_TEXT_SIZE = 'Tekstgrootte';
 export const PERSONAL_DEVICE_NOTE = 'Je keuzes gelden voor deze browser.';
 export const PERSONAL_THEMES = [
@@ -81,14 +81,14 @@ export const PERSONAL_PHOTO_CHANGE = 'Wijzigen';
 export const PERSONAL_PHOTO_CHOOSE = 'Foto kiezen';
 export const PERSONAL_PHOTO_REMOVE = 'Verwijderen';
 export const PERSONAL_PHOTO_REMOVE_QUESTION = 'Profielafbeelding verwijderen?';
-export const PERSONAL_PHOTO_HINT = 'Kies een foto en schuif hem zo dat je gezicht in de cirkel staat.';
+export const PERSONAL_PHOTO_HINT = 'Kies een foto en verplaats die in de cirkel.';
 export const PERSONAL_PHOTO_SAVING = 'Je foto wordt bewaard…';
 export const PERSONAL_PHOTO_TYPE = 'Kies een JPG- of PNG-afbeelding van maximaal 5 MB.';
 export const PERSONAL_NOT_READY = 'Je naam en foto aanpassen kan nog niet. Zodra PAVE er klaar voor is, kan het hier.';
 export const PERSONAL_SAVE_FAILED = 'Bewaren lukte niet. Probeer het opnieuw.';
 export const PERSONAL_LOAD_FAILED = 'Je gegevens konden niet laden. Probeer het opnieuw.';
 export const PERSONAL_NAME = 'Hoe Ayla je noemt';
-export const PERSONAL_NAME_PROMPT = 'Je voornaam of roepnaam';
+export const PERSONAL_NAME_PROMPT = 'Je voornaam of de naam die je liever gebruikt';
 export const PERSONAL_NAME_HINT = 'Leeg laten? Dan gebruikt PAVE je voornaam.';
 export const PERSONAL_SAVE = 'Bewaren';
 export const PERSONAL_FULL_NAME = 'Volledige naam';

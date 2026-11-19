@@ -13,11 +13,11 @@ export const VAULT_ADD_BACK = 'Terug';
 export const VAULT_ADD_SAVING = 'Bezig met opslaan…';
 export const VAULT_ADD_STEPS = ['Basis', 'Documenten', 'Vaardigheden', 'Toestemming'] as const;
 
-export const VAULT_DROP_FILE = 'Sleep een bestand hierheen of klik om te uploaden';
+export const VAULT_DROP_FILE = 'Sleep een bestand hierheen of kies een bestand';
 export const VAULT_UPLOAD_HINT = 'PDF, Word, tekst of foto, tot 20 MB';
 export const VAULT_OR = 'Of';
 export const VAULT_WITHOUT_FILE_TITLE = 'Voeg een ervaring toe zonder bestand';
-export const VAULT_WITHOUT_FILE_MESSAGE = 'Geen document, geen probleem. Je kunt ook zelf ervaringen toevoegen.';
+export const VAULT_WITHOUT_FILE_MESSAGE = 'Heb je geen document? Dan kun je je ervaring zelf beschrijven.';
 export const VAULT_REMOVE_FILE = 'Bestand weghalen';
 
 export const VAULT_FIELD_TITLE = 'Titel';
@@ -49,7 +49,7 @@ export const VAULT_COVER_REPLACE = 'Andere omslag kiezen';
 export const VAULT_COVER_REMOVE = 'Omslag weghalen';
 export const VAULT_NO_COVER_WITH_LOGO = 'De band krijgt de sterkste kleur uit je logo.';
 export const VAULT_NO_COVER_WITHOUT_LOGO = 'Kies je een logo, dan krijgt de band de sterkste kleur daaruit.';
-export const VAULT_LOGO_HINT_CHOSEN = 'Klik op het logo om het te verplaatsen, te vervangen of weg te halen.';
+export const VAULT_LOGO_HINT_CHOSEN = 'Kies het logo om het te verplaatsen, te vervangen of weg te halen.';
 export const VAULT_COVER_CHOSEN = 'Staat in de band boven je kaart';
 export const VAULT_COVER_ACTIONS = 'Omslag aanpassen';
 export const VAULT_REFRAME = 'Verplaatsen en schalen';
@@ -83,7 +83,7 @@ export const VAULT_AYLA_SKILLS_NONE =
   'Ayla vond geen nieuwe vaardigheden in dit bewijs. Vul de omschrijving aan of voeg een bestand toe en vraag het opnieuw.';
 export const VAULT_AYLA_SKILLS_FAILED = 'Ayla kon nu geen voorstel doen. Probeer het zo nog een keer.';
 export const VAULT_AYLA_SKILLS_NO_CONNECTION = 'Geen verbinding. Probeer het zo nog een keer.';
-export const VAULT_AYLA_SKILLS_SIGNED_OUT = 'Je sessie is verlopen. Log opnieuw in en vraag het nog een keer.';
+export const VAULT_AYLA_SKILLS_SIGNED_OUT = 'Je bent niet meer ingelogd. Log opnieuw in en vraag het nog een keer.';
 export const VAULT_AYLA_SKILLS_NOT_READY = 'Ayla kan nog geen vaardigheden voorstellen. Dat komt binnenkort.';
 export const VAULT_SKILLS_FROM_AYLA = 'Voorstel van';
 export const VAULT_SKILLS_ADD_OWN = 'Zelf een vaardigheid toevoegen';
@@ -183,7 +183,7 @@ export const VAULT_BACK_TO_VAULT = 'Terug naar je kluis';
 export const VAULT_BACK_TO_ALL_FOLDERS = 'Terug naar alle mappen';
 export const VAULT_FOLDERS = 'Mappen';
 
-export const VAULT_STATUS_TITLES = { verified: 'Geverifieerd', toVerify: 'Niet bevestigd', rejected: 'Afgewezen' } as const;
+export const VAULT_STATUS_TITLES = { verified: 'Bevestigd', toVerify: 'Niet bevestigd', rejected: 'Afgewezen' } as const;
 export const VAULT_STATUS_EXPLANATIONS = {
   verified: 'Bevestigd door een officiële of vertrouwde bron. Pas je iets aan, dan moet het opnieuw bevestigd worden.',
   toVerify: 'Nog niet bevestigd door een school, opleiding of werkgever.',
@@ -294,7 +294,7 @@ export const VAULT_FOLDER_ICON_TITLES = {
 } as const;
 
 export const VAULT_ERROR_NO_CONNECTION = 'Je kluis is niet bereikbaar. Controleer je internetverbinding en probeer het opnieuw.';
-export const VAULT_ERROR_NOT_SIGNED_IN = 'Je sessie is verlopen. Log opnieuw in om je kluis te openen.';
+export const VAULT_ERROR_NOT_SIGNED_IN = 'Je bent niet meer ingelogd. Log opnieuw in om je kluis te openen.';
 export const VAULT_ERROR_NOT_ALLOWED = 'Dit mag niet met je account. Log opnieuw in en probeer het nog een keer.';
 export const VAULT_ERROR_GENERIC = 'Er ging iets mis. Probeer het zo nog een keer.';
 export const VAULT_ERROR_NOT_READY = 'Dit is nog niet beschikbaar. Probeer het later nog een keer.';
@@ -307,11 +307,11 @@ export const VAULT_REQUEST_PREVIEW_ACCESSIBILITY = 'Voorbeeld, werkt nog niet';
 export const VAULT_REQUEST_NOT_ACTIVE =
   'Bevestiging aanvragen werkt nog niet. Je kunt alvast kijken hoe het wordt, maar er wordt niets verstuurd.';
 export const VAULT_REQUEST_WHO_TITLE = 'Wie kan dit bevestigen?';
-export const VAULT_REQUEST_ORGANISATION_PROMPT = 'Bijv. Fontys of LiveWall';
+export const VAULT_REQUEST_ORGANISATION_PROMPT = 'Bijvoorbeeld Fontys of LiveWall';
 export const VAULT_REQUEST_EMAIL_TITLE = 'E-mailadres van je contactpersoon';
 export const VAULT_REQUEST_EMAIL_PROMPT = 'naam@organisatie.nl';
 export const VAULT_REQUEST_MESSAGE_TITLE = 'Bericht';
-export const VAULT_REQUEST_MESSAGE_PROMPT = 'Bijv. Wil je mijn eindstage bevestigen?';
+export const VAULT_REQUEST_MESSAGE_PROMPT = 'Bijvoorbeeld: Wil je mijn eindstage bevestigen?';
 export const VAULT_REQUEST_SHARED_TITLE = 'Dit ziet de ontvanger';
 export const VAULT_REQUEST_SEND = 'Verzoek versturen';
 export const VAULT_REQUEST_NOT_SENT_TITLE = 'Nog niet verstuurd';

@@ -4,7 +4,7 @@ import { INSUFFICIENT_AAL_MESSAGE } from '../shared/messages';
 // Texts marked "iOS" are the same as in ios/PAVE/Features/Ayla, so both apps say the same.
 
 // Chat (iOS: AylaMessages.swift)
-export const AYLA_SIGN_IN_AGAIN = 'Je sessie is verlopen. Log opnieuw in om met Ayla te praten.';
+export const AYLA_SIGN_IN_AGAIN = 'Je bent niet meer ingelogd. Log opnieuw in om met Ayla te praten.';
 export const AYLA_CONVERSATION_GONE = 'Dit gesprek bestaat niet meer. Begin een nieuw gesprek.';
 export const AYLA_UNAVAILABLE = 'Ayla kon nu geen antwoord geven. Probeer het zo opnieuw.';
 export const AYLA_CHATS_UNAVAILABLE =
@@ -153,7 +153,7 @@ export function getHomeHeading(firstName: string | null) {
 
 // Written for the web (no iOS counterpart)
 export const AYLA_HOME_INTRO =
-  'Ontdek kansen, krijg persoonlijk advies en werk met AI direct in jouw PAVE-omgeving. Van je kluis en ontwikkelplan tot vacatures en sollicitaties.';
+  'Ayla helpt je bij werk en opleiding. Je krijgt advies, hulp bij je cv en vacatures die bij je passen.';
 export const AYLA_OFFLINE = 'Geen verbinding. Probeer het zo opnieuw.';
 export const AYLA_NEW_CHAT = 'Nieuwe chat';
 
@@ -162,22 +162,22 @@ export const AYLA_PROJECTS = 'Projecten';
 export const AYLA_NEW_PROJECT = 'Nieuw project';
 export const AYLA_PROJECT_NAME_LABEL = 'Naam van het project';
 export const AYLA_PROJECT_NAME_PLACEHOLDER = 'Bijvoorbeeld: Stage zoeken';
-export const AYLA_PROJECT_INSTRUCTIONS = 'Instructies voor AYLA';
+export const AYLA_PROJECT_INSTRUCTIONS = 'Instructies voor Ayla';
 export const AYLA_PROJECT_INSTRUCTIONS_HINT =
-  'AYLA volgt dit in elke chat binnen dit project, bijvoorbeeld waar het over gaat of hoe ze moet antwoorden.';
+  'Ayla volgt dit in elke chat in dit project. Schrijf bijvoorbeeld waar het project over gaat of hoe Ayla moet antwoorden.';
 export const AYLA_PROJECT_INSTRUCTIONS_MAX = 2000;
 export const AYLA_PROJECT_INSTRUCTIONS_PLACEHOLDER = 'Bijvoorbeeld: Help me met stage zoeken in de zorg. Antwoord kort en in simpele taal.';
 export const AYLA_PROJECT_EDIT = 'Project aanpassen';
 export const AYLA_PROJECT_CREATE = 'Project maken';
 export const AYLA_PROJECT_MOVED = (project: string) => `Chat verplaatst naar ${project}`;
 export const AYLA_PROJECT_MOVE_FAILED = 'De chat kon niet worden verplaatst. Probeer het opnieuw.';
-export const AYLA_PROJECT_NO_INSTRUCTIONS = 'Nog geen instructies. Kies Aanpassen om AYLA te vertellen waar dit project over gaat.';
+export const AYLA_PROJECT_NO_INSTRUCTIONS = 'Nog geen instructies. Kies Aanpassen om Ayla te vertellen waar dit project over gaat.';
 export const AYLA_PROJECT_DELETE_QUESTION = 'Project verwijderen?';
 export const AYLA_PROJECT_DELETE_BODY = 'Je chats blijven bestaan, ze horen alleen niet meer bij een project.';
 export const AYLA_PROJECT_CHATS = 'Chats in dit project';
 export const AYLA_PROJECT_NO_CHATS = 'Nog geen chats in dit project. Stel hieronder je eerste vraag.';
 export const AYLA_PROJECT_DELETE = 'Project verwijderen';
-export const AYLA_PROJECTS_NOT_READY = 'Projecten zijn nog niet beschikbaar: de database mist de projecten-tabel.';
+export const AYLA_PROJECTS_NOT_READY = 'Projecten zijn nog niet beschikbaar. Probeer het later opnieuw.';
 export const AYLA_PROJECT_GONE = 'Dit project bestaat niet meer.';
 export const AYLA_PROJECT_FAILED = 'Het project kon niet worden opgeslagen. Probeer het opnieuw.';
 export const AYLA_PROJECT_LOAD_FAILED = 'Het project kon niet worden geladen.';
@@ -186,7 +186,7 @@ export const AYLA_NO_MESSAGES = 'Nog geen berichten.';
 export const AYLA_CHATS_LOADING = 'Chats laden…';
 export const MEMORY_LOADING = 'Laden…';
 export const AYLA_OPEN_CHATS = 'Gesprekken openen';
-export const AYLA_TEXT_TOO_LONG = 'Je bericht is zo lang als het kan zijn: 4000 tekens.';
+export const AYLA_TEXT_TOO_LONG = 'Je bericht is te lang. Het mag maximaal 4000 tekens zijn.';
 export const AYLA_FILE_TYPE_UNSUPPORTED =
   'Dit bestandstype kan ik nog niet lezen. Probeer een pdf, foto, .txt-, .md- of .csv-bestand.';
 export const AYLA_FILE_EMPTY = 'In dit bestand staat geen tekst.';
@@ -195,7 +195,7 @@ export const AYLA_TOO_MANY_FILES = 'Je kunt 5 bestanden tegelijk toevoegen.';
 export const AYLA_REMOVE_FILE = 'Bestand weghalen';
 export const AYLA_COPIED = 'Gekopieerd';
 export const AYLA_VAULT_LABEL = 'Kluis';
-export const AYLA_DISCLAIMER = 'AYLA is AI en kan fouten maken.';
+export const AYLA_DISCLAIMER = 'Ayla is een AI-assistent en kan fouten maken.';
 export const AYLA_ERROR_LOADING_CHAT = 'Dit gesprek kon niet worden geladen. Probeer het opnieuw.';
 export const AYLA_MICROPHONE_BLOCKED =
   'Geef je browser toegang tot je microfoon om je vraag in te spreken.';
@@ -256,7 +256,7 @@ export const MEMORY_QUESTION_REMEMBER = 'Zal ik dit over je onthouden?';
 export const MEMORY_QUESTION_UPDATE = 'Zal ik dit bijwerken?';
 export const MEMORY_QUESTION_REMOVE = 'Zal ik dit weghalen?';
 export const MEMORY_SEE_ALL = 'Bekijk wat Ayla over je weet';
-export const MEMORY_SUGGESTION_FOOTNOTE = 'Laat je het weghalen uit, dan blijft het gewoon staan.';
+export const MEMORY_SUGGESTION_FOOTNOTE = 'Zeg je nee, dan blijft het bewaard.';
 export const MEMORY_USED_HEADING = 'Dit antwoord steunt op';
 // Written for the web
 export const MEMORY_SAVED = 'Klaar.';
@@ -431,7 +431,7 @@ export const AYLA_SOURCES_SORT_NAME = 'Naam';
 export const AYLA_SOURCES_FILTER_ALL = 'Alles';
 export const AYLA_SOURCES_SORT_LABEL = 'Sorteren';
 export const AYLA_SOURCES_FILTER_LABEL = 'Filteren';
-export const AYLA_SOURCES_UPLOAD = 'Bestand uploaden';
+export const AYLA_SOURCES_UPLOAD = 'Bestand toevoegen';
 export const AYLA_SOURCES_FROM_VAULT = 'Uit kluis halen';
 export const AYLA_SOURCES_REMOVE = 'Verwijderen uit project';
 export const AYLA_SOURCES_EMPTY = 'Voeg bronnen toe om Ayla meer context over je project te geven. Ayla gebruikt ze in alle chats van dit project.';

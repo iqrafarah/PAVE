@@ -46,7 +46,7 @@ onMounted(verifyLink);
     <p v-if="errorMessage" role="alert" class="text-sm text-danger">
       {{ errorMessage }}
     </p>
-    <p v-else role="status" class="text-sm text-muted">Even geduld...</p>
+    <p v-else role="status" class="text-sm text-muted">Een moment geduld…</p>
 
     <AuthBackToLogin @click="navigateTo('/login')" />
   </AuthEduidCard>
