@@ -17,6 +17,6 @@ defineProps<{
       <span class="text-base font-semibold text-heading">{{ title }}</span>
       <span class="text-xs/normal text-subtle">{{ message }}</span>
     </span>
-    <LayoutPaveIcon name="chevronRight" class="h-4 w-2.25 text-subtle" />
+    <LayoutPaveIcon name="chevronRight" class="h-4 w-2.25 text-brand" />
   </NuxtLink>
 </template>

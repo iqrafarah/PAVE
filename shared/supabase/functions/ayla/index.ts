@@ -10,6 +10,17 @@ import { MODEL_OUTPUT_SCHEMA } from './prompt.ts'
 import { adzunaSearch } from './vacancies.ts'
 import { CORS, json, sessionLevel } from '../_shared/http.ts'
 
+/** The project's name and instructions. Before the projects migration runs the query fails and there is none. */
+async function loadProject(supabase: ReturnType<typeof createClient>, conversationId: string) {
+  const { data, error } = await supabase
+    .from('ayla_conversations')
+    .select('ayla_projects(name, instructions)')
+    .eq('id', conversationId)
+    .maybeSingle()
+  const project = error ? null : (data as { ayla_projects: { name: string; instructions: string } | null } | null)?.ayla_projects
+  return project ?? undefined
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405)
@@ -34,16 +45,21 @@ Deno.serve(async (req) => {
     const { data } = await supabase.from('ayla_conversations').select('id').eq('id', conversationId).maybeSingle()
     if (!data) return json({ error: 'conversation_not_found' }, 404)
   } else {
+    if (request.projectId) {
+      // Row level security only lets the user see their own projects.
+      const { data } = await supabase.from('ayla_projects').select('id').eq('id', request.projectId).maybeSingle()
+      if (!data) return json({ error: 'project_not_found' }, 404)
+    }
     const { data, error } = await supabase
       .from('ayla_conversations')
-      .insert({ started_on: request.device, title: titleFrom(request.text) })
+      .insert({ started_on: request.device, title: titleFrom(request.text), ...(request.projectId ? { project_id: request.projectId } : {}) })
       .select('id')
       .single()
     if (error || !data) return json({ error: 'unavailable' }, 500)
     conversationId = data.id as string
   }
 
-  const [{ data: past }, { data: profile }, memory, vault] = await Promise.all([
+  const [{ data: past }, { data: profile }, memory, vault, project] = await Promise.all([
     // More than the model gets, so a Ja to the vault early in a long conversation still counts.
     supabase
       .from('ayla_messages')
@@ -54,6 +70,7 @@ Deno.serve(async (req) => {
     supabase.from('profiles').select('preferred_name, full_name').eq('id', user.id).maybeSingle(),
     loadMemory(supabase),
     loadAllowedVault(supabase),
+    loadProject(supabase, conversationId),
   ])
   const history = ((past ?? []) as StoredMessage[]).reverse().map(toPastMessage)
   const firstName = (profile?.preferred_name || profile?.full_name?.split(' ')[0] || undefined) as string | undefined
@@ -62,7 +79,7 @@ Deno.serve(async (req) => {
   const adzunaKey = Deno.env.get('ADZUNA_APP_KEY')
 
   let title: string | undefined
-  const input = { request, conversationId, history, firstName, memory, vault, onTitle: request.conversationId ? undefined : (t: string) => { title = t } }
+  const input = { request, conversationId, history, firstName, memory, vault, project, onTitle: request.conversationId ? undefined : (t: string) => { title = t } }
   const deps = {
     complete: openRouterCompletion(openRouterKey, MODEL_OUTPUT_SCHEMA),
     searchVacancies: adzunaId && adzunaKey ? adzunaSearch(adzunaId, adzunaKey) : undefined,

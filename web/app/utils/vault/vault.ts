@@ -1,8 +1,11 @@
+import { PERSONAL_THEMES } from '~/utils/settings/settingsMessages';
 import type {
   VaultFileRole,
   VaultFilter,
   VaultFolder,
   VaultFolderColor,
+  VaultFolderColorChoice,
+  VaultFolderHex,
   VaultFolderIcon,
   VaultItem,
   VaultItemCategory,
@@ -82,15 +85,25 @@ export const VAULT_STATUS_STYLES: Record<VaultStatus, { icon: string; className:
 
 export const VAULT_ORIGINS: VaultOrigin[] = ['own', 'organisation', 'ayla'];
 
-// Green is PAVE's own colour: it follows the theme colour chosen in Instellingen, like everything else that is green.
-export const VAULT_FOLDER_COLORS: Record<VaultFolderColor, string> = {
-  green: 'var(--color-brand)',
-  blue: '#2f5b7c',
-  purple: '#5b4b8a',
-  rust: '#9a4a26',
-  rose: '#943a58',
+function themeHex(id: (typeof PERSONAL_THEMES)[number]['id']) {
+  return PERSONAL_THEMES.find((theme) => theme.id === id)!.hex.toLowerCase() as VaultFolderHex;
+}
+
+// The same colours as the themes in Instellingen, in the same order. The names are those the database knows.
+export const VAULT_FOLDER_COLORS: Record<VaultFolderColor, VaultFolderHex> = {
+  green: themeHex('green'),
+  blue: themeHex('blue'),
+  gold: themeHex('gold'),
+  rose: themeHex('pink'),
+  rust: themeHex('orange'),
+  purple: themeHex('purple'),
+  red: themeHex('red'),
+  lime: themeHex('lime'),
   slate: '#4a5250',
 };
+
+/** The colours to choose from: the themes. Slate is only kept for folders that already have it. */
+export const VAULT_FOLDER_PICKER_COLORS: VaultFolderColor[] = ['green', 'blue', 'gold', 'rose', 'rust', 'purple', 'red', 'lime'];
 
 export const VAULT_FOLDER_ICONS: Record<VaultFolderIcon, string> = {
   folder: `${ICONS}/FolderOutline.svg`,
@@ -111,14 +124,44 @@ export const VAULT_FOLDER_ICONS: Record<VaultFolderIcon, string> = {
   trophy: `${ICONS}/TrophyOutline.svg`,
 };
 
-/** The light band behind a folder: 11% of its colour on white, which for green is the tint of the design. */
-export function folderSurface(color: VaultFolderColor) {
-  return color === 'green' ? 'var(--color-tint)' : `color-mix(in srgb, ${VAULT_FOLDER_COLORS[color]} 11%, white)`;
+export function isFolderHex(color: string): color is VaultFolderHex {
+  return /^#[0-9a-f]{6}$/.test(color);
 }
 
-export function folderStyle(folder: VaultFolder) {
-  const color = folder.color ?? 'green';
-  return { color, icon: folder.icon ?? 'folder', hex: VAULT_FOLDER_COLORS[color], surface: folderSurface(color) };
+// The theme colours of Settings that have another name in the folder colours.
+const THEME_FOLDER_COLORS: Record<string, VaultFolderColor> = { pink: 'rose', orange: 'rust' };
+
+/** The colour a folder gets when you pick none: the theme colour of Settings (or your own colour when you chose one). */
+export function folderColorForTheme(theme: string, customColor: string | null): VaultFolderColorChoice {
+  if (theme === 'custom' && customColor && /^#[0-9a-f]{6}$/i.test(customColor)) return customColor.toLowerCase() as VaultFolderHex;
+  const named = THEME_FOLDER_COLORS[theme] ?? theme;
+  return (VAULT_FOLDER_PICKER_COLORS as string[]).includes(named) ? (named as VaultFolderColor) : 'green';
+}
+
+/** The colour itself: a named colour from the list, or the one you picked. */
+export function folderHex(color: VaultFolderColorChoice) {
+  return isFolderHex(color) ? color : VAULT_FOLDER_COLORS[color];
+}
+
+/** The light band behind a folder: 11% of its colour on white. */
+export function folderSurface(color: VaultFolderColorChoice) {
+  return `color-mix(in srgb, ${folderHex(color)} 11%, white)`;
+}
+
+/** The icon on a folder is always white. */
+export function folderIconColor(_color: VaultFolderColorChoice) {
+  return 'white';
+}
+
+export function folderStyle(folder: VaultFolder, fallback: VaultFolderColorChoice = 'green') {
+  const color: VaultFolderColorChoice = folder.color ?? fallback;
+  return {
+    color,
+    icon: folder.icon ?? 'folder',
+    hex: folderHex(color),
+    surface: folderSurface(color),
+    iconColor: folderIconColor(color),
+  };
 }
 
 const MONTHS = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
@@ -218,9 +261,13 @@ export function applyFilter(items: VaultItem[], filter: VaultFilter) {
       return !query || searchableText(item).includes(query);
     })
     .sort((left, right) => {
+      // "Eigen volgorde": what you dragged keeps its place; what you never moved comes after it.
+      if (filter.order === 'custom' && left.position !== right.position) {
+        return (left.position ?? Number.MAX_SAFE_INTEGER) - (right.position ?? Number.MAX_SAFE_INTEGER);
+      }
       const [a, b] = [sortDay(left), sortDay(right)];
       if (a === b) return right.updatedAt.localeCompare(left.updatedAt);
-      return filter.order === 'newest' ? b.localeCompare(a) : a.localeCompare(b);
+      return filter.order === 'oldest' ? a.localeCompare(b) : b.localeCompare(a);
     });
 }
 
@@ -278,14 +325,15 @@ export function kindFolder(category: VaultItemCategory, folders: VaultFolder[]) 
 }
 
 /** The folders above the vault, in the order they were made, each with its look and how many items it holds. */
-export function buildShelves(items: VaultItem[], folders: VaultFolder[]): VaultShelfEntry[] {
+export function buildShelves(items: VaultItem[], folders: VaultFolder[], fallback: VaultFolderColorChoice = 'green'): VaultShelfEntry[] {
   return folders.map((folder) => {
-    const style = folderStyle(folder);
+    const style = folderStyle(folder, fallback);
     return {
       folder,
       iconSrc: VAULT_FOLDER_ICONS[style.icon],
       hex: style.hex,
       surface: style.surface,
+      iconColor: style.iconColor,
       colorKey: style.color,
       iconKey: style.icon,
       count: items.filter((item) => item.folderIds.includes(folder.id)).length,

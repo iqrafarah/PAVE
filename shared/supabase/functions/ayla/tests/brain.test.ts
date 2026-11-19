@@ -601,3 +601,10 @@ test('offering to add evidence always comes with Ja and Nee', async () => {
   assert.deepEqual(reply.navigation, { screen: 'addEvidence' })
   assert.deepEqual(reply.question?.choices.map((c) => c.label), ['Ja', 'Nee'])
 })
+
+test('project instructions join the prompt, and an empty project adds nothing', () => {
+  const base = { device: 'web' as const }
+  assert.match(buildSystemPrompt({ ...base, project: { name: 'Stage', instructions: 'Antwoord kort.' } }), /project "Stage"[\s\S]*Antwoord kort\./)
+  assert.doesNotMatch(buildSystemPrompt({ ...base, project: { name: 'Stage', instructions: '  ' } }), /project "Stage"/)
+  assert.equal(parseRequest({ ...request, projectId: 'nope' }), 'projectId is not valid')
+})
