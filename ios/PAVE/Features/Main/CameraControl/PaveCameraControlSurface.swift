@@ -16,6 +16,7 @@ struct PaveCameraControlSurface: UIViewRepresentable {
         view.alpha = 0.02
         view.isUserInteractionEnabled = true
         let interaction = AVCaptureEventInteraction { event in
+            print("[knop] press \(event.phase.rawValue)")
             if event.phase == .ended { context.coordinator.onPress() }
         }
         view.addInteraction(interaction)
