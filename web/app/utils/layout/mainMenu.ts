@@ -6,12 +6,14 @@ export interface MainPlace {
   path: string;
   // The pixel A for Ayla; an icon for the rest.
   icon: PaveIconName | 'ayla';
+  // Shown instead of `icon` while the place is open (Kluis: the open folder).
+  activeIcon?: PaveIconName;
 }
 
 /** The places at the top of the menu, in the iPhone's order (iOS MainDestination.main). */
 export const MAIN_PLACES: MainPlace[] = [
   { label: 'Ayla', path: '/', icon: 'ayla' },
-  { label: 'Kluis', path: '/kluis', icon: 'folder' },
+  { label: 'Kluis', path: '/kluis', icon: 'folderClosed', activeIcon: 'folder' },
   { label: 'Plan', path: '/plan', icon: 'map' },
   { label: 'Profiel', path: '/profiel', icon: 'person' },
 ];
@@ -20,4 +22,8 @@ export const MAIN_PLACES: MainPlace[] = [
 export function isPlaceActive(place: MainPlace, path: string) {
   if (place.path === '/') return path === '/' || (path.startsWith('/ayla') && path !== MEMORY_PAGE_PATH);
   return path.startsWith(place.path);
+}
+
+export function placeIcon(place: MainPlace, path: string) {
+  return place.activeIcon && isPlaceActive(place, path) ? place.activeIcon : place.icon;
 }
