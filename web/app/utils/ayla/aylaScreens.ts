@@ -25,3 +25,17 @@ export function getScreenRoute(screen: AylaScreen) {
 export function hasPageAt(routes: { path: string }[], path: string) {
   return routes.some((route) => route.path === path);
 }
+
+const OPEN_VERBS = /\b(open|opent|ga naar|ga eens naar|breng me naar|neem me mee naar|toon|laat zien)\b/i;
+const ASKED_SCREENS: [RegExp, AylaScreen][] = [
+  [/\bkluis\b/i, 'vault'],
+  [/\b(plan|plannen)\b/i, 'plans'],
+  [/\bprofiel\b/i, 'profile'],
+];
+
+/** The screen a short "open mijn kluis" / "ga naar mijn plan" asks for, or null when the question is about something else. */
+export function screenAskedFor(text: string): AylaScreen | null {
+  const asked = text.trim();
+  if (asked.length > 60 || !OPEN_VERBS.test(asked)) return null;
+  return ASKED_SCREENS.find(([pattern]) => pattern.test(asked))?.[1] ?? null;
+}

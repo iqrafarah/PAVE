@@ -94,7 +94,24 @@ export function useAylaChatLock() {
     return { isFailed: false };
   }
 
-  /** "Pincode vergeten": the database deletes the locked chats and the PIN. */
+  /** "Pincode wijzigen": the database checks the current PIN again before it stores the new one. */
+  async function changePin(pin: string, newPin: string): Promise<PinCheck> {
+    const { error } = await supabase.rpc('ayla_change_chat_pin', { pin, new_pin: newPin });
+    if (!error) return 'right';
+    if (error.message.includes('too_many_attempts')) return 'blocked';
+    return error.message.includes('wrong_pin') ? 'wrong' : 'failed';
+  }
+
+  /** "Pincode vergeten": after a fresh two-step code the database replaces the PIN and the locked chats stay. */
+  async function recoverPin(newPin: string) {
+    const { error } = await supabase.rpc('ayla_recover_chat_pin', { new_pin: newPin });
+    if (error) return { isFailed: true };
+    state.value.hasPin = true;
+    state.value.isUnlocked = true;
+    return { isFailed: false };
+  }
+
+  /** "Alles verwijderen en opnieuw beginnen": the database deletes the locked chats and the PIN. */
   async function resetPin() {
     const { error } = await supabase.rpc('ayla_reset_chat_pin');
     if (error) return { isFailed: true };
@@ -104,5 +121,5 @@ export function useAylaChatLock() {
     return { isFailed: false };
   }
 
-  return { state, isAvailable, isLocked, load, createPin, checkPin, relock, startLockedChat, lockChat, unlockChat, resetPin };
+  return { state, isAvailable, isLocked, load, createPin, checkPin, relock, startLockedChat, lockChat, unlockChat, changePin, recoverPin, resetPin };
 }

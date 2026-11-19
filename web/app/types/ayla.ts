@@ -186,6 +186,9 @@ export interface Project {
   id: string;
   name: string;
   instructions: string;
+  // The folder icon and theme colour of the project; null shows the default folder in the brand colour.
+  icon: string | null;
+  color: string | null;
   updatedAt: string;
   pinnedAt: string | null;
 }

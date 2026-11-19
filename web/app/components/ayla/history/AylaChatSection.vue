@@ -41,7 +41,10 @@ const isCollapsed = useCollapsed(props.collapseKey);
       </button>
       <template v-else>{{ title }}</template>
     </h2>
-    <ul v-show="!isCollapsed" :id="listId" class="mt-2 space-y-0.5">
+    <div v-show="!isCollapsed" :id="listId" class="mt-2 space-y-0.5">
+      <!-- Extra rows above the chats, such as the pinned projects in Vastgezet. -->
+      <slot />
+      <ul class="space-y-0.5">
       <AylaChatRow
         v-for="conversation in conversations"
         :key="conversation.id"
@@ -55,6 +58,7 @@ const isCollapsed = useCollapsed(props.collapseKey);
         @remove="emit('remove', conversation)"
         @lock="emit('lock', conversation)"
       />
-    </ul>
+      </ul>
+    </div>
   </section>
 </template>

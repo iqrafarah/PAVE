@@ -52,11 +52,10 @@ async function handleResend() {
 </script>
 
 <template>
-  <AuthCard
-    title="Welkom bij PAVE"
+  <AuthEduidCard
+    title="Inloggen met eduID"
     :description="LOGIN_INSTRUCTION"
   >
-
     <form @submit.prevent="handleSubmit">
       <AuthEmailInput id="email" v-model="email" />
       <AuthPasswordInput
@@ -99,7 +98,11 @@ async function handleResend() {
     </form>
 
     <p class="mt-6 text-sm text-muted">
-      Heb je geen account of lukt inloggen niet? Mail naar <AuthSupportLink />.
+      Nog geen eduID?
+      <NuxtLink to="/register" class="font-medium text-brand underline">Account aanmaken</NuxtLink>
     </p>
-  </AuthCard>
+    <p class="mt-2 text-sm text-muted">
+      Lukt inloggen niet? Mail naar <AuthSupportLink />.
+    </p>
+  </AuthEduidCard>
 </template>

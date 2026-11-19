@@ -3,7 +3,7 @@ definePageMeta({ layout: 'auth' });
 </script>
 
 <template>
-  <AuthCard
+  <AuthEduidCard
     eyebrow="Instellen gelukt"
     title="Alles staat klaar"
     description="Tweestapsverificatie staat nu aan voor je PAVE-account."
@@ -33,5 +33,5 @@ definePageMeta({ layout: 'auth' });
     <AuthPrimaryButton @click="navigateTo(HOME_PATH)">
       Verder naar PAVE
     </AuthPrimaryButton>
-  </AuthCard>
+  </AuthEduidCard>
 </template>

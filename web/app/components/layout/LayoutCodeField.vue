@@ -10,6 +10,8 @@ const props = withDefaults(
     isMasked?: boolean;
     isInvalid?: boolean;
     isDisabled?: boolean;
+    // The boxes share the full width instead of stopping at a maximum size.
+    isFluid?: boolean;
     describedBy?: string;
     autocomplete?: string;
   }>(),
@@ -54,8 +56,8 @@ defineExpose({ focus });
     <span
       v-for="index in length"
       :key="index"
-      :class="boxClass(index - 1)"
-      class="flex h-14 min-w-0 max-w-14 flex-1 items-center justify-center rounded-lg border bg-white text-xl font-semibold text-heading transition-colors"
+      :class="[boxClass(index - 1), isFluid ? '' : 'max-w-14']"
+      class="flex h-14 min-w-0 flex-1 items-center justify-center rounded-lg border bg-white text-xl font-semibold text-heading transition-colors"
       aria-hidden="true"
     >
       <template v-if="index <= code.length">{{ isMasked ? '•' : code[index - 1] }}</template>

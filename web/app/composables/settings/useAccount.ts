@@ -124,6 +124,8 @@ export function useAccount() {
       avatarLink.value = null;
     } else {
       state.value.avatarUrl = data.signedUrl;
+      // Start downloading the photo now, so it is in the browser when the badge is drawn.
+      if (import.meta.client) new Image().src = data.signedUrl;
       avatarLink.value = { path, expiresAt: Date.now() + AVATAR_URL_SECONDS * 1000 };
     }
   }
@@ -184,6 +186,9 @@ export function useAccount() {
         isLoaded: true,
       });
       await loadAvatar();
+      // No row (for example the session was not fully verified yet): show what there is, but do not remember it
+      // as the answer, so the next load asks again.
+      if (!profile) return;
       checkedUserId.value = user.id;
       writeCache();
     } catch {

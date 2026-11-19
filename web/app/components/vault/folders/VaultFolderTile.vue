@@ -26,7 +26,7 @@ const emit = defineEmits<{
       class="relative flex w-full flex-col overflow-hidden rounded-2xl bg-white text-left shadow-[0_1px_6px_rgb(0_0_0/0.06)] transition-shadow hover:shadow-[0_2px_10px_rgb(0_0_0/0.1)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       @click="emit('open')"
     >
-      <span class="relative h-12.5 w-full shrink-0" :style="{ background: surface }" aria-hidden="true">
+      <span class="relative h-12.5 w-full shrink-0" :style="{ background: `color-mix(in srgb, ${surface} var(--vault-tint-strength, 100%), var(--color-panel))` }" aria-hidden="true">
         <span class="absolute bottom-[-0.4375rem] left-3.25 h-9.5 w-11.5">
           <VaultIcon src="/images/vault/folder-shape.svg" class="size-full" :style="{ color }" />
           <VaultIcon :src="icon" class="absolute left-1/2 top-1/2 size-4.5 -translate-x-1/2 -translate-y-[38%]" :style="{ color: iconColor }" />

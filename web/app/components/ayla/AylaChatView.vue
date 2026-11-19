@@ -6,6 +6,11 @@ const props = defineProps<{
   screen?: AylaScreen;
   // A new chat started here belongs to this project.
   projectId?: string;
+  // The start page of Vergrendelde chats: a new chat started here is locked.
+  isLocked?: boolean;
+  // The start page of a project or of Vergrendelde chats: the chatbox sits at the top, the chat list under it.
+  hasComposerOnTop?: boolean;
+  placeholder?: string;
 }>();
 
 interface ErrorAction {
@@ -32,7 +37,7 @@ const newChatProject = computed(() =>
 );
 // "Nieuwe vergrendelde chat": the chip says so, and the chat is locked as soon as it exists.
 const lock = useAylaChatLock();
-const isNewChatLocked = computed(() => !conversationId.value && lock.state.value.isNewChatLocked);
+const isNewChatLocked = computed(() => !conversationId.value && (props.isLocked || lock.state.value.isNewChatLocked));
 const chatProjectId = computed(() => props.projectId ?? newChatProject.value?.id);
 const { readDraft, saveDraft } = useAylaDraft();
 
@@ -201,12 +206,12 @@ async function send(questionText: string, input: 'text' | 'voice' = 'text') {
   text.value = '';
   attachments.value = [];
   // Without new files, the ones sent earlier in this chat go along again, so Ayla keeps seeing the photo.
-  const carriedAttachments = sentAttachments.length ? [] : await chatAttachmentsOf(conversationId.value);
+  const chatId = conversationId.value;
 
   const { failedText, failedAttachments } = await conversation.send({
     text: questionText,
     attachments: sentAttachments,
-    carriedAttachments,
+    ...(sentAttachments.length ? { carriedAttachments: [] } : { getCarriedAttachments: () => chatAttachmentsOf(chatId) }),
     input,
     ...(props.screen ? { context: { screen: props.screen } } : {}),
     ...(chatProjectId.value ? { projectId: chatProjectId.value } : {}),
@@ -218,6 +223,13 @@ async function send(questionText: string, input: 'text' | 'voice' = 'text') {
       projects.state.value.newChatProjectId = null;
       lock.state.value.isNewChatLocked = false;
       // On a screen such as the vault the chat stays where it was opened; only the home screen moves to /ayla/<id>.
+      // Asked to open a screen ("open kluis"): Ayla takes you straight there, without a stop on /ayla/<id> first.
+      const askedScreen = props.screen ? null : screenAskedFor(questionText);
+      const askedRoute = askedScreen && getScreenRoute(askedScreen);
+      if (askedRoute && hasPageAt(router.getRoutes(), askedRoute.path)) {
+        navigateTo(askedScreen === 'vault' ? { path: askedRoute.path, query: { chat: newId } } : askedRoute.path);
+        return;
+      }
       if (!props.screen) navigateTo(`/ayla/${newId}`);
       else navigateTo({ query: { ...router.currentRoute.value.query, chat: newId } }, { replace: true });
     },
@@ -288,13 +300,15 @@ function finishLook() {
 
 async function addToVault(label: string, suggestedSkills: string[], chatItem?: AylaVaultItemProposal) {
   if (isSavingToVault.value) return;
+  // The loader shows at once; looking up the files happens behind it.
+  isSavingToVault.value = true;
   const files = await itemFiles(chatItem);
   if (!files.length && !chatItem?.title) {
+    isSavingToVault.value = false;
     vaultAdd.open({ suggestedSkills });
     send(label);
     return;
   }
-  isSavingToVault.value = true;
   const result = await vaultAdd.saveFromChat(files, suggestedSkills, chatItem);
   isSavingToVault.value = false;
   if (result.status === 'saved') {
@@ -446,12 +460,14 @@ defineExpose({ openFilePicker });
         isFloating
           ? [
               'pointer-events-none absolute inset-x-0 bottom-0 *:pointer-events-auto',
-              // Over the vault, Ayla's answer and the chatbox get a white fade behind them, so the cards never show through.
-              hasMessages || isSavingToVault ? 'bg-linear-to-t from-white from-75% to-transparent pt-12' : '',
+              // Over the vault, the chatbox always has a fade behind it (white, or the dark page), so the cards never show through.
+              'bg-linear-to-t from-white from-75% to-transparent pt-12 pb-4',
             ]
-          : 'relative'
+          : hasComposerOnTop
+            ? 'relative pb-4'
+            : 'relative pb-4'
       "
-      class="flex flex-col items-center px-4 pb-4"
+      class="flex flex-col items-center px-4"
     >
       <!-- Only while talking is on: Ayla's small orb, above her answer and the text field. -->
       <AylaVoiceDock v-if="voice.isActive.value" class="relative mb-3" />
@@ -491,15 +507,16 @@ defineExpose({ openFilePicker });
       />
 
       <AylaContextChip
-        v-if="newChatProject"
+        v-if="newChatProject && !hasComposerOnTop"
         class="relative mb-2.5"
         :title="newChatProject.name"
         :label="getProjectChipLabel(newChatProject.name)"
         icon="folder"
+        :look="projectLook(newChatProject)"
         @clear="projects.state.value.newChatProjectId = null"
       />
       <AylaContextChip
-        v-else-if="isNewChatLocked"
+        v-else-if="isNewChatLocked && !hasComposerOnTop"
         class="relative mb-2.5"
         :title="AYLA_LOCKED_CHATS"
         :label="AYLA_LOCKED_CHIP"
@@ -513,13 +530,14 @@ defineExpose({ openFilePicker });
         :label="itemContext.itemIds ? itemContext.title : undefined"
         @clear="clearItemContext"
       />
+      <Transition name="tray-swap" mode="out-in">
       <AylaChoiceBar
         v-if="trayQuestion && !voice.isActive.value"
+        :key="`choices-${latestAnswer?.id ?? ''}-${trayQuestion.choices.map((choice) => choice.id).join('-')}-${trayQuestion.caption ? 'c' : ''}`"
         class="relative"
         :question="trayQuestion.text"
         :choices="trayQuestion.choices"
         :caption="trayQuestion.caption"
-        :is-about-vault="isVaultOffer"
         @choose="choose"
       />
       <AylaComposer
@@ -528,8 +546,10 @@ defineExpose({ openFilePicker });
         v-model:text="text"
         v-model:attachments="attachments"
         class="relative"
-        :variant="hasMessages || screen ? 'chat' : 'home'"
+        :variant="hasMessages || screen || hasComposerOnTop ? 'chat' : 'home'"
         :context-label="screen === 'vault' ? AYLA_VAULT_LABEL : undefined"
+        :placeholder="placeholder"
+        :is-plain="hasComposerOnTop"
         :is-writing="state.isWriting"
         :is-talking="voice.isActive.value"
         :is-muted="voice.session.value.isMuted"
@@ -541,7 +561,8 @@ defineExpose({ openFilePicker });
         @reading-files="isComposerReading = $event"
         @pick-item="pickerRef?.open()"
       />
-      <p class="relative mt-2 text-center text-xs text-muted">{{ AYLA_DISCLAIMER }}</p>
+      </Transition>
+      <p v-if="!hasComposerOnTop" class="relative mt-2 text-center text-xs text-muted">{{ AYLA_DISCLAIMER }}</p>
     </div>
 
     <input

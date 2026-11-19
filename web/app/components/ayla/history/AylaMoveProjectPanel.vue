@@ -75,7 +75,7 @@ onMounted(() => inputRef.value?.focus({ preventScroll: true }));
     <ul class="mt-1 max-h-60 overflow-y-auto border-t border-line pt-1">
       <li v-for="project in shown" :key="project.id">
         <button type="button" :disabled="isBusy" :class="rowClass" @click="moveTo(project.id)">
-          <VaultIcon src="/images/vault/icons/FolderOutline.svg" class="size-4 shrink-0 text-brand" />
+          <VaultIcon :src="projectLook(project).iconSrc" :style="{ color: projectLook(project).hex ?? undefined }" class="size-4 shrink-0 text-brand" />
           <span class="min-w-0 flex-1 truncate">{{ project.name }}</span>
           <LayoutPaveIcon v-if="project.id === currentProjectId" name="check" class="size-4 shrink-0 text-brand" />
         </button>

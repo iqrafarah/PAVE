@@ -33,7 +33,7 @@ const ROWS = computed<AttachRow[]>(() => [
   },
   { id: 'plan', label: AYLA_ADD_PLAN_LABEL, note: AYLA_NO_PLAN_NOTE, icon: '/images/ayla/add-plan.svg', width: 17, height: 16, isAvailable: false },
   { id: 'file', label: AYLA_ADD_FILE_LABEL, icon: '/images/ayla/add-file.svg', width: 14.6, height: 15.6, isAvailable: true },
-  { id: 'photo', label: AYLA_ADD_PHOTO_LABEL, icon: '/images/vault/icons/PhotoOutline.svg', width: 16, height: 16, isAvailable: true },
+  { id: 'photo', label: AYLA_ADD_PHOTO_LABEL, icon: '/images/vault/icons/PhotoSolid.svg', width: 16, height: 16, isAvailable: true },
 ]);
 
 const isOpen = ref(false);

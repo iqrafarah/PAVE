@@ -20,6 +20,7 @@ function pickCustomColor(event: Event) {
         v-for="option in PERSONAL_THEMES"
         :key="option.id"
         :title="option.name"
+        :data-theme-selected="theme === option.id"
         :style="{ '--swatch': option.hex, '--ring': option.accent }"
         :class="theme === option.id ? 'border-(--ring) p-1' : 'border-transparent p-0'"
         class="flex size-13 shrink-0 cursor-pointer rounded-full border-2 transition-[padding] has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand motion-reduce:transition-none"
@@ -33,6 +34,7 @@ function pickCustomColor(event: Event) {
          it is the colour wheel, with the last own colour in the middle when there is one. -->
     <label
       :title="PERSONAL_CUSTOM_COLOR_HINT"
+      :data-theme-selected="theme === 'custom'"
       :style="{ '--swatch': customColor ?? 'transparent' }"
       :class="theme === 'custom' && customColor ? 'border-(--swatch) p-1' : 'border-transparent bg-(image:--background-image-color-wheel) p-0'"
       class="relative flex size-13 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 transition-[padding] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand motion-reduce:transition-none"

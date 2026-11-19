@@ -6,6 +6,8 @@ interface ProjectsState {
   projects: Project[];
   status: ProjectsStatus;
   canPin: boolean;
+  // False until the icon/colour migration has run.
+  canStyle: boolean;
   // Which project a chat is in (chat id → project id). Chats in a project show under it, not under Recent.
   chatProjects: Record<string, string>;
   // "Nieuwe chat" on a project: the next chat that starts on the home screen goes into this project.
@@ -22,8 +24,11 @@ interface ProjectRow {
   instructions: string;
   updated_at: string;
   pinned_at?: string | null;
+  icon?: string | null;
+  color?: string | null;
 }
 
+const COLUMNS_WITH_LOOK = 'id,name,instructions,updated_at,pinned_at,icon,color';
 const COLUMNS_WITH_PIN = 'id,name,instructions,updated_at,pinned_at';
 const COLUMNS_WITHOUT_PIN = 'id,name,instructions,updated_at';
 const LIST_LIMIT = 50;
@@ -35,6 +40,8 @@ function toProject(row: ProjectRow): Project {
     instructions: row.instructions,
     updatedAt: row.updated_at,
     pinnedAt: row.pinned_at ?? null,
+    icon: row.icon ?? null,
+    color: row.color ?? null,
   };
 }
 
@@ -56,13 +63,18 @@ const NOTICE_MS = 3000;
  */
 export function useAylaProjects() {
   const supabase = useUntypedSupabase();
-  const state = useState<ProjectsState>('ayla-projects', () => ({ projects: [], status: 'idle', canPin: true, chatProjects: {}, newChatProjectId: null, notice: null, chatsVersion: 0 }));
+  const state = useState<ProjectsState>('ayla-projects', () => ({ projects: [], status: 'idle', canPin: true, canStyle: true, chatProjects: {}, newChatProjectId: null, notice: null, chatsVersion: 0 }));
 
   async function load() {
     if (state.value.status !== 'ready') state.value.status = 'loading';
     const select = (columns: string) =>
       supabase.from('ayla_projects').select(columns).order('updated_at', { ascending: false }).limit(LIST_LIMIT);
-    let { data, error } = await select(COLUMNS_WITH_PIN);
+    let { data, error } = await select(COLUMNS_WITH_LOOK);
+    // Until the icon/colour migration runs, projects show the default folder and the picker is hidden.
+    if (isMissingColumn(error)) {
+      state.value.canStyle = false;
+      ({ data, error } = await select(COLUMNS_WITH_PIN));
+    }
     // Until the pinned_at migration runs, pinning is hidden and the list still loads.
     if (isMissingColumn(error)) {
       state.value.canPin = false;
@@ -108,10 +120,10 @@ export function useAylaProjects() {
     return state.value.projects.find((project) => project.id === id);
   }
 
-  async function create(name: string) {
+  async function create(name: string, look: { icon?: string | null; color?: string | null } = {}) {
     const trimmedName = name.trim().replace(/\s+/g, ' ').slice(0, AYLA_MAX_TITLE_LENGTH);
     if (!trimmedName) return { project: null, isFailed: true };
-    const { data, error } = await supabase.from('ayla_projects').insert({ name: trimmedName }).select(COLUMNS_WITHOUT_PIN).single();
+    const { data, error } = await supabase.from('ayla_projects').insert({ name: trimmedName, ...(state.value.canStyle ? look : {}) }).select(state.value.canStyle ? COLUMNS_WITH_LOOK : COLUMNS_WITHOUT_PIN).single();
     if (error || !data) return { project: null, isFailed: true };
     const project = toProject(data as unknown as ProjectRow);
     state.value.projects = sortForList([project, ...state.value.projects]);
@@ -119,7 +131,7 @@ export function useAylaProjects() {
   }
 
   /** Changes the list first and puts it back when Supabase refuses: an empty result means a rule said no. */
-  async function update(id: string, changes: Partial<Pick<Project, 'name' | 'instructions'>>) {
+  async function update(id: string, changes: Partial<Pick<Project, 'name' | 'instructions' | 'icon' | 'color'>>) {
     const previous = find(id);
     if (!previous) return { isFailed: true };
     const next = {

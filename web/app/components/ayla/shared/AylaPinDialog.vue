@@ -7,6 +7,8 @@ const props = defineProps<{
   // Said under the boxes after the parent checked the PIN.
   error?: string | null;
   isBusy?: boolean;
+  // "Pincode wijzigen" in Privacy: first the current PIN, then the new one, with their own words.
+  isChange?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -25,11 +27,13 @@ const errorId = useId();
 
 const isConfirming = computed(() => props.mode === 'create' && firstPin.value !== null);
 const title = computed(() => {
-  if (props.mode === 'enter') return AYLA_PIN_ENTER_TITLE;
+  if (props.mode === 'enter') return props.isChange ? ACCOUNT_PIN_CURRENT_TITLE : AYLA_PIN_ENTER_TITLE;
+  if (props.isChange && !isConfirming.value) return ACCOUNT_PIN_NEW_TITLE;
   return isConfirming.value ? AYLA_PIN_CONFIRM_TITLE : AYLA_PIN_CREATE_TITLE;
 });
 const body = computed(() => {
-  if (props.mode === 'enter') return AYLA_PIN_ENTER_BODY;
+  if (props.mode === 'enter') return props.isChange ? ACCOUNT_PIN_CURRENT_BODY : AYLA_PIN_ENTER_BODY;
+  if (props.isChange && !isConfirming.value) return ACCOUNT_PIN_NEW_BODY;
   return isConfirming.value ? AYLA_PIN_CONFIRM_BODY : AYLA_PIN_CREATE_BODY;
 });
 const shownError = computed(() => (mismatch.value ? AYLA_PIN_MISMATCH : props.error));

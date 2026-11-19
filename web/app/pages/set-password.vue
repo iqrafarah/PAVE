@@ -90,7 +90,7 @@ onMounted(loadResetSteps);
 </script>
 
 <template>
-  <AuthCard
+  <AuthEduidCard
     eyebrow="Wachtwoord"
     title="Kies een nieuw wachtwoord"
     :description="NEW_PASSWORD_INSTRUCTION"
@@ -132,5 +132,5 @@ onMounted(loadResetSteps);
     </form>
 
     <AuthBackToLogin @click="signOut" />
-  </AuthCard>
+  </AuthEduidCard>
 </template>

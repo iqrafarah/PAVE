@@ -18,7 +18,7 @@ export interface BrainInput {
   /** What the user let Ayla remember. Missing means Ayla remembers nothing. */
   memory?: Memory
   /** The project of this conversation, if any. */
-  project?: { name: string; instructions: string }
+  project?: { name: string; instructions: string; sourceIds?: string[] }
   /** The vault items the user allowed Ayla to use. Missing means she sees none. She only sees them once the user said
    * Ja to looking in the vault in this conversation (see consent.ts). */
   vault?: AllowedVault
@@ -80,7 +80,9 @@ interface ModelOutput {
 export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaReply> {
   const { request } = input
   const memory: Memory = input.memory ?? { status: 'unavailable' }
-  const consent = vaultConsent(input.history, request)
+  // Sources the user put in the project are a standing yes to look at those items (still only the allowed ones).
+  const asked = vaultConsent(input.history, request)
+  const consent = asked === 'notAsked' && input.project?.sourceIds?.length ? 'granted' : asked
   const mayLook = mayLookInVault(consent)
   const vault = mayLook ? input.vault : undefined
   const messages: ChatMessage[] = [

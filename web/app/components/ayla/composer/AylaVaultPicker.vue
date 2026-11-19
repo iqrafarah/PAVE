@@ -117,7 +117,7 @@ function handleBackdropClick(event: MouseEvent) {
           <li class="relative w-38 shrink-0">
             <VaultFolderTile
               :title="AYLA_ALL_ITEMS"
-              icon="/images/vault/icons/FolderOutline.svg"
+              icon="/images/vault/icons/FolderClosedSolid.svg"
               :count="items.length"
               :class="isGroupOn(items) ? 'rounded-2xl ring-2 ring-brand' : ''"
               :aria-pressed="isGroupOn(items)"

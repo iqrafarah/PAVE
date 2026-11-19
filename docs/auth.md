@@ -4,7 +4,7 @@ Web and iOS use Supabase Auth with the same rules. A change to this file is a sh
 
 ## Sign in
 
-1. The user signs in with their email and password (`signInWithPassword`). Accounts are created by an admin in the Supabase dashboard; there is no self sign-up. Users who need help contact PAVE-support (support@pave.com).
+1. The user signs in with their email and password (`signInWithPassword`). Accounts are created by an admin in the Supabase dashboard, or by the user on web via `/register` (`signUp` with first and last name in the user metadata; the account works after the link in the confirmation email, then two-step setup follows). iOS has no sign-up yet. Users who need help contact PAVE-support (support@pave.com).
 2. Two-step verification with an authenticator app (TOTP) is mandatory for every user. After the password step the session is `aal1`; only an `aal2` session may use the app.
 
 ## Two-step verification (TOTP)

@@ -14,7 +14,7 @@ const chosen = defineModel<string>({ required: true });
 <template>
   <label
     :class="[
-      chosen === value ? 'border-brand bg-brand/10 ring-[0.5px] ring-brand' : 'border-card-border bg-white hover:bg-surface',
+      chosen === value ? 'border-transparent bg-brand/15' : 'border-card-border bg-white hover:bg-surface',
       'min-h-13.5 gap-3 px-4',
     ]"
     class="flex cursor-pointer items-center rounded-pill border py-2.5 transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand"
