@@ -64,13 +64,13 @@ export const PERSONAL_REDUCE_MOTION_HINT = 'Alles in PAVE blijft stil staan: gee
 export const PERSONAL_DEVICE_NOTE = 'Je keuzes gelden voor deze browser.';
 export const PERSONAL_THEMES = [
   { id: 'green', name: 'Groen', hex: '#355D4C', accent: '#355D4C' },
-  { id: 'blue', name: 'Blauw', hex: '#4F7DB8', accent: '#4C78B1' },
-  { id: 'gold', name: 'Goud', hex: '#C89A2E', accent: '#927022' },
-  { id: 'pink', name: 'Roze', hex: '#C56A8C', accent: '#AD5D7B' },
-  { id: 'orange', name: 'Oranje', hex: '#C97A52', accent: '#A76544' },
-  { id: 'purple', name: 'Paars', hex: '#8A6AC8', accent: '#8466C0' },
-  { id: 'red', name: 'Rood', hex: '#C86A6C', accent: '#B25E60' },
-  { id: 'lime', name: 'Limoen', hex: '#C8C36A', accent: '#7A7741' },
+  { id: 'blue', name: 'Blauw', hex: '#3F7FCB', accent: '#2F6DB5' },
+  { id: 'gold', name: 'Goud', hex: '#E0A21B', accent: '#A06400' },
+  { id: 'pink', name: 'Roze', hex: '#E05C96', accent: '#C2477A' },
+  { id: 'orange', name: 'Oranje', hex: '#E8742E', accent: '#C0531A' },
+  { id: 'purple', name: 'Paars', hex: '#8F6BE0', accent: '#7A55C7' },
+  { id: 'red', name: 'Rood', hex: '#E0524F', accent: '#C23B3B' },
+  { id: 'lime', name: 'Limoen', hex: '#7FB02E', accent: '#4F7A14' },
 ] as const;
 export const PERSONAL_TEXT_SIZES = [
   { id: 'small', name: 'Klein' },
