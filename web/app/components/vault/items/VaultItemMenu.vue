@@ -158,12 +158,12 @@ const row =
         @keydown="handleKeydown"
       >
         <button type="button" role="menuitem" :class="row" class="text-ink" @mouseenter="setFolders(false)" @click="choose('edit')">
-          <VaultIcon src="/images/vault/icons/PencilOutline.svg" class="size-4.5 text-brand" />
+          <VaultIcon src="/images/vault/icons/Pencil.svg" class="size-4.5 text-brand" />
           {{ VAULT_EDIT }}
         </button>
         <!-- Confirmed evidence needs no request; anything else can be sent to a school or employer. -->
         <button v-if="item.status !== 'verified'" type="button" role="menuitem" :class="row" class="text-ink" @mouseenter="setFolders(false)" @click="choose('confirm')">
-          <VaultIcon src="/images/vault/icons/CheckBadgeOutline.svg" class="size-4.5 text-brand" />
+          <VaultIcon src="/images/vault/icons/CheckBadgeSolid.svg" class="size-4.5 text-brand" />
           {{ VAULT_REQUEST_ACTION }}
         </button>
         <div v-if="hasFolders" ref="foldersRow" class="relative" @mouseenter="setFolders(true)">
@@ -213,7 +213,7 @@ const row =
           </div>
         </div>
         <button type="button" role="menuitem" :class="row" class="text-danger" @mouseenter="setFolders(false)" @click="choose('delete')">
-          <VaultIcon src="/images/vault/icons/TrashOutline.svg" class="size-4.5" />
+          <VaultIcon src="/images/vault/icons/Trash.svg" class="size-4.5" />
           {{ VAULT_DELETE }}
         </button>
       </div>

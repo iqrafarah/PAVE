@@ -47,17 +47,17 @@ export const VAULT_CATEGORY_PLURALS: Record<VaultItemCategory, string> = {
   other: 'Overige',
 };
 
-/** The outline icon on the folder tiles, as in the design. */
+/** The filled icon on the folder tiles, as in the design. */
 export const CATEGORY_FOLDER_ICONS: Record<VaultItemCategory, string> = {
-  diplomas: `${ICONS}/AcademicCapOutline.svg`,
-  certificates: `${ICONS}/CheckBadgeOutline.svg`,
-  badges: `${ICONS}/StarOutline.svg`,
-  projects: `${ICONS}/WrenchScrewdriverOutline.svg`,
-  workExperience: `${ICONS}/BriefcaseOutline.svg`,
-  internships: `${ICONS}/BuildingOfficeOutline.svg`,
-  skills: `${ICONS}/PaintBrushOutline.svg`,
-  feedback: `${ICONS}/ChatBubbleLeftEllipsisOutline.svg`,
-  reflections: `${ICONS}/DocumentTextOutline.svg`,
+  diplomas: `${ICONS}/AcademicCapSolid.svg`,
+  certificates: `${ICONS}/CheckBadgeSolid.svg`,
+  badges: `${ICONS}/StarSolid.svg`,
+  projects: `${ICONS}/WrenchScrewdriverSolid.svg`,
+  workExperience: `${ICONS}/BriefcaseSolid.svg`,
+  internships: `${ICONS}/BuildingOfficeSolid.svg`,
+  skills: `${ICONS}/PaintBrushSolid.svg`,
+  feedback: `${ICONS}/ChatBubbleLeftEllipsisSolid.svg`,
+  reflections: `${ICONS}/DocumentTextSolid.svg`,
   other: `${ICONS}/FolderClosedSolid.svg`,
 };
 
@@ -107,21 +107,21 @@ export const VAULT_FOLDER_PICKER_COLORS: VaultFolderColor[] = ['green', 'blue', 
 
 export const VAULT_FOLDER_ICONS: Record<VaultFolderIcon, string> = {
   folder: `${ICONS}/FolderClosedSolid.svg`,
-  briefcase: `${ICONS}/BriefcaseOutline.svg`,
-  'academic-cap': `${ICONS}/AcademicCapOutline.svg`,
-  'check-badge': `${ICONS}/CheckBadgeOutline.svg`,
-  'wrench-screwdriver': `${ICONS}/WrenchScrewdriverOutline.svg`,
-  'chat-bubble-left-ellipsis': `${ICONS}/ChatBubbleLeftEllipsisOutline.svg`,
-  star: `${ICONS}/StarOutline.svg`,
-  heart: `${ICONS}/HeartOutline.svg`,
-  'code-bracket': `${ICONS}/CodeBracketOutline.svg`,
-  'light-bulb': `${ICONS}/LightBulbOutline.svg`,
-  'rocket-launch': `${ICONS}/RocketLaunchOutline.svg`,
-  'globe-europe-africa': `${ICONS}/GlobeEuropeAfricaOutline.svg`,
-  'paint-brush': `${ICONS}/PaintBrushOutline.svg`,
-  'document-text': `${ICONS}/DocumentTextOutline.svg`,
-  'user-group': `${ICONS}/UserGroupOutline.svg`,
-  trophy: `${ICONS}/TrophyOutline.svg`,
+  briefcase: `${ICONS}/BriefcaseSolid.svg`,
+  'academic-cap': `${ICONS}/AcademicCapSolid.svg`,
+  'check-badge': `${ICONS}/CheckBadgeSolid.svg`,
+  'wrench-screwdriver': `${ICONS}/WrenchScrewdriverSolid.svg`,
+  'chat-bubble-left-ellipsis': `${ICONS}/ChatBubbleLeftEllipsisSolid.svg`,
+  star: `${ICONS}/StarSolid.svg`,
+  heart: `${ICONS}/HeartSolid.svg`,
+  'code-bracket': `${ICONS}/CodeBracketSolid.svg`,
+  'light-bulb': `${ICONS}/LightBulbSolid.svg`,
+  'rocket-launch': `${ICONS}/RocketLaunchSolid.svg`,
+  'globe-europe-africa': `${ICONS}/GlobeEuropeAfricaSolid.svg`,
+  'paint-brush': `${ICONS}/PaintBrushSolid.svg`,
+  'document-text': `${ICONS}/DocumentTextSolid.svg`,
+  'user-group': `${ICONS}/UserGroupSolid.svg`,
+  trophy: `${ICONS}/TrophySolid.svg`,
 };
 
 export function isFolderHex(color: string): color is VaultFolderHex {

@@ -91,7 +91,7 @@ async function remove(item: VaultItem) {
           aria-haspopup="menu"
           :aria-expanded="isMenuOpen"
           :aria-controls="menuId"
-          class="inline-flex min-h-10.75 items-center gap-1.5 rounded-pill bg-tint px-5 text-sm font-semibold text-heading hover:bg-brand-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          class="inline-flex min-h-10.75 items-center gap-1.5 rounded-pill bg-brand px-5 text-sm font-semibold text-white hover:bg-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
           @click="isMenuOpen = !isMenuOpen"
         >
           {{ AYLA_SOURCES_ADD }}
