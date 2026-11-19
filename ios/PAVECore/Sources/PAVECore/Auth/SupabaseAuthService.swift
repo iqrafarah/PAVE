@@ -97,7 +97,6 @@ public struct SupabaseAuthService: AuthService {
             _ = try await client.user()
             return .active
         } catch {
-            print("[sessie] check failed: \(error)")
             return Self.sessionState(after: error)
         }
     }

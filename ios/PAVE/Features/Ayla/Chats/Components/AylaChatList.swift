@@ -166,6 +166,8 @@ struct AylaChatList: View {
                         .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.listSpace)) } action: { frame in
                             rowFrames.frames[item.id] = frame
                         }
+                        // A row out of view has no place; an old one would send a drop to the wrong row.
+                        .onDisappear { rowFrames.frames[item.id] = nil }
                         // The row settings have to sit on the outside, or the list shows its own background and lines.
                         .plainRow()
                 }
@@ -193,9 +195,7 @@ struct AylaChatList: View {
                     defer { draggedChat = nil }
                     guard let id = ids.first else { return false }
                     return drop(id, at: point)
-                } isTargeted: { isOver in
-                    if isOver { dragEnd?.cancel() } else { endDragSoon() }
-                }
+                } isTargeted: { _ in }
                 // If a drag ended somewhere the layer did not hear, the first tap clears it.
                 .onTapGesture { draggedChat = nil }
         }
@@ -325,9 +325,9 @@ struct AylaChatList: View {
         .draggable(conversation.id) {
             AylaChatDragPreview(conversation: conversation)
                 .onAppear {
-                    dragEnd?.cancel()
                     draggedChat = conversation.id
                     PaveHaptics.tap(.light)
+                    endDragSoon()
                 }
         }
         .accessibilityActions {
@@ -694,11 +694,10 @@ struct AylaChatList: View {
     private func drop(_ id: String, at point: CGPoint) -> Bool {
         guard let chat = list.visible.first(where: { $0.id == id }) else { return false }
         let shown = items
-        // The row under the finger, or else the nearest row above it.
-        let under = shown.last { item in
-            guard let frame = rowFrames.frames[item.id] else { return false }
-            return frame.minY <= point.y
-        }
+        // The row under the finger, or else the nearest row above it; only rows in view have a place.
+        let placed = shown.compactMap { item in rowFrames.frames[item.id].map { (item: item, frame: $0) } }
+        let under = placed.first { $0.frame.minY <= point.y && point.y < $0.frame.maxY }?.item
+            ?? placed.filter { $0.frame.maxY <= point.y }.max { $0.frame.maxY < $1.frame.maxY }?.item
         let pinnedTitle = "Vastgezet"
 
         enum Target { case pinned, project(AylaProject), locked, plain, nothing }
@@ -736,11 +735,11 @@ struct AylaChatList: View {
         return true
     }
 
-    /// Leaving the list ends the drag after a moment, unless the finger comes back over it.
+    /// A drag that was let go outside the list is never heard of: the layer gives up after a while, or at the next tap.
     private func endDragSoon() {
         dragEnd?.cancel()
         dragEnd = Task {
-            try? await Task.sleep(for: .seconds(1.5))
+            try? await Task.sleep(for: .seconds(20))
             guard !Task.isCancelled else { return }
             draggedChat = nil
         }

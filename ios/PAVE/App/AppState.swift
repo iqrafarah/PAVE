@@ -115,7 +115,6 @@ final class AppState {
         case .correct:
             if isRelocked { isRelocked = false } else { phase = .main }
         case .lockedOut:
-            print("[sessie] pin locked out")
             signOut()
         case .incorrect:
             break
@@ -161,7 +160,6 @@ final class AppState {
     }
 
     private func leave(to phase: AppPhase) {
-        print("[sessie] leave to \(phase) from \(self.phase)")
         defaults.set(false, forKey: Self.signedInKey)
         AylaSpotlight.forget(in: defaults)
         AylaDrafts.forget(in: defaults)

@@ -1,15 +1,16 @@
 {
-  "images" : [
+  "images": [
     {
-      "filename" : "IconCompose.svg",
-      "idiom" : "universal"
+      "filename": "IconCompose.svg",
+      "idiom": "universal"
     }
   ],
-  "info" : {
-    "author" : "xcode",
-    "version" : 1
+  "info": {
+    "author": "xcode",
+    "version": 1
   },
-  "properties" : {
-    "preserves-vector-representation" : true
+  "properties": {
+    "preserves-vector-representation": true,
+    "template-rendering-intent": "template"
   }
 }
