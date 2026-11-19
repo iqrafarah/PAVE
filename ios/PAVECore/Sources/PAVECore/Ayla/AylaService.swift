@@ -18,6 +18,11 @@ public protocol AylaService: Sendable {
     func conversations(limit: Int) async throws -> AylaConversationList
     func messages(in conversationID: String) async throws -> [AylaStoredMessage]
     func setPinned(_ isPinned: Bool, conversationID: String) async throws
+    /// Archive: out of the list and no longer pinned, kept until it is put back or deleted.
+    func setArchived(_ isArchived: Bool, conversationID: String) async throws
+    func setExpiry(_ expiry: AylaConversation.Expiry, conversationID: String) async throws
+    /// Deletes the chats whose time is up, for good. Returns how many went.
+    func expireChats() async throws -> Int
     /// "Projecten" (migration 20261118120000): make, change, pin and delete; deleting keeps the chats.
     func createProject(name: String, instructions: String) async throws -> AylaProject
     func updateProject(_ project: AylaProject) async throws
@@ -83,6 +88,9 @@ extension AylaService {
     }
 
     public func rename(_ title: String, conversationID: String) async throws { throw AylaError.unavailable }
+    public func setArchived(_ isArchived: Bool, conversationID: String) async throws { throw AylaError.notSetUp }
+    public func setExpiry(_ expiry: AylaConversation.Expiry, conversationID: String) async throws { throw AylaError.notSetUp }
+    public func expireChats() async throws -> Int { 0 }
     public func delete(conversationID: String) async throws { throw AylaError.unavailable }
     public func removeLastTurn(in conversationID: String) async throws { throw AylaError.unavailable }
     public func searchMessages(_ text: String) async throws -> [AylaSearchHit] { [] }
@@ -349,13 +357,17 @@ public struct SupabaseAylaService: AylaService {
                     pinnedAt: $0.pinnedAt.map(Self.date(from:)),
                     startedOn: $0.startedOn.flatMap(AylaDevice.init(rawValue:)),
                     projectID: $0.projectID,
-                    isLocked: locked.contains($0.id)
+                    isLocked: locked.contains($0.id),
+                    createdAt: $0.createdAt.map(Self.date(from:)),
+                    archivedAt: $0.archivedAt.map(Self.date(from:)),
+                    expiry: AylaConversation.Expiry(days: $0.expiryDays)
                 )
             },
             canPin: rows.contains(where: \.hasPinColumn),
             projects: (projectRows ?? []).map(\.project),
             canUseProjects: projectRows != nil,
-            canLock: lockedRows != nil
+            canLock: lockedRows != nil,
+            canArchive: rows.contains(where: \.hasArchiveColumn)
         )
     }
 
@@ -568,6 +580,29 @@ public struct SupabaseAylaService: AylaService {
             body: try JSONEncoder().encode(body)
         )
         _ = try await perform(urlRequest, accepting: [200, 204])
+    }
+
+    public func setArchived(_ isArchived: Bool, conversationID: String) async throws {
+        // An archived chat is no longer pinned, so it comes back as an ordinary chat.
+        let body: [String: String?] = isArchived ? ["archived_at": Date.now.ISO8601Format(), "pinned_at": nil] : ["archived_at": nil]
+        let urlRequest = try await authorized(
+            "ayla_conversations", query: [("id", "eq.\(conversationID)"), ("select", "id")], method: "PATCH",
+            body: try JSONEncoder().encode(body), returning: true
+        )
+        try await expectRow(from: urlRequest)
+    }
+
+    public func setExpiry(_ expiry: AylaConversation.Expiry, conversationID: String) async throws {
+        let urlRequest = try await authorized(
+            "ayla_conversations", query: [("id", "eq.\(conversationID)"), ("select", "id")], method: "PATCH",
+            body: try JSONEncoder().encode(["expiry_days": expiry.storedDays]), returning: true
+        )
+        try await expectRow(from: urlRequest)
+    }
+
+    public func expireChats() async throws -> Int {
+        let data = try await rpc("ayla_expire_my_chats", body: [:])
+        return (try? JSONDecoder().decode(Int.self, from: data)) ?? 0
     }
 
     public func messages(in conversationID: String) async throws -> [AylaStoredMessage] {
@@ -794,8 +829,13 @@ private struct ConversationRow: Decodable {
     let pinnedAt: String?
     let startedOn: String?
     let projectID: String?
+    let createdAt: String?
+    let archivedAt: String?
+    let expiryDays: Int?
     /// False while the `pinned_at` column has not been added yet.
     let hasPinColumn: Bool
+    /// False before the migration with the archive and the expiry (20261120120000).
+    let hasArchiveColumn: Bool
 
     private enum CodingKeys: String, CodingKey {
         case id
@@ -804,6 +844,9 @@ private struct ConversationRow: Decodable {
         case pinnedAt = "pinned_at"
         case startedOn = "started_on"
         case projectID = "project_id"
+        case createdAt = "created_at"
+        case archivedAt = "archived_at"
+        case expiryDays = "expiry_days"
     }
 
     init(from decoder: any Decoder) throws {
@@ -814,7 +857,11 @@ private struct ConversationRow: Decodable {
         pinnedAt = try container.decodeIfPresent(String.self, forKey: .pinnedAt)
         startedOn = try container.decodeIfPresent(String.self, forKey: .startedOn)
         projectID = try container.decodeIfPresent(String.self, forKey: .projectID)
+        createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt)
+        archivedAt = try container.decodeIfPresent(String.self, forKey: .archivedAt)
+        expiryDays = try container.decodeIfPresent(Int.self, forKey: .expiryDays)
         hasPinColumn = container.contains(.pinnedAt)
+        hasArchiveColumn = container.contains(.archivedAt)
     }
 }
 

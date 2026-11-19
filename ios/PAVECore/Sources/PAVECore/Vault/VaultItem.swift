@@ -56,6 +56,8 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
     public var updatedAt: Date
     /// Its place in "Eigen volgorde", once you dragged your evidence into an order of your own.
     public var position: Int?
+    /// "Archiveren": out of the vault, kept until it is put back or deleted. Not shared meanwhile.
+    public var archivedAt: Date?
 
     public init(
         id: String,
@@ -166,11 +168,18 @@ public struct VaultFolder: Identifiable, Equatable, Sendable {
 }
 
 public struct VaultContents: Equatable, Sendable {
+    /// What is in the vault; archived evidence is in `archived` instead.
     public var items: [VaultItem]
     public var folders: [VaultFolder]
+    /// The archive, the most recently archived first.
+    public var archived: [VaultItem]
+    /// False before the migration with the archive (20261120120000).
+    public var canArchive: Bool
 
-    public init(items: [VaultItem] = [], folders: [VaultFolder] = []) {
+    public init(items: [VaultItem] = [], folders: [VaultFolder] = [], archived: [VaultItem] = [], canArchive: Bool = false) {
         self.items = items
         self.folders = folders
+        self.archived = archived
+        self.canArchive = canArchive
     }
 }

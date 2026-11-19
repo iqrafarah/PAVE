@@ -6,6 +6,9 @@ public protocol ProfileService: Sendable {
     func profile() async throws -> PaveProfile
     func setPreferredName(_ name: String?) async throws
     func setPreferences(theme: PaveThemeColor, customColor: UInt32?, textSize: PaveTextSize, vaultLayout: PaveVaultLayout) async throws
+    /// How long chats stay and what Ayla may do with the archive; nil before the migration (20261120120000).
+    func retention() async throws -> PaveRetention?
+    func setRetention(_ retention: PaveRetention) async throws
     /// Uploads a JPEG as the new photo and returns its path; the old one is removed.
     func setAvatar(_ jpeg: Data, replacing oldPath: String?) async throws -> String
     func removeAvatar(_ path: String) async throws
@@ -54,6 +57,26 @@ public struct SupabaseProfileService: ProfileService {
             "theme_custom_color": customColor.map { PaveThemeColor.hex($0) as Any } ?? NSNull(),
             "text_size": textSize.rawValue,
             "vault_layout": vaultLayout.rawValue,
+        ])
+    }
+
+    public func retention() async throws -> PaveRetention? {
+        let userID = try await currentUserID()
+        do {
+            let data = try await send(try await request(profileURL(userID, select: "chat_expiry_days,chat_expiry_from,chat_expiry_keeps_pinned,chat_expiry_keeps_locked,ayla_uses_archive")))
+            return (try? JSONDecoder().decode([RetentionRow].self, from: data).first)?.retention ?? PaveRetention()
+        } catch ProfileError.notSetUp {
+            return nil
+        }
+    }
+
+    public func setRetention(_ retention: PaveRetention) async throws {
+        try await patch([
+            "chat_expiry_days": retention.chatExpiry.days.map { $0 as Any } ?? NSNull(),
+            "chat_expiry_from": retention.chatExpiry.start.rawValue,
+            "chat_expiry_keeps_pinned": retention.chatExpiry.keepsPinned,
+            "chat_expiry_keeps_locked": retention.chatExpiry.keepsLocked,
+            "ayla_uses_archive": retention.aylaUsesArchive,
         ])
     }
 
@@ -149,6 +172,31 @@ public struct SupabaseProfileService: ProfileService {
         if status == 401 { return .notSignedIn }
         return .unavailable
     }
+}
+
+struct RetentionRow: Decodable {
+    let chat_expiry_days: Int?
+    let chat_expiry_from: String?
+    let chat_expiry_keeps_pinned: Bool?
+    let chat_expiry_keeps_locked: Bool?
+    let ayla_uses_archive: Bool?
+
+    var retention: PaveRetention {
+        PaveRetention(
+            chatExpiry: ChatExpiry(
+                days: chat_expiry_days,
+                start: chat_expiry_from.flatMap(ChatExpiry.Start.init(rawValue:)) ?? .lastMessage,
+                keepsPinned: chat_expiry_keeps_pinned ?? true,
+                keepsLocked: chat_expiry_keeps_locked ?? true
+            ),
+            aylaUsesArchive: ayla_uses_archive ?? false
+        )
+    }
+}
+
+public extension ProfileService {
+    func retention() async throws -> PaveRetention? { nil }
+    func setRetention(_ retention: PaveRetention) async throws { throw ProfileError.notSetUp }
 }
 
 struct SettingsProfileRow: Decodable {

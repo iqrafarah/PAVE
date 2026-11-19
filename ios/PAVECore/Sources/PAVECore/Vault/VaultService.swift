@@ -16,6 +16,8 @@ public protocol VaultService: Sendable {
     func addSkills(_ names: [String], to itemID: String) async throws
     /// "Ayla mag dit bekijken en gebruiken": the standing yes for one item, which you can take back.
     func setAylaAllowed(_ allowed: Bool, itemID: String) async throws
+    /// Archive: out of the vault, kept until it is put back or deleted.
+    func setArchived(_ archived: Bool, itemID: String) async throws
     func update(_ draft: VaultItemDraft, itemID: String) async throws
     /// Puts the item in exactly these folders (none takes it out of every folder; it stays in the vault).
     func setFolders(_ folderIDs: [String], itemID: String) async throws
@@ -52,6 +54,10 @@ public extension VaultService {
 
     func setItemOrder(_ itemIDs: [String]) async throws {
         throw VaultError.missingColumn
+    }
+
+    func setArchived(_ archived: Bool, itemID: String) async throws {
+        throw VaultError.unavailable
     }
 
     func setFolderPinned(_ pinned: Bool, folderID: String) async throws {
@@ -130,7 +136,13 @@ public struct SupabaseVaultService: VaultService {
             let itemRows = try? JSONDecoder().decode([ItemRow].self, from: items),
             let folderRows = try? JSONDecoder().decode([FolderRow].self, from: folders)
         else { throw VaultError.unavailable }
-        return VaultContents(items: itemRows.compactMap(\.item), folders: folderRows.map(\.folder))
+        let all = itemRows.compactMap(\.item)
+        return VaultContents(
+            items: all.filter { $0.archivedAt == nil },
+            folders: folderRows.map(\.folder),
+            archived: all.filter { $0.archivedAt != nil }.sorted { ($0.archivedAt ?? .distantPast) > ($1.archivedAt ?? .distantPast) },
+            canArchive: ((try? JSONDecoder().decode([ArchiveProbe].self, from: items)) ?? []).contains(where: \.hasColumn)
+        )
     }
 
     @discardableResult
@@ -208,6 +220,13 @@ public struct SupabaseVaultService: VaultService {
         let value: Any = allowed ? Date.now.formatted(.iso8601) : NSNull()
         _ = try await send(try await request(
             restURL.appending(path: "vault_items"), query: [("id", "eq.\(itemID)")], method: "PATCH", json: ["ayla_allowed_at": value]
+        ), accepting: [200, 204])
+    }
+
+    public func setArchived(_ archived: Bool, itemID: String) async throws {
+        let value: Any = archived ? Date.now.formatted(.iso8601) : NSNull()
+        _ = try await send(try await request(
+            restURL.appending(path: "vault_items"), query: [("id", "eq.\(itemID)")], method: "PATCH", json: ["archived_at": value]
         ), accepting: [200, 204])
     }
 
@@ -537,6 +556,7 @@ struct ItemRow: Decodable {
     let updated_at: String
     let ayla_allowed_at: String?
     let position: Int?
+    let archived_at: String?
     let vault_item_skills: [SkillRow]?
     let vault_item_files: [FileRow]?
     let vault_item_folders: [FolderLinkRow]?
@@ -547,7 +567,7 @@ struct ItemRow: Decodable {
             let category = VaultCategory(rawValue: category),
             let status = VaultItem.Status(rawValue: verification_status)
         else { return nil }
-        return VaultItem(
+        var item = VaultItem(
             id: id,
             folderIDs: Self.folderIDs(first: folder_id, links: vault_item_folders),
             category: category,
@@ -578,6 +598,21 @@ struct ItemRow: Decodable {
             updatedAt: SupabaseAylaService.date(from: updated_at),
             position: position
         )
+        item.archivedAt = archived_at.map(SupabaseAylaService.date(from:))
+        return item
+    }
+}
+
+/// Whether the rows carry `archived_at`: false before the migration with the archive (20261120120000).
+private struct ArchiveProbe: Decodable {
+    let hasColumn: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case archivedAt = "archived_at"
+    }
+
+    init(from decoder: any Decoder) throws {
+        hasColumn = try decoder.container(keyedBy: CodingKeys.self).contains(.archivedAt)
     }
 }
 
