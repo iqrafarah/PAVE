@@ -224,6 +224,9 @@ struct AylaChatList: View {
             .animation(.snappy, value: pendingDeletion)
             .animation(.snappy, value: isSelecting)
         }
+        .task(id: isSearching) {
+            if isSearching, let vault, vault.state != .ready { await vault.load() }
+        }
         .task(id: search) {
             guard isSearching else {
                 hits = []

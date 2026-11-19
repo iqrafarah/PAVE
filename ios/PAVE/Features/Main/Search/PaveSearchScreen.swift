@@ -56,6 +56,8 @@ struct PaveSearchScreen: View {
                 }
             }
             .task { isFocused = true }
+            // Evidence, documents and pictures come from the vault, also when it was not opened yet.
+            .task { if let vault, vault.state != .ready { await vault.load() } }
             .task(id: needle) {
                 guard needle.count >= 2 else {
                     hits = []

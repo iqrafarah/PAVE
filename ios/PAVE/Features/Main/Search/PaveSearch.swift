@@ -14,9 +14,9 @@ enum PaveSearchTab: String, CaseIterable, Identifiable {
     var needsVault: Bool { self == .items || self == .documents || self == .images }
     func shows(_ kind: PaveSearchTab) -> Bool { self == .all || self == kind }
 
-    /// The tabs that can find something: the vault ones once the vault is there, projects once they exist.
+    /// Always all six, as on the web; the search loads the vault itself when it is not there yet.
     static func available(vaultReady: Bool, projects: Bool) -> [PaveSearchTab] {
-        allCases.filter { (!$0.needsVault || vaultReady) && ($0 != .projects || projects) }
+        allCases
     }
 }
 
