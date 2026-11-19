@@ -351,6 +351,19 @@
     }
 }
 
+/* "Animaties uitzetten" in the settings: everything moves at once, so nothing is seen moving. A near-zero duration (not
+   `none`) keeps animationend/transitionend firing, which Vue's <Transition> waits for. */
+:root[data-reduce-motion="true"] *,
+:root[data-reduce-motion="true"] *::before,
+:root[data-reduce-motion="true"] *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+}
+
 /* The PAVE logo button in the side menu: the lively theme colour behind the white logo. */
 :root[data-display-mode="dark"] nav[aria-label="Hoofdmenu"] button[data-panel-opener] {
     background-color: var(--color-brand);

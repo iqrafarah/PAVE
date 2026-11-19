@@ -55,7 +55,7 @@ useThemeColors((styles) => {
 });
 
 onMounted(() => {
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (isMotionReduced()) return;
   frame = requestAnimationFrame(draw);
 });
 onBeforeUnmount(() => cancelAnimationFrame(frame));

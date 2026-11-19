@@ -18,10 +18,12 @@ export interface Personalisation {
   workMode: WorkMode;
   isVaultGrid: boolean;
   displayMode: DisplayChoice;
+  /** All animations off. Kept on this device only, not in the account. */
+  reduceMotion: boolean;
 }
 
 export const APPEARANCE_DEFAULTS: Personalisation = {
-  theme: 'green', customColor: null, textSize: 'normal', workMode: 'ai', isVaultGrid: true, displayMode: 'auto',
+  theme: 'green', customColor: null, textSize: 'normal', workMode: 'ai', isVaultGrid: true, displayMode: 'auto', reduceMotion: false,
 };
 
 export function normaliseAppearance(value: Partial<Personalisation> | null): Personalisation {
@@ -35,6 +37,7 @@ export function normaliseAppearance(value: Partial<Personalisation> | null): Per
     workMode: value?.workMode === 'traditional' ? 'traditional' : 'ai',
     isVaultGrid: typeof value?.isVaultGrid === 'boolean' ? value.isVaultGrid : true,
     displayMode: validDisplayChoice(value?.displayMode) ? value.displayMode : 'auto',
+    reduceMotion: value?.reduceMotion === true,
   };
 }
 
@@ -67,7 +70,7 @@ export function validCustomColor(value: unknown): value is string {
 export const ROOT_TEXT_SIZES: Record<TextSize, string> = { small: '93.75%', normal: '', large: '112.5%' };
 
 /** What of the look is kept in a cookie, so the server can build the page in the right colour and text size. */
-export type KeptLook = Pick<Personalisation, 'theme' | 'customColor' | 'textSize' | 'isVaultGrid'>;
+export type KeptLook = Pick<Personalisation, 'theme' | 'customColor' | 'textSize' | 'isVaultGrid' | 'reduceMotion'>;
 
 /**
  * The look as style rules for the page itself (the html element): the colours of the theme and the size of the text.

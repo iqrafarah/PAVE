@@ -146,7 +146,22 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
     reply.question = { text: lead ? question : '', choices: CONSENT_QUESTION_CHOICES }
     delete reply.navigation
   }
+  // The user just said no to what Ayla offered: she does not offer it again, whatever the model wrote.
+  if (declinedOffer(input.history, request.text)) {
+    delete reply.proposedAction
+    if (reply.navigation?.screen === 'addEvidence') delete reply.navigation
+    if (reply.question?.choices.some((c) => /^(ja|yes)$/i.test(c.label))) delete reply.question
+  }
   return reply
+}
+
+const NO_ANSWER = /^(nee|nope|no|liever niet|niet nu|nee bedankt|nee dank je)\b/i
+
+/** The user answers no to a question or offer of Ayla in the last turn. */
+export function declinedOffer(history: PastMessage[], text: string): boolean {
+  if (!NO_ANSWER.test(text.trim())) return false
+  const last = history.at(-1)
+  return last?.role === 'ayla'
 }
 
 /** What the model asks the vault for when it asks in words; null when it does not ask. */

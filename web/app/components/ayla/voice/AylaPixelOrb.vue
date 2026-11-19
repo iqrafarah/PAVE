@@ -120,7 +120,7 @@ useThemeColors((styles) => {
 });
 
 onMounted(() => {
-  reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  reduceMotion = isMotionReduced();
   frame = requestAnimationFrame(draw);
 });
 onBeforeUnmount(() => cancelAnimationFrame(frame));

@@ -92,32 +92,33 @@ watch(() => memory.state.value.status, prepareLines, { immediate: true });
   <section
     v-if="status === 'open' || status === 'saving'"
     :aria-labelledby="headingId"
-    class="mt-3 rounded-2xl border border-line bg-white p-4"
+    class="mt-3 flex flex-col gap-2.5 rounded-pill border border-card-border bg-white p-3 shadow-modal"
   >
-    <h3 :id="headingId" class="text-sm font-semibold text-ink">{{ heading }}</h3>
-    <ul class="mt-3 space-y-2">
+    <h3 :id="headingId" class="flex items-center gap-2 font-heading text-base font-semibold text-heading">
+      <LayoutAylaGlyph class="size-4 shrink-0 text-brand" />{{ heading }}</h3>
+    <ul class="flex flex-col gap-1">
       <li v-for="line in lines" :key="line.id">
-        <label class="flex cursor-pointer items-start gap-3 rounded-lg p-1 hover:bg-surface">
+        <label class="flex cursor-pointer items-start gap-3 rounded-field p-2 hover:bg-tint">
           <input
             v-model="line.isTicked"
             type="checkbox"
             class="mt-1 size-4 shrink-0 accent-brand"
             :disabled="status === 'saving'"
           />
-          <span class="text-sm">
-            <span :class="line.kind === 'remove' ? 'text-muted line-through' : 'text-ink'">{{ line.text }}</span>
-            <span class="block text-xs text-muted">{{ getLineLabel(line) }}</span>
+          <span class="text-sm/snug">
+            <span :class="line.kind === 'remove' ? 'text-subtle line-through' : 'font-medium text-heading'">{{ line.text }}</span>
+            <span class="block text-xs text-subtle">{{ getLineLabel(line) }}</span>
           </span>
         </label>
       </li>
     </ul>
-    <p v-if="hasRemovalLine" class="mt-2 text-xs text-muted">{{ MEMORY_SUGGESTION_FOOTNOTE }}</p>
-    <p v-if="error" role="alert" class="mt-2 text-sm text-danger">{{ error }}</p>
-    <div class="mt-3 flex flex-wrap gap-2">
+    <p v-if="hasRemovalLine" class="text-xs/normal text-subtle">{{ MEMORY_SUGGESTION_FOOTNOTE }}</p>
+    <p v-if="error" role="alert" class="text-sm text-danger">{{ error }}</p>
+    <div class="flex flex-wrap gap-2">
       <button
         type="button"
         :disabled="tickedLines.length === 0 || status === 'saving'"
-        class="min-h-10 rounded-lg bg-brand px-4 text-sm font-medium text-white hover:bg-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:bg-line disabled:text-muted"
+        class="min-h-10 rounded-field bg-brand px-4 text-sm font-medium text-white hover:bg-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:bg-field-line disabled:text-subtle"
         @click="confirm"
       >
         {{ confirmLabel }}
@@ -125,14 +126,14 @@ watch(() => memory.state.value.status, prepareLines, { immediate: true });
       <button
         type="button"
         :disabled="status === 'saving'"
-        class="min-h-10 rounded-lg border border-line px-4 text-sm font-medium text-ink hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand"
+        class="min-h-10 rounded-field bg-field-line px-4 text-sm font-medium text-heading hover:bg-tile focus-visible:outline-2 focus-visible:outline-brand"
         @click="status = 'dismissed'"
       >
         {{ MEMORY_NOT_NEEDED }}
       </button>
     </div>
   </section>
-  <p v-else-if="status === 'saved'" role="status" class="mt-3 text-sm text-muted">
+  <p v-else-if="status === 'saved'" role="status" class="mt-3 text-sm font-medium text-subtle">
     {{ MEMORY_SAVED }}
     <NuxtLink :to="MEMORY_PAGE_PATH" class="font-medium text-brand underline hover:text-ink">
       {{ MEMORY_SEE_ALL }}

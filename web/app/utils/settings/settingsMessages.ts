@@ -59,6 +59,8 @@ export const PERSONAL_VIEW_LIST = 'Lijstweergave';
 export const PERSONAL_VIEW_GRID = 'Rasterweergave';
 export const PERSONAL_VAULT_HINT = 'Zo ziet je kluis eruit als je hem opent. In de kluis kun je dit tijdelijk veranderen. De volgende keer ziet hij er weer zo uit.';
 export const PERSONAL_TEXT_SIZE = 'Tekstgrootte';
+export const PERSONAL_REDUCE_MOTION = 'Animaties uitzetten';
+export const PERSONAL_REDUCE_MOTION_HINT = 'Alles in PAVE blijft stil staan: geen bewegende overgangen, laders of golven. Geldt alleen voor deze browser.';
 export const PERSONAL_DEVICE_NOTE = 'Je keuzes gelden voor deze browser.';
 export const PERSONAL_THEMES = [
   { id: 'green', name: 'Groen', hex: '#355D4C', accent: '#355D4C' },
