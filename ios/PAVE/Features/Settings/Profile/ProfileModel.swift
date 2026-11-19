@@ -27,6 +27,10 @@ final class ProfileModel {
     private(set) var vaultLayout = PaveAppearance.vaultLayout
     /// How long chats stay and what Ayla may do with the archive; nil before the migration, so there is nothing to choose.
     private(set) var retention: PaveRetention?
+    /// Licht, Donker or Automatisch; it applies at once and is kept in the account and on this device.
+    private(set) var displayMode = PaveAppearance.displayMode
+    /// False until the account can keep it (migration 20261119140000); it is then kept on this device only.
+    private(set) var savesDisplayMode = false
 
     private let service: (any ProfileService)?
     private let defaults: UserDefaults
@@ -59,10 +63,33 @@ final class ProfileModel {
                 onThemeChosen(theme, customColor)
             }
             retention = (try? await service.retention()) ?? retention
+            if let mode = try? await service.displayMode() {
+                savesDisplayMode = true
+                applyDisplayMode(mode)
+            }
             await loadAvatar()
         } catch {
             if state != .ready { state = .failed }
         }
+    }
+
+    func setDisplayMode(_ mode: PaveDisplayMode) async {
+        guard mode != displayMode else { return }
+        let before = displayMode
+        applyDisplayMode(mode)
+        guard let service, savesDisplayMode else { return }
+        do {
+            try await service.setDisplayMode(mode)
+        } catch {
+            applyDisplayMode(before)
+            problem = SettingsMessages.message(for: ProfileError(error))
+        }
+    }
+
+    private func applyDisplayMode(_ mode: PaveDisplayMode) {
+        displayMode = mode
+        defaults.set(mode.rawValue, forKey: PaveAppearance.displayModeKey)
+        PaveAppearance.apply(mode)
     }
 
     /// Shows the choice at once and saves it in the account; it goes back when saving fails.

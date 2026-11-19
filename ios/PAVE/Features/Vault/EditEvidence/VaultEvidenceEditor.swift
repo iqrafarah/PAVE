@@ -70,7 +70,7 @@ struct VaultEvidenceEditor: View {
         }
         .frame(maxWidth: 600)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.white.ignoresSafeArea())
+        .background(Color.panel.ignoresSafeArea())
         .tint(.paveAccent)
         .animation(.easeOut(duration: 0.2), value: isTyping)
         .animation(.snappy(duration: 0.3), value: edit.keptDocuments)
@@ -130,14 +130,14 @@ struct VaultEvidenceEditor: View {
         .padding(.horizontal, 22)
         .padding(.top, 8)
         .padding(.bottom, isShort ? 6 : 12)
-        .background(Color.white)
+        .background(Color.panel)
         .overlay(alignment: .top) {
             if let problem = edit.problem {
                 PaveInlineError(message: problem)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 10)
                     .frame(maxWidth: .infinity)
-                    .background(Color.white)
+                    .background(Color.panel)
                     .alignmentGuide(.top) { $0[.bottom] }
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
             }

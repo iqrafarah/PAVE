@@ -14,6 +14,7 @@ public enum AylaAppCommand: Equatable, Sendable {
     /// "Groter" or "kleiner": one size up or down from what it is now.
     case textSizeStep(Int)
     case vaultLayout(PaveVaultLayout)
+    case displayMode(PaveDisplayMode)
     case voiceText(Bool)
     case chatsInSearch(Bool)
     case vaultFolder(id: String)
@@ -35,7 +36,7 @@ public enum AylaAppCommand: Equatable, Sendable {
     /// Only changing something says so afterwards; going somewhere just happens.
     public var changesSomething: Bool {
         switch self {
-        case .theme, .textSize, .textSizeStep, .vaultLayout, .voiceText, .chatsInSearch: true
+        case .theme, .textSize, .textSizeStep, .vaultLayout, .displayMode, .voiceText, .chatsInSearch: true
         case .settingsPage, .vaultFolder, .vaultItem, .back, .close: false
         }
     }
@@ -66,6 +67,12 @@ public enum AylaAppCommand: Equatable, Sendable {
         let on = !off && has(#"\b(aan|aanzetten|inschakelen|wel)\b"#)
 
         if has(#"\b(tekst bij (het )?praten|tekst bij de stem|ondertiteling|meelezen)\b"#), on || off { return .voiceText(on) }
+        if has(#"\b(donkere modus|dark mode|nachtmodus|donker thema)\b"#), words <= 8 { return .displayMode(off ? .light : .dark) }
+        if has(#"\b(lichte modus|light mode|licht thema)\b"#), words <= 8 { return .displayMode(off ? .dark : .light) }
+        if has(#"^(?:(?:zet|maak|het|de|app|pave|alles|op|graag|alsjeblieft) )*(donker|licht)$"#) {
+            return .displayMode(has(#"donker$"#) ? .dark : .light)
+        }
+        if has(#"\b(licht of donker|weergavemodus)\b.*\bautomatisch\b|\bautomatisch (licht|donker|licht of donker)\b"#) { return .displayMode(.auto) }
         if has(#"\b(vindbaar|iphone-zoeken|iphone zoeken|spotlight)\b"#), on || off { return .chatsInSearch(on) }
 
         if let theme = themes.first(where: { has("\\b(?:\($0.words))\\b") })?.theme {

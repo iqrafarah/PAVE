@@ -131,7 +131,7 @@ struct AylaContextChip: View {
         }
         .padding(.leading, 12)
         .padding(.trailing, 2)
-        .background(Color.white, in: .capsule)
+        .background(Color.panel, in: .capsule)
         .overlay { Capsule().strokeBorder(Color.cardBorder, lineWidth: 1) }
     }
 }

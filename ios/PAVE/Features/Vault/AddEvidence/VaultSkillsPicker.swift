@@ -46,7 +46,7 @@ struct VaultSkillsPicker: View {
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .background {
-            Color.white
+            Color.panel
                 .contentShape(.rect)
                 .onTapGesture { isSearching = false }
         }

@@ -31,7 +31,7 @@ struct AylaMemoryFolder: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, minHeight: 128, alignment: .topLeading)
-        .background(Color.white, in: .rect(cornerRadius: 16))
+        .background(Color.panel, in: .rect(cornerRadius: 16))
         .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder, lineWidth: 1) }
         .opacity(count == 0 ? 0.75 : 1)
         .contentShape(.rect(cornerRadius: 16))

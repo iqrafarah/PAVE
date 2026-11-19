@@ -42,13 +42,13 @@ struct AylaBottomSheet<Content: View>: View {
         .frame(maxWidth: .infinity)
         .background {
             UnevenRoundedRectangle(topLeadingRadius: 25, topTrailingRadius: 25, style: .continuous)
-                .fill(.white)
+                .fill(Color.panel)
                 .shadow(color: .black.opacity(0.25), radius: 0.7)
                 .ignoresSafeArea(edges: [.bottom, .horizontal])
         }
         // The fade under the text field, at the bottom of the screen wherever the panel is.
         .overlay(alignment: .bottom) {
-            LinearGradient(stops: [.init(color: .white.opacity(0), location: 0), .init(color: .white, location: 0.45)], startPoint: .top, endPoint: .bottom)
+            LinearGradient(stops: [.init(color: Color.panel.opacity(0), location: 0), .init(color: Color.panel, location: 0.45)], startPoint: .top, endPoint: .bottom)
                 .frame(height: bottomInset)
                 .offset(y: -(expandedHeight - visibleHeight))
                 .allowsHitTesting(false)

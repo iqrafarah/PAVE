@@ -26,11 +26,11 @@ struct VaultLibraryCard: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background {
             if isGrid {
-                Color.white
+                Color.panel
             } else {
                 // The fade from the top left corner in the list, as in Figma 1348:9; a cover photo shows only in the grid.
                 LinearGradient(
-                    stops: [.init(color: fadeTint, location: 0), .init(color: .white, location: 0.55)],
+                    stops: [.init(color: fadeTint, location: 0), .init(color: Color.panel, location: 0.55)],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )

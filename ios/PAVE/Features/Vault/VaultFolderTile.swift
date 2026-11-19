@@ -63,7 +63,7 @@ struct VaultFolderTile: View {
                 .padding(.top, 13)
                 .padding(.bottom, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.white)
+                .background(Color.panel)
             }
             .frame(width: Self.width)
             .clipShape(.rect(cornerRadius: 16))

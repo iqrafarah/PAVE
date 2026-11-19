@@ -9,6 +9,9 @@ public protocol ProfileService: Sendable {
     /// How long chats stay and what Ayla may do with the archive; nil before the migration (20261120120000).
     func retention() async throws -> PaveRetention?
     func setRetention(_ retention: PaveRetention) async throws
+    /// Licht, Donker or Automatisch, the same as on the web; nil before the migration (20261119140000).
+    func displayMode() async throws -> PaveDisplayMode?
+    func setDisplayMode(_ mode: PaveDisplayMode) async throws
     /// Uploads a JPEG as the new photo and returns its path; the old one is removed.
     func setAvatar(_ jpeg: Data, replacing oldPath: String?) async throws -> String
     func removeAvatar(_ path: String) async throws
@@ -68,6 +71,21 @@ public struct SupabaseProfileService: ProfileService {
         } catch ProfileError.notSetUp {
             return nil
         }
+    }
+
+    public func displayMode() async throws -> PaveDisplayMode? {
+        let userID = try await currentUserID()
+        do {
+            let data = try await send(try await request(profileURL(userID, select: "display_mode")))
+            let rows = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
+            return (rows?.first?["display_mode"] as? String).flatMap(PaveDisplayMode.init(rawValue:)) ?? .auto
+        } catch ProfileError.notSetUp {
+            return nil
+        }
+    }
+
+    public func setDisplayMode(_ mode: PaveDisplayMode) async throws {
+        try await patch(["display_mode": mode.rawValue])
     }
 
     public func setRetention(_ retention: PaveRetention) async throws {
@@ -197,6 +215,8 @@ struct RetentionRow: Decodable {
 public extension ProfileService {
     func retention() async throws -> PaveRetention? { nil }
     func setRetention(_ retention: PaveRetention) async throws { throw ProfileError.notSetUp }
+    func displayMode() async throws -> PaveDisplayMode? { nil }
+    func setDisplayMode(_ mode: PaveDisplayMode) async throws { throw ProfileError.notSetUp }
 }
 
 struct SettingsProfileRow: Decodable {

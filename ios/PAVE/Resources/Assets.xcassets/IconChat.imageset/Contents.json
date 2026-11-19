@@ -3,6 +3,16 @@
     {
       "filename": "IconChat.svg",
       "idiom": "universal"
+    },
+    {
+      "appearances": [
+        {
+          "appearance": "luminosity",
+          "value": "dark"
+        }
+      ],
+      "filename": "IconChat-dark.svg",
+      "idiom": "universal"
     }
   ],
   "info": {

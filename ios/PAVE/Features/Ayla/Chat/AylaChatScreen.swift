@@ -247,7 +247,7 @@ struct AylaChatScreen: View {
                             .padding(.top, 28)
                             .padding(.bottom, 24)
                     }
-                    .background(Color.white.ignoresSafeArea(edges: .bottom))
+                    .background(Color.panel.ignoresSafeArea(edges: .bottom))
                 }
             }
             .environment(pageDriver)
@@ -277,7 +277,7 @@ struct AylaChatScreen: View {
             .presentationDetents([.fraction(0.62), .large], selection: $vaultDetent)
             .presentationDragIndicator(.visible)
             .presentationBackgroundInteraction(.enabled)
-            .paveSheet(background: shelf.isFullPage ? .canvas : .white, clipsToColumn: !shelf.isFullPage)
+            .paveSheet(background: shelf.isFullPage ? .canvas : .panel, clipsToColumn: !shelf.isFullPage)
         }
         .photosPicker(
             isPresented: Binding(get: { photosForItemID != nil }, set: { if !$0 { itemPhotosClosed() } }),
@@ -299,7 +299,7 @@ struct AylaChatScreen: View {
             if let vault {
                 AylaVaultSelectionSheet { items in model.attach(items) }
                     .environment(vault)
-                    .paveSheet(background: .white)
+                    .paveSheet(background: .panel)
             }
         }
         .onAppear { model.appCommand = { runAppCommand($0) } }
@@ -1875,7 +1875,7 @@ struct AylaChatScreen: View {
         guard let command = AylaAppCommand.command(in: text, folders: folders, items: items, inSettings: shelf == .settings) else { return nil }
         if command == .back || command == .close, shelf == nil { return nil }
         switch command {
-        case .theme, .textSize, .textSizeStep, .vaultLayout:
+        case .theme, .textSize, .textSizeStep, .vaultLayout, .displayMode:
             if profile == nil { return nil }
         default:
             break
@@ -1912,6 +1912,13 @@ struct AylaChatScreen: View {
             }
             inSettings(.appearance) { await profile?.setTextSize(next) }
             return "Je tekst staat nu op \(SettingsMessages.title(next).lowercased())."
+        case .displayMode(let mode):
+            inSettings(.appearance) { await profile?.setDisplayMode(mode) }
+            return switch mode {
+            case .auto: "PAVE volgt nu de instelling van je apparaat."
+            case .light: "PAVE is nu licht."
+            case .dark: "PAVE is nu donker."
+            }
         case .vaultLayout(let layout):
             inSettings(.appearance) { await profile?.setVaultLayout(layout) }
             return "Je kluis opent nu als \(layout == .list ? "lijst" : "raster")."

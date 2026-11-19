@@ -40,7 +40,7 @@ struct SettingsPrivacyScreen: View {
                     .foregroundStyle(Color.inkMuted)
             }
             .padding(12)
-            .background(Color.white, in: .rect(cornerRadius: 14))
+            .background(Color.panel, in: .rect(cornerRadius: 14))
 
             VStack(alignment: .leading, spacing: 8) {
                 Toggle(isOn: $chatsInSpotlight) {
@@ -54,7 +54,7 @@ struct SettingsPrivacyScreen: View {
                     .foregroundStyle(Color.inkMuted)
             }
             .padding(12)
-            .background(Color.white, in: .rect(cornerRadius: 14))
+            .background(Color.panel, in: .rect(cornerRadius: 14))
 
             if chats?.conversationList.canLock == true {
                 accountPinCard
@@ -99,7 +99,7 @@ struct SettingsPrivacyScreen: View {
             }
         }
         .padding(12)
-        .background(Color.white, in: .rect(cornerRadius: 14))
+        .background(Color.panel, in: .rect(cornerRadius: 14))
     }
 
     /// The text beside the button where there is room, the button under it where there is not.

@@ -83,7 +83,7 @@ struct VaultItemCard: View {
                 if isSelected {
                     FigmaCardGradient(tint: tint, start: UnitPoint(x: 0.77, y: 1.67), end: UnitPoint(x: 0.23, y: -0.67))
                 } else {
-                    Color.white
+                    Color.panel
                 }
             }
             .clipShape(.rect(cornerRadius: 17))

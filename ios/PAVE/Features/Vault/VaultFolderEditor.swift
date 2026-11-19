@@ -57,7 +57,7 @@ struct VaultFolderEditor: View {
         .frame(maxWidth: isWide ? 760 : 520)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onGeometryChange(for: CGSize.self) { $0.size } action: { size = $0 }
-        .background(Color.white.ignoresSafeArea())
+        .background(Color.panel.ignoresSafeArea())
         .tint(.paveAccent)
         // Knopmodus: swipe through the colours and icons and see the folder change; a full press saves, and on the
         // page after creating it goes to the folder.
@@ -115,7 +115,7 @@ struct VaultFolderEditor: View {
                 .padding(.bottom, 16)
                 // Tapping an empty spot closes the keyboard, also when everything fits and nothing scrolls.
                 .background {
-                    Color.white
+                    Color.panel
                         .contentShape(.rect)
                         .onTapGesture { isNameFocused = false }
                 }
@@ -172,7 +172,7 @@ struct VaultFolderEditor: View {
                 .onSubmit { isNameFocused = false }
                 .padding(.horizontal, 14)
                 .frame(minHeight: 52)
-                .background(Color.white, in: .rect(cornerRadius: 7))
+                .background(Color.panel, in: .rect(cornerRadius: 7))
                 .overlay {
                     RoundedRectangle(cornerRadius: 7)
                         .strokeBorder(error == nil ? Color.cardBorder : Color.critical, lineWidth: error == nil ? 1 : 1.5)

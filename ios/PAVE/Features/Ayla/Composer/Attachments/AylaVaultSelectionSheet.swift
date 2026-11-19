@@ -26,7 +26,7 @@ struct AylaVaultSelectionSheet: View {
                 list
             }
         }
-        .background(Color.white.ignoresSafeArea())
+        .background(Color.panel.ignoresSafeArea())
         .presentationDetents([.fraction(0.62), .large], selection: $detent)
         // Knopmodus: a full press on an item or a folder ticks it; without a choice it goes on (Verder), or closes
         // when nothing is chosen.
@@ -88,7 +88,7 @@ struct AylaVaultSelectionSheet: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)
                 .background {
-                    LinearGradient(colors: [.white.opacity(0), .white], startPoint: .top, endPoint: .center)
+                    LinearGradient(colors: [Color.panel.opacity(0), Color.panel], startPoint: .top, endPoint: .center)
                         .ignoresSafeArea()
                 }
         }

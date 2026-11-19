@@ -31,7 +31,7 @@ struct VerificationCodeField: View {
                 .focused(isFocused)
                 .padding(16)
                 .frame(minHeight: 60)
-                .background(Color.white, in: .rect(cornerRadius: 7))
+                .background(Color.panel, in: .rect(cornerRadius: 7))
                 .overlay {
                     RoundedRectangle(cornerRadius: 7)
                         .strokeBorder(borderColor, lineWidth: isInvalid || isFocused.wrappedValue ? 2 : 1)

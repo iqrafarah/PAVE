@@ -12,7 +12,7 @@ struct AylaHeadHint: View {
             .contentTransition(.opacity)
             .padding(.horizontal, 12)
             .frame(height: 30)
-            .background(isAnswer ? Color.paveAccent : Color.white, in: .capsule)
+            .background(isAnswer ? Color.paveAccent : Color.panel, in: .capsule)
             .overlay { Capsule().strokeBorder(isAnswer ? Color.clear : Color.cardBorder, lineWidth: 1) }
     }
 }

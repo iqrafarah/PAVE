@@ -221,7 +221,7 @@ struct AylaProjectStart: View {
         .foregroundStyle(Color.ink)
         .padding(.horizontal, 12)
         .frame(minHeight: 36)
-        .background(Color.white, in: .capsule)
+        .background(Color.panel, in: .capsule)
         .overlay { Capsule().strokeBorder(Color.cardBorder) }
         .frame(minHeight: 44)
         .contentShape(.rect)
@@ -267,7 +267,7 @@ struct AylaProjectStart: View {
             }
             .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.white, in: .rect(cornerRadius: 14))
+            .background(Color.panel, in: .rect(cornerRadius: 14))
             .contentShape(.rect(cornerRadius: 14))
         }
         .buttonStyle(.pave)
@@ -378,7 +378,7 @@ struct AylaSourcePicker: View {
                     .accessibilityHidden(true)
             }
             .padding(10)
-            .background(Color.white, in: .rect(cornerRadius: 14))
+            .background(Color.panel, in: .rect(cornerRadius: 14))
             .contentShape(.rect(cornerRadius: 14))
         }
         .buttonStyle(.pave)

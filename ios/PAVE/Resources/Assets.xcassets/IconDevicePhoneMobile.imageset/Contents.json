@@ -3,6 +3,16 @@
     {
       "filename": "IconDevicePhoneMobile.svg",
       "idiom": "universal"
+    },
+    {
+      "appearances": [
+        {
+          "appearance": "luminosity",
+          "value": "dark"
+        }
+      ],
+      "filename": "IconDevicePhoneMobile-dark.svg",
+      "idiom": "universal"
     }
   ],
   "info": {

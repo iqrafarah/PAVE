@@ -277,7 +277,7 @@ struct VaultItemDetailView: View {
             content()
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16)
-                .background(Color.white, in: .rect(cornerRadius: 16))
+                .background(Color.panel, in: .rect(cornerRadius: 16))
                 .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder) }
         }
     }

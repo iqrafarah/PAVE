@@ -78,7 +78,7 @@ struct AylaMemoryScreen: View {
                 .tint(.paveAccent)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
-                .background(Color.white, in: .rect(cornerRadius: 16))
+                .background(Color.panel, in: .rect(cornerRadius: 16))
                 Text(memory.memories.isEnabled
                     ? "Ayla stelt voor wat ze onthoudt en jij beslist. Ze gebruikt het in je gesprekken op je iPhone en op het web."
                     : "Ayla gebruikt niets uit deze mappen en stelt niets voor. Wat erin staat, blijft bewaard tot je het wist.")
@@ -115,7 +115,7 @@ struct AylaMemoryScreen: View {
                             .textStyle(.listTitle)
                             .foregroundStyle(Color.criticalInk)
                             .frame(maxWidth: .infinity, minHeight: 50)
-                            .background(Color.white, in: .rect(cornerRadius: 16))
+                            .background(Color.panel, in: .rect(cornerRadius: 16))
                     }
                     .buttonStyle(.pave)
                     .padding(.top, 24)

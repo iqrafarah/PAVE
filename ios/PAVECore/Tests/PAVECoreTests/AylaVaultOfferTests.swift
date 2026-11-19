@@ -211,6 +211,10 @@ struct AylaAppCommandTests {
         #expect(command("Tekst bij praten aan") == .voiceText(true))
         #expect(command("Maak mijn chats vindbaar, aan") == .chatsInSearch(true))
         #expect(command("Chats niet vindbaar in iPhone-zoeken") == .chatsInSearch(false))
+        #expect(command("Zet donkere modus aan") == .displayMode(.dark))
+        #expect(command("Donkere modus uit") == .displayMode(.light))
+        #expect(command("Maak het donker") == .displayMode(.dark))
+        #expect(command("Licht of donker automatisch") == .displayMode(.auto))
     }
 
     @Test func goesSomewhere() {

@@ -141,7 +141,7 @@ private struct KeyStyle: ButtonStyle {
             .background {
                 if filled {
                     Circle()
-                        .fill(configuration.isPressed ? Color.paveSurfaceTint : .white)
+                        .fill(configuration.isPressed ? Color.paveSurfaceTint : Color.panel)
                         .overlay { Circle().strokeBorder(Color.hairline, lineWidth: 1) }
                 }
             }

@@ -18,7 +18,7 @@ struct SettingsGroup<Content: View>: View {
                 }
             }
         }
-        .background(Color.white, in: .rect(cornerRadius: 14))
+        .background(Color.panel, in: .rect(cornerRadius: 14))
     }
 }
 
@@ -151,7 +151,7 @@ struct SettingsProfileHeader: View {
                     .accessibilityHidden(true)
             }
             .padding(14)
-            .background(Color.white, in: .rect(cornerRadius: 14))
+            .background(Color.panel, in: .rect(cornerRadius: 14))
             .contentShape(.rect)
         }
         .buttonStyle(.pave)

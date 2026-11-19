@@ -35,7 +35,7 @@ struct VaultRequestConfirmationSheet: View {
             }
         }
         .animation(.snappy(duration: 0.35), value: isFinished)
-        .background(Color.white.ignoresSafeArea())
+        .background(Color.panel.ignoresSafeArea())
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .sheetDismissGuard(isBlocked: hasChanges) { confirmsDiscard = true }

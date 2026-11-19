@@ -57,7 +57,7 @@ struct VaultAddEvidenceSheet: View {
         }
         .frame(maxWidth: 600)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.white.ignoresSafeArea())
+        .background(Color.panel.ignoresSafeArea())
         .tint(.paveAccent)
         .animation(pageAnimation, value: flow.page)
         .animation(.easeOut(duration: 0.2), value: isTyping)
@@ -346,7 +346,7 @@ struct VaultAddEvidenceSheet: View {
         .padding(.horizontal, 22)
         .padding(.top, 8)
         .padding(.bottom, isShort ? 6 : 12)
-        .background(Color.white)
+        .background(Color.panel)
         // A problem floats just above the buttons, over the bottom of the page, so nothing above it moves.
         .overlay(alignment: .top) {
             if let problem = flow.problem {
@@ -354,7 +354,7 @@ struct VaultAddEvidenceSheet: View {
                     .padding(.horizontal, 24)
                     .padding(.vertical, 10)
                     .frame(maxWidth: .infinity)
-                    .background(Color.white)
+                    .background(Color.panel)
                     .alignmentGuide(.top) { $0[.bottom] }
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
             }

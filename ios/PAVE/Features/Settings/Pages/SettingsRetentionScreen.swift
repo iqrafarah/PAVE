@@ -17,7 +17,7 @@ struct SettingsRetentionScreen: View {
                     .foregroundStyle(Color.inkMuted)
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.white, in: .rect(cornerRadius: 14))
+                    .background(Color.panel, in: .rect(cornerRadius: 14))
             }
         }
         .task { await profile.load() }
@@ -55,7 +55,7 @@ struct SettingsRetentionScreen: View {
             }
         }
         .padding(12)
-        .background(Color.white, in: .rect(cornerRadius: 14))
+        .background(Color.panel, in: .rect(cornerRadius: 14))
         .animation(.easeOut(duration: 0.2), value: retention.chatExpiry.days != nil)
     }
 
@@ -68,7 +68,7 @@ struct SettingsRetentionScreen: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(12)
-        .background(Color.white, in: .rect(cornerRadius: 14))
+        .background(Color.panel, in: .rect(cornerRadius: 14))
     }
 
     private func row(_ title: String, @ViewBuilder picker: () -> some View) -> some View {

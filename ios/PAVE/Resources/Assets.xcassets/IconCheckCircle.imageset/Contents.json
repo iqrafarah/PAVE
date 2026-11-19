@@ -3,6 +3,16 @@
     {
       "filename": "IconCheckCircle.svg",
       "idiom": "universal"
+    },
+    {
+      "appearances": [
+        {
+          "appearance": "luminosity",
+          "value": "dark"
+        }
+      ],
+      "filename": "IconCheckCircle-dark.svg",
+      "idiom": "universal"
     }
   ],
   "info": {

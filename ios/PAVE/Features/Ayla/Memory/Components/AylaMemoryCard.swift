@@ -111,7 +111,7 @@ struct AylaMemoryCard: View {
                         .foregroundStyle(Color.ink)
                         .frame(minHeight: 36)
                         .padding(.horizontal, 14)
-                        .background(Color.white, in: .capsule)
+                        .background(Color.panel, in: .capsule)
                 }
                 .buttonStyle(.pave)
                 .disabled(decision == .saving)

@@ -12,7 +12,7 @@ struct VaultCategoryTile: View {
             VStack(spacing: 0) {
                 Text(title)
                     .textStyle(.tileTitle)
-                    .foregroundStyle(Color.black)
+                    .foregroundStyle(Color.ink)
                 Text(count == 1 ? "1 item" : "\(count) items")
                     .textStyle(.tileCount)
                     .foregroundStyle(Color.inkSoft)
@@ -24,7 +24,7 @@ struct VaultCategoryTile: View {
             .padding(.bottom, 11)
             .padding(.horizontal, 13)
             .frame(minWidth: 98)
-            .background(Color.white, in: .rect(cornerRadius: 12))
+            .background(Color.panel, in: .rect(cornerRadius: 12))
             .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(Color.cardBorder, lineWidth: 1) }
             .contentShape(.rect(cornerRadius: 12))
         }

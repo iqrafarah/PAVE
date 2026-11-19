@@ -43,7 +43,7 @@ struct AylaShelfComposer: View {
         .padding(.leading, 16)
         .padding(.trailing, 4)
         .frame(minHeight: 52)
-        .background(Color.white, in: .capsule)
+        .background(Color.panel, in: .capsule)
         .overlay { Capsule().strokeBorder(Color.cardBorder) }
         .padding(.horizontal, 16)
         .padding(.top, 8)

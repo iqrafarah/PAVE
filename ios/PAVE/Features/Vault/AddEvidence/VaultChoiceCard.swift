@@ -26,7 +26,7 @@ struct VaultChoiceCard: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 20)
-            .background(Color.white, in: .rect(cornerRadius: 12))
+            .background(Color.panel, in: .rect(cornerRadius: 12))
             .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(Color.railBorder, lineWidth: 1) }
             .contentShape(.rect(cornerRadius: 12))
         }

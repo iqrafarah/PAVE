@@ -83,7 +83,7 @@ struct DeviceRow: View {
             }
         }
         .padding(12)
-        .background(Color.white, in: .rect(cornerRadius: 14))
+        .background(Color.panel, in: .rect(cornerRadius: 14))
         .accessibilityElement(children: .contain)
     }
 }

@@ -41,7 +41,7 @@ struct AylaShelfReply: View {
                             .foregroundStyle(Color.paveAccent)
                             .padding(.horizontal, 16)
                             .frame(minHeight: 44)
-                            .background(Color.white, in: .capsule)
+                            .background(Color.panel, in: .capsule)
                             .buttonStyle(.pave)
                     }
                 }

@@ -38,7 +38,7 @@ struct VaultRecipientCard: View {
                     .accessibilityHidden(true)
             }
             .padding(14)
-            .background(isSelected ? Color.paveDropZone : .white, in: .rect(cornerRadius: 12))
+            .background(isSelected ? Color.paveDropZone : Color.panel, in: .rect(cornerRadius: 12))
             .overlay {
                 RoundedRectangle(cornerRadius: 12)
                     .strokeBorder(isSelected ? Color.paveFocusRing : .railBorder, lineWidth: 1)

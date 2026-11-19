@@ -30,7 +30,7 @@ struct SettingsAylaScreen: View {
                         .accessibilityHidden(true)
                 }
                 .padding(12)
-                .background(Color.white, in: .rect(cornerRadius: 14))
+                .background(Color.panel, in: .rect(cornerRadius: 14))
                 .contentShape(.rect)
             }
             .buttonStyle(.pave)
@@ -47,7 +47,7 @@ struct SettingsAylaScreen: View {
                     .foregroundStyle(Color.inkMuted)
             }
             .padding(12)
-            .background(Color.white, in: .rect(cornerRadius: 14))
+            .background(Color.panel, in: .rect(cornerRadius: 14))
 
             cameraControlRow
         }
@@ -75,7 +75,7 @@ struct SettingsAylaScreen: View {
             }
         }
         .padding(12)
-        .background(Color.white, in: .rect(cornerRadius: 14))
+        .background(Color.panel, in: .rect(cornerRadius: 14))
     }
 
     private static func message(for problem: PaveCameraControl.Problem) -> String {

@@ -64,7 +64,7 @@ struct AylaProjectEditor: View {
                             .onSubmit { focus = .instructions }
                             .padding(.horizontal, 14)
                             .frame(minHeight: 48)
-                            .background(Color.white, in: .rect(cornerRadius: 10))
+                            .background(Color.panel, in: .rect(cornerRadius: 10))
                             .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(Color.cardBorder) }
                             .onChange(of: name) { _, value in
                                 if value.count > AylaProject.maxNameLength { name = String(value.prefix(AylaProject.maxNameLength)) }
@@ -89,7 +89,7 @@ struct AylaProjectEditor: View {
                         .foregroundStyle(Color.ink)
                         .focused($focus, equals: .instructions)
                         .padding(14)
-                        .background(Color.white, in: .rect(cornerRadius: 10))
+                        .background(Color.panel, in: .rect(cornerRadius: 10))
                         .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(Color.cardBorder) }
                         .onChange(of: instructions) { _, value in
                             if value.count > AylaProject.maxInstructionsLength {

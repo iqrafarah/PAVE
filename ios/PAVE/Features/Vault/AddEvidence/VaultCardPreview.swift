@@ -35,7 +35,7 @@ struct VaultCardPreview: View {
                 .padding(.bottom, 14)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .background(Color.white)
+        .background(Color.panel)
         .clipShape(.rect(cornerRadius: 16))
         .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder, lineWidth: 1) }
         .animation(.easeOut(duration: 0.3), value: look)

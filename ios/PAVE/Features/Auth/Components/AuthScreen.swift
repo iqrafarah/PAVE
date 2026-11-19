@@ -75,7 +75,7 @@ struct AuthScreen<Intro: View, Content: View>: View {
                 .padding(40)
                 .frame(maxWidth: 520)
                 .fixedSize(horizontal: false, vertical: true)
-                .background(Color.white, in: .rect(cornerRadius: 28))
+                .background(Color.panel, in: .rect(cornerRadius: 28))
                 .shadow(color: Color.paveAccent.opacity(0.08), radius: 32, y: 12)
                 .padding(.horizontal, 32)
                 Spacer(minLength: 24)

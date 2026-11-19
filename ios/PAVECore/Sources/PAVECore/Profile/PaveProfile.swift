@@ -103,6 +103,13 @@ public enum PaveTextSize: String, CaseIterable, Identifiable, Sendable {
 }
 
 /// How the vault opens. The vault can still switch for a moment; the next time it opens like this again.
+/// Licht or Donker, or Automatisch: the light or dark setting of the device (`profiles.display_mode`, as on the web).
+public enum PaveDisplayMode: String, CaseIterable, Identifiable, Sendable {
+    case auto, light, dark
+
+    public var id: Self { self }
+}
+
 public enum PaveVaultLayout: String, CaseIterable, Identifiable, Sendable {
     case list, grid
     public var id: Self { self }

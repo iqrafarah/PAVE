@@ -24,7 +24,7 @@ struct VaultAllFoldersTile: View {
             .padding(.horizontal, 10)
             .frame(width: 110)
             .frame(maxHeight: .infinity)
-            .background(Color.white, in: .rect(cornerRadius: 16))
+            .background(Color.panel, in: .rect(cornerRadius: 16))
             .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder) }
             .contentShape(.rect(cornerRadius: 16))
         }

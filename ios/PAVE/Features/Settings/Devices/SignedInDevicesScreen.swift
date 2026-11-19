@@ -75,7 +75,7 @@ struct SignedInDevicesScreen: View {
         case .idle, .loading:
             ForEach(0..<3, id: \.self) { _ in
                 RoundedRectangle(cornerRadius: 14)
-                    .fill(Color.white)
+                    .fill(Color.panel)
                     .frame(height: 64)
             }
             .accessibilityLabel("Apparaten laden")
@@ -190,7 +190,7 @@ struct SignedInDevicesScreen: View {
                         .accessibilityHidden(true)
                 }
                 .padding(12)
-                .background(Color.white, in: .rect(cornerRadius: 14))
+                .background(Color.panel, in: .rect(cornerRadius: 14))
                 .contentShape(.rect)
             }
             .buttonStyle(.pave)

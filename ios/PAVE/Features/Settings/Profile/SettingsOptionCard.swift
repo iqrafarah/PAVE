@@ -28,7 +28,7 @@ struct SettingsOptionCard<Icon: View>: View {
             }
             .padding(.horizontal, 16)
             .frame(maxWidth: .infinity, minHeight: 54)
-            .background(isSelected ? Color.paveAccent.opacity(0.1) : .white, in: .rect(cornerRadius: 14))
+            .background(isSelected ? Color.paveAccent.opacity(0.1) : Color.panel, in: .rect(cornerRadius: 14))
             .overlay {
                 RoundedRectangle(cornerRadius: 14)
                     .strokeBorder(isSelected ? Color.paveAccent : Color.cardBorder, lineWidth: isSelected ? 1.5 : 1)

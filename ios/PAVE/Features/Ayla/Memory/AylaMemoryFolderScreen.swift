@@ -110,7 +110,7 @@ struct AylaMemoryFolderScreen: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .listRowBackground(Color.white)
+        .listRowBackground(Color.panel)
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
                 PaveHaptics.tap(.medium)

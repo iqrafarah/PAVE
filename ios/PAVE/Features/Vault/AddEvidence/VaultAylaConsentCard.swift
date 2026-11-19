@@ -27,7 +27,7 @@ struct VaultAylaConsentCard: View {
                 .tint(.paveAccent)
         }
         .padding(14)
-        .background(isOn ? Color.paveDropZone : Color.white, in: .rect(cornerRadius: 12))
+        .background(isOn ? Color.paveDropZone : Color.panel, in: .rect(cornerRadius: 12))
         .overlay {
             RoundedRectangle(cornerRadius: 12)
                 .strokeBorder(isOn ? Color.paveFocusRing : Color.railBorder, lineWidth: 1)

@@ -47,7 +47,7 @@ struct AuthSteps: View {
         let isReached = index <= currentIndex
         ZStack {
             Circle()
-                .fill(isReached ? Color.paveAccent : .white)
+                .fill(isReached ? Color.paveAccent : Color.panel)
                 .overlay { Circle().strokeBorder(isReached ? Color.paveAccent : .hairline, lineWidth: 1) }
             if index < currentIndex {
                 Image(.iconCheck)

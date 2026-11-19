@@ -55,7 +55,7 @@ struct PaveTextField<Field: Hashable>: View {
             .padding(.leading, 14)
             .padding(.trailing, 6)
             .frame(minHeight: 52)
-            .background(isEnabled ? Color.white : .fieldDisabled, in: .rect(cornerRadius: 7))
+            .background(isEnabled ? Color.panel : .fieldDisabled, in: .rect(cornerRadius: 7))
             .overlay {
                 RoundedRectangle(cornerRadius: 7)
                     .strokeBorder(borderColor, lineWidth: borderWidth)
