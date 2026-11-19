@@ -20,6 +20,8 @@ struct SettingsScreen: View {
         case devices
         case ayla
         case privacy
+        case retention
+        case archive
 
         var title: String {
             switch self {
@@ -27,6 +29,8 @@ struct SettingsScreen: View {
             case .devices: DevicesMessages.title
             case .ayla: "Ayla"
             case .privacy: "Privacy"
+            case .retention: RetentionMessages.title
+            case .archive: RetentionMessages.archiveTitle
             }
         }
     }
@@ -48,6 +52,15 @@ struct SettingsScreen: View {
                         SettingsRow(icon: .iconChatBubbleLeftEllipsisSolid, title: "Ayla", value: SettingsAylaScreen.memorySummary(memory).shortened, opens: .ayla)
                         SettingsRow(icon: .iconShieldCheckSolid, title: "Privacy", value: SettingsPrivacyScreen.lockTitle(lockAfter), opens: .privacy)
                     }
+
+                    SettingsSectionTitle(title: "Je gegevens")
+                    SettingsGroup {
+                        SettingsRow(
+                            icon: .iconClockSolid, title: RetentionMessages.title,
+                            value: profile.retention.map { RetentionMessages.period($0.chatExpiry.days) }, opens: .retention
+                        )
+                        SettingsRow(icon: .iconArchiveBoxSolid, title: RetentionMessages.archiveTitle, opens: .archive)
+                    }
                 }
                 .padding(.horizontal, 23)
                 .padding(.top, 32)
@@ -64,6 +77,8 @@ struct SettingsScreen: View {
                 case .devices: SignedInDevicesScreen()
                 case .ayla: SettingsAylaScreen()
                 case .privacy: SettingsPrivacyScreen()
+                case .retention: SettingsRetentionScreen()
+                case .archive: ArchiveScreen()
                 }
             }
             // Ayla opens a page or goes back when you ask her to.

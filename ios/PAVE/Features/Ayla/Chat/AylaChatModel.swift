@@ -67,6 +67,7 @@ final class AylaChatModel {
     private(set) var conversationLimit = 50
     /// Conversations that were just deleted and can still be brought back (`undoDeletion`).
     private(set) var pendingDeletion: [AylaConversation] = []
+    @ObservationIgnored private var lastExpiryCheck: Date?
     @ObservationIgnored private var deletionTask: Task<Void, Never>?
     @ObservationIgnored private var refreshAgain = false
     private let undoWindow: Duration
@@ -651,6 +652,11 @@ final class AylaChatModel {
         }
         isLoadingList = true
         defer { isLoadingList = false }
+        // Chats whose time is up go first, for good; at most every ten minutes.
+        if lastExpiryCheck.map({ Date.now.timeIntervalSince($0) > 600 }) ?? true {
+            lastExpiryCheck = .now
+            _ = try? await service.expireChats()
+        }
         repeat {
             refreshAgain = false
             do {
@@ -687,6 +693,40 @@ final class AylaChatModel {
         guard canLoadMore, !isLoadingList else { return }
         conversationLimit += 50
         await refreshConversations()
+    }
+
+    /// Archives chats or puts them back. The list changes at once and goes back if Supabase refuses. The open chat
+    /// starts afresh when it goes into the archive.
+    func setArchived(_ isArchived: Bool, _ conversations: [AylaConversation]) {
+        guard let service, conversationList.canArchive, !conversations.isEmpty else { return }
+        let before = conversationList
+        for conversation in conversations { conversationList.setArchived(isArchived, id: conversation.id) }
+        if isArchived, conversations.contains(where: { $0.id == conversationID }) { newConversation() }
+        Task {
+            do {
+                for conversation in conversations {
+                    try await service.setArchived(isArchived, conversationID: conversation.id)
+                }
+            } catch {
+                conversationList = before
+                chatsProblem = isArchived ? AylaMessages.archiveFailed : AylaMessages.unarchiveFailed
+            }
+        }
+    }
+
+    /// The chat's own choice for when it is deleted.
+    func setExpiry(_ expiry: AylaConversation.Expiry, _ conversation: AylaConversation) {
+        guard let service, conversationList.canArchive, expiry != conversation.expiry else { return }
+        let before = conversationList
+        conversationList.setExpiry(expiry, id: conversation.id)
+        Task {
+            do {
+                try await service.setExpiry(expiry, conversationID: conversation.id)
+            } catch {
+                conversationList = before
+                chatsProblem = AylaMessages.expiryFailed
+            }
+        }
     }
 
     /// Pins or unpins a conversation. The list changes at once and goes back if Supabase refuses.

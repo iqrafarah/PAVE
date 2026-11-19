@@ -217,6 +217,8 @@ struct AylaAppCommandTests {
         #expect(command("Open weergave") == .settingsPage(.appearance))
         #expect(command("Ga naar ingelogde apparaten") == .settingsPage(.devices))
         #expect(command("Laat privacy zien") == .settingsPage(.privacy))
+        #expect(command("Open mijn archief") == .settingsPage(.archive))
+        #expect(command("Ga naar gegevens bewaren") == .settingsPage(.retention))
         #expect(command("Open de map stages") == .vaultFolder(id: "f1"))
         #expect(command("Open diploma's") == .vaultFolder(id: "f2"))
         #expect(command("Laat eindstage bij philips zien") == .vaultItem(id: "i1"))

@@ -17,7 +17,7 @@ public struct AylaConversation: Equatable, Sendable, Identifiable {
     public var expiry: Expiry
 
     /// The chat's own choice for when it is deleted.
-    public enum Expiry: Equatable, Sendable {
+    public enum Expiry: Hashable, Sendable {
         /// What the account chose in Instellingen.
         case followsAccount
         case never
@@ -227,7 +227,7 @@ public struct AylaConversationList: Equatable, Sendable {
     /// Whether `other` would show exactly the same list: the same groups, chats, names and order. Small differences
     /// that do not show, such as the fraction of a second a chat was pinned at, do not count.
     public func looksTheSame(as other: AylaConversationList, now: Date = .now, calendar: Calendar = .current) -> Bool {
-        guard canPin == other.canPin, canUseProjects == other.canUseProjects, canLock == other.canLock else { return false }
+        guard canPin == other.canPin, canUseProjects == other.canUseProjects, canLock == other.canLock, canArchive == other.canArchive else { return false }
         func shown(_ list: AylaConversationList) -> [[String]] {
             let chats = list.sections(now: now, calendar: calendar).map { section in
                 ["\(section.kind)"] + section.conversations.map {
@@ -237,7 +237,8 @@ public struct AylaConversationList: Equatable, Sendable {
             let projects = list.orderedProjects.map { project in
                 ["project|\(project.id)|\(project.name)|\(project.isPinned)"] + list.chats(in: project.id).map { "\($0.id)|\($0.title)" }
             }
-            return chats + projects + [list.locked.map(\.id)]
+            let expiries = list.conversations.map { "\($0.id)|\($0.expiry)" }
+            return chats + projects + [list.locked.map(\.id), list.archived.map { "\($0.id)|\($0.title)" }, expiries]
         }
         return shown(self) == shown(other)
     }

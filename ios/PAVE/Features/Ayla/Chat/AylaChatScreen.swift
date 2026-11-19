@@ -228,6 +228,8 @@ struct AylaChatScreen: View {
             Group {
                 if shelf == .settings {
                     SettingsScreen(name: model.firstName, onShowMenu: nil, onSignOut: appState.signOut)
+                        .environment(model)
+                        .environment(vault)
                 } else if shelf == .vault {
                     if let vault {
                         VaultScreen(onShowMenu: nil)

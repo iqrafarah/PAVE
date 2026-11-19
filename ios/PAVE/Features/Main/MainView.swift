@@ -315,6 +315,8 @@ struct MainView: View {
             ProfileScreen(onShowMenu: onShowMenu)
         case .settings:
             SettingsScreen(name: model.firstName, onShowMenu: onShowMenu, onSignOut: appState.signOut)
+                .environment(model)
+                .environment(vault)
                 .environment(devices)
                 .environment(profile)
                 .environment(watchConnection)

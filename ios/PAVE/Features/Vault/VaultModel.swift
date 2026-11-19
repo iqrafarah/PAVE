@@ -53,6 +53,15 @@ final class VaultModel {
     #endif
 
     var items: [VaultItem] { contents.items }
+    /// The archive: out of the vault, kept until it is put back or deleted.
+    var archived: [VaultItem] { contents.archived }
+    var canArchive: Bool { contents.canArchive }
+
+    /// Archives evidence or puts it back.
+    @discardableResult
+    func setArchived(_ isArchived: Bool, _ item: VaultItem) async -> Bool {
+        await perform { try await $0.setArchived(isArchived, itemID: item.id) }
+    }
     var folders: [VaultFolder] { contents.folders }
 
     func count(in shelf: VaultShelf) -> Int {

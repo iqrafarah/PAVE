@@ -14,6 +14,15 @@ struct AylaChatListActions {
     var preview: (AylaConversation) async -> [AylaStoredMessage]
     var projects: AylaProjectActions?
     var locks: AylaLockActions?
+    var retention: AylaRetentionActions?
+}
+
+/// "Archiveren" and "Verval": keeping a chat out of sight, and when it is deleted by itself.
+struct AylaRetentionActions {
+    /// What the account chose in Instellingen, to say when a chat goes.
+    var accountExpiry: ChatExpiry
+    var archive: ([AylaConversation]) -> Void
+    var setExpiry: (AylaConversation, AylaConversation.Expiry) -> Void
 }
 
 /// "Projecten": folders for chats with Ayla's own instructions (web useAylaProjects).
@@ -377,6 +386,32 @@ struct AylaChatList: View {
                 lockTarget = conversation
             } label: {
                 Label { Text(AylaMessages.lockMenu) } icon: { Image(.iconLockClosedSolid) }
+            }
+        }
+        if let retention = actions.retention, list.canArchive {
+            Button {
+                retention.archive([conversation])
+            } label: {
+                Label(RetentionMessages.archive, systemImage: "archivebox.fill")
+            }
+            // In a project a chat never expires, so there is nothing to choose.
+            if conversation.projectID == nil {
+                Menu {
+                    let choices: [AylaConversation.Expiry] = [.followsAccount, .never] + ChatExpiry.periods.map { .days($0) }
+                    Picker(RetentionMessages.expiry, selection: Binding(
+                        get: { conversation.expiry },
+                        set: { retention.setExpiry(conversation, $0) }
+                    )) {
+                        ForEach(choices, id: \.storedDays) { choice in
+                            Text(RetentionMessages.title(choice)).tag(choice)
+                        }
+                    }
+                    if let date = retention.accountExpiry.expiresAt(conversation) {
+                        Text(RetentionMessages.expires(date))
+                    }
+                } label: {
+                    Label(RetentionMessages.expiry, systemImage: "timer")
+                }
             }
         }
         Button {

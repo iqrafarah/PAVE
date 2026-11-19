@@ -47,6 +47,13 @@ struct VaultItemActionButtons: View {
             }
             .menuActionDismissBehavior(.disabled)
         }
+        if model.canArchive {
+            Button {
+                Task { await model.setArchived(true, item) }
+            } label: {
+                SwiftUI.Label { Text(RetentionMessages.archive) } icon: { Image(systemName: "archivebox.fill") }
+            }
+        }
         Button(role: .destructive, action: onDelete) {
             SwiftUI.Label { Text("Verwijderen") } icon: { Image(.iconTrash) }
         }

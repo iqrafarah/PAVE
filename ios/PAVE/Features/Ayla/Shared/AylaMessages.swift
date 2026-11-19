@@ -88,6 +88,9 @@ enum AylaMessages {
     static let memoryNotSetUp = "Het geheugen van Ayla staat nog niet aan in PAVE. Zodra het er is, zie je hier alles wat Ayla over je onthoudt."
     static let pasteRefused = "Plakken lukte niet. Sta het toe bij Instellingen › PAVE › Plakken uit andere apps, of voeg het toe als bestand."
     static let pinFailed = "Vastzetten lukte niet. Probeer het opnieuw."
+    static let archiveFailed = "Archiveren lukte niet. Probeer het opnieuw."
+    static let unarchiveFailed = "Terugzetten lukte niet. Probeer het opnieuw."
+    static let expiryFailed = "Het verval aanpassen lukte niet. Probeer het opnieuw."
 
     // Web aylaMessages.ts: AYLA_DISCLAIMER, projects and locked chats.
     static let disclaimer = "Ayla is AI en kan fouten maken."

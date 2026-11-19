@@ -25,6 +25,8 @@ final class ProfileModel {
     private(set) var customColor = PaveAppearance.customColor
     private(set) var textSize = PaveTextSize(rawValue: UserDefaults.standard.string(forKey: PaveAppearance.textSizeKey) ?? "") ?? .standard
     private(set) var vaultLayout = PaveAppearance.vaultLayout
+    /// How long chats stay and what Ayla may do with the archive; nil before the migration, so there is nothing to choose.
+    private(set) var retention: PaveRetention?
 
     private let service: (any ProfileService)?
     private let defaults: UserDefaults
@@ -56,9 +58,22 @@ final class ProfileModel {
                 apply(theme: loaded.theme, textSize: loaded.textSize, vaultLayout: loaded.vaultLayout)
                 onThemeChosen(theme, customColor)
             }
+            retention = (try? await service.retention()) ?? retention
             await loadAvatar()
         } catch {
             if state != .ready { state = .failed }
+        }
+    }
+
+    /// Shows the choice at once and saves it in the account; it goes back when saving fails.
+    func setRetention(_ chosen: PaveRetention) async {
+        guard let service, let before = retention, chosen != before else { return }
+        retention = chosen
+        do {
+            try await service.setRetention(chosen)
+        } catch {
+            retention = before
+            problem = SettingsMessages.message(for: ProfileError(error))
         }
     }
 

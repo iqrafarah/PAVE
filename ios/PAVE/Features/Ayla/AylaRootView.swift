@@ -16,6 +16,7 @@ struct AylaRootView: View {
     /// The width of the chats column on a wide screen, dragged by its edge.
     @AppStorage("aylaChatsColumnWidth") private var columnWidth = 300.0
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(ProfileModel.self) private var profile: ProfileModel?
 
     /// The chats column follows `showsChats`, so the rail and the column always agree.
     private var columnVisibility: Binding<NavigationSplitViewVisibility> {
@@ -155,6 +156,11 @@ struct AylaRootView: View {
                 checkPin: model.checkChatPin,
                 resetPin: model.resetChatPin,
                 relock: { model.showsLockedChats = false }
+            ),
+            retention: AylaRetentionActions(
+                accountExpiry: profile?.retention?.chatExpiry ?? ChatExpiry(),
+                archive: { model.setArchived(true, $0) },
+                setExpiry: { model.setExpiry($1, $0) }
             )
         )
     }

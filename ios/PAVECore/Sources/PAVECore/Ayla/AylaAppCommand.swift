@@ -5,7 +5,7 @@ import Foundation
 /// at once; everything else still goes to Ayla.
 public enum AylaAppCommand: Equatable, Sendable {
     public enum SettingsPage: String, Sendable {
-        case appearance, devices, ayla, privacy
+        case appearance, devices, ayla, privacy, retention, archive
     }
 
     case settingsPage(SettingsPage)
@@ -127,5 +127,7 @@ public enum AylaAppCommand: Equatable, Sendable {
         ("ingelogde apparaten|apparaten", .devices),
         ("ayla instellingen|instellingen van ayla|geheugen", .ayla),
         ("privacy", .privacy),
+        ("gegevens bewaren|verval", .retention),
+        ("archief|mijn archief", .archive),
     ]
 }
