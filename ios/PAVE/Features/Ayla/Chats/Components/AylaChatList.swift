@@ -159,26 +159,30 @@ struct AylaChatList: View {
                     case .header(let title):
                         header(title)
                             .selectionDisabled()
+                            .moveDisabled(true)
                     case .chat(let conversation):
                         row(conversation)
                     case .projectsHeader:
                         projectsHeader
                             .selectionDisabled()
+                            .moveDisabled(true)
                     case .project(let project):
                         projectRow(project)
                             .selectionDisabled()
+                            .moveDisabled(true)
                     case .projectChat(let conversation):
                         row(conversation)
                             .padding(.leading, 22)
                     case .locked(let count):
                         lockedRow(count)
                             .selectionDisabled()
+                            .moveDisabled(true)
                     }
                 }
-                // A chat let go on a project, or between the chats of an open project, goes into it; let go among the
-                // other chats, it leaves its project. The list makes a gap where it will land.
-                .dropDestination(for: String.self) { ids, index in
-                    drop(ids, at: index)
+                // Hold a chat and drag it, as on the web: onto a project (or among its chats) to put it there, among
+                // the pinned chats to pin it, among the other chats to take it out of its project and unpin it.
+                .onMove { source, destination in
+                    move(source, to: destination)
                 }
                 if canLoadMore {
                     ProgressView()
@@ -286,7 +290,7 @@ struct AylaChatList: View {
                 Button {
                     pin([conversation])
                 } label: {
-                    Label { Text(conversation.isPinned ? "Losmaken" : "Vastzetten") } icon: { Image(conversation.isPinned ? .iconPinSlash : .iconPin) }
+                    Label { Text(conversation.isPinned ? "Losmaken" : "Vastzetten") } icon: { Image(systemName: conversation.isPinned ? "pin.slash.fill" : "pin.fill") }
                 }
                 .tint(.paveAccent)
             }
@@ -311,12 +315,6 @@ struct AylaChatList: View {
         } preview: {
             AylaChatPreview(title: conversation.title) { await actions.preview(conversation) }
         }
-        // Drag a chat onto a project to put it there, as on the web.
-        .draggable(conversation.id) {
-            Label { Text(conversation.title) } icon: { Image(.iconChat) }
-                .padding(10)
-                .background(Color.white, in: .rect(cornerRadius: 10))
-        }
         .accessibilityActions {
             menu(for: conversation)
         }
@@ -333,7 +331,7 @@ struct AylaChatList: View {
             Button {
                 pin([conversation])
             } label: {
-                Label { Text(conversation.isPinned ? "Losmaken" : "Vastzetten") } icon: { Image(conversation.isPinned ? .iconPinSlash : .iconPin) }
+                Label { Text(conversation.isPinned ? "Losmaken" : "Vastzetten") } icon: { Image(systemName: conversation.isPinned ? "pin.slash.fill" : "pin.fill") }
             }
         }
         if let projects = actions.projects, list.canUseProjects {
@@ -356,7 +354,7 @@ struct AylaChatList: View {
                 Divider()
                 Button { projectEditor = .new } label: { Label { Text(AylaMessages.newProject) } icon: { Image(.iconFolderPlusSolid) } }
             } label: {
-                Label { Text(AylaMessages.moveToProject) } icon: { Image(.iconFolderArrowRight) }
+                Label { Text(AylaMessages.moveToProject) } icon: { Image(.iconFolderSolid) }
             }
         }
         if actions.locks != nil, list.canLock {
@@ -370,7 +368,7 @@ struct AylaChatList: View {
             isSelecting = true
             selection = [conversation.id]
         } label: {
-            Label("Selecteren", image: .iconCheckCircle)
+            Label("Selecteren", systemImage: "checkmark.circle.fill")
         }
         Button(role: .destructive) {
             delete([conversation])
@@ -389,7 +387,7 @@ struct AylaChatList: View {
                     pin(chosen)
                     isSelecting = false
                 } label: {
-                    Label { Text(allPinned ? "Losmaken" : "Vastzetten") } icon: { Image(allPinned ? .iconPinSlash : .iconPin) }
+                    Label { Text(allPinned ? "Losmaken" : "Vastzetten") } icon: { Image(systemName: allPinned ? "pin.slash.fill" : "pin.fill") }
                         .textStyle(.action)
                         .frame(maxWidth: .infinity, minHeight: 50)
                         .contentShape(.capsule)
@@ -623,12 +621,12 @@ struct AylaChatList: View {
 
     @ViewBuilder
     private func projectMenu(_ project: AylaProject) -> some View {
-        Button { actions.projects?.newChat(project) } label: { Label { Text(AylaMessages.projectNewChat) } icon: { Image(.iconCompose) } }
+        Button { actions.projects?.newChat(project) } label: { Label { Text(AylaMessages.projectNewChat) } icon: { Image(.iconCompose).renderingMode(.template) } }
         Button { projectEditor = .edit(project) } label: { Label { Text(AylaMessages.projectSettings) } icon: { Image(.iconPencil) } }
         Button {
             actions.projects?.togglePin(project)
         } label: {
-            Label { Text(project.isPinned ? "Losmaken" : "Vastzetten") } icon: { Image(project.isPinned ? .iconPinSlash : .iconPin) }
+            Label { Text(project.isPinned ? "Losmaken" : "Vastzetten") } icon: { Image(systemName: project.isPinned ? "pin.slash.fill" : "pin.fill") }
         }
         Button(role: .destructive) { actions.projects?.delete(project) } label: { Label { Text(AylaMessages.projectDelete) } icon: { Image(.iconTrash) } }
     }
@@ -654,22 +652,46 @@ struct AylaChatList: View {
         }
     }
 
-    private func drop(_ ids: [String], at index: Int) {
-        guard let projects = actions.projects else { return }
+    /// Where a dragged chat was let go decides what happens to it; the list keeps its own order (pinned, then by date).
+    private func move(_ source: IndexSet, to destination: Int) {
         let all = items
-        let above = index > 0 && index <= all.count ? all[index - 1] : nil
-        let target: AylaProject?
-        switch above {
-        case .project(let project): target = project
-        case .projectChat(let chat): target = list.project(of: chat)
-        default:
-            // Below the projects (or above them, among the pinned chats): out of a project.
-            target = nil
+        guard let from = source.first, all.indices.contains(from) else { return }
+        let chat: AylaConversation
+        switch all[from] {
+        case .chat(let conversation), .projectChat(let conversation): chat = conversation
+        default: return
         }
-        let chats = list.visible.filter { ids.contains($0.id) && $0.projectID != target?.id }
-        guard !chats.isEmpty else { return }
-        for chat in chats { projects.move(chat, target) }
-        if let target { withAnimation(listAnimation) { _ = openProjects.insert(target.id) } }
+        var rest = all
+        rest.remove(at: from)
+        let index = destination > from ? destination - 1 : destination
+        let above = index > 0 && index <= rest.count ? rest[index - 1] : nil
+        let pinnedTitle = "Vastgezet"
+
+        enum Target { case pinned, project(AylaProject), plain, nothing }
+        let target: Target = switch above {
+        case nil: .pinned
+        case .header(let title) where title == pinnedTitle: .pinned
+        case .chat(let conversation) where conversation.isPinned: .pinned
+        case .project(let project): .project(project)
+        case .projectChat(let conversation): list.project(of: conversation).map(Target.project) ?? .plain
+        case .projectsHeader: .nothing
+        default: .plain
+        }
+
+        PaveHaptics.success()
+        switch target {
+        case .pinned:
+            if !chat.isPinned, list.canPin { pin([chat]) }
+        case .project(let project):
+            if chat.isPinned, list.canPin { pin([chat]) }
+            actions.projects?.move(chat, project)
+            withAnimation(listAnimation) { _ = openProjects.insert(project.id) }
+        case .plain:
+            if chat.isPinned, list.canPin { pin([chat]) }
+            if chat.projectID != nil { actions.projects?.move(chat, nil) }
+        case .nothing:
+            break
+        }
     }
 
     // MARK: Locked chats

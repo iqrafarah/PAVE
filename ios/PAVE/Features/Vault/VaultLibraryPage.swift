@@ -79,6 +79,8 @@ struct VaultLibraryPage: View {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button(action: toggleSearch) {
                             Image(isSearching ? .iconXMark : .iconSearch)
+                                .renderingMode(.template)
+                                .foregroundStyle(Color.ink)
                                 .paveToolbarHitArea()
                         }
                         .accessibilityLabel(isSearching ? "Zoeken sluiten" : folder.map { "Zoeken in \($0.name)" } ?? "Zoeken in je kluis")
@@ -357,7 +359,7 @@ struct VaultLibraryPage: View {
                 Button {
                     Task { await model.setPinned(!folder.isPinned, folder: folder) }
                 } label: {
-                    Label { Text(folder.isPinned ? VaultMessages.unpinFolder : VaultMessages.pinFolder) } icon: { Image(folder.isPinned ? .iconPinSlash : .iconPin) }
+                    Label { Text(folder.isPinned ? VaultMessages.unpinFolder : VaultMessages.pinFolder) } icon: { Image(systemName: folder.isPinned ? "pin.slash.fill" : "pin.fill") }
                 }
                 Button { actions.editFolder(folder) } label: {
                     Label { Text("Map aanpassen") } icon: { Image(.iconPencil) }

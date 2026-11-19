@@ -80,12 +80,12 @@ struct VaultAllFoldersPage: View {
             Button {
                 Task { await model.setPinned(!folder.isPinned, folder: folder) }
             } label: {
-                Label { Text(folder.isPinned ? VaultMessages.unpinFolder : VaultMessages.pinFolder) } icon: { Image(folder.isPinned ? .iconPinSlash : .iconPin) }
+                Label { Text(folder.isPinned ? VaultMessages.unpinFolder : VaultMessages.pinFolder) } icon: { Image(systemName: folder.isPinned ? "pin.slash.fill" : "pin.fill") }
             }
             if query.isEmpty {
-                Button { move(folder, by: -1) } label: { Label { Text("Naar voren") } icon: { Image(.iconArrowLeft) } }
+                Button { move(folder, by: -1) } label: { Label { Text("Naar voren") } icon: { Image(.iconArrowLeft).renderingMode(.template) } }
                     .disabled(model.folders.first == folder)
-                Button { move(folder, by: 1) } label: { Label { Text("Naar achteren") } icon: { Image(.iconArrowRight) } }
+                Button { move(folder, by: 1) } label: { Label { Text("Naar achteren") } icon: { Image(.iconArrowRight).renderingMode(.template) } }
                     .disabled(model.folders.last == folder)
             }
             Button { actions.editFolder(folder) } label: {

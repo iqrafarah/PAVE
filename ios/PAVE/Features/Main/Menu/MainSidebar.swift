@@ -40,6 +40,7 @@ struct MainSidebar: View {
                 Spacer(minLength: 8)
                 switch style {
                 case .drawer:
+                    if let onSearch { MainSearchButton(action: onSearch) }
                     MainBellButton(isSelected: selection == .notifications) { onSelect(.notifications) }
                 case .docked:
                     hideButton
@@ -64,16 +65,11 @@ struct MainSidebar: View {
             .scrollIndicators(.hidden)
             .padding(.bottom, 16)
 
-            if let onSearch {
-                MainSearchButton(action: onSearch)
-                    .padding(.bottom, 12)
-            }
-
             if style != .beside {
                 HStack(spacing: 12) {
                     MainNewChatButton(action: onNewConversation)
                     if style == .docked || style == .pane {
-                        MainAccountCapsule(axis: .horizontal, name: name, selection: selection, onSelect: onSelect, onSignOut: onSignOut)
+                        MainAccountCapsule(axis: .horizontal, name: name, selection: selection, onSelect: onSelect, onSignOut: onSignOut, onSearch: onSearch)
                     } else {
                         MainAccountMenu(name: name, isSettingsOpen: selection == .settings, onSettings: { onSelect(.settings) }, onSignOut: onSignOut)
                     }

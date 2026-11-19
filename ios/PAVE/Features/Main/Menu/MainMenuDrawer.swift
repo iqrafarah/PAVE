@@ -196,10 +196,17 @@ struct MainMenuDrawer: View {
                     onSelect(destination)
                     close()
                 },
-                onSignOut: onSignOut
+                onSignOut: onSignOut,
+                onSearch: onSearch.map { search in
+                    {
+                        close()
+                        search()
+                    }
+                }
             )
             .fixedSize()
-            .position(x: menuButton.midX, y: size.height - max(16, insets.bottom) - 50)
+            // Its middle, so its bottom stays the same distance above the edge with two or three buttons in it.
+            .position(x: menuButton.midX, y: size.height - max(16, insets.bottom) - (onSearch == nil ? 50 : 74))
         }
         .frame(width: size.width, height: size.height, alignment: .topLeading)
     }
