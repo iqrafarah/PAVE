@@ -8,7 +8,7 @@ struct AylaProjectChip: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(.iconFolderOutline)
+            Image(.iconFolderSolid)
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()

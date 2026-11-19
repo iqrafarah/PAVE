@@ -13,7 +13,7 @@ struct AylaProjectRow: View {
     var body: some View {
         Button(action: onToggle) {
             HStack(spacing: 10) {
-                Image(.iconFolderOutline)
+                Image(.iconFolderSolid)
                     .renderingMode(.template)
                     .resizable()
                     .scaledToFit()

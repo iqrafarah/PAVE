@@ -28,7 +28,7 @@ struct VaultItemActionButtons: View {
                     }
                 }
             } label: {
-                SwiftUI.Label { Text("Verplaatsen naar") } icon: { Image(.iconArrowRight) }
+                SwiftUI.Label { Text("Verplaatsen naar") } icon: { Image(.iconArrowRight).renderingMode(.template) }
             }
         }
         if !model.folders.isEmpty {

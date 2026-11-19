@@ -104,6 +104,8 @@ struct AylaRootView: View {
                         if !isSelectingInColumn {
                             Button(action: startNewConversation) {
                                 Image(.iconCompose)
+                                    .renderingMode(.template)
+                                    .foregroundStyle(Color.ink)
                             }
                             .accessibilityLabel("Nieuw gesprek")
                         }
