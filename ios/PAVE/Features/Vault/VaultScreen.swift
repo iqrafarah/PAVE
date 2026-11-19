@@ -22,6 +22,9 @@ struct VaultScreen: View {
 
     private struct FolderRoute: Hashable {
         let id: String
+
+        /// "Alle mappen", which is not a folder of its own.
+        static let all = FolderRoute(id: "alle-mappen")
     }
 
     private enum FolderSheet: Identifiable {
@@ -49,6 +52,10 @@ struct VaultScreen: View {
                 PaveHaptics.selection()
                 path.append(FolderRoute(id: folder.id))
             },
+            openAllFolders: {
+                PaveHaptics.selection()
+                path.append(.all)
+            },
             editFolder: { folderSheet = .edit($0) },
             deleteFolder: { deletedFolder = $0 }
         )
@@ -61,9 +68,15 @@ struct VaultScreen: View {
                 .navigationTitle("Kluis")
                 .mainScreenToolbar("Kluis", onShowMenu: onShowMenu)
                 .navigationDestination(for: FolderRoute.self) { route in
-                    VaultLibraryPage(folderID: route.id, actions: actions)
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
+                    Group {
+                        if route == .all {
+                            VaultAllFoldersPage(actions: actions)
+                        } else {
+                            VaultLibraryPage(folderID: route.id, actions: actions)
+                        }
+                    }
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
                 }
                 .task { await model.load() }
                 // Ayla pointed to one item: open it once the vault is there.
@@ -71,7 +84,7 @@ struct VaultScreen: View {
                 .onChange(of: model.state) { openRequestedItem() }
                 // A folder that is gone (deleted here or on another device) closes.
                 .onChange(of: model.folders.map(\.id)) { _, ids in
-                    path.removeAll { !ids.contains($0.id) }
+                    path.removeAll { $0 != .all && !ids.contains($0.id) }
                 }
                 .sheet(item: $openedItem) { item in
                     VaultItemDetailView(itemID: item.id)

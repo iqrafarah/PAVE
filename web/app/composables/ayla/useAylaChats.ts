@@ -40,6 +40,7 @@ function sortForList(conversations: Conversation[]) {
 
 /** The user's conversations with Ayla (docs/ayla.md, section 4). */
 export function useAylaChats() {
+  const openMenu = useAylaOpenMenu();
   const supabase = useUntypedSupabase();
   const signedIn = useSupabaseUser();
   const state = useState<ChatsState>('ayla-chats', () => ({
@@ -49,8 +50,13 @@ export function useAylaChats() {
     hiddenIds: [],
   }));
 
+  const lock = useAylaChatLock();
+
+  // Locked chats stay out of the list and the search until the PIN is entered on the locked chats page.
   const visibleConversations = computed(() =>
-    state.value.conversations.filter((conversation) => !state.value.hiddenIds.includes(conversation.id)),
+    state.value.conversations.filter(
+      (conversation) => !state.value.hiddenIds.includes(conversation.id) && !lock.isLocked(conversation.id),
+    ),
   );
 
   function selectConversations(columns: string) {
@@ -62,6 +68,10 @@ export function useAylaChats() {
   }
 
   async function load() {
+    if (openMenu.openCount.value > 0) {
+      openMenu.hasPendingReload.value = true;
+      return;
+    }
     // After a refresh the chats show at once as they were, and are checked against the database right after.
     if (state.value.status !== 'ready') {
       const kept = readKept<{ conversations: Conversation[]; canPin: boolean }>('chats', signedIn.value?.sub);
@@ -152,6 +162,8 @@ export function useAylaChats() {
     const isFailed = Boolean(error) || !data?.length;
     if (!isFailed) {
       state.value.conversations = state.value.conversations.filter((conversation) => conversation.id !== id);
+      // Its files kept on this device go with it.
+      forgetChatFiles(id);
     }
     unhide(id);
     return { isFailed };
@@ -166,10 +178,21 @@ export function useAylaChats() {
       .ilike('text', pattern)
       .order('created_at', { ascending: false })
       .limit(SEARCH_LIMIT);
-    if (error || !data) return { conversationIds: [], isFailed: true };
+    if (error || !data) return { conversationIds: [], snippets: {} as Record<string, string>, isFailed: true };
 
-    const rows = data as { conversation_id: string }[];
-    return { conversationIds: [...new Set(rows.map((row) => row.conversation_id))], isFailed: false };
+    const rows = data as { conversation_id: string; text: string }[];
+    const visible = rows.filter((row) => !lock.isLocked(row.conversation_id));
+    const needle = words.trim().toLocaleLowerCase('nl');
+    // A short piece of the newest message that holds the words, with a little around it, for the search results.
+    const snippets: Record<string, string> = {};
+    for (const row of visible) {
+      if (snippets[row.conversation_id]) continue;
+      const text = row.text.replace(/\s+/g, ' ');
+      const at = Math.max(0, text.toLocaleLowerCase('nl').indexOf(needle));
+      const start = Math.max(0, at - 40);
+      snippets[row.conversation_id] = `${start > 0 ? '… ' : ''}${text.slice(start, start + 140)}${start + 140 < text.length ? ' …' : ''}`;
+    }
+    return { conversationIds: Object.keys(snippets), snippets, isFailed: false };
   }
 
   return {

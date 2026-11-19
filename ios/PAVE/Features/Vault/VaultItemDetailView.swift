@@ -16,6 +16,9 @@ struct VaultItemDetailView: View {
     /// The file the Camera Control button opens.
     @State private var openFileID: String?
     @Environment(PaveCameraControl.self) private var cameraControl: PaveCameraControl?
+    @State private var isDownloading = false
+    @State private var download: VaultDownload?
+    @State private var downloadFailed = false
 
     private var item: VaultItem? { model.items.first { $0.id == itemID } }
 
@@ -37,6 +40,10 @@ struct VaultItemDetailView: View {
             }
             .sheet(isPresented: $isEditing) {
                 if let item { VaultEvidenceEditor(vault: model, item: item).paveSheet() }
+            }
+            .sheet(item: $download) { VaultShareSheet(urls: $0.urls).presentationDetents([.medium, .large]) }
+            .alert(VaultMessages.downloadFailed, isPresented: $downloadFailed) {
+                Button("OK", role: .cancel) {}
             }
             .sheet(isPresented: $requestsConfirmation) {
                 if let item {
@@ -97,7 +104,7 @@ struct VaultItemDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 HStack(alignment: .top, spacing: 14) {
-                    VaultLogoAvatar(look: look, name: item.organisationName ?? item.title, size: 56)
+                    VaultLogoAvatar(look: look, name: item.organisationName ?? item.title, fileName: item.firstDocumentName ?? "", size: 56)
                         .task(id: model.logo(of: item)?.id) {
                             guard let logo = model.logo(of: item) else { look = nil; return }
                             let loaded = await model.look(of: logo)
@@ -199,6 +206,27 @@ struct VaultItemDetailView: View {
                                 )
                             }
                         }
+                        if documents.count > 1 {
+                            Button {
+                                downloadAll(documents)
+                            } label: {
+                                Label {
+                                    Text(VaultMessages.downloadAll)
+                                } icon: {
+                                    Image(.iconDownload)
+                                        .renderingMode(.template)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .paveIconFrame(18)
+                                        .opacity(isDownloading ? 0.4 : 1)
+                                }
+                                    .textStyle(.label)
+                                    .foregroundStyle(Color.paveAccent)
+                                    .frame(minHeight: 44)
+                            }
+                            .buttonStyle(.pave)
+                            .disabled(isDownloading)
+                        }
                     }
                 }
 
@@ -210,6 +238,19 @@ struct VaultItemDetailView: View {
             .padding(20)
             .frame(maxWidth: 560, alignment: .leading)
             .frame(maxWidth: .infinity)
+        }
+    }
+
+    private func downloadAll(_ files: [VaultItem.File]) {
+        isDownloading = true
+        Task {
+            defer { isDownloading = false }
+            if let ready = await model.download(files) {
+                download = ready
+            } else {
+                PaveHaptics.error()
+                downloadFailed = true
+            }
         }
     }
 

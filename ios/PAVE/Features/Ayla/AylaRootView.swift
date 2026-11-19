@@ -13,6 +13,9 @@ struct AylaRootView: View {
     @Binding var showsChats: Bool
 
     @State private var isSelectingInColumn = false
+    /// The width of the chats column on a wide screen, dragged by its edge.
+    @AppStorage("aylaChatsColumnWidth") private var columnWidth = 300.0
+    @Environment(\.scenePhase) private var scenePhase
 
     /// The chats column follows `showsChats`, so the rail and the column always agree.
     private var columnVisibility: Binding<NavigationSplitViewVisibility> {
@@ -20,10 +23,16 @@ struct AylaRootView: View {
     }
 
     var body: some View {
-        if isWide {
-            splitLayout
-        } else {
-            stackLayout
+        Group {
+            if isWide {
+                splitLayout
+            } else {
+                stackLayout
+            }
+        }
+        // The locked chats hide again when PAVE goes to the background.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { model.showsLockedChats = false }
         }
     }
 
@@ -70,7 +79,11 @@ struct AylaRootView: View {
                 } message: {
                     Text(model.chatsProblem ?? "")
                 }
-                .navigationSplitViewColumnWidth(min: 260, ideal: 300, max: 360)
+                .overlay(alignment: .trailing) {
+                    AylaColumnResizeHandle(width: $columnWidth)
+                        .offset(x: 10)
+                }
+                .navigationSplitViewColumnWidth(min(max(columnWidth, AylaColumnResizeHandle.range.lowerBound), AylaColumnResizeHandle.range.upperBound))
                 .scrollEdgeEffectStyle(.soft, for: .top)
                 .toolbar(removing: .sidebarToggle)
                 .toolbar {
@@ -122,7 +135,25 @@ struct AylaRootView: View {
             refresh: model.refreshConversations,
             loadMore: model.loadMoreConversations,
             search: model.searchMessages,
-            preview: model.preview
+            preview: model.preview,
+            projects: AylaProjectActions(
+                create: { await model.createProject(name: $0, instructions: $1) },
+                update: { await model.updateProject($0) },
+                togglePin: model.toggleProjectPin,
+                delete: model.deleteProject,
+                newChat: startNewConversation(in:),
+                move: { model.move($0, to: $1) }
+            ),
+            locks: AylaLockActions(
+                showsLocked: model.showsLockedChats,
+                lock: { await model.setLocked(true, $0) },
+                unlock: { await model.setLocked(false, $0) },
+                pinExists: model.chatPinExists,
+                setPin: model.setChatPin,
+                checkPin: model.checkChatPin,
+                resetPin: model.resetChatPin,
+                relock: { model.showsLockedChats = false }
+            )
         )
     }
 
@@ -143,6 +174,12 @@ struct AylaRootView: View {
 
     private func startNewConversation() {
         model.newConversation()
+        if !isWide { showsChats = false }
+    }
+
+    /// "Nieuwe chat in project": the next question starts a chat inside the project.
+    private func startNewConversation(in project: AylaProject) {
+        model.newConversation(in: project)
         if !isWide { showsChats = false }
     }
 }

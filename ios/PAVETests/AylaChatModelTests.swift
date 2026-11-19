@@ -411,7 +411,7 @@ struct AylaChatModelTests {
         await waitUntilIdle(model)
         #expect(model.lastTurnUploads.isEmpty)
         #expect(model.conversationUploads == [upload])
-        // Ayla names the files of an item; without names, the last question's files; never files of other evidence.
+        // Ayla's names are only a hint: every file of the item being built up goes along.
         #expect(model.uploads(for: .init(category: .projects, title: "App", attachments: ["cv.pdf"])) == [upload])
         // Names she gives that match nothing, or no names at all: the files of the item being built up.
         #expect(model.uploads(for: .init(category: .projects, title: "App", attachments: ["ander.pdf"])) == [upload])
@@ -419,6 +419,43 @@ struct AylaChatModelTests {
         model.newConversation()
         #expect(model.conversationUploads.isEmpty)
         #expect(ayla.requests.first?.attachments?.map(\.name) == ["cv.pdf", "notitie.txt"])
+    }
+
+    @Test func everyFileGoesAlongEvenWhenAylaOnlyNamesThePhotos() async throws {
+        let ayla = FakeAyla()
+        ayla.replies = [.success(AylaReply(id: "r1", conversationId: "c", text: "Gezien"))]
+        let model = AylaChatModel(service: ayla)
+        let pdf = VaultUpload(data: Data([1]), fileName: "verslag.pdf", mimeType: "application/pdf")
+        let photo = VaultUpload(data: Data([2]), fileName: "Foto 1.jpeg", mimeType: "image/jpeg")
+        model.attach(try #require(AylaAttachment(name: "verslag.pdf", text: "x")), upload: pdf)
+        model.attach(try #require(AylaAttachment(name: "Foto 1.jpeg", text: "x")), upload: photo)
+        model.send("Maak er een bewijsstuk van")
+        await waitUntilIdle(model)
+        #expect(model.uploads(for: .init(category: .projects, title: "App", attachments: ["Foto 1.jpeg"])) == [pdf, photo])
+    }
+
+    @Test func filesForTheVaultSurviveLeavingTheChat() async throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let store = AylaPendingFiles(directory: folder)
+        let ayla = FakeAyla()
+        ayla.replies = [.success(AylaReply(id: "r1", conversationId: "c", text: "Gezien"))]
+        let pdf = VaultUpload(data: Data([1]), fileName: "verslag.pdf", mimeType: "application/pdf")
+        let photo = VaultUpload(data: Data([2]), fileName: "Foto 1.jpeg", mimeType: "image/jpeg")
+        let model = AylaChatModel(service: ayla, pendingFiles: store)
+        model.attach(try #require(AylaAttachment(name: "verslag.pdf", text: "x")), upload: pdf)
+        model.attach(try #require(AylaAttachment(name: "Foto 1.jpeg", text: "x")), upload: photo)
+        model.send("Maak er een bewijsstuk van")
+        await waitUntilIdle(model)
+        // A new chat (or a restart) forgets them in memory only; opening the chat again brings them back.
+        model.newConversation()
+        #expect(model.conversationUploads.isEmpty)
+        let again = AylaChatModel(service: ayla, pendingFiles: store)
+        await again.open(AylaConversation(id: "c", title: "Cv", updatedAt: .now))
+        #expect(again.conversationUploads == [pdf, photo])
+        // Once the item is in the vault they are gone for good.
+        again.markAdded(replyID: "r1", title: "Verslag", uploads: [pdf, photo], deliver: { _ in })
+        #expect(store.load(for: "c").isEmpty)
     }
 
     @Test func pinningShowsAtOnceAndGoesBackWhenRefused() async {

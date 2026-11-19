@@ -5,8 +5,9 @@ withDefaults(
     icon: string;
     color: string;
     size?: 'small' | 'large';
+    iconColor?: string;
   }>(),
-  { size: 'small' },
+  { size: 'small', iconColor: 'white' },
 );
 </script>
 
@@ -16,7 +17,8 @@ withDefaults(
     <VaultIcon
       :src="icon"
       :class="size === 'large' ? 'size-5' : 'size-3.5'"
-      class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[38%] text-white"
+      class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[38%]"
+      :style="{ color: iconColor }"
     />
   </span>
 </template>

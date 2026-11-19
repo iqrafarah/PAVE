@@ -197,7 +197,7 @@ function handleEnter() {
     <label :for="searchId" class="mb-3 mt-6.5 text-base font-semibold text-heading">{{ VAULT_SKILLS_ADD_OWN }}</label>
     <div class="relative">
       <div class="flex h-9.75 items-center gap-4 rounded-field border border-field-line bg-white pl-2.25 pr-3 focus-within:border-brand">
-        <VaultIcon src="/images/vault/search.svg" :width="18" :height="18" class="text-heading" />
+        <VaultIcon src="/images/vault/search.svg" :width="18" :height="18" class="text-brand" />
         <input
           :id="searchId"
           v-model="query"

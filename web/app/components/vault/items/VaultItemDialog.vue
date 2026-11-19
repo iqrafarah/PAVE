@@ -14,7 +14,7 @@ const emit = defineEmits<{
 }>();
 
 const vault = useVault();
-const supabase = useUntypedSupabase();
+const preview = useFilePreview();
 const conversation = useAylaConversation();
 const deleteRef = useTemplateRef<{ open: () => void }>('confirmDelete');
 const askRef = useTemplateRef<{ open: () => void }>('confirmAsk');
@@ -73,15 +73,21 @@ function askWithoutPermission() {
   if (item.value) startAsking(item.value);
 }
 
-/** Opens a file in a new tab through a link that works for one minute; the bucket itself is private. */
-async function openFile(file: VaultFile) {
+const isDownloading = ref(false);
+
+/** Saves the files on your device under their own names, one after the other. */
+async function download(files: VaultFile[]) {
   fileProblem.value = null;
-  const { data, error } = await supabase.storage.from('pave-vault').createSignedUrl(file.storagePath, 60);
-  if (error || !data) {
-    fileProblem.value = VAULT_ERROR_GENERIC;
-    return;
+  isDownloading.value = true;
+  for (const file of files) {
+    if (!(await vault.downloadFile(file))) {
+      fileProblem.value = VAULT_DOWNLOAD_FAILED;
+      break;
+    }
+    // A short pause, so the browser does not take several downloads at once for one.
+    if (files.length > 1) await new Promise((resolve) => setTimeout(resolve, 400));
   }
-  window.open(data.signedUrl, '_blank', 'noopener');
+  isDownloading.value = false;
 }
 
 watch(
@@ -98,7 +104,7 @@ watch(
     <div v-if="item" class="flex flex-col gap-5">
       <img v-if="item.coverUrl" :src="item.coverUrl" alt="" class="h-40 w-full rounded-2xl object-cover" />
       <div class="flex items-start gap-3.5">
-        <VaultLogo :name="item.organisationName ?? item.title" :logo-url="item.logoUrl" :size="56" />
+        <VaultLogo :name="item.organisationName ?? item.title" :logo-url="item.logoUrl" :file-name="documents[0]?.name" :size="56" />
         <div class="flex min-w-0 flex-1 flex-col items-start gap-2">
           <p class="font-heading text-xl font-semibold text-heading">{{ item.title }}</p>
           <VaultStatusBadge :status="item.status" />
@@ -156,16 +162,38 @@ watch(
       </section>
 
       <section v-if="documents.length" class="flex flex-col gap-2.5">
-        <h3 class="text-xs font-semibold text-subtle">{{ VAULT_DETAIL_FILES }}</h3>
+        <div class="flex items-center justify-between gap-2">
+          <h3 class="text-xs font-semibold text-subtle">{{ VAULT_DETAIL_FILES }}</h3>
+          <button
+            v-if="documents.length > 1"
+            type="button"
+            :disabled="isDownloading"
+            class="-my-1 flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold text-brand hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand disabled:opacity-60"
+            @click="download(documents)"
+          >
+            <LayoutPaveIcon name="download" class="size-3.5" />
+            {{ VAULT_DOWNLOAD_ALL }}
+          </button>
+        </div>
         <ul class="flex flex-col gap-1 rounded-2xl border border-card-border bg-white p-2">
-          <li v-for="file in documents" :key="file.id">
+          <li v-for="file in documents" :key="file.id" class="flex items-center gap-1">
             <button
               type="button"
-              class="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm font-medium text-heading hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand"
-              @click="openFile(file)"
+              class="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm font-medium text-heading hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand"
+              @click="preview.open(file)"
             >
               <VaultIcon src="/images/vault/icons/DocumentSolid.svg" class="size-5 text-brand" />
               <span class="min-w-0 flex-1 truncate">{{ file.name }}</span>
+            </button>
+            <button
+              type="button"
+              :disabled="isDownloading"
+              :aria-label="VAULT_DOWNLOAD_FILE(file.name)"
+              :title="VAULT_DOWNLOAD_FILE(file.name)"
+              class="flex size-9 shrink-0 items-center justify-center rounded-lg text-brand hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand disabled:opacity-60"
+              @click="download([file])"
+            >
+              <LayoutPaveIcon name="download" class="size-4.5" />
             </button>
           </li>
         </ul>

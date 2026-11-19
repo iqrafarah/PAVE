@@ -15,14 +15,20 @@ interface ConversationState {
 export interface AylaItemContext {
   itemId: string;
   title: string;
+  // Several items chosen with the plus button: the chat is about all of them ("3 items uit je kluis").
+  itemIds?: string[];
 }
 
 export interface SendOptions {
   text: string;
   attachments?: AylaAttachment[];
+  // Files sent earlier in this chat that go along again, so Ayla still sees them; they are not shown under the message.
+  carriedAttachments?: AylaAttachment[];
   input?: AylaInput;
   // What the user has open, such as the vault, so Ayla knows where the question comes from.
-  context?: { screen: AylaScreen; itemId?: string };
+  context?: { screen: AylaScreen; itemId?: string; itemIds?: string[] };
+  // Starts a new chat inside this project; ignored when the chat already exists.
+  projectId?: string;
   onConversationStarted?: (conversationId: string) => void;
 }
 
@@ -56,6 +62,8 @@ export function useAylaConversation() {
   const questionToEdit = useState<string | null>('ayla-question-to-edit', () => null);
   const redoError = useState<string | null>('ayla-redo-error', () => null);
   const itemContext = useState<AylaItemContext | null>('ayla-item-context', () => null);
+  // Counts up for every new chat, so the chatbox on the screen takes the cursor ("Nieuwe chat" visibly does something).
+  const newChatCount = useState('ayla-new-chat-count', () => 0);
   // Set just before the new chat opens, which then takes it over; any other new chat starts without one.
   const nextItemContext = useState<AylaItemContext | null>('ayla-next-item-context', () => null);
   const { streamQuestion, loadMessages, removeLastTurn } = useAyla();
@@ -71,10 +79,25 @@ export function useAylaConversation() {
     nextItemContext.value = null;
   }
 
+  /** "Nieuwe chat" was clicked: the chatbox on the screen takes the cursor. */
+  function focusComposer() {
+    newChatCount.value += 1;
+  }
+
   /** Starts a new chat about one vault item. */
   function askAboutItem(context: AylaItemContext) {
     nextItemContext.value = context;
     return navigateTo('/');
+  }
+
+  /** Items from the vault chosen with the plus button: the conversation is about them from here on. */
+  function attachItems(items: { id: string; title: string }[]) {
+    const [first] = items;
+    if (!first) return;
+    itemContext.value =
+      items.length === 1
+        ? { itemId: first.id, title: first.title }
+        : { itemId: first.id, title: AYLA_CONTEXT_ITEMS(items.length), itemIds: items.map((item) => item.id) };
   }
 
   function clearItemContext() {
@@ -82,6 +105,7 @@ export function useAylaConversation() {
   }
 
   function getRequestContext(options: SendOptions) {
+    if (itemContext.value?.itemIds?.length) return { screen: 'vault' as const, itemIds: itemContext.value.itemIds };
     if (itemContext.value) return { screen: 'vaultItem' as const, itemId: itemContext.value.itemId };
     return options.context;
   }
@@ -137,8 +161,14 @@ export function useAylaConversation() {
         text,
         device: 'web',
         input: options.input ?? 'text',
-        ...(state.value.conversationId ? { conversationId: state.value.conversationId } : {}),
-        ...(attachments.length ? { attachments } : {}),
+        ...(state.value.conversationId
+          ? { conversationId: state.value.conversationId }
+          : options.projectId
+            ? { projectId: options.projectId }
+            : {}),
+        ...(attachments.length || options.carriedAttachments?.length
+          ? { attachments: [...attachments, ...(options.carriedAttachments ?? [])] }
+          : {}),
         ...(context ? { context } : {}),
       },
       {
@@ -197,9 +227,12 @@ export function useAylaConversation() {
     questionToEdit,
     redoError,
     itemContext,
+    newChatCount,
+    focusComposer,
     open,
     startNew,
     askAboutItem,
+    attachItems,
     clearItemContext,
     send,
     stop,

@@ -12,6 +12,31 @@ struct AylaChatListActions {
     var loadMore: () async -> Void
     var search: (String) async -> [(hit: AylaSearchHit, conversation: AylaConversation)]
     var preview: (AylaConversation) async -> [AylaStoredMessage]
+    var projects: AylaProjectActions?
+    var locks: AylaLockActions?
+}
+
+/// "Projecten": folders for chats with Ayla's own instructions (web useAylaProjects).
+struct AylaProjectActions {
+    var create: (_ name: String, _ instructions: String) async -> AylaProject?
+    var update: (AylaProject) async -> Bool
+    var togglePin: (AylaProject) -> Void
+    var delete: (AylaProject) -> Void
+    var newChat: (AylaProject) -> Void
+    var move: (AylaConversation, AylaProject?) -> Void
+}
+
+/// "Vergrendelde chats": one PIN of four digits for every locked chat (web useAylaChatLock).
+struct AylaLockActions {
+    /// The locked chats show after the right PIN, until "Nu vergrendelen".
+    var showsLocked: Bool
+    var lock: (AylaConversation) async -> Bool
+    var unlock: (AylaConversation) async -> Bool
+    var pinExists: () async -> Bool?
+    var setPin: (String) async -> String?
+    var checkPin: (String) async -> String?
+    var resetPin: () async -> Bool
+    var relock: () -> Void
 }
 
 /// The chats with Ayla (Figma "Chats"), as in Mail and ChatGPT: search, then pinned and by when they were last used.
@@ -36,30 +61,79 @@ struct AylaChatList: View {
     @State private var renaming: AylaConversation?
     @State private var newTitle = ""
     @State private var selection = Set<String>()
+    @State private var openProjects = Set<String>()
+    @State private var projectEditor: ProjectEditing?
+    @State private var lockTarget: AylaConversation?
+    @State private var pinSetupFor: AylaConversation?
+    @State private var showsLockedChats = false
     @FocusState private var isSearchFocused: Bool
     @Environment(\.chatSearchRequestedAt) private var searchRequestedAt
+    /// The vault, so the search also finds evidence, documents and pictures, as on the web.
+    @Environment(VaultModel.self) private var vault: VaultModel?
+    @Environment(\.openFromAyla) private var openFromAyla
+    @State private var searchTab = PaveSearchTab.all
+    @State private var previewURL: URL?
 
     private var isSearching: Bool { !search.trimmingCharacters(in: .whitespaces).isEmpty }
 
-    /// One flat list of headers and chats.
+
+
+    private enum ProjectEditing: Identifiable {
+        case new
+        case edit(AylaProject)
+
+        var id: String {
+            switch self {
+            case .new: "new"
+            case .edit(let project): project.id
+            }
+        }
+    }
+
+    /// One flat list of headers, projects and chats: Vastgezet, then Projecten, then the rest by when it was used, as on
+    /// the web.
     private enum Item: Identifiable {
         case header(String)
         case chat(AylaConversation)
+        case projectsHeader
+        case project(AylaProject)
+        case projectChat(AylaConversation)
+        case locked(Int)
 
-        /// A chat gets a fresh row when it is pinned or unpinned: the row you swiped is still busy closing its swipe
-        /// buttons and shows no text for a moment, so reusing it in the new place looked like a glitch.
+        /// A chat gets a fresh row when it is pinned or unpinned or moves into a project: the row you swiped is still
+        /// busy closing its swipe buttons and shows no text for a moment, so reusing it in the new place looked like a
+        /// glitch.
         var id: String {
             switch self {
             case .header(let title): "header-\(title)"
             case .chat(let conversation): conversation.isPinned ? "\(conversation.id)-pinned" : conversation.id
+            case .projectsHeader: "projects"
+            case .project(let project): "project-\(project.id)"
+            case .projectChat(let conversation): "\(conversation.id)-in-\(conversation.projectID ?? "")"
+            case .locked: "locked"
             }
         }
     }
 
     private var items: [Item] {
-        list.sections().flatMap { section in
-            [Item.header(section.title)] + section.conversations.map(Item.chat)
+        let sections = list.sections()
+        let pinned = sections.filter { $0.kind == .pinned }
+        let rest = sections.filter { $0.kind != .pinned }
+        var items = pinned.flatMap { [Item.header($0.title)] + $0.conversations.map(Item.chat) }
+        let hasLocked = list.canLock && actions.locks != nil && !list.locked.isEmpty
+        if list.canUseProjects, actions.projects != nil {
+            items.append(.projectsHeader)
+            for project in list.orderedProjects {
+                items.append(.project(project))
+                if openProjects.contains(project.id) {
+                    items += list.chats(in: project.id).map(Item.projectChat)
+                }
+            }
         }
+        // As on the web: the last entry of Projecten, like a folder of its own, above the other chats.
+        if hasLocked { items.append(.locked(list.locked.count)) }
+        items += rest.flatMap { [Item.header($0.title)] + $0.conversations.map(Item.chat) }
+        return items
     }
 
     private var selected: [AylaConversation] {
@@ -77,7 +151,7 @@ struct AylaChatList: View {
 
             if isSearching, !isSelecting {
                 searchResults
-            } else if list.conversations.isEmpty {
+            } else if list.conversations.isEmpty, list.projects.isEmpty {
                 emptyState
             } else {
                 ForEach(items) { item in
@@ -87,7 +161,24 @@ struct AylaChatList: View {
                             .selectionDisabled()
                     case .chat(let conversation):
                         row(conversation)
+                    case .projectsHeader:
+                        projectsHeader
+                            .selectionDisabled()
+                    case .project(let project):
+                        projectRow(project)
+                            .selectionDisabled()
+                    case .projectChat(let conversation):
+                        row(conversation)
+                            .padding(.leading, 22)
+                    case .locked(let count):
+                        lockedRow(count)
+                            .selectionDisabled()
                     }
+                }
+                // A chat let go on a project, or between the chats of an open project, goes into it; let go among the
+                // other chats, it leaves its project. The list makes a gap where it will land.
+                .dropDestination(for: String.self) { ids, index in
+                    drop(ids, at: index)
                 }
                 if canLoadMore {
                     ProgressView()
@@ -144,6 +235,30 @@ struct AylaChatList: View {
         .onChange(of: selection) { old, new in
             if !old.isEmpty || !new.isEmpty { PaveHaptics.selection() }
         }
+        .sheet(item: $projectEditor) { editing in
+            projectEditorSheet(editing)
+        }
+        .sheet(isPresented: $showsLockedChats) {
+            if let locks = actions.locks {
+                AylaLockedChatsScreen(chats: list.locked, locks: locks, onOpen: actions.open)
+            }
+        }
+        .sheet(item: $pinSetupFor) { conversation in
+            AylaChatPinView(mode: .create) { pin in
+                guard let locks = actions.locks else { return AylaMessages.pinCodeFailed }
+                if let failure = await locks.setPin(pin) { return failure }
+                pinSetupFor = nil
+                _ = await locks.lock(conversation)
+                return nil
+            }
+            .background(Color.canvas.ignoresSafeArea())
+            .presentationDetents([.large])
+        }
+        .confirmationDialog(AylaMessages.lockQuestion, isPresented: isLocking, titleVisibility: .visible, presenting: lockTarget) { conversation in
+            Button(AylaMessages.lockMenu) { lock(conversation) }
+        } message: { _ in
+            Text(AylaMessages.lockBody)
+        }
         .alert("Naam wijzigen", isPresented: isRenaming) {
             TextField("Naam", text: $newTitle)
             Button("Bewaren") {
@@ -171,7 +286,7 @@ struct AylaChatList: View {
                 Button {
                     pin([conversation])
                 } label: {
-                    Label(conversation.isPinned ? "Losmaken" : "Vastzetten", systemImage: conversation.isPinned ? "pin.slash.fill" : "pin.fill")
+                    Label { Text(conversation.isPinned ? "Losmaken" : "Vastzetten") } icon: { Image(conversation.isPinned ? .iconPinSlash : .iconPin) }
                 }
                 .tint(.paveAccent)
             }
@@ -196,6 +311,12 @@ struct AylaChatList: View {
         } preview: {
             AylaChatPreview(title: conversation.title) { await actions.preview(conversation) }
         }
+        // Drag a chat onto a project to put it there, as on the web.
+        .draggable(conversation.id) {
+            Label { Text(conversation.title) } icon: { Image(.iconChat) }
+                .padding(10)
+                .background(Color.white, in: .rect(cornerRadius: 10))
+        }
         .accessibilityActions {
             menu(for: conversation)
         }
@@ -212,7 +333,37 @@ struct AylaChatList: View {
             Button {
                 pin([conversation])
             } label: {
-                Label(conversation.isPinned ? "Losmaken" : "Vastzetten", systemImage: conversation.isPinned ? "pin.slash.fill" : "pin.fill")
+                Label { Text(conversation.isPinned ? "Losmaken" : "Vastzetten") } icon: { Image(conversation.isPinned ? .iconPinSlash : .iconPin) }
+            }
+        }
+        if let projects = actions.projects, list.canUseProjects {
+            Menu {
+                ForEach(list.orderedProjects.filter { $0.id != conversation.projectID }) { project in
+                    Button {
+                        projects.move(conversation, project)
+                        openProjects.insert(project.id)
+                    } label: {
+                        Label { Text(project.name) } icon: { Image(.iconFolderSolid) }
+                    }
+                }
+                if list.projects.isEmpty {
+                    Text(AylaMessages.moveEmpty)
+                }
+                if conversation.projectID != nil {
+                    Divider()
+                    Button { projects.move(conversation, nil) } label: { Label { Text(AylaMessages.removeFromProject) } icon: { Image(.iconXMark) } }
+                }
+                Divider()
+                Button { projectEditor = .new } label: { Label { Text(AylaMessages.newProject) } icon: { Image(.iconFolderPlusSolid) } }
+            } label: {
+                Label { Text(AylaMessages.moveToProject) } icon: { Image(.iconFolderArrowRight) }
+            }
+        }
+        if actions.locks != nil, list.canLock {
+            Button {
+                lockTarget = conversation
+            } label: {
+                Label { Text(AylaMessages.lockMenu) } icon: { Image(.iconLockClosedSolid) }
             }
         }
         Button {
@@ -238,7 +389,7 @@ struct AylaChatList: View {
                     pin(chosen)
                     isSelecting = false
                 } label: {
-                    Label(allPinned ? "Losmaken" : "Vastzetten", systemImage: allPinned ? "pin.slash.fill" : "pin.fill")
+                    Label { Text(allPinned ? "Losmaken" : "Vastzetten") } icon: { Image(allPinned ? .iconPinSlash : .iconPin) }
                         .textStyle(.action)
                         .frame(maxWidth: .infinity, minHeight: 50)
                         .contentShape(.capsule)
@@ -266,11 +417,44 @@ struct AylaChatList: View {
 
     @ViewBuilder
     private var searchResults: some View {
-        let titles = list.matching(search).conversations.sorted { $0.updatedAt > $1.updatedAt }
+        let needle = search.trimmingCharacters(in: .whitespaces)
+        let tabs = PaveSearchTab.available(vaultReady: vault?.state == .ready, projects: list.canUseProjects)
+        let titles = (searchTab == .all || searchTab == .chats) ? list.matching(needle).conversations.sorted { $0.updatedAt > $1.updatedAt } : []
         let titleIDs = Set(titles.map(\.id))
-        let inMessages = hits.filter { !titleIDs.contains($0.conversation.id) }
-        if titles.isEmpty, inMessages.isEmpty {
-            Text("Geen chats gevonden met “\(search.trimmingCharacters(in: .whitespaces))”.")
+        let inMessages = (searchTab == .all || searchTab == .chats) ? hits.filter { !titleIDs.contains($0.conversation.id) } : []
+        let projects = searchTab.shows(.projects) ? PaveSearch.projects(list, matching: needle) : []
+        let items = searchTab.shows(.items) ? PaveSearch.items(vault, matching: needle) : []
+        let files = PaveSearch.files(vault, matching: needle, tab: searchTab)
+
+        ScrollView(.horizontal) {
+            HStack(spacing: 8) {
+                ForEach(tabs) { tab in
+                    Button {
+                        PaveHaptics.selection()
+                        searchTab = tab
+                    } label: {
+                        Text(tab.rawValue)
+                            .textStyle(.caption)
+                            .foregroundStyle(searchTab == tab ? Color.white : Color.ink)
+                            .padding(.horizontal, 12)
+                            .frame(minHeight: 32)
+                            .background(searchTab == tab ? Color.paveAccent : Color.paveSurfaceTint, in: .capsule)
+                            .frame(minHeight: 44)
+                            .contentShape(.rect)
+                    }
+                    .buttonStyle(.pave)
+                    .accessibilityAddTraits(searchTab == tab ? [.isSelected] : [])
+                }
+            }
+            .padding(.horizontal, 12)
+        }
+        .scrollIndicators(.hidden)
+        .padding(.bottom, 4)
+        .plainRow()
+        .selectionDisabled()
+
+        if titles.isEmpty, inMessages.isEmpty, projects.isEmpty, items.isEmpty, files.isEmpty {
+            Text("Geen resultaten voor “\(needle)”.")
                 .textStyle(.bodyMedium)
                 .foregroundStyle(Color.inkMuted)
                 .padding(.horizontal, 12)
@@ -278,25 +462,66 @@ struct AylaChatList: View {
                 .plainRow()
                 .selectionDisabled()
         }
-        if !titles.isEmpty {
-            header("Chats")
-                .selectionDisabled()
-            ForEach(titles) { conversation in
-                row(conversation)
-            }
+        ForEach(titles) { conversation in
+            AylaSearchResultRow(
+                icon: .chat, title: conversation.title, subtitle: list.project(of: conversation)?.name,
+                date: conversation.updatedAt, search: needle
+            ) { actions.open(conversation) }
+            .plainRow()
+            .selectionDisabled()
         }
-        if !inMessages.isEmpty {
-            header("In gesprekken")
-                .selectionDisabled()
-            ForEach(inMessages, id: \.hit.id) { found in
-                AylaChatSearchRow(conversation: found.conversation, snippet: found.hit.snippet, search: search) {
-                    actions.open(found.conversation)
-                }
-                .plainRow()
-                .selectionDisabled()
+        ForEach(inMessages, id: \.hit.id) { found in
+            AylaSearchResultRow(
+                icon: .chat, title: found.conversation.title, subtitle: found.hit.snippet,
+                date: found.conversation.updatedAt, search: needle
+            ) { actions.open(found.conversation) }
+            .plainRow()
+            .selectionDisabled()
+        }
+        ForEach(projects) { project in
+            AylaSearchResultRow(
+                icon: .project, title: project.name, subtitle: project.instructions, date: project.updatedAt, search: needle
+            ) {
+                search = ""
+                openProjects.insert(project.id)
             }
+            .plainRow()
+            .selectionDisabled()
+        }
+        ForEach(items) { item in
+            AylaSearchResultRow(
+                icon: .item, title: item.title, subtitle: [item.organisationName, item.period].compactMap { $0 }.joined(separator: " · "),
+                date: item.createdAt, search: needle
+            ) { openFromAyla?(AylaReply.Navigation(screen: .vaultItem, itemId: item.id)) }
+            .plainRow()
+            .selectionDisabled()
+        }
+        ForEach(files, id: \.file.id) { found in
+            AylaSearchResultRow(
+                icon: .file(.init(fileName: found.file.name)), title: found.file.name, subtitle: found.item.title,
+                date: found.item.createdAt, search: needle
+            ) { openFile(found.file) }
+            .plainRow()
+            .selectionDisabled()
+        }
+        Color.clear
+            .frame(height: 1)
+            .vaultQuickLook($previewURL)
+            .plainRow()
+            .selectionDisabled()
+    }
+
+    private func openFile(_ file: VaultItem.File) {
+        guard let vault else { return }
+        Task {
+            guard let data = await vault.data(of: file), let url = VaultPreviewFile.url(for: data, named: file.name) else {
+                PaveHaptics.error()
+                return
+            }
+            previewURL = url
         }
     }
+
 
     @ViewBuilder
     private var emptyState: some View {
@@ -334,6 +559,171 @@ struct AylaChatList: View {
                 .plainRow()
                 .selectionDisabled()
         }
+    }
+
+    // MARK: Projects
+
+    private var projectsHeader: some View {
+        HStack {
+            Text(AylaMessages.projects)
+                .textStyle(.bodyMedium)
+                .foregroundStyle(Color.inkMuted)
+                .accessibilityAddTraits(.isHeader)
+            Spacer()
+            Button {
+                projectEditor = .new
+            } label: {
+                Image(.iconPlus)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .paveIconFrame(16)
+                    .foregroundStyle(Color.inkMuted)
+                    .frame(width: 44, height: 44)
+                    .contentShape(.rect)
+            }
+            .buttonStyle(.pave)
+            .accessibilityLabel(AylaMessages.newProject)
+        }
+        .padding(.leading, 12)
+        .padding(.top, 14)
+        .plainRow()
+    }
+
+    private func projectRow(_ project: AylaProject) -> some View {
+        let isOpen = openProjects.contains(project.id)
+        return AylaProjectRow(
+            project: project,
+            count: list.chats(in: project.id).count,
+            isOpen: isOpen
+        ) {
+            PaveHaptics.selection()
+            withAnimation(listAnimation) {
+                if isOpen { openProjects.remove(project.id) } else { openProjects.insert(project.id) }
+            }
+        }
+        .plainRow()
+        .contextMenu { projectMenu(project) }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive) {
+                actions.projects?.delete(project)
+            } label: {
+                Label(AylaMessages.projectDelete, image: .iconTrash)
+            }
+            .tint(.red)
+            Button {
+                projectEditor = .edit(project)
+            } label: {
+                Label(AylaMessages.projectSettings, image: .iconPencil)
+            }
+            .tint(.inkMuted)
+        }
+        .accessibilityActions { projectMenu(project) }
+    }
+
+    @ViewBuilder
+    private func projectMenu(_ project: AylaProject) -> some View {
+        Button { actions.projects?.newChat(project) } label: { Label { Text(AylaMessages.projectNewChat) } icon: { Image(.iconCompose) } }
+        Button { projectEditor = .edit(project) } label: { Label { Text(AylaMessages.projectSettings) } icon: { Image(.iconPencil) } }
+        Button {
+            actions.projects?.togglePin(project)
+        } label: {
+            Label { Text(project.isPinned ? "Losmaken" : "Vastzetten") } icon: { Image(project.isPinned ? .iconPinSlash : .iconPin) }
+        }
+        Button(role: .destructive) { actions.projects?.delete(project) } label: { Label { Text(AylaMessages.projectDelete) } icon: { Image(.iconTrash) } }
+    }
+
+    @ViewBuilder
+    private func projectEditorSheet(_ editing: ProjectEditing) -> some View {
+        switch editing {
+        case .new:
+            AylaProjectEditor(project: nil) { name, instructions in
+                guard let project = await actions.projects?.create(name, instructions) else { return false }
+                openProjects.insert(project.id)
+                return true
+            }
+        case .edit(let project):
+            AylaProjectEditor(project: project) { name, instructions in
+                var changed = project
+                changed.name = name
+                changed.instructions = instructions
+                return await actions.projects?.update(changed) ?? false
+            } onDelete: {
+                actions.projects?.delete(project)
+            }
+        }
+    }
+
+    private func drop(_ ids: [String], at index: Int) {
+        guard let projects = actions.projects else { return }
+        let all = items
+        let above = index > 0 && index <= all.count ? all[index - 1] : nil
+        let target: AylaProject?
+        switch above {
+        case .project(let project): target = project
+        case .projectChat(let chat): target = list.project(of: chat)
+        default:
+            // Below the projects (or above them, among the pinned chats): out of a project.
+            target = nil
+        }
+        let chats = list.visible.filter { ids.contains($0.id) && $0.projectID != target?.id }
+        guard !chats.isEmpty else { return }
+        for chat in chats { projects.move(chat, target) }
+        if let target { withAnimation(listAnimation) { _ = openProjects.insert(target.id) } }
+    }
+
+    // MARK: Locked chats
+
+    private func lockedRow(_ count: Int) -> some View {
+        Button {
+            PaveHaptics.selection()
+            showsLockedChats = true
+        } label: {
+            HStack(spacing: 10) {
+                Image(.iconLockClosedSolid)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .paveIconFrame(20)
+                    .foregroundStyle(Color.paveAccent)
+                Text(AylaMessages.lockedChats)
+                    .textStyle(.listTitle)
+                    .foregroundStyle(Color.ink)
+                Spacer(minLength: 8)
+                Text("\(count)")
+                    .textStyle(.caption)
+                    .foregroundStyle(Color.inkMuted)
+                Image(.iconChevronRight)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 10, height: 10)
+                    .foregroundStyle(Color.inkMuted)
+                    .accessibilityHidden(true)
+            }
+            .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+            .padding(.horizontal, 12)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.pave)
+        .plainRow()
+        .accessibilityLabel("\(AylaMessages.lockedChats), \(count)")
+    }
+
+    /// Without a PIN yet, you choose one first; then the chat is locked.
+    private func lock(_ conversation: AylaConversation) {
+        guard let locks = actions.locks else { return }
+        Task {
+            if await locks.pinExists() == false {
+                pinSetupFor = conversation
+            } else {
+                _ = await locks.lock(conversation)
+            }
+        }
+    }
+
+    private var isLocking: Binding<Bool> {
+        Binding(get: { lockTarget != nil }, set: { if !$0 { lockTarget = nil } })
     }
 
     private func header(_ title: String) -> some View {

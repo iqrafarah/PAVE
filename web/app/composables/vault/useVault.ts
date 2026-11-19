@@ -3,7 +3,7 @@ import type {
   VaultFile,
   VaultFileRole,
   VaultFolder,
-  VaultFolderColor,
+  VaultFolderColorChoice,
   VaultFolderIcon,
   VaultItem,
   VaultItemDraft,
@@ -16,6 +16,8 @@ const BUCKET = 'pave-vault';
 const IMAGE_LINK_SECONDS = 60 * 60;
 // The example folders were made from this browser once; deleting one later must not bring it back (as on iOS).
 const EXAMPLE_FOLDERS_KEY = 'pave-vault-example-folders-made';
+// Pinned folders while the database cannot keep them yet (before migration 20261119120000): folder id → when pinned.
+const PINNED_FOLDERS_KEY = 'pave-vault-pinned-folders';
 const ITEM_SELECT = '*,vault_item_skills(name,status),vault_item_files(*)';
 
 export type VaultLoadStatus = 'loading' | 'ready' | 'failed';
@@ -25,6 +27,8 @@ interface VaultState {
   loadError: string | null;
   items: VaultItem[];
   folders: VaultFolder[];
+  // False until migration 20261119120000 adds pinned_at; until then pins are kept in this browser.
+  pinsOnServer: boolean;
   // Saving, moving or deleting did not work; the page shows it.
   problem: string | null;
 }
@@ -48,6 +52,8 @@ interface ItemRow {
   ayla_allowed_at?: string | null;
   created_at: string;
   updated_at: string;
+  // Added by migration 20261113120000; missing on a database without it.
+  position?: number | null;
   vault_item_skills: { name: string; status: string }[] | null;
   vault_item_files: { id: string; file_name: string; mime_type: string; storage_path: string; role?: string | null }[] | null;
   vault_item_folders?: { folder_id: string }[] | null;
@@ -59,6 +65,9 @@ interface FolderRow {
   color: string | null;
   icon: string | null;
   created_at: string;
+  position?: number | null;
+  // Added by migration 20261119120000; missing on a database without it.
+  pinned_at?: string | null;
 }
 
 interface ErrorLike {
@@ -105,6 +114,7 @@ function toItem(row: ItemRow): VaultItem | null {
     files,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    position: row.position ?? null,
   };
 }
 
@@ -112,14 +122,25 @@ function toFolder(row: FolderRow): VaultFolder {
   return {
     id: row.id,
     name: row.name,
-    color: row.color && row.color in VAULT_FOLDER_COLORS ? (row.color as VaultFolderColor) : null,
+    color: row.color && (row.color in VAULT_FOLDER_COLORS || isFolderHex(row.color)) ? (row.color as VaultFolderColorChoice) : null,
     icon: row.icon && row.icon in VAULT_FOLDER_ICONS ? (row.icon as VaultFolderIcon) : null,
     createdAt: row.created_at,
+    position: row.position ?? null,
+    pinnedAt: row.pinned_at ?? null,
   };
+}
+
+/** `pinned_at is null, position asc nulls last, created_at asc`, as the migrations say. */
+function compareFolders(left: VaultFolder, right: VaultFolder) {
+  if (Boolean(left.pinnedAt) !== Boolean(right.pinnedAt)) return left.pinnedAt ? -1 : 1;
+  const [a, b] = [left.position ?? Number.MAX_SAFE_INTEGER, right.position ?? Number.MAX_SAFE_INTEGER];
+  return a === b ? left.createdAt.localeCompare(right.createdAt) : a - b;
 }
 
 function messageFor(error: ErrorLike | null) {
   if (error?.code === '23505') return VAULT_FOLDER_NAME_TAKEN;
+  // Goud, Rood, Limoen or a colour of your own, before migration 20261119120000 allows it.
+  if (error?.code === '23514' && error.message?.includes('color')) return VAULT_FOLDER_COLOR_NOT_READY;
   if (error?.code === 'PGRST301' || error?.status === 401) return VAULT_ERROR_NOT_SIGNED_IN;
   if (error?.code === '42501' || error?.status === 403) return VAULT_ERROR_NOT_ALLOWED;
   if (isNotThereYet(error)) return VAULT_ERROR_NOT_READY;
@@ -144,9 +165,13 @@ export function useVault() {
     loadError: null,
     items: [],
     folders: [],
+    pinsOnServer: false,
     problem: null,
   }));
-  const shelves = computed(() => buildShelves(state.value.items, state.value.folders));
+  const personal = usePersonalisation();
+  // A new folder, and one without a colour of its own, has the colour of the theme.
+  const defaultFolderColor = computed(() => folderColorForTheme(personal.state.value.theme, personal.state.value.customColor));
+  const shelves = computed(() => buildShelves(state.value.items, state.value.folders, defaultFolderColor.value));
 
   /** The items with their folder links; before migration 20261112130000 folder_id is the only folder. */
   async function readItems() {
@@ -189,7 +214,17 @@ export function useVault() {
         null,
       coverUrl: images.get(`cover:${item!.id}`) ?? null,
     }));
-    state.value.folders = (folders.data as FolderRow[]).map(toFolder);
+    // Your own order first, then the folders that were never moved, oldest first, as before.
+    const folderRows = folders.data as FolderRow[];
+    // select('*') only returns pinned_at once the migration added it.
+    const pinsOnServer = folderRows.some((row) => 'pinned_at' in row);
+    const browserPins = readPins();
+    state.value.pinsOnServer = pinsOnServer;
+    state.value.folders = folderRows
+      .map(toFolder)
+      .map((folder) => (pinsOnServer ? folder : { ...folder, pinnedAt: browserPins[folder.id] ?? null }))
+      .sort(compareFolders);
+    if (pinsOnServer && Object.keys(browserPins).length) await movePinsToServer(browserPins);
     state.value.status = 'ready';
     await makeExampleFoldersIfNeeded();
   }
@@ -311,11 +346,13 @@ export function useVault() {
     if (linked.error && !isNotThereYet(linked.error)) fail(linked.error);
   }
 
-  /** A new item, always your own and not confirmed; returns its id. */
-  async function addItem(draft: VaultItemDraft, folderIds: string[]) {
+  /**
+   * A new item, always your own and not confirmed; returns its id. Filled in by Ayla it says so ("Bron: Via Ayla").
+   */
+  async function addItem(draft: VaultItemDraft, folderIds: string[], isByAyla = false) {
     const { data, error } = await supabase
       .from('vault_items')
-      .insert({ ...toVaultItemRow(draft), folder_id: folderIds[0] ?? null })
+      .insert({ ...toVaultItemRow(draft), folder_id: folderIds[0] ?? null, source: isByAyla ? 'ayla' : 'user' })
       .select('id')
       .single();
     if (error || !data) fail(error);
@@ -473,6 +510,52 @@ export function useVault() {
     return true;
   }
 
+  /**
+   * "Eigen volgorde": the cards that were on screen in the order they were dragged into. Cards that were not on screen
+   * (in another folder, or filtered out) keep their places around them. Saved for every device, and the web shows it at
+   * once.
+   */
+  async function setItemOrder(visible: string[]) {
+    const all = applyFilter(state.value.items, { ...createFilter(), order: 'custom' }).map((item) => item.id);
+    const slots = all.flatMap((id, index) => (visible.includes(id) ? [index] : []));
+    slots.forEach((slot, order) => (all[slot] = visible[order]!));
+    const positions = new Map(all.map((id, index) => [id, index]));
+    state.value.items = state.value.items.map((item) => ({ ...item, position: positions.get(item.id) ?? null }));
+    await savePositions('vault_items', all);
+  }
+
+  /** The folders in this order at once, as they were dragged. */
+  async function setFolderOrder(order: string[]) {
+    const known = state.value.folders;
+    const reordered = [...order.flatMap((id) => known.filter((folder) => folder.id === id)), ...known.filter((folder) => !order.includes(folder.id))];
+    // Pinned folders stay in front: a folder dragged past the pinned ones (or behind them) only moves within its group.
+    reordered.sort((left, right) => Number(Boolean(right.pinnedAt)) - Number(Boolean(left.pinnedAt)));
+    if (reordered.map((folder) => folder.id).join() === known.map((folder) => folder.id).join()) return;
+    state.value.folders = reordered.map((folder, position) => ({ ...folder, position }));
+    await savePositions('vault_folders', reordered.map((folder) => folder.id));
+  }
+
+  async function savePositions(table: 'vault_items' | 'vault_folders', ids: string[]) {
+    const results = await Promise.all(ids.map((id, position) => supabase.from(table).update({ position }).eq('id', id)));
+    const failed = results.find((result) => result.error)?.error ?? null;
+    // Without the column (migration 20261113120000) the order only lasts for this visit.
+    if (failed && !isNotThereYet(failed)) {
+      state.value.problem = messageFor(failed);
+      await load();
+    }
+  }
+
+  /**
+   * Dragged onto a folder: into that folder, and out of the folder it was dragged from. From the whole vault it only
+   * goes in, and its other folders stay. Returns whether it moved.
+   */
+  async function moveToFolder(item: VaultItem, folderId: string, fromFolderId: string | null) {
+    const ids = item.folderIds.filter((id) => id !== fromFolderId);
+    if (!ids.includes(folderId)) ids.push(folderId);
+    if (ids.length === item.folderIds.length && ids.every((id, index) => id === item.folderIds[index])) return false;
+    return setFolders(item, ids);
+  }
+
   /** The files go first: the database cannot remove them from Storage itself. */
   async function remove(item: VaultItem) {
     if (item.files.length) {
@@ -485,7 +568,7 @@ export function useVault() {
     return perform(() => supabase.from('vault_items').delete().eq('id', item.id));
   }
 
-  async function createFolder(name: string, color: VaultFolderColor, icon: VaultFolderIcon) {
+  async function createFolder(name: string, color: VaultFolderColorChoice, icon: VaultFolderIcon) {
     const { data, error } = await supabase.from('vault_folders').insert({ name: name.trim(), color, icon }).select().single();
     if (error || !data) {
       state.value.problem = messageFor(error);
@@ -496,8 +579,88 @@ export function useVault() {
     return created;
   }
 
-  function updateFolder(id: string, name: string, color: VaultFolderColor, icon: VaultFolderIcon) {
+  function updateFolder(id: string, name: string, color: VaultFolderColorChoice, icon: VaultFolderIcon) {
     return perform(() => supabase.from('vault_folders').update({ name: name.trim(), color, icon }).eq('id', id));
+  }
+
+  /**
+   * "Vastzetten": the folder moves to the front of the folder row, on every device. Before migration 20261119120000
+   * the pin is kept in this browser and moves to the database once it has run.
+   */
+  async function setFolderPinned(id: string, isPinned: boolean) {
+    const pinnedAt = isPinned ? new Date().toISOString() : null;
+    if (state.value.pinsOnServer) {
+      return perform(() => supabase.from('vault_folders').update({ pinned_at: pinnedAt }).eq('id', id));
+    }
+    const pins = readPins();
+    if (pinnedAt) pins[id] = pinnedAt;
+    else delete pins[id];
+    writePins(pins);
+    state.value.folders = state.value.folders.map((folder) => (folder.id === id ? { ...folder, pinnedAt } : folder)).sort(compareFolders);
+    return true;
+  }
+
+  function pinsKey() {
+    return `${PINNED_FOLDERS_KEY}:${signedIn.value?.sub ?? ''}`;
+  }
+
+  function readPins(): Record<string, string> {
+    try {
+      const pins = JSON.parse(localStorage.getItem(pinsKey()) ?? '{}');
+      return pins && typeof pins === 'object' ? pins : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function writePins(pins: Record<string, string>) {
+    try {
+      if (Object.keys(pins).length) localStorage.setItem(pinsKey(), JSON.stringify(pins));
+      else localStorage.removeItem(pinsKey());
+    } catch {
+      // Without storage the pin lasts for this visit.
+    }
+  }
+
+  /** The pins made in this browser before the migration, now kept for every device. Folders pinned elsewhere stay so. */
+  async function movePinsToServer(pins: Record<string, string>) {
+    const ids = Object.keys(pins).filter((id) => state.value.folders.some((folder) => folder.id === id && !folder.pinnedAt));
+    const results = await Promise.all(
+      ids.map((id) => supabase.from('vault_folders').update({ pinned_at: pins[id] }).eq('id', id)),
+    );
+    if (results.some((result) => result.error)) return;
+    writePins({});
+    state.value.folders = state.value.folders
+      .map((folder) => (ids.includes(folder.id) ? { ...folder, pinnedAt: pins[folder.id] ?? null } : folder))
+      .sort(compareFolders);
+  }
+
+  /**
+   * Saves a file of an item on your device under its own name. The bucket is private, so it goes through a link that
+   * works for one minute and tells the browser to download instead of open. Returns whether it worked.
+   */
+  async function downloadFile(file: VaultFile) {
+    const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(file.storagePath, 60, { download: file.name });
+    if (error || !data) return false;
+    const link = document.createElement('a');
+    link.href = data.signedUrl;
+    link.download = file.name;
+    link.rel = 'noopener';
+    document.body.append(link);
+    link.click();
+    link.remove();
+    return true;
+  }
+
+  /**
+   * The file as a blob address, to show it inside the site (a picture or PDF). It is read once from the private bucket
+   * and typed with what the vault knows of it, so the browser shows it whatever the storage says. The caller releases
+   * it with URL.revokeObjectURL. Returns null when it could not be read.
+   */
+  async function readFile(file: VaultFile) {
+    const { data, error } = await supabase.storage.from(BUCKET).download(file.storagePath);
+    if (error || !data) return null;
+    return URL.createObjectURL(new Blob([data], { type: file.mimeType || data.type }));
   }
 
   /** The items in the folder stay in the vault. */
@@ -508,6 +671,7 @@ export function useVault() {
   return {
     state,
     shelves,
+    defaultFolderColor,
     load,
     retry,
     count,
@@ -524,10 +688,16 @@ export function useVault() {
     suggestSkills,
     toggleFolder,
     setFolders,
+    setItemOrder,
+    setFolderOrder,
+    moveToFolder,
     remove,
     createFolder,
     updateFolder,
+    setFolderPinned,
     deleteFolder,
+    downloadFile,
+    readFile,
   };
 }
 

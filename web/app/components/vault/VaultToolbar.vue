@@ -29,7 +29,7 @@ const originOptions = computed(() =>
   VAULT_ORIGINS.map((origin) => ({ id: origin, label: VAULT_ORIGIN_TITLES[origin], isChecked: filter.value.origin === origin })),
 );
 const orderOptions = computed(() =>
-  (['newest', 'oldest'] as VaultOrder[]).map((order) => ({ id: order, label: VAULT_ORDER_TITLES[order], isChecked: filter.value.order === order })),
+  (['newest', 'oldest', 'custom'] as VaultOrder[]).map((order) => ({ id: order, label: VAULT_ORDER_TITLES[order], isChecked: filter.value.order === order })),
 );
 
 function selectStatus(id: string) {

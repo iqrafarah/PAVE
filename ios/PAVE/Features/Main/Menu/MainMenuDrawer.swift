@@ -16,6 +16,7 @@ struct MainMenuDrawer: View {
     let onNewConversation: () -> Void
     let onShowChats: () -> Void
     let onSignOut: () -> Void
+    var onSearch: (() -> Void)?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @GestureState private var drag: CGFloat = 0
@@ -97,7 +98,13 @@ struct MainMenuDrawer: View {
                 close()
             },
             onSignOut: onSignOut,
-            onClose: close
+            onClose: close,
+            onSearch: onSearch.map { search in
+                {
+                    close()
+                    search()
+                }
+            }
         )
         // The content stays clear of the status bar, the home indicator and the rounded screen corners.
         .padding(.leading, Self.inset + insets.leading)

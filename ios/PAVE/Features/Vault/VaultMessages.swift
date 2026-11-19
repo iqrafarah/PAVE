@@ -15,6 +15,22 @@ enum VaultMessages {
     static let folderNameMissing = "Geef je map een naam."
     static let deleteFolderMessage = "De items in deze map blijven gewoon in je kluis staan."
     static let deleteItemMessage = "Dit haalt het item en de bestanden erbij voorgoed uit je kluis, ook op het web. Dit kun je niet ongedaan maken."
+    static let ownFolderColor = "Eigen kleur"
+    static let ownFolderColorHint = "Kies een kleur van je eigen."
+    static let changeOwnFolderColor = "Andere eigen kleur kiezen"
+    static let pinFolder = "Vastzetten"
+    static let unpinFolder = "Losmaken"
+    static func folderPinned(_ name: String) -> String { "\(name) staat nu vooraan." }
+    static func folderUnpinned(_ name: String) -> String { "\(name) is losgemaakt." }
+    static func allFolders(_ count: Int) -> String { "Alle mappen (\(count))" }
+    static let allFoldersTitle = "Alle mappen"
+    static func folderCount(_ count: Int) -> String { count == 1 ? "1 map" : "\(count) mappen" }
+    static let searchFolders = "Zoeken in je mappen"
+    static func noFoldersFound(_ query: String) -> String { "Geen mappen gevonden voor \"\(query)\"." }
+    static func downloadFile(_ name: String) -> String { "\(name) downloaden" }
+    static let downloadAll = "Alles downloaden"
+    static let download = "Downloaden"
+    static let downloadFailed = "Downloaden lukte niet. Probeer het opnieuw."
     static let folderNameTaken = "Je hebt al een map met deze naam. Kies een andere naam."
 
     static func newKindFolder(_ name: String) -> String {

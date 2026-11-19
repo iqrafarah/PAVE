@@ -12,6 +12,8 @@ struct VaultActions {
     var scan: (VaultFolder?) -> Void = { _ in }
     let newFolder: () -> Void
     let openFolder: (VaultFolder) -> Void
+    /// "Alle mappen": every folder in a grid.
+    let openAllFolders: () -> Void
     let editFolder: (VaultFolder) -> Void
     let deleteFolder: (VaultFolder) -> Void
 }

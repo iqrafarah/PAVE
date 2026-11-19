@@ -40,5 +40,6 @@ const showsChats = computed(() => route.meta.showsChats === true);
       </NuxtErrorBoundary>
     </div>
     <VaultAddDialog />
+    <VaultFilePreview />
   </div>
 </template>

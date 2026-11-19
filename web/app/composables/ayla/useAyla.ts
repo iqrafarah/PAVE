@@ -31,6 +31,7 @@ const KNOWN_ERRORS: AylaErrorCode[] = [
   'not_signed_in',
   'insufficient_aal',
   'conversation_not_found',
+  'project_not_found',
   'unavailable',
 ];
 const ERROR_BY_STATUS: Record<number, AylaErrorCode> = {

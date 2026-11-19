@@ -23,6 +23,8 @@ const emit = defineEmits<{
   stopTalking: [];
   // True while files are being read, so the chat can show "Gegevens ophalen" if that takes long.
   readingFiles: [isReading: boolean];
+  // "Item uit je kluis" in the plus menu: the chat opens its picker.
+  pickItem: [];
 }>();
 
 const text = defineModel<string>('text', { required: true });
@@ -30,6 +32,7 @@ const attachments = defineModel<AylaAttachment[]>('attachments', { required: tru
 
 const textareaRef = useTemplateRef<HTMLTextAreaElement>('textarea');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInput');
+const photoInputRef = useTemplateRef<HTMLInputElement>('photoInput');
 const fileError = ref<string | null>(null);
 const wasDictated = ref(false);
 let textBeforeDictation = '';
@@ -43,12 +46,14 @@ const isHome = computed(() => props.variant === 'home');
 const voice = useAylaVoice();
 const canTalk = ref(false);
 onMounted(() => (canTalk.value = voice.isSupported()));
-const canSend = computed(() => text.value.trim().length > 0);
+// A file or photo can go on its own: Ayla then hears "Bekijk dit bestand." and looks at it.
+const canSend = computed(() => text.value.trim().length > 0 || attachments.value.length > 0);
 const isAtLimit = computed(() => text.value.length >= MAX_TEXT_LENGTH);
 const notice = computed(() => fileError.value ?? dictation.error.value);
 
 function send() {
   if (!canSend.value) return;
+  if (!text.value.trim()) text.value = AYLA_FILES_ONLY_QUESTION(attachments.value.length);
   if (dictation.isListening.value) dictation.stop();
   emit('send', wasDictated.value ? 'voice' : 'text');
   wasDictated.value = false;
@@ -94,7 +99,7 @@ async function addFiles(files: File[]) {
         fileError.value = AYLA_TOO_MANY_FILES;
         return;
       }
-      const { attachment, error } = await readAttachment(file);
+      const { attachment, error } = await readAttachment(file, { imagesSoFar: attachments.value.filter((item) => item.image).length });
       if (error) fileError.value = error;
       if (attachment) attachments.value = [...attachments.value, attachment];
     }
@@ -118,6 +123,10 @@ function openFilePicker() {
   fileInputRef.value?.click();
 }
 
+function openPhotoPicker() {
+  photoInputRef.value?.click();
+}
+
 function focus() {
   textareaRef.value?.focus();
 }
@@ -132,6 +141,16 @@ defineExpose({ openFilePicker, focus });
       type="file"
       multiple
       :accept="ATTACHMENT_ACCEPT"
+      class="sr-only"
+      tabindex="-1"
+      aria-hidden="true"
+      @change="handleFileChange"
+    />
+    <input
+      ref="photoInput"
+      type="file"
+      multiple
+      :accept="PHOTO_ACCEPT"
       class="sr-only"
       tabindex="-1"
       aria-hidden="true"
@@ -209,7 +228,7 @@ defineExpose({ openFilePicker, focus });
         />
       </template>
       <div class="flex min-h-13.25 items-center gap-3 rounded-composer bg-white py-2 pl-4.5 pr-2.75 focus-within:outline-2 focus-within:outline-brand">
-        <AylaAttachMenu @add-file="openFilePicker" />
+        <AylaAttachMenu @add-file="openFilePicker" @add-photo="openPhotoPicker" @pick-item="emit('pickItem')" />
         <AylaSlashIcon :blocks="4" class="h-4.25 w-2.75" />
         <textarea
           id="ayla-question"

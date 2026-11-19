@@ -19,6 +19,6 @@ withDefaults(
       <h1 class="text-3xl font-semibold text-brand max-sm:text-2xl">{{ AYLA_NAME }}</h1>
     </div>
     <h1 v-else class="sr-only">{{ AYLA_NAME }}</h1>
-    <span aria-hidden="true" />
+    <div class="justify-self-end"><slot name="end" /></div>
   </header>
 </template>

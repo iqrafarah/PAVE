@@ -967,6 +967,13 @@ struct AylaChatScreen: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .transition(.opacity)
                 }
+                if let project = model.newChatProject, !isVoiceActive {
+                    AylaProjectChip(name: project.name) { model.newConversation() }
+                        .padding(.leading, 33)
+                        .padding(.bottom, 8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .transition(.opacity)
+                }
                 AylaComposer(
                     text: $model.draft,
                     attachments: model.attachments,
@@ -998,6 +1005,13 @@ struct AylaChatScreen: View {
                 }
                 .padding(.leading, 33)
                 .padding(.trailing, 31)
+                if !isVoiceActive {
+                    Text(AylaMessages.disclaimer)
+                        .textStyle(.caption)
+                        .foregroundStyle(Color.inkMuted)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 6)
+                }
             }
         }
     }

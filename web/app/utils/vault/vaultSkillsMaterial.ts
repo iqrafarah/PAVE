@@ -17,11 +17,11 @@ const MAXIMUM_PDF_PAGES = 15;
 // The Edge Function refuses a photo above 1.4 million base64 characters.
 const MAXIMUM_BASE64 = 1_400_000;
 
-function isPdf(file: File) {
+export function isPdf(file: File) {
   return file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
 }
 
-function toBase64(canvas: HTMLCanvasElement) {
+export function toBase64(canvas: HTMLCanvasElement) {
   const data = canvas.toDataURL('image/jpeg', 0.7).split(',')[1] ?? '';
   return data && data.length <= MAXIMUM_BASE64 ? data : null;
 }
@@ -31,7 +31,10 @@ function toBase64(canvas: HTMLCanvasElement) {
  * actually read, so it does not weigh on the rest of the app. A PDF that cannot be opened (a password, damage) gives
  * nothing.
  */
-async function readPdf(file: File): Promise<{ text: string } | { photo: string } | null> {
+export async function readPdf(
+  file: File,
+  { side = PHOTO_SIDE, alwaysPhoto = false }: { side?: number; alwaysPhoto?: boolean } = {},
+): Promise<{ text?: string; photo?: string } | null> {
   try {
     const [pdfjs, worker] = await Promise.all([import('pdfjs-dist'), import('pdfjs-dist/build/pdf.worker.min.mjs?url')]);
     pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
@@ -44,20 +47,22 @@ async function readPdf(file: File): Promise<{ text: string } | { photo: string }
         text += `${content.items.map((item) => ('str' in item ? item.str : '')).join(' ')}\n`;
       }
       text = text.replace(/[ \t]+/g, ' ').trim();
-      if (text.length >= MINIMUM_PDF_TEXT) return { text: text.slice(0, MAXIMUM_TEXT_LENGTH) };
+      const hasText = text.length >= MINIMUM_PDF_TEXT;
+      if (hasText && !alwaysPhoto) return { text: text.slice(0, MAXIMUM_TEXT_LENGTH) };
 
       const page = await pdf.getPage(1);
       const size = page.getViewport({ scale: 1 });
-      const viewport = page.getViewport({ scale: PHOTO_SIDE / Math.max(size.width, size.height) });
+      const viewport = page.getViewport({ scale: side / Math.max(size.width, size.height) });
       const canvas = document.createElement('canvas');
       canvas.width = Math.round(viewport.width);
       canvas.height = Math.round(viewport.height);
       const context = canvas.getContext('2d');
-      if (!context) return null;
+      if (!context) return hasText ? { text: text.slice(0, MAXIMUM_TEXT_LENGTH) } : null;
       context.fillStyle = '#fff';
       context.fillRect(0, 0, canvas.width, canvas.height);
       await page.render({ canvas, canvasContext: context, viewport }).promise;
       const photo = toBase64(canvas);
+      if (hasText) return { text: text.slice(0, MAXIMUM_TEXT_LENGTH), ...(photo ? { photo } : {}) };
       return photo ? { photo } : null;
     } finally {
       await task.destroy();
@@ -67,12 +72,12 @@ async function readPdf(file: File): Promise<{ text: string } | { photo: string }
   }
 }
 
-function isText(file: File) {
+export function isText(file: File) {
   return file.type.startsWith('text/') || /\.(txt|md|csv)$/i.test(file.name);
 }
 
 /** The picture made smaller, as base64 JPEG; null when the browser cannot show it (HEIC, for instance). */
-function photo(file: File) {
+export function readPhoto(file: File, side = PHOTO_SIDE) {
   return new Promise<string | null>((resolve) => {
     const url = URL.createObjectURL(file);
     const image = new Image();
@@ -82,7 +87,7 @@ function photo(file: File) {
     };
     image.onload = () => {
       URL.revokeObjectURL(url);
-      const scale = Math.min(1, PHOTO_SIDE / Math.max(image.naturalWidth, image.naturalHeight));
+      const scale = Math.min(1, side / Math.max(image.naturalWidth, image.naturalHeight));
       const canvas = document.createElement('canvas');
       canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
       canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
@@ -102,13 +107,13 @@ export async function readSkillsMaterial(documents: File[]): Promise<VaultSkills
   for (const file of documents) {
     if (isPdf(file)) {
       const read = await readPdf(file);
-      if (read && 'text' in read) material.files.push({ name: file.name, text: read.text });
-      else if (read && material.images.length < MAXIMUM_IMAGES) material.images.push({ name: file.name, data: read.photo });
+      if (read?.text) material.files.push({ name: file.name, text: read.text });
+      else if (read?.photo && material.images.length < MAXIMUM_IMAGES) material.images.push({ name: file.name, data: read.photo });
     } else if (isText(file)) {
       const text = (await file.text().catch(() => '')).trim().slice(0, MAXIMUM_TEXT_LENGTH);
       if (text) material.files.push({ name: file.name, text });
     } else if (file.type.startsWith('image/') && material.images.length < MAXIMUM_IMAGES) {
-      const data = await photo(file);
+      const data = await readPhoto(file);
       if (data) material.images.push({ name: file.name, data });
     }
   }

@@ -19,7 +19,8 @@ struct VaultDocumentsStep: View {
                 onRemoveLogo: flow.removeLogo,
                 onRemoveCover: flow.removeCover,
                 logoNote: flow.aylaLogoNote,
-                coverNote: flow.aylaCoverNote
+                coverNote: flow.aylaCoverNote,
+                fileName: flow.documents.first?.fileName ?? ""
             )
             VaultDocumentsSection(count: flow.documents.count, canAdd: flow.canAddDocument, onChoose: { documentSource = $0 }) {
                 ForEach(flow.documents, id: \.checksum) { document in

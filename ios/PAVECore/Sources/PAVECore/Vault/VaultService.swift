@@ -31,6 +31,9 @@ public protocol VaultService: Sendable {
     func setFolderOrder(_ folderIDs: [String]) async throws
     /// "Eigen volgorde": each item at its place in this list. Refused with `missingColumn` like the folder order.
     func setItemOrder(_ itemIDs: [String]) async throws
+    /// "Vastzetten": a pinned folder comes first. Refused with `missingColumn` until `vault_folders` has `pinned_at`
+    /// (migration 20261119120000).
+    func setFolderPinned(_ pinned: Bool, folderID: String) async throws
     /// Removes one file of an item: first from storage, then its row.
     func removeFile(_ file: VaultItem.File) async throws
     func removeSkills(_ names: [String], from itemID: String) async throws
@@ -48,6 +51,10 @@ public extension VaultService {
     }
 
     func setItemOrder(_ itemIDs: [String]) async throws {
+        throw VaultError.missingColumn
+    }
+
+    func setFolderPinned(_ pinned: Bool, folderID: String) async throws {
         throw VaultError.missingColumn
     }
 
@@ -129,7 +136,8 @@ public struct SupabaseVaultService: VaultService {
     @discardableResult
     public func add(_ draft: VaultItemDraft) async throws -> String {
         var urlRequest = try await request(
-            restURL.appending(path: "vault_items"), query: [("select", "id")], method: "POST", json: draft.row
+            restURL.appending(path: "vault_items"), query: [("select", "id")], method: "POST",
+            json: draft.row.merging(["source": draft.filledByAyla ? "ayla" : "user"]) { $1 }
         )
         urlRequest.setValue("return=representation", forHTTPHeaderField: "Prefer")
         let data = try await send(urlRequest, accepting: [201])
@@ -404,6 +412,13 @@ public struct SupabaseVaultService: VaultService {
         try await setPositions(itemIDs, table: "vault_items")
     }
 
+    public func setFolderPinned(_ pinned: Bool, folderID: String) async throws {
+        let value: Any = pinned ? ISO8601DateFormatter().string(from: .now) : NSNull()
+        _ = try await send(try await request(
+            restURL.appending(path: "vault_folders"), query: [("id", "eq.\(folderID)")], method: "PATCH", json: ["pinned_at": value]
+        ), accepting: [200, 204])
+    }
+
     private func setPositions(_ ids: [String], table: String) async throws {
         try await withThrowingTaskGroup(of: Void.self) { group in
             for (position, id) in ids.enumerated() {
@@ -585,14 +600,16 @@ struct FolderRow: Decodable {
     let color: String?
     let icon: String?
     let created_at: String
+    let pinned_at: String?
 
     var folder: VaultFolder {
         VaultFolder(
             id: id,
             name: name,
-            color: color.flatMap(VaultFolderColor.init),
+            color: color.flatMap { VaultFolderColor(rawValue: $0) },
             icon: icon.flatMap(VaultFolderIcon.init),
-            createdAt: SupabaseAylaService.date(from: created_at)
+            createdAt: SupabaseAylaService.date(from: created_at),
+            pinnedAt: pinned_at.map(SupabaseAylaService.date(from:))
         )
     }
 }

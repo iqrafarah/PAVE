@@ -219,7 +219,7 @@ extension SupabaseAylaServiceTests {
         let rows = #"[{"id":"c1","title":"Banen zoeken","updated_at":"2026-11-05T22:13:55.123456+00:00"}]"#
         let captured = Captured()
         let ayla = service { urlRequest in
-            captured.request = urlRequest
+            if urlRequest.url?.path.hasSuffix("ayla_conversations") == true { captured.request = urlRequest }
             return (200, Data(rows.utf8))
         }
         let list = try await ayla.conversations()
@@ -244,6 +244,70 @@ extension SupabaseAylaServiceTests {
         #expect(list.others.map(\.id) == ["a"])
     }
 
+    @Test func projectsAndLockedChatsComeWithTheList() async throws {
+        let ayla = service { urlRequest in
+            let path = urlRequest.url?.path ?? ""
+            if path.hasSuffix("ayla_projects") {
+                return (200, Data(#"[{"id":"p1","name":"Stage zoeken","instructions":"Kort","updated_at":"2026-11-05T10:00:00+00:00","pinned_at":null}]"#.utf8))
+            }
+            if path.hasSuffix("ayla_locked_chats") {
+                return (200, Data(#"[{"conversation_id":"c3"}]"#.utf8))
+            }
+            return (200, Data(#"""
+            [{"id":"c1","title":"Brief","updated_at":"2026-11-05T22:00:00+00:00","pinned_at":null,"project_id":"p1"},
+             {"id":"c2","title":"Cv","updated_at":"2026-11-04T22:00:00+00:00","pinned_at":null,"project_id":null},
+             {"id":"c3","title":"Geheim","updated_at":"2026-11-03T22:00:00+00:00","pinned_at":null,"project_id":null}]
+            """#.utf8))
+        }
+        let list = try await ayla.conversations()
+        #expect(list.canUseProjects && list.canLock)
+        #expect(list.projects.map(\.name) == ["Stage zoeken"])
+        #expect(list.chats(in: "p1").map(\.id) == ["c1"])
+        #expect(list.others.map(\.id) == ["c2"])
+        #expect(list.locked.map(\.id) == ["c3"])
+        #expect(list.matching("geheim").conversations.isEmpty)
+        #expect(list.matching("brief").conversations.map(\.id) == ["c1"])
+    }
+
+    @Test func withoutTheirTablesThereAreNoProjectsOrLocks() async throws {
+        let ayla = service { urlRequest in
+            if urlRequest.url?.path.hasSuffix("ayla_conversations") == true {
+                return (200, Data(#"[{"id":"c1","title":"Brief","updated_at":"2026-11-05T22:00:00+00:00"}]"#.utf8))
+            }
+            return (404, Data(#"{"code":"PGRST205"}"#.utf8))
+        }
+        let list = try await ayla.conversations()
+        #expect(!list.canUseProjects && !list.canLock)
+        #expect(list.others.map(\.id) == ["c1"])
+    }
+
+    @Test func aWrongPinIsFalseAndTooManyTriesWaits() async throws {
+        let wrong = service { _ in (200, Data("false".utf8)) }
+        #expect(try await wrong.checkChatPin("1234") == false)
+        let blocked = service { _ in (400, Data(#"{"code":"P0001","message":"too_many_attempts"}"#.utf8)) }
+        await #expect(throws: AylaChatPinError.tooManyAttempts) { try await blocked.checkChatPin("1234") }
+    }
+
+    @Test func movingAChatSetsOnlyItsProject() async throws {
+        let captured = Captured()
+        let ayla = service { urlRequest in
+            captured.request = urlRequest
+            return (200, Data(#"[{"id":"c1"}]"#.utf8))
+        }
+        try await ayla.move(conversationID: "c1", toProject: nil)
+        let request = try #require(captured.request)
+        #expect(request.httpMethod == "PATCH")
+        let body = try #require(request.bodyData)
+        #expect(String(decoding: body, as: UTF8.self) == #"{"project_id":null}"#)
+    }
+
+    @Test func aNewChatCanStartInAProject() throws {
+        let inProject = AylaRequest(text: "Hoi", device: .phone, input: .text, projectId: "p1")
+        #expect(String(decoding: try AylaCoding.encoder.encode(inProject), as: UTF8.self).contains(#""projectId":"p1""#))
+        let existing = AylaRequest(conversationId: "c1", text: "Hoi", device: .phone, input: .text, projectId: "p1")
+        #expect(existing.projectId == nil)
+    }
+
     @Test func pinningUpdatesOnlyThatConversation() async throws {
         let captured = Captured()
         let ayla = service { urlRequest in
@@ -263,7 +327,7 @@ extension SupabaseAylaServiceTests {
         let rows = #"[{"id":"c1","title":"Banen zoeken","updated_at":"2026-11-05T22:00:00+00:00","started_on":"web"}]"#
         let captured = Captured()
         let ayla = service { urlRequest in
-            captured.request = urlRequest
+            if urlRequest.url?.path.hasSuffix("ayla_conversations") == true { captured.request = urlRequest }
             return (200, Data(rows.utf8))
         }
         let list = try await ayla.conversations(limit: 100)

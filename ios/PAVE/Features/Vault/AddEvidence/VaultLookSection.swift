@@ -16,6 +16,8 @@ struct VaultLookSection: View {
     /// Where Ayla found the logo or the cover, as long as it is hers.
     var logoNote: String?
     var coverNote: String?
+    /// The first document: its kind shows in the badge while there is no logo.
+    var fileName = ""
 
     private struct Framing: Identifiable {
         let id = UUID()
@@ -34,7 +36,7 @@ struct VaultLookSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
-            VaultCardPreview(look: look, cover: wantsCover ? cover : nil, title: title, category: category)
+            VaultCardPreview(look: look, cover: wantsCover ? cover : nil, title: title, category: category, fileName: fileName)
             logoRow
             coverSection
         }

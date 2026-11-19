@@ -61,10 +61,12 @@ struct VaultLogoLook: Equatable {
     }
 }
 
-/// The round avatar of an item: its cover image, or the first letter of the organisation when there is none.
+/// The round avatar of an item: its logo; without one the kind of its file (PDF, Word, text or photo), as on the web;
+/// otherwise the first letter of the organisation.
 struct VaultLogoAvatar: View {
     let look: VaultLogoLook?
     let name: String
+    var fileName: String?
     var size: CGFloat = 44
 
     var body: some View {
@@ -78,6 +80,11 @@ struct VaultLogoAvatar: View {
                 .overlay { Circle().strokeBorder(Color.cardBorder, lineWidth: 1) }
                 .transition(.opacity)
                 .accessibilityHidden(true)
+        } else if let fileName {
+            VaultFileTypeIcon(kind: .init(fileName: fileName), size: size * 0.6)
+                .frame(width: size, height: size)
+                .background(Color.white, in: .circle)
+                .overlay { Circle().strokeBorder(Color.cardBorder, lineWidth: 1) }
         } else {
             CompanyMonogram(name: name, size: size)
         }

@@ -131,6 +131,11 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
     public func sortDay(today: VaultDay) -> VaultDay {
         issuedOn ?? (isCurrent ? today : endDate ?? startDate) ?? VaultDay(createdAt)
     }
+
+    /// The name of the first evidence file (not the logo or cover): its kind shows in the badge when there is no logo.
+    public var firstDocumentName: String? {
+        files.first { $0.role == .document }?.name
+    }
 }
 
 /// A folder the user made. An item can sit in one folder and keeps its category.
@@ -141,13 +146,20 @@ public struct VaultFolder: Identifiable, Equatable, Sendable {
     public var color: VaultFolderColor?
     public var icon: VaultFolderIcon?
     public let createdAt: Date
+    /// "Vastgezet": pinned folders come first in the folder row.
+    public var pinnedAt: Date?
 
-    public init(id: String, name: String, color: VaultFolderColor? = nil, icon: VaultFolderIcon? = nil, createdAt: Date = .now) {
+    public var isPinned: Bool { pinnedAt != nil }
+
+    public init(
+        id: String, name: String, color: VaultFolderColor? = nil, icon: VaultFolderIcon? = nil, createdAt: Date = .now, pinnedAt: Date? = nil
+    ) {
         self.id = id
         self.name = name
         self.color = color
         self.icon = icon
         self.createdAt = createdAt
+        self.pinnedAt = pinnedAt
     }
 
     public static let maximumNameLength = 100
