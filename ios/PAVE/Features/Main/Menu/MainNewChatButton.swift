@@ -20,7 +20,7 @@ struct MainNewChatButton: View {
             .foregroundStyle(Color.white)
             .padding(.horizontal, 14)
             .frame(maxWidth: .infinity, minHeight: 44)
-            .background(Color.paveAccent, in: .capsule)
+            .background(Color.paveAccentFill, in: .capsule)
             .contentShape(.capsule)
         }
         .buttonStyle(.pave)

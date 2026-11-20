@@ -19,7 +19,7 @@ struct VaultFormField<Content: View>: View {
             content
                 .padding(.horizontal, 12)
                 .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .leading)
-                .background(Color.white, in: .rect(cornerRadius: 7))
+                .background(Color.panel, in: .rect(cornerRadius: 7))
                 .overlay {
                     RoundedRectangle(cornerRadius: 7)
                         .strokeBorder(error == nil ? Color.railBorder : .critical, lineWidth: error == nil ? 1 : 1.5)

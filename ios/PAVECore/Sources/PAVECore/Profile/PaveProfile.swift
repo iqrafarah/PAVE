@@ -46,6 +46,11 @@ public enum PaveThemeColor: String, CaseIterable, Identifiable, Sendable {
         return UInt32(red) << 16 | UInt32(green) << 8 | UInt32(blue)
     }
 
+    /// The contrast of white on this colour (WCAG), from 1 to 21.
+    public static func contrastWithWhite(_ color: UInt32) -> Double {
+        contrastWithWhite(Double(color >> 16 & 0xFF), Double(color >> 8 & 0xFF), Double(color & 0xFF))
+    }
+
     /// The theme colour whose hue is closest to an own colour, for what can only show the fixed colours, like the app
     /// icon. Grey, near-white and near-black colours have no clear hue and give PAVE green.
     public static func nearestPreset(to color: UInt32) -> PaveThemeColor {
@@ -98,6 +103,13 @@ public enum PaveTextSize: String, CaseIterable, Identifiable, Sendable {
 }
 
 /// How the vault opens. The vault can still switch for a moment; the next time it opens like this again.
+/// Licht or Donker, or Automatisch: the light or dark setting of the device (`profiles.display_mode`, as on the web).
+public enum PaveDisplayMode: String, CaseIterable, Identifiable, Sendable {
+    case auto, light, dark
+
+    public var id: Self { self }
+}
+
 public enum PaveVaultLayout: String, CaseIterable, Identifiable, Sendable {
     case list, grid
     public var id: Self { self }

@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import SwiftUI
 import PAVECore
 
 /// Your vault as the app shows it. Everything comes from and goes to Supabase; there is nothing stored on the phone.
@@ -52,6 +53,15 @@ final class VaultModel {
     #endif
 
     var items: [VaultItem] { contents.items }
+    /// The archive: out of the vault, kept until it is put back or deleted.
+    var archived: [VaultItem] { contents.archived }
+    var canArchive: Bool { contents.canArchive }
+
+    /// Archives evidence or puts it back.
+    @discardableResult
+    func setArchived(_ isArchived: Bool, _ item: VaultItem) async -> Bool {
+        await perform { try await $0.setArchived(isArchived, itemID: item.id) }
+    }
     var folders: [VaultFolder] { contents.folders }
 
     func count(in shelf: VaultShelf) -> Int {
@@ -119,12 +129,25 @@ final class VaultModel {
                 result.items[index].position = itemOrder.firstIndex(of: result.items[index].id)
             }
         }
-        guard let order = localStyles.stringArray(forKey: Self.localOrderKey) else { return result }
-        let place = { (folder: VaultFolder) in order.firstIndex(of: folder.id) ?? Int.max }
-        result.folders = result.folders.enumerated()
-            .sorted { (place($0.element), $0.offset) < (place($1.element), $1.offset) }
-            .map(\.element)
+        if let order = localStyles.stringArray(forKey: Self.localOrderKey) {
+            let place = { (folder: VaultFolder) in order.firstIndex(of: folder.id) ?? Int.max }
+            result.folders = result.folders.enumerated()
+                .sorted { (place($0.element), $0.offset) < (place($1.element), $1.offset) }
+                .map(\.element)
+        }
+        // Pinned folders first, each group in its own order, as on the web.
+        result.folders = result.folders.filter(\.isPinned) + result.folders.filter { !$0.isPinned }
         return result
+    }
+
+    /// "Vastzetten": the folder moves to the front at once; the server keeps it there on every device.
+    func setPinned(_ pinned: Bool, folder: VaultFolder) async {
+        guard let index = contents.folders.firstIndex(where: { $0.id == folder.id }) else { return }
+        contents.folders[index].pinnedAt = pinned ? .now : nil
+        contents = ordered(contents)
+        if await perform({ try await $0.setFolderPinned(pinned, folderID: folder.id) }) {
+            AccessibilityNotification.Announcement(pinned ? VaultMessages.folderPinned(folder.name) : VaultMessages.folderUnpinned(folder.name)).post()
+        }
     }
 
     // MARK: Moving
@@ -344,6 +367,60 @@ final class VaultModel {
 
     func deleteFolder(_ folder: VaultFolder) async {
         await perform { try await $0.deleteFolder(id: folder.id) }
+    }
+
+    func validationOrganizations() async throws -> [VaultValidationOrganization] {
+        guard let service else { throw VaultError.notSetUp }
+        return try await service.validationOrganizations()
+    }
+
+    func validationLocations(organizationID: String) async throws -> [VaultValidationLocation] {
+        guard let service else { throw VaultError.notSetUp }
+        return try await service.validationLocations(organizationID: organizationID)
+    }
+
+    func validationDepartments(organizationID: String, locationID: String) async throws -> [VaultValidationDepartment] {
+        guard let service else { throw VaultError.notSetUp }
+        return try await service.validationDepartments(organizationID: organizationID, locationID: locationID)
+    }
+
+    func validationContacts(organizationID: String, locationID: String, departmentID: String?) async throws -> [VaultValidationContact] {
+        guard let service else { throw VaultError.notSetUp }
+        return try await service.validationContacts(organizationID: organizationID, locationID: locationID, departmentID: departmentID)
+    }
+
+    func requestValidation(
+        for item: VaultItem,
+        organizationID: String,
+        locationID: String,
+        departmentID: String?,
+        contactID: String,
+        message: String?
+    ) async -> String? {
+        guard let service else {
+            problem = VaultMessages.requestNotActive
+            return problem
+        }
+        do {
+            try await service.requestValidation(
+                itemID: item.id,
+                organizationID: organizationID,
+                locationID: locationID,
+                departmentID: departmentID,
+                contactID: contactID,
+                message: message
+            )
+            problem = nil
+            PaveHaptics.success()
+            // So the item shows "In afwachting" straight away.
+            await load()
+            return nil
+        } catch {
+            let message = VaultMessages.message(for: VaultError(error))
+            problem = message
+            PaveHaptics.error()
+            return message
+        }
     }
 
     /// Runs a change and then reads the vault again, so counts and folders are always what the server has.

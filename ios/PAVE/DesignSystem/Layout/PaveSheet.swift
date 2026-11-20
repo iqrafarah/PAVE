@@ -24,6 +24,9 @@ private struct PaveSheet: ViewModifier {
                 .presentationSizing(.form)
         } else {
             content
+                // Always an opaque ground: without it a sheet shows the glass of iOS 26 (or the app through it) behind
+                // lists, loading and empty states, which makes the text hard to read.
+                .background(Color.canvas.ignoresSafeArea(edges: .bottom))
                 // The content keeps out of the status column by itself; only its backgrounds run under it. Cutting
                 // everything off at the content's own edges makes the sheet stop beside the column. Downwards the mask
                 // goes on, so the background still reaches the bottom of the screen.

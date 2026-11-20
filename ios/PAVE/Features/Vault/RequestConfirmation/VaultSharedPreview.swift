@@ -37,7 +37,7 @@ struct VaultSharedPreview: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white, in: .rect(cornerRadius: 12))
+        .background(Color.panel, in: .rect(cornerRadius: 12))
         .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(Color.railBorder, lineWidth: 1) }
         .accessibilityElement(children: .combine)
     }

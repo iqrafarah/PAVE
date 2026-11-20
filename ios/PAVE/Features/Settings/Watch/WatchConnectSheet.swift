@@ -109,7 +109,7 @@ struct WatchConnectSheet: View {
             }
             // The Watch rests on the surface: a soft shadow under it once it is out.
             Ellipse()
-                .fill(Color.black.opacity(0.18))
+                .fill(Color.backdrop)
                 .frame(width: 120, height: 16)
                 .blur(radius: 10)
                 .offset(y: 132)

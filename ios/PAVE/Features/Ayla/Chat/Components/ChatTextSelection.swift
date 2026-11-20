@@ -26,6 +26,7 @@ struct ChatTextSelection: View {
             }
         }
         .presentationDetents([.medium, .large])
+        .presentationBackground(Color.canvas)
     }
 }
 

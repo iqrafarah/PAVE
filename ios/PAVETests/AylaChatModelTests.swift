@@ -226,6 +226,66 @@ struct AylaChatModelTests {
         #expect(ayla.requests.isEmpty)
     }
 
+    @Test func somethingAylaDoesInTheAppIsNotSentToTheBrain() async {
+        let ayla = FakeAyla()
+        let model = AylaChatModel(service: ayla)
+        model.appCommand = { $0 == "Zet het thema op blauw" ? "Je thema is nu blauw." : nil }
+
+        model.send("Zet het thema op blauw")
+        let spoken = await model.ask("Zet het thema op blauw", input: .voice)
+
+        #expect(model.entries.isEmpty)
+        #expect(ayla.requests.isEmpty)
+        #expect(spoken?.text == "Je thema is nu blauw.")
+    }
+
+    @Test func anythingElseStillGoesToAyla() async {
+        let ayla = FakeAyla()
+        ayla.replies = [.success(AylaReply(id: "r", conversationId: "conv", text: "Blauw staat voor rust."))]
+        let model = AylaChatModel(service: ayla)
+        model.appCommand = { _ in nil }
+
+        model.send("Waar staat blauw voor?")
+        await waitUntilIdle(model)
+
+        #expect(ayla.requests.count == 1)
+        #expect(model.entries.map(\.text) == ["Waar staat blauw voor?", "Blauw staat voor rust."])
+    }
+
+    @Test func askingForAPageOpensItAtOnceAndAYesToHerOfferToo() async {
+        let ayla = FakeAyla()
+        ayla.replies = [
+            .success(AylaReply(id: "r1", conversationId: "conv", text: "Ik open je instellingen en kijk mee.")),
+            .success(AylaReply(id: "r2", conversationId: "conv", text: "Wil je naar je kluis gaan?")),
+            .success(AylaReply(id: "r3", conversationId: "conv", text: "Daar is hij.")),
+        ]
+        let model = AylaChatModel(service: ayla)
+
+        model.send("Open instellingen en help me kiezen")
+        #expect(model.screenRequest?.navigation.screen == .settings)
+        await waitUntilIdle(model)
+        model.send("Waar staan mijn diploma's?")
+        await waitUntilIdle(model)
+        #expect(model.screenRequest?.navigation.screen == .settings)
+        model.send("Graag")
+        #expect(model.screenRequest?.navigation.screen == .vault)
+        await waitUntilIdle(model)
+    }
+
+    @Test func aPageTheBrainDoesNotKnowIsNotSentAsThePlace() async {
+        let ayla = FakeAyla()
+        ayla.replies = [.success(AylaReply(id: "r", conversationId: "conv", text: "Je hebt geen meldingen."))]
+        let model = AylaChatModel(service: ayla)
+
+        model.showScreen(.notifications)
+        model.send("Heb ik iets gemist?")
+        await waitUntilIdle(model)
+        model.showScreen(.settings)
+
+        #expect(ayla.requests.first?.context == nil)
+        #expect(model.context?.screen == .settings)
+    }
+
     @Test func withoutAylaNothingIsSent() {
         let model = AylaChatModel(service: nil)
         model.send("Hoi")

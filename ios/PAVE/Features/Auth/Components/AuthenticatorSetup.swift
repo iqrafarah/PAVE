@@ -77,7 +77,7 @@ struct OtherDeviceSetupCard: View {
                     }
                     .padding(.leading, 12)
                     .padding(.trailing, 4)
-                    .background(Color.white, in: .rect(cornerRadius: 7))
+                    .background(Color.panel, in: .rect(cornerRadius: 7))
                 }
             }
         }
@@ -116,7 +116,7 @@ struct SetupPreviewPlaceholder: View {
                 }
             }
             .frame(width: 108, height: 108)
-            .background(Color.white, in: .rect(cornerRadius: 7))
+            .background(Color.panel, in: .rect(cornerRadius: 7))
             .overlay {
                 RoundedRectangle(cornerRadius: 7)
                     .strokeBorder(Color.hairline, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
@@ -151,7 +151,7 @@ private struct QRCodeImage: View {
                 .resizable()
                 .scaledToFit()
                 .padding(6)
-                .background(Color.white, in: .rect(cornerRadius: 7))
+                .background(Color.panel, in: .rect(cornerRadius: 7))
         }
     }
 

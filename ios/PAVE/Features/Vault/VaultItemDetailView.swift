@@ -6,6 +6,7 @@ struct VaultItemDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(VaultModel.self) private var model
     let itemID: String
+    var onShowMenu: (() -> Void)? = nil
     @State private var isEditing = false
     @State private var requestsConfirmation = false
     @Environment(\.askAylaAbout) private var askAylaAbout
@@ -13,6 +14,12 @@ struct VaultItemDetailView: View {
     @State private var asksPermission = false
     @State private var confirmsDelete = false
     @State private var look: VaultLogoLook?
+    /// The file the Camera Control button opens.
+    @State private var openFileID: String?
+    @Environment(PaveCameraControl.self) private var cameraControl: PaveCameraControl?
+    @State private var isDownloading = false
+    @State private var download: VaultDownload?
+    @State private var downloadFailed = false
 
     private var item: VaultItem? { model.items.first { $0.id == itemID } }
 
@@ -35,9 +42,27 @@ struct VaultItemDetailView: View {
             .sheet(isPresented: $isEditing) {
                 if let item { VaultEvidenceEditor(vault: model, item: item).paveSheet() }
             }
+            .sheet(item: $download) { VaultShareSheet(urls: $0.urls).presentationDetents([.medium, .large]) }
+            .alert(VaultMessages.downloadFailed, isPresented: $downloadFailed) {
+                Button("OK", role: .cancel) {}
+            }
             .sheet(isPresented: $requestsConfirmation) {
                 if let item {
-                    VaultRequestConfirmationSheet(item: item, documentCount: model.documents(of: item).count).paveSheet()
+                    VaultRequestConfirmationSheet(
+                        item: item,
+                        documentCount: model.documents(of: item).count,
+                        onShowMenu: onShowMenu,
+                        onSend: { request in
+                            await model.requestValidation(
+                                for: item,
+                                organizationID: request.organization!.id,
+                                locationID: request.location!.id,
+                                departmentID: request.department?.id,
+                                contactID: request.contact!.id,
+                                message: request.message
+                            )
+                        }
+                    ).paveSheet()
                 }
             }
             .confirmationDialog(AylaMessages.askNotAllowedTitle, isPresented: $asksPermission, titleVisibility: .visible) {
@@ -67,13 +92,34 @@ struct VaultItemDetailView: View {
             }
         }
         .tint(.paveAccent)
+        .cameraControlMenus("item-\(itemID)", menus: cameraMenus, press: { dismiss() })
+    }
+
+    /// Knopmodus on an item: its actions and its files; a full press without a choice closes it (Klaar).
+    private var cameraMenus: [CameraMenu] {
+        guard let item else { return [] }
+        var actions: [(String, () -> Void)] = []
+        if askAylaAbout != nil { actions.append((AylaMessages.askAboutItem, { ask(about: item) })) }
+        actions.append(("Aanpassen", { isEditing = true }))
+        if item.status != .verified { actions.append(("Bevestiging aanvragen", { requestsConfirmation = true })) }
+        actions.append(("Klaar", { dismiss() }))
+        var menus = [CameraMenu(id: "item-actions", title: "Acties", symbol: "ellipsis.circle", items: actions.map(\.0), onPress: { index in
+            if actions.indices.contains(index) { actions[index].1() }
+        })]
+        let files = model.documents(of: item)
+        if !files.isEmpty {
+            menus.append(CameraMenu(id: "item-files", title: "Bestanden", symbol: "doc.on.doc", items: files.map(\.name), keys: files.map(\.id), onPress: { index in
+                if files.indices.contains(index) { openFileID = files[index].id }
+            }))
+        }
+        return menus
     }
 
     private func content(_ item: VaultItem) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 HStack(alignment: .top, spacing: 14) {
-                    VaultLogoAvatar(look: look, name: item.organisationName ?? item.title, size: 56)
+                    VaultLogoAvatar(look: look, name: item.organisationName ?? item.title, fileName: item.firstDocumentName ?? "", size: 56)
                         .task(id: model.logo(of: item)?.id) {
                             guard let logo = model.logo(of: item) else { look = nil; return }
                             let loaded = await model.look(of: logo)
@@ -88,7 +134,7 @@ struct VaultItemDetailView: View {
                             .foregroundStyle(Color.ink)
                             .fixedSize(horizontal: false, vertical: true)
                             .accessibilityAddTraits(.isHeader)
-                        VaultStatusBadge(status: item.status)
+                        VaultStatusBadge(item: item)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     // In the content rather than the navigation bar: on the outer display of the iPhone Duo the bar puts
@@ -113,12 +159,29 @@ struct VaultItemDetailView: View {
 
                 section("Status") {
                     VStack(alignment: .leading, spacing: 14) {
-                        Text(item.status.explanation)
+                        Text(item.isAwaitingReview
+                             ? VaultMessages.awaitingReviewExplanation(item.lastRequest?.organisationName)
+                             : item.status.explanation)
                             .textStyle(.bodyMedium)
                             .foregroundStyle(Color.ink)
                             .fixedSize(horizontal: false, vertical: true)
+                        if let reason = item.rejectionReason {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(VaultMessages.rejectionReasonTitle(item.lastRequest?.organisationName))
+                                    .textStyle(.caption)
+                                    .foregroundStyle(Color.inkMuted)
+                                Text(reason)
+                                    .textStyle(.bodyMedium)
+                                    .foregroundStyle(Color.ink)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.statusRejectedSurface, in: .rect(cornerRadius: 12))
+                        }
                         // Also after a change: a confirmed item that was changed is Niet bevestigd again and can be sent anew.
-                        if item.status != .verified {
+                        // While a request is open there is nothing to send: the reviewer decides first.
+                        if item.status != .verified, !item.isAwaitingReview {
                             PaveSecondaryButton(
                                 title: item.status == .rejected ? VaultMessages.requestAgainAction : VaultMessages.requestAction,
                                 icon: .iconCheckBadgeSolid
@@ -167,7 +230,34 @@ struct VaultItemDetailView: View {
                 if !documents.isEmpty {
                     section("Bestanden") {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 96, maximum: 140), spacing: 12, alignment: .top)], alignment: .leading, spacing: 14) {
-                            ForEach(documents) { VaultFileTile(file: $0) }
+                            ForEach(documents) { file in
+                                VaultFileTile(
+                                    file: file,
+                                    isChosen: cameraControl?.highlight.map { $0.menu == "item-files" && $0.key == file.id } ?? false,
+                                    openRequest: $openFileID
+                                )
+                            }
+                        }
+                        if documents.count > 1 {
+                            Button {
+                                downloadAll(documents)
+                            } label: {
+                                Label {
+                                    Text(VaultMessages.downloadAll)
+                                } icon: {
+                                    Image(.iconDownload)
+                                        .renderingMode(.template)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .paveIconFrame(18)
+                                        .opacity(isDownloading ? 0.4 : 1)
+                                }
+                                    .textStyle(.label)
+                                    .foregroundStyle(Color.paveAccent)
+                                    .frame(minHeight: 44)
+                            }
+                            .buttonStyle(.pave)
+                            .disabled(isDownloading)
                         }
                     }
                 }
@@ -180,6 +270,19 @@ struct VaultItemDetailView: View {
             .padding(20)
             .frame(maxWidth: 560, alignment: .leading)
             .frame(maxWidth: .infinity)
+        }
+    }
+
+    private func downloadAll(_ files: [VaultItem.File]) {
+        isDownloading = true
+        Task {
+            defer { isDownloading = false }
+            if let ready = await model.download(files) {
+                download = ready
+            } else {
+                PaveHaptics.error()
+                downloadFailed = true
+            }
         }
     }
 
@@ -206,7 +309,7 @@ struct VaultItemDetailView: View {
             content()
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16)
-                .background(Color.white, in: .rect(cornerRadius: 16))
+                .background(Color.panel, in: .rect(cornerRadius: 16))
                 .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder) }
         }
     }

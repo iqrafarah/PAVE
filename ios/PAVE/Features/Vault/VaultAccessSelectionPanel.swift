@@ -56,7 +56,7 @@ struct VaultAccessSelectionPanel: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background {
             UnevenRoundedRectangle(topLeadingRadius: 25, topTrailingRadius: 25, style: .continuous)
-                .fill(Color.white)
+                .fill(Color.panel)
                 .ignoresSafeArea(edges: .bottom)
         }
         .accessibilityElement(children: .contain)

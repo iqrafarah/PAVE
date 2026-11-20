@@ -27,6 +27,33 @@ public struct SupabaseAuthService: AuthService {
         }
     }
 
+    public func signUp(email: String, password: String, firstName: String, lastName: String) async throws -> SignUpOutcome {
+        try await mapErrors {
+            let first = firstName.trimmingCharacters(in: .whitespacesAndNewlines)
+            let last = lastName.trimmingCharacters(in: .whitespacesAndNewlines)
+            let response = try await client.signUp(
+                email: Self.normalized(email),
+                password: password,
+                data: ["first_name": .string(first), "last_name": .string(last), "full_name": .string("\(first) \(last)")]
+            )
+            // For an address that already has an account Supabase answers as if it worked, but without identities.
+            if response.user.identities?.isEmpty == true { throw AuthError.emailAlreadyRegistered }
+            return response.session == nil ? .needsEmailCode : .signedIn
+        }
+    }
+
+    public func verifySignUpCode(email: String, code: String) async throws {
+        try await mapErrors {
+            try await client.verifyOTP(email: Self.normalized(email), token: code, type: .signup)
+        }
+    }
+
+    public func resendSignUpCode(email: String) async throws {
+        try await mapErrors {
+            try await client.resend(email: Self.normalized(email), type: .signup)
+        }
+    }
+
     public func verify(code: String) async throws {
         try await mapErrors {
             guard let factor = try await verifiedFactors().first else {
@@ -177,6 +204,12 @@ public struct SupabaseAuthService: AuthService {
             return .tooManyAttempts
         case .insufficientAAL:
             return .insufficientAssurance
+        case .signupDisabled, .emailProviderDisabled:
+            return .signupDisabled
+        case .userAlreadyExists, .emailExists:
+            return .emailAlreadyRegistered
+        case ErrorCode("email_address_invalid"):
+            return .invalidEmail
         default:
             if case .api(_, _, _, let response) = supabaseError, response.statusCode == 429 {
                 return .tooManyAttempts

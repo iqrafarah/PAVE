@@ -7,6 +7,9 @@ public enum PaveSupport {
 }
 
 public enum AuthMessages {
+    public static let signupDisabled = "Account aanmaken is op dit moment niet mogelijk. Neem contact op via \(PaveSupport.email)."
+    public static let invalidEmail = "Dit e-mailadres klopt niet. Controleer het en probeer het opnieuw."
+    public static let emailAlreadyRegistered = "Er bestaat al een account met dit e-mailadres. Log in, of kies 'Wachtwoord vergeten?' als je je wachtwoord kwijt bent."
     public static let loginFailed = "Je e-mailadres of wachtwoord klopt niet. Probeer het opnieuw of kies 'Wachtwoord vergeten?'."
     public static let invalidEmailCode = "Deze code klopt niet of is verlopen. Vraag een nieuwe code aan."
     public static let requestedTooSoon = "Je hebt net al een code aangevraagd. Wacht 60 seconden en probeer het opnieuw."
@@ -83,6 +86,9 @@ extension AuthError {
         case .insufficientAssurance: AuthMessages.insufficientAssurance
         case .samePassword: AuthMessages.samePassword
         case .weakPassword: AuthMessages.passwordRulesNotMet
+        case .signupDisabled: AuthMessages.signupDisabled
+        case .emailAlreadyRegistered: AuthMessages.emailAlreadyRegistered
+        case .invalidEmail: AuthMessages.invalidEmail
         case .noConnection: AuthMessages.noConnection
         case .resetSessionExpired, .unavailable: AuthMessages.unknownError
         }

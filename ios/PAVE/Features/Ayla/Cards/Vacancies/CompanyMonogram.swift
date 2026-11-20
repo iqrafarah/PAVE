@@ -10,7 +10,7 @@ struct CompanyMonogram: View {
             .font(.custom("InterVariable-Bold", size: size * 26 / 64, relativeTo: .title2))
             .foregroundStyle(Color.paveAccent)
             .frame(width: size, height: size)
-            .background(Color.white, in: .circle)
+            .background(Color.panel, in: .circle)
             .overlay { Circle().strokeBorder(Color.cardBorder, lineWidth: 1) }
             .accessibilityHidden(true)
     }

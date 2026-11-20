@@ -18,7 +18,7 @@ struct SettingsGroup<Content: View>: View {
                 }
             }
         }
-        .background(Color.white, in: .rect(cornerRadius: 14))
+        .background(Color.panel, in: .rect(cornerRadius: 14))
     }
 }
 
@@ -28,12 +28,27 @@ struct SettingsRow<Destination: View>: View {
     let icon: ImageResource
     let title: String
     var value: String?
+    /// The page as a place in the stack, so Ayla and the cameraknop can go there and back too.
+    var opens: SettingsScreen.SettingsDestination?
     @ViewBuilder let destination: Destination
 
     var body: some View {
-        NavigationLink {
-            destination
-        } label: {
+        Group {
+            if let opens {
+                NavigationLink(value: opens) { label }
+            } else {
+                NavigationLink {
+                    destination
+                } label: {
+                    label
+                }
+            }
+        }
+        .buttonStyle(.pave)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var label: some View {
             HStack(spacing: 14) {
                 Image(icon)
                     .renderingMode(.template)
@@ -42,7 +57,7 @@ struct SettingsRow<Destination: View>: View {
                     .paveIconFrame(17)
                     .foregroundStyle(Color.white)
                     .paveIconFrame(32)
-                    .background(Color.paveAccent, in: .rect(cornerRadius: 8))
+                    .background(Color.paveAccentFill, in: .rect(cornerRadius: 8))
                     .accessibilityHidden(true)
                 Text(title)
                     .textStyle(.listTitle)
@@ -66,10 +81,40 @@ struct SettingsRow<Destination: View>: View {
             .padding(.horizontal, 14)
             .frame(minHeight: 56)
             .contentShape(.rect)
-        }
-        .buttonStyle(.pave)
-        .accessibilityElement(children: .combine)
     }
+}
+
+extension SettingsRow where Destination == EmptyView {
+    init(icon: ImageResource, title: String, value: String? = nil, opens: SettingsScreen.SettingsDestination) {
+        self.init(icon: icon, title: title, value: value, opens: opens) { EmptyView() }
+    }
+}
+
+/// On a page inside Instellingen: "ga terug" to Ayla goes back from the page on top, and Ayla knows there is a page
+/// to go back from.
+private struct AylaBackStep: ViewModifier {
+    @Environment(AylaPageDriver.self) private var driver: AylaPageDriver?
+    @Environment(\.dismiss) private var dismiss
+    @State private var isOnTop = false
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear {
+                isOnTop = true
+                driver?.settingsDepth += 1
+            }
+            .onDisappear {
+                isOnTop = false
+                driver?.settingsDepth -= 1
+            }
+            .onChange(of: driver?.backSteps) {
+                if isOnTop { dismiss() }
+            }
+    }
+}
+
+extension View {
+    func aylaBackStep() -> some View { modifier(AylaBackStep()) }
 }
 
 /// The top of Instellingen: your photo, name and e-mail; it opens your account.
@@ -106,7 +151,7 @@ struct SettingsProfileHeader: View {
                     .accessibilityHidden(true)
             }
             .padding(14)
-            .background(Color.white, in: .rect(cornerRadius: 14))
+            .background(Color.panel, in: .rect(cornerRadius: 14))
             .contentShape(.rect)
         }
         .buttonStyle(.pave)
@@ -118,7 +163,10 @@ struct SettingsProfileHeader: View {
 /// A page inside Instellingen: the same canvas, width and spacing as the main page, with its own title.
 struct SettingsPage<Content: View>: View {
     let title: String
+    /// Knopmodus on this page; a full press goes back, as the back button does.
+    var cameraMenus: [CameraMenu] = []
     @ViewBuilder let content: Content
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ScrollView {
@@ -134,6 +182,8 @@ struct SettingsPage<Content: View>: View {
         .background(Color.canvas.ignoresSafeArea())
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
+        .cameraControlMenus("settings-\(title)", menus: cameraMenus, press: { dismiss() })
+        .aylaBackStep()
     }
 }
 

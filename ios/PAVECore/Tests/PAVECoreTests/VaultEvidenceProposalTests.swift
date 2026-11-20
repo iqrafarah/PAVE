@@ -43,6 +43,7 @@ struct VaultEvidenceProposalTests {
         let filled = certificate.applied(to: draft)
         #expect(filled.category == .certificates)
         #expect(filled.title == "Azure Fundamentals")
+        #expect(filled.filledByAyla && !draft.filledByAyla)
         #expect(filled.folderIDs == ["folder-1"])
         #expect(!filled.isPeriod)
         #expect(filled.issuedOn == VaultDay(year: 2025, month: 3, day: 21))

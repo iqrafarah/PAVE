@@ -3,6 +3,16 @@
     {
       "filename": "IconRefresh.svg",
       "idiom": "universal"
+    },
+    {
+      "appearances": [
+        {
+          "appearance": "luminosity",
+          "value": "dark"
+        }
+      ],
+      "filename": "IconRefresh-dark.svg",
+      "idiom": "universal"
     }
   ],
   "info": {

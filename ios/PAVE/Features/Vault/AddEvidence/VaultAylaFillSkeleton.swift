@@ -12,7 +12,7 @@ struct VaultAylaFillSkeleton: View {
                 AylaLetter()
                     .opacity(isDim ? 0.45 : 1)
                     .paveIconFrame(32)
-                    .background(Color.paveAccent, in: .rect(cornerRadius: 8))
+                    .background(Color.paveAccentFill, in: .rect(cornerRadius: 8))
                 Text(VaultMessages.aylaFillReading)
                     .textStyle(.label)
                     .foregroundStyle(Color.ink)

@@ -3,6 +3,16 @@
     {
       "filename": "IconQrcode.svg",
       "idiom": "universal"
+    },
+    {
+      "appearances": [
+        {
+          "appearance": "luminosity",
+          "value": "dark"
+        }
+      ],
+      "filename": "IconQrcode-dark.svg",
+      "idiom": "universal"
     }
   ],
   "info": {

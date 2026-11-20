@@ -82,7 +82,7 @@ struct VaultFilterBar: View {
                     .monospacedDigit()
                     .foregroundStyle(Color.white)
                     .frame(minWidth: 18, minHeight: 18)
-                    .background(Color.paveAccent, in: .circle)
+                    .background(Color.paveAccentFill, in: .circle)
                     .accessibilityHidden(true)
             }
         }

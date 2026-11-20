@@ -25,6 +25,14 @@ final class ProfileModel {
     private(set) var customColor = PaveAppearance.customColor
     private(set) var textSize = PaveTextSize(rawValue: UserDefaults.standard.string(forKey: PaveAppearance.textSizeKey) ?? "") ?? .standard
     private(set) var vaultLayout = PaveAppearance.vaultLayout
+    /// How long chats stay and what Ayla may do with the archive; nil before the migration, so there is nothing to choose.
+    private(set) var retention: PaveRetention?
+    enum RetentionState: Equatable { case loading, ready, notSetUp, failed }
+    private(set) var retentionState = RetentionState.loading
+    /// Licht, Donker or Automatisch; it applies at once and is kept in the account and on this device.
+    private(set) var displayMode = PaveAppearance.displayMode
+    /// False until the account can keep it (migration 20261119140000); it is then kept on this device only.
+    private(set) var savesDisplayMode = false
 
     private let service: (any ProfileService)?
     private let defaults: UserDefaults
@@ -46,7 +54,10 @@ final class ProfileModel {
     var savesInAccount: Bool { profile.canChangeSettings }
 
     func load() async {
-        guard let service else { return }
+        guard let service else {
+            retentionState = .notSetUp
+            return
+        }
         do {
             let loaded = try await service.profile()
             profile = loaded
@@ -56,9 +67,51 @@ final class ProfileModel {
                 apply(theme: loaded.theme, textSize: loaded.textSize, vaultLayout: loaded.vaultLayout)
                 onThemeChosen(theme, customColor)
             }
+            do {
+                retention = try await service.retention()
+                retentionState = retention == nil ? .notSetUp : .ready
+            } catch {
+                if retention == nil { retentionState = .failed }
+            }
+            if let mode = try? await service.displayMode() {
+                savesDisplayMode = true
+                applyDisplayMode(mode)
+            }
             await loadAvatar()
         } catch {
             if state != .ready { state = .failed }
+            if retention == nil { retentionState = .failed }
+        }
+    }
+
+    func setDisplayMode(_ mode: PaveDisplayMode) async {
+        guard mode != displayMode else { return }
+        let before = displayMode
+        applyDisplayMode(mode)
+        guard let service, savesDisplayMode else { return }
+        do {
+            try await service.setDisplayMode(mode)
+        } catch {
+            applyDisplayMode(before)
+            problem = SettingsMessages.message(for: ProfileError(error))
+        }
+    }
+
+    private func applyDisplayMode(_ mode: PaveDisplayMode) {
+        displayMode = mode
+        defaults.set(mode.rawValue, forKey: PaveAppearance.displayModeKey)
+        PaveAppearance.apply(mode)
+    }
+
+    /// Shows the choice at once and saves it in the account; it goes back when saving fails.
+    func setRetention(_ chosen: PaveRetention) async {
+        guard let service, let before = retention, chosen != before else { return }
+        retention = chosen
+        do {
+            try await service.setRetention(chosen)
+        } catch {
+            retention = before
+            problem = SettingsMessages.message(for: ProfileError(error))
         }
     }
 

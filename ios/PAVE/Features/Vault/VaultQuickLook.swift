@@ -2,14 +2,25 @@ import QuickLook
 import SwiftUI
 
 extension View {
-    /// Shows a file full screen with QuickLook, from a temporary copy that is removed again when it closes.
+    /// Shows a file full screen (web VaultFilePreview): its name on top with "Downloaden" and a cross to close, the file
+    /// itself below. The temporary copy is removed again when it closes.
     func vaultQuickLook(_ url: Binding<URL?>) -> some View {
-        quickLookPreview(url)
-            .onChange(of: url.wrappedValue) { old, new in
-                guard new == nil, let old else { return }
-                try? FileManager.default.removeItem(at: old.deletingLastPathComponent())
-            }
+        fullScreenCover(item: Binding(
+            get: { url.wrappedValue.map(VaultOpenFile.init) },
+            set: { url.wrappedValue = $0?.url }
+        )) { file in
+            VaultFileViewer(url: file.url)
+        }
+        .onChange(of: url.wrappedValue) { old, new in
+            guard new == nil, let old else { return }
+            try? FileManager.default.removeItem(at: old.deletingLastPathComponent())
+        }
     }
+}
+
+private struct VaultOpenFile: Identifiable {
+    let url: URL
+    var id: URL { url }
 }
 
 enum VaultPreviewFile {

@@ -1,6 +1,8 @@
 # PAVE iOS
 
-SwiftUI-app voor PAVE. Open `PAVE.xcodeproj` in Xcode 26 of nieuwer. Minimale versie: iOS 26.
+SwiftUI-app voor PAVE. Open `PAVE.xcodeproj` in Xcode 26 of nieuwer. Minimale versie: iOS 26. De iPhone-app en ingebedde Watch-app gebruiken respectievelijk iOS 26.0 en watchOS 26.0 als deployment target, zodat een Xcode 26-SDK de volledige app kan bouwen.
+
+Bij een compileerfout op een MacBook: controleer eerst dat Xcode 26 of nieuwer actief is en dat de nieuwste PAVE-wijzigingen binnen zijn. Het verificatiedetail importeert `PAVECore` voor de kluiscategorieën; houd de argumentvolgorde van `NotificationsScreen` gelijk aan de propertyvolgorde en splits zware SwiftUI-viewexpressies op in kleine views.
 
 ## Structuur
 
@@ -32,7 +34,7 @@ PAVE/
     Plan/         Plannen (nu nog leeg)
     Profile/      Profiel (nu nog leeg: delen bestaat nog niet)
     Settings/     Instellingen: je account en uitloggen
-    Notifications/ Meldingen (nu nog leeg)
+    Notifications/ Meldingen, filters, rolgebonden overzicht en aanvraagdetail (data-aansluiting volgt)
   Resources/      AppIcon.icon, Assets.xcassets (iconen)
 PAVEWatch/        Apple Watch-app (spraakbot, geen volledige interface)
 PAVEWidgets/      Widgets en knoppen voor het Bedieningspaneel (WidgetKit-extensie)
@@ -199,6 +201,32 @@ De iOS-uitwerking gebruikt de twee mobiele Figma-prototypes als basis: de lijst 
 
 **Werkwijze voor volgende kluiswijzigingen:** gebruik de gedeelde `shared/`-contracten en iOS-stijlen, houd SwiftUI in `PAVE/Features/Vault/` en gedeelde modellen in `PAVECore` alleen wanneer meerdere targets ze nodig hebben. Werk de relevante sectie in deze README bij zodra schermgedrag, datamodel, beveiliging of de voortgang verandert. De webvoorbeelden zijn referentie; wijzigingen blijven in `ios/` tenzij web en iOS samen een contract aanpassen.
 
+## Meldingen
+
+`NotificationsScreen` bevat het iOS-overzicht volgens de aangeleverde wireframe: alle/ongelezen, zoeken, typefilter, groepering per dag en een detail voor verificatieaanvragen. Lerende accounts zien gesprekken en geverifieerd of afgewezen bewijs; de adminweergave toont gesprekken en verificatieaanvragen. Een gesprek kan terug naar Ayla navigeren; geverifieerd of afgewezen bewijs opent het eigen item in de kluis.
+
+**Beslissing over je aanvraag.** Na goedkeuren of afwijzen krijgt de lerende "Bewijs geverifieerd" of "Bewijs afgewezen", met de titel van het bewijs en de organisatie. Het scherm toont naast de soorten van je rol ook elke soort die echt in je inbox staat: wie zelf beoordelaar is (beheerdersweergave), zag eerder de beslissingen over het eigen bewijs niet. De melding blijft staan, ook als je het bewijs daarna aanpast of opnieuw laat bevestigen.
+
+**Verwijderen en terugzetten.** Veeg een melding naar links of houd hem ingedrukt (Verwijderen, en bij een ongelezen melding Markeer als gelezen). Er verschijnt 5 seconden "Melding verwijderd · Ongedaan maken" (`AylaUndoBar`). Daarna staat hij nog 7 dagen onder "Recent verwijderd" onderaan de lijst (`NotificationTrashScreen`), met per melding hoeveel dagen nog. Tikken, vegen of ingedrukt houden zet hem terug. Verwijderen is zacht (`user_notifications.deleted_at`, de database zet de tijd); na 7 dagen ruimt de server hem op. De lijst is daarvoor een `List` in plaats van een `ScrollView`, omdat alleen een `List` veegacties heeft. Omlaag trekken ververst.
+
+**Status van een aanvraag.** De kluis leest per item de laatste aanvraag mee (`vault_validation_requests`, eigen rijen via RLS) als `VaultItem.lastRequest`. Loopt er een aanvraag, dan staat er "In afwachting" (`isAwaitingReview`) en is er geen aanvraagknop tot de beoordelaar beslist. Na het versturen laadt de kluis opnieuw, zodat de status meteen klopt. Afgewezen bewijs toont de reden van de beoordelaar (`rejectionReason`) en "Opnieuw bevestiging aanvragen": `vault-review` accepteert een nieuwe aanvraag voor afgewezen bewijs en zet het bewijs dan terug op `toVerify`. Pas je afgewezen bewijs aan, dan is het gewoon weer "Niet bevestigd" en verdwijnt de oude reden.
+
+**Afwijzen vraagt altijd een reden.** De beoordelaar vult die in `NotificationRejectSheet` in (maximaal 2000 tekens). De Edge Function weigert een afwijzing zonder reden (`response_required`), en de databasefunctie `resolve_vault_validation_request` doet dat ook.
+
+De iOS-meldingen gebruiken `NotificationsModel` en `SupabaseNotificationsService`: de inbox laadt van Supabase, markeren als gelezen wordt opgeslagen en Ayla-/verificatiemeldingen openen hun eigen bestemming. Een reviewer-aanvraag laadt een read-only kaart van het bewijs en geeft de toegewezen reviewer tijdelijke links (vijf minuten) om de originele bestanden in Quick Look te bekijken. Goedkeuren/afwijzen gaat via `vault-review`; de database werkt aanvraag, kluisstatus, auditlog en goedkeuringsmelding atomair bij.
+
+Bij het ophalen toont het scherm nu onderscheid tussen ontbrekende Supabase-configuratie, een verlopen sessie, ontbrekende MFA, een niet gedeployde `vault-review`-functie en een serverfout. De detailweergave toont ook waarom een aanvraag niet geladen kon worden. Verificatieaanvragen tonen afzonderlijke meldingen voor een onbekende organisatie, ontbrekende reviewers, een dubbele aanvraag en bewijs dat intussen niet meer openstaat. De functie moet wel gedeployed zijn en reviewers moeten aan de organisatie zijn toegewezen.
+
+Het aanvraagformulier volgt de aangeleverde wireframe: PAVE/Kluis-balk, titel, bewijskaart, organisatie, vestigingsplaats, bij een school de afdeling van die vestiging, een optioneel functiefilter en daarna precies één contactpersoon bij naam. Bij een bedrijf hangen personen aan de vestiging, bij een school aan de afdeling; de personenlijst gaat open zodra vestiging (en afdeling) gekozen zijn, gegroepeerd per functie; het functiefilter (docent, stagebegeleider) maakt de lijst alleen korter en is zelf geen ontvanger. De demo-directory bevat verzonnen personen; de oude rollen zoals "Stagebureau" en "HR-afdeling" staan niet meer in de lijst.
+
+Alle bladen hebben een dichte achtergrond (`paveSheet()` legt `Color.canvas` onder de inhoud; bladen op halve hoogte krijgen `presentationBackground(Color.canvas)`), omdat het glas van iOS 26 de tekst slecht leesbaar maakte. Bestaande organisatie en plaats uit het bewijs preselecteren alleen een overeenkomende directoryrij. De organisaties komen uit de databasefunctie `validation_organizations()` en niet rechtstreeks uit `organizations`: daar mag een lerende alleen de eigen organisatie lezen, waardoor eerst bijna alle bedrijven ontbraken. De app verstuurt IDs; de Edge Function valideert en routeert ze. De aanvraag gaat naar reviewers die aan de gekozen contactpersoon zijn gekoppeld, of valt terug op reviewers van de organisatie. Voor echte namen moeten contactpersonen via vertrouwde provisioning aan de directory worden toegevoegd. De directory- en deployvolgorde staat in `docs/vault.md`.
+
+Houd bij SwiftUI-wijzigingen de argumentvolgorde gelijk aan de initializer en splits samengestelde kaartweergaven op wanneer de compiler de expressie niet kan typechecken. `NotificationsScreen` gebruikt `VaultCategory` uit `PAVECore`.
+
+Voor een eerste visuele controle staan statisch gerenderde iPhone-previews in `ios/previews/`. Ze volgen de huidige iOS-layout met fictieve inhoud, maar zijn geen captures van een draaiende SwiftUI-app. `render-notifications.ps1` maakt ze opnieuw.
+
+De database-opzet (organisaties, personen, beoordelaars, aanvragen en meldingen) staat in één migratie, `20261117180000_organisations_verification_notifications.sql`. Hoe het werkt, en hoe je beoordelaars toevoegt om te testen, staat in [`docs/verificatie.md`](../docs/verificatie.md).
+
 ## Ayla
 
 Na het ontgrendelen opent `MainView` (`PAVE/Features/Main`) met Ayla. Ayla zelf draait op de server: de Edge Function `ayla` in `shared/supabase/functions/ayla`. De app bevat geen prompt en geen sleutels. Zie `docs/ayla.md`.
@@ -208,7 +236,7 @@ Na het ontgrendelen opent `MainView` (`PAVE/Features/Main`) met Ayla. Ayla zelf 
   - **iPhone en de opengeklapte Duo rechtop:** het menu schuift als effen paneel van boven tot onder tegen de linkerrand over het gedimde scherm, zonder zwevende ronde hoeken, net als bij ChatGPT en de zijbalk op iPad (`MainMenuDrawer`); rechtsboven de bel. Sluiten: naast het paneel tikken, het wegvegen of nog eens op de menuknop.
   - **iPad en de opengeklapte Duo dwars** (vanaf 800 punten breed): een zijbalk naast het scherm. Rechtsboven in de zijbalk klap je hem weg; dan komt linksboven de menuknop om hem terug te halen. De bel en je account delen onderin een glazen capsule.
   - **Buitenkant van de Duo:** de menuknop staat in de balk langs de zijkant. Open je het menu, dan wordt die knop een kruisje, komt in plaats van de chatknop een ronde knop voor een nieuw gesprek en staan je account en de bel onderin die balk, zoals bij ChatGPT (de knoppen melden hun plek via `reportMenuButtonFrame` en `reportChatsButtonFrame`).
-  - De chats blijven achter de chatknop (keuze Daaf). Kluis, Plan, Profiel en Meldingen tonen eerlijk een lege staat, want er staat nog niets in de database; Meldingen toont dus ook geen verzonnen aantal.
+  - De chats blijven achter de chatknop (keuze Daaf). Plan en Profiel tonen eerlijk een lege staat. Meldingen hebben het iOS-overzicht, zoeken, ongelezen-filter, typefilter, aanvraagdetail en doorklik naar een chat of eigen bewijs; zonder meldingenbron toont het scherm een lege staat en geen verzonnen aantal.
 - `AylaRootView`: de chat (`AylaChatScreen`) en je chats (`AylaChatList`: zoeken, "Nieuw gesprek", Vastgezet en Chats). De chatknop rechtsboven opent ze.
 - **Chats** (`AylaChatsScreen`, `AylaChatList`), achter de chatknop rechtsboven, zoals Mail en ChatGPT:
   - **Groepen:** Vastgezet, Vandaag, Gisteren, Afgelopen 7 dagen, Afgelopen 30 dagen en Eerder (`AylaConversationList.sections`). Onder elke titel de tijd of de dag, en "Op web" of "Op Apple Watch" als het gesprek daar begon (`started_on`).

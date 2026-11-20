@@ -8,6 +8,7 @@ struct VaultCardPreview: View {
     let cover: VaultThumbnail.Source?
     let title: String
     let category: VaultCategory
+    var fileName = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -21,7 +22,7 @@ struct VaultCardPreview: View {
                 .frame(height: 64)
                 .clipped()
                 .overlay(alignment: .bottomLeading) {
-                    VaultLogoAvatar(look: look, name: title.isEmpty ? category.singularTitle : title, size: 60)
+                    VaultLogoAvatar(look: look, name: title.isEmpty ? category.singularTitle : title, fileName: fileName, size: 60)
                         .padding(.leading, 16)
                         .offset(y: 30)
                 }
@@ -34,7 +35,7 @@ struct VaultCardPreview: View {
                 .padding(.bottom, 14)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .background(Color.white)
+        .background(Color.panel)
         .clipShape(.rect(cornerRadius: 16))
         .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder, lineWidth: 1) }
         .animation(.easeOut(duration: 0.3), value: look)

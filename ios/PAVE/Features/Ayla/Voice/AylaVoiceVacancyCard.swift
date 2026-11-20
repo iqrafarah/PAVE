@@ -48,7 +48,7 @@ struct AylaVoiceVacancyCard: View {
                     .foregroundStyle(Color.white)
                     .padding(.horizontal, 14)
                     .frame(height: 34)
-                    .background(Color.paveAccent, in: .capsule)
+                    .background(Color.paveAccentFill, in: .capsule)
                     .buttonStyle(.pave)
             }
             if followsHead {
@@ -59,7 +59,7 @@ struct AylaVoiceVacancyCard: View {
         }
         .padding(14)
         .frame(maxWidth: 340, alignment: .leading)
-        .background(Color.white, in: .rect(cornerRadius: 18))
+        .background(Color.panel, in: .rect(cornerRadius: 18))
         .overlay { RoundedRectangle(cornerRadius: 18).strokeBorder(Color.cardBorder, lineWidth: 1) }
         .id(vacancy.id)
         .accessibilityElement(children: .contain)

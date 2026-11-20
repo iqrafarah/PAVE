@@ -16,6 +16,14 @@ struct AylaChatsScreen: View {
 
     @State private var isSelecting = false
 
+    private var chatMenus: [CameraMenu] {
+        let chats = Array(list.conversations.prefix(12))
+        guard !chats.isEmpty else { return [] }
+        return [CameraMenu(id: "chats", title: "Chats", symbol: "bubble.left.and.bubble.right", items: chats.map { $0.title.isEmpty ? "Gesprek" : $0.title }, keys: chats.map(\.id), onPress: { index in
+            if chats.indices.contains(index) { actions.open(chats[index]) }
+        })]
+    }
+
     var body: some View {
         AylaChatList(
             list: list,
@@ -58,6 +66,8 @@ struct AylaChatsScreen: View {
                 }
             }
             .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
+            // Knopmodus: swipe through the chats, a full press opens the one it rests on; without one, a new chat.
+            .cameraControlMenus("chats-list", menus: chatMenus, press: onNew)
             .navigationBarTitleDisplayMode(.inline)
     }
 }

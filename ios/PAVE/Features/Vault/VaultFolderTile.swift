@@ -6,6 +6,8 @@ struct VaultFolderTile: View {
     let icon: ImageResource
     var color: Color = .paveAccent
     var surface: Color = .paveSurfaceTint
+    var iconColor: Color = .white
+    var isPinned = false
     let count: Int
     let isSelected: Bool
     var isDropTarget = false
@@ -32,7 +34,7 @@ struct VaultFolderTile: View {
                                     .renderingMode(.template)
                                     .resizable()
                                     .scaledToFit()
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(iconColor)
                                     .frame(width: 18, height: 18)
                                     .offset(y: 2)
                             }
@@ -41,10 +43,18 @@ struct VaultFolderTile: View {
                     }
                     .zIndex(1)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .textStyle(.tileTitle)
-                        .foregroundStyle(Color.ink)
-                        .lineLimit(1)
+                    HStack(spacing: 4) {
+                        Text(title)
+                            .textStyle(.tileTitle)
+                            .foregroundStyle(Color.ink)
+                            .lineLimit(1)
+                        if isPinned {
+                            Image(systemName: "pin.fill")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(Color.inkMuted)
+                                .accessibilityHidden(true)
+                        }
+                    }
                     Text(VaultMessages.itemCount(count))
                         .textStyle(.caption)
                         .foregroundStyle(Color.inkMuted)
@@ -53,7 +63,7 @@ struct VaultFolderTile: View {
                 .padding(.top, 13)
                 .padding(.bottom, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.white)
+                .background(Color.panel)
             }
             .frame(width: Self.width)
             .clipShape(.rect(cornerRadius: 16))
@@ -73,7 +83,7 @@ struct VaultFolderTile: View {
         }
         .buttonStyle(.pave)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(title), \(VaultMessages.itemCount(count))")
+        .accessibilityLabel("\(title), \(isPinned ? "vastgezet, " : "")\(VaultMessages.itemCount(count))")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .accessibilityHint(isSelected ? "" : "Opent de map")
     }

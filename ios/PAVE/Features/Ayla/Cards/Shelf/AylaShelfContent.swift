@@ -21,9 +21,16 @@ struct AylaShelfContent: View {
             .padding(.top, 4)
 
             switch shelf {
-            case .vault:
-                // The vault opens as itself over the chat (AylaChatScreen), not as rows here.
+            case .vault, .settings:
+                // These open as themselves over the chat (AylaChatScreen), not as rows here.
                 EmptyView()
+            case .notifications:
+                PaveEmptyState(
+                    icon: .iconMailOpen,
+                    title: "Je hebt geen meldingen",
+                    message: "Nieuwe berichten over je plannen en over het bevestigen van je gegevens zie je hier."
+                )
+                .padding(.vertical, 24)
             case .plan:
                 PaveEmptyState(
                     icon: .iconMap,

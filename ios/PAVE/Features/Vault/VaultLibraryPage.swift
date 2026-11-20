@@ -19,6 +19,7 @@ struct VaultLibraryPage: View {
     /// The open menu on the outer display of iPhone Duo puts its own buttons where search and add are.
     @Environment(\.hidesScreenButtons) private var hidesScreenButtons
     @Environment(\.vaultButtonsInPage) private var buttonsInPage
+    @Environment(PaveCameraControl.self) private var cameraControl: PaveCameraControl?
     @Environment(\.menuButtonFrame) private var menuFrame
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// How the vault opens, from Instellingen; switching here lasts until the vault is opened again.
@@ -49,6 +50,8 @@ struct VaultLibraryPage: View {
     @State private var rowPosition = ScrollPosition()
     @State private var rowScroller: Task<Void, Never>?
     private static let tileSpacing: CGFloat = 9
+    /// The row shows this many folders; with more, it ends with "Alle mappen" (as on the web).
+    private static let rowLimit = 5
     private static let scrollEdge: CGFloat = 56
     @Namespace private var dragSpace
 
@@ -61,11 +64,34 @@ struct VaultLibraryPage: View {
         return sorted.sorted { (liveItems.firstIndex(of: $0.id) ?? .max) < (liveItems.firstIndex(of: $1.id) ?? .max) }
     }
 
+    /// The folder or evidence chosen with the Camera Control button, lit up and scrolled into view.
+    private var chosenFolderID: String? {
+        cameraControl?.highlight.flatMap { $0.menu == "folders" ? $0.key : nil }
+    }
+
+    private var chosenItemID: String? {
+        cameraControl?.highlight.flatMap { $0.menu == "items" ? $0.key : nil }
+    }
+
     var body: some View {
-        library
+        ScrollViewReader { proxy in
+            library
+                .onChange(of: chosenItemID) { _, id in
+                    guard let id else { return }
+                    withAnimation(.snappy(duration: 0.3)) { proxy.scrollTo(id, anchor: .center) }
+                }
+        }
+            .onChange(of: chosenFolderID) { _, id in
+                guard let id, let index = shownFolders.firstIndex(where: { $0.id == id }), rowWidth > 0 else { return }
+                let slot = VaultFolderTile.width + Self.tileSpacing
+                let contentWidth = CGFloat(shownFolders.count) * slot - Self.tileSpacing
+                let x = min(max(CGFloat(index) * slot - (rowWidth - VaultFolderTile.width) / 2, 0), max(contentWidth - rowWidth, 0))
+                withAnimation(.snappy(duration: 0.3)) { rowPosition.scrollTo(x: x) }
+            }
             .overlay {
                 if buttonsInPage, !hidesScreenButtons { sideButtons }
             }
+            .cameraControlMenus("vault-\(folderID ?? "root")", menus: cameraMenus, press: { actions.scan(folder) })
             .background(Color.canvas.ignoresSafeArea())
             .onAppear {
                 guard !choseOrder else { return }
@@ -77,6 +103,8 @@ struct VaultLibraryPage: View {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button(action: toggleSearch) {
                             Image(isSearching ? .iconXMark : .iconSearch)
+                                .renderingMode(.template)
+                                .foregroundStyle(Color.ink)
                                 .paveToolbarHitArea()
                         }
                         .accessibilityLabel(isSearching ? "Zoeken sluiten" : folder.map { "Zoeken in \($0.name)" } ?? "Zoeken in je kluis")
@@ -116,6 +144,25 @@ struct VaultLibraryPage: View {
                     .position(x: x, y: y + 60)
             }
         }
+    }
+
+    /// Knopmodus in the vault: the folders (in the whole vault) and the evidence on this page; a full press on an item
+    /// opens it, without one it scans a document.
+    private var cameraMenus: [CameraMenu] {
+        var menus: [CameraMenu] = []
+        let folders = shownFolders
+        if folder == nil, !folders.isEmpty {
+            menus.append(CameraMenu(id: "folders", title: "Map", symbol: "folder", items: folders.map(\.name), keys: folders.map(\.id), onPress: { index in
+                if folders.indices.contains(index) { actions.openFolder(folders[index]) }
+            }))
+        }
+        let items = Array(visibleItems.prefix(20))
+        if !items.isEmpty {
+            menus.append(CameraMenu(id: "items", title: "Bewijs", symbol: "doc.text", items: items.map(\.title), keys: items.map(\.id), onPress: { index in
+                if items.indices.contains(index) { actions.open(items[index]) }
+            }))
+        }
+        return menus
     }
 
     @ViewBuilder
@@ -232,10 +279,14 @@ struct VaultLibraryPage: View {
     private var shelves: some View {
         ScrollView(.horizontal) {
             HStack(spacing: Self.tileSpacing) {
-                ForEach(shownFolders) { folder in
+                ForEach(shownFolders.prefix(Self.rowLimit)) { folder in
                     shelf(folder)
                 }
+                if model.folders.count > Self.rowLimit {
+                    VaultAllFoldersTile(count: model.folders.count, action: actions.openAllFolders)
+                }
             }
+            .fixedSize(horizontal: false, vertical: true)
             .padding(.vertical, 2)
             .vaultDragContainer(in: dragSpace, onStart: startDrag, onActive: { isDragging = true }, onEnd: endDrag)
             // While a folder is dragged, a still layer over the row measures where the finger is.
@@ -278,7 +329,7 @@ struct VaultLibraryPage: View {
         guard case .folder(let id) = drag, let fingerX, var order = liveOrder, let from = order.firstIndex(of: id) else { return }
         let slotWidth = VaultFolderTile.width + Self.tileSpacing
         let x = fingerX
-        let slot = min(max(Int(x / slotWidth), 0), order.count - 1)
+        let slot = min(max(Int(x / slotWidth), 0), min(order.count, Self.rowLimit) - 1)
         let inSlot = x - CGFloat(slot) * slotWidth
         let pastMiddle = slot > from ? inSlot > VaultFolderTile.width / 2 : inSlot < VaultFolderTile.width / 2
         guard slot != from, pastMiddle else { return }
@@ -294,7 +345,7 @@ struct VaultLibraryPage: View {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(16))
                 guard case .folder = drag, let visibleX = fingerVisibleX, rowWidth > 0 else { continue }
-                let contentWidth = CGFloat(shownFolders.count) * (VaultFolderTile.width + Self.tileSpacing) - Self.tileSpacing
+                let contentWidth = CGFloat(min(shownFolders.count, Self.rowLimit)) * (VaultFolderTile.width + Self.tileSpacing) - Self.tileSpacing
                 let step: CGFloat = visibleX < Self.scrollEdge ? -6 : visibleX > rowWidth - Self.scrollEdge ? 6 : 0
                 guard step != 0 else { continue }
                 let next = min(max(rowOffset + step, 0), max(contentWidth - rowWidth, 0))
@@ -334,8 +385,10 @@ struct VaultLibraryPage: View {
             icon: style.icon.image,
             color: style.color.color,
             surface: style.color.surface,
+            iconColor: style.color.foreground,
+            isPinned: folder.isPinned,
             count: model.count(in: .folder(folder.id)),
-            isSelected: false,
+            isSelected: chosenFolderID == folder.id,
             isDropTarget: dropTarget == folder.id,
             action: action
         )
@@ -346,6 +399,11 @@ struct VaultLibraryPage: View {
             // The spot the dragged folder will take stays visible but faint, as on the Home Screen.
             .opacity(isDragging && drag == .folder(folder.id) ? 0.35 : 1)
             .contextMenu {
+                Button {
+                    Task { await model.setPinned(!folder.isPinned, folder: folder) }
+                } label: {
+                    Label { Text(folder.isPinned ? VaultMessages.unpinFolder : VaultMessages.pinFolder) } icon: { Image(systemName: folder.isPinned ? "pin.slash.fill" : "pin.fill") }
+                }
                 Button { actions.editFolder(folder) } label: {
                     Label { Text("Map aanpassen") } icon: { Image(.iconPencil) }
                 }
@@ -461,8 +519,17 @@ struct VaultLibraryPage: View {
             actions.open(item)
         } label: {
             VaultLibraryCard(item: item, isGrid: isGrid)
+                .overlay {
+                    if chosenItemID == item.id {
+                        RoundedRectangle(cornerRadius: 16)
+                            .strokeBorder(Color.paveAccent, lineWidth: 3)
+                    }
+                }
+                .scaleEffect(chosenItemID == item.id ? 1.02 : 1)
+                .animation(.spring(duration: 0.3, bounce: 0.25), value: chosenItemID == item.id)
         }
         .buttonStyle(.pave)
+        .id(item.id)
         .accessibilityHint("Toont alles over dit item")
         .contextMenu {
             VaultItemActionButtons(

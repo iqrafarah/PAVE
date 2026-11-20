@@ -11,6 +11,8 @@ enum AuthRoute: Hashable {
     case resetVerification
     case newPassword
     case passwordResetComplete
+    case register
+    case registerCode(email: String)
 }
 
 @Observable
@@ -94,6 +96,35 @@ final class AuthFlow {
     func updatePassword(_ newPassword: String) async throws {
         try await service.updatePassword(newPassword)
         path.append(.passwordResetComplete)
+    }
+
+    /// "Nog geen eduID? Account aanmaken".
+    func showRegister() {
+        path.append(.register)
+    }
+
+    func signUp(email: String, password: String, firstName: String, lastName: String) async throws {
+        switch try await service.signUp(email: email, password: password, firstName: firstName, lastName: lastName) {
+        case .needsEmailCode:
+            if path.last != .registerCode(email: email) { path.append(.registerCode(email: email)) }
+        case .signedIn:
+            path.append(.verificationSetup)
+        }
+    }
+
+    /// The address is confirmed and the account signed in; two-step verification is set up next, as after a first sign-in.
+    func verifySignUpCode(email: String, code: String) async throws {
+        try await service.verifySignUpCode(email: email, code: code)
+        path.append(.verificationSetup)
+    }
+
+    /// Back to typing the e-mail code, for an account that was made but never confirmed.
+    func showSignUpCode(email: String) {
+        if path.last != .registerCode(email: email) { path.append(.registerCode(email: email)) }
+    }
+
+    func resendSignUpCode(email: String) async throws {
+        try await service.resendSignUpCode(email: email)
     }
 
     func returnToLogin() {

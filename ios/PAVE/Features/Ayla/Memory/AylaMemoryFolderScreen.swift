@@ -65,6 +65,12 @@ struct AylaMemoryFolderScreen: View {
                 memory.update(note, to: text, categories: categories)
             }
         }
+        // Knopmodus: swipe through the notes, a full press opens the one it rests on; without one, add a note.
+        .cameraControlMenus("memory-folder", menus: notes.isEmpty ? [] : [
+            CameraMenu(id: "notes", title: "Notities", symbol: "note.text", items: notes.map(\.text), keys: notes.map(\.id), onPress: { index in
+                if notes.indices.contains(index) { editing = notes[index] }
+            }),
+        ], press: { isAdding = true })
     }
 
     private var list: some View {
@@ -104,7 +110,7 @@ struct AylaMemoryFolderScreen: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .listRowBackground(Color.white)
+        .listRowBackground(Color.panel)
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
                 PaveHaptics.tap(.medium)

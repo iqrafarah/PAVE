@@ -16,6 +16,7 @@ struct MainMenuDrawer: View {
     let onNewConversation: () -> Void
     let onShowChats: () -> Void
     let onSignOut: () -> Void
+    var onSearch: (() -> Void)?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @GestureState private var drag: CGFloat = 0
@@ -44,7 +45,7 @@ struct MainMenuDrawer: View {
 
             ZStack(alignment: .topLeading) {
                 if isPresented {
-                    Color.black.opacity(0.18)
+                    Color.backdrop
                         .contentShape(.rect)
                         .onTapGesture(perform: close)
                         .accessibilityLabel("Menu sluiten")
@@ -53,6 +54,8 @@ struct MainMenuDrawer: View {
 
                     panel(insets: insets, isBeside: isBeside, menuButton: menuButtonFrame.isEmpty ? nil : menuButton)
                         .frame(maxHeight: .infinity)
+                        // Knopmodus: with the menu open a full press closes it; "Ga naar" goes on as always.
+                        .cameraControlMenus("menu", menus: [], press: close)
                         .offset(x: min(0, drag))
                         .gesture(swipeToClose)
                         .transition(reduceMotion ? .opacity : .move(edge: .leading))
@@ -95,7 +98,13 @@ struct MainMenuDrawer: View {
                 close()
             },
             onSignOut: onSignOut,
-            onClose: close
+            onClose: close,
+            onSearch: onSearch.map { search in
+                {
+                    close()
+                    search()
+                }
+            }
         )
         // The content stays clear of the status bar, the home indicator and the rounded screen corners.
         .padding(.leading, Self.inset + insets.leading)
@@ -138,7 +147,7 @@ struct MainMenuDrawer: View {
                 .renderingMode(.template)
                 .foregroundStyle(Color.white)
                 .frame(width: Self.buttonSize, height: Self.buttonSize)
-                .background(Color.paveAccent, in: .circle)
+                .background(Color.paveAccentFill, in: .circle)
                 .contentShape(.circle)
         }
         .buttonStyle(.pave)
@@ -189,10 +198,17 @@ struct MainMenuDrawer: View {
                     onSelect(destination)
                     close()
                 },
-                onSignOut: onSignOut
+                onSignOut: onSignOut,
+                onSearch: onSearch.map { search in
+                    {
+                        close()
+                        search()
+                    }
+                }
             )
             .fixedSize()
-            .position(x: menuButton.midX, y: size.height - max(16, insets.bottom) - 50)
+            // Its middle, so its bottom stays the same distance above the edge with two or three buttons in it.
+            .position(x: menuButton.midX, y: size.height - max(16, insets.bottom) - (onSearch == nil ? 50 : 74))
         }
         .frame(width: size.width, height: size.height, alignment: .topLeading)
     }

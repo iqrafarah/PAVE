@@ -17,6 +17,29 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
         case `import`
     }
 
+    /// The most recent request to confirm the item, as the learner may read it back.
+    public struct ValidationRequest: Equatable, Sendable {
+        public enum Status: String, Sendable {
+            case pending
+            case verified
+            case rejected
+            case cancelled
+        }
+
+        public let status: Status
+        public let organisationName: String
+        public let requestedAt: Date
+        /// The reviewer's reason; required when a request is rejected.
+        public let response: String?
+
+        public init(status: Status, organisationName: String, requestedAt: Date, response: String? = nil) {
+            self.status = status
+            self.organisationName = organisationName
+            self.requestedAt = requestedAt
+            self.response = response
+        }
+    }
+
     public struct File: Identifiable, Equatable, Sendable {
         public let id: String
         public let name: String
@@ -56,6 +79,9 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
     public var updatedAt: Date
     /// Its place in "Eigen volgorde", once you dragged your evidence into an order of your own.
     public var position: Int?
+    /// "Archiveren": out of the vault, kept until it is put back or deleted. Not shared meanwhile.
+    public var archivedAt: Date?
+    public var lastRequest: ValidationRequest?
 
     public init(
         id: String,
@@ -76,7 +102,8 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
         aylaAllowedAt: Date? = nil,
         createdAt: Date = .now,
         updatedAt: Date = .now,
-        position: Int? = nil
+        position: Int? = nil,
+        lastRequest: ValidationRequest? = nil
     ) {
         self.id = id
         self.position = position
@@ -97,6 +124,20 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
         self.aylaAllowedAt = aylaAllowedAt
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.lastRequest = lastRequest
+    }
+
+    /// A request is open: shown as "In afwachting", and a new request cannot be sent until it is decided.
+    public var isAwaitingReview: Bool {
+        status == .toVerify && lastRequest?.status == .pending
+    }
+
+    /// Why the item was rejected, while it still is.
+    public var rejectionReason: String? {
+        guard status == .rejected, lastRequest?.status == .rejected,
+              let reason = lastRequest?.response?.trimmingCharacters(in: .whitespacesAndNewlines), !reason.isEmpty
+        else { return nil }
+        return reason
     }
 
     /// Every item can be changed, but a confirmed one is then no longer confirmed: it has to be confirmed again.
@@ -131,6 +172,11 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
     public func sortDay(today: VaultDay) -> VaultDay {
         issuedOn ?? (isCurrent ? today : endDate ?? startDate) ?? VaultDay(createdAt)
     }
+
+    /// The name of the first evidence file (not the logo or cover): its kind shows in the badge when there is no logo.
+    public var firstDocumentName: String? {
+        files.first { $0.role == .document }?.name
+    }
 }
 
 /// A folder the user made. An item can sit in one folder and keeps its category.
@@ -141,24 +187,38 @@ public struct VaultFolder: Identifiable, Equatable, Sendable {
     public var color: VaultFolderColor?
     public var icon: VaultFolderIcon?
     public let createdAt: Date
+    /// "Vastgezet": pinned folders come first in the folder row.
+    public var pinnedAt: Date?
 
-    public init(id: String, name: String, color: VaultFolderColor? = nil, icon: VaultFolderIcon? = nil, createdAt: Date = .now) {
+    public var isPinned: Bool { pinnedAt != nil }
+
+    public init(
+        id: String, name: String, color: VaultFolderColor? = nil, icon: VaultFolderIcon? = nil, createdAt: Date = .now, pinnedAt: Date? = nil
+    ) {
         self.id = id
         self.name = name
         self.color = color
         self.icon = icon
         self.createdAt = createdAt
+        self.pinnedAt = pinnedAt
     }
 
     public static let maximumNameLength = 100
 }
 
 public struct VaultContents: Equatable, Sendable {
+    /// What is in the vault; archived evidence is in `archived` instead.
     public var items: [VaultItem]
     public var folders: [VaultFolder]
+    /// The archive, the most recently archived first.
+    public var archived: [VaultItem]
+    /// False before the migration with the archive (20261120120000).
+    public var canArchive: Bool
 
-    public init(items: [VaultItem] = [], folders: [VaultFolder] = []) {
+    public init(items: [VaultItem] = [], folders: [VaultFolder] = [], archived: [VaultItem] = [], canArchive: Bool = false) {
         self.items = items
         self.folders = folders
+        self.archived = archived
+        self.canArchive = canArchive
     }
 }

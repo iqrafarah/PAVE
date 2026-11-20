@@ -7,7 +7,7 @@ struct SettingsAppearanceScreen: View {
     @Environment(ProfileModel.self) private var profile
 
     var body: some View {
-        SettingsPage(title: SettingsMessages.appearance) {
+        SettingsPage(title: SettingsMessages.appearance, cameraMenus: cameraMenus) {
             card(SettingsMessages.themeColor) {
                 ThemeColorPicker(selection: profile.theme, customColor: profile.customColor) { theme in
                     Task { await profile.setTheme(theme) }
@@ -16,6 +16,16 @@ struct SettingsAppearanceScreen: View {
                 } onCustomColorDone: {
                     Task { await profile.saveCustomColor() }
                 }
+            }
+            card(SettingsMessages.displayMode) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) { displayModeOptions }
+                    VStack(spacing: 10) { displayModeOptions }
+                }
+                Text("\(SettingsMessages.displayAutoHint) \(profile.savesDisplayMode ? SettingsMessages.displaySynced : SettingsMessages.displayLocal)")
+                    .textStyle(.caption)
+                    .foregroundStyle(Color.inkMuted)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             card(SettingsMessages.vaultLayout) {
                 ViewThatFits(in: .horizontal) {
@@ -43,10 +53,60 @@ struct SettingsAppearanceScreen: View {
         }
     }
 
+    private var displayModeOptions: some View {
+        ForEach(PaveDisplayMode.allCases) { mode in
+            SettingsOptionCard(title: SettingsMessages.title(mode), isSelected: profile.displayMode == mode) {
+                Image(systemName: Self.symbol(mode))
+                .font(.system(size: 20, weight: .semibold))
+                .accessibilityHidden(true)
+            } action: {
+                Task { await profile.setDisplayMode(mode) }
+            }
+        }
+    }
+
+    private static func symbol(_ mode: PaveDisplayMode) -> String {
+        switch mode {
+        case .auto: "circle.lefthalf.filled"
+        case .light: "sun.max.fill"
+        case .dark: "moon.fill"
+        }
+    }
+
     private var vaultLayoutOptions: some View {
         ForEach(PaveVaultLayout.allCases) { layout in
             vaultLayoutOption(layout)
         }
+    }
+
+    /// Knopmodus here: swipe through the colours, text sizes and vault layouts and see PAVE change at once.
+    private var cameraMenus: [CameraMenu] {
+        let themes = PaveThemeColor.presets
+        let sizes = PaveTextSize.allCases
+        let layouts = PaveVaultLayout.allCases
+        let modes = PaveDisplayMode.allCases
+        return [
+            CameraMenu(
+                id: "display-mode", title: "Licht of donker", symbol: "circle.lefthalf.filled", items: modes.map(SettingsMessages.title),
+                selected: modes.firstIndex(of: profile.displayMode) ?? 0,
+                onSwipe: { index in Task { await profile.setDisplayMode(modes[index]) } }
+            ),
+            CameraMenu(
+                id: "theme", title: "Thema", symbol: "paintpalette", items: themes.map(SettingsMessages.title),
+                selected: themes.firstIndex(of: profile.theme) ?? 0,
+                onSwipe: { index in Task { await profile.setTheme(themes[index]) } }
+            ),
+            CameraMenu(
+                id: "text-size", title: "Tekstgrootte", symbol: "textformat.size", items: sizes.map(SettingsMessages.title),
+                selected: sizes.firstIndex(of: profile.textSize) ?? 0,
+                onSwipe: { index in Task { await profile.setTextSize(sizes[index]) } }
+            ),
+            CameraMenu(
+                id: "vault-layout", title: "Kluisweergave", symbol: "square.grid.2x2", items: layouts.map(SettingsMessages.title),
+                selected: layouts.firstIndex(of: profile.vaultLayout) ?? 0,
+                onSwipe: { index in Task { await profile.setVaultLayout(layouts[index]) } }
+            ),
+        ]
     }
 
     private func vaultLayoutOption(_ layout: PaveVaultLayout) -> some View {
@@ -81,6 +141,6 @@ struct SettingsAppearanceScreen: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white, in: .rect(cornerRadius: 14))
+        .background(Color.panel, in: .rect(cornerRadius: 14))
     }
 }

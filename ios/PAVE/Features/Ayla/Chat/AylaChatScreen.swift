@@ -16,7 +16,9 @@ struct AylaChatScreen: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.hidesScreenButtons) private var hidesScreenButtons
     @Environment(VaultModel.self) private var vault: VaultModel?
-    @Environment(\.openFromAyla) private var openFromAyla
+    @Environment(AppState.self) private var appState
+    @Environment(NotificationsModel.self) private var notifications: NotificationsModel?
+    @Environment(ProfileModel.self) private var profile: ProfileModel?
     /// Adding evidence after Ja to Ayla's "Wil je iets toevoegen?", filled with what she proposed.
     @State private var addEvidence: VaultAddEvidenceModel?
     @State private var dictation = SpeechDictation()
@@ -94,6 +96,11 @@ struct AylaChatScreen: View {
     /// What a button of the chat does once that sheet has slid away: the menu and the chats open over the chat,
     /// never under a sheet.
     @State private var afterShelf: (() -> Void)?
+    /// Ayla's answer shows on top of the page that is open, until it is tapped or dragged away.
+    @State private var showsShelfReply = false
+    /// What Ayla says after doing something in the app herself; it is not part of the conversation.
+    @State private var localReply: String?
+    @State private var pageDriver = AylaPageDriver()
     /// The wave of blocks after something went into the vault, and the save that is busy after a yes in words.
     @State private var waveStartedAt: Date?
     @State private var isSavingForUser = false
@@ -112,6 +119,7 @@ struct AylaChatScreen: View {
     @State private var itemPhotoItems: [PhotosPickerItem] = []
     @State private var mutedForPhotos = false
     @State private var isAddingItemPhotos = false
+    @Environment(PaveCameraControl.self) private var cameraControl: PaveCameraControl?
     @Environment(\.toolbarIsBeside) private var toolbarIsBeside
 
     private var openVacancies: [Vacancy]? {
@@ -138,6 +146,8 @@ struct AylaChatScreen: View {
                         )
                     }
                     .ignoresSafeArea()
+                    // A page over the chat: Ayla steps back, and only the glow along the page's edge shows her.
+                    .opacity(shelf == nil ? 1 : 0)
                 }
 
                 content(
@@ -195,11 +205,20 @@ struct AylaChatScreen: View {
         .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.4), value: shelf)
         .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.35, bounce: 0.18), value: isAttachMenuOpen)
         .toolbar { toolbar }
+        .cameraControlMenus("chat", menus: cameraMenus, press: isTalking ? { stopVoice() } : nil)
         .photosPicker(isPresented: $isChoosingPhotos, selection: $photoItems, maxSelectionCount: max(1, AylaAttachment.maxCount - model.attachments.count), matching: .images, preferredItemEncoding: .compatible)
         .onChange(of: photoItems) { _, items in
             guard !items.isEmpty else { return }
             photoItems = []
             Task { await addPhotos(items) }
+        }
+        // Asked to open a page: at once when you asked for it, a moment after her answer when she points to it.
+        .task(id: model.screenRequest?.id) {
+            guard let request = model.screenRequest else { return }
+            if model.isAnswering == false { try? await Task.sleep(for: .milliseconds(600)) }
+            guard !Task.isCancelled else { return }
+            openPage(request.navigation)
+            showsShelfReply = true
         }
         // The places from the start chips, as they are in the app: up from the bottom, pulled up to the full screen,
         // swiped away, with the chat still there behind them. The vault is the vault itself.
@@ -208,7 +227,34 @@ struct AylaChatScreen: View {
             afterShelf = nil
         }) { shelf in
             Group {
-                if shelf == .vault {
+                if shelf == .settings {
+                    SettingsScreen(name: model.firstName, onShowMenu: nil, onSignOut: appState.signOut)
+                        .environment(model)
+                        .environment(\.openAylaChat) { chat in
+                            closeShelf()
+                            Task { await model.open(chat) }
+                        }
+                        .environment(vault)
+                } else if shelf == .notifications, let notifications {
+                    // The notifications themselves, as in the menu: "open meldingen" shows what is really there.
+                    NotificationsScreen(
+                        onShowMenu: nil,
+                        audience: notifications.audience,
+                        notifications: notifications.notifications,
+                        loadError: notifications.problem,
+                        onRefresh: { await notifications.refresh() },
+                        onMarkRead: { await notifications.markRead($0) },
+                        onOpenConversation: openChatFromNotification,
+                        onOpenVerifiedEvidence: { id in
+                            vault?.itemToOpen = id
+                            openShelf(.vault)
+                        },
+                        onLoadReview: { await notifications.review($0) },
+                        onResolveRequest: { await notifications.resolve($0, action: $1, response: $2) },
+                        onDelete: { await notifications.delete($0) },
+                        onRestore: { await notifications.restore($0) }
+                    )
+                } else if shelf == .vault {
                     if let vault {
                         VaultScreen(onShowMenu: nil)
                             .environment(vault)
@@ -225,13 +271,37 @@ struct AylaChatScreen: View {
                             .padding(.top, 28)
                             .padding(.bottom, 24)
                     }
-                    .background(Color.white.ignoresSafeArea(edges: .bottom))
+                    .background(Color.panel.ignoresSafeArea(edges: .bottom))
                 }
             }
+            .environment(pageDriver)
+            // Keep talking with Ayla while the page is open: her answer shows on top of the page.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                AylaShelfComposer(text: $model.draft, place: shelf.title, isAnswering: model.isAnswering) {
+                    showsShelfReply = true
+                    send()
+                }
+            }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                // While talking the bubble follows "Tekst bij de stem" in Settings: off means her voice and the glow only.
+                if showsShelfReply, !isTalking || showsVoiceText, let reply = shelfReply {
+                    AylaShelfReply(text: reply.text, choices: reply.choices, onChoose: { choose($0) }) {
+                        showsShelfReply = false
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+            .overlay {
+                if let voice, isTalking {
+                    AylaVoiceEdgeGlow(mode: orbMode(voice.state), meter: voice.meter)
+                }
+            }
+            .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.4, bounce: 0.15), value: showsShelfReply)
+            .animation(.easeOut(duration: 0.2), value: model.phase)
             .presentationDetents([.fraction(0.62), .large], selection: $vaultDetent)
             .presentationDragIndicator(.visible)
             .presentationBackgroundInteraction(.enabled)
-            .paveSheet(background: shelf == .vault ? .canvas : .white, clipsToColumn: shelf != .vault)
+            .paveSheet(background: shelf.isFullPage ? .canvas : .panel, clipsToColumn: !shelf.isFullPage)
         }
         .photosPicker(
             isPresented: Binding(get: { photosForItemID != nil }, set: { if !$0 { itemPhotosClosed() } }),
@@ -253,9 +323,10 @@ struct AylaChatScreen: View {
             if let vault {
                 AylaVaultSelectionSheet { items in model.attach(items) }
                     .environment(vault)
-                    .paveSheet(background: .white)
+                    .paveSheet(background: .panel)
             }
         }
+        .onAppear { model.appCommand = { runAppCommand($0) } }
         .task {
             guard let vault else { return }
             model.analyzeEvidence = { uploads in
@@ -273,12 +344,15 @@ struct AylaChatScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
         .onChange(of: model.entries.last?.id) {
+            // A new answer from Ayla replaces what she said about something she did in the app.
+            localReply = nil
             guard !isVoiceActive, let last = model.entries.last, last.role == .ayla, !Self.vacancies(in: last).isEmpty else { return }
             closeShelf()
             openVacanciesID = last.id
         }
         .onChange(of: model.conversationID) { old, _ in
-            shelf = nil
+            // A new conversation getting its id while Ayla answers is still the same chat: the page stays open.
+            if !model.isAnswering { shelf = nil }
             dictation.stop()
             readAloud.stop()
             isAttachMenuOpen = false
@@ -466,6 +540,7 @@ struct AylaChatScreen: View {
                 .contentShape(.rect)
                 .gesture(orbDragGesture, isEnabled: canDragOrb)
                 .allowsHitTesting(!orbMotion.isLow)
+                .opacity(shelf == nil ? 1 : 0)
                 // Down to the voice bar: the room for the small orb is only for when it is small.
                 .padding(.bottom, voiceBarHeight + bottomGap)
                 .transition(.opacity)
@@ -476,7 +551,19 @@ struct AylaChatScreen: View {
 
     @ViewBuilder
     private func conversation(height: CGFloat, bottomMargin: CGFloat) -> some View {
-        if model.entries.isEmpty, !model.isLoadingConversation {
+        if model.entries.isEmpty, !model.isLoadingConversation, let project = model.openProject {
+            // The start page of a project: its chats and sources, and the text field below starts a chat in it.
+            ScrollView {
+                AylaProjectStart(project: project, model: model) { chat in
+                    Task { await model.open(chat) }
+                }
+                .opacity(isTalking ? 0 : 1)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .scrollDismissesKeyboard(.interactively)
+            .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: bottomMargin) }
+            .transition(.opacity)
+        } else if model.entries.isEmpty, !model.isLoadingConversation {
             ScrollView {
                 AylaWelcome(firstName: model.firstName, isAvailable: model.isAvailable, isTyping: model.isGreetingReady, onStarter: openShelf)
                     .padding(.top, (height * 0.174).rounded())
@@ -605,9 +692,9 @@ struct AylaChatScreen: View {
                 // Adding evidence opens from Ja under the question; the vault, an item in it and the settings open from a
                 // button, like on the web; other parts of PAVE are not in the app yet.
                 if let navigation = entry.reply?.navigation, navigation.screen != .chat, navigation.screen != .addEvidence {
-                    if let openFromAyla, AylaNavigationButton.canOpen(navigation.screen) {
+                    if AylaNavigationButton.canOpen(navigation.screen) {
                         AylaNavigationButton(navigation: navigation, itemTitle: itemTitle(navigation.itemId)) {
-                            openFromAyla(navigation)
+                            openPage(navigation)
                         }
                     } else {
                         Text("Dit onderdeel komt later in de app.")
@@ -799,7 +886,7 @@ struct AylaChatScreen: View {
             icon: { voice.icon(at: $0) },
             position: position
         )
-            .opacity(isOrbHidden ? 0 : 1)
+            .opacity(isOrbHidden || shelf != nil ? 0 : 1)
             // Fades in while the intro's blocks fade out.
             .animation(isOrbHidden ? nil : .easeOut(duration: 0.3), value: isOrbHidden)
             .contentShape(.circle)
@@ -860,7 +947,7 @@ struct AylaChatScreen: View {
                         isAboutVault: model.pendingOffersEvidence,
                         picked: headAnswer.flatMap { isYes in
                             voiceChoices.first { isYes ? AylaVaultOffer.isYes($0.label) : AylaVaultOffer.isNo($0.label) }?.id
-                        }
+                        } ?? buttonAnswerID
                     ) { choice in
                         chooseWhileTalking(choice)
                     }
@@ -950,7 +1037,7 @@ struct AylaChatScreen: View {
                     isAboutVault: model.pendingOffersEvidence,
                     picked: headAnswer.flatMap { isYes in
                         question.choices.first { isYes ? AylaVaultOffer.isYes($0.label) : AylaVaultOffer.isNo($0.label) }?.id
-                    }
+                    } ?? buttonAnswerID
                 ) { choice in
                     choose(choice.label)
                 }
@@ -960,6 +1047,13 @@ struct AylaChatScreen: View {
             } else {
                 if let title = model.contextTitle, !isVoiceActive {
                     AylaContextChip(title: title) { model.clearContext() }
+                        .padding(.leading, 33)
+                        .padding(.bottom, 8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .transition(.opacity)
+                }
+                if let project = model.newChatProject, !isVoiceActive {
+                    AylaProjectChip(name: project.name) { model.newConversation() }
                         .padding(.leading, 33)
                         .padding(.bottom, 8)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -996,6 +1090,13 @@ struct AylaChatScreen: View {
                 }
                 .padding(.leading, 33)
                 .padding(.trailing, 31)
+                if !isVoiceActive {
+                    Text(AylaMessages.disclaimer)
+                        .textStyle(.caption)
+                        .foregroundStyle(Color.inkMuted)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 6)
+                }
             }
         }
     }
@@ -1013,7 +1114,7 @@ struct AylaChatScreen: View {
     }
 
     private func placeholderColor(sheetOpen: Bool) -> Color {
-        if sheetOpen { return Color.black.opacity(0.41) }
+        if sheetOpen { return Color.inkMuted.opacity(0.7) }
         return model.phase == .idle || model.phase == .writing ? Color.inkMuted.opacity(0.41) : Color.white.opacity(0.41)
     }
 
@@ -1251,6 +1352,59 @@ struct AylaChatScreen: View {
         return Self.vacancies(in: last)
     }
 
+    /// Knopmodus in the chat: Ayla's answer choices, the vacancies under the orb, and your recent chats. A full press
+    /// answers, asks about the vacancy or opens the chat; without a choice it ends a spoken conversation.
+    private var cameraMenus: [CameraMenu] {
+        var menus: [CameraMenu] = []
+        let choices: [AylaChoice] = isTalking ? voiceChoices : (model.pendingQuestion?.choices.map { AylaChoice(id: $0.id, label: $0.label) } ?? [])
+        if choices.count >= 2 {
+            menus.append(CameraMenu(id: "answer", title: "Antwoord", symbol: "checkmark.bubble", items: choices.map(\.label), keys: choices.map(\.id), onPress: { index in
+                guard choices.indices.contains(index) else { return }
+                answerByButton(choices[index])
+            }))
+        }
+        let vacancies = voiceVacancies
+        if browsesByHead, !vacancies.isEmpty {
+            menus.append(CameraMenu(
+                id: "vacancies", title: "Vacature", symbol: "briefcase", items: vacancies.map(\.title), selected: vacancyIndex,
+                onSwipe: { index in withAnimation(.snappy(duration: 0.25)) { vacancyIndex = index } },
+                onPress: { index in
+                    vacancyIndex = index
+                    chooseVacancy()
+                }
+            ))
+        }
+        if let reply = model.lastReply, reply.proposedAction?.vaultItem != nil, reply.accessRequest == nil, !model.addedReplies.contains(reply.id) {
+            menus.append(CameraMenu(id: "concept", title: "Bewijs", symbol: "doc.badge.plus", items: [AylaMessages.conceptAdd], onPress: { _ in
+                openProposedEvidence(from: reply)
+            }))
+        }
+        let chats = Array(model.conversationList.visible.sorted { $0.updatedAt > $1.updatedAt }.prefix(8))
+        if !chats.isEmpty, !isTalking {
+            menus.append(CameraMenu(id: "chats", title: "Chats", symbol: "bubble.left.and.bubble.right", items: chats.map { $0.title.isEmpty ? "Gesprek" : $0.title }, keys: chats.map(\.id), onPress: { index in
+                guard chats.indices.contains(index) else { return }
+                Task { await model.open(chats[index]) }
+            }))
+        }
+        return menus
+    }
+
+    /// The answer the Camera Control button rests on, lit up in the choices until a full press sends it.
+    private var buttonAnswerID: String? {
+        cameraControl?.highlight.flatMap { $0.menu == "answer" ? $0.key : nil }
+    }
+
+    /// An answer chosen with the Camera Control button: the same as tapping it.
+    private func answerByButton(_ choice: AylaChoice) {
+        if isTalking {
+            chooseWhileTalking(choice)
+        } else if AylaVaultOffer.isYes(choice.label) || AylaVaultOffer.isNo(choice.label) {
+            answerYesNo(AylaVaultOffer.isYes(choice.label), byHead: false)
+        } else {
+            choose(choice.label)
+        }
+    }
+
     /// Ayla's choices in place of the voice bar while she asks for one, even while she is still saying it: the same
     /// as under the chat (also when the chat shows the question on the evidence card, which the orb covers), or Ja and
     /// Nee for a question in her words that asks for one of them.
@@ -1353,7 +1507,22 @@ struct AylaChatScreen: View {
     }
 
     private func send(_ text: String? = nil) {
+        // Nothing but "open kluis": the page opens, and Ayla does not answer on top of that.
+        if text == nil, !model.isAnswering, model.attachments.isEmpty, let screen = AylaScreenRequest.screenOnlyAsked(in: model.draft) {
+            dictation.stop()
+            isComposerFocused = false
+            model.draft = ""
+            showsShelfReply = false
+            openPage(AylaReply.Navigation(screen: screen))
+            return
+        }
+        // Something she does in the app herself needs no answer, and mostly no connection either.
+        if text == nil, model.attachments.isEmpty, runAppCommand(model.draft) != nil {
+            model.draft = ""
+            return
+        }
         guard connection.isOnline, !isSavingForUser else { return }
+        localReply = nil
         dictation.stop()
         isComposerFocused = false
         let message = text ?? model.draft
@@ -1698,12 +1867,138 @@ struct AylaChatScreen: View {
         PaveHaptics.selection()
         if let shelf { model.hideScreen(shelf.screen) }
         openVacanciesID = nil
-        vaultDetent = .fraction(0.62)
+        vaultDetent = .large
         shelf = next
         model.showScreen(next.screen)
     }
 
+    /// A page Ayla opens, from her answer or the button under it: over the chat, like the start chips, so the
+    /// conversation stays where it is. A vault item opens inside the vault.
+    private func openPage(_ navigation: AylaReply.Navigation) {
+        guard let place = AylaShelf(navigation.screen) else { return }
+        if navigation.screen == .vaultItem, let id = navigation.itemId { vault?.itemToOpen = id }
+        if shelf == place { return }
+        openShelf(place)
+    }
+
+    /// What the card on top of an open page says: nothing yet while Ayla thinks, then her answer as it comes in.
+    private var shelfReply: (text: String?, choices: [String])? {
+        if let localReply, !model.isAnswering { return (localReply, []) }
+        if model.phase == .thinking { return (nil, []) }
+        guard let last = model.entries.last, last.role == .ayla else { return nil }
+        let choices = model.isAnswering ? [] : (model.question(for: last)?.choices.map(\.label) ?? [])
+        return (last.text, choices)
+    }
+
+    /// "Zet het thema op blauw", "open de map Stages", "ga terug": Ayla does it in the app, where you can see it.
+    /// Returns what she says, or nil when the words are not something to do here.
+    private func runAppCommand(_ text: String) -> String? {
+        guard addEvidence == nil, !isSavingForUser else { return nil }
+        let folders = vault?.folders.map { AylaAppCommand.Named(id: $0.id, name: $0.name) } ?? []
+        let items = vault?.items.map { AylaAppCommand.Named(id: $0.id, name: $0.title) } ?? []
+        guard let command = AylaAppCommand.command(in: text, folders: folders, items: items, inSettings: shelf == .settings) else { return nil }
+        if command == .back || command == .close, shelf == nil { return nil }
+        switch command {
+        case .theme, .textSize, .textSizeStep, .vaultLayout, .displayMode:
+            if profile == nil { return nil }
+        default:
+            break
+        }
+        dictation.stop()
+        isComposerFocused = false
+        let said = perform(command)
+        localReply = command.changesSomething ? said : nil
+        showsShelfReply = command.changesSomething
+        // Typed, the change is only seen; VoiceOver hears it. Spoken, Ayla says it herself.
+        if !isTalking { AccessibilityNotification.Announcement(said).post() }
+        return said
+    }
+
+    private func perform(_ command: AylaAppCommand) -> String {
+        switch command {
+        case .settingsPage(let page):
+            let destination = SettingsScreen.SettingsDestination(rawValue: page.rawValue) ?? .appearance
+            inSettings(destination) {}
+            return "Ik open \(destination.title)."
+        case .theme(let theme):
+            inSettings(.appearance) { await profile?.setTheme(theme) }
+            return "Je thema is nu \(SettingsMessages.title(theme).lowercased())."
+        case .textSize(let size):
+            inSettings(.appearance) { await profile?.setTextSize(size) }
+            return "Je tekst staat nu op \(SettingsMessages.title(size).lowercased())."
+        case .textSizeStep(let step):
+            let sizes = PaveTextSize.allCases
+            let now = sizes.firstIndex(of: profile?.textSize ?? .standard) ?? 1
+            let next = sizes[min(max(now + step, 0), sizes.count - 1)]
+            guard next != sizes[now] else {
+                inSettings(.appearance) {}
+                return step > 0 ? "Je tekst staat al op de grootste stand." : "Je tekst staat al op de kleinste stand."
+            }
+            inSettings(.appearance) { await profile?.setTextSize(next) }
+            return "Je tekst staat nu op \(SettingsMessages.title(next).lowercased())."
+        case .displayMode(let mode):
+            inSettings(.appearance) { await profile?.setDisplayMode(mode) }
+            return switch mode {
+            case .auto: "PAVE volgt nu de instelling van je apparaat."
+            case .light: "PAVE is nu licht."
+            case .dark: "PAVE is nu donker."
+            }
+        case .vaultLayout(let layout):
+            inSettings(.appearance) { await profile?.setVaultLayout(layout) }
+            return "Je kluis opent nu als \(layout == .list ? "lijst" : "raster")."
+        case .voiceText(let isOn):
+            inSettings(.ayla) { showsVoiceText = isOn }
+            return "Tekst bij praten met Ayla staat nu \(isOn ? "aan" : "uit")."
+        case .chatsInSearch(let isOn):
+            inSettings(.privacy) { UserDefaults.standard.set(isOn, forKey: AylaSpotlight.settingKey) }
+            return isOn ? "Je chats zijn nu vindbaar in iPhone-zoeken." : "Je chats zijn niet meer vindbaar in iPhone-zoeken."
+        case .vaultFolder(let id):
+            openPage(AylaReply.Navigation(screen: .vault))
+            pageDriver.vaultFolderID = id
+            return "Ik open de map \(vault?.folders.first { $0.id == id }?.name ?? "")."
+        case .vaultItem(let id):
+            openPage(AylaReply.Navigation(screen: .vaultItem, itemId: id))
+            return "Ik open \(vault?.items.first { $0.id == id }?.title ?? "het")."
+        case .back:
+            // Nothing to go back from: the page itself closes.
+            let depth = shelf == .settings ? pageDriver.settingsDepth : shelf == .vault ? pageDriver.vaultDepth : 0
+            guard depth > 0 else {
+                closeShelf()
+                return "Ik sluit het."
+            }
+            PaveHaptics.selection()
+            pageDriver.backSteps += 1
+            return "Ik ga een stap terug."
+        case .close:
+            closeShelf()
+            return "Ik sluit het."
+        }
+    }
+
+    /// Opens Instellingen on the right page and then makes the change, a moment apart, so you see Ayla do it.
+    private func inSettings(_ page: SettingsScreen.SettingsDestination, change: @escaping () async -> Void) {
+        let wasOpen = shelf == .settings
+        openPage(AylaReply.Navigation(screen: .settings))
+        pageDriver.settingsPage = page
+        Task {
+            try? await Task.sleep(for: .milliseconds(wasOpen ? 700 : 1300))
+            await change()
+            PaveHaptics.success()
+        }
+    }
+
+    /// A chat from a notification: the panel closes and the chat opens, a locked one only through the PIN.
+    private func openChatFromNotification(_ id: String) {
+        let known = model.conversationList.conversations.first { $0.id == id }
+        if let known, (known.isLocked && !model.showsLockedChats) || known.isArchived { return }
+        closingShelf {
+            Task { await model.open(known ?? AylaConversation(id: id, title: "", updatedAt: .now)) }
+        }
+    }
+
     private func closeShelf() {
+        showsShelfReply = false
+        localReply = nil
         guard let shelf else { return }
         model.hideScreen(shelf.screen)
         self.shelf = nil

@@ -109,7 +109,7 @@ struct ProfileAccountSection: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(12)
-        .background(Color.white, in: .rect(cornerRadius: 14))
+        .background(Color.panel, in: .rect(cornerRadius: 14))
     }
 
     private var nameField: some View {
@@ -144,7 +144,7 @@ struct ProfileAccountSection: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(12)
-        .background(Color.white, in: .rect(cornerRadius: 14))
+        .background(Color.panel, in: .rect(cornerRadius: 14))
         .animation(.snappy(duration: 0.2), value: nameChanged)
     }
 
@@ -172,7 +172,7 @@ struct ProfileAccountSection: View {
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.white, in: .rect(cornerRadius: 14))
+            .background(Color.panel, in: .rect(cornerRadius: 14))
         }
     }
 

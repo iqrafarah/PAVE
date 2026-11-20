@@ -3,6 +3,16 @@
     {
       "filename": "IconBuilding.svg",
       "idiom": "universal"
+    },
+    {
+      "appearances": [
+        {
+          "appearance": "luminosity",
+          "value": "dark"
+        }
+      ],
+      "filename": "IconBuilding-dark.svg",
+      "idiom": "universal"
     }
   ],
   "info": {

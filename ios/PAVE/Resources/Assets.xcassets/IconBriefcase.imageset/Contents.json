@@ -3,6 +3,16 @@
     {
       "filename": "IconBriefcase.svg",
       "idiom": "universal"
+    },
+    {
+      "appearances": [
+        {
+          "appearance": "luminosity",
+          "value": "dark"
+        }
+      ],
+      "filename": "IconBriefcase-dark.svg",
+      "idiom": "universal"
     }
   ],
   "info": {

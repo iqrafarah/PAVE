@@ -23,7 +23,8 @@ struct RootView: View {
                     service: AylaServiceFactory.make(auth: appState.authService),
                     vaultService: VaultServiceFactory.make(auth: appState.authService),
                     devicesService: DevicesServiceFactory.make(auth: appState.authService),
-                    profileService: ProfileServiceFactory.make(auth: appState.authService)
+                    profileService: ProfileServiceFactory.make(auth: appState.authService),
+                    notificationsService: NotificationsServiceFactory.make(auth: appState.authService)
                 )
                     // Back after being away too long: the PIN screen over the app, which stays as it was.
                     .overlay {
@@ -38,6 +39,11 @@ struct RootView: View {
         .environment(\.paveAccentColor, Color.paveAccent)
         .environment(\.paveOrbPalette, PaveAppearance.orbPalette)
         .tint(Color.paveAccent)
+        .onChange(of: appState.phase) { _, phase in
+            if phase != .signedOut { PaveThemeStore.shared.usesEduID = false }
+        }
+        // Licht or Donker as chosen in Instellingen, from the very first screen.
+        .onAppear { PaveAppearance.apply(PaveAppearance.displayMode) }
         .animation(.easeInOut(duration: 0.4), value: appState.phase)
         .animation(.easeOut(duration: 0.2), value: appState.isRelocked)
         // In the app switcher and under Control Center only the logo shows.

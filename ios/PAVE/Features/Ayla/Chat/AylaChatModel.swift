@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import PAVECore
+import SwiftUI
 
 @Observable
 final class AylaChatModel {
@@ -35,6 +36,16 @@ final class AylaChatModel {
     private(set) var contextTitle: String?
     private(set) var phase = Phase.idle
     private(set) var conversationID: String?
+    /// A page Ayla opens over the chat after her answer ("open mijn kluis"), as on the web; the id is her answer's.
+    struct ScreenRequest: Equatable {
+        let id: String
+        let navigation: AylaReply.Navigation
+    }
+    private(set) var screenRequest: ScreenRequest?
+    private var opensPageAlready = false
+
+    /// "Nieuwe chat in project": the next question starts the conversation inside this project.
+    private(set) var newChatProject: AylaProject?
     private(set) var firstName: String?
 
     /// The name changed in Instellingen: the welcome and the menu use it at once.
@@ -56,6 +67,7 @@ final class AylaChatModel {
     private(set) var conversationLimit = 50
     /// Conversations that were just deleted and can still be brought back (`undoDeletion`).
     private(set) var pendingDeletion: [AylaConversation] = []
+    @ObservationIgnored private var lastExpiryCheck: Date?
     @ObservationIgnored private var deletionTask: Task<Void, Never>?
     @ObservationIgnored private var refreshAgain = false
     private let undoWindow: Duration
@@ -237,7 +249,15 @@ final class AylaChatModel {
     /// Ayla is thinking or writing; the send button is a stop button meanwhile.
     var isAnswering: Bool { phase == .thinking || phase == .writing }
 
+    /// Something Ayla does in the app herself ("zet het thema op blauw"): the screen carries it out and returns what
+    /// she says, or nil when the words are a question for Ayla after all.
+    @ObservationIgnored var appCommand: ((String) -> String?)?
+
     func send(_ text: String) {
+        if !isAnswering, attachments.isEmpty, appCommand?(text) != nil {
+            draft = ""
+            return
+        }
         guard let turn = prepare(text, input: .text) else { return }
         answerTask = Task { await stream(turn) }
     }
@@ -250,6 +270,10 @@ final class AylaChatModel {
     /// Sends a question and waits for Ayla's answer, for the voice conversation. Nil when it failed;
     /// the chat then shows what went wrong, just like after a typed question.
     func ask(_ text: String, input: AylaInput) async -> AylaReply? {
+        // Spoken, she says what she did; nothing goes to the brain.
+        if !isAnswering, attachments.isEmpty, let said = appCommand?(text) {
+            return AylaReply(id: UUID().uuidString, conversationId: conversationID ?? "", text: said)
+        }
         guard let turn = prepare(text, input: input) else { return nil }
         return await complete(turn)
     }
@@ -266,6 +290,8 @@ final class AylaChatModel {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let service, !text.isEmpty, !isAnswering else { return nil }
         let files = attachments
+        // "Ja" or "Graag" to her own "Wil je naar je instellingen gaan?" opens that page too.
+        let offered = pendingOffersEvidence || followUp != nil ? nil : AylaScreenRequest.screen(confirmedBy: text, after: entries.last?.reply)
         draft = ""
         attachments = []
         if case .failed = phase, lastQuestion == text, entries.last?.role == .user, entries.last?.attachments == files.map(\.name) {
@@ -275,11 +301,22 @@ final class AylaChatModel {
         }
         lastQuestion = text
         lastFiles = files
+        openProject = nil
+        // "Open instellingen": the page opens at once, while Ayla answers, as on the web.
+        if let navigation = AylaScreenRequest.screen(askedIn: text).map({ AylaReply.Navigation(screen: $0) }) ?? offered {
+            opensPageAlready = true
+            screenRequest = ScreenRequest(id: UUID().uuidString, navigation: navigation)
+        } else {
+            opensPageAlready = false
+        }
         lastUploads = uploads
         sentUploads += files.compactMap { uploads[$0.name] }.filter { upload in !sentUploads.contains(upload) }
         uploads = [:]
         phase = .thinking
-        let request = AylaRequest(conversationId: conversationID, text: text, device: .phone, input: input, context: context, attachments: files)
+        let request = AylaRequest(
+            conversationId: conversationID, text: text, device: .phone, input: input, context: context, attachments: files,
+            projectId: newChatProject?.id
+        )
         return Turn(service: service, request: request, text: text, files: files)
     }
 
@@ -300,6 +337,7 @@ final class AylaChatModel {
                 switch event {
                 case .started(let id):
                     conversationID = id
+                    newChatProject = nil
                     savePendingFiles()
                 case .text(let text):
                     if let writingIndex, entries.indices.contains(writingIndex) {
@@ -320,6 +358,7 @@ final class AylaChatModel {
                     }
                     phase = .idle
                     analyzeEvidenceIfNeeded(for: reply)
+                    openPage(after: reply, asked: turn.text)
                 }
             }
             if Task.isCancelled { phase = .idle }
@@ -352,10 +391,12 @@ final class AylaChatModel {
         do {
             let reply = try await turn.service.send(turn.request)
             conversationID = reply.conversationId
+            newChatProject = nil
             savePendingFiles()
             entries.append(Entry(id: reply.id, role: .ayla, text: reply.text, reply: reply))
             phase = .idle
             analyzeEvidenceIfNeeded(for: reply)
+            openPage(after: reply, asked: turn.text)
             await refreshConversations()
             return reply
         } catch {
@@ -364,6 +405,14 @@ final class AylaChatModel {
             if attachments.isEmpty { attachments = turn.files }
             return nil
         }
+    }
+
+    /// What she points to herself; a page asked for in so many words is already open. One item from the vault still
+    /// opens: only her answer knows which.
+    private func openPage(after reply: AylaReply, asked: String) {
+        guard let navigation = AylaScreenRequest.screenToOpen(after: reply, asked: asked) else { return }
+        if opensPageAlready, navigation.itemId == nil { return }
+        screenRequest = ScreenRequest(id: reply.id, navigation: navigation)
     }
 
     func analysis(for reply: AylaReply?) -> EvidenceAnalysis? {
@@ -471,7 +520,10 @@ final class AylaChatModel {
                 phase = .failed(AylaMessages.redoFailed)
                 return
             }
-            let request = AylaRequest(conversationId: conversationID, text: question.text, device: .phone, input: .text, context: context, attachments: files)
+            let request = AylaRequest(
+                conversationId: conversationID, text: question.text, device: .phone, input: .text, context: context, attachments: files,
+                projectId: newChatProject?.id
+            )
             await stream(Turn(service: service, request: request, text: question.text, files: files))
         }
     }
@@ -531,7 +583,7 @@ final class AylaChatModel {
 
     /// Kluis, Plan or Profiel is open over the chat: questions are about that place, unless they are about one item.
     func showScreen(_ screen: AylaScreen) {
-        guard contextTitle == nil else { return }
+        guard contextTitle == nil, AylaScreenRequest.knownToBrain.contains(screen) else { return }
         context = AylaRequest.Context(screen: screen)
     }
 
@@ -540,8 +592,10 @@ final class AylaChatModel {
         context = nil
     }
 
-    func newConversation() {
+    func newConversation(in project: AylaProject? = nil) {
         guard !isAnswering else { return }
+        openProject = nil
+        newChatProject = project
         clearContext()
         entries = []
         conversationID = nil
@@ -564,6 +618,7 @@ final class AylaChatModel {
     }
 
     func open(_ conversation: AylaConversation) async {
+        openProject = nil
         guard let service, !isAnswering else { return }
         clearContext()
         isLoadingConversation = true
@@ -601,6 +656,11 @@ final class AylaChatModel {
         }
         isLoadingList = true
         defer { isLoadingList = false }
+        // Chats whose time is up go first, for good; at most every ten minutes.
+        if lastExpiryCheck.map({ Date.now.timeIntervalSince($0) > 600 }) ?? true {
+            lastExpiryCheck = .now
+            _ = try? await service.expireChats()
+        }
         repeat {
             refreshAgain = false
             do {
@@ -637,6 +697,40 @@ final class AylaChatModel {
         guard canLoadMore, !isLoadingList else { return }
         conversationLimit += 50
         await refreshConversations()
+    }
+
+    /// Archives chats or puts them back. The list changes at once and goes back if Supabase refuses. The open chat
+    /// starts afresh when it goes into the archive.
+    func setArchived(_ isArchived: Bool, _ conversations: [AylaConversation]) {
+        guard let service, conversationList.canArchive, !conversations.isEmpty else { return }
+        let before = conversationList
+        for conversation in conversations { conversationList.setArchived(isArchived, id: conversation.id) }
+        if isArchived, conversations.contains(where: { $0.id == conversationID }) { newConversation() }
+        Task {
+            do {
+                for conversation in conversations {
+                    try await service.setArchived(isArchived, conversationID: conversation.id)
+                }
+            } catch {
+                conversationList = before
+                chatsProblem = isArchived ? AylaMessages.archiveFailed : AylaMessages.unarchiveFailed
+            }
+        }
+    }
+
+    /// The chat's own choice for when it is deleted.
+    func setExpiry(_ expiry: AylaConversation.Expiry, _ conversation: AylaConversation) {
+        guard let service, conversationList.canArchive, expiry != conversation.expiry else { return }
+        let before = conversationList
+        conversationList.setExpiry(expiry, id: conversation.id)
+        Task {
+            do {
+                try await service.setExpiry(expiry, conversationID: conversation.id)
+            } catch {
+                conversationList = before
+                chatsProblem = AylaMessages.expiryFailed
+            }
+        }
     }
 
     /// Pins or unpins a conversation. The list changes at once and goes back if Supabase refuses.
@@ -733,13 +827,273 @@ final class AylaChatModel {
         }
     }
 
-    /// Messages that contain `text`, with the conversation each is in. Only conversations in the list are shown.
+    // MARK: Projects
+
+    /// "Nieuw project": the list shows it at once; nil when it could not be made.
+    func createProject(name: String, instructions: String, icon: VaultFolderIcon? = nil, color: VaultFolderColor? = nil) async -> AylaProject? {
+        guard let service else { return nil }
+        do {
+            let project = try await service.createProject(
+                name: name, instructions: instructions, icon: icon, color: color, withLook: conversationList.canStyleProjects
+            )
+            conversationList.projects.insert(project, at: 0)
+            PaveHaptics.success()
+            return project
+        } catch {
+            return nil
+        }
+    }
+
+    func updateProject(_ project: AylaProject) async -> Bool {
+        guard let service, let index = conversationList.projects.firstIndex(where: { $0.id == project.id }) else { return false }
+        let before = conversationList
+        let openBefore = openProject
+        conversationList.projects[index] = project
+        if openProject?.id == project.id { openProject = project }
+        do {
+            try await service.updateProject(project, withLook: conversationList.canStyleProjects)
+            PaveHaptics.success()
+            return true
+        } catch {
+            conversationList = before
+            openProject = openBefore
+            return false
+        }
+    }
+
+    func toggleProjectPin(_ project: AylaProject) {
+        guard let service, let index = conversationList.projects.firstIndex(where: { $0.id == project.id }) else { return }
+        let before = conversationList
+        conversationList.projects[index].pinnedAt = project.isPinned ? nil : .now
+        PaveHaptics.tap(.medium)
+        Task {
+            do {
+                try await service.setProjectPinned(!project.isPinned, projectID: project.id)
+            } catch {
+                conversationList = before
+                chatsProblem = AylaMessages.pinFailed
+            }
+        }
+    }
+
+    // MARK: The page of a project
+
+    /// The start page of a project (web /project/<id>): its chats and its sources, with a box to start a chat in it.
+    var openProject: AylaProject?
+    /// The sources of each project that was opened: vault item ids, newest first.
+    private(set) var projectSources: [String: [String]] = [:]
+    /// False until the table of the sources exists (migration 20261119160000); then there is no Bronnen tab.
+    private(set) var canUseSources = true
+    /// Loading, adding or removing a source did not work; the project page says so where it happened.
+    var sourcesProblem: String?
+
+    /// Its sources load when the page shows; while Ayla is still answering the page waits.
+    func openPage(of project: AylaProject) {
+        guard !isAnswering else { return }
+        newConversation(in: project)
+        openProject = project
+    }
+
+    func loadSources(of project: AylaProject) async {
+        guard let service else { return }
+        sourcesProblem = nil
+        do {
+            projectSources[project.id] = try await service.projectSources(projectID: project.id)
+            canUseSources = true
+        } catch AylaError.notSetUp {
+            canUseSources = false
+        } catch {
+            if projectSources[project.id] == nil { projectSources[project.id] = [] }
+            sourcesProblem = AylaMessages.sourcesFailed
+        }
+    }
+
+    func addSources(_ itemIDs: [String], to project: AylaProject) async {
+        guard let service else { return }
+        let known = projectSources[project.id] ?? []
+        let fresh = itemIDs.filter { !known.contains($0) }
+        guard !fresh.isEmpty else { return }
+        projectSources[project.id] = fresh + known
+        do {
+            try await service.addProjectSources(fresh, projectID: project.id)
+            PaveHaptics.success()
+        } catch {
+            projectSources[project.id] = known
+            sourcesProblem = AylaMessages.sourcesFailed
+        }
+    }
+
+    func removeSource(_ itemID: String, from project: AylaProject) {
+        guard let service else { return }
+        let before = projectSources[project.id] ?? []
+        projectSources[project.id] = before.filter { $0 != itemID }
+        Task {
+            do {
+                try await service.removeProjectSource(itemID, projectID: project.id)
+            } catch {
+                projectSources[project.id] = before
+                sourcesProblem = AylaMessages.sourcesFailed
+            }
+        }
+    }
+
+    /// The chats stay; they only no longer belong to a project.
+    func deleteProject(_ project: AylaProject) {
+        guard let service else { return }
+        if openProject?.id == project.id { openProject = nil }
+        let before = conversationList
+        conversationList.projects.removeAll { $0.id == project.id }
+        for chat in conversationList.conversations where chat.projectID == project.id {
+            conversationList.setProject(nil, id: chat.id)
+        }
+        if newChatProject?.id == project.id { newChatProject = nil }
+        PaveHaptics.tap(.heavy)
+        Task {
+            do {
+                try await service.deleteProject(id: project.id)
+            } catch {
+                conversationList = before
+                chatsProblem = AylaMessages.projectFailed
+            }
+        }
+    }
+
+    /// Puts a chat in a project, or takes it out with nil. The list changes at once and goes back if Supabase refuses.
+    func move(_ conversation: AylaConversation, to project: AylaProject?) {
+        guard let service, conversation.projectID != project?.id else { return }
+        let before = conversationList
+        conversationList.setProject(project?.id, id: conversation.id)
+        PaveHaptics.success()
+        AccessibilityNotification.Announcement(project.map { AylaMessages.movedToProject($0.name) } ?? AylaMessages.removedFromProject).post()
+        Task {
+            do {
+                try await service.move(conversationID: conversation.id, toProject: project?.id)
+            } catch {
+                conversationList = before
+                chatsProblem = AylaMessages.moveFailed
+            }
+        }
+    }
+
+    // MARK: Locked chats
+
+    /// The locked chats show while this is true: after the right PIN, until "Nu vergrendelen" or leaving the app.
+    var showsLockedChats = false
+
+    /// "Chat vergrendelen": it leaves the list and the search. The open chat closes, as it now needs the PIN.
+    func setLocked(_ isLocked: Bool, _ conversation: AylaConversation) async -> Bool {
+        guard let service else { return false }
+        do {
+            try await service.setLocked(isLocked, conversationID: conversation.id)
+            conversationList.setLocked(isLocked, id: conversation.id)
+            if isLocked, conversation.id == conversationID { newConversation() }
+            PaveHaptics.success()
+            return true
+        } catch {
+            chatsProblem = isLocked ? AylaMessages.lockFailed : AylaMessages.unlockFailed
+            return false
+        }
+    }
+
+    func chatPinExists() async -> Bool? {
+        guard let service else { return nil }
+        return try? await service.chatPinExists()
+    }
+
+    /// Nil when it worked, otherwise what to tell the user.
+    func setChatPin(_ pin: String) async -> String? {
+        guard let service else { return AylaMessages.pinCodeFailed }
+        do {
+            try await service.setChatPin(pin)
+            return nil
+        } catch {
+            return AylaMessages.pinCodeFailed
+        }
+    }
+
+    /// Nil when the PIN is right; otherwise what to tell the user.
+    func checkChatPin(_ pin: String) async -> String? {
+        guard let service else { return AylaMessages.pinCodeFailed }
+        do {
+            if try await service.checkChatPin(pin) {
+                showsLockedChats = true
+                return nil
+            }
+            return AylaMessages.pinWrong
+        } catch AylaChatPinError.tooManyAttempts {
+            return AylaMessages.pinBlocked
+        } catch {
+            return AylaMessages.pinCodeFailed
+        }
+    }
+
+    /// The current PIN before a new one is chosen, without opening the locked chats; wrong tries count as at the door.
+    func verifyChatPin(_ pin: String) async -> String? {
+        guard let service else { return AylaMessages.pinCodeFailed }
+        do {
+            return try await service.checkChatPin(pin) ? nil : AylaMessages.pinWrong
+        } catch {
+            return Self.pinMessage(for: error)
+        }
+    }
+
+    /// "Pincode wijzigen". Nil when it worked, otherwise what to tell the user.
+    func changeChatPin(from pin: String, to newPin: String) async -> String? {
+        guard let service else { return AylaMessages.pinCodeFailed }
+        do {
+            try await service.changeChatPin(from: pin, to: newPin)
+            return nil
+        } catch {
+            return Self.pinMessage(for: error)
+        }
+    }
+
+    /// "Pincode vergeten" after a fresh code from the authenticator app: a new PIN, and the locked chats stay.
+    func recoverChatPin(_ newPin: String) async -> String? {
+        guard let service else { return AylaMessages.pinCodeFailed }
+        do {
+            try await service.recoverChatPin(newPin)
+            showsLockedChats = true
+            return nil
+        } catch {
+            return Self.pinMessage(for: error)
+        }
+    }
+
+    static func pinMessage(for error: any Error) -> String {
+        switch error {
+        case AylaChatPinError.wrong: AylaMessages.pinWrong
+        case AylaChatPinError.tooManyAttempts: AylaMessages.pinBlocked
+        case AylaChatPinError.needsRecentVerification: AylaMessages.accountPinVerifyAgain
+        case AylaError.notSetUp: AylaMessages.accountPinNotReady
+        default: AylaMessages.pinCodeFailed
+        }
+    }
+
+    /// "Alles verwijderen en opnieuw beginnen": every locked chat is deleted for good, then a new PIN can be chosen.
+    func resetChatPin() async -> Bool {
+        guard let service else { return false }
+        do {
+            try await service.resetChatPin()
+            let locked = Set(conversationList.locked.map(\.id))
+            conversationList.conversations.removeAll { locked.contains($0.id) }
+            if let conversationID, locked.contains(conversationID) { newConversation() }
+            showsLockedChats = false
+            return true
+        } catch {
+            chatsProblem = AylaMessages.pinCodeFailed
+            return false
+        }
+    }
+
+    /// Messages that contain `text`, with the conversation each is in. Only conversations in the list are shown, and
+    /// never a locked one.
     func searchMessages(_ text: String) async -> [(hit: AylaSearchHit, conversation: AylaConversation)] {
         guard let service, let hits = try? await service.searchMessages(text) else { return [] }
         var seen = Set<String>()
         return hits.compactMap { hit in
             guard !seen.contains(hit.conversationID),
-                  let conversation = conversationList.conversations.first(where: { $0.id == hit.conversationID })
+                  let conversation = conversationList.visible.first(where: { $0.id == hit.conversationID })
             else { return nil }
             seen.insert(hit.conversationID)
             return (hit, conversation)

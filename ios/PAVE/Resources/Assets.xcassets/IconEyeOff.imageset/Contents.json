@@ -3,6 +3,16 @@
     {
       "filename": "IconEyeOff.svg",
       "idiom": "universal"
+    },
+    {
+      "appearances": [
+        {
+          "appearance": "luminosity",
+          "value": "dark"
+        }
+      ],
+      "filename": "IconEyeOff-dark.svg",
+      "idiom": "universal"
     }
   ],
   "info": {

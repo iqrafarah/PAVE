@@ -11,7 +11,7 @@ struct VaultAylaFilledBanner: View {
         HStack(alignment: .top, spacing: 14) {
             AylaLetter()
                 .paveIconFrame(36)
-                .background(Color.paveAccent, in: .rect(cornerRadius: 9))
+                .background(Color.paveAccentFill, in: .rect(cornerRadius: 9))
             VStack(alignment: .leading, spacing: 6) {
                 Text(VaultMessages.aylaFilledTitle)
                     .textStyle(.label)

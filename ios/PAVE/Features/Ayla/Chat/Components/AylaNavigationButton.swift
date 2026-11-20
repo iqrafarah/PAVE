@@ -10,19 +10,28 @@ struct AylaNavigationButton: View {
     let onOpen: () -> Void
 
     static func canOpen(_ screen: AylaScreen) -> Bool {
-        [.vault, .vaultItem, .settings].contains(screen)
+        AylaScreenRequest.opensByItself.contains(screen)
     }
 
     private var title: String {
         switch navigation.screen {
         case .vaultItem: itemTitle.map { "Open \($0)" } ?? AylaMessages.openVault
         case .settings: AylaMessages.openSettings
+        case .plans: "Open je plan"
+        case .profile: "Open je profiel"
+        case .notifications: "Open je meldingen"
         default: AylaMessages.openVault
         }
     }
 
     private var icon: ImageResource {
-        navigation.screen == .settings ? .iconSettings : .iconFolderSolid
+        switch navigation.screen {
+        case .settings: .iconSettings
+        case .plans: .iconMap
+        case .profile: .iconPerson
+        case .notifications: .iconBellSolid
+        default: .iconFolderSolid
+        }
     }
 
     var body: some View {
@@ -122,7 +131,7 @@ struct AylaContextChip: View {
         }
         .padding(.leading, 12)
         .padding(.trailing, 2)
-        .background(Color.white, in: .capsule)
+        .background(Color.panel, in: .capsule)
         .overlay { Capsule().strokeBorder(Color.cardBorder, lineWidth: 1) }
     }
 }

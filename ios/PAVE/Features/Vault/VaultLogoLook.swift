@@ -14,7 +14,7 @@ struct VaultLogoLook: Equatable {
             return (image, strongestColor(in: image))
         }.value
         guard let (image, strongest) = found else { return nil }
-        return VaultLogoLook(image: image, tint: strongest.map { Color(uiColor: $0).mix(with: .white, by: 0.78) } ?? .paveSurfaceTint)
+        return VaultLogoLook(image: image, tint: strongest.map { Color(uiColor: $0).mix(with: Color.panel, by: 0.78) } ?? .paveSurfaceTint)
     }
 
     /// The colour that stands out most: white, black and grey count for nothing, and the more saturated and bright a
@@ -61,10 +61,12 @@ struct VaultLogoLook: Equatable {
     }
 }
 
-/// The round avatar of an item: its cover image, or the first letter of the organisation when there is none.
+/// The round avatar of an item: its logo; without one the kind of its file (PDF, Word, text or photo), as on the web;
+/// otherwise the first letter of the organisation.
 struct VaultLogoAvatar: View {
     let look: VaultLogoLook?
     let name: String
+    var fileName: String?
     var size: CGFloat = 44
 
     var body: some View {
@@ -73,11 +75,16 @@ struct VaultLogoAvatar: View {
                 .resizable()
                 .scaledToFill()
                 .frame(width: size, height: size)
-                .background(Color.white)
+                .background(Color.panel)
                 .clipShape(.circle)
                 .overlay { Circle().strokeBorder(Color.cardBorder, lineWidth: 1) }
                 .transition(.opacity)
                 .accessibilityHidden(true)
+        } else if let fileName {
+            VaultFileTypeIcon(kind: .init(fileName: fileName), size: size * 0.6)
+                .frame(width: size, height: size)
+                .background(Color.panel, in: .circle)
+                .overlay { Circle().strokeBorder(Color.cardBorder, lineWidth: 1) }
         } else {
             CompanyMonogram(name: name, size: size)
         }

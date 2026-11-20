@@ -23,7 +23,7 @@ struct VaultFolderHeader: View {
                         .renderingMode(.template)
                         .resizable()
                         .scaledToFit()
-                        .foregroundStyle(.white)
+                        .foregroundStyle(style.color.foreground)
                         .frame(width: 18, height: 18)
                         .offset(y: 2)
                 }

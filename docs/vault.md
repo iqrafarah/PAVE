@@ -103,6 +103,16 @@ Migration `20261112120000_vault_cover_example_folders_reverify.sql`. Run it toge
 - **Folder colours, own colour and pinned folders** (migration `20261119120000_vault_folder_custom_color_and_pin.sql`, not applied; run it together with the iOS team): the colours to choose from are the theme colours of Settings, so `vault_folders.color` also takes `gold`, `red` and `lime` (`rose` is Roze, `rust` is Oranje), or a colour of your own as `#rrggbb` (lower case). `vault_folders.pinned_at` puts a folder in front; read folders as `pinned_at is null, position asc nulls last, created_at asc`. iOS shows colours it does not know in the default green. Until it runs, the web keeps pins in the browser (moved to the database once it has run) and says Goud, Rood, Limoen or an own colour cannot be saved yet.
 - **Source "Via Ayla"** (migration `20261119130000_vault_item_source_ayla.sql`, guard verified deployed on 2026-11-18): the web adds an item with `source = 'ayla'` when Ayla filled it in, including a resumed draft, so the Bron filter finds it. It stays the user's own and unconfirmed. Failed inserts are reported instead of retrying as `user`. Older mislabelled items require a targeted correction based on confirmed origin; Ayla's permission to read an item does not establish who created it.
 
+## Round five: verval and archive (iOS first, not applied)
+
+Migration `20261120120000_chat_expiry_and_archive.sql`. Deleting is final; nothing expires unless the account chooses it.
+
+- **Verval for chats** (not for evidence). `profiles.chat_expiry_days` (null = no expiry; 1, 7, 30 or 90), `chat_expiry_from` (`last_message` or `created`), `chat_expiry_keeps_pinned` and `chat_expiry_keeps_locked` (both default true). Per chat `ayla_conversations.expiry_days`: null follows the account, 0 never, otherwise its own number of days. A chat in a project or in the archive never expires.
+- **Deleting** happens on the server: `ayla_delete_expired_chats()` every hour through pg_cron where it is installed, and `ayla_expire_my_chats()` (RPC, for the signed-in account) which the apps call when they load the chat list.
+- **Archive**: `ayla_conversations.archived_at` and `vault_items.archived_at`. The apps leave rows with `archived_at` out of the normal lists and show them in the archive (iOS: Instellingen › Archief). Archiving a chat unpins it. Web still has to hide archived rows and offer the archive.
+- **Ayla and the archive**: `profiles.ayla_uses_archive` (default false). The `ayla` function leaves archived evidence out unless it is true; deploy the function together with the migration.
+- The profile guard (`guard_profile_self_update`) is replaced with a list that also names `display_mode`, so it can be applied before or after the web's display mode migration.
+
 ## Test data
 
 [`shared/supabase/seed/vault_test_data.sql`](../shared/supabase/seed/vault_test_data.sql) fills the vault of one test account for trying the apps and the demo: 15 items in every category, all three statuses, every source, current and finished periods, skills, items Ayla may and may not use, and six folders. It is not a migration: fill in the account's e-mail address at the top and run it in the SQL editor. Running it again replaces the test data, and [`vault_test_data_remove.sql`](../shared/supabase/seed/vault_test_data_remove.sql) takes it out. It only touches rows whose id starts with `5eed0000`, and it reuses the example folders the account already has. There are no files: those go through the Storage API.
@@ -111,8 +121,12 @@ Migration `20261112120000_vault_cover_example_folders_reverify.sql`. Run it toge
 
 1. Review categories, folder behavior, status transitions, file limits and validation ownership with Daaf and the web team.
 2. ~~Build the `VaultService` against this model.~~ Done on iOS on 2026-11-10 (read, add, change, move, delete, folders). Still to do: file upload, and the web client.
-3. Add the server-side validation and task-consent behavior. Test that Ayla cannot read an item or category without an active, matching grant.
+3. ~~Verification of vault items.~~ Database, `vault-review` and iOS done on 2026-11-17; see [verificatie.md](verificatie.md). Separately add the Ayla task-consent behavior and verify grants before Ayla reads a vault item/category.
 4. ~~Apply the migration to the shared Supabase project.~~ Done on 2026-11-10.
 5. Update `ios/README.md`, `docs/ayla.md` and this page when the schema is applied or the contract changes.
+
+## Verification, organisations and notifications
+
+Everything about requesting verification, the organisation directory, reviewers and the notification inbox is described in [verificatie.md](verificatie.md). The database side is one migration: [`20261117180000_organisations_verification_notifications.sql`](../shared/supabase/migrations/20261117180000_organisations_verification_notifications.sql).
 
 The migration includes Realtime publication entries for the vault tables so other signed-in devices can refresh. Clients must still use the authenticated user's session; service-role keys belong only in trusted server functions.

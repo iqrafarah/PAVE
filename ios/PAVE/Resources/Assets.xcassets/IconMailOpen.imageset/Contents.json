@@ -3,6 +3,16 @@
     {
       "filename": "IconMailOpen.svg",
       "idiom": "universal"
+    },
+    {
+      "appearances": [
+        {
+          "appearance": "luminosity",
+          "value": "dark"
+        }
+      ],
+      "filename": "IconMailOpen-dark.svg",
+      "idiom": "universal"
     }
   ],
   "info": {

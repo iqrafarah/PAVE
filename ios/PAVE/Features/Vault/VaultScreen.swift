@@ -9,6 +9,7 @@ struct VaultScreen: View {
     let onShowMenu: (() -> Void)?
 
     @State private var path: [FolderRoute] = []
+    @Environment(AylaPageDriver.self) private var driver: AylaPageDriver?
     @State private var openedItem: VaultItem?
     @State private var editedItem: VaultItem?
     @State private var confirmedItem: VaultItem?
@@ -16,9 +17,15 @@ struct VaultScreen: View {
     @State private var deletedItem: VaultItem?
     @State private var folderSheet: FolderSheet?
     @State private var deletedFolder: VaultFolder?
+    @State private var isScanning = false
+    @State private var scanFolder: VaultFolder?
+    @Environment(PaveCameraControl.self) private var cameraControl: PaveCameraControl?
 
     private struct FolderRoute: Hashable {
         let id: String
+
+        /// "Alle mappen", which is not a folder of its own.
+        static let all = FolderRoute(id: "alle-mappen")
     }
 
     private enum FolderSheet: Identifiable {
@@ -40,10 +47,15 @@ struct VaultScreen: View {
             requestConfirmation: { confirmedItem = $0 },
             delete: { deletedItem = $0 },
             add: add,
+            scan: scan,
             newFolder: { folderSheet = .new },
             openFolder: { folder in
                 PaveHaptics.selection()
                 path.append(FolderRoute(id: folder.id))
+            },
+            openAllFolders: {
+                PaveHaptics.selection()
+                path.append(.all)
             },
             editFolder: { folderSheet = .edit($0) },
             deleteFolder: { deletedFolder = $0 }
@@ -57,20 +69,40 @@ struct VaultScreen: View {
                 .navigationTitle("Kluis")
                 .mainScreenToolbar("Kluis", onShowMenu: onShowMenu)
                 .navigationDestination(for: FolderRoute.self) { route in
-                    VaultLibraryPage(folderID: route.id, actions: actions)
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
+                    Group {
+                        if route == .all {
+                            VaultAllFoldersPage(actions: actions)
+                        } else {
+                            VaultLibraryPage(folderID: route.id, actions: actions)
+                        }
+                    }
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
                 }
                 .task { await model.load() }
                 // Ayla pointed to one item: open it once the vault is there.
                 .onChange(of: model.itemToOpen, initial: true) { openRequestedItem() }
                 .onChange(of: model.state) { openRequestedItem() }
+                // Ayla opens a folder or goes back when you ask her to.
+                .onChange(of: driver?.vaultFolderID, initial: true) {
+                    guard let id = driver?.vaultFolderID else { return }
+                    driver?.vaultFolderID = nil
+                    openedItem = nil
+                    if path != [FolderRoute(id: id)] { path = [FolderRoute(id: id)] }
+                }
+                .onChange(of: driver?.backSteps) {
+                    if openedItem != nil { openedItem = nil } else if !path.isEmpty { path.removeLast() }
+                }
+                .onChange(of: path.count + (openedItem == nil ? 0 : 1), initial: true) { _, depth in
+                    driver?.vaultDepth = depth
+                }
+                .onDisappear { driver?.vaultDepth = 0 }
                 // A folder that is gone (deleted here or on another device) closes.
                 .onChange(of: model.folders.map(\.id)) { _, ids in
-                    path.removeAll { !ids.contains($0.id) }
+                    path.removeAll { $0 != .all && !ids.contains($0.id) }
                 }
                 .sheet(item: $openedItem) { item in
-                    VaultItemDetailView(itemID: item.id)
+                    VaultItemDetailView(itemID: item.id, onShowMenu: onShowMenu)
                         .paveSheet()
                 }
                 .sheet(item: $editedItem) { item in
@@ -78,8 +110,33 @@ struct VaultScreen: View {
                         .paveSheet()
                 }
                 .sheet(item: $confirmedItem) { item in
-                    VaultRequestConfirmationSheet(item: item, documentCount: model.documents(of: item).count)
+                    VaultRequestConfirmationSheet(
+                        item: item,
+                        documentCount: model.documents(of: item).count,
+                        onShowMenu: onShowMenu,
+                        onSend: { request in
+                            await model.requestValidation(
+                                for: item,
+                                organizationID: request.organization!.id,
+                                locationID: request.location!.id,
+                                departmentID: request.department?.id,
+                                contactID: request.contact!.id,
+                                message: request.message
+                            )
+                        }
+                    )
                         .paveSheet()
+                }
+                // The document scanner of iOS needs the camera that knopmodus holds: knopmodus waits meanwhile.
+                .fullScreenCover(isPresented: $isScanning, onDismiss: { cameraControl?.isSuspended = false }) {
+                    DocumentScanner(
+                        onScan: { pages in
+                            isScanning = false
+                            Task { await addScan(pages) }
+                        },
+                        onCancel: { isScanning = false }
+                    )
+                    .ignoresSafeArea()
                 }
                 .sheet(item: $addFlow) { flow in
                     VaultAddEvidenceSheet(flow: flow)
@@ -170,6 +227,38 @@ struct VaultScreen: View {
             VaultExampleFolders.all.first { $0.name.localizedCaseInsensitiveCompare(folder.name) == .orderedSame }
         }
         addFlow = VaultAddEvidenceModel(vault: model, category: example?.category ?? .projects, folderID: folder?.id)
+    }
+
+    /// A full press of the Camera Control button in the vault: scan a document, then adding evidence opens with it and
+    /// Ayla fills it in. Without a scanner (the simulator) adding evidence simply opens.
+    private func scan(_ folder: VaultFolder?) {
+        guard DocumentScanner.isAvailable else {
+            add(folder)
+            return
+        }
+        scanFolder = folder
+        cameraControl?.isSuspended = true
+        Task {
+            // A moment for knopmodus to let go of the camera.
+            try? await Task.sleep(for: .milliseconds(350))
+            isScanning = true
+        }
+    }
+
+    private func addScan(_ pages: [CGImage]) async {
+        guard !pages.isEmpty else { return }
+        let day = Date.now.formatted(.iso8601.year().month().day())
+        guard let file = try? await AttachmentReader.file(pages: pages, name: "Scan \(day).pdf"), let upload = file.upload else {
+            model.problem = VaultMessages.scanFailed
+            return
+        }
+        let example = scanFolder.flatMap { folder in
+            VaultExampleFolders.all.first { $0.name.localizedCaseInsensitiveCompare(folder.name) == .orderedSame }
+        }
+        let flow = VaultAddEvidenceModel(vault: model, category: example?.category ?? .projects, folderID: scanFolder?.id)
+        flow.pick(.success(upload))
+        flow.fillWithAyla()
+        addFlow = flow
     }
 
     private func openRequestedItem() {

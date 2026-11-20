@@ -3,6 +3,16 @@
     {
       "filename": "IconEye.svg",
       "idiom": "universal"
+    },
+    {
+      "appearances": [
+        {
+          "appearance": "luminosity",
+          "value": "dark"
+        }
+      ],
+      "filename": "IconEye-dark.svg",
+      "idiom": "universal"
     }
   ],
   "info": {

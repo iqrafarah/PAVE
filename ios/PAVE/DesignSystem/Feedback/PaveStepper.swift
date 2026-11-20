@@ -70,11 +70,11 @@ struct PaveStepper: View {
             .frame(width: Self.dot, height: Self.dot)
             .background {
                 ZStack {
-                    Circle().fill(Color.white)
+                    Circle().fill(Color.panel)
                     Circle().strokeBorder(Color.hairline, lineWidth: 1)
                     // The green fills from the middle, so the number seems to light up when the line arrives.
                     Circle()
-                        .fill(Color.paveAccent)
+                        .fill(Color.paveAccentFill)
                         .scaleEffect(isReached ? 1 : 0.01)
                         .opacity(isReached ? 1 : 0)
                 }

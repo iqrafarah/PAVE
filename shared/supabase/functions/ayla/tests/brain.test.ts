@@ -620,10 +620,10 @@ test('project sources are named when Ayla may see them, and nothing else leaks',
   assert.doesNotMatch(buildSystemPrompt({ device: 'web', project: { ...project, sourceIds: ['zzz'] }, vault, vaultConsent: 'granted' }), /bronnen van het project/)
 })
 
-Deno.test('declinedOffer: a nee after an Ayla turn', async () => {
+test('declinedOffer: a nee after an Ayla turn', async () => {
   const { declinedOffer } = await import('../brain.ts')
   const history = [{ role: 'ayla' as const, text: 'Wil je dit toevoegen?' }]
-  if (!declinedOffer(history, 'Nee')) throw new Error('expected true')
-  if (declinedOffer(history, 'Ja')) throw new Error('expected false')
-  if (declinedOffer([{ role: 'user' as const, text: 'hoi' }], 'Nee')) throw new Error('expected false')
+  assert.ok(declinedOffer(history, 'Nee'))
+  assert.ok(!declinedOffer(history, 'Ja'))
+  assert.ok(!declinedOffer([{ role: 'user' as const, text: 'hoi' }], 'Nee'))
 })

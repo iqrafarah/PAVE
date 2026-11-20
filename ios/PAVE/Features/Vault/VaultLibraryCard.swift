@@ -26,11 +26,11 @@ struct VaultLibraryCard: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background {
             if isGrid {
-                Color.white
+                Color.panel
             } else {
                 // The fade from the top left corner in the list, as in Figma 1348:9; a cover photo shows only in the grid.
                 LinearGradient(
-                    stops: [.init(color: fadeTint, location: 0), .init(color: .white, location: 0.55)],
+                    stops: [.init(color: fadeTint, location: 0), .init(color: Color.panel, location: 0.55)],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
@@ -68,12 +68,12 @@ struct VaultLibraryCard: View {
                 .frame(height: 48)
                 .clipped()
                 .overlay(alignment: .bottomLeading) {
-                    VaultLogoAvatar(look: logoLook, name: item.organisationName ?? item.title, size: 44)
+                    VaultLogoAvatar(look: logoLook, name: item.organisationName ?? item.title, fileName: item.firstDocumentName ?? "", size: 44)
                         .padding(.leading, 12)
                         .offset(y: 22)
                 }
                 .overlay(alignment: .topTrailing) {
-                    VaultStatusBadge(status: item.status)
+                    VaultStatusBadge(item: item)
                         .padding(8)
                 }
             VStack(alignment: .leading, spacing: 8) {
@@ -95,7 +95,7 @@ struct VaultLibraryCard: View {
 
     private var listCard: some View {
         HStack(alignment: .center, spacing: 14) {
-            VaultLogoAvatar(look: logoLook, name: item.organisationName ?? item.title, size: 64)
+            VaultLogoAvatar(look: logoLook, name: item.organisationName ?? item.title, fileName: item.firstDocumentName ?? "", size: 64)
             VStack(alignment: .leading, spacing: 7) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(item.title)
@@ -108,7 +108,7 @@ struct VaultLibraryCard: View {
                     if let isSelected {
                         PaveCheckbox(isOn: isSelected)
                     } else {
-                        VaultStatusBadge(status: item.status)
+                        VaultStatusBadge(item: item)
                     }
                 }
                 details(lineLimit: 1)

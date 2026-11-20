@@ -2,10 +2,12 @@ import PAVECore
 import SwiftUI
 
 struct PaveTextField<Field: Hashable>: View {
-    enum Kind {
+    enum Kind: Equatable {
         case email
         case password
         case newPassword
+        /// A first or last name, filled in by iOS from your contact card.
+        case name(UITextContentType)
     }
 
     let label: String
@@ -48,14 +50,14 @@ struct PaveTextField<Field: Hashable>: View {
                     .focused(focus, equals: field)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                if kind != .email {
+                if kind == .password || kind == .newPassword {
                     visibilityToggle
                 }
             }
             .padding(.leading, 14)
             .padding(.trailing, 6)
             .frame(minHeight: 52)
-            .background(isEnabled ? Color.white : .fieldDisabled, in: .rect(cornerRadius: 7))
+            .background(isEnabled ? Color.panel : .fieldDisabled, in: .rect(cornerRadius: 7))
             .overlay {
                 RoundedRectangle(cornerRadius: 7)
                     .strokeBorder(borderColor, lineWidth: borderWidth)
@@ -97,6 +99,11 @@ struct PaveTextField<Field: Hashable>: View {
                 .textContentType(.username)
                 .keyboardType(.emailAddress)
                 .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+        case .name(let contentType):
+            TextField(label, text: $text, prompt: prompt)
+                .textContentType(contentType)
+                .textInputAutocapitalization(.words)
                 .autocorrectionDisabled()
         case .password, .newPassword:
             Group {

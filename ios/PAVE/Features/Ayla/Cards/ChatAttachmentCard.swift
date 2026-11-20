@@ -30,7 +30,7 @@ struct ChatAttachmentCard: View {
             }
             .padding(.leading, 9)
             .frame(maxWidth: .infinity, minHeight: 75, alignment: .leading)
-            .background(Color.white, in: .rect(cornerRadius: 18))
+            .background(Color.panel, in: .rect(cornerRadius: 18))
             .contentShape(.rect(cornerRadius: 18))
         }
         .buttonStyle(.pave)
