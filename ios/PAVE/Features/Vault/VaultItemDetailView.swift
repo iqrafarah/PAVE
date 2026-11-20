@@ -57,7 +57,7 @@ struct VaultItemDetailView: View {
                                 for: item,
                                 organizationID: request.organization!.id,
                                 locationID: request.location!.id,
-                                departmentID: request.department?.id,
+                                departmentID: request.department!.id,
                                 contactID: request.contact!.id,
                                 message: request.message
                             )

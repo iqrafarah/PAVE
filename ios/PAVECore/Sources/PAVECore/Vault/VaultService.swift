@@ -48,14 +48,14 @@ public protocol VaultService: Sendable {
     /// Read-only, MFA-protected directory choices for the verification request form.
     func validationOrganizations() async throws -> [VaultValidationOrganization]
     func validationLocations(organizationID: String) async throws -> [VaultValidationLocation]
-    func validationDepartments(organizationID: String, locationID: String) async throws -> [VaultValidationDepartment]
-    func validationContacts(organizationID: String, locationID: String, departmentID: String?) async throws -> [VaultValidationContact]
-    /// Routes the request by trusted directory IDs. The server resolves recipients; the client never sends reviewer IDs.
+    func validationDepartments(locationID: String) async throws -> [VaultValidationDepartment]
+    func validationContacts(departmentID: String) async throws -> [VaultValidationContact]
+    /// Routes the request by trusted directory IDs. The server finds the account behind the person; the client never sends it.
     func requestValidation(
         itemID: String,
         organizationID: String,
         locationID: String,
-        departmentID: String?,
+        departmentID: String,
         contactID: String,
         message: String?
     ) async throws
@@ -64,9 +64,9 @@ public protocol VaultService: Sendable {
 public extension VaultService {
     func validationOrganizations() async throws -> [VaultValidationOrganization] { throw VaultError.notSetUp }
     func validationLocations(organizationID: String) async throws -> [VaultValidationLocation] { throw VaultError.notSetUp }
-    func validationDepartments(organizationID: String, locationID: String) async throws -> [VaultValidationDepartment] { throw VaultError.notSetUp }
-    func validationContacts(organizationID: String, locationID: String, departmentID: String?) async throws -> [VaultValidationContact] { throw VaultError.notSetUp }
-    func requestValidation(itemID: String, organizationID: String, locationID: String, departmentID: String?, contactID: String, message: String?) async throws {
+    func validationDepartments(locationID: String) async throws -> [VaultValidationDepartment] { throw VaultError.notSetUp }
+    func validationContacts(departmentID: String) async throws -> [VaultValidationContact] { throw VaultError.notSetUp }
+    func requestValidation(itemID: String, organizationID: String, locationID: String, departmentID: String, contactID: String, message: String?) async throws {
         throw VaultError.notSetUp
     }
 
@@ -104,7 +104,6 @@ public enum VaultError: Error, Equatable, Sendable {
     /// The Edge Function behind this is not deployed yet.
     case notSetUp
     case validationOrganisationNotFound
-    case validationNoReviewer
     case validationAlreadyPending
     case validationItemUnavailable
     case validationInvalidChoice
@@ -352,30 +351,23 @@ public struct SupabaseVaultService: VaultService {
         )
     }
 
-    public func validationDepartments(organizationID: String, locationID: String) async throws -> [VaultValidationDepartment] {
+    public func validationDepartments(locationID: String) async throws -> [VaultValidationDepartment] {
         try await directoryRows(
             VaultValidationDepartment.self,
             table: "organization_departments",
-            select: "id,organization_id,location_id,name",
-            filters: [
-                ("organization_id", "eq.\(organizationID)"),
-                ("location_id", "eq.\(locationID)"),
-                ("order", "name.asc"),
-            ]
+            select: "id,location_id,name",
+            filters: [("location_id", "eq.\(locationID)"), ("order", "name.asc")]
         )
     }
 
-    /// The persons at this location: in the department, or (a company, or a school location without departments) at the
-    /// location itself.
-    public func validationContacts(organizationID: String, locationID: String, departmentID: String?) async throws -> [VaultValidationContact] {
-        try await directoryRows(VaultValidationContact.self, table: "organization_contacts", filters: [
-            ("select", "id,organization_id,location_id,department_id,name,job_title,is_active"),
-            ("organization_id", "eq.\(organizationID)"),
-            ("location_id", "eq.\(locationID)"),
-            ("department_id", departmentID.map { "eq.\($0)" } ?? "is.null"),
-            ("is_active", "eq.true"),
-            ("order", "name.asc"),
-        ])
+    /// Only the persons with a PAVE account, and never yourself: the database shows no others.
+    public func validationContacts(departmentID: String) async throws -> [VaultValidationContact] {
+        try await directoryRows(
+            VaultValidationContact.self,
+            table: "organization_contacts",
+            select: "id,department_id,name,job_title,is_active",
+            filters: [("department_id", "eq.\(departmentID)"), ("is_active", "eq.true"), ("order", "name.asc")]
+        )
     }
 
     private func directoryRows<Row: Decodable>(
@@ -397,27 +389,11 @@ public struct SupabaseVaultService: VaultService {
         }
     }
 
-    private func directoryRows<Row: Decodable>(
-        _ type: Row.Type,
-        table: String,
-        filters: [(String, String)]
-    ) async throws -> [Row] {
-        let urlRequest = try await request(restURL.appending(path: table), query: filters)
-        let data = try await send(urlRequest)
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        do {
-            return try decoder.decode([Row].self, from: data)
-        } catch {
-            throw VaultError.unavailable
-        }
-    }
-
     public func requestValidation(
         itemID: String,
         organizationID: String,
         locationID: String,
-        departmentID: String?,
+        departmentID: String,
         contactID: String,
         message: String?
     ) async throws {
@@ -426,7 +402,7 @@ public struct SupabaseVaultService: VaultService {
             "itemId": itemID,
             "organizationId": organizationID,
             "locationId": locationID,
-            "departmentId": departmentID.map { $0 as Any } ?? NSNull(),
+            "departmentId": departmentID,
             "contactId": contactID,
             "message": message ?? "",
         ]
@@ -650,7 +626,6 @@ public struct SupabaseVaultService: VaultService {
             let detail = try? JSONDecoder().decode(FunctionError.self, from: data)
             switch detail?.error {
             case .some("organization_not_found"): throw VaultError.validationOrganisationNotFound
-            case .some("no_reviewers"): throw VaultError.validationNoReviewer
             case .some("already_pending"): throw VaultError.validationAlreadyPending
             case .some("item_not_awaiting_verification"): throw VaultError.validationItemUnavailable
             case .some("invalid_choice"): throw VaultError.validationInvalidChoice

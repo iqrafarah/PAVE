@@ -379,21 +379,21 @@ final class VaultModel {
         return try await service.validationLocations(organizationID: organizationID)
     }
 
-    func validationDepartments(organizationID: String, locationID: String) async throws -> [VaultValidationDepartment] {
+    func validationDepartments(locationID: String) async throws -> [VaultValidationDepartment] {
         guard let service else { throw VaultError.notSetUp }
-        return try await service.validationDepartments(organizationID: organizationID, locationID: locationID)
+        return try await service.validationDepartments(locationID: locationID)
     }
 
-    func validationContacts(organizationID: String, locationID: String, departmentID: String?) async throws -> [VaultValidationContact] {
+    func validationContacts(departmentID: String) async throws -> [VaultValidationContact] {
         guard let service else { throw VaultError.notSetUp }
-        return try await service.validationContacts(organizationID: organizationID, locationID: locationID, departmentID: departmentID)
+        return try await service.validationContacts(departmentID: departmentID)
     }
 
     func requestValidation(
         for item: VaultItem,
         organizationID: String,
         locationID: String,
-        departmentID: String?,
+        departmentID: String,
         contactID: String,
         message: String?
     ) async -> String? {

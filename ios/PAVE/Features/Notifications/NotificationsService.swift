@@ -24,8 +24,6 @@ private enum NotificationsServiceError: Error, LocalizedError, Sendable {
             "Deze aanvraag is niet meer beschikbaar of je account is niet als beoordelaar toegewezen."
         case .httpStatus(404, _):
             "De meldingenfunctie staat nog niet op Supabase. Deploy de functie vault-review."
-        case .httpStatus(409, "no_reviewers"):
-            "Voor deze organisatie is nog geen beoordelaar ingesteld."
         case .httpStatus(409, "already_pending"):
             "Voor dit bewijs staat al een verificatieaanvraag open."
         case .httpStatus(409, "decision_failed"):
