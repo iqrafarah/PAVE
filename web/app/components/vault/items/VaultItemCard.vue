@@ -12,7 +12,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   open: [];
-  action: [id: 'edit' | 'confirm' | 'delete'];
+  action: [id: 'edit' | 'confirm' | 'archive' | 'delete'];
 }>();
 
 const place = computed(() => itemPlace(props.item));

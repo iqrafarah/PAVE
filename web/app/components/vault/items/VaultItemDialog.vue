@@ -21,7 +21,10 @@ const askRef = useTemplateRef<{ open: () => void }>('confirmAsk');
 const fileProblem = ref<string | null>(null);
 const askProblem = ref<string | null>(null);
 
-const item = computed(() => vault.state.value.items.find((entry) => entry.id === props.itemId) ?? null);
+// Archived evidence opens here too, from Instellingen › Archief.
+const item = computed(
+  () => [...vault.state.value.items, ...vault.state.value.archived].find((entry) => entry.id === props.itemId) ?? null,
+);
 const isOpen = computed({
   get: () => item.value !== null,
   set: (open) => {

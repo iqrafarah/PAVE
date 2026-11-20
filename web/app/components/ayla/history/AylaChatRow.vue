@@ -26,6 +26,10 @@ const lock = useAylaChatLock();
 const chats = useAylaChats();
 const projects = useAylaProjects();
 const route = useRoute();
+const retention = useAylaChatRetention();
+const expiryConfirmRef = useTemplateRef<{ open: () => void }>('expiryConfirm');
+// A Verval that deletes this chat sooner than now, waiting for Ja.
+const pendingExpiry = ref<{ expiryDays: number | null; date: Date } | null>(null);
 
 /**
  * On the vault a chat opens right there (/kluis?chat=<id>), as a question asked there does; the page stays where it is.
@@ -43,6 +47,53 @@ const isStartedOnPhone = computed(() => props.conversation.startedOn === 'phone'
 // A locked chat (under Vergrendelde chats) only has rename, unlock and delete; it is not pinned, moved or dragged.
 const isLocked = computed(() => lock.isLocked(props.conversation.id));
 
+const isInProject = computed(() => Boolean(projects.state.value.chatProjects[props.conversation.id]));
+
+/** When this chat goes with these choices, by the same rules as the server. */
+function expiresAt(expiryDays: number | null) {
+  return getChatExpiresAt(retention.state.value.retention.chatExpiry, {
+    ...props.conversation,
+    createdAt: props.conversation.createdAt ?? null,
+    expiryDays,
+    isLocked: isLocked.value,
+    isInProject: isInProject.value,
+  });
+}
+
+const expiresText = computed(() => {
+  const date = expiresAt(props.conversation.expiryDays ?? null);
+  return date ? getExpiresText(date, props.now) : null;
+});
+
+async function applyExpiry(expiryDays: number | null) {
+  const { isFailed } = await chats.setExpiry(props.conversation.id, expiryDays);
+  if (isFailed) projects.showNotice(RETENTION_EXPIRY_FAILED, true);
+}
+
+/** A time that can delete this chat sooner than before is asked first. */
+function chooseExpiry(expiryDays: number | null, close: () => void) {
+  close();
+  if (expiryDays === (props.conversation.expiryDays ?? null)) return;
+  const before = expiresAt(props.conversation.expiryDays ?? null);
+  const after = expiresAt(expiryDays);
+  if (after && (!before || after < before)) {
+    pendingExpiry.value = { expiryDays, date: after };
+    expiryConfirmRef.value?.open();
+  } else {
+    applyExpiry(expiryDays);
+  }
+}
+
+function confirmExpiry() {
+  const pending = pendingExpiry.value;
+  pendingExpiry.value = null;
+  if (pending) applyExpiry(pending.expiryDays);
+}
+
+onMounted(() => {
+  if (retention.state.value.status === 'idle') retention.load();
+});
+
 const menuItems = computed<RowMenuItem[]>(() => {
   if (isLocked.value) {
     return [
@@ -58,6 +109,10 @@ const menuItems = computed<RowMenuItem[]>(() => {
   if (projects.state.value.status === 'ready') items.push({ id: 'move', label: AYLA_MOVE_TO_PROJECT, hasSubmenu: true });
   if (lock.isAvailable.value) items.push({ id: 'lock', label: AYLA_LOCK_MENU });
   if (chats.state.value.canArchive) items.push({ id: 'archive', label: AYLA_ARCHIVE_MENU });
+  // In a project a chat never expires, so there is nothing to choose (as on iOS).
+  if (chats.state.value.canExpire && retention.state.value.status === 'ready' && !isInProject.value) {
+    items.push({ id: 'expiry', label: RETENTION_EXPIRY, hasSubmenu: true });
+  }
   items.push({ id: 'remove', label: AYLA_DELETE, isDanger: true });
   return items;
 });
@@ -169,9 +224,22 @@ function handleMenuChoice(id: string) {
         >
           <template #submenu="{ itemId, close }">
             <AylaMoveProjectPanel v-if="itemId === 'move'" :conversation="conversation" @done="close" />
+            <AylaExpiryPanel
+              v-else-if="itemId === 'expiry'"
+              :expiry-days="conversation.expiryDays ?? null"
+              :expires-text="expiresText"
+              @choose="chooseExpiry($event, close)"
+            />
           </template>
         </AylaRowMenu>
       </div>
     </template>
+    <LayoutConfirmSheet
+      ref="expiryConfirm"
+      :title="RETENTION_CONFIRM_TITLE"
+      :message="pendingExpiry ? getChatExpiresMessage(conversation.title, pendingExpiry.date, now) : undefined"
+      :confirm-label="RETENTION_CONFIRM_BUTTON"
+      @confirm="confirmExpiry"
+    />
   </li>
 </template>

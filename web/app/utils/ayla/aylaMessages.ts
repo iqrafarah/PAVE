@@ -318,40 +318,11 @@ export const AYLA_UNLOCK_CHAT = 'Ontgrendelen';
 export const AYLA_UNLOCK_FAILED = 'De chat kon niet worden ontgrendeld. Probeer het opnieuw.';
 export const AYLA_LOCKED_CHATS = 'Vergrendelde chats';
 
-// Archiveren en automatisch verwijderen.
+// Archiveren (the rest of the archive and Verval: utils/settings/retention.ts).
 export const AYLA_ARCHIVE_MENU = 'Archiveren';
 export const AYLA_UNARCHIVE = 'Terugzetten';
-export const AYLA_ARCHIVED_CHATS = 'Gearchiveerd';
-export const AYLA_ARCHIVED_PATH = '/instellingen/gearchiveerd';
-export const AYLA_ARCHIVED_EMPTY = 'Je hebt geen gearchiveerde chats. Kies Archiveren in het menu van een chat.';
-export const AYLA_ARCHIVED_INTRO = 'Zoek je gearchiveerde chats en zet terug wat je weer wilt gebruiken.';
-export const AYLA_ARCHIVED_SEARCH = 'Zoek in gearchiveerde chats';
-export const AYLA_ARCHIVED_NO_MATCH = 'Geen chats gevonden.';
-export const AYLA_ARCHIVED_SORT_LABEL = 'Sorteren';
-export const AYLA_ARCHIVED_SORT_NEWEST = 'Nieuwste eerst';
-export const AYLA_ARCHIVED_SORT_OLDEST = 'Oudste eerst';
-export const AYLA_ARCHIVED_SORT_NAME = 'Naam';
-export const AYLA_ARCHIVED_PROJECT_LABEL = 'Project';
-export const AYLA_ARCHIVED_ALL_PROJECTS = 'Alle projecten';
-export const AYLA_ARCHIVED_NO_PROJECT = 'Geen project';
-export function getArchivedSummary(count: number) {
-  return count === 0 ? 'Nog geen gearchiveerde chats.' : count === 1 ? '1 chat' : `${count} chats`;
-}
 export const AYLA_ARCHIVE_FAILED = 'Archiveren lukte niet. Probeer het opnieuw.';
 export const AYLA_UNARCHIVE_FAILED = 'Terugzetten lukte niet. Probeer het opnieuw.';
-export const SETTINGS_AUTO_DELETE_TITLE = 'Chats automatisch verwijderen';
-export const SETTINGS_AUTO_DELETE_HINT = 'Vastgezette, gearchiveerde en vergrendelde chats blijven altijd bewaard.';
-export function getAutoDeleteQuestion(period: string) {
-  return `Chats die langer dan ${period} niet zijn gebruikt worden verwijderd, ook de bestaande. Vastgezette, gearchiveerde en vergrendelde chats blijven bewaard. Dit kan niet ongedaan worden gemaakt.`;
-}
-export const SETTINGS_AUTO_DELETE_FAILED = 'De keuze is niet opgeslagen. Probeer het opnieuw.';
-export const SETTINGS_AUTO_DELETE_OPTIONS = [
-  { value: 'never', days: null, period: '', label: 'Nooit', meaning: 'Chats blijven bewaard' },
-  { value: '1', days: 1, period: '24 uur', label: 'Na 24 uur', meaning: 'Na een dag niet gebruikt' },
-  { value: '7', days: 7, period: '7 dagen', label: 'Na 7 dagen', meaning: 'Na een week niet gebruikt' },
-  { value: '30', days: 30, period: '30 dagen', label: 'Na 30 dagen', meaning: 'Na een maand niet gebruikt' },
-  { value: '90', days: 90, period: '90 dagen', label: 'Na 90 dagen', meaning: 'Na drie maanden niet gebruikt' },
-] as const;
 export const AYLA_LOCKED_EMPTY = 'Je hebt geen vergrendelde chats. Kies Chat vergrendelen in het menu van een chat.';
 export const AYLA_LOCKED_RELOCK = 'Nu vergrendelen';
 export const AYLA_LOCKED_NEW_CHAT = 'Nieuwe vergrendelde chat';

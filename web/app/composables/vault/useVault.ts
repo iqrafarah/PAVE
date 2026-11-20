@@ -27,6 +27,10 @@ interface VaultState {
   loadError: string | null;
   items: VaultItem[];
   folders: VaultFolder[];
+  // The archive (iOS VaultModel.archived): out of the vault, the most recently archived first.
+  archived: VaultItem[];
+  // False until migration 20261120120000 adds vault_items.archived_at.
+  canArchive: boolean;
   // False until migration 20261119120000 adds pinned_at; until then pins are kept in this browser.
   pinsOnServer: boolean;
   // Saving, moving or deleting did not work; the page shows it.
@@ -50,6 +54,7 @@ interface ItemRow {
   // Added by later migrations; missing on a database without them.
   organization_id?: string | null;
   ayla_allowed_at?: string | null;
+  archived_at?: string | null;
   created_at: string;
   updated_at: string;
   // Added by migration 20261113120000; missing on a database without it.
@@ -107,6 +112,7 @@ function toItem(row: ItemRow): VaultItem | null {
     logoUrl: null,
     coverUrl: null,
     aylaAllowedAt: row.ayla_allowed_at ?? null,
+    archivedAt: row.archived_at ?? null,
     skills: (row.vault_item_skills ?? [])
       .filter((skill) => skill.status === 'accepted')
       .map((skill) => skill.name)
@@ -165,6 +171,8 @@ export function useVault() {
     loadError: null,
     items: [],
     folders: [],
+    archived: [],
+    canArchive: false,
     pinsOnServer: false,
     problem: null,
   }));
@@ -205,7 +213,7 @@ export function useVault() {
     const rows = items.data as ItemRow[];
     const loaded = rows.map((row) => ({ row, item: toItem(row) })).filter((entry) => entry.item !== null);
     const [logos, images] = await Promise.all([loadLogos(rows), loadImages(loaded.map((entry) => entry.item!))]);
-    state.value.items = loaded.map(({ row, item }) => ({
+    const all = loaded.map(({ row, item }) => ({
       ...item!,
       logoUrl:
         (row.organization_id ? logos.get(row.organization_id) : undefined) ??
@@ -214,6 +222,12 @@ export function useVault() {
         null,
       coverUrl: images.get(`cover:${item!.id}`) ?? null,
     }));
+    // select('*') only returns archived_at once the migration added it.
+    state.value.canArchive = rows.some((row) => 'archived_at' in row);
+    state.value.items = all.filter((item) => !item.archivedAt);
+    state.value.archived = all
+      .filter((item) => item.archivedAt)
+      .sort((first, second) => (second.archivedAt ?? '').localeCompare(first.archivedAt ?? ''));
     // Your own order first, then the folders that were never moved, oldest first, as before.
     const folderRows = folders.data as FolderRow[];
     // select('*') only returns pinned_at once the migration added it.
@@ -556,6 +570,12 @@ export function useVault() {
     return setFolders(item, ids);
   }
 
+  /** Archives evidence or puts it back (iOS VaultModel.setArchived). */
+  function setArchived(item: VaultItem, isArchived: boolean) {
+    const archivedAt = isArchived ? new Date().toISOString() : null;
+    return perform(() => supabase.from('vault_items').update({ archived_at: archivedAt }).eq('id', item.id));
+  }
+
   /** The files go first: the database cannot remove them from Storage itself. */
   async function remove(item: VaultItem) {
     if (item.files.length) {
@@ -692,6 +712,7 @@ export function useVault() {
     setFolderOrder,
     moveToFolder,
     remove,
+    setArchived,
     createFolder,
     updateFolder,
     setFolderPinned,
