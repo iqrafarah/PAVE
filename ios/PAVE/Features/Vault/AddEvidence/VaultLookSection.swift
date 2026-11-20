@@ -26,7 +26,7 @@ struct VaultLookSection: View {
     }
 
     @Environment(VaultModel.self) private var model: VaultModel?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @State private var look: VaultLogoLook?
     @State private var logoSource: VaultFileSource?
     @State private var coverSource: VaultFileSource?

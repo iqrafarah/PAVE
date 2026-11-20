@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct PaveSplashView: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @State private var isRevealed = false
     /// The colour of the letters and the glow: PAVE green, or the theme colour on the iPhone.
     var accent = Color.brandGreen

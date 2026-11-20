@@ -21,9 +21,11 @@ private struct PaveSheet: ViewModifier {
     func body(content: Content) -> some View {
         if sizeClass == .regular {
             content
+                .paveAnimationsSwitch()
                 .presentationSizing(.form)
         } else {
             content
+                .paveAnimationsSwitch()
                 // Always an opaque ground: without it a sheet shows the glass of iOS 26 (or the app through it) behind
                 // lists, loading and empty states, which makes the text hard to read.
                 .background(Color.canvas.ignoresSafeArea(edges: .bottom))

@@ -1,9 +1,19 @@
 import CoreSpotlight
+import PAVECore
 import SwiftUI
 
 struct RootView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.scenePhase) private var scenePhase
+    @AppStorage(PaveAppearance.displayModeKey) private var displayModeRaw = PaveDisplayMode.auto.rawValue
+
+    private var colorScheme: ColorScheme? {
+        switch PaveDisplayMode(rawValue: displayModeRaw) ?? .auto {
+        case .auto: nil
+        case .light: .light
+        case .dark: .dark
+        }
+    }
 
     var body: some View {
         Group {
@@ -44,6 +54,8 @@ struct RootView: View {
         }
         // Licht or Donker as chosen in Instellingen, from the very first screen.
         .onAppear { PaveAppearance.apply(PaveAppearance.displayMode) }
+        // Automatisch gives nil: the setting of the device, also when it changes while PAVE is open.
+        .preferredColorScheme(colorScheme)
         .animation(.easeInOut(duration: 0.4), value: appState.phase)
         .animation(.easeOut(duration: 0.2), value: appState.isRelocked)
         // In the app switcher and under Control Center only the logo shows.
@@ -82,6 +94,7 @@ struct RootView: View {
         .onOpenURL { url in
             appState.link = PaveLink(url: url)
         }
+        .paveAnimationsSwitch()
     }
 }
 

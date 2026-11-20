@@ -38,7 +38,7 @@ struct WatchConnectRing: View {
     let isDone: Bool
     var size: CGFloat = 250
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @State private var spin = false
     @State private var pulse = false
 

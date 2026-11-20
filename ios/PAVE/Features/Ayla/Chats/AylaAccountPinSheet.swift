@@ -106,7 +106,11 @@ struct AylaAccountPinSheet: View {
             ScrollView { codeContent }
                 .scrollDismissesKeyboard(.interactively)
         }
-        .onAppear { isCodeFocused = true }
+        .task {
+            // A moment after the sheet is up: focus asked for while it still slides in is lost.
+            try? await Task.sleep(for: .milliseconds(400))
+            isCodeFocused = true
+        }
     }
 
     private var codeContent: some View {

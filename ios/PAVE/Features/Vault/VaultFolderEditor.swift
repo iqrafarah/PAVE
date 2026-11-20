@@ -5,7 +5,7 @@ import SwiftUI
 /// The style follows the "Bewijs toevoegen" sheet in Figma: a white sheet, a large title and one wide button.
 struct VaultFolderEditor: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @Environment(VaultModel.self) private var model
     let folder: VaultFolder?
     let onCreate: (VaultFolder) -> Void

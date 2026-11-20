@@ -4,7 +4,7 @@ import SwiftUI
 /// Verification request form backed by the trusted organisation directory.
 struct VaultRequestConfirmationSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @Environment(VaultModel.self) private var vault
     let item: VaultItem
     let documentCount: Int

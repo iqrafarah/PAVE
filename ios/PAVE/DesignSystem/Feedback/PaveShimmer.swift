@@ -9,7 +9,7 @@ extension View {
 
 private struct PaveShimmer: ViewModifier {
     let isActive: Bool
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
         if !isActive {

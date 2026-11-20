@@ -8,7 +8,7 @@ import SwiftUI
 struct AylaVaultSelectionSheet: View {
     @Environment(VaultModel.self) private var vault
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     let onPick: ([VaultItem]) -> Void
     @State private var selected: Set<String> = []
     @State private var asksPermission: [VaultItem]?
