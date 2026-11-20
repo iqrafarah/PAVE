@@ -48,26 +48,21 @@ Deno.serve(async (req) => {
       if (!organization) return json({ error: 'organization_not_found' }, 404)
       if (!location) return json({ error: 'invalid_choice' }, 400)
 
-      let department: { id: string; organization_id: string; location_id: string | null } | null = null
+      // Location, then (at a school) a department of that location, then one person there.
+      let department: { id: string } | null = null
       if (body.departmentId) {
         const { data, error } = await admin.from('organization_departments')
-          .select('id,organization_id,location_id').eq('id', body.departmentId).eq('organization_id', organization.id).maybeSingle()
+          .select('id').eq('id', body.departmentId).eq('location_id', location.id).maybeSingle()
         if (error) throw error
         department = data
-        if (!department || (department.location_id !== null && department.location_id !== location.id)) {
-          return json({ error: 'invalid_choice' }, 400)
-        }
+        if (!department) return json({ error: 'invalid_choice' }, 400)
       }
 
       const { data: contact, error: contactError } = await admin.from('organization_contacts')
-        .select('id,organization_id,location_id,department_id,is_active')
-        .eq('id', body.contactId).eq('organization_id', organization.id).eq('is_active', true).maybeSingle()
+        .select('id,department_id')
+        .eq('id', body.contactId).eq('location_id', location.id).eq('is_active', true).maybeSingle()
       if (contactError) throw contactError
-      if (!contact
-        || (contact.location_id !== null && contact.location_id !== location.id)
-        || (department
-          ? (contact.department_id !== null && contact.department_id !== department.id)
-          : contact.department_id !== null)) {
+      if (!contact || contact.department_id !== (department?.id ?? null)) {
         return json({ error: 'invalid_choice' }, 400)
       }
 
@@ -143,8 +138,14 @@ Deno.serve(async (req) => {
     }
 
     if (body.action === 'inbox') {
+      // Deleted notifications stay restorable for 7 days ("Recent verwijderd"), then they are gone for good.
+      const restorableSince = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+      const { error: purgeError } = await admin.from('user_notifications')
+        .delete().eq('recipient_id', user.id).lt('deleted_at', restorableSince)
+      if (purgeError) throw purgeError
+
       const { data: notices, error } = await admin.from('user_notifications')
-        .select('id,kind,title,body,conversation_id,validation_request_id,vault_item_id,created_at,read_at,dedupe_key')
+        .select('id,kind,title,body,conversation_id,validation_request_id,vault_item_id,created_at,read_at,deleted_at,dedupe_key')
         .eq('recipient_id', user.id).order('created_at', { ascending: false }).limit(100)
       if (error) throw error
 
@@ -167,20 +168,26 @@ Deno.serve(async (req) => {
           visible.push({
             id: notice.id, kind: notice.kind, title: notice.title,
             personName: profile?.preferred_name || profile?.full_name || 'Lerende',
-            date: notice.created_at, isUnread: notice.read_at == null,
+            date: notice.created_at, isUnread: notice.read_at == null, deletedAt: notice.deleted_at,
             validationRequestID: request.id, vaultItemID: item.id,
             learnerName: profile?.preferred_name || profile?.full_name || 'Lerende',
             learnerOrganization: request.organisation_name,
             documentName: item.title, documentType: item.category,
           })
         } else if ((notice.kind === 'evidence_verified' || notice.kind === 'evidence_rejected') && notice.validation_request_id && notice.vault_item_id) {
-          const { data: item } = await admin.from('vault_items').select('id,organisation_name,verification_status')
-            .eq('id', notice.vault_item_id).eq('user_id', user.id).maybeSingle()
-          const expectedStatus = notice.kind === 'evidence_verified' ? 'verified' : 'rejected'
-          if (!item || item.verification_status !== expectedStatus) continue
+          // A decision stays in the inbox as history, also once the evidence is changed or sent again.
+          const [{ data: item }, { data: request }] = await Promise.all([
+            admin.from('vault_items').select('id,title').eq('id', notice.vault_item_id).eq('user_id', user.id).maybeSingle(),
+            admin.from('vault_validation_requests').select('organisation_name')
+              .eq('id', notice.validation_request_id).eq('user_id', user.id).maybeSingle(),
+          ])
+          if (!item) continue
           visible.push({
-            id: notice.id, kind: notice.kind, title: notice.title, personName: item.organisation_name || 'Kluis',
-            date: notice.created_at, isUnread: notice.read_at == null, vaultItemID: item.id,
+            id: notice.id, kind: notice.kind, title: notice.title,
+            personName: request?.organisation_name || 'Kluis',
+            date: notice.created_at, isUnread: notice.read_at == null, deletedAt: notice.deleted_at,
+            validationRequestID: notice.validation_request_id, vaultItemID: item.id,
+            documentName: item.title,
           })
         } else if (notice.kind === 'conversation' && notice.conversation_id) {
           const { data: conversation } = await admin.from('ayla_conversations').select('id,title,user_id')
@@ -188,7 +195,7 @@ Deno.serve(async (req) => {
           if (!conversation || conversation.user_id !== user.id) continue
           visible.push({
             id: notice.id, kind: notice.kind, title: notice.title || conversation.title,
-            personName: 'Ayla', date: notice.created_at, isUnread: notice.read_at == null,
+            personName: 'Ayla', date: notice.created_at, isUnread: notice.read_at == null, deletedAt: notice.deleted_at,
             conversationID: conversation.id,
           })
         }

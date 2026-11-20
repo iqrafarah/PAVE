@@ -51,6 +51,8 @@ struct VaultRequestConfirmationSheet: View {
     }
 
     private var hasChanges: Bool { !isFinished && isDirty }
+    /// Persons come after the location, and at a school after the department.
+    private var canPickPerson: Bool { request.location != nil && (!request.requiresDepartment || request.department != nil) }
 
     var body: some View {
         NavigationStack {
@@ -98,11 +100,11 @@ struct VaultRequestConfirmationSheet: View {
                     VStack(alignment: .leading, spacing: 22) {
                         pickerField(title: "Naam bedrijf", value: request.organization?.name, placeholder: "Kies een organisatie", error: error(.organisation)) { searchText = ""; choice = .organization }
                         pickerField(title: "Locatie van het bedrijf", value: request.location?.city, placeholder: "Typ of kies een vestigingsplaats", error: error(.location), isEnabled: request.organization != nil) { searchText = ""; choice = .location }
-                        if request.organization?.kind == "school", !departments.isEmpty {
-                            pickerField(title: "Afdeling of opleiding", value: request.department?.name, placeholder: "Kies een afdeling of sla over", isEnabled: request.location != nil) { searchText = ""; choice = .department }
+                        if request.requiresDepartment {
+                            pickerField(title: "Afdeling of opleiding", value: request.department?.name, placeholder: "Kies een afdeling of opleiding", error: error(.department), isEnabled: request.location != nil) { searchText = ""; choice = .department }
                         }
-                        pickerField(title: "Functie (optioneel)", value: request.contactType, placeholder: "Alle functies", isEnabled: request.location != nil && !contacts.isEmpty) { searchText = ""; choice = .contactType }
-                        pickerField(title: "Contactpersoon", value: request.contact.map(contactLine), placeholder: "Kies één persoon", error: error(.contact), isEnabled: request.location != nil) { searchText = ""; choice = .contact }
+                        pickerField(title: "Functie (optioneel)", value: request.contactType, placeholder: "Alle functies", isEnabled: canPickPerson && !contacts.isEmpty) { searchText = ""; choice = .contactType }
+                        pickerField(title: request.requiresDepartment ? "Docent of contactpersoon" : "Contactpersoon", value: request.contact.map(contactLine), placeholder: "Kies één persoon", error: error(.contact), isEnabled: canPickPerson) { searchText = ""; choice = .contact }
                     }
                     .padding(20)
                     .background(Color.white, in: .rect(cornerRadius: 16))
@@ -168,7 +170,6 @@ struct VaultRequestConfirmationSheet: View {
                         case .location:
                             ForEach(filteredLocations) { location in choiceRow(location.city, detail: nil, selected: request.location?.id == location.id) { Task { await select(location) } } }
                         case .department:
-                            choiceRow("Overslaan", detail: "Geen afdeling of opleiding kiezen", selected: request.department == nil) { Task { await skipDepartment() } }
                             ForEach(filteredDepartments) { department in choiceRow(department.name, detail: nil, selected: request.department?.id == department.id) { Task { await select(department) } } }
                         case .contactType:
                             choiceRow("Alle functies", detail: "Laat alle personen zien", selected: request.contactType == nil) { selectFunction(nil) }
@@ -259,7 +260,7 @@ struct VaultRequestConfirmationSheet: View {
         switch selected {
         case .organization: return filteredOrganizations.count
         case .location: return filteredLocations.count
-        case .department: return filteredDepartments.count + 1
+        case .department: return filteredDepartments.count
         case .contactType: return filteredContactTypes.count + 1
         case .contact: return filteredContacts.count
         }
@@ -305,15 +306,24 @@ struct VaultRequestConfirmationSheet: View {
         } catch { directoryError = "De vestigingen konden niet worden geladen. Probeer het opnieuw." }
     }
 
+    /// A school location with departments: first the department, then its teachers. Otherwise the persons of the location.
     private func loadDepartmentsAndContacts() async {
         guard let organization = request.organization, let location = request.location else { return }
+        departments = []
+        request.department = nil
+        // Not the previous location's answer while this one loads, or if loading fails: no stray department field,
+        // and no person field that is open with an empty list (`canPickPerson` waits for the department).
+        request.requiresDepartment = organization.kind == "school"
         if organization.kind == "school" {
             do {
                 departments = try await vault.validationDepartments(organizationID: organization.id, locationID: location.id)
-                if departments.isEmpty { request.department = nil }
-                await loadContacts()
-            } catch { directoryError = "De afdelingen of opleidingen konden niet worden geladen. Probeer het opnieuw." }
-        } else { departments = []; request.department = nil; await loadContacts() }
+            } catch {
+                directoryError = "De afdelingen of opleidingen konden niet worden geladen. Probeer het opnieuw."
+                return
+            }
+        }
+        request.requiresDepartment = !departments.isEmpty
+        if !request.requiresDepartment { await loadContacts() }
     }
 
     private func loadContacts() async {
@@ -326,6 +336,7 @@ struct VaultRequestConfirmationSheet: View {
         isDirty = true
         directoryError = nil
         request.organization = organization; request.location = nil; request.department = nil; request.contactType = nil; request.contact = nil
+        request.requiresDepartment = false
         locations = []; departments = []; contacts = []; searchText = ""; choice = nil
         isLoading = true; await loadLocations(); isLoading = false
     }
@@ -340,12 +351,6 @@ struct VaultRequestConfirmationSheet: View {
         isDirty = true
         directoryError = nil
         request.department = department; request.contactType = nil; request.contact = nil; contacts = []; searchText = ""; choice = nil
-        isLoading = true; await loadContacts(); isLoading = false
-    }
-    private func skipDepartment() async {
-        isDirty = true
-        directoryError = nil
-        request.department = nil; request.contactType = nil; request.contact = nil; contacts = []; searchText = ""; choice = nil
         isLoading = true; await loadContacts(); isLoading = false
     }
 

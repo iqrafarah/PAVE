@@ -164,6 +164,7 @@ enum VaultMessages {
         switch field {
         case .organisation: "Kies een organisatie."
         case .location: "Kies een vestigingsplaats."
+        case .department: "Kies een afdeling of opleiding."
         case .contact: "Kies de persoon die je bewijs kan bevestigen."
         }
     }

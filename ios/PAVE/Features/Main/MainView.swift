@@ -241,7 +241,9 @@ struct MainView: View {
                 onOpenConversation: openNotificationConversation,
                 onOpenVerifiedEvidence: openNotificationEvidence,
                 onLoadReview: { await notificationsModel.review($0) },
-                onResolveRequest: { await notificationsModel.resolve($0, action: $1, response: $2) }
+                onResolveRequest: { await notificationsModel.resolve($0, action: $1, response: $2) },
+                onDelete: { await notificationsModel.delete($0) },
+                onRestore: { await notificationsModel.restore($0) }
             )
         }
     }

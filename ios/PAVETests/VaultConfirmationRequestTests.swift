@@ -32,13 +32,27 @@ struct VaultConfirmationRequestTests {
         #expect(request.missingFields.isEmpty)
     }
 
-    @Test func aDepartmentIsOptional() throws {
+    @Test func aSchoolLocationWithDepartmentsNeedsADepartment() throws {
         var request = VaultConfirmationRequest(item: VaultItem(id: "d", category: .diplomas, title: "Hbo-ICT"))
         request.organization = try Self.decode(VaultValidationOrganization.self, #"{"id":"o1","name":"Fontys","kind":"school"}"#)
-        request.location = try Self.decode(VaultValidationLocation.self, #"{"id":"l1","organization_id":"o1","city":"Eindhoven"}"#)
+        request.location = try Self.decode(VaultValidationLocation.self, #"{"id":"l1","organization_id":"o1","city":"Tilburg"}"#)
+        request.requiresDepartment = true
+        #expect(request.missingFields == [.department, .contact])
+        request.department = try Self.decode(VaultValidationDepartment.self, #"{"id":"d1","organization_id":"o1","location_id":"l1","name":"ICT"}"#)
         request.contact = try Self.decode(
             VaultValidationContact.self,
-            #"{"id":"c1","organization_id":"o1","location_id":null,"department_id":null,"name":"Sanne","job_title":"Docent","is_active":true}"#
+            #"{"id":"c1","organization_id":"o1","location_id":"l1","department_id":"d1","name":"Sanne de Vries","job_title":"Docent","is_active":true}"#
+        )
+        #expect(request.missingFields.isEmpty)
+    }
+
+    @Test func aCompanyLocationNeedsNoDepartment() throws {
+        var request = VaultConfirmationRequest(item: VaultItem(id: "s", category: .internships, title: "Stage"))
+        request.organization = try Self.decode(VaultValidationOrganization.self, #"{"id":"o2","name":"Coolblue","kind":"company"}"#)
+        request.location = try Self.decode(VaultValidationLocation.self, #"{"id":"l2","organization_id":"o2","city":"Breda"}"#)
+        request.contact = try Self.decode(
+            VaultValidationContact.self,
+            #"{"id":"c2","organization_id":"o2","location_id":"l2","department_id":null,"name":"Daan Jansen","job_title":"Stagebegeleider","is_active":true}"#
         )
         #expect(request.department == nil)
         #expect(request.missingFields.isEmpty)

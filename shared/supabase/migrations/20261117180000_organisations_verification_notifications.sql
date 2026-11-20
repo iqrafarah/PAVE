@@ -10,9 +10,13 @@
 -- Runs on a fresh database (after the vault and Ayla migrations) and on a database where the old files were already
 -- applied: every step is safe to run again and removes what the old setup left behind.
 --
---   organizations ── organization_locations ── organization_departments (optional, mostly schools)
---        │                    └──────────────── organization_contacts (the person a learner picks; reviewer_id hidden)
---        └── organization_reviewers (PAVE accounts that may decide requests for that organisation)
+--   organizations                 Fontys                          Coolblue
+--   └─ organization_locations     └─ Fontys Tilburg               └─ Coolblue Breda
+--      └─ organization_departments   └─ ICT (schools only)           └─ contact person(s)
+--         └─ organization_contacts      └─ teachers
+--   organization_reviewers: per organisation, the PAVE accounts that handle requests to a person without an account.
+--
+--   A learner picks a location, then (at a school) a department, then one person.
 --
 --   vault_validation_requests (one per request; only the vault-review Edge Function writes them)
 --        └── user_notifications (inbox: Ayla replies, requests for reviewers, decisions for learners)
@@ -47,19 +51,33 @@ end $$;
 
 create index if not exists organization_locations_organization on public.organization_locations (organization_id);
 
--- A department or study programme. Without a place it is at every place of the organisation.
+-- A department or study programme at one location of a school: Fontys Tilburg ICT and Fontys Eindhoven ICT are two
+-- departments, each with its own teachers. Companies have no departments; their contacts are at a location.
 create table if not exists public.organization_departments (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations (id) on delete cascade,
-  location_id uuid,
+  location_id uuid not null,
   name text not null check (length(btrim(name)) between 1 and 120),
   created_at timestamptz not null default now(),
   unique (id, organization_id),
+  constraint organization_departments_id_location unique (id, location_id),
   unique nulls not distinct (organization_id, location_id, name),
   foreign key (location_id, organization_id) references public.organization_locations (id, organization_id) on delete cascade
 );
 
+-- Departments for a whole organisation (no location) belonged to the first setup: they go, with their contacts.
+delete from public.organization_departments where location_id is null;
+alter table public.organization_departments alter column location_id set not null;
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'organization_departments_id_location') then
+    alter table public.organization_departments add constraint organization_departments_id_location unique (id, location_id);
+  end if;
+end $$;
+
 create index if not exists organization_departments_organization on public.organization_departments (organization_id);
+create index if not exists organization_departments_location on public.organization_departments (location_id);
 
 -- 2. Reviewers ---------------------------------------------------------------------------------------------------------
 -- Explicit assignments, separate from the web roles in profiles: a teacher can review without being a web admin.
@@ -83,13 +101,14 @@ create table if not exists public.organization_reviewers (
 create index if not exists organization_reviewers_reviewer on public.organization_reviewers (reviewer_id);
 
 -- 3. Contacts ----------------------------------------------------------------------------------------------------------
--- The person a learner picks. `reviewer_id` is that person's PAVE account, if they have one: requests to them go only
--- to that account. Learners can read every column except reviewer_id.
+-- The person a learner picks: at a location (Coolblue Breda: one or more contact persons), and at a school also in a
+-- department of that location (Fontys Tilburg ICT: its teachers). `reviewer_id` is that person's PAVE account, if they
+-- have one: requests to them go only to that account. Learners can read every column except reviewer_id.
 
 create table if not exists public.organization_contacts (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations (id) on delete cascade,
-  location_id uuid,
+  location_id uuid not null,
   department_id uuid,
   name text not null check (length(btrim(name)) between 1 and 120),
   job_title text check (job_title is null or length(btrim(job_title)) between 1 and 120),
@@ -98,8 +117,26 @@ create table if not exists public.organization_contacts (
   unique (id, organization_id),
   unique nulls not distinct (organization_id, location_id, department_id, name),
   foreign key (location_id, organization_id) references public.organization_locations (id, organization_id) on delete cascade,
-  foreign key (department_id, organization_id) references public.organization_departments (id, organization_id) on delete cascade
+  -- The department must be one of this location.
+  constraint organization_contacts_department_location
+    foreign key (department_id, location_id) references public.organization_departments (id, location_id) on delete cascade
 );
+
+-- Contacts for a whole organisation (no location) belonged to the first setup: they go.
+delete from public.organization_contacts where location_id is null;
+alter table public.organization_contacts alter column location_id set not null;
+alter table public.organization_contacts drop constraint if exists organization_contacts_department_id_organization_id_fkey;
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'organization_contacts_department_location') then
+    alter table public.organization_contacts
+      add constraint organization_contacts_department_location
+      foreign key (department_id, location_id) references public.organization_departments (id, location_id) on delete cascade;
+  end if;
+end $$;
+
+create index if not exists organization_contacts_location on public.organization_contacts (location_id);
 
 alter table public.organization_contacts add column if not exists reviewer_id uuid;
 
@@ -361,17 +398,22 @@ alter table public.user_notifications
           and validation_request_id is not null and vault_item_id is null)
     );
 
+-- Deleting is soft: the owner can bring a notification back for 7 days ("Recent verwijderd"), then it is purged.
+alter table public.user_notifications add column if not exists deleted_at timestamptz;
+
 create index if not exists user_notifications_inbox on public.user_notifications (recipient_id, created_at desc);
+create index if not exists user_notifications_deleted on public.user_notifications (deleted_at) where deleted_at is not null;
 create index if not exists user_notifications_unread on public.user_notifications (recipient_id, created_at desc) where read_at is null;
 
 alter table public.user_notifications enable row level security;
 drop policy if exists "Read own notifications" on public.user_notifications;
 drop policy if exists "Mark own notifications read" on public.user_notifications;
+drop policy if exists "Mark own notifications read or deleted" on public.user_notifications;
 drop policy if exists "Require two-step verification for notifications" on public.user_notifications;
 drop policy if exists "Require two-step verification" on public.user_notifications;
 create policy "Read own notifications" on public.user_notifications for select to authenticated
   using ((select auth.uid()) = recipient_id);
-create policy "Mark own notifications read" on public.user_notifications for update to authenticated
+create policy "Mark own notifications read or deleted" on public.user_notifications for update to authenticated
   using ((select auth.uid()) = recipient_id) with check ((select auth.uid()) = recipient_id);
 create policy "Require two-step verification" on public.user_notifications as restrictive for all to authenticated
   using (public.is_mfa_verified()) with check (public.is_mfa_verified());
@@ -379,7 +421,7 @@ create policy "Require two-step verification" on public.user_notifications as re
 revoke all on public.user_notifications from anon, authenticated;
 grant select, update on public.user_notifications to authenticated;
 
--- The owner may only set read_at, once.
+-- The owner may only mark a notification read (once), delete it, and bring it back within 7 days.
 create or replace function public.guard_user_notification_update()
 returns trigger
 language plpgsql
@@ -392,8 +434,16 @@ begin
        is distinct from
        (old.id, old.recipient_id, old.kind, old.title, old.body, old.conversation_id, old.validation_request_id,
         old.vault_item_id, old.dedupe_key, old.created_at)
-       or (new.read_at is not null and old.read_at is not null) then
-      raise exception 'Only notification read state can be changed by the recipient' using errcode = '42501';
+       or (old.read_at is not null and new.read_at is distinct from old.read_at) then
+      raise exception 'Only notification read and deleted state can be changed by the recipient' using errcode = '42501';
+    end if;
+    -- Deleting sets the time on the server, so a client cannot stretch or shorten the 7 days.
+    if new.deleted_at is not null and old.deleted_at is null then
+      new.deleted_at := now();
+    elsif new.deleted_at is not null and new.deleted_at is distinct from old.deleted_at then
+      raise exception 'A deleted notification can only be restored' using errcode = '42501';
+    elsif new.deleted_at is null and old.deleted_at < now() - interval '7 days' then
+      raise exception 'This notification can no longer be restored' using errcode = '42501';
     end if;
   end if;
   return new;
@@ -409,6 +459,27 @@ do $$
 begin
   if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'user_notifications') then
     alter publication supabase_realtime add table public.user_notifications;
+  end if;
+end $$;
+
+-- After 7 days a deleted notification is gone for good. `vault-review` also purges the caller's own rows when it
+-- loads the inbox; this nightly job (only where pg_cron is enabled) catches accounts that do not open the app.
+create or replace function public.purge_deleted_notifications()
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  delete from public.user_notifications where deleted_at < now() - interval '7 days';
+$$;
+
+revoke all on function public.purge_deleted_notifications() from public, anon, authenticated;
+grant execute on function public.purge_deleted_notifications() to service_role;
+
+do $$
+begin
+  if exists (select 1 from pg_extension where extname = 'pg_cron') then
+    perform cron.schedule('purge-deleted-notifications', '17 3 * * *', 'select public.purge_deleted_notifications()');
   end if;
 end $$;
 
@@ -441,9 +512,25 @@ create trigger ayla_message_notification
   for each row execute function public.notify_on_ayla_reply();
 
 -- 7. Demo directory ----------------------------------------------------------------------------------------------------
--- Organisations in Brabant with their places, Fontys departments, and two made-up persons per organisation (two per
--- Fontys department). These are not real staff: real people are added by the team, and linked to their account with
--- organization_contacts.reviewer_id. A person without an account sends the request to the organisation's reviewers.
+-- Organisations in Brabant with their locations; at every school location three departments with two teachers each,
+-- and at every company location one contact person. The names are made up: these are not real staff. Real people are
+-- added by the team, and linked to their account with organization_contacts.reviewer_id. A person without an account
+-- sends the request to the organisation's reviewers. Only empty departments and locations get demo persons, so running
+-- this again never adds demo persons next to real ones.
+
+create or replace function pg_temp.demo_name(p_seed text)
+returns text
+language sql
+immutable
+as $$
+  select (array['Sanne', 'Daan', 'Fatima', 'Lucas', 'Noor', 'Milan', 'Yara', 'Sem', 'Eva', 'Mohamed',
+                'Lotte', 'Jesse', 'Amira', 'Thijs', 'Femke', 'Bram', 'Ilse', 'Ruben', 'Zeynep', 'Tim'])
+           [1 + abs(hashtext(p_seed)::bigint) % 20]
+      || ' ' ||
+         (array['de Vries', 'Jansen', 'Bakker', 'Visser', 'Smit', 'Meijer', 'de Boer', 'Mulder', 'de Groot', 'Bos',
+                'Vos', 'Peters', 'Hendriks', 'van Dijk', 'Dekker', 'Brouwer', 'van Leeuwen', 'Kaya', 'El Amrani', 'Verhoeven'])
+           [1 + abs(hashtext(p_seed || ':achternaam')::bigint) % 20];
+$$;
 
 do $$
 declare
@@ -451,54 +538,49 @@ declare
   v_id uuid;
   v_city text;
   v_department text;
-  v_department_id uuid;
-  v_function text;
-  v_org record;
-  first_names text[] := array['Sanne', 'Daan', 'Fatima', 'Lucas', 'Noor', 'Milan', 'Yara', 'Sem', 'Eva', 'Mohamed',
-                              'Lotte', 'Jesse', 'Amira', 'Thijs', 'Femke', 'Bram', 'Ilse', 'Ruben', 'Zeynep', 'Tim'];
-  last_names text[] := array['de Vries', 'Jansen', 'Bakker', 'Visser', 'Smit', 'Meijer', 'de Boer', 'Mulder', 'de Groot', 'Bos',
-                             'Vos', 'Peters', 'Hendriks', 'van Dijk', 'Dekker', 'Brouwer', 'van Leeuwen', 'Kaya', 'El Amrani', 'Verhoeven'];
+  v_place record;
+  v_number int;
 begin
   for entry in
     select * from (values
-    ('Fontys Hogeschool', 'school', array['Tilburg', 'Eindhoven', 'Den Bosch', 'Venlo', 'Sittard']),
-    ('Avans Hogeschool', 'school', array['Breda', 'Tilburg', 'Den Bosch', 'Roosendaal']),
-    ('Yonder', 'school', array['Tilburg']),
-    ('Curio', 'school', array['Breda', 'Roosendaal', 'Bergen op Zoom', 'Oosterhout']),
-    ('De Rooi Pannen', 'school', array['Tilburg', 'Breda', 'Eindhoven']),
-    ('Summa', 'school', array['Eindhoven']),
-    ('Koning Willem I College', 'school', array['Den Bosch', 'Oss', 'Veghel', 'Cuijk']),
-    ('Yuverta', 'school', array['Tilburg', 'Eindhoven', 'Den Bosch', 'Helmond']),
-    ('Breda University of Applied Sciences', 'school', array['Breda']),
-    ('Tilburg University', 'school', array['Tilburg']),
-    ('Technische Universiteit Eindhoven', 'school', array['Eindhoven']),
-    ('HAS green academy', 'school', array['Den Bosch', 'Venlo']),
-    ('SintLucas', 'school', array['Eindhoven', 'Boxtel']),
-    ('Ter AA', 'school', array['Helmond', 'Deurne']),
-    ('ROC Nijmegen', 'school', array['Nijmegen', 'Boxmeer']),
-    ('Coolblue', 'company', array['Tilburg', 'Breda', 'Eindhoven', 'Den Bosch']),
-    ('Albert Heijn', 'company', array['Tilburg', 'Breda', 'Eindhoven', 'Den Bosch', 'Waalwijk', 'Roosendaal']),
-    ('Jumbo', 'company', array['Tilburg', 'Breda', 'Eindhoven', 'Den Bosch', 'Veghel']),
-    ('IKEA', 'company', array['Breda', 'Eindhoven']),
-    ('bol', 'company', array['Waalwijk', 'Utrecht']),
-    ('ASML', 'company', array['Veldhoven', 'Eindhoven']),
-    ('Philips', 'company', array['Eindhoven', 'Best']),
-    ('DAF Trucks', 'company', array['Eindhoven', 'Geldrop']),
-    ('VDL Groep', 'company', array['Eindhoven', 'Tilburg', 'Helmond']),
-    ('CM.com', 'company', array['Breda']),
-    ('Prodrive Technologies', 'company', array['Son en Breugel']),
-    ('Heijmans', 'company', array['Rosmalen', 'Eindhoven']),
-    ('McDonald''s', 'company', array['Tilburg', 'Breda', 'Eindhoven', 'Den Bosch']),
-    ('Kruidvat', 'company', array['Tilburg', 'Breda', 'Eindhoven', 'Den Bosch']),
-    ('HEMA', 'company', array['Tilburg', 'Breda', 'Eindhoven', 'Den Bosch']),
-    ('Decathlon', 'company', array['Tilburg', 'Breda', 'Eindhoven']),
-    ('PostNL', 'company', array['Tilburg', 'Breda', 'Eindhoven', 'Den Bosch']),
-    ('DHL', 'company', array['Tilburg', 'Eindhoven', 'Breda']),
-    ('Elisabeth-TweeSteden Ziekenhuis', 'company', array['Tilburg', 'Waalwijk']),
-    ('Amphia', 'company', array['Breda', 'Oosterhout']),
-    ('Jeroen Bosch Ziekenhuis', 'company', array['Den Bosch']),
-    ('Organon', 'company', array['Oss'])
-    ) as list(name, kind, cities)
+    ('Fontys Hogeschool', 'school', array['Tilburg', 'Eindhoven', 'Den Bosch', 'Venlo', 'Sittard'], array['ICT', 'Educatie', 'Biologie']),
+    ('Avans Hogeschool', 'school', array['Breda', 'Tilburg', 'Den Bosch', 'Roosendaal'], array['ICT', 'Educatie', 'Gezondheidszorg']),
+    ('Yonder', 'school', array['Tilburg'], array['ICT', 'Zorg en welzijn', 'Techniek']),
+    ('Curio', 'school', array['Breda', 'Roosendaal', 'Bergen op Zoom', 'Oosterhout'], array['ICT', 'Zorg en welzijn', 'Techniek']),
+    ('De Rooi Pannen', 'school', array['Tilburg', 'Breda', 'Eindhoven'], array['Horeca', 'Toerisme', 'Commercie']),
+    ('Summa', 'school', array['Eindhoven'], array['ICT', 'Zorg en welzijn', 'Techniek']),
+    ('Koning Willem I College', 'school', array['Den Bosch', 'Oss', 'Veghel', 'Cuijk'], array['ICT', 'Zorg en welzijn', 'Techniek']),
+    ('Yuverta', 'school', array['Tilburg', 'Eindhoven', 'Den Bosch', 'Helmond'], array['Groen', 'Dier', 'Food']),
+    ('Breda University of Applied Sciences', 'school', array['Breda'], array['Games', 'Media', 'Hotel']),
+    ('Tilburg University', 'school', array['Tilburg'], array['Economie', 'Rechten', 'Psychologie']),
+    ('Technische Universiteit Eindhoven', 'school', array['Eindhoven'], array['Informatica', 'Werktuigbouwkunde', 'Industrial Design']),
+    ('HAS green academy', 'school', array['Den Bosch', 'Venlo'], array['Biologie', 'Food', 'Business']),
+    ('SintLucas', 'school', array['Eindhoven', 'Boxtel'], array['Media', 'Design', 'Games']),
+    ('Ter AA', 'school', array['Helmond', 'Deurne'], array['ICT', 'Zorg en welzijn', 'Techniek']),
+    ('ROC Nijmegen', 'school', array['Nijmegen', 'Boxmeer'], array['ICT', 'Zorg en welzijn', 'Techniek']),
+    ('Coolblue', 'company', array['Tilburg', 'Breda', 'Eindhoven', 'Den Bosch'], array[]::text[]),
+    ('Albert Heijn', 'company', array['Tilburg', 'Breda', 'Eindhoven', 'Den Bosch', 'Waalwijk', 'Roosendaal'], array[]::text[]),
+    ('Jumbo', 'company', array['Tilburg', 'Breda', 'Eindhoven', 'Den Bosch', 'Veghel'], array[]::text[]),
+    ('IKEA', 'company', array['Breda', 'Eindhoven'], array[]::text[]),
+    ('bol', 'company', array['Waalwijk', 'Utrecht'], array[]::text[]),
+    ('ASML', 'company', array['Veldhoven', 'Eindhoven'], array[]::text[]),
+    ('Philips', 'company', array['Eindhoven', 'Best'], array[]::text[]),
+    ('DAF Trucks', 'company', array['Eindhoven', 'Geldrop'], array[]::text[]),
+    ('VDL Groep', 'company', array['Eindhoven', 'Tilburg', 'Helmond'], array[]::text[]),
+    ('CM.com', 'company', array['Breda'], array[]::text[]),
+    ('Prodrive Technologies', 'company', array['Son en Breugel'], array[]::text[]),
+    ('Heijmans', 'company', array['Rosmalen', 'Eindhoven'], array[]::text[]),
+    ('McDonald''s', 'company', array['Tilburg', 'Breda', 'Eindhoven', 'Den Bosch'], array[]::text[]),
+    ('Kruidvat', 'company', array['Tilburg', 'Breda', 'Eindhoven', 'Den Bosch'], array[]::text[]),
+    ('HEMA', 'company', array['Tilburg', 'Breda', 'Eindhoven', 'Den Bosch'], array[]::text[]),
+    ('Decathlon', 'company', array['Tilburg', 'Breda', 'Eindhoven'], array[]::text[]),
+    ('PostNL', 'company', array['Tilburg', 'Breda', 'Eindhoven', 'Den Bosch'], array[]::text[]),
+    ('DHL', 'company', array['Tilburg', 'Eindhoven', 'Breda'], array[]::text[]),
+    ('Elisabeth-TweeSteden Ziekenhuis', 'company', array['Tilburg', 'Waalwijk'], array[]::text[]),
+    ('Amphia', 'company', array['Breda', 'Oosterhout'], array[]::text[]),
+    ('Jeroen Bosch Ziekenhuis', 'company', array['Den Bosch'], array[]::text[]),
+    ('Organon', 'company', array['Oss'], array[]::text[])
+    ) as list(name, kind, cities, departments)
   loop
     select id into v_id from public.organizations where lower(btrim(name)) = lower(btrim(entry.name)) order by created_at limit 1;
     if v_id is null then
@@ -510,64 +592,52 @@ begin
       insert into public.organization_locations (organization_id, city) values (v_id, v_city)
       on conflict (organization_id, city) do nothing;
     end loop;
-  end loop;
-
-  select id into v_id from public.organizations where lower(btrim(name)) = 'fontys hogeschool' order by created_at limit 1;
-  if v_id is not null then
-    foreach v_department in array array['ICT', 'Engineering', 'Pedagogiek'] loop
-      insert into public.organization_departments (organization_id, name) values (v_id, v_department)
-      on conflict (organization_id, location_id, name) do nothing;
-    end loop;
-  end if;
-
-  -- Two persons per organisation, named from the organisation's id so a second run adds nothing.
-  for v_org in select id, kind from public.organizations where kind is not null loop
-    foreach v_function in array (case when v_org.kind = 'school' then array['Docent', 'Stagecoördinator']
-                                      else array['Stagebegeleider', 'HR-adviseur'] end) loop
-      insert into public.organization_contacts (organization_id, name, job_title)
-      values (v_org.id,
-              first_names[1 + abs(hashtext(v_org.id::text || ':' || v_function)::bigint) % 20] || ' ' ||
-              last_names[1 + abs(hashtext(v_org.id::text || ':' || v_function || ':achternaam')::bigint) % 20],
-              v_function)
-      on conflict (organization_id, location_id, department_id, name) do nothing;
+    -- Every location of a school gets the school's departments.
+    for v_place in select l.id from public.organization_locations l where l.organization_id = v_id loop
+      foreach v_department in array entry.departments loop
+        insert into public.organization_departments (organization_id, location_id, name) values (v_id, v_place.id, v_department)
+        on conflict (organization_id, location_id, name) do nothing;
+      end loop;
     end loop;
   end loop;
 
-  for v_department_id, v_id in
-    select d.id, d.organization_id from public.organization_departments d
-    join public.organizations o on o.id = d.organization_id
-    where lower(btrim(o.name)) = 'fontys hogeschool'
+  -- Two teachers in every department that has nobody yet.
+  for v_place in
+    select d.id, d.organization_id, d.location_id from public.organization_departments d
+    where not exists (select 1 from public.organization_contacts c where c.department_id = d.id)
   loop
-    foreach v_function in array array['Docent', 'Stagecoördinator'] loop
-      insert into public.organization_contacts (organization_id, department_id, name, job_title)
-      values (v_id, v_department_id,
-              first_names[1 + abs(hashtext(v_department_id::text || ':' || v_function)::bigint) % 20] || ' ' ||
-              last_names[1 + abs(hashtext(v_department_id::text || ':' || v_function || ':achternaam')::bigint) % 20],
-              v_function)
+    for v_number in 1..2 loop
+      insert into public.organization_contacts (organization_id, location_id, department_id, name, job_title)
+      values (v_place.organization_id, v_place.location_id, v_place.id, pg_temp.demo_name(v_place.id::text || ':docent:' || v_number), 'Docent')
       on conflict (organization_id, location_id, department_id, name) do nothing;
     end loop;
   end loop;
 
-  -- The roles and desks of the first demo directory ("Stagebureau", "HR-afdeling", "Docent ICT") are gone for good,
-  -- unless an account is linked to one.
-  delete from public.organization_contacts c
-  where c.reviewer_id is null
-    and (c.name in ('Stagebureau', 'Stagebegeleider', 'HR-afdeling')
-         or c.name ~ '^(Stagecoördinator|Docent) (ICT|Engineering|Pedagogiek)$');
+  -- One contact person at every company location that has nobody yet.
+  for v_place in
+    select l.id, l.organization_id from public.organization_locations l
+    join public.organizations o on o.id = l.organization_id
+    where o.kind = 'company'
+      and not exists (select 1 from public.organization_contacts c where c.location_id = l.id)
+  loop
+    insert into public.organization_contacts (organization_id, location_id, name, job_title)
+    values (v_place.organization_id, v_place.id, pg_temp.demo_name(v_place.id::text || ':contact'), 'Stagebegeleider')
+    on conflict (organization_id, location_id, department_id, name) do nothing;
+  end loop;
 end $$;
 
 -- 8. Descriptions ------------------------------------------------------------------------------------------------------
 
 comment on table public.organization_locations is 'The places of an organisation, for the verification directory.';
-comment on table public.organization_departments is 'Departments or study programmes of an organisation (mostly schools).';
+comment on table public.organization_departments is 'Departments or study programmes at one location of a school.';
 comment on table public.organization_contacts is
-  'People a learner can ask to confirm evidence. reviewer_id (hidden from learners) is their PAVE account, if any.';
+  'People a learner can ask to confirm evidence, at a location and (schools) a department. reviewer_id (hidden from learners) is their PAVE account, if any.';
 comment on table public.organization_reviewers is
   'PAVE accounts that may decide verification requests for an organisation. Managed by trusted staff only.';
 comment on table public.vault_validation_requests is
   'Requests to confirm vault evidence. Created and decided only by the vault-review Edge Function; the row is the history.';
 comment on table public.user_notifications is
-  'Private inbox per account. Server code writes rows; the owner may read them and mark them read.';
+  'Private inbox per account. Server code writes rows; the owner may read them, mark them read, and delete them (deleted_at), restorable for 7 days.';
 comment on function public.validation_organizations() is
   'Directory pick-list: id, name and kind of every organisation with a kind. MFA sessions only.';
 comment on function public.vault_validation_recipients(uuid) is

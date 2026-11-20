@@ -11,19 +11,20 @@
 | Organisatieplaceholder | Kies een organisatie |
 | Vestigingsveld | Locatie van het bedrijf |
 | Vestigingsplaceholder | Typ of kies een vestigingsplaats |
-| Afdelingsveld (optioneel, alleen bij scholen) | Afdeling of opleiding |
+| Afdelingsveld (bij een schoollocatie met afdelingen) | Afdeling of opleiding |
+| Afdelingsplaceholder | Kies een afdeling of opleiding |
+| Ontbrekende afdeling | Kies een afdeling of opleiding. |
 | Functiefilter (optioneel) | Functie (optioneel) |
 | Functieplaceholder | Alle functies |
 | Functie: alles tonen | Alle functies — Laat alle personen zien |
 | Functie: aantal | 1 persoon / {n} personen |
-| Contactveld | Contactpersoon |
+| Contactveld | Contactpersoon (bij een school: Docent of contactpersoon) |
 | Contactplaceholder | Kies één persoon |
 | Gekozen persoon | {naam} · {functie} |
 | Zoeken | Zoeken |
 | Geen organisatie gevonden | Geen organisaties gevonden. Probeer een andere zoekopdracht. |
 | Geen vestigingen | Er zijn nog geen vestigingen voor deze organisatie ingesteld. |
 | Geen afdelingen | Er zijn geen afdelingen of opleidingen voor deze vestiging. |
-| Afdeling overslaan | Overslaan — Geen afdeling of opleiding kiezen |
 | Geen contacten | Er zijn geen actieve contactpersonen voor deze keuze. |
 | Laden organisaties mislukt | De organisaties konden niet worden geladen. Probeer het opnieuw. |
 | Laden vestigingen mislukt | De vestigingen konden niet worden geladen. Probeer het opnieuw. |
@@ -62,3 +63,20 @@
 | Reden ontbreekt | Schrijf waarom je de aanvraag afwijst. |
 | Al beoordeeld | Deze aanvraag is al beoordeeld of niet meer beschikbaar. Vernieuw je meldingen. |
 | Detail laden mislukt | Opnieuw proberen |
+
+## Meldingen verwijderen (iOS)
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Veegactie en menu | Verwijderen |
+| Menu bij een ongelezen melding | Markeer als gelezen |
+| Balk na verwijderen | Melding verwijderd · Ongedaan maken |
+| Link onderaan de lijst | Recent verwijderd {aantal} |
+| Hint bij beslissingen | Bekijk bewijs |
+| Titel prullenbak | Recent verwijderd |
+| Uitleg prullenbak | Verwijderde meldingen blijven 7 dagen staan. Daarna zijn ze definitief weg. |
+| Per melding | Nog 1 dag / Nog {n} dagen |
+| Terugzetten (tik, veeg, menu) | Terugzetten |
+| Prullenbak leeg | Niets verwijderd — Meldingen die je verwijdert, staan hier nog een week. |
+| Verwijderen mislukt | De melding kon niet worden verwijderd. Probeer het opnieuw. |
+| Terugzetten mislukt | De melding kon niet worden teruggezet. Probeer het opnieuw. |

@@ -115,6 +115,7 @@ private struct InboxRow: Decodable {
     let personName: String
     let date: Date
     let isUnread: Bool
+    let deletedAt: Date?
     let conversationID: String?
     let validationRequestID: String?
     let vaultItemID: String?
@@ -172,6 +173,7 @@ struct SupabaseNotificationsService: Sendable {
                 personName: row.personName,
                 date: row.date,
                 isUnread: row.isUnread,
+                deletedAt: row.deletedAt,
                 conversationID: row.conversationID,
                 validationRequestID: row.validationRequestID,
                 vaultItemID: row.vaultItemID,
@@ -199,6 +201,14 @@ struct SupabaseNotificationsService: Sendable {
         var components = URLComponents(url: projectURL.appending(path: "rest/v1/user_notifications"), resolvingAgainstBaseURL: false)!
         components.queryItems = [URLQueryItem(name: "id", value: "eq.\(notificationID)")]
         _ = try await call(components.url!, method: "PATCH", body: ["read_at": ISO8601DateFormatter().string(from: .now)])
+    }
+
+    /// Deleting is soft: the database sets the time itself, and restoring works for 7 days (`guard_user_notification_update`).
+    func setDeleted(notificationID: String, _ isDeleted: Bool) async throws {
+        var components = URLComponents(url: projectURL.appending(path: "rest/v1/user_notifications"), resolvingAgainstBaseURL: false)!
+        components.queryItems = [URLQueryItem(name: "id", value: "eq.\(notificationID)")]
+        let deletedAt: Any = isDeleted ? ISO8601DateFormatter().string(from: .now) : NSNull()
+        _ = try await call(components.url!, method: "PATCH", body: ["deleted_at": deletedAt])
     }
 
     private func function(_ body: [String: Any]) async throws -> Data {
@@ -254,6 +264,49 @@ final class NotificationsModel {
     }
 
     func markRead(_ id: String) async { try? await service?.markRead(notificationID: id) }
+
+    /// The last save per notification, so a quick "Ongedaan maken" never reaches the server before the delete itself.
+    @ObservationIgnored private var changes: [String: Task<Bool, Never>] = [:]
+
+    /// Moves a notification to "Recent verwijderd" at once; if the server refuses, it comes back with a message.
+    @discardableResult
+    func delete(_ id: String) async -> Bool {
+        await setDeleted(id, true, failure: "De melding kon niet worden verwijderd. Probeer het opnieuw.")
+    }
+
+    @discardableResult
+    func restore(_ id: String) async -> Bool {
+        await setDeleted(id, false, failure: "De melding kon niet worden teruggezet. Probeer het opnieuw.")
+    }
+
+    private func setDeleted(_ id: String, _ isDeleted: Bool, failure: String) async -> Bool {
+        guard let service, let index = notifications.firstIndex(where: { $0.id == id }) else { return false }
+        let previous = notifications[index].deletedAt
+        notifications[index].deletedAt = isDeleted ? .now : nil
+        let earlier = changes[id]
+        let change = Task { () -> Bool in
+            _ = await earlier?.value
+            do {
+                try await service.setDeleted(notificationID: id, isDeleted)
+                return true
+            } catch {
+                return false
+            }
+        }
+        changes[id] = change
+        let saved = await change.value
+        if changes[id] == change { changes[id] = nil }
+        if saved {
+            problem = nil
+        } else {
+            // Only undo what this call did, not a later delete or restore of the same notification.
+            if let index = notifications.firstIndex(where: { $0.id == id }), (notifications[index].deletedAt != nil) == isDeleted {
+                notifications[index].deletedAt = previous
+            }
+            problem = failure
+        }
+        return saved
+    }
     func review(_ id: String) async -> (payload: NotificationReviewPayload?, error: String?) {
         guard let service else {
             return (nil, NotificationsServiceError.notConfigured.localizedDescription)

@@ -290,27 +290,23 @@ public struct SupabaseVaultService: VaultService {
             select: "id,organization_id,location_id,name",
             filters: [
                 ("organization_id", "eq.\(organizationID)"),
-                ("or", "(location_id.is.null,location_id.eq.\(locationID))"),
+                ("location_id", "eq.\(locationID)"),
                 ("order", "name.asc"),
             ]
         )
     }
 
+    /// The persons at this location: in the department, or (a company, or a school location without departments) at the
+    /// location itself.
     public func validationContacts(organizationID: String, locationID: String, departmentID: String?) async throws -> [VaultValidationContact] {
-        var filters = [
+        try await directoryRows(VaultValidationContact.self, table: "organization_contacts", filters: [
             ("select", "id,organization_id,location_id,department_id,name,job_title,is_active"),
             ("organization_id", "eq.\(organizationID)"),
+            ("location_id", "eq.\(locationID)"),
+            ("department_id", departmentID.map { "eq.\($0)" } ?? "is.null"),
             ("is_active", "eq.true"),
-        ]
-        // Both conditions in one `and`: PostgREST does not combine two separate `or` parameters reliably.
-        if let departmentID {
-            filters.append(("and", "(or(location_id.is.null,location_id.eq.\(locationID)),or(department_id.is.null,department_id.eq.\(departmentID)))"))
-        } else {
-            filters.append(("or", "(location_id.is.null,location_id.eq.\(locationID))"))
-            filters.append(("department_id", "is.null"))
-        }
-        filters.append(("order", "name.asc"))
-        return try await directoryRows(VaultValidationContact.self, table: "organization_contacts", filters: filters)
+            ("order", "name.asc"),
+        ])
     }
 
     private func directoryRows<Row: Decodable>(
