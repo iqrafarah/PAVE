@@ -69,6 +69,8 @@ export interface VaultItem {
   coverUrl: string | null;
   // "Ayla mag dit bekijken en gebruiken" is on since then; null when it is off.
   aylaAllowedAt: string | null;
+  // Archived (vault_items.archived_at): out of the vault, kept until it is put back or deleted.
+  archivedAt: string | null;
   // The skills the user kept; Ayla's proposals that were not accepted are left out.
   skills: string[];
   files: VaultFile[];

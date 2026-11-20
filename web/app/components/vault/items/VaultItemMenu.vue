@@ -2,7 +2,7 @@
 import type { VaultItem } from '~/types/vault';
 
 // The … menu of a card (iOS VaultItemActionButtons, there on a long press): Aanpassen, Bevestiging aanvragen, In mappen
-// and Verwijderen. As on iOS, "In mappen" is a menu of its own that opens beside the first one: every folder is ticked
+// Archiveren and Verwijderen. As on iOS, "In mappen" is a menu of its own that opens beside the first one: every folder is ticked
 // on or off and both stay open meanwhile, since an item can be in several folders. (On a phone there is no room beside
 // it, so the folders show under the row.) The list is placed on the screen itself and opens upwards when
 // there is no room below, so a card at the bottom or a row in the list never cuts it off.
@@ -11,7 +11,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  select: [id: 'edit' | 'confirm' | 'delete'];
+  select: [id: 'edit' | 'confirm' | 'archive' | 'delete'];
 }>();
 
 const vault = useVault();
@@ -68,7 +68,7 @@ function close(isReturningFocus: boolean) {
   if (isReturningFocus) toggleRef.value?.focus();
 }
 
-function choose(id: 'edit' | 'confirm' | 'delete') {
+function choose(id: 'edit' | 'confirm' | 'archive' | 'delete') {
   close(true);
   emit('select', id);
 }
@@ -212,6 +212,10 @@ const row =
             </button>
           </div>
         </div>
+        <button v-if="vault.state.value.canArchive" type="button" role="menuitem" :class="row" class="text-ink" @mouseenter="setFolders(false)" @click="choose('archive')">
+          <VaultIcon src="/images/vault/icons/ArchiveBoxSolid.svg" class="size-4.5 text-brand" />
+          {{ RETENTION_ARCHIVE }}
+        </button>
         <button type="button" role="menuitem" :class="row" class="text-danger" @mouseenter="setFolders(false)" @click="choose('delete')">
           <VaultIcon src="/images/vault/icons/Trash.svg" class="size-4.5" />
           {{ VAULT_DELETE }}

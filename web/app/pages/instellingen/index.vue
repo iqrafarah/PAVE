@@ -4,6 +4,12 @@ useHead({ title: `${SETTINGS_TITLE} - PAVE` });
 const account = useAccount();
 const personal = usePersonalisation();
 const memory = useAylaMemory();
+const retention = useAylaChatRetention();
+const dataHeadingId = useId();
+// The chosen Verval beside the row, as on iOS; nothing before it is known.
+const retentionSummary = computed(() =>
+  retention.state.value.status === 'ready' ? getRetentionPeriod(retention.state.value.retention.chatExpiry.days) : undefined,
+);
 const generalHeadingId = useId();
 const aylaHeadingId = useId();
 const themeName = computed(() => personal.state.value.theme === 'custom'
@@ -18,6 +24,7 @@ onMounted(() => {
   personal.load();
   account.load();
   if (memory.state.value.status === 'idle') memory.load();
+  retention.load();
 });
 </script>
 
@@ -46,6 +53,13 @@ onMounted(() => {
         <SettingsGroup>
           <SettingsRow :to="SETTINGS_AYLA_PATH" :title="SETTINGS_AYLA" icon="/images/settings/chat.svg" :value="memorySummary" />
           <SettingsRow :to="SETTINGS_PRIVACY_PATH" :title="SETTINGS_PRIVACY" icon="/images/settings/privacy.svg" />
+        </SettingsGroup>
+      </section>
+      <section :aria-labelledby="dataHeadingId" class="flex flex-col gap-3 pt-2">
+        <SettingsSectionTitle :id="dataHeadingId" :title="RETENTION_SECTION" />
+        <SettingsGroup>
+          <SettingsRow :to="SETTINGS_DATA_PATH" :title="RETENTION_TITLE" icon="/images/settings/clock.svg" :value="retentionSummary" />
+          <SettingsRow :to="SETTINGS_ARCHIVE_PATH" :title="RETENTION_ARCHIVE_TITLE" icon="/images/settings/archive.svg" />
         </SettingsGroup>
       </section>
     </div>
