@@ -106,7 +106,7 @@ defineExpose({ clear });
       <button
         v-if="mode === 'enter'"
         type="button"
-        class="text-sm font-medium text-brand hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        class="rounded-lg px-2 py-1 text-sm font-medium text-brand hover:bg-tint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         @click="emit('forgot')"
       >
         {{ AYLA_PIN_FORGOT }}

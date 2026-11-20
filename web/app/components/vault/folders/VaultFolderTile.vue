@@ -35,7 +35,7 @@ const emit = defineEmits<{
       <span class="flex min-w-0 flex-col gap-0.5 px-3.25 pb-2.5 pt-3.25">
         <span class="flex min-w-0 items-center gap-1">
           <span class="truncate text-sm font-semibold text-ink">{{ title }}</span>
-          <LayoutPaveIcon v-if="isPinned" name="pin" class="size-3.5 shrink-0 text-ink-soft" aria-hidden="true" />
+          <LayoutPaveIcon v-if="isPinned" name="pinFilled" class="size-3.5 shrink-0 text-ink-soft" aria-hidden="true" />
           <span v-if="isPinned" class="sr-only">, {{ VAULT_FOLDER_PINNED }}</span>
         </span>
         <span class="text-xs font-medium text-ink-soft">{{ itemCount(count) }}</span>

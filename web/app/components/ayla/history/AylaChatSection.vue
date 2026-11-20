@@ -10,6 +10,8 @@ const props = defineProps<{
   now: Date;
   // Gives the heading a chevron that folds the group, remembered in this browser.
   collapseKey?: string;
+  // A chat icon in front of each chat (Vastgezet only).
+  showIcons?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -52,6 +54,7 @@ const isCollapsed = useCollapsed(props.collapseKey);
         :is-active="conversation.id === activeId"
         :can-pin="canPin"
         :now="now"
+        :show-icon="showIcons"
         @open="emit('open')"
         @toggle-pin="emit('togglePin', conversation)"
         @rename="emit('rename', conversation, $event)"

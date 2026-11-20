@@ -6,6 +6,8 @@ const props = defineProps<{
   isActive: boolean;
   canPin: boolean;
   now: Date;
+  // A chat icon in front of the title (pinned chats); chats in a project and in Recent have none.
+  showIcon?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -21,6 +23,7 @@ const newTitle = ref('');
 const renameInputRef = useTemplateRef<HTMLInputElement>('renameInput');
 
 const lock = useAylaChatLock();
+const chats = useAylaChats();
 const projects = useAylaProjects();
 const route = useRoute();
 
@@ -54,6 +57,7 @@ const menuItems = computed<RowMenuItem[]>(() => {
   }
   if (projects.state.value.status === 'ready') items.push({ id: 'move', label: AYLA_MOVE_TO_PROJECT, hasSubmenu: true });
   if (lock.isAvailable.value) items.push({ id: 'lock', label: AYLA_LOCK_MENU });
+  if (chats.state.value.canArchive) items.push({ id: 'archive', label: AYLA_ARCHIVE_MENU });
   items.push({ id: 'remove', label: AYLA_DELETE, isDanger: true });
   return items;
 });
@@ -85,7 +89,15 @@ async function unlock() {
   if (isFailed) projects.showNotice(AYLA_UNLOCK_FAILED, true);
 }
 
+// The chat leaves the list and is kept under "Gearchiveerd"; the open chat goes back to a new one.
+async function archive() {
+  const { isFailed } = await chats.setArchived(props.conversation.id, true);
+  if (isFailed) projects.showNotice(AYLA_ARCHIVE_FAILED, true);
+  else if (props.isActive) await navigateTo(newChatPath(route));
+}
+
 function handleMenuChoice(id: string) {
+  if (id === 'archive') archive();
   if (id === 'pin') emit('togglePin');
   if (id === 'rename') startRenaming();
   if (id === 'lock') emit('lock');
@@ -123,7 +135,8 @@ function handleMenuChoice(id: string) {
         @click="emit('open')"
         @dblclick.prevent="startRenaming"
       >
-        <span class="flex items-baseline gap-2">
+        <span class="flex items-center gap-3">
+          <LayoutPaveIcon v-if="showIcon" name="chat" class="size-4 text-brand" />
           <span class="min-w-0 flex-1 truncate text-sm font-medium text-heading">{{ conversation.title }}</span>
         </span>
         <span v-if="isStartedOnPhone" class="flex items-center gap-1 text-xs text-subtle">

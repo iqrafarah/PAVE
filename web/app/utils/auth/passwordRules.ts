@@ -22,7 +22,7 @@ export function getPasswordRules(password: string): PasswordRule[] {
     },
     { label: 'Hoofdletters en kleine letters', isMet: hasUpperAndLowercase },
     { label: 'Minimaal één cijfer', isMet: DIGIT.test(password) },
-    { label: 'Minimaal één symbool', isMet: SYMBOL.test(password) },
+    { label: 'Minimaal één speciaal teken, zoals ! of ?', isMet: SYMBOL.test(password) },
   ];
 }
 

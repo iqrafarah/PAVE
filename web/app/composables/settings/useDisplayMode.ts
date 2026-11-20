@@ -3,13 +3,7 @@ import { validDisplayChoice } from '~/utils/settings/appearance';
 
 export type { DisplayChoice };
 
-/** Auto follows the time of day on this device: dark in the evening and at night. */
-const DARK_FROM_HOUR = 19;
-const DARK_UNTIL_HOUR = 7;
-
-export function isNightHour(hour: number) {
-  return hour >= DARK_FROM_HOUR || hour < DARK_UNTIL_HOUR;
-}
+const SYSTEM_DARK_QUERY = '(prefers-color-scheme: dark)';
 
 /** The choice on this device. The server reads it too, and it is the account's choice once that has loaded. */
 export function useDisplayCookie() {
@@ -29,17 +23,19 @@ export function useDisplayMode() {
     // Also saved to the account, so iOS and every other browser follow.
     set: (value) => { saved.value = value; personal.set({ displayMode: value }); },
   });
-  // The server does not know the visitor's local time, so Auto starts light there and settles once mounted.
-  const hour = useState<number | null>('pave-display-hour', () => null);
+  // The server does not know the visitor's system setting, so Auto starts light there and settles once mounted.
+  const systemIsDark = useState<boolean | null>('pave-system-dark', () => null);
   const resolved = computed<'light' | 'dark'>(() => {
     if (mode.value !== 'auto') return mode.value;
-    return hour.value !== null && isNightHour(hour.value) ? 'dark' : 'light';
+    return systemIsDark.value ? 'dark' : 'light';
   });
-  function startClock() {
-    const tick = () => { hour.value = new Date().getHours(); };
-    tick();
-    const timer = setInterval(tick, 60_000);
-    onScopeDispose(() => clearInterval(timer));
+  /** Auto follows the light or dark setting of the device, and changes when that setting changes. */
+  function watchSystem() {
+    const query = window.matchMedia(SYSTEM_DARK_QUERY);
+    const update = () => { systemIsDark.value = query.matches; };
+    update();
+    query.addEventListener('change', update);
+    onScopeDispose(() => query.removeEventListener('change', update));
   }
-  return { mode, resolved, startClock };
+  return { mode, resolved, watchSystem };
 }

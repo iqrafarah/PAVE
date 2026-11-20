@@ -33,7 +33,7 @@ export function useAnimationClock(options: { isRunning?: () => boolean } = {}) {
   }
 
   onMounted(() => {
-    prefersReducedMotion.value = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    prefersReducedMotion.value = isMotionReduced();
   });
   onBeforeUnmount(stop);
 

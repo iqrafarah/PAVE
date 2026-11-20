@@ -65,7 +65,7 @@ function startFreshChat() {
 const projects = useAylaProjects();
 const { isDrawerOpen, isCollapsed, setCollapsed, closeDrawer } = useAylaPanel();
 
-const isSearching = ref(false);
+const search = useAylaSearch();
 const actionError = ref<string | null>(null);
 // Locking a chat: the question first, then the PIN when the account has none yet.
 const lockTarget = ref<Conversation | null>(null);
@@ -266,8 +266,10 @@ onBeforeUnmount(() => {
           <button
             type="button"
             aria-haspopup="dialog"
+            title="⌘K"
+            aria-keyshortcuts="Meta+K Control+K"
             class="flex size-6 items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-brand"
-            @click="isSearching = true"
+            @click="search.open()"
           >
             <LayoutPaveIcon name="search" class="size-4 text-brand" />
             <span class="sr-only">{{ AYLA_SEARCH_CHATS }}</span>
@@ -306,6 +308,7 @@ onBeforeUnmount(() => {
             :can-pin="chats.state.value.canPin"
             :now="now"
             collapse-key="pinned"
+            show-icons
             @open="closeDrawer"
             @toggle-pin="togglePin"
             @rename="renameChat"
@@ -379,7 +382,6 @@ onBeforeUnmount(() => {
       />
     </aside>
 
-    <AylaSearchDialog :open="isSearching" @close="isSearching = false" />
 
     <LayoutConfirmSheet
       ref="lockConfirm"
