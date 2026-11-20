@@ -1,6 +1,6 @@
 import Foundation
 
-public struct Vacancy: Codable, Equatable, Sendable, Identifiable {
+public struct Vacancy: Codable, Hashable, Sendable, Identifiable {
     public struct Employment: AylaValue {
         public let rawValue: String
         public init(rawValue: String) { self.rawValue = rawValue }
@@ -18,7 +18,7 @@ public struct Vacancy: Codable, Equatable, Sendable, Identifiable {
         public static let adzuna = Self(rawValue: "adzuna")
     }
 
-    public struct Salary: Codable, Equatable, Sendable {
+    public struct Salary: Codable, Hashable, Sendable {
         public enum Period: String, Codable, Sendable {
             case month
             case year
@@ -48,7 +48,7 @@ public struct Vacancy: Codable, Equatable, Sendable, Identifiable {
     }
 
     /// A skill and the requirement of the vacancy it comes from, so the user can check it.
-    public struct RequirementLink: Codable, Equatable, Sendable {
+    public struct RequirementLink: Codable, Hashable, Sendable {
         public var skill: String
         public var requirement: String
 
@@ -67,6 +67,8 @@ public struct Vacancy: Codable, Equatable, Sendable, Identifiable {
     public var logoUrl: URL?
     public var url: URL?
     public var source: Source
+    /// A short piece of the vacancy text, as Adzuna gives it: never the whole text.
+    public var summary: String?
     public var matches: [RequirementLink]
     public var skillGap: [RequirementLink]
 
@@ -80,6 +82,7 @@ public struct Vacancy: Codable, Equatable, Sendable, Identifiable {
         logoUrl: URL? = nil,
         url: URL? = nil,
         source: Source,
+        summary: String? = nil,
         matches: [RequirementLink] = [],
         skillGap: [RequirementLink] = []
     ) {
@@ -92,7 +95,21 @@ public struct Vacancy: Codable, Equatable, Sendable, Identifiable {
         self.logoUrl = logoUrl
         self.url = url
         self.source = source
+        self.summary = summary
         self.matches = matches
         self.skillGap = skillGap
+    }
+}
+
+/// A vacancy you kept, as Ayla showed it, with when you saved it.
+public struct SavedVacancy: Equatable, Sendable, Identifiable {
+    public var vacancy: Vacancy
+    public var savedAt: Date
+
+    public var id: String { vacancy.id }
+
+    public init(vacancy: Vacancy, savedAt: Date) {
+        self.vacancy = vacancy
+        self.savedAt = savedAt
     }
 }

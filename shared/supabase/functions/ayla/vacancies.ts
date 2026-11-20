@@ -52,7 +52,9 @@ export function toFoundVacancy(raw: unknown): FoundVacancy | null {
     }
   }
   if (typeof r.redirect_url === 'string' && r.redirect_url.startsWith('https://')) vacancy.url = r.redirect_url
-  return { vacancy, snippet: plain(r.description).slice(0, 500) }
+  const snippet = plain(r.description).slice(0, 500)
+  if (snippet) vacancy.summary = snippet
+  return { vacancy, snippet }
 }
 
 function plain(value: unknown): string {

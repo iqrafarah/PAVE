@@ -1,22 +1,64 @@
 import PAVECore
 import SwiftUI
 
-/// Ayla's vacancy results, for the bottom panel on iPhone and the side column on iPhone Duo and iPad.
+/// Ayla's vacancy results and the ones you kept, in the panel over the chat. "Gevonden" are the ones of this answer,
+/// "Bewaard" the ones in your account.
 struct VacancyList: View {
+    enum Tab: Hashable { case found, saved }
+
     let vacancies: [Vacancy]
+    let model: AylaChatModel
+    @Binding var tab: Tab
+    let onOpen: (Vacancy) -> Void
+    let onAsk: (Vacancy) -> Void
+
+    var shown: [Vacancy] { Self.shown(tab, found: vacancies, model: model) }
+
+    static func shown(_ tab: Tab, found: [Vacancy], model: AylaChatModel) -> [Vacancy] {
+        tab == .found ? found : model.savedVacancies.map(\.vacancy)
+    }
 
     var body: some View {
-        LazyVStack(spacing: 18) {
-            ForEach(Array(vacancies.enumerated()), id: \.element.id) { index, vacancy in
-                VacancyCard(vacancy: vacancy, tint: VacancyCard.tints[index % VacancyCard.tints.count])
+        LazyVStack(spacing: 14) {
+            if model.canSaveVacancies {
+                Picker("Vacatures", selection: $tab) {
+                    Text(vacancies.isEmpty ? AylaMessages.vacancyFound : "\(AylaMessages.vacancyFound) (\(vacancies.count))").tag(Tab.found)
+                    Text(model.savedVacancies.isEmpty ? AylaMessages.vacancySavedTab : "\(AylaMessages.vacancySavedTab) (\(model.savedVacancies.count))").tag(Tab.saved)
+                }
+                .pickerStyle(.segmented)
+                .padding(.bottom, 4)
             }
-            if vacancies.contains(where: { $0.source == .adzuna }) {
+            if let problem = model.vacancyProblem {
+                PaveInlineError(message: problem)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            if shown.isEmpty {
+                PaveEmptyState(
+                    icon: .iconBriefcase,
+                    title: tab == .saved ? AylaMessages.vacancySavedEmptyTitle : AylaMessages.vacancyFoundEmptyTitle,
+                    message: tab == .saved ? AylaMessages.vacancySavedEmpty : AylaMessages.vacancyFoundEmpty
+                )
+                .padding(.vertical, 16)
+            }
+            ForEach(Array(shown.enumerated()), id: \.element.id) { index, vacancy in
+                VacancyCard(
+                    vacancy: vacancy,
+                    tint: VacancyCard.tints[index % VacancyCard.tints.count],
+                    isSaved: model.isSaved(vacancy),
+                    onOpen: { onOpen(vacancy) },
+                    onToggleSave: model.canSaveVacancies ? { model.toggleSaved(vacancy) } : nil,
+                    onAsk: model.isAvailable ? { onAsk(vacancy) } : nil
+                )
+            }
+            if shown.contains(where: { $0.source == .adzuna }) {
                 Text("Vacatures via Adzuna")
                     .textStyle(.caption)
                     .foregroundStyle(Color.inkMuted)
                     .frame(maxWidth: .infinity)
+                    .padding(.top, 4)
             }
         }
-        .padding(.top, 12)
+        .animation(.snappy(duration: 0.25), value: tab)
+        .task { await model.loadSavedVacancies() }
     }
 }

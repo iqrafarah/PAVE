@@ -30,6 +30,31 @@ enum AylaMessages {
     static let vacancyHint = "Draai je hoofd voor de volgende, knik om te kiezen"
     static let vacancyChoose = "Kies deze"
     static func vacancyPosition(_ index: Int, of count: Int) -> String { "\(index + 1) van \(count)" }
+    static let vacancySave = "Bewaren"
+    static let vacancySavedLabel = "Bewaard"
+    static let vacancyOpen = "Lees de hele vacature"
+    static let vacancyTitle = "Vacature"
+    static let vacancyFromText = "Uit de vacaturetekst"
+    static let vacancyTextNote = "Een stukje van de tekst, zoals Adzuna het geeft. De hele vacature lees je bij de werkgever."
+    static let vacancyNoMatch = "Ayla heeft deze vacature nog niet met je kluis vergeleken. Vraag het haar hieronder."
+    static let vacancyAskButton = "Vraag Ayla"
+    static let vacancyFits = "Past bij jou"
+    static let vacancyMissing = "Wat je nog mist"
+    static let vacancyMatchNote = "Ayla vergeleek je kluis met een stukje van de vacaturetekst. Het is een inschatting, geen oordeel."
+    static let vacancyFound = "Gevonden"
+    static let vacancySavedTab = "Bewaard"
+    static let vacancySavedEmptyTitle = "Nog niets bewaard"
+    static let vacancySavedEmpty = "Tik op Bewaren bij een vacature om hem hier terug te vinden, ook op je andere apparaten."
+    static let vacancyFoundEmptyTitle = "Nog geen vacatures"
+    static let vacancyFoundEmpty = "Vraag Ayla hieronder bijvoorbeeld: zoek vacatures die bij me passen."
+    static let vacancySaved = "Vacature bewaard"
+    static let vacancyUnsaved = "Niet meer bewaard"
+    static let vacancySaveFailed = "Bewaren lukte niet. Probeer het opnieuw."
+    static let vacancyUnsaveFailed = "Dat lukte niet. Probeer het opnieuw."
+    static let vacancySavedLoadFailed = "Je bewaarde vacatures konden niet worden geladen."
+    static func vacancyGapAsk(_ skill: String, for vacancy: Vacancy) -> String {
+        "Hoe kan ik \(skill) halen voor \(vacancy.title) bij \(vacancy.company)?"
+    }
     static func vacancyAsk(_ vacancy: Vacancy) -> String {
         "Vertel meer over \(vacancy.title) bij \(vacancy.company): waarom past die bij mij, en wat mis ik nog?"
     }

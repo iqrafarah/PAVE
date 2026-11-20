@@ -6,11 +6,37 @@ public struct AylaRequest: Codable, Equatable, Sendable {
         public var itemId: String?
         /// Several items chosen from the vault for the whole conversation.
         public var itemIds: [String]?
+        /// The vacancy you have open, so "past deze bij mij?" is about that one.
+        public var vacancy: OpenVacancy?
 
-        public init(screen: AylaScreen, itemId: String? = nil, itemIds: [String]? = nil) {
+        public init(screen: AylaScreen, itemId: String? = nil, itemIds: [String]? = nil, vacancy: OpenVacancy? = nil) {
             self.screen = screen
             self.itemId = itemId
             self.itemIds = itemIds
+            self.vacancy = vacancy
+        }
+    }
+
+    /// A vacancy as its card shows it, within the limits the server accepts.
+    public struct OpenVacancy: Codable, Equatable, Sendable {
+        public var title: String
+        public var company: String
+        public var city: String?
+        public var summary: String?
+        public var matches: [String]
+        public var skillGap: [String]
+
+        public init(_ vacancy: Vacancy) {
+            func cut(_ text: String, _ max: Int) -> String { String(text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(max)) }
+            func skills(_ links: [Vacancy.RequirementLink]) -> [String] {
+                links.map { cut($0.skill, 120) }.filter { !$0.isEmpty }.prefix(8).map(\.self)
+            }
+            title = cut(vacancy.title, 200)
+            company = cut(vacancy.company, 200)
+            city = vacancy.city.map { cut($0, 200) }.flatMap { $0.isEmpty ? nil : $0 }
+            summary = vacancy.summary.map { cut($0, 600) }.flatMap { $0.isEmpty ? nil : $0 }
+            matches = skills(vacancy.matches)
+            skillGap = skills(vacancy.skillGap)
         }
     }
 

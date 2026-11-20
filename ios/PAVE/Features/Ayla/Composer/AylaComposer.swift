@@ -16,7 +16,6 @@ struct AylaComposer: View {
     var isListening = false
     var placeholderColor = Color.inkMuted.opacity(0.41)
     /// Over the white panel the field is almost white (Figma), elsewhere it is clear glass.
-    var isOverPanel = false
     var isFocused: FocusState<Bool>.Binding
     let onAdd: () -> Void
     var onRemoveAttachment: (AylaAttachment) -> Void = { _ in }
@@ -67,7 +66,7 @@ struct AylaComposer: View {
             }
             field
         }
-        .glassEffect(isOverPanel ? .regular.tint(Color.panel.opacity(0.8)) : .clear, in: .rect(cornerRadius: 25))
+        .glassEffect(.clear, in: .rect(cornerRadius: 25))
         .matchedFrame("field", in: morph)
     }
 

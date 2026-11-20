@@ -59,6 +59,7 @@ struct AylaChatScreen: View {
     /// Where the line under the large orb is, so the field leaves it clear.
     @State private var captionFrame = CGRect.null
     @State private var openVacanciesID: String?
+    @State private var vacancyTab = VacancyList.Tab.found
     @State private var bottomBarHeight: CGFloat = 0
     @State private var scrollPosition = ScrollPosition(edge: .bottom)
     @State private var isAttachMenuOpen = false
@@ -123,16 +124,21 @@ struct AylaChatScreen: View {
     @Environment(\.toolbarIsBeside) private var toolbarIsBeside
 
     private var openVacancies: [Vacancy]? {
-        guard let openVacanciesID, let entry = model.entries.first(where: { $0.id == openVacanciesID }) else { return nil }
+        guard let openVacanciesID else { return nil }
+        // Only the kept ones ("open mijn bewaarde vacatures"), without a search in this chat.
+        if openVacanciesID == Self.savedVacanciesID { return [] }
+        guard let entry = model.entries.first(where: { $0.id == openVacanciesID }) else { return nil }
         return Self.vacancies(in: entry)
     }
+
+    private static let savedVacanciesID = "saved-vacancies"
 
     var body: some View {
         GeometryReader { proxy in
             let fullHeight = proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom
-            let sheetHeight = (fullHeight * 0.612).rounded()
-            let expandedHeight = fullHeight - proxy.safeAreaInsets.top - 24
-            let showsSheet = openVacancies != nil
+            // The vacancies sit low over the chat, so Ayla's answer stays readable above them.
+            let sheetHeight = (fullHeight * 0.62).rounded()
+            let isOverVacancies = shelf == .vacancies && vaultDetent != .large
 
             ZStack(alignment: .bottom) {
                 if let voice, isTalking {
@@ -152,7 +158,7 @@ struct AylaChatScreen: View {
 
                 content(
                     height: proxy.size.height,
-                    bottomMargin: showsSheet ? sheetHeight - proxy.safeAreaInsets.bottom : bottomBarHeight + bottomGap + offlineNoticeHeight
+                    bottomMargin: isOverVacancies ? sheetHeight - proxy.safeAreaInsets.bottom : bottomBarHeight + bottomGap + offlineNoticeHeight
                 )
 
                 if isAttachMenuOpen {
@@ -161,21 +167,6 @@ struct AylaChatScreen: View {
                         .ignoresSafeArea()
                         .onTapGesture { isAttachMenuOpen = false }
                         .accessibilityHidden(true)
-                }
-
-                if showsSheet, let vacancies = openVacancies {
-                    AylaBottomSheet(
-                        title: "Vacatures sluiten",
-                        height: sheetHeight,
-                        expandedHeight: expandedHeight,
-                        bottomInset: bottomBarHeight + proxy.safeAreaInsets.bottom + 16,
-                        onClose: closeVacancies
-                    ) {
-                        VacancyList(vacancies: vacancies)
-                            .frame(maxWidth: 600)
-                            .frame(maxWidth: .infinity)
-                    }
-                    .ignoresSafeArea(edges: .bottom)
                 }
 
                 if let waveStartedAt {
@@ -187,10 +178,10 @@ struct AylaChatScreen: View {
                         .transition(.opacity)
                 }
 
-                bottomBar(placeholder: placeholderColor(sheetOpen: showsSheet), isOverPanel: showsSheet)
+                bottomBar(placeholder: placeholderColor)
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { bottomBarHeight = $0 }
                     // Above the bar, so the bar itself never changes height and nothing jumps.
-                    .overlay(alignment: .top) { aboveBottomBar(isOverPanel: showsSheet) }
+                    .overlay(alignment: .top) { aboveBottomBar }
             }
             .overlay { orbLayer }
         }
@@ -254,6 +245,14 @@ struct AylaChatScreen: View {
                         onDelete: { await notifications.delete($0) },
                         onRestore: { await notifications.restore($0) }
                     )
+                } else if shelf == .vacancies {
+                    AylaVacancyShelf(vacancies: openVacancies ?? [], model: model, tab: $vacancyTab) { vacancy in
+                        closeShelf()
+                        send(AylaMessages.vacancyAsk(vacancy))
+                    } onAskGap: { skill, vacancy in
+                        closeShelf()
+                        send(AylaMessages.vacancyGapAsk(skill, for: vacancy))
+                    }
                 } else if shelf == .vault {
                     if let vault {
                         VaultScreen(onShowMenu: nil)
@@ -347,8 +346,7 @@ struct AylaChatScreen: View {
             // A new answer from Ayla replaces what she said about something she did in the app.
             localReply = nil
             guard !isVoiceActive, let last = model.entries.last, last.role == .ayla, !Self.vacancies(in: last).isEmpty else { return }
-            closeShelf()
-            openVacanciesID = last.id
+            openVacancies(from: last.id)
         }
         .onChange(of: model.conversationID) { old, _ in
             // A new conversation getting its id while Ayla answers is still the same chat: the page stays open.
@@ -427,13 +425,13 @@ struct AylaChatScreen: View {
     }
 
     /// The button back to the newest message, and the line that says you are offline.
-    private func aboveBottomBar(isOverPanel: Bool) -> some View {
+    private var aboveBottomBar: some View {
         VStack(spacing: 10) {
-            if !isTalking, !isOverPanel, headAnswer != nil || (asksYesNoByHead && headGestures.isReceiving) {
+            if !isTalking, headAnswer != nil || (asksYesNoByHead && headGestures.isReceiving) {
                 AylaHeadHint(text: headAnswer.map { AylaMessages.yesNoAnswer($0, byHead: answeredByHead) } ?? AylaMessages.headHint, isAnswer: headAnswer != nil)
                     .transition(.scale(scale: 0.8).combined(with: .opacity))
             }
-            if isAwayFromBottom, !isTalking, !isOverPanel, !model.entries.isEmpty {
+            if isAwayFromBottom, !isTalking, !model.entries.isEmpty {
                 ChatScrollDownButton { scrollToBottom() }
                     .transition(.scale(scale: 0.6).combined(with: .opacity))
             }
@@ -720,7 +718,7 @@ struct AylaChatScreen: View {
                         icon: .iconBriefcase,
                         title: vacancies.count == 1 ? "1 vacature gevonden" : "\(vacancies.count) vacatures gevonden"
                     ) {
-                        openVacanciesID = entry.id
+                        openVacancies(from: entry.id)
                     }
                     .padding(.top, 3)
                 }
@@ -837,12 +835,12 @@ struct AylaChatScreen: View {
 
     /// Starting or stopping a spoken conversation does not swap the bars: the text field shrinks into the voice
     /// bar's field (and grows back), and the round buttons slide out of it.
-    private func bottomBar(placeholder: Color, isOverPanel: Bool) -> some View {
+    private func bottomBar(placeholder: Color) -> some View {
         VStack(spacing: 0) {
             if let voice, isTalking {
                 voiceControls(voice)
             } else {
-                textControls(placeholder: placeholder, isOverPanel: isOverPanel)
+                textControls(placeholder: placeholder)
                     // Gone quickly, so it does not linger as a ghost over the field that takes its place.
                     .transition(.opacity.animation(.easeOut(duration: 0.12)))
             }
@@ -1010,7 +1008,7 @@ struct AylaChatScreen: View {
     }
 
     @ViewBuilder
-    private func textControls(placeholder: Color, isOverPanel: Bool) -> some View {
+    private func textControls(placeholder: Color) -> some View {
         VStack(spacing: 0) {
             switch model.phase {
             case .thinking:
@@ -1071,7 +1069,6 @@ struct AylaChatScreen: View {
                     },
                     isListening: dictation.isListening,
                     placeholderColor: placeholder,
-                    isOverPanel: isOverPanel,
                     isFocused: $isComposerFocused,
                     onAdd: toggleAttachMenu,
                     onRemoveAttachment: model.removeAttachment,
@@ -1113,9 +1110,8 @@ struct AylaChatScreen: View {
         }
     }
 
-    private func placeholderColor(sheetOpen: Bool) -> Color {
-        if sheetOpen { return Color.inkMuted.opacity(0.7) }
-        return model.phase == .idle || model.phase == .writing ? Color.inkMuted.opacity(0.41) : Color.white.opacity(0.41)
+    private var placeholderColor: Color {
+        model.phase == .idle || model.phase == .writing ? Color.inkMuted.opacity(0.41) : Color.white.opacity(0.41)
     }
 
     @ViewBuilder
@@ -1859,15 +1855,86 @@ struct AylaChatScreen: View {
         }
     }
 
-    private func closeVacancies() {
-        openVacanciesID = nil
+    /// The vacancies of one of Ayla's answers, over the chat as the vault is; a new search while they are open just
+    /// shows the new ones.
+    private func openVacancies(from entryID: String) {
+        vacancyTab = .found
+        openVacanciesID = entryID
+        pageDriver.vacancy = nil
+        if shelf != .vacancies { openShelf(.vacancies) }
+    }
+
+    /// The vacancies of Ayla's newest search in this chat.
+    private var latestVacancies: [Vacancy] {
+        model.entries.last { !Self.vacancies(in: $0).isEmpty }.map(Self.vacancies(in:)) ?? []
+    }
+
+    /// What "de tweede" means: the list in the open panel, or else the newest search.
+    private var shownVacancies: [Vacancy] {
+        guard shelf == .vacancies else { return latestVacancies }
+        return VacancyList.shown(vacancyTab, found: openVacancies ?? [], model: model)
+    }
+
+    /// "Open de tweede vacature": the list opens if needed, then that vacancy inside it.
+    private func openVacancy(at place: Int) -> String {
+        let vacancies = shownVacancies
+        guard !vacancies.isEmpty else { return "Er zijn nog geen vacatures in dit gesprek. Vraag me eerst vacatures te zoeken." }
+        let index = place == -1 ? vacancies.count - 1 : place
+        guard vacancies.indices.contains(index) else { return "Zo veel vacatures zijn er niet. Er zijn er \(vacancies.count)." }
+        if shelf != .vacancies, let entry = model.entries.last(where: { !Self.vacancies(in: $0).isEmpty }) {
+            openVacancies(from: entry.id)
+        }
+        let vacancy = vacancies[index]
+        Task {
+            try? await Task.sleep(for: .milliseconds(shelf == .vacancies ? 0 : 500))
+            pageDriver.vacancy = vacancy
+        }
+        return "Ik open \(vacancy.title) bij \(vacancy.company)."
+    }
+
+    /// "Bewaar deze vacature": the one under the orb while talking, the only one, or the one named by its place.
+    private func saveVacancy(at place: Int?) -> String {
+        let vacancies = shownVacancies
+        guard model.canSaveVacancies else { return "Vacatures bewaren kan nog niet. Dit komt beschikbaar zodra PAVE is bijgewerkt." }
+        guard !vacancies.isEmpty else { return "Er zijn nog geen vacatures in dit gesprek. Vraag me eerst vacatures te zoeken." }
+        let index: Int?
+        if let place {
+            index = place == -1 ? vacancies.count - 1 : vacancies.indices.contains(place) ? place : nil
+        } else if let open = pageDriver.vacancy, shelf == .vacancies {
+            index = vacancies.firstIndex { $0.id == open.id }
+            if index == nil {
+                guard !model.isSaved(open) else { return "\(open.title) bij \(open.company) had je al bewaard." }
+                model.toggleSaved(open)
+                return "Ik heb \(open.title) bij \(open.company) bewaard."
+            }
+        } else {
+            index = browsesByHead ? min(vacancyIndex, vacancies.count - 1) : vacancies.count == 1 ? 0 : nil
+        }
+        guard let index else {
+            return place == nil
+                ? "Welke vacature wil je bewaren? Zeg bijvoorbeeld: bewaar de tweede."
+                : "Zo veel vacatures zijn er niet. Er zijn er \(vacancies.count)."
+        }
+        let vacancy = vacancies[index]
+        guard !model.isSaved(vacancy) else { return "\(vacancy.title) bij \(vacancy.company) had je al bewaard." }
+        model.toggleSaved(vacancy)
+        return "Ik heb \(vacancy.title) bij \(vacancy.company) bewaard."
+    }
+
+    /// The kept vacancies, from the panel or when you ask Ayla for them.
+    private func openSavedVacancies() {
+        vacancyTab = .saved
+        // The found ones of this chat stay one tab away.
+        if shelf != .vacancies { openVacanciesID = model.entries.last { !Self.vacancies(in: $0).isEmpty }?.id ?? Self.savedVacanciesID }
+        pageDriver.vacancy = nil
+        if shelf != .vacancies { openShelf(.vacancies) }
     }
 
     private func openShelf(_ next: AylaShelf) {
         PaveHaptics.selection()
         if let shelf { model.hideScreen(shelf.screen) }
-        openVacanciesID = nil
-        vaultDetent = .large
+        if next != .vacancies { openVacanciesID = nil }
+        vaultDetent = next == .vacancies ? .fraction(0.62) : .large
         shelf = next
         model.showScreen(next.screen)
     }
@@ -1959,7 +2026,25 @@ struct AylaChatScreen: View {
         case .vaultItem(let id):
             openPage(AylaReply.Navigation(screen: .vaultItem, itemId: id))
             return "Ik open \(vault?.items.first { $0.id == id }?.title ?? "het")."
+        case .saveVacancy(let place):
+            return saveVacancy(at: place)
+        case .openSavedVacancies:
+            openSavedVacancies()
+            return "Hier zijn je bewaarde vacatures."
+        case .openVacancies:
+            guard let entry = model.entries.last(where: { !Self.vacancies(in: $0).isEmpty }) else {
+                return "Er zijn nog geen vacatures in dit gesprek. Vraag me eerst vacatures te zoeken."
+            }
+            openVacancies(from: entry.id)
+            return "Hier zijn de vacatures."
+        case .openVacancy(let place):
+            return openVacancy(at: place)
         case .back:
+            if shelf == .vacancies, pageDriver.vacancy != nil {
+                PaveHaptics.selection()
+                pageDriver.vacancy = nil
+                return "Ik ga een stap terug."
+            }
             // Nothing to go back from: the page itself closes.
             let depth = shelf == .settings ? pageDriver.settingsDepth : shelf == .vault ? pageDriver.vaultDepth : 0
             guard depth > 0 else {

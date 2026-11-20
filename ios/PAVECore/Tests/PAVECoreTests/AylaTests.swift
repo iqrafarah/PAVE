@@ -323,6 +323,56 @@ extension SupabaseAylaServiceTests {
         await #expect(throws: AylaError.notSetUp) { try await missing.projectSources(projectID: "p1") }
     }
 
+    @Test func anOpenVacancyGoesAlongWithinTheLimits() throws {
+        let vacancy = Vacancy(
+            id: "a", title: " Tester ", company: "Bedrijf", city: "", source: .adzuna, summary: String(repeating: "x", count: 700),
+            matches: (0..<10).map { .init(skill: "Vaardigheid \($0)", requirement: "r") }, skillGap: [.init(skill: "  ", requirement: "r")]
+        )
+        let open = AylaRequest.OpenVacancy(vacancy)
+        #expect(open.title == "Tester")
+        #expect(open.city == nil)
+        #expect(open.summary?.count == 600)
+        #expect(open.matches.count == 8)
+        #expect(open.skillGap.isEmpty)
+        let json = try JSONEncoder().encode(AylaRequest.Context(screen: .vacancies, vacancy: open))
+        let sent = try #require(try JSONSerialization.jsonObject(with: json) as? [String: Any])
+        #expect(sent["screen"] as? String == "vacancies")
+        #expect((sent["vacancy"] as? [String: Any])?["company"] as? String == "Bedrijf")
+    }
+
+    @Test func aSavedVacancyKeepsHowAylaShowedIt() async throws {
+        let captured = Captured()
+        let ayla = service { urlRequest in
+            captured.request = urlRequest
+            if urlRequest.httpMethod == "GET" {
+                return (200, Data(#"""
+                [{"vacancy_id":"adzuna_1","saved_at":"2026-11-20T10:00:00+00:00","vacancy":{"id":"adzuna_1","title":"Junior developer","company":"Bedrijf","source":"adzuna","matches":[{"skill":"React","requirement":"Ervaring met React"}],"skillGap":[]}},
+                 {"vacancy_id":"broken","saved_at":"2026-11-19T10:00:00+00:00","vacancy":{"oops":true}}]
+                """#.utf8))
+            }
+            if urlRequest.httpMethod == "DELETE" { return (204, Data()) }
+            return (201, Data(#"[{"vacancy_id":"adzuna_2","saved_at":"2026-11-20T11:00:00+00:00","vacancy":{"id":"adzuna_2","title":"Tester","company":"B","source":"adzuna","matches":[],"skillGap":[]}}]"#.utf8))
+        }
+        let saved = try await ayla.savedVacancies()
+        #expect(saved.map(\.id) == ["adzuna_1"])
+        #expect(saved.first?.vacancy.matches.first?.skill == "React")
+
+        let vacancy = Vacancy(id: "adzuna_2", title: "Tester", company: "B", source: .adzuna, skillGap: [.init(skill: "Scrum", requirement: "Scrum")])
+        let result = try await ayla.saveVacancy(vacancy)
+        #expect(result.id == "adzuna_2")
+        let request = try #require(captured.request)
+        #expect(request.httpMethod == "POST")
+        #expect(request.value(forHTTPHeaderField: "Prefer")?.contains("ignore-duplicates") == true)
+        let body = try #require(request.bodyData)
+        let json = try #require(try JSONSerialization.jsonObject(with: body) as? [String: Any])
+        #expect(json["vacancy_id"] as? String == "adzuna_2")
+        #expect((json["vacancy"] as? [String: Any])?["title"] as? String == "Tester")
+
+        try await ayla.removeSavedVacancy(id: "adzuna_2")
+        #expect(captured.request?.httpMethod == "DELETE")
+        #expect(captured.request?.url?.query?.contains("vacancy_id=eq.adzuna_2") == true)
+    }
+
     @Test func movingAChatSetsOnlyItsProject() async throws {
         let captured = Captured()
         let ayla = service { urlRequest in

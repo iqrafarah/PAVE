@@ -1,4 +1,4 @@
-import { type AylaReply, type AylaRequest, type Block, CATEGORIES, type Category, type Screen, SCREENS } from './contract.ts'
+import { type AylaReply, type AylaRequest, type Block, CATEGORIES, type Category, type RequirementLink, type Screen, SCREENS, type Vacancy } from './contract.ts'
 import type { AllowedVault } from './vault.ts'
 import { cleanPurpose, CONSENT_QUESTION_CHOICES, consentQuestion, mayLookInVault, vaultConsent } from './consent.ts'
 import { cleanMemories, type Memory, type MemorySuggestion, usedNotes } from './memory.ts'
@@ -68,6 +68,7 @@ interface ModelOutput {
   question: { text: string; choices: { id: string; label: string }[] } | null
   navigation: { screen: string; item?: number | null } | null
   vacancySearch: { what: string; where: string } | null
+  vacancyMatches: unknown
   title: string | null
   memories: unknown
   usedMemories: unknown
@@ -115,10 +116,12 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   if (output.vacancySearch) {
     const { what, where } = output.vacancySearch
     const found = await search(deps.searchVacancies, what, where)
-    messages.push({ role: 'assistant', content: JSON.stringify(output) }, { role: 'system', content: describeSearch(found) })
+    messages.push({ role: 'assistant', content: JSON.stringify(output) }, { role: 'system', content: describeSearch(found, mayLook) })
     output = parseOutput((await deps.complete(messages, options)).content)
     if (found.status === 'ok' && found.items.length && request.device !== 'watch') {
-      blocks.push({ type: 'vacancies', items: found.items.map((f) => f.vacancy) })
+      // What fits and what is missing only with the vault allowed, and only what the vacancy text really says.
+      const items = mayLook ? withMatches(found.items, output.vacancyMatches) : found.items.map((f) => f.vacancy)
+      blocks.push({ type: 'vacancies', items })
     }
   }
 
@@ -244,8 +247,11 @@ async function search(searchVacancies: SearchVacancies | undefined, what: string
   }
 }
 
-function describeSearch(result: SearchResult): string {
-  const rules = 'Bespreek alleen wat hieronder staat en verzin niets. Het is maar een stukje van de vacaturetekst, dus zeg niet dat je alle eisen kent. Zet vacancySearch op null.'
+function describeSearch(result: SearchResult, mayLook = false): string {
+  const matching = mayLook
+    ? ' Vul vacancyMatches: per vacature wat past en wat ontbreekt, met de letterlijke tekst uit die vacature waar het uit blijkt. Noem in text kort welke het best past en waarom, en het grootste gat met een concrete stap om dat te halen (een cursus, certificaat of project), als mogelijkheid en niet als garantie.'
+    : ' Je mag niet in de kluis kijken, dus laat vacancyMatches leeg. Je kunt zeggen dat je ook kunt uitleggen wat bij de gebruiker past als je in de kluis mag kijken.'
+  const rules = `Bespreek alleen wat hieronder staat en verzin niets. Het is maar een stukje van de vacaturetekst, dus zeg niet dat je alle eisen kent. Zet vacancySearch op null.${matching}`
   if (result.status === 'unavailable') return `Vacatures zoeken is nog niet ingesteld. Zeg dat eerlijk en kort. Zet vacancySearch op null.`
   if (result.status === 'failed') return `Vacatures zoeken lukte nu niet. Zeg dat eerlijk en kort. Zet vacancySearch op null.`
   if (!result.items.length) return `Er zijn geen vacatures gevonden. Zeg dat en stel andere zoekwoorden voor. Zet vacancySearch op null.`
@@ -254,6 +260,44 @@ function describeSearch(result: SearchResult): string {
     return `${i + 1}. ${v.title} bij ${v.company}${v.city ? ` in ${v.city}` : ''}. ${f.snippet}`
   })
   return `Gevonden vacatures (Adzuna). De gebruiker ziet ze als kaarten onder je antwoord. ${rules}\n${list.join('\n')}`
+}
+
+const MAX_LINKS = 4
+
+/** Lowercase with single spaces, to check that a requirement is really in the vacancy text. */
+function normalized(text: string): string {
+  return text.toLocaleLowerCase('nl').replace(/[‘’]/g, "'").replace(/\s+/g, ' ').trim()
+}
+
+/** The links the model gave for one vacancy, keeping only those whose requirement is a literal part of its text. */
+function checkedLinks(raw: unknown, snippet: string): RequirementLink[] {
+  if (!Array.isArray(raw)) return []
+  const text = normalized(snippet)
+  const links: RequirementLink[] = []
+  for (const entry of raw as Record<string, unknown>[]) {
+    const skill = typeof entry?.skill === 'string' ? entry.skill.trim().slice(0, 60) : ''
+    const requirement = typeof entry?.requirement === 'string' ? entry.requirement.replace(/\s+/g, ' ').trim().replace(/^[."'“”]+|[."'“”]+$/g, '') : ''
+    if (!skill || requirement.length < 3 || requirement.length > 200 || !text.includes(normalized(requirement))) continue
+    if (links.some((link) => link.skill.toLocaleLowerCase('nl') === skill.toLocaleLowerCase('nl'))) continue
+    links.push({ skill, requirement })
+    if (links.length === MAX_LINKS) break
+  }
+  return links
+}
+
+/** The found vacancies with what fits and what is missing, as the model saw it in the vault and the vacancy text. */
+export function withMatches(found: FoundVacancy[], raw: unknown): Vacancy[] {
+  const perVacancy = new Map<number, Record<string, unknown>>()
+  for (const entry of Array.isArray(raw) ? (raw as Record<string, unknown>[]) : []) {
+    if (typeof entry?.vacancy === 'number' && !perVacancy.has(entry.vacancy)) perVacancy.set(entry.vacancy, entry)
+  }
+  return found.map((f, index) => {
+    const entry = perVacancy.get(index + 1)
+    if (!entry) return f.vacancy
+    const matches = checkedLinks(entry.matches, f.snippet)
+    const gaps = checkedLinks(entry.gaps, f.snippet).filter((gap) => !matches.some((m) => m.skill.toLocaleLowerCase('nl') === gap.skill.toLocaleLowerCase('nl')))
+    return { ...f.vacancy, matches, skillGap: gaps }
+  })
 }
 
 function parseOutput(content: string): ModelOutput {
@@ -266,6 +310,7 @@ function parseOutput(content: string): ModelOutput {
       vacancySearch: json.vacancySearch && typeof json.vacancySearch.what === 'string' && json.vacancySearch.what.trim()
         ? { what: json.vacancySearch.what.trim(), where: String(json.vacancySearch.where ?? '').trim() }
         : null,
+      vacancyMatches: Array.isArray(json.vacancyMatches) ? json.vacancyMatches : [],
       title: typeof json.title === 'string' ? json.title : null,
       memories: Array.isArray(json.memories) ? json.memories : [],
       usedMemories: Array.isArray(json.usedMemories) ? json.usedMemories : [],
@@ -274,7 +319,7 @@ function parseOutput(content: string): ModelOutput {
       askVault: typeof json.askVault === 'string' ? json.askVault : null,
     }
   } catch {
-    return { text: content, question: null, navigation: null, vacancySearch: null, title: null, memories: [], usedMemories: [], usedVaultItems: [], vaultItem: null, askVault: null }
+    return { text: content, question: null, navigation: null, vacancySearch: null, vacancyMatches: [], title: null, memories: [], usedMemories: [], usedVaultItems: [], vaultItem: null, askVault: null }
   }
 }
 

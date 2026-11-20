@@ -587,6 +587,12 @@ final class AylaChatModel {
         context = AylaRequest.Context(screen: screen)
     }
 
+    /// A vacancy is open in the vacancies panel: "past deze bij mij?" is about that one; nil is the list again.
+    func showVacancy(_ vacancy: Vacancy?) {
+        guard contextTitle == nil, context == nil || context?.screen == .vacancies else { return }
+        context = AylaRequest.Context(screen: .vacancies, vacancy: vacancy.map(AylaRequest.OpenVacancy.init))
+    }
+
     func hideScreen(_ screen: AylaScreen) {
         guard context?.screen == screen, context?.itemId == nil else { return }
         context = nil
@@ -872,6 +878,57 @@ final class AylaChatModel {
             } catch {
                 conversationList = before
                 chatsProblem = AylaMessages.pinFailed
+            }
+        }
+    }
+
+    // MARK: Saved vacancies
+
+    /// "Bewaarde vacatures", kept in the account; the newest first.
+    private(set) var savedVacancies: [SavedVacancy] = []
+    /// False until the table exists (migration 20261120170000); then there is nothing to save to.
+    private(set) var canSaveVacancies = true
+    var vacancyProblem: String?
+
+    func isSaved(_ vacancy: Vacancy) -> Bool {
+        savedVacancies.contains { $0.id == vacancy.id }
+    }
+
+    func loadSavedVacancies() async {
+        guard let service else { return }
+        do {
+            savedVacancies = try await service.savedVacancies()
+            canSaveVacancies = true
+        } catch AylaError.notSetUp {
+            canSaveVacancies = false
+        } catch {
+            vacancyProblem = AylaMessages.vacancySavedLoadFailed
+        }
+    }
+
+    /// Saves it, or takes it out again. The list changes at once and goes back if it did not work.
+    func toggleSaved(_ vacancy: Vacancy) {
+        guard let service, canSaveVacancies else { return }
+        let before = savedVacancies
+        let isSaving = !isSaved(vacancy)
+        if isSaving {
+            savedVacancies.insert(SavedVacancy(vacancy: vacancy, savedAt: .now), at: 0)
+        } else {
+            savedVacancies.removeAll { $0.id == vacancy.id }
+        }
+        PaveHaptics.tap(isSaving ? .medium : .light)
+        AccessibilityNotification.Announcement(isSaving ? AylaMessages.vacancySaved : AylaMessages.vacancyUnsaved).post()
+        Task {
+            do {
+                if isSaving {
+                    _ = try await service.saveVacancy(vacancy)
+                } else {
+                    try await service.removeSavedVacancy(id: vacancy.id)
+                }
+            } catch {
+                savedVacancies = before
+                vacancyProblem = isSaving ? AylaMessages.vacancySaveFailed : AylaMessages.vacancyUnsaveFailed
+                PaveHaptics.error()
             }
         }
     }

@@ -93,7 +93,7 @@ Conclusions:
 - The API gives clean card data but only a snippet of the text. The skill-gap needs the full requirements. Fetching the full text through the vacancy link needs a check of the terms of Adzuna and of the employers first.
 - LinkedIn is not possible (no public job search API, scraping breaks its terms).
 
-Decision (2026-11-05): **Adzuna**, no example vacancies. Ayla only discusses what Adzuna returned and says honestly that she saw part of the text. The skill-gap stays empty until the vault exists. Full vacancy texts only if the terms allow it.
+Decision (2026-11-05): **Adzuna**, no example vacancies. Ayla only discusses what Adzuna returned and says honestly that she saw part of the text. Full vacancy texts only if the terms allow it; see "Vacancies in the chat" for the match against the vault.
 
 Rules for the card:
 
@@ -101,6 +101,18 @@ Rules for the card:
 - Without a logo the card shows a monogram.
 - Every item in the skill-gap shows which requirement of the vacancy it comes from, so the user can check it. It is a possibility, not a fact.
 - Only search terms leave the system, never personal data. The API key stays on the server.
+
+### Vacancies in the chat (2026-11-20)
+
+Vacancies are not a page in the menu: you search them in the chat with Ayla, using the evidence in your vault.
+
+- **Ayla searches for you.** "Vacatures die bij me passen" without a job title: Ayla picks the search terms from the vault, and asks for consent first when she may not look in it.
+- **Ayla explains the match.** With the vault allowed, the second model call fills `vacancyMatches`: per vacancy what fits and what is missing, each with a literal piece of the vacancy text. The server (`withMatches`) keeps a requirement only when that text really is in the Adzuna snippet, at most 4 per list, and drops a gap that is also a match. Without consent the lists stay empty.
+- **Ayla helps close the gap.** Tapping a missing skill asks her how to get it for that vacancy.
+- **The panel.** The vacancies open over the chat as the vault does (iOS `AylaShelf.vacancies`): low at first so her answer stays readable, pulled up to the full screen, swiped away, with Ayla's text field below. A card opens the vacancy in the same panel: the snippet (`Vacancy.summary`, never the whole text), what fits and what is missing, and a link to the whole vacancy at the employer.
+- **The open vacancy is context.** While a vacancy is open, the request carries `context.vacancy` (title, company, city, snippet, skills; server limits in `contract.ts`), so "past deze bij mij?" is about that one. The prompt marks its text as the employer's text, not an instruction.
+- **Saved vacancies** are kept in the account (`saved_vacancies`, migration `20261120170000_saved_vacancies.sql`), as Ayla showed them, so they still show when Adzuna no longer has them. Own rows only, behind two-step verification, no updates.
+- **Hands-free**, typed or spoken: "toon de vacatures", "open de tweede vacature", "bewaar deze" (the open one), "bewaar de laatste", "open mijn bewaarde vacatures", "terug".
 
 ## What belongs to the account (shared state)
 

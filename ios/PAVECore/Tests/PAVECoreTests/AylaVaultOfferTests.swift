@@ -236,10 +236,29 @@ struct AylaAppCommandTests {
         #expect(command("Laat eindstage bij philips zien") == .vaultItem(id: "i1"))
         #expect(command("Selecteer scrum-certificaat") == .vaultItem(id: "i2"))
         #expect(command("Kun je het bewijs Scrum-certificaat openen") == .vaultItem(id: "i2"))
+        #expect(command("Bewaar deze vacature") == .saveVacancy(nil))
+        #expect(command("Bewaar de tweede") == .saveVacancy(1))
+        #expect(command("Bewaar vacature 3") == .saveVacancy(2))
+        #expect(command("Sla de laatste vacature op") == .saveVacancy(-1))
+        #expect(command("Bewaar hem") == .saveVacancy(nil))
+        #expect(command("Open mijn bewaarde vacatures") == .openSavedVacancies)
+        #expect(command("Bewaarde vacatures") == .openSavedVacancies)
+        #expect(command("Open de tweede vacature") == .openVacancy(1))
+        #expect(command("Laat vacature 3 zien") == .openVacancy(2))
+        #expect(command("Bekijk de laatste vacature") == .openVacancy(-1))
+        #expect(command("Toon de vacatures") == .openVacancies)
+        #expect(command("Kun je de vacatures weer openen") == .openVacancies)
         #expect(command("Ga terug") == .back)
         #expect(command("Terug") == .back)
         #expect(command("Sluit maar") == .close)
         #expect(command("Sluit de instellingen") == .close)
+    }
+
+    @Test func askingAboutVacanciesStaysAQuestionForAyla() {
+        #expect(command("Zoek vacatures als developer in Eindhoven") == nil)
+        #expect(command("Toon nieuwe vacatures") == nil)
+        #expect(command("Wat vind je van de tweede vacature") == nil)
+        #expect(command("Past de eerste vacature bij mij") == nil)
     }
 
     @Test func oneWordOnlyCountsOnThePageItself() {
@@ -257,6 +276,7 @@ struct AylaAppCommandTests {
             "Maak een cv met een blauwe kop", "Ik ga naar mijn stages kijken morgen", "Ik heb een grote tekst geschreven over mijn stage bij Philips en wil die korter",
             "Mijn privacy is belangrijk voor mij", "Zet mijn stage in de kluis", "Ja", "Nee", "Graag", "Klaar", "Ik ben terug",
             "Maak een lijst van wat er in mijn kluis mist", "Welke apparaten zijn ingelogd?",
+            "Bewaar deze stage in mijn kluis", "Hoe bewaar ik een vacature?", "Zoek vacatures als frontend developer",
         ]
         for text in questions {
             #expect(command(text) == nil, "\(text)")

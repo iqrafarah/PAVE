@@ -20,9 +20,21 @@ export interface AylaRequest {
   text: string
   device: Device
   input: 'voice' | 'text'
-  context?: { screen: Screen; itemId?: string; itemIds?: string[] }
+  context?: Context
   attachments?: Attachment[]
 }
+
+/** The vacancy the user has open in the app, as the card shows it, so "past deze bij mij?" is about that one. */
+export interface VacancyContext {
+  title: string
+  company: string
+  city?: string
+  summary?: string
+  matches: string[]
+  skillGap: string[]
+}
+
+export interface Context { screen: Screen; itemId?: string; itemIds?: string[]; vacancy?: VacancyContext }
 
 export interface Choice { id: string; label: string }
 
@@ -38,6 +50,8 @@ export interface Vacancy {
   logoUrl?: string
   url?: string
   source: 'example' | 'adzuna'
+  /** A short piece of the vacancy text, as Adzuna gives it. Never the whole text. */
+  summary?: string
   matches: RequirementLink[]
   skillGap: RequirementLink[]
 }
@@ -127,7 +141,19 @@ export function parseRequest(body: unknown): AylaRequest | string {
     // Several items chosen with the plus button, for the whole conversation.
     if (c.itemIds !== undefined && (!Array.isArray(c.itemIds) || c.itemIds.length > 10 || !c.itemIds.every((id) => typeof id === 'string' && id.trim()))) return 'context is not valid'
     const itemIds = Array.isArray(c.itemIds) && c.itemIds.length ? (c.itemIds as string[]) : undefined
-    context = { screen: c.screen as Screen, ...(c.itemId ? { itemId: c.itemId as string } : {}), ...(itemIds ? { itemIds } : {}) }
+    let vacancy: VacancyContext | undefined
+    if (c.vacancy !== undefined) {
+      if (c.screen !== 'vacancies') return 'context is not valid'
+      const parsed = parseVacancyContext(c.vacancy)
+      if (!parsed) return 'context is not valid'
+      vacancy = parsed
+    }
+    context = {
+      screen: c.screen as Screen,
+      ...(c.itemId ? { itemId: c.itemId as string } : {}),
+      ...(itemIds ? { itemIds } : {}),
+      ...(vacancy ? { vacancy } : {}),
+    }
   }
   let attachments: Attachment[] | undefined
   if (b.attachments !== undefined) {
@@ -155,5 +181,23 @@ export function parseRequest(body: unknown): AylaRequest | string {
     ...(b.projectId && !b.conversationId ? { projectId: b.projectId as string } : {}),
     ...(context ? { context } : {}),
     ...(attachments?.length ? { attachments } : {}),
+  }
+}
+
+function parseVacancyContext(raw: unknown): VacancyContext | null {
+  const v = raw as Record<string, unknown>
+  if (typeof v !== 'object' || v === null) return null
+  const text = (value: unknown, max: number) => typeof value === 'string' && value.trim().length > 0 && value.length <= max
+  const list = (value: unknown) => Array.isArray(value) && value.length <= 8 && value.every((skill) => text(skill, 120))
+  if (!text(v.title, 200) || !text(v.company, 200) || !list(v.matches) || !list(v.skillGap)) return null
+  if (v.city !== undefined && !text(v.city, 200)) return null
+  if (v.summary !== undefined && !text(v.summary, 600)) return null
+  return {
+    title: (v.title as string).trim(),
+    company: (v.company as string).trim(),
+    ...(v.city ? { city: (v.city as string).trim() } : {}),
+    ...(v.summary ? { summary: (v.summary as string).trim() } : {}),
+    matches: (v.matches as string[]).map((skill) => skill.trim()),
+    skillGap: (v.skillGap as string[]).map((skill) => skill.trim()),
   }
 }

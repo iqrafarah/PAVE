@@ -21,6 +21,14 @@ public enum AylaAppCommand: Equatable, Sendable {
     case vaultItem(id: String)
     case back
     case close
+    /// "Bewaar deze vacature", "bewaar de tweede": the place in the latest list (0 is the first, -1 the last), or nil for
+    /// the one you are looking at.
+    case saveVacancy(Int?)
+    case openSavedVacancies
+    /// "Toon de vacatures": the latest ones Ayla found in this chat.
+    case openVacancies
+    /// "Open de tweede vacature": its place in the list (0 is the first, -1 the last).
+    case openVacancy(Int)
 
     /// A named thing in the vault that can be opened by its name.
     public struct Named: Equatable, Sendable {
@@ -37,7 +45,8 @@ public enum AylaAppCommand: Equatable, Sendable {
     public var changesSomething: Bool {
         switch self {
         case .theme, .textSize, .textSizeStep, .vaultLayout, .displayMode, .voiceText, .chatsInSearch: true
-        case .settingsPage, .vaultFolder, .vaultItem, .back, .close: false
+        case .settingsPage, .vaultFolder, .vaultItem, .back, .close, .openSavedVacancies, .openVacancies, .openVacancy: false
+        case .saveVacancy: true
         }
     }
 
@@ -57,6 +66,9 @@ public enum AylaAppCommand: Equatable, Sendable {
                 || has("\\b(?:\(name)) \(fillers)(?:openen|bekijken|tonen|open)\(end)")
         }
         func isOnly(_ name: String) -> Bool { has("^\(fillers)(?:\(name))$") }
+        func opensSomething() -> Bool {
+            has(#"^(?:(?:ayla|hey|hoi|kun je|kan je|wil je) )*(?:open|toon|bekijk|laat|ga naar|naar)\b"#) || has(#"\b(?:openen|bekijken|tonen|zien)$"#)
+        }
 
         if has(#"^(ga )?(even |eens )?(een (stap|pagina) )?terug$|^vorige( pagina)?$"#) { return .back }
         if has(#"^(sluit|sluiten|doe dicht)( (dit|het|maar|de pagina|het scherm|de kluis|instellingen|de instellingen))*$"#) { return .close }
@@ -96,6 +108,21 @@ public enum AylaAppCommand: Equatable, Sendable {
             if has(#"\b(raster|rasterweergave|tegels|grid|blokken)\b"#) { return .vaultLayout(.grid) }
         }
 
+        if has(#"\bbewaarde vacatures?\b"#), has(#"^(open|toon|laat|bekijk|ga naar|naar|mijn|wat zijn|welke)\b"#) || words <= 4 {
+            return .openSavedVacancies
+        }
+        let ordinals: [(String, Int)] = [("eerste|1|een", 0), ("tweede|2|twee", 1), ("derde|3|drie", 2), ("vierde|4|vier", 3), ("vijfde|5|vijf", 4), ("laatste", -1)]
+        func vacancyPlace() -> Int? {
+            ordinals.first(where: { has("\\b(?:de |vacature |nummer )(?:\($0.0))\\b") || has("\\b(?:\($0.0))e? vacature\\b") })?.1
+        }
+        if has(#"\b(bewaar|bewaren|sla)\b"#), !has(#"\b(kluis|chat|gesprek|bestand|foto)\b"#), words <= 7 {
+            if let place = vacancyPlace() { return .saveVacancy(place) }
+            if has(#"\b(deze|die|dit|hem|vacature)\b"#) { return .saveVacancy(nil) }
+        }
+        if has(#"\bvacature\b"#), words <= 7, opensSomething(), let place = vacancyPlace() { return .openVacancy(place) }
+        if has(#"\bvacatures\b"#), !has(#"\b(zoek|zoeken|vind|vinden|nieuwe|andere|meer)\b"#), words <= 6, opensSomething() {
+            return .openVacancies
+        }
         if let page = pages.first(where: { opens($0.names) || (inSettings && isOnly($0.names)) })?.page {
             return .settingsPage(page)
         }

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { test } from 'node:test'
-import { answer, cleanTitle, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
+import { answer, cleanTitle, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
 import { parseRequest } from '../contract.ts'
 import { openRouterCompletion } from '../openrouter.ts'
 import { buildSystemPrompt } from '../prompt.ts'
@@ -626,4 +626,80 @@ test('declinedOffer: a nee after an Ayla turn', async () => {
   assert.ok(declinedOffer(history, 'Nee'))
   assert.ok(!declinedOffer(history, 'Ja'))
   assert.ok(!declinedOffer([{ role: 'user' as const, text: 'hoi' }], 'Nee'))
+})
+
+const snippet = 'Je werkt in een Scrum-team aan webapps. Ervaring met React is een pre. Je hebt een Scrum-certificaat (PSM I).'
+const found = [{ vacancy: { id: 'adzuna_1', title: 'Junior developer', company: 'Bedrijf', source: 'adzuna' as const, matches: [], skillGap: [] }, snippet }]
+
+test('a match only keeps requirements that are really in the vacancy text', () => {
+  const [vacancy] = withMatches(found, [{
+    vacancy: 1,
+    matches: [
+      { skill: 'React', requirement: 'Ervaring met React is een pre' },
+      { skill: 'Teamwerk', requirement: 'Je werkt goed samen' },
+      { skill: 'react', requirement: 'React' },
+    ],
+    gaps: [
+      { skill: 'Scrum-certificaat', requirement: 'je hebt een  scrum-certificaat (PSM I).' },
+      { skill: 'React', requirement: 'Ervaring met React' },
+      { skill: 'Kubernetes', requirement: 'Kennis van Kubernetes' },
+    ],
+  }])
+  assert.deepEqual(vacancy.matches, [{ skill: 'React', requirement: 'Ervaring met React is een pre' }])
+  assert.deepEqual(vacancy.skillGap, [{ skill: 'Scrum-certificaat', requirement: 'je hebt een scrum-certificaat (PSM I)' }])
+})
+
+test('without matches from the model a vacancy stays as it was found', () => {
+  assert.deepEqual(withMatches(found, 'nonsense'), [found[0].vacancy])
+  assert.deepEqual(withMatches(found, [{ vacancy: 7, matches: [], gaps: [] }]), [found[0].vacancy])
+})
+
+test('with the vault allowed the cards show what fits and what is missing', async () => {
+  const fake = model(
+    say('', { vacancySearch: { what: 'junior developer', where: '' } }),
+    say('De eerste past het best.', { vacancyMatches: [{ vacancy: 1, matches: [{ skill: 'React', requirement: 'Ervaring met React' }], gaps: [{ skill: 'Scrum', requirement: 'Scrum-certificaat (PSM I)' }] }] }),
+  )
+  const reply = await answer({ request, conversationId: 'c', history: allowedChat, vault }, {
+    complete: fake.complete, newId: ids(), searchVacancies: async () => found,
+  })
+  const block = reply.blocks[0] as { type: 'vacancies'; items: { matches: unknown[]; skillGap: unknown[] }[] }
+  assert.equal(block.items[0].matches.length, 1)
+  assert.equal(block.items[0].skillGap.length, 1)
+  assert.match(fake.calls[1].at(-1)!.content, /Vul vacancyMatches/)
+})
+
+test('without the vault allowed nothing is matched, whatever the model says', async () => {
+  const fake = model(
+    say('', { vacancySearch: { what: 'junior developer', where: '' } }),
+    say('Hier zijn ze.', { vacancyMatches: [{ vacancy: 1, matches: [{ skill: 'React', requirement: 'Ervaring met React' }], gaps: [] }] }),
+  )
+  const reply = await answer({ request, conversationId: 'c', history: [] }, { complete: fake.complete, newId: ids(), searchVacancies: async () => found })
+  const block = reply.blocks[0] as { type: 'vacancies'; items: { matches: unknown[] }[] }
+  assert.deepEqual(block.items[0].matches, [])
+  assert.match(fake.calls[1].at(-1)!.content, /laat vacancyMatches leeg/)
+})
+
+test('an open vacancy is sent along, and its text is data for Ayla', () => {
+  const request = parseRequest({
+    text: 'Past deze bij mij?', device: 'phone', input: 'text',
+    context: { screen: 'vacancies', vacancy: { title: 'Junior developer', company: 'Bedrijf', summary: 'Je bouwt apps in React.', matches: ['React'], skillGap: ['Scrum'] } },
+  })
+  assert.ok(typeof request !== 'string')
+  const prompt = buildSystemPrompt({ device: 'phone', input: 'text', firstName: 'Ravi', context: request.context })
+  assert.match(prompt, /bekijkt nu de vacature "Junior developer" bij Bedrijf/)
+  assert.match(prompt, /geen opdracht voor jou/)
+  assert.match(prompt, /ontbreekt: Scrum/)
+})
+
+test('a vacancy in the context is only allowed with the vacancies screen and within limits', () => {
+  const vacancy = { title: 'Junior developer', company: 'Bedrijf', matches: [], skillGap: [] }
+  assert.equal(typeof parseRequest({ text: 'Hoi', device: 'phone', input: 'text', context: { screen: 'vacancies', vacancy } }), 'object')
+  assert.equal(typeof parseRequest({ text: 'Hoi', device: 'phone', input: 'text', context: { screen: 'vault', vacancy } }), 'string')
+  assert.equal(typeof parseRequest({ text: 'Hoi', device: 'phone', input: 'text', context: { screen: 'vacancies', vacancy: { ...vacancy, summary: 'x'.repeat(601) } } }), 'string')
+  assert.equal(typeof parseRequest({ text: 'Hoi', device: 'phone', input: 'text', context: { screen: 'vacancies', vacancy: { ...vacancy, matches: Array(9).fill('a') } } }), 'string')
+})
+
+test('an Adzuna result keeps its piece of text for the app', () => {
+  const found = toFoundVacancy({ id: 7, title: 'Tester', company: { display_name: 'Bedrijf' }, description: '<b>Je test</b>   apps.' })
+  assert.equal(found?.vacancy.summary, 'Je test apps.')
 })

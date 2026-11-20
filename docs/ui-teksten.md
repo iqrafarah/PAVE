@@ -80,3 +80,29 @@
 | Prullenbak leeg | Niets verwijderd — Meldingen die je verwijdert, staan hier nog een week. |
 | Verwijderen mislukt | De melding kon niet worden verwijderd. Probeer het opnieuw. |
 | Terugzetten mislukt | De melding kon niet worden teruggezet. Probeer het opnieuw. |
+
+## Vacatures in de Ayla-chat (iOS)
+
+Vacatures staan niet in het menu. Je zoekt ze in de chat met Ayla; ze openen in een paneel over de chat, net als de kluis.
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Kaart in de chat | 1 vacature gevonden / {n} vacatures gevonden |
+| Titel paneel | Vacatures |
+| Uitleg paneel | Vraag Ayla hieronder iets over deze vacatures. |
+| Tabs | Gevonden ({n}) / Bewaard ({n}) |
+| Knoppen | Bewaren / Bewaard / Vraag Ayla |
+| Vacature (titel) | Vacature |
+| Stukje tekst | Uit de vacaturetekst |
+| Uitleg bij het stukje | Een stukje van de tekst, zoals Adzuna het geeft. De hele vacature lees je bij de werkgever. |
+| Wat past | Past bij jou |
+| Wat ontbreekt | Wat je nog mist |
+| Uitleg vergelijking | Ayla vergeleek je kluis met een stukje van de vacaturetekst. Het is een inschatting, geen oordeel. |
+| Nog niet vergeleken | Ayla heeft deze vacature nog niet met je kluis vergeleken. Vraag het haar hieronder. |
+| Link naar de werkgever | Lees de hele vacature |
+| Bron | Vacatures via Adzuna |
+| Bewaard leeg | Nog niets bewaard - Tik op Bewaren bij een vacature om hem hier terug te vinden, ook op je andere apparaten. |
+| Gevonden leeg | Nog geen vacatures - Vraag Ayla hieronder bijvoorbeeld: zoek vacatures die bij me passen. |
+| Vraag bij een ontbrekende vaardigheid | Hoe kan ik {vaardigheid} halen voor {functie} bij {bedrijf}? |
+| Bewaren mislukt | Bewaren lukte niet. Probeer het opnieuw. |
+| Laden mislukt | Je bewaarde vacatures konden niet worden geladen. |

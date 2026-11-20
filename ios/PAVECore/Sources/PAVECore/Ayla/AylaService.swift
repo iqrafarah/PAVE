@@ -23,6 +23,10 @@ public protocol AylaService: Sendable {
     func setExpiry(_ expiry: AylaConversation.Expiry, conversationID: String) async throws
     /// Deletes the chats whose time is up, for good. Returns how many went.
     func expireChats() async throws -> Int
+    /// "Bewaarde vacatures" (migration 20261120170000), the newest first; `notSetUp` until the table exists.
+    func savedVacancies() async throws -> [SavedVacancy]
+    func saveVacancy(_ vacancy: Vacancy) async throws -> SavedVacancy
+    func removeSavedVacancy(id vacancyID: String) async throws
     /// "Projecten" (migration 20261118120000): make, change, pin and delete; deleting keeps the chats.
     /// `withLook`: send the icon and colour too, once projects have them (migration 20261119150000).
     func createProject(name: String, instructions: String, icon: VaultFolderIcon?, color: VaultFolderColor?, withLook: Bool) async throws -> AylaProject
@@ -121,6 +125,9 @@ extension AylaService {
     public func changeChatPin(from pin: String, to newPin: String) async throws { throw AylaError.notSetUp }
     public func recoverChatPin(_ newPin: String) async throws { throw AylaError.notSetUp }
     public func conversationChanges() -> AsyncStream<Void> { AsyncStream { $0.finish() } }
+    public func savedVacancies() async throws -> [SavedVacancy] { throw AylaError.notSetUp }
+    public func saveVacancy(_ vacancy: Vacancy) async throws -> SavedVacancy { throw AylaError.notSetUp }
+    public func removeSavedVacancy(id vacancyID: String) async throws { throw AylaError.notSetUp }
 
     /// Without a voice, the stream ends at once with `unavailable`, and the app falls back to the device voice.
     public func speech(for text: String) -> AsyncThrowingStream<Data, any Error> {
@@ -599,6 +606,31 @@ public struct SupabaseAylaService: AylaService {
 
     /// Supabase answers "done" also when a security rule let nothing through; asking for the changed row back shows
     /// whether something really changed.
+    // MARK: Saved vacancies
+
+    public func savedVacancies() async throws -> [SavedVacancy] {
+        let rows: [SavedVacancyRow] = try await select(
+            "saved_vacancies", query: [("select", "vacancy_id,vacancy,saved_at"), ("order", "saved_at.desc"), ("limit", "100")]
+        )
+        return rows.compactMap(\.saved)
+    }
+
+    public func saveVacancy(_ vacancy: Vacancy) async throws -> SavedVacancy {
+        let vacancyJSON = try JSONSerialization.jsonObject(with: AylaCoding.encoder.encode(vacancy))
+        let body = try JSONSerialization.data(withJSONObject: ["vacancy_id": vacancy.id, "vacancy": vacancyJSON])
+        var urlRequest = try await authorized("saved_vacancies", query: [("select", "vacancy_id,vacancy,saved_at")], method: "POST", body: body, returning: true)
+        // Saved before (on another device): keep the first, as nothing about it changed for the user.
+        urlRequest.setValue("return=representation,resolution=ignore-duplicates", forHTTPHeaderField: "Prefer")
+        let data = try await perform(urlRequest, accepting: [200, 201])
+        let rows = (try? AylaCoding.decoder.decode([SavedVacancyRow].self, from: data)) ?? []
+        return rows.first?.saved ?? SavedVacancy(vacancy: vacancy, savedAt: .now)
+    }
+
+    public func removeSavedVacancy(id vacancyID: String) async throws {
+        let urlRequest = try await authorized("saved_vacancies", query: [("vacancy_id", "eq.\(vacancyID)")], method: "DELETE")
+        _ = try await perform(urlRequest, accepting: [200, 204])
+    }
+
     private func expectRow(from urlRequest: URLRequest) async throws {
         let data = try await perform(urlRequest, accepting: [200])
         guard let rows = try? JSONDecoder().decode([IDRow].self, from: data) else { throw AylaError.unavailable }
@@ -1093,4 +1125,24 @@ private struct MessageRow: Decodable {
 private struct ProfileRow: Decodable {
     let preferred_name: String?
     let full_name: String?
+}
+
+private struct SavedVacancyRow: Decodable {
+    let vacancy_id: String
+    let vacancy: Vacancy?
+    let saved_at: String
+
+    private enum CodingKeys: String, CodingKey { case vacancy_id, vacancy, saved_at }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        vacancy_id = try container.decode(String.self, forKey: .vacancy_id)
+        // A vacancy this version cannot read is skipped, not the whole list.
+        vacancy = try? container.decode(Vacancy.self, forKey: .vacancy)
+        saved_at = try container.decode(String.self, forKey: .saved_at)
+    }
+
+    var saved: SavedVacancy? {
+        vacancy.map { SavedVacancy(vacancy: $0, savedAt: SupabaseAylaService.date(from: saved_at)) }
+    }
 }
