@@ -111,6 +111,7 @@ Migration `20261120120000_chat_expiry_and_archive.sql`. Deleting is final; nothi
 - **Deleting** happens on the server: `ayla_delete_expired_chats()` every hour through pg_cron where it is installed, and `ayla_expire_my_chats()` (RPC, for the signed-in account) which the apps call when they load the chat list.
 - **Archive**: `ayla_conversations.archived_at` and `vault_items.archived_at`. The apps leave rows with `archived_at` out of the normal lists and show them in the archive (iOS: Instellingen › Archief). Archiving a chat unpins it. Web still has to hide archived rows and offer the archive.
 - **Ayla and the archive**: `profiles.ayla_uses_archive` (default false). The `ayla` function leaves archived evidence out unless it is true; deploy the function together with the migration.
+- **One setting** (migration `20261120150000_chat_expiry_one_setting.sql`): the web's own version (`20261119170000`, `ayla_settings.chat_auto_delete_days`) clashed with this one. The repair carries a choice made on the web over to `profiles.chat_expiry_days`, drops that column and the web's `ayla_delete_expired_chats()` without arguments (with both, the hourly job failed as "not unique"), and schedules the job again. The web now reads and saves `profiles.chat_expiry_days`, with 1, 7, 30 or 90 days, as iOS.
 - The profile guard (`guard_profile_self_update`) is replaced with a list that also names `display_mode`, so it can be applied before or after the web's display mode migration.
 
 ## Test data

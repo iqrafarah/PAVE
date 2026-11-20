@@ -348,6 +348,7 @@ export const SETTINGS_AUTO_DELETE_FAILED = 'De keuze is niet opgeslagen. Probeer
 export const SETTINGS_AUTO_DELETE_OPTIONS = [
   { value: 'never', days: null, period: '', label: 'Nooit', meaning: 'Chats blijven bewaard' },
   { value: '1', days: 1, period: '24 uur', label: 'Na 24 uur', meaning: 'Na een dag niet gebruikt' },
+  { value: '7', days: 7, period: '7 dagen', label: 'Na 7 dagen', meaning: 'Na een week niet gebruikt' },
   { value: '30', days: 30, period: '30 dagen', label: 'Na 30 dagen', meaning: 'Na een maand niet gebruikt' },
   { value: '90', days: 90, period: '90 dagen', label: 'Na 90 dagen', meaning: 'Na drie maanden niet gebruikt' },
 ] as const;
