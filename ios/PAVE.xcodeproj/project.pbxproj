@@ -489,6 +489,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Config/PAVEWidgets.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Q583XQMKU2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/PAVEWidgets-Info.plist";
@@ -512,6 +513,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Config/PAVEWidgets.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Q583XQMKU2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/PAVEWidgets-Info.plist";

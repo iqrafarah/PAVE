@@ -25,6 +25,8 @@ enum SettingsMessages {
     static let vaultLayout = "Weergave kluis"
     static let vaultLayoutHint = "Zo opent je kluis. In de kluis kun je even wisselen; de volgende keer opent hij weer zo."
     static let textSize = "Tekstgrootte"
+    static let animationsOff = "Animaties uitzetten"
+    static let animationsOffHint = "Alles in PAVE blijft stil staan: geen bewegende overgangen, laders of golven. Geldt alleen op dit apparaat."
     static let onThisDeviceOnly = "Je keuzes gelden nu alleen op dit toestel. Zodra PAVE er klaar voor is, gelden ze voor je hele account."
     static let notSetUp = "Je naam en foto aanpassen kan nog niet. Zodra PAVE er klaar voor is, kan het hier."
 

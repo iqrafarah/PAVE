@@ -7,7 +7,7 @@ struct PaveStepper: View {
     /// Zero-based.
     let current: Int
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     /// How far the dark line runs, in steps; animated on its own so it can lead the numbers.
     @State private var line: CGFloat = 0
     @State private var reached = 0

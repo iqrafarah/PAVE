@@ -14,7 +14,7 @@ struct PaveButtonStyle: ButtonStyle {
         let haptic: UIImpactFeedbackGenerator.FeedbackStyle
 
         @Environment(\.isEnabled) private var isEnabled
-        @Environment(\.accessibilityReduceMotion) private var reduceMotion
+        @Environment(\.paveReduceMotion) private var reduceMotion
 
         var body: some View {
             configuration.label

@@ -5,7 +5,7 @@ import SwiftUI
 /// takes the evidence along when you switch it on. Lower parts on a short screen, so it never feels cramped.
 struct VaultEvidenceAddedView: View {
     @Bindable var flow: VaultAddEvidenceModel
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @Environment(\.isShortSheet) private var isShort
     @State private var landed = false
     @State private var consentShown = false

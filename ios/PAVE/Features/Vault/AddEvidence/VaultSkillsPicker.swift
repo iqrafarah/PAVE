@@ -10,7 +10,7 @@ struct VaultSkillsPicker: View {
     let draft: VaultItemDraft
     /// When adding evidence, Ayla starts looking as soon as you reach the skills.
     var asksAylaOnAppear = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @State private var search = ""
     @State private var showsAll = false
     @State private var width: CGFloat = 400

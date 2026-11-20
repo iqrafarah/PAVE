@@ -18,7 +18,7 @@ struct MainMenuDrawer: View {
     let onSignOut: () -> Void
     var onSearch: (() -> Void)?
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @GestureState private var drag: CGFloat = 0
 
     private static let inset: CGFloat = 16

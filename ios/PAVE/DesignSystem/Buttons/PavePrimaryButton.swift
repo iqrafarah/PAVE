@@ -52,7 +52,7 @@ private struct PrimaryButtonBody: View {
 }
 
 private struct SpinningIcon: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @State private var isSpinning = false
 
     var body: some View {

@@ -68,7 +68,7 @@ struct AylaChatList: View {
     @Binding var isSelecting: Bool
     let actions: AylaChatListActions
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @State private var search = ""
     @State private var hits: [(hit: AylaSearchHit, conversation: AylaConversation)] = []
     @State private var renaming: AylaConversation?

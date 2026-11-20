@@ -5,7 +5,7 @@ import SwiftUI
 /// go while the stepper runs along, and at the end the sheet becomes lower for the moment the evidence is added.
 struct VaultAddEvidenceSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @State private var flow: VaultAddEvidenceModel
     @State private var source: VaultFileSource?

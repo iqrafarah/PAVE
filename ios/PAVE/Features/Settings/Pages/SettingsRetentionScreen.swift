@@ -113,18 +113,19 @@ struct SettingsRetentionScreen: View {
         .background(Color.panel, in: .rect(cornerRadius: 14))
     }
 
+    /// Title left, choice right. The choice keeps its own width and never breaks; a long title wraps beside it, so the
+    /// row fits on every screen width and text size.
     private func row(_ title: String, @ViewBuilder picker: () -> some View) -> some View {
-        ViewThatFits(in: .horizontal) {
-            HStack {
-                rowTitle(title)
-                Spacer(minLength: 8)
-                picker().labelsHidden().tint(.paveAccent)
-            }
-            VStack(alignment: .leading, spacing: 4) {
-                rowTitle(title)
-                picker().labelsHidden().tint(.paveAccent)
-            }
+        HStack(alignment: .center, spacing: 12) {
+            rowTitle(title)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            picker()
+                .labelsHidden()
+                .tint(.paveAccent)
+                .fixedSize()
         }
+        .frame(minHeight: 44)
     }
 
     private func rowTitle(_ title: String) -> some View {

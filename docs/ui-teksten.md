@@ -80,3 +80,11 @@
 | Prullenbak leeg | Niets verwijderd — Meldingen die je verwijdert, staan hier nog een week. |
 | Verwijderen mislukt | De melding kon niet worden verwijderd. Probeer het opnieuw. |
 | Terugzetten mislukt | De melding kon niet worden teruggezet. Probeer het opnieuw. |
+
+## Animaties uitzetten (web en iOS, Instellingen › Weergave)
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Schakelaar | Animaties uitzetten |
+| Uitleg (web) | Alles in PAVE blijft stil staan: geen bewegende overgangen, laders of golven. Geldt alleen voor deze browser. |
+| Uitleg (iOS) | Alles in PAVE blijft stil staan: geen bewegende overgangen, laders of golven. Geldt alleen op dit apparaat. |
