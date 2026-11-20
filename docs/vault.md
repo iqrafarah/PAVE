@@ -42,7 +42,7 @@ What is in Supabase on 2026-11-10 (read-only check with the publishable key):
 
 | Table | From | Used by |
 | --- | --- | --- |
-| `profiles` (id, full_name, preferred_name, email, avatar_url, role, organization_id, program, created_at, updated_at) | web team, not in our migrations | Ayla function (name) |
+| `profiles` (id, full_name, preferred_name, email, avatar_url, role, organization_id, program, created_at, updated_at) | web team, not in our migrations; every new account gets one through the trigger `profile_on_signup` (`20261120200000_profile_for_every_account.sql`) | Ayla function (name) |
 | `organizations` (id, name, created_at, logo_url, kind) | web team, not in our migrations; `kind` is added by `20261117180000_organisations_verification_notifications.sql` | `profiles.organization_id` |
 | `organization_locations`, `organization_departments`, `organization_contacts` | `20261117180000_organisations_verification_notifications.sql`, simplified by `20261120180000_simple_verification_directory.sql` | Organisation → location → department → contact person for verification requests; see [verificatie.md](verificatie.md). |
 | `ayla_conversations`, `ayla_messages`, `ayla_memories`, `ayla_settings` | our migrations | iOS, Ayla function |
