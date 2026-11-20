@@ -114,7 +114,7 @@ struct VaultEvidenceEditor: View {
                 .foregroundStyle(Color.ink)
                 .accessibilityAddTraits(.isHeader)
             Spacer()
-            VaultStatusBadge(status: edit.item.status)
+            VaultStatusBadge(item: edit.item)
         }
         .frame(height: isShort ? 36 : 44)
         .padding(.horizontal, 24)

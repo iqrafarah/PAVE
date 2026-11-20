@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A7C0FFEE00000000000000A2 /* AylaVoiceActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C0FFEE00000000000000A1 /* AylaVoiceActivity.swift */; };
-		A7C0FFEE00000000000000A3 /* AylaVoiceActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C0FFEE00000000000000A1 /* AylaVoiceActivity.swift */; };
 		065F48BE8B44293C4E61D3EA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 86B0195960554A0DF963D9CA /* Assets.xcassets */; };
 		15C5E62E401984801CF64CF7 /* PaveSplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C616F072C4F978843892A158 /* PaveSplashView.swift */; };
 		175A4414E0270FCA6C4A444D /* PixelWaveIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BFEE001DD9C244F3F78FC55 /* PixelWaveIcon.swift */; };
@@ -27,6 +25,8 @@
 		A0337E364B15F819405DA6C8 /* PAVEWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 0AB30166B28926E8F8E28BC1 /* PAVEWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		A0B2F39AFB4C5535F3FE5172 /* SoraVariable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 4CD8EEF18ACF0AFD55BD5D7A /* SoraVariable.ttf */; };
 		A650AACB9495333BC3055FC2 /* PaveIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BB8E50CBECFA7C43BD0172C /* PaveIntents.swift */; };
+		A7C0FFEE00000000000000A2 /* AylaVoiceActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C0FFEE00000000000000A1 /* AylaVoiceActivity.swift */; };
+		A7C0FFEE00000000000000A3 /* AylaVoiceActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C0FFEE00000000000000A1 /* AylaVoiceActivity.swift */; };
 		C5F838A8F5389AA439976568 /* PAVECore in Frameworks */ = {isa = PBXBuildFile; productRef = BFAAF27B879F677ADF44BCF9 /* PAVECore */; };
 		CFC885971A785DDF39827BE1 /* PaveSplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C616F072C4F978843892A158 /* PaveSplashView.swift */; };
 		D1A7C0FFEE00000000000001 /* PAVECore in Frameworks */ = {isa = PBXBuildFile; productRef = D1A7C0FFEE00000000000002 /* PAVECore */; };
@@ -90,7 +90,6 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		A7C0FFEE00000000000000A1 /* AylaVoiceActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AylaVoiceActivity.swift; sourceTree = "<group>"; };
 		0AB30166B28926E8F8E28BC1 /* PAVEWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PAVEWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		21DFCA90681B57EE7EB6D389 /* Sora-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Sora-OFL.txt"; sourceTree = "<group>"; };
 		2BCD023CC7FE6F72343B2EF5 /* PAVE.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PAVE.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -104,6 +103,7 @@
 		86B0195960554A0DF963D9CA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		89B1896BB53A1F4216CBA41C /* Inter-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Inter-OFL.txt"; sourceTree = "<group>"; };
 		973322EAB88C92C7FE97EB1A /* InterVariable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = InterVariable.ttf; sourceTree = "<group>"; };
+		A7C0FFEE00000000000000A1 /* AylaVoiceActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AylaVoiceActivity.swift; sourceTree = "<group>"; };
 		BF1D741B8FA937E5AA513AA9 /* PAVEWidgets-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "PAVEWidgets-Info.plist"; sourceTree = "<group>"; };
 		C616F072C4F978843892A158 /* PaveSplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaveSplashView.swift; sourceTree = "<group>"; };
 		D1A7C0FFEE0000000000000B /* AylaPixelOrb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AylaPixelOrb.swift; sourceTree = "<group>"; };
@@ -487,9 +487,9 @@
 		116D53F8885F618983957D09 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/PAVEWidgets.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
-				CODE_SIGN_ENTITLEMENTS = Config/PAVEWidgets.entitlements;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/PAVEWidgets-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = PAVE;
@@ -510,9 +510,9 @@
 		1A4ED86DF5D11D44B78C688B /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/PAVEWidgets.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
-				CODE_SIGN_ENTITLEMENTS = Config/PAVEWidgets.entitlements;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/PAVEWidgets-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = PAVE;
@@ -655,7 +655,7 @@
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = 4;
-				WATCHOS_DEPLOYMENT_TARGET = 26.6;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Debug;
 		};
@@ -791,7 +791,7 @@
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = 4;
-				WATCHOS_DEPLOYMENT_TARGET = 26.6;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Release;
 		};

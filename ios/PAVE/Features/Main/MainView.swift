@@ -19,6 +19,7 @@ struct MainView: View {
     @State private var profile: ProfileModel
     @Environment(\.dynamicTypeSize) private var deviceTextSize
     @State private var watchConnection = WatchConnectionModel()
+    @State private var notificationsModel: NotificationsModel
     @State private var destination = MainDestination.ayla
     /// Demo: the Camera Control button steers PAVE while "knopmodus" is on.
     @State private var cameraControl = PaveCameraControl()
@@ -40,12 +41,13 @@ struct MainView: View {
     private static let sidebarWidth: CGFloat = 800
     private static let sidebarSize: CGFloat = 320
 
-    init(service: (any AylaService)?, vaultService: (any VaultService)?, devicesService: (any DevicesService)? = nil, profileService: (any ProfileService)? = nil) {
+    init(service: (any AylaService)?, vaultService: (any VaultService)?, devicesService: (any DevicesService)? = nil, profileService: (any ProfileService)? = nil, notificationsService: SupabaseNotificationsService? = nil) {
         _model = State(initialValue: AylaChatModel(service: service, drafts: .standard, pendingFiles: .standard))
         _memory = State(initialValue: AylaMemoryModel(service: service))
         _vault = State(initialValue: VaultModel(service: vaultService))
         _devices = State(initialValue: SignedInDevicesModel(service: devicesService))
         _profile = State(initialValue: ProfileModel(service: profileService))
+        _notificationsModel = State(initialValue: NotificationsModel(service: notificationsService))
     }
 
     var body: some View {
@@ -296,6 +298,7 @@ struct MainView: View {
         switch destination {
         case .ayla:
             AylaRootView(model: model, onShowMenu: onShowMenu, isWide: isWide, showsChats: $showsChats)
+                .environment(notificationsModel)
                 .environment(vault)
                 // Settings can open over the chat when you ask Ayla for them.
                 .environment(devices)
@@ -327,8 +330,33 @@ struct MainView: View {
                 .environment(profile)
                 .environment(watchConnection)
         case .notifications:
-            NotificationsScreen(onShowMenu: onShowMenu)
+            NotificationsScreen(
+                onShowMenu: onShowMenu,
+                audience: notificationsModel.audience,
+                notifications: notificationsModel.notifications,
+                loadError: notificationsModel.problem,
+                onRefresh: { await notificationsModel.refresh() },
+                onMarkRead: { await notificationsModel.markRead($0) },
+                onOpenConversation: openNotificationConversation,
+                onOpenVerifiedEvidence: openNotificationEvidence,
+                onLoadReview: { await notificationsModel.review($0) },
+                onResolveRequest: { await notificationsModel.resolve($0, action: $1, response: $2) },
+                onDelete: { await notificationsModel.delete($0) },
+                onRestore: { await notificationsModel.restore($0) }
+            )
         }
+    }
+
+    /// A chat from a notification opens as one from the iPhone's search: a locked one only through the PIN.
+    private func openNotificationConversation(_ id: String) {
+        openFromSearch(id)
+    }
+
+    /// The evidence of a notification opens in the vault, as when Ayla points to it.
+    private func openNotificationEvidence(_ id: String) {
+        vault.itemToOpen = id
+        isMenuOpen = false
+        open(.vault)
     }
 
     private func setSidebarHidden(_ isHidden: Bool) {

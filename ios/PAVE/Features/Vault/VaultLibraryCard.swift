@@ -73,7 +73,7 @@ struct VaultLibraryCard: View {
                         .offset(y: 22)
                 }
                 .overlay(alignment: .topTrailing) {
-                    VaultStatusBadge(status: item.status)
+                    VaultStatusBadge(item: item)
                         .padding(8)
                 }
             VStack(alignment: .leading, spacing: 8) {
@@ -108,7 +108,7 @@ struct VaultLibraryCard: View {
                     if let isSelected {
                         PaveCheckbox(isOn: isSelected)
                     } else {
-                        VaultStatusBadge(status: item.status)
+                        VaultStatusBadge(item: item)
                     }
                 }
                 details(lineLimit: 1)

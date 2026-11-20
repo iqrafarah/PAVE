@@ -1,205 +1,411 @@
 import PAVECore
 import SwiftUI
 
-/// "Bevestiging aanvragen": choose who confirms the evidence and how to reach them, and see what they would get to see.
-/// Only the front for now: the sheet says so before and after, and nothing is sent or stored.
+/// Verification request form backed by the trusted organisation directory.
 struct VaultRequestConfirmationSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(VaultModel.self) private var vault
     let item: VaultItem
     let documentCount: Int
+    var onShowMenu: (() -> Void)?
+    /// Nil sends it through the vault, so every way into this form (the vault, an item, Ayla) really sends.
+    var onSend: ((VaultConfirmationRequest) async -> String?)?
+
+    private enum Choice: String, Identifiable {
+        case organization, location, department, contactType, contact
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .organization: "Organisatie kiezen"
+            case .location: "Vestiging kiezen"
+            case .department: "Afdeling of opleiding kiezen"
+            case .contactType: "Functie kiezen"
+            case .contact: "Contactpersoon kiezen"
+            }
+        }
+    }
 
     @State private var request: VaultConfirmationRequest
-    @State private var showsMissing = false
+    @State private var organizations: [VaultValidationOrganization] = []
+    @State private var locations: [VaultValidationLocation] = []
+    @State private var departments: [VaultValidationDepartment] = []
+    @State private var contacts: [VaultValidationContact] = []
+    @State private var choice: Choice?
+    @State private var searchText = ""
+    @State private var isLoading = false
     @State private var isFinished = false
+    @State private var isSending = false
+    @State private var isDirty = false
+    @State private var showsMissing = false
     @State private var confirmsDiscard = false
-    @FocusState private var focus: VaultConfirmationRequest.Field?
+    @State private var sendError: String?
+    @State private var directoryError: String?
+    @State private var evidenceLogo: VaultLogoLook?
 
-    init(item: VaultItem, documentCount: Int) {
+    init(item: VaultItem, documentCount: Int, onShowMenu: (() -> Void)? = nil, onSend: ((VaultConfirmationRequest) async -> String?)? = nil) {
         self.item = item
         self.documentCount = documentCount
+        self.onShowMenu = onShowMenu
+        self.onSend = onSend
         _request = State(initialValue: VaultConfirmationRequest(item: item))
     }
 
-    private var hasChanges: Bool { !isFinished && request != VaultConfirmationRequest(item: item) }
+    private var hasChanges: Bool { !isFinished && isDirty }
+    /// Persons come after the location, and at a school after the department.
+    private var canPickPerson: Bool { request.location != nil && (!request.requiresDepartment || request.department != nil) }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            if isFinished {
-                notSent
-                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .trailing)))
-            } else {
-                form
-                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .leading)))
+        NavigationStack {
+            Group {
+                if isFinished { successView.transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .trailing))) }
+                else { form.transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .leading))) }
             }
+            .background(Color.canvas.ignoresSafeArea())
+            .mainScreenToolbar("Kluis", onShowMenu: onShowMenu)
+            .toolbarBackground(Color.panel, for: .navigationBar)
+            .toolbarBackgroundVisibility(.visible, for: .navigationBar)
         }
         .animation(.snappy(duration: 0.35), value: isFinished)
-        .background(Color.panel.ignoresSafeArea())
+        .tint(.paveAccent)
         .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
+        .presentationDragIndicator(.hidden)
         .sheetDismissGuard(isBlocked: hasChanges) { confirmsDiscard = true }
         .confirmationDialog(VaultMessages.discardRequestTitle, isPresented: $confirmsDiscard, titleVisibility: .visible) {
             Button("Weggooien", role: .destructive) { dismiss() }
             Button("Verder met invullen", role: .cancel) {}
         }
-        // Knopmodus: choose who confirms it; a full press sends (shown only, nothing is sent), then closes.
-        .cameraControlMenus("request-\(item.id)", menus: isFinished ? [] : [
-            CameraMenu(
-                id: "recipient", title: "Wie", symbol: "person.crop.circle",
-                items: VaultConfirmationRequest.Recipient.allCases.map(\.title),
-                selected: VaultConfirmationRequest.Recipient.allCases.firstIndex(of: request.recipient) ?? 0,
-                onSwipe: { index in request.recipient = VaultConfirmationRequest.Recipient.allCases[index] }
-            ),
-        ], press: { if isFinished { dismiss() } else { send() } })
-    }
-
-
-    private var header: some View {
-        HStack(spacing: 10) {
-            Text("Bevestiging aanvragen")
-                .textStyle(.listTitle)
-                .foregroundStyle(Color.ink)
-                .accessibilityAddTraits(.isHeader)
-            Spacer(minLength: 8)
-            Text(VaultMessages.requestPreviewLabel)
-                .textStyle(.meta)
-                .foregroundStyle(Color.statusPending)
-                .padding(.horizontal, 8)
-                .frame(minHeight: 24)
-                .background(Color.statusPending.opacity(0.12), in: .capsule)
-                .accessibilityLabel(VaultMessages.requestPreviewAccessibility)
+        .sheet(item: $choice) { selectedChoice in
+            choiceSheet(selectedChoice)
+                .paveSheet()
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 22)
-        .padding(.bottom, 12)
+        .task(id: item.id) {
+            evidenceLogo = nil
+            if let logo = vault.logo(of: item) { evidenceLogo = await vault.look(of: logo) }
+            await loadOrganizations()
+        }
     }
 
     private var form: some View {
         VStack(spacing: 0) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    PaveNotice(message: VaultMessages.requestNotActive)
+                VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Verificatie aanvraag").textStyle(.calloutTitle).foregroundStyle(Color.ink).accessibilityAddTraits(.isHeader)
+                        Text("Laat je gegevens bevestigen.").textStyle(.bodyMedium).foregroundStyle(Color.inkMuted)
+                    }
+                    if let sendError { PaveNotice(message: sendError) }
+                    if let directoryError { PaveNotice(message: directoryError) }
+                    evidenceSummary
 
-                    block(VaultMessages.requestWhoTitle) {
-                        VStack(spacing: 10) {
-                            ForEach(VaultConfirmationRequest.Recipient.allCases) { recipient in
-                                VaultRecipientCard(recipient: recipient, isSelected: request.recipient == recipient) {
-                                    request.recipient = recipient
-                                }
-                            }
+                    VStack(alignment: .leading, spacing: 22) {
+                        pickerField(title: "Naam bedrijf", value: request.organization?.name, placeholder: "Kies een organisatie", error: error(.organisation)) { searchText = ""; choice = .organization }
+                        pickerField(title: "Locatie van het bedrijf", value: request.location?.city, placeholder: "Typ of kies een vestigingsplaats", error: error(.location), isEnabled: request.organization != nil) { searchText = ""; choice = .location }
+                        if request.requiresDepartment {
+                            pickerField(title: "Afdeling of opleiding", value: request.department?.name, placeholder: "Kies een afdeling of opleiding", error: error(.department), isEnabled: request.location != nil) { searchText = ""; choice = .department }
                         }
+                        pickerField(title: "Functie (optioneel)", value: request.contactType, placeholder: "Alle functies", isEnabled: canPickPerson && !contacts.isEmpty) { searchText = ""; choice = .contactType }
+                        pickerField(title: request.requiresDepartment ? "Docent of contactpersoon" : "Contactpersoon", value: request.contact.map(contactLine), placeholder: "Kies één persoon", error: error(.contact), isEnabled: canPickPerson) { searchText = ""; choice = .contact }
                     }
-
-                    VaultFormField(title: request.recipient.organisationLabel, error: error(.organisation)) {
-                        TextField("", text: $request.organisation, prompt: prompt(VaultMessages.requestOrganisationPrompt))
-                            .textStyle(.input)
-                            .foregroundStyle(Color.ink)
-                            .textContentType(.organizationName)
-                            .focused($focus, equals: .organisation)
-                            .submitLabel(.next)
-                            .onSubmit { focus = .email }
-                    }
-
-                    VaultFormField(title: VaultMessages.requestEmailTitle, error: error(.email)) {
-                        TextField("", text: $request.email, prompt: prompt("naam@organisatie.nl"))
-                            .textStyle(.input)
-                            .foregroundStyle(Color.ink)
-                            .keyboardType(.emailAddress)
-                            .textContentType(.emailAddress)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .focused($focus, equals: .email)
-                            .submitLabel(.done)
-                            .onSubmit { focus = nil }
-                    }
-
-                    VaultFormField(title: VaultMessages.requestMessageTitle, isRequired: false, minHeight: 96) {
-                        TextField("", text: $request.message, prompt: prompt(VaultMessages.requestMessagePrompt), axis: .vertical)
-                            .lineLimit(3...6)
-                            .textStyle(.input)
-                            .foregroundStyle(Color.ink)
-                            .padding(.vertical, 12)
-                            .frame(maxHeight: .infinity, alignment: .top)
-                    }
-
-                    block(VaultMessages.requestSharedTitle) {
-                        VaultSharedPreview(item: item, documentCount: documentCount)
-                    }
+                    .padding(20)
+                    .background(Color.panel, in: .rect(cornerRadius: 16))
+                    .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder) }
                 }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 24)
-                .frame(maxWidth: 560)
+                .padding(.horizontal, 28)
+                .padding(.top, 32)
+                .padding(.bottom, 18)
+                .frame(maxWidth: 440)
                 .frame(maxWidth: .infinity)
             }
             .scrollDismissesKeyboard(.interactively)
 
-            PavePrimaryButton(title: VaultMessages.requestSend) { send() }
-                .padding(.horizontal, 22)
-                .padding(.top, 8)
-                .padding(.bottom, 12)
-                .frame(maxWidth: 560)
+            PavePrimaryButton(title: isSending ? "Aanvraag versturen…" : "Aanvraag versturen") { send() }
+                .disabled(isSending || isLoading)
+                .padding(.horizontal, 28).padding(.top, 8).padding(.bottom, 4).frame(maxWidth: 440)
+            Text("Je aanvraag gaat naar de gekozen contactpersoon of naar de beoordelaars van de organisatie.")
+                .textStyle(.caption).foregroundStyle(Color.inkMuted).multilineTextAlignment(.center)
+                .frame(maxWidth: 320).padding(.horizontal, 28).padding(.top, 10).padding(.bottom, 12)
         }
     }
 
-    private var notSent: some View {
+    private func pickerField(title: String, value: String?, placeholder: String, error: String? = nil, isEnabled: Bool = true, action: @escaping () -> Void) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).textStyle(.label).foregroundStyle(Color.ink)
+            Button(action: action) {
+                HStack(spacing: 8) {
+                    Text(value ?? placeholder).textStyle(.input).foregroundStyle(value == nil ? Color.inkMuted : Color.ink).lineLimit(1)
+                    Spacer(minLength: 0)
+                    Image(.iconChevronDown).resizable().scaledToFit().frame(width: 15, height: 15).foregroundStyle(Color.ink)
+                }
+                .padding(.leading, 12).padding(.trailing, 14).frame(height: 48)
+                .background(Color.panel, in: .rect(cornerRadius: 11))
+                .overlay { RoundedRectangle(cornerRadius: 11).strokeBorder(Color.cardBorder) }
+                .contentShape(.rect(cornerRadius: 11))
+            }
+            .buttonStyle(.pave).disabled(isLoading || !isEnabled)
+            .accessibilityLabel("\(title): \(value ?? placeholder)")
+            if let error { PaveInlineError(message: error) }
+        }
+    }
+
+    private func choiceSheet(_ selected: Choice) -> some View {
+        NavigationStack {
+            Group {
+                if isLoading { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
+                else if filteredChoiceCount(selected) == 0 {
+                    ContentUnavailableView(emptyChoiceTitle(selected), systemImage: "person.2", description: Text(emptyChoiceDescription(selected)))
+                } else {
+                    List {
+                        switch selected {
+                        case .organization:
+                            ForEach(["school", "company"], id: \.self) { kind in
+                                let rows = filteredOrganizations.filter { $0.kind == kind }
+                                if !rows.isEmpty {
+                                    Section(kind == "school" ? "School of opleiding" : "Bedrijf") {
+                                        ForEach(rows) { organization in
+                                            choiceRow(organization.name, detail: nil, selected: request.organization?.id == organization.id) { Task { await select(organization) } }
+                                        }
+                                    }
+                                }
+                            }
+                        case .location:
+                            ForEach(filteredLocations) { location in choiceRow(location.city, detail: nil, selected: request.location?.id == location.id) { Task { await select(location) } } }
+                        case .department:
+                            ForEach(filteredDepartments) { department in choiceRow(department.name, detail: nil, selected: request.department?.id == department.id) { Task { await select(department) } } }
+                        case .contactType:
+                            choiceRow("Alle functies", detail: "Laat alle personen zien", selected: request.contactType == nil) { selectFunction(nil) }
+                            ForEach(filteredContactTypes, id: \.self) { type in
+                                choiceRow(type, detail: personCount(type), selected: request.contactType == type) { selectFunction(type) }
+                            }
+                        case .contact:
+                            // One section per function, so you see who is a docent and who a stagebegeleider.
+                            ForEach(filteredContactGroups, id: \.function) { group in
+                                Section(group.function) {
+                                    ForEach(group.contacts) { contact in
+                                        choiceRow(contact.name, detail: nil, selected: request.contact?.id == contact.id) {
+                                            isDirty = true
+                                            request.contact = contact
+                                            choice = nil
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .listStyle(.insetGrouped)
+                }
+            }
+            .navigationTitle(selected.title)
+            .navigationBarTitleDisplayMode(.inline)
+            .searchable(text: $searchText, prompt: "Zoeken")
+            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Gereed") { choice = nil } } }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func choiceRow(_ title: String, detail: String?, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title).foregroundStyle(Color.ink)
+                    if let detail, !detail.isEmpty { Text(detail).font(.caption).foregroundStyle(Color.inkMuted) }
+                }
+                Spacer()
+                if selected { Image(systemName: "checkmark").foregroundStyle(Color.paveAccent) }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var filteredOrganizations: [VaultValidationOrganization] { organizations.filter { searchText.isEmpty || $0.name.localizedCaseInsensitiveContains(searchText) } }
+    private var filteredLocations: [VaultValidationLocation] { locations.filter { searchText.isEmpty || $0.city.localizedCaseInsensitiveContains(searchText) } }
+    private var filteredDepartments: [VaultValidationDepartment] { departments.filter { searchText.isEmpty || $0.name.localizedCaseInsensitiveContains(searchText) } }
+    private var contactTypes: [String] { Array(Set(contacts.map(VaultConfirmationRequest.function(of:)))).sorted { $0.localizedStandardCompare($1) == .orderedAscending } }
+    private var filteredContactTypes: [String] { contactTypes.filter { searchText.isEmpty || $0.localizedCaseInsensitiveContains(searchText) } }
+    /// The persons of the chosen function (or all), found by name or by function.
+    private var filteredContacts: [VaultValidationContact] {
+        contacts.filter { contact in
+            let function = VaultConfirmationRequest.function(of: contact)
+            return (request.contactType == nil || function == request.contactType)
+                && (searchText.isEmpty || contact.name.localizedCaseInsensitiveContains(searchText) || function.localizedCaseInsensitiveContains(searchText))
+        }
+    }
+    private var filteredContactGroups: [(function: String, contacts: [VaultValidationContact])] {
+        Dictionary(grouping: filteredContacts, by: VaultConfirmationRequest.function(of:))
+            .map { (function: $0.key, contacts: $0.value) }
+            .sorted { $0.function.localizedStandardCompare($1.function) == .orderedAscending }
+    }
+
+    /// "Sanne de Vries · Docent".
+    private func contactLine(_ contact: VaultValidationContact) -> String {
+        "\(contact.name) · \(VaultConfirmationRequest.function(of: contact))"
+    }
+
+    private func personCount(_ function: String) -> String {
+        let count = contacts.filter { VaultConfirmationRequest.function(of: $0) == function }.count
+        return count == 1 ? "1 persoon" : "\(count) personen"
+    }
+
+    /// The function only narrows the list; a chosen person of another function is cleared, one that fits stays.
+    private func selectFunction(_ function: String?) {
+        isDirty = true
+        request.contactType = function
+        if let function, let contact = request.contact, VaultConfirmationRequest.function(of: contact) != function {
+            request.contact = nil
+        }
+        choice = nil
+    }
+
+    private func filteredChoiceCount(_ selected: Choice) -> Int {
+        switch selected {
+        case .organization: return filteredOrganizations.count
+        case .location: return filteredLocations.count
+        case .department: return filteredDepartments.count
+        case .contactType: return filteredContactTypes.count + 1
+        case .contact: return filteredContacts.count
+        }
+    }
+    private func emptyChoiceTitle(_ selected: Choice) -> String {
+        switch selected {
+        case .organization: return "Geen organisaties gevonden"
+        case .location: return "Geen vestigingen gevonden"
+        case .department: return "Geen afdelingen gevonden"
+        case .contactType: return "Geen functies gevonden"
+        case .contact: return "Geen contactpersonen gevonden"
+        }
+    }
+    private func emptyChoiceDescription(_ selected: Choice) -> String {
+        switch selected {
+        case .organization: return "Probeer een andere zoekopdracht."
+        case .location: return "Er zijn nog geen vestigingen voor deze organisatie ingesteld."
+        case .department: return "Er zijn geen afdelingen of opleidingen voor deze vestiging."
+        case .contactType: return "Er zijn geen contactfuncties voor deze keuze."
+        case .contact: return "Er zijn geen actieve contactpersonen voor deze keuze."
+        }
+    }
+
+    private func loadOrganizations() async {
+        isLoading = true; defer { isLoading = false }
+        do {
+            organizations = try await vault.validationOrganizations()
+            if let name = item.organisationName, let match = organizations.first(where: { $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }) {
+                request.organization = match
+                await loadLocations()
+            }
+        } catch { directoryError = "De organisaties konden niet worden geladen. Probeer het opnieuw." }
+    }
+
+    private func loadLocations() async {
+        guard let organization = request.organization else { return }
+        do {
+            locations = try await vault.validationLocations(organizationID: organization.id)
+            if let city = item.organisationLocation, let match = locations.first(where: { $0.city.localizedCaseInsensitiveCompare(city) == .orderedSame }) {
+                request.location = match
+                await loadDepartmentsAndContacts()
+            }
+        } catch { directoryError = "De vestigingen konden niet worden geladen. Probeer het opnieuw." }
+    }
+
+    /// A school location with departments: first the department, then its teachers. Otherwise the persons of the location.
+    private func loadDepartmentsAndContacts() async {
+        guard let organization = request.organization, let location = request.location else { return }
+        departments = []
+        request.department = nil
+        // Not the previous location's answer while this one loads, or if loading fails: no stray department field,
+        // and no person field that is open with an empty list (`canPickPerson` waits for the department).
+        request.requiresDepartment = organization.kind == "school"
+        if organization.kind == "school" {
+            do {
+                departments = try await vault.validationDepartments(organizationID: organization.id, locationID: location.id)
+            } catch {
+                directoryError = "De afdelingen of opleidingen konden niet worden geladen. Probeer het opnieuw."
+                return
+            }
+        }
+        request.requiresDepartment = !departments.isEmpty
+        if !request.requiresDepartment { await loadContacts() }
+    }
+
+    private func loadContacts() async {
+        guard let organization = request.organization, let location = request.location else { return }
+        do { contacts = try await vault.validationContacts(organizationID: organization.id, locationID: location.id, departmentID: request.department?.id) }
+        catch { directoryError = "De contactpersonen konden niet worden geladen. Probeer het opnieuw." }
+    }
+
+    private func select(_ organization: VaultValidationOrganization) async {
+        isDirty = true
+        directoryError = nil
+        request.organization = organization; request.location = nil; request.department = nil; request.contactType = nil; request.contact = nil
+        request.requiresDepartment = false
+        locations = []; departments = []; contacts = []; searchText = ""; choice = nil
+        isLoading = true; await loadLocations(); isLoading = false
+    }
+    private func select(_ location: VaultValidationLocation) async {
+        isDirty = true
+        directoryError = nil
+        request.location = location; request.department = nil; request.contactType = nil; request.contact = nil
+        departments = []; contacts = []; searchText = ""; choice = nil
+        isLoading = true; await loadDepartmentsAndContacts(); isLoading = false
+    }
+    private func select(_ department: VaultValidationDepartment) async {
+        isDirty = true
+        directoryError = nil
+        request.department = department; request.contactType = nil; request.contact = nil; contacts = []; searchText = ""; choice = nil
+        isLoading = true; await loadContacts(); isLoading = false
+    }
+
+    private var evidenceSummary: some View {
+        HStack(spacing: 12) {
+            VaultLogoAvatar(look: evidenceLogo, name: item.organisationName ?? item.title, size: 56)
+            VStack(alignment: .leading, spacing: 5) {
+                Text(item.title).textStyle(.bodyMedium).foregroundStyle(Color.ink).lineLimit(2)
+                if let organization = item.organisationName, !organization.isEmpty {
+                    let location = item.organisationLocation.map { ", \($0)" } ?? ""
+                    PaveIconLabel(icon: .iconBuildingOfficeSolid, text: organization + location)
+                }
+                if let period = item.period { PaveIconLabel(icon: .iconCalendarDaysSolid, text: period) }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.panel, in: .rect(cornerRadius: 14))
+        .overlay { RoundedRectangle(cornerRadius: 14).strokeBorder(Color.cardBorder) }
+    }
+
+    private var successView: some View {
         VStack(spacing: 18) {
             Spacer(minLength: 0)
-            Image(.iconClockSolid)
-                .renderingMode(.template)
-                .resizable()
-                .scaledToFit()
-                .paveIconFrame(32)
-                .foregroundStyle(Color.statusPending)
-                .paveIconFrame(72)
-                .background(Color.statusPending.opacity(0.12), in: .circle)
-                .accessibilityHidden(true)
+            Image(systemName: "checkmark.seal.fill").resizable().scaledToFit().frame(width: 32, height: 32)
+                .foregroundStyle(Color.paveAccent).frame(width: 72, height: 72).background(Color.paveSurfaceTint, in: .circle).accessibilityHidden(true)
             VStack(spacing: 8) {
-                Text(VaultMessages.requestNotSentTitle)
-                    .textStyle(.emptyTitle)
-                    .foregroundStyle(Color.ink)
-                    .multilineTextAlignment(.center)
-                    .accessibilityAddTraits(.isHeader)
-                Text(VaultMessages.requestNotSentMessage(request.organisation))
-                    .textStyle(.bodyMedium)
-                    .foregroundStyle(Color.inkMuted)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: 380)
+                Text("Verzoek verstuurd").textStyle(.emptyTitle).foregroundStyle(Color.ink).multilineTextAlignment(.center).accessibilityAddTraits(.isHeader)
+                Text("Je aanvraag is doorgestuurd. Je krijgt een melding zodra het bewijs is beoordeeld.")
+                    .textStyle(.bodyMedium).foregroundStyle(Color.inkMuted).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+            }.frame(maxWidth: 380)
             Spacer(minLength: 0)
-            PavePrimaryButton(title: "Sluiten") { dismiss() }
-                .frame(maxWidth: 560)
-        }
-        .padding(.horizontal, 24)
-        .padding(.bottom, 12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+            PavePrimaryButton(title: "Sluiten") { dismiss() }.frame(maxWidth: 560)
+        }.padding(.horizontal, 24).padding(.bottom, 12).frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func send() {
-        focus = nil
         showsMissing = true
-        guard request.missingFields.isEmpty else {
-            focus = request.missingFields.first
-            PaveHaptics.error()
-            return
+        guard request.missingFields.isEmpty else { PaveHaptics.error(); return }
+        guard let organization = request.organization, let location = request.location, let contact = request.contact else { return }
+        isSending = true; sendError = nil
+        Task {
+            let error: String? = if let onSend {
+                await onSend(request)
+            } else {
+                await vault.requestValidation(
+                    for: item, organizationID: organization.id, locationID: location.id,
+                    departmentID: request.department?.id, contactID: contact.id, message: request.message
+                )
+            }
+            isSending = false
+            if let error { sendError = error }
+            else { isFinished = true }
         }
-        PaveHaptics.selection()
-        isFinished = true
-    }
-
-    private func block(_ title: String, @ViewBuilder content: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .textStyle(.label)
-                .foregroundStyle(Color.ink)
-                .accessibilityAddTraits(.isHeader)
-            content()
-        }
-    }
-
-    private func prompt(_ text: String) -> Text {
-        Text(text).foregroundStyle(Color.inkMuted)
     }
 
     private func error(_ field: VaultConfirmationRequest.Field) -> String? {
@@ -211,5 +417,6 @@ struct VaultRequestConfirmationSheet: View {
 #Preview {
     Color.canvas.sheet(isPresented: .constant(true)) {
         VaultRequestConfirmationSheet(item: VaultContents.preview.items[0], documentCount: 2)
+            .environment(VaultModel(previewContents: VaultContents.preview))
     }
 }

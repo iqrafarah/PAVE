@@ -121,8 +121,12 @@ Migration `20261120120000_chat_expiry_and_archive.sql`. Deleting is final; nothi
 
 1. Review categories, folder behavior, status transitions, file limits and validation ownership with Daaf and the web team.
 2. ~~Build the `VaultService` against this model.~~ Done on iOS on 2026-11-10 (read, add, change, move, delete, folders). Still to do: file upload, and the web client.
-3. Add the server-side validation and task-consent behavior. Test that Ayla cannot read an item or category without an active, matching grant.
+3. ~~Verification of vault items.~~ Database, `vault-review` and iOS done on 2026-11-17; see [verificatie.md](verificatie.md). Separately add the Ayla task-consent behavior and verify grants before Ayla reads a vault item/category.
 4. ~~Apply the migration to the shared Supabase project.~~ Done on 2026-11-10.
 5. Update `ios/README.md`, `docs/ayla.md` and this page when the schema is applied or the contract changes.
+
+## Verification, organisations and notifications
+
+Everything about requesting verification, the organisation directory, reviewers and the notification inbox is described in [verificatie.md](verificatie.md). The database side is one migration: [`20261117180000_organisations_verification_notifications.sql`](../shared/supabase/migrations/20261117180000_organisations_verification_notifications.sql).
 
 The migration includes Realtime publication entries for the vault tables so other signed-in devices can refresh. Clients must still use the authenticated user's session; service-role keys belong only in trusted server functions.

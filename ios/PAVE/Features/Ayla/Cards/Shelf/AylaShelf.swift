@@ -57,5 +57,5 @@ enum AylaShelf: String, Identifiable, CaseIterable {
     }
 
     /// The places with their own full page; the others are a panel.
-    var isFullPage: Bool { self == .vault || self == .settings }
+    var isFullPage: Bool { self == .vault || self == .settings || self == .notifications }
 }

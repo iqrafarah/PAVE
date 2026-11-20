@@ -71,6 +71,7 @@ struct VaultPeriodSheet: View {
         .onGeometryChange(for: Bool.self) { $0.safeAreaInsets.trailing > 0 || $0.safeAreaInsets.leading > 0 } action: { hasSideColumn = $0 }
         .presentationDetents(hasSideColumn ? [.large] : [.medium, .large])
         .presentationDragIndicator(.visible)
+        .presentationBackground(Color.canvas)
     }
 
     /// What will be on the card, so you see the result while choosing.

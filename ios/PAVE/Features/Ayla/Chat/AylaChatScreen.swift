@@ -17,6 +17,7 @@ struct AylaChatScreen: View {
     @Environment(\.hidesScreenButtons) private var hidesScreenButtons
     @Environment(VaultModel.self) private var vault: VaultModel?
     @Environment(AppState.self) private var appState
+    @Environment(NotificationsModel.self) private var notifications: NotificationsModel?
     @Environment(ProfileModel.self) private var profile: ProfileModel?
     /// Adding evidence after Ja to Ayla's "Wil je iets toevoegen?", filled with what she proposed.
     @State private var addEvidence: VaultAddEvidenceModel?
@@ -234,6 +235,25 @@ struct AylaChatScreen: View {
                             Task { await model.open(chat) }
                         }
                         .environment(vault)
+                } else if shelf == .notifications, let notifications {
+                    // The notifications themselves, as in the menu: "open meldingen" shows what is really there.
+                    NotificationsScreen(
+                        onShowMenu: nil,
+                        audience: notifications.audience,
+                        notifications: notifications.notifications,
+                        loadError: notifications.problem,
+                        onRefresh: { await notifications.refresh() },
+                        onMarkRead: { await notifications.markRead($0) },
+                        onOpenConversation: openChatFromNotification,
+                        onOpenVerifiedEvidence: { id in
+                            vault?.itemToOpen = id
+                            openShelf(.vault)
+                        },
+                        onLoadReview: { await notifications.review($0) },
+                        onResolveRequest: { await notifications.resolve($0, action: $1, response: $2) },
+                        onDelete: { await notifications.delete($0) },
+                        onRestore: { await notifications.restore($0) }
+                    )
                 } else if shelf == .vault {
                     if let vault {
                         VaultScreen(onShowMenu: nil)
@@ -1964,6 +1984,15 @@ struct AylaChatScreen: View {
             try? await Task.sleep(for: .milliseconds(wasOpen ? 700 : 1300))
             await change()
             PaveHaptics.success()
+        }
+    }
+
+    /// A chat from a notification: the panel closes and the chat opens, a locked one only through the PIN.
+    private func openChatFromNotification(_ id: String) {
+        let known = model.conversationList.conversations.first { $0.id == id }
+        if let known, (known.isLocked && !model.showsLockedChats) || known.isArchived { return }
+        closingShelf {
+            Task { await model.open(known ?? AylaConversation(id: id, title: "", updatedAt: .now)) }
         }
     }
 

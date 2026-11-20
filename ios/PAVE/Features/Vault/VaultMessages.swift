@@ -56,6 +56,11 @@ enum VaultMessages {
         case .notAllowed: "Dit mag niet met je account. Log opnieuw in en probeer het nog een keer."
         case .duplicateFolderName: folderNameTaken
         case .notSetUp: "Dit is nog niet beschikbaar. Probeer het later nog een keer."
+        case .validationOrganisationNotFound: "Deze organisatie is niet bekend bij PAVE. Controleer de naam of neem contact op met je organisatie."
+        case .validationNoReviewer: "Er is nog geen beoordelaar ingesteld voor deze organisatie. Neem contact op met je organisatie."
+        case .validationAlreadyPending: "Voor dit bewijs staat al een verificatieaanvraag open."
+        case .validationItemUnavailable: "Dit bewijs kan niet meer worden aangevraagd. Vernieuw de kluis en probeer opnieuw."
+        case .validationInvalidChoice: "Deze organisatie-, vestigings- of contactkeuze is niet meer geldig. Kies de gegevens opnieuw."
         case .fileRejected: "Dit bestand kan niet in je kluis. Kies een PDF, Word-bestand, tekst of foto tot 20 MB."
         case .unavailable, .missingColumn: "Er ging iets mis. Probeer het zo nog een keer."
         }
@@ -194,6 +199,19 @@ enum VaultMessages {
 
     static let requestAction = "Bevestiging aanvragen"
     static let requestAgainAction = "Opnieuw bevestiging aanvragen"
+    static let awaitingReviewTitle = "In afwachting"
+
+    static func awaitingReviewExplanation(_ organisation: String?) -> String {
+        if let organisation, !organisation.isEmpty {
+            return "Je aanvraag ligt bij \(organisation). Je krijgt een melding zodra je bewijs is beoordeeld."
+        }
+        return "Je aanvraag is verstuurd. Je krijgt een melding zodra je bewijs is beoordeeld."
+    }
+
+    static func rejectionReasonTitle(_ organisation: String?) -> String {
+        if let organisation, !organisation.isEmpty { return "Reden van \(organisation)" }
+        return "Reden van afwijzing"
+    }
     static let requestPreviewLabel = "Voorbeeld"
     static let requestPreviewAccessibility = "Voorbeeld, werkt nog niet"
     static let requestNotActive = "Bevestiging aanvragen werkt nog niet. Je kunt alvast kijken hoe het wordt, maar er wordt niets verstuurd."
@@ -215,8 +233,10 @@ enum VaultMessages {
 
     static func requestMissing(_ field: VaultConfirmationRequest.Field) -> String {
         switch field {
-        case .organisation: "Vul de naam van de organisatie in."
-        case .email: "Vul een geldig e-mailadres in, zoals naam@organisatie.nl."
+        case .organisation: "Kies een organisatie."
+        case .location: "Kies een vestigingsplaats."
+        case .department: "Kies een afdeling of opleiding."
+        case .contact: "Kies de persoon die je bewijs kan bevestigen."
         }
     }
 
