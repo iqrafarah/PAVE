@@ -12,13 +12,14 @@ interface AppearanceAccountState {
   isSaving: boolean;
   canSave: boolean;
   supportsCustomColor: boolean;
+  supportsDisplayMode: boolean;
   problem: string | null;
 }
 
 const DEFAULT_SYNC: AppearanceAccountState = {
   userId: null, generation: 0, revision: 0, savedRevision: 0,
   isLoaded: false, isLoading: false, isSaving: false, canSave: false,
-  supportsCustomColor: false, problem: null,
+  supportsCustomColor: false, supportsDisplayMode: false, problem: null,
 };
 
 export function useAppearanceAccount(preferences: Ref<Personalisation>, restore: (profile: Record<string, unknown>) => void) {
@@ -48,6 +49,7 @@ export function useAppearanceAccount(preferences: Ref<Personalisation>, restore:
       if (error) throw error;
       sync.value.canSave = Boolean(data && ['theme_color', 'text_size', 'vault_layout'].every((key) => key in data));
       sync.value.supportsCustomColor = Boolean(data && 'theme_custom_color' in data);
+      sync.value.supportsDisplayMode = Boolean(data && 'display_mode' in data);
       sync.value.isLoaded = true;
       // A choice made while loading must win over the earlier server response.
       if (sync.value.canSave && sync.value.revision === 0) restore(data!);
@@ -80,7 +82,7 @@ export function useAppearanceAccount(preferences: Ref<Personalisation>, restore:
           return;
         }
         const revision = sync.value.revision;
-        const fields = appearanceToProfile(preferences.value, sync.value.supportsCustomColor);
+        const fields = appearanceToProfile(preferences.value, sync.value.supportsCustomColor, sync.value.supportsDisplayMode);
         const { data, error } = await supabase.from('profiles').update(fields).eq('id', userId).select('id');
         if (!isCurrent(userId, generation)) return;
         if (error || !data?.length) throw error ?? new Error('Profile was not updated');

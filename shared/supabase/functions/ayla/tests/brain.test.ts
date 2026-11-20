@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { test } from 'node:test'
-import { answer, cleanTitle, partialText, titleFrom, toPastMessage, withAttachments } from '../brain.ts'
+import { answer, cleanTitle, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
 import { parseRequest } from '../contract.ts'
 import { openRouterCompletion } from '../openrouter.ts'
 import { buildSystemPrompt } from '../prompt.ts'
@@ -36,6 +36,27 @@ test('usedData stays empty before the user lets Ayla look in the vault', async (
   const reply = await answer({ request, conversationId: 'c', history: [] }, { complete: fake.complete, newId: ids() })
   assert.deepEqual(reply.usedData, [])
   assert.match(fake.calls[0][0].content, /pas in de kluis/)
+})
+
+test('the prompt makes work the user did into evidence instead of refusing it', () => {
+  const prompt = buildSystemPrompt({ device: 'phone' })
+  assert.match(prompt, /hoeft geen diploma of certificaat te zijn om bewijs te worden/)
+  assert.match(prompt, /weiger dan niet/)
+  assert.match(prompt, /vraag wat je er niet uit kunt halen/)
+  assert.match(prompt, /foto zonder leesbare tekst/)
+  assert.match(prompt, /vraag alleen wat je niet kunt zien/)
+  assert.match(prompt, /twee of drie als het moet/)
+  assert.match(prompt, /Toegevoegd aan mijn kluis/)
+})
+
+test('the prompt supports building evidence: files, skills, a person who confirms and next steps', () => {
+  const prompt = buildSystemPrompt({ device: 'phone' })
+  assert.match(prompt, /Voeg die toe met het plusje/)
+  assert.match(prompt, /vraag nooit open "welke vaardigheden\?"/)
+  assert.match(prompt, /wie dit kan bevestigen/)
+  assert.match(prompt, /beloof nooit dat er iets is verstuurd of bevestigd/)
+  assert.match(prompt, /één vervolgvraag die met ja of nee te beantwoorden is/)
+  assert.match(prompt, /Wil je er een foto bij doen\?/)
 })
 
 test('the prompt has the device style, the name and the open screen', () => {
@@ -108,6 +129,48 @@ test('Ayla asks before she looks in the vault, and sees nothing of it yet', asyn
   assert.doesNotMatch(fake.calls[0][0].content, /Propedeuse|Eindstage/)
 })
 
+test('the question for the vault is asked once, also when the model asked it itself', async () => {
+  const ask = { ...request, text: 'Staat er een diploma in de kluis?' }
+  // The whole text is the ask (without a question mark, as the model wrote it): the fixed question is the answer.
+  const only = model(say('Mag ik in je kluis kijken om je diploma te zoeken', { askVault: 'je diploma te zoeken' }))
+  const one = await answer({ request: ask, conversationId: 'c', history: [], vault }, { complete: only.complete, newId: ids() })
+  assert.equal(one.text, 'Mag ik in je kluis kijken om je diploma te zoeken?')
+  assert.equal(one.question?.text, '')
+  assert.deepEqual(one.question?.choices.map((c) => c.label), ['Ja', 'Nee'])
+  // A lead plus the ask in other words: the lead stays, the fixed question follows it.
+  const both = model(say('Dat zoek ik voor je op. Zal ik even in je kluis kijken?', { askVault: 'je diploma te zoeken' }))
+  const two = await answer({ request: ask, conversationId: 'c', history: [], vault }, { complete: both.complete, newId: ids() })
+  assert.equal(two.text, 'Dat zoek ik voor je op.')
+  assert.equal(two.question?.text, 'Mag ik in je kluis kijken om je diploma te zoeken?')
+  assert.equal(withoutConsentAsk('Goed idee.\nMag ik daarvoor in je kluis kijken? Dan zie ik wat erin staat.'), 'Goed idee. Dan zie ik wat erin staat.')
+  assert.equal(withoutConsentAsk('Je kluis is privé.'), 'Je kluis is privé.')
+})
+
+test('asking for the vault in words is asking for the vault', async () => {
+  const ask = { ...request, text: 'Kunnen we iets toevoegen aan mijn kluis?' }
+  const choices = [{ id: 'yes', label: 'Ja' }, { id: 'no', label: 'Nee' }]
+  const asked = model(say('Wat wil je toevoegen aan je kluis?', { question: { text: 'Mag ik in je kluis kijken om te zien wat je al hebt?', choices }, navigation: { screen: 'vault', item: null } }))
+  const reply = await answer({ request: ask, conversationId: 'c', history: [], vault }, { complete: asked.complete, newId: ids() })
+  assert.equal(reply.accessRequest?.purpose, 'te zien wat je al hebt')
+  assert.equal(reply.text, 'Wat wil je toevoegen aan je kluis?')
+  assert.equal(reply.question?.text, 'Mag ik in je kluis kijken om te zien wat je al hebt?')
+  assert.equal(reply.navigation, undefined)
+  assert.equal(consentAskIn('Mag ik even in je kluis kijken?'), 'te zien wat erin staat')
+  assert.equal(consentAskIn('Wil je iets toevoegen?'), null)
+})
+
+test('an open question of her own is answered in words, not with Ja and Nee', async () => {
+  const open = model(say('Wat wil je toevoegen aan je kluis? Bijvoorbeeld een diploma of een stage.', { navigation: { screen: 'addEvidence', item: null } }))
+  const reply = await answer({ request, conversationId: 'c', history: [] }, { complete: open.complete, newId: ids() })
+  assert.equal(reply.question, undefined)
+  assert.equal(reply.navigation, undefined)
+  const closed = model(say('Ik zie geen diploma.', { navigation: { screen: 'addEvidence', item: null } }))
+  const offer = await answer({ request, conversationId: 'c', history: [] }, { complete: closed.complete, newId: ids() })
+  assert.equal(offer.question?.text, 'Wil je iets toevoegen?')
+  assert.ok(endsWithOpenQuestion('Mooi. Welke stage was dat?'))
+  assert.ok(!endsWithOpenQuestion('Wat een mooie stage. Zal ik hem toevoegen?'))
+})
+
 test('after Ja she sees the vault and answers what she asked it for', async () => {
   const fake = model(say('Je propedeuse HBO-ICT staat erin.', { askVault: 'nog iets te zoeken' }))
   const history = allowedChat.slice(0, 2)
@@ -139,6 +202,17 @@ test('asking about one item from the vault is consent in itself', async () => {
   assert.equal(reply.accessRequest, undefined)
 })
 
+test('items chosen with the plus button are the context, and consent, for the conversation', async () => {
+  const fake = model(say('Samen laten ze zien dat je zelfstandig werkt.'))
+  const parsed = parseRequest({ ...request, text: 'Wat zeggen deze over mij?', context: { screen: 'vault', itemIds: ['item-1', 'item-2', 'secret'] } })
+  assert.ok(typeof parsed !== 'string')
+  const reply = await answer({ request: parsed, conversationId: 'c', history: [], vault }, { complete: fake.complete, newId: ids() })
+  assert.match(fake.calls[0][0].content, /koos deze items uit de kluis voor dit gesprek: 1 \(Eindstage\), 2 \(/)
+  assert.match(fake.calls[0][0].content, /1 gekozen item mag je niet zien/)
+  assert.equal(reply.accessRequest, undefined)
+  assert.equal(typeof parseRequest({ ...request, context: { screen: 'vault', itemIds: Array(11).fill('x') } }), 'string')
+})
+
 test('a stored question for the vault goes into the history, so the model knows what Ja answers', () => {
   const asked = toPastMessage({
     role: 'ayla',
@@ -148,6 +222,7 @@ test('a stored question for the vault goes into the history, so the model knows 
   assert.deepEqual(asked, { role: 'ayla', text: 'Ik zoek hem op.\nMag ik in je kluis kijken om je diploma te zoeken?', askedVault: true })
   assert.deepEqual(toPastMessage({ role: 'ayla', text: 'Hoi', reply: { question: { text: 'Wil je iets toevoegen?', choices: [] } } }), { role: 'ayla', text: 'Hoi' })
   assert.deepEqual(toPastMessage({ role: 'user', text: 'Ja', reply: null }), { role: 'user', text: 'Ja' })
+  assert.deepEqual(toPastMessage({ role: 'user', text: 'Kijk mee', reply: { attachments: ['cv.pdf', 'scan.pdf'] } as never }), { role: 'user', text: 'Kijk mee\n(bijlagen: cv.pdf, scan.pdf)' })
 })
 
 test('opening one item goes by its id, and only for an item Ayla may see', async () => {
@@ -277,11 +352,25 @@ test('the model output schema and the shared reply schema agree on screens', () 
   assert.ok(readdirSync(new URL('../../../../ayla/examples', import.meta.url)).length > 0)
 })
 
+test('a photo goes to the model as an image it can look at', () => {
+  const photo = { name: 'werkplek.jpeg', text: '(foto zonder leesbare tekst)', image: 'QUJDRA==' }
+  const parsed = parseRequest({ ...request, attachments: [photo] })
+  assert.ok(typeof parsed !== 'string')
+  const content = withAttachments(parsed)
+  assert.ok(Array.isArray(content))
+  assert.equal(content.length, 2)
+  assert.match((content[0] as { text: string }).text, /werkplek.jpeg/)
+  assert.equal((content[1] as { image_url: { url: string } }).image_url.url, 'data:image/jpeg;base64,QUJDRA==')
+  assert.equal(typeof parseRequest({ ...request, attachments: [{ ...photo, image: 'not base64!' }] }), 'string')
+  assert.equal(typeof parseRequest({ ...request, attachments: [photo, photo, photo, photo, photo] }), 'string')
+})
+
 test('attachments are checked and limited', () => {
   const file = { name: 'cv.pdf', text: 'Stage bij LiveWall' }
   assert.deepEqual(parseRequest({ ...request, attachments: [file] }), { ...request, attachments: [file] })
   assert.deepEqual(parseRequest({ ...request, attachments: [] }), request)
-  assert.equal(typeof parseRequest({ ...request, attachments: [file, file, file, file] }), 'string')
+  assert.equal(typeof parseRequest({ ...request, attachments: [file, file, file, file, file] }), 'object')
+  assert.equal(typeof parseRequest({ ...request, attachments: [file, file, file, file, file, file] }), 'string')
   assert.equal(typeof parseRequest({ ...request, attachments: [{ name: 'cv.pdf', text: '  ' }] }), 'string')
   assert.equal(typeof parseRequest({ ...request, attachments: [{ name: 'cv.pdf', text: 'x'.repeat(20001) }] }), 'string')
   assert.equal(typeof parseRequest({ ...request, attachments: [{ ...file, url: 'https://example.com' }] }), 'object')
@@ -483,6 +572,18 @@ test('a streaming model hands over what it writes and the first writer wins', as
   assert.equal(bodies.length, 1)
 })
 
+test('a chat reply stays short, while evidence gets the room it asks for', async () => {
+  const bodies: Record<string, unknown>[] = []
+  const fetchImpl = (async (_url: string, init: RequestInit) => {
+    bodies.push(JSON.parse(String(init.body)))
+    return new Response(JSON.stringify({ choices: [{ message: { content: '{"items":[]}' } }] }))
+  }) as typeof fetch
+  await openRouterCompletion('key', {}, fetchImpl, ['a'], 10_000)([{ role: 'user', content: 'Hoi' }])
+  await openRouterCompletion('key', {}, fetchImpl, ['a'], 10_000, { maxTokens: 3000 })([{ role: 'user', content: 'Hoi' }])
+  assert.equal(bodies[0].max_tokens, 600)
+  assert.equal(bodies[1].max_tokens, 3000)
+})
+
 test('stopping an answer stops the model', async () => {
   const fetchImpl = ((_url: string, init: RequestInit) => new Promise((_resolve, reject) => {
     init.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
@@ -499,4 +600,30 @@ test('offering to add evidence always comes with Ja and Nee', async () => {
   const reply = await answer({ request, conversationId: 'c', history: [] }, { complete: fake.complete, newId: ids() })
   assert.deepEqual(reply.navigation, { screen: 'addEvidence' })
   assert.deepEqual(reply.question?.choices.map((c) => c.label), ['Ja', 'Nee'])
+})
+
+test('project instructions join the prompt, and an empty project adds nothing', () => {
+  const base = { device: 'web' as const }
+  assert.match(buildSystemPrompt({ ...base, project: { name: 'Stage', instructions: 'Antwoord kort.' } }), /project "Stage"[\s\S]*Antwoord kort\./)
+  assert.doesNotMatch(buildSystemPrompt({ ...base, project: { name: 'Stage', instructions: '  ' } }), /project "Stage"/)
+  assert.equal(parseRequest({ ...request, projectId: 'nope' }), 'projectId is not valid')
+})
+
+test('project sources are named when Ayla may see them, and nothing else leaks', () => {
+  const item = (id: string, title: string) => ({ id, kind: 'diplomas', category: 'Diploma', title, status: 'bevestigd', skills: [], files: [] })
+  const vault = { status: 'on' as const, items: [item('a', 'Diploma PXL'), item('b', 'Stage')] }
+  const project = { name: 'Solliciteren', instructions: '', sourceIds: ['b', 'zzz'] }
+  const prompt = buildSystemPrompt({ device: 'web', project, vault, vaultConsent: 'granted' })
+  assert.match(prompt, /bronnen van het project "Solliciteren": 2 \(Stage\)/)
+  assert.doesNotMatch(prompt, /bronnen van het project[^\n]*Diploma PXL/)
+  assert.doesNotMatch(buildSystemPrompt({ device: 'web', project, vault, vaultConsent: 'declined' }), /bronnen van het project/)
+  assert.doesNotMatch(buildSystemPrompt({ device: 'web', project: { ...project, sourceIds: ['zzz'] }, vault, vaultConsent: 'granted' }), /bronnen van het project/)
+})
+
+test('declinedOffer: a nee after an Ayla turn', async () => {
+  const { declinedOffer } = await import('../brain.ts')
+  const history = [{ role: 'ayla' as const, text: 'Wil je dit toevoegen?' }]
+  assert.ok(declinedOffer(history, 'Nee'))
+  assert.ok(!declinedOffer(history, 'Ja'))
+  assert.ok(!declinedOffer([{ role: 'user' as const, text: 'hoi' }], 'Nee'))
 })

@@ -50,6 +50,24 @@ public actor MockAuthService: AuthService {
         accountsWithVerification.insert(account)
     }
 
+    public func signUp(email: String, password: String, firstName: String, lastName: String) async throws -> SignUpOutcome {
+        try await simulateNetwork()
+        let account = Self.normalized(email)
+        guard passwords[account] == nil else { throw AuthError.emailAlreadyRegistered }
+        passwords[account] = password
+        return .needsEmailCode
+    }
+
+    public func verifySignUpCode(email: String, code: String) async throws {
+        try await simulateNetwork()
+        guard code == Self.demoCode else { throw AuthError.invalidEmailCode }
+        currentAccount = Self.normalized(email)
+    }
+
+    public func resendSignUpCode(email: String) async throws {
+        try await simulateNetwork()
+    }
+
     public func requestPasswordReset(email: String) async throws {
         try await simulateNetwork()
     }

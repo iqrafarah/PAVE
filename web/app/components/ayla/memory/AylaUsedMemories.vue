@@ -69,7 +69,7 @@ onBeforeUnmount(() => document.removeEventListener('click', handleOutsideClick))
       </ul>
       <NuxtLink
         :to="MEMORY_PAGE_PATH"
-        class="flex min-h-9 items-center self-start rounded-lg text-sm font-semibold text-brand hover:underline focus-visible:outline-2 focus-visible:outline-brand"
+        class="flex min-h-9 items-center self-start rounded-lg px-2 text-sm font-semibold text-brand hover:bg-tint focus-visible:outline-2 focus-visible:outline-brand"
       >
         {{ MEMORY_SEE_ALL }}
       </NuxtLink>

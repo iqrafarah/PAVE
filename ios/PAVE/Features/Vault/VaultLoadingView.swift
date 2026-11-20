@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Grey shapes where the folders and cards will appear, so nothing jumps when the vault has loaded.
 struct VaultLoadingView: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @State private var isDimmed = false
 
     var body: some View {

@@ -19,7 +19,7 @@ struct VaultRecipientCard: View {
                     .paveIconFrame(20)
                     .foregroundStyle(isSelected ? Color.white : .paveAccent)
                     .paveIconFrame(40)
-                    .background(isSelected ? Color.paveAccent : .paveDropZone, in: .rect(cornerRadius: 10))
+                    .background(isSelected ? Color.paveAccentFill : .paveDropZone, in: .rect(cornerRadius: 10))
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(recipient.title)
@@ -38,7 +38,7 @@ struct VaultRecipientCard: View {
                     .accessibilityHidden(true)
             }
             .padding(14)
-            .background(isSelected ? Color.paveDropZone : .white, in: .rect(cornerRadius: 12))
+            .background(isSelected ? Color.paveDropZone : Color.panel, in: .rect(cornerRadius: 12))
             .overlay {
                 RoundedRectangle(cornerRadius: 12)
                     .strokeBorder(isSelected ? Color.paveFocusRing : .railBorder, lineWidth: 1)

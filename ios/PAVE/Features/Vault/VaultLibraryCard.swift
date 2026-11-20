@@ -7,6 +7,8 @@ import SwiftUI
 struct VaultLibraryCard: View {
     let item: VaultItem
     let isGrid: Bool
+    /// When choosing items (for Ayla): a checkbox instead of the status, and the outline of a chosen card.
+    var isSelected: Bool?
     @Environment(VaultModel.self) private var model: VaultModel?
     @State private var logoLook: VaultLogoLook?
     @State private var coverLook: VaultLogoLook?
@@ -24,18 +26,22 @@ struct VaultLibraryCard: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background {
             if isGrid {
-                Color.white
+                Color.panel
             } else {
                 // The fade from the top left corner in the list, as in Figma 1348:9; a cover photo shows only in the grid.
                 LinearGradient(
-                    stops: [.init(color: fadeTint, location: 0), .init(color: .white, location: 0.55)],
+                    stops: [.init(color: fadeTint, location: 0), .init(color: Color.panel, location: 0.55)],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
             }
         }
         .clipShape(.rect(cornerRadius: 16))
-        .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder, lineWidth: 1) }
+        .overlay {
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(isSelected == true ? Color.paveAccent : Color.cardBorder, lineWidth: isSelected == true ? 2 : 1)
+        }
+        .animation(.easeOut(duration: 0.15), value: isSelected)
         .contentShape(.rect(cornerRadius: 16))
         .accessibilityElement(children: .combine)
         .task(id: logo?.id) {
@@ -62,12 +68,12 @@ struct VaultLibraryCard: View {
                 .frame(height: 48)
                 .clipped()
                 .overlay(alignment: .bottomLeading) {
-                    VaultLogoAvatar(look: logoLook, name: item.organisationName ?? item.title, size: 44)
+                    VaultLogoAvatar(look: logoLook, name: item.organisationName ?? item.title, fileName: item.firstDocumentName ?? "", size: 44)
                         .padding(.leading, 12)
                         .offset(y: 22)
                 }
                 .overlay(alignment: .topTrailing) {
-                    VaultStatusBadge(status: item.status)
+                    VaultStatusBadge(item: item)
                         .padding(8)
                 }
             VStack(alignment: .leading, spacing: 8) {
@@ -89,7 +95,7 @@ struct VaultLibraryCard: View {
 
     private var listCard: some View {
         HStack(alignment: .center, spacing: 14) {
-            VaultLogoAvatar(look: logoLook, name: item.organisationName ?? item.title, size: 64)
+            VaultLogoAvatar(look: logoLook, name: item.organisationName ?? item.title, fileName: item.firstDocumentName ?? "", size: 64)
             VStack(alignment: .leading, spacing: 7) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(item.title)
@@ -99,7 +105,11 @@ struct VaultLibraryCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .layoutPriority(1)
-                    VaultStatusBadge(status: item.status)
+                    if let isSelected {
+                        PaveCheckbox(isOn: isSelected)
+                    } else {
+                        VaultStatusBadge(item: item)
+                    }
                 }
                 details(lineLimit: 1)
                 if !item.skills.isEmpty {

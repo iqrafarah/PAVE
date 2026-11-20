@@ -1,9 +1,15 @@
 <script setup lang="ts">
 // The plus button in the chat field and what it adds to a message (iOS AylaAttachMenu): it opens upwards over the
-// left side of the field. Items from the vault and plans can be added once those exist; until then the rows say why not.
+// left side of the field. An item from the vault becomes what the conversation is about; plans can be added once they
+// exist, until then the row says why not.
 const emit = defineEmits<{
   addFile: [];
+  addPhoto: [];
+  pickItem: [];
 }>();
+
+const vault = useVault();
+const hasVaultItems = computed(() => vault.state.value.status === 'ready' && vault.state.value.items.length > 0);
 
 interface AttachRow {
   id: string;
@@ -15,11 +21,20 @@ interface AttachRow {
   isAvailable: boolean;
 }
 
-const ROWS: AttachRow[] = [
-  { id: 'item', label: AYLA_ADD_ITEM_LABEL, note: AYLA_VAULT_EMPTY_NOTE, icon: '/images/ayla/add-item.svg', width: 18, height: 16, isAvailable: false },
+const ROWS = computed<AttachRow[]>(() => [
+  {
+    id: 'item',
+    label: AYLA_ATTACH_ITEM_LABEL,
+    note: hasVaultItems.value ? undefined : AYLA_VAULT_EMPTY_NOTE,
+    icon: '/images/ayla/add-item.svg',
+    width: 18,
+    height: 16,
+    isAvailable: hasVaultItems.value,
+  },
   { id: 'plan', label: AYLA_ADD_PLAN_LABEL, note: AYLA_NO_PLAN_NOTE, icon: '/images/ayla/add-plan.svg', width: 17, height: 16, isAvailable: false },
   { id: 'file', label: AYLA_ADD_FILE_LABEL, icon: '/images/ayla/add-file.svg', width: 14.6, height: 15.6, isAvailable: true },
-];
+  { id: 'photo', label: AYLA_ADD_PHOTO_LABEL, icon: '/images/vault/icons/PhotoSolid.svg', width: 16, height: 16, isAvailable: true },
+]);
 
 const isOpen = ref(false);
 const rootRef = useTemplateRef<HTMLDivElement>('root');
@@ -32,6 +47,8 @@ function getMenuItems() {
 
 async function open() {
   isOpen.value = true;
+  // Whether there is anything in the vault to add decides the first row.
+  if (vault.state.value.status !== 'ready') vault.load();
   await nextTick();
   getMenuItems()[0]?.focus();
 }
@@ -45,6 +62,8 @@ function choose(row: AttachRow) {
   if (!row.isAvailable) return;
   close(true);
   if (row.id === 'file') emit('addFile');
+  else if (row.id === 'photo') emit('addPhoto');
+  else if (row.id === 'item') emit('pickItem');
 }
 
 function moveFocus(step: number) {

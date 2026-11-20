@@ -62,7 +62,7 @@ struct ProfileModelTests {
         model.previewCustomColor(0xFFD1E8)
         model.previewCustomColor(0xFF66AA)
         #expect(PaveThemeStore.shared.theme == .custom)
-        #expect(PaveThemeStore.shared.accent == PaveThemeColor.readableAccent(for: 0xFF66AA))
+        #expect(PaveThemeStore.shared.themeAccent == PaveThemeColor.readableAccent(for: 0xFF66AA))
         #expect(await service.savedPreferences.isEmpty)
 
         await model.saveCustomColor()
@@ -74,7 +74,7 @@ struct ProfileModelTests {
         #expect(PaveHomeScreen.iconName(theme: .custom, customColor: 0xFF66AA) == "AppIconPink")
         #expect(PaveHomeScreen.iconName(theme: .green, customColor: nil) == nil)
         #expect(PaveHomeScreen.iconName(theme: .lime, customColor: nil) == "AppIconLime")
-        #expect(PaveThemeStore.shared.accent == PaveThemeColor.blue.accent)
+        #expect(PaveThemeStore.shared.themeAccent == PaveThemeColor.blue.accent)
     }
 
     @Test func theWidgetsGetTheChosenColourThroughTheKeychain() throws {

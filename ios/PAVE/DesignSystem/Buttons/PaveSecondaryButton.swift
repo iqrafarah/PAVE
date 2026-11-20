@@ -30,7 +30,7 @@ private struct SecondaryButtonStyle: ButtonStyle {
             .foregroundStyle(isEnabled ? Color.paveAccent : .inkMuted)
             .frame(maxWidth: .infinity, minHeight: 53)
             .padding(.horizontal, 16)
-            .background(Color.white, in: .capsule)
+            .background(Color.panel, in: .capsule)
             .overlay {
                 Capsule().strokeBorder(isEnabled ? Color.paveAccent : .hairline, lineWidth: 1.5)
             }

@@ -8,6 +8,8 @@ defineProps<{
   isGroup?: boolean;
   // Folders are optional; every other field of the form is required, as in the design.
   isOptional?: boolean;
+  // "Door Ayla · pagina 1" under a field she filled in.
+  note?: string;
 }>();
 </script>
 
@@ -30,6 +32,7 @@ defineProps<{
       <slot name="aside" />
     </div>
     <slot />
+    <VaultAylaNote v-if="note" :text="note" />
     <p v-if="problem" :id="problemId" class="mt-1.5 text-xs text-danger">{{ problem }}</p>
   </div>
 </template>

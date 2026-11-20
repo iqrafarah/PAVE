@@ -19,7 +19,7 @@ struct AylaPixelOrb: View {
     /// behind it, and they click back together when it stops.
     var position: CGPoint?
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @Environment(\.paveOrbPalette) private var palette
     @State private var animator = PixelOrbAnimator()
 
@@ -239,4 +239,10 @@ final class PixelOrbAnimator {
 extension EnvironmentValues {
     /// Light to dark tints of the accent, for Ayla's orb; PAVE greens unless the iPhone sets the theme.
     @Entry var paveOrbPalette: [Color] = [.orbShade0, .orbShade1, .orbShade2, .orbShade3, .orbShade4, .orbShade5, .orbShade6]
+
+    /// "Animaties uitzetten" in Instellingen › Weergave: kept on this device only, as on the web.
+    @Entry var paveAnimationsOff = false
+
+    /// Nothing moves on its own: the device asks for less motion, or the switch in PAVE is on.
+    var paveReduceMotion: Bool { accessibilityReduceMotion || paveAnimationsOff }
 }

@@ -4,6 +4,58 @@ import PAVECore
 enum AylaMessages {
     /// Above Ja and Nee when Ayla offers to add something to the vault, as on the web (AYLA_VAULT_LABEL).
     static let vaultLabel = "Kluis"
+    static let attachItem = "Item uit je kluis"
+    static let vaultEmpty = "Je kluis is nog leeg"
+    static let pickItemTitle = "Kies uit je kluis"
+    static let pickItemHint = "Ayla gebruikt wat je kiest in dit gesprek."
+    static let allItems = "Alle items"
+    static func contextItems(_ count: Int) -> String { "\(count) items uit je kluis" }
+    static func askNotAllowedTitle(_ count: Int) -> String {
+        count == 1 ? askNotAllowedTitle : "Ayla mag \(count) van deze items nog niet gebruiken"
+    }
+    static let askAllowAll = "Toestaan en gebruiken"
+    static let askWithoutThem = "Gebruiken zonder die items"
+    static let conceptReading = "Ayla leest je bestanden…"
+    static let conceptFiles = "Bestanden hierbij"
+    static let conceptAdded = "Toegevoegd aan je kluis"
+    static let conceptTitle = "Bewijs in opbouw"
+    static let conceptReady = "Bewijs"
+    static let conceptHint = "Vertel verder en Ayla vult het aan."
+    static let conceptAdd = "Zet in de kluis"
+    static let headHint = "Knik ja of schud nee"
+    static let siriGoOn = "Zeg \"Praat met Ayla in PAVE\" om verder te gaan."
+    static let siriSignInFirst = "Log eerst in bij PAVE, dan kan Ayla je vragen beantwoorden."
+    static let siriUnavailable = "Ayla is er nu even niet. Probeer het straks nog eens in PAVE."
+    static let siriFailed = "Ayla kon nu geen antwoord geven. Probeer het zo nog eens."
+    static let vacancyHint = "Draai je hoofd voor de volgende, knik om te kiezen"
+    static let vacancyChoose = "Kies deze"
+    static func vacancyPosition(_ index: Int, of count: Int) -> String { "\(index + 1) van \(count)" }
+    static func vacancyAsk(_ vacancy: Vacancy) -> String {
+        "Vertel meer over \(vacancy.title) bij \(vacancy.company): waarom past die bij mij, en wat mis ik nog?"
+    }
+    static func photosAdded(_ count: Int, to title: String) -> String {
+        count == 1 ? "Ik heb een foto toegevoegd aan \(title)." : "Ik heb \(count) foto's toegevoegd aan \(title)."
+    }
+    static let headHintVoice = "Zeg het, of knik ja of schud nee"
+    static func headAnswer(_ isYes: Bool) -> String { isYes ? "Je knikte: Ja" : "Je schudde: Nee" }
+    static func yesNoAnswer(_ isYes: Bool, byHead: Bool) -> String {
+        byHead ? headAnswer(isYes) : isYes ? "Je koos: Ja" : "Je koos: Nee"
+    }
+    static let conceptRequestConfirmation = "Bevestiging aanvragen"
+    static let conceptUnknown = "nog niet bekend"
+
+    static func conceptFromFiles(logo: Bool, cover: Bool, items: Int) -> String? {
+        var parts: [String] = []
+        if logo { parts.append("logo") }
+        if cover { parts.append("omslag") }
+        var text = parts.isEmpty ? "" : "Uit je bestanden: \(parts.joined(separator: " en ")) gevonden."
+        if items > 1 { text += (text.isEmpty ? "" : " ") + "Ayla ziet \(items) bewijzen in je bestanden; je kiest in de volgende stap of je ze apart toevoegt." }
+        return text.isEmpty ? nil : text
+    }
+
+    static func addedToVault(_ title: String?) -> String {
+        title.map { "Toegevoegd aan mijn kluis: \($0)." } ?? "Toegevoegd aan mijn kluis."
+    }
     static let openVault = "Open je kluis"
     static let openSettings = "Open instellingen"
     static let clearContext = "Niet meer over dit bewijs vragen"
@@ -36,5 +88,110 @@ enum AylaMessages {
     static let memoryNotSetUp = "Het geheugen van Ayla staat nog niet aan in PAVE. Zodra het er is, zie je hier alles wat Ayla over je onthoudt."
     static let pasteRefused = "Plakken lukte niet. Sta het toe bij Instellingen › PAVE › Plakken uit andere apps, of voeg het toe als bestand."
     static let pinFailed = "Vastzetten lukte niet. Probeer het opnieuw."
+    static let archiveFailed = "Archiveren lukte niet. Probeer het opnieuw."
+    static let unarchiveFailed = "Terugzetten lukte niet. Probeer het opnieuw."
+    static let expiryFailed = "Het verval aanpassen lukte niet. Probeer het opnieuw."
+
+    // Web aylaMessages.ts: AYLA_DISCLAIMER, projects and locked chats.
+    static let disclaimer = "Ayla is AI en kan fouten maken."
+    static let panelResize = "Breedte van de chatlijst aanpassen"
+    static let projects = "Projecten"
+    static let newProject = "Nieuw project"
+    static let projectNameLabel = "Naam van het project"
+    static let projectNamePlaceholder = "Bijvoorbeeld: Stage zoeken"
+    static let projectInstructions = "Instructies voor Ayla"
+    static let projectInstructionsHint = "Ayla volgt dit in elke chat binnen dit project, bijvoorbeeld waar het over gaat of hoe ze moet antwoorden."
+    static let projectInstructionsPlaceholder = "Bijvoorbeeld: Help me met stage zoeken in de zorg. Antwoord kort en in simpele taal."
+    static let projectEdit = "Project aanpassen"
+    static let projectCreate = "Project maken"
+    static let projectSettings = "Projectinstellingen"
+    static let projectNoInstructions = "Nog geen instructies. Kies Aanpassen om Ayla te vertellen waar dit project over gaat."
+    static let projectDeleteQuestion = "Project verwijderen?"
+    static let projectDeleteBody = "Je chats blijven bestaan, ze horen alleen niet meer bij een project."
+    static let projectDelete = "Project verwijderen"
+    static let projectChats = "Chats in dit project"
+    static let projectNoChats = "Nog geen chats in dit project. Stel hieronder je eerste vraag."
+    static let projectNewChat = "Nieuwe chat in project"
+    static func projectChip(_ name: String) -> String { "Nieuwe chat in \(name)" }
+    static let projectFailed = "Het project kon niet worden opgeslagen. Probeer het opnieuw."
+    static func movedToProject(_ name: String) -> String { "Chat verplaatst naar \(name)" }
+    static let removedFromProject = "Chat uit het project gehaald"
+    static let moveFailed = "De chat kon niet worden verplaatst. Probeer het opnieuw."
+    static let moveToProject = "Naar project verplaatsen"
+    static let removeFromProject = "Uit project halen"
+    static let moveEmpty = "Je hebt nog geen projecten. Maak er een met de + bij Projecten."
+    static let lockMenu = "Chat vergrendelen"
+    static let unlockMenu = "Ontgrendelen"
+    static let lockQuestion = "Deze chat vergrendelen?"
+    static let lockBody = "De chat staat dan alleen nog bij Vergrendelde chats. Je opent hem met je pincode."
+    static let lockFailed = "De chat kon niet worden vergrendeld. Probeer het opnieuw."
+    static let unlockFailed = "De chat kon niet worden ontgrendeld. Probeer het opnieuw."
+    static let lockedChats = "Vergrendelde chats"
+    static let lockedEmpty = "Je hebt geen vergrendelde chats. Kies Chat vergrendelen in het menu van een chat."
+    static let lockedRelock = "Nu vergrendelen"
+    static let pinCreateTitle = "Kies een pincode"
+    static let pinCreateBody = "Kies 4 cijfers. Daarmee open je je vergrendelde chats."
+    static let pinConfirmTitle = "Herhaal je pincode"
+    static let pinConfirmBody = "Typ dezelfde 4 cijfers nog een keer."
+    static let pinEnterTitle = "Pincode"
+    static let pinEnterBody = "Typ je pincode."
+    static let pinMismatch = "De pincodes zijn niet hetzelfde. Probeer het opnieuw."
+    static let pinWrong = "Deze pincode klopt niet."
+    static let pinBlocked = "Te vaak fout. Probeer het over 5 minuten opnieuw."
+    static let pinCodeFailed = "Er ging iets mis. Probeer het opnieuw."
+    static let pinForgot = "Pincode vergeten?"
+    static let pinResetQuestion = "Pincode resetten?"
+    static let pinResetBody = "Al je vergrendelde chats worden verwijderd. Dit kan niet terug."
+    static let pinResetConfirm = "Resetten en verwijderen"
+
+    // The page of a project (web /project/<id>), with the texts of the web.
+    static let projectTabChats = "Chats"
+    static let projectSources = "Bronnen"
+    static let projectEmpty = "Nog geen chats. Chats in dit project verschijnen hier."
+    static let sourcesEmptyTitle = "Geef Ayla meer context"
+    static let sourcesEmpty = "Voeg bronnen toe om Ayla meer context over je project te geven. Ayla gebruikt ze in alle chats van dit project."
+    static let sourcesAdd = "Bronnen toevoegen"
+    static let sourcesUpload = "Bestand uploaden"
+    static let sourcesFromVault = "Uit kluis halen"
+    static let sourcesRemove = "Verwijderen uit project"
+    static let sourcesFailed = "Dit is niet gelukt. Probeer het opnieuw."
+    static let sourcesLoading = "Bronnen laden…"
+    static let sourcesNoMatch = "Geen bronnen met dit filter."
+    static let sourcesSortLabel = "Sorteren"
+    static let sourcesFilterLabel = "Filteren"
+    static let sourcesSortNewest = "Nieuwste"
+    static let sourcesSortOldest = "Oudste"
+    static let sourcesSortName = "Naam"
+    static let sourcesAllKinds = "Alles"
+    static let sourcesPickTitle = "Uit kluis halen"
+    static let sourcesPickEmpty = "Je kluis is nog leeg. Voeg eerst iets toe aan je kluis."
+    static let sourcesPickNoMatch = "Niets gevonden in je kluis."
+
+    // Accountpincode (web Privacy): the same PIN on every device, so it can be changed or reset from here too.
+    static let accountPinTitle = "Accountpincode"
+    static let accountPinIntro = "Gebruik je accountpincode om je vergrendelde chats op al je apparaten te beveiligen."
+    static let accountPinNone = "Je hebt nog geen accountpincode. Die kies je zodra je een chat vergrendelt."
+    static let accountPinChangeTitle = "Pincode wijzigen"
+    static let accountPinChangeBody = "Kies een nieuwe pincode voor je vergrendelde chats."
+    static let accountPinChangeButton = "Wijzigen"
+    static let accountPinResetTitle = "Pincode resetten"
+    static let accountPinResetBody = "Reset je pincode alleen als je je huidige pincode bent vergeten. Je vergrendelde chats blijven bewaard."
+    static let accountPinResetButton = "Resetten"
+    static let accountPinCurrentTitle = "Huidige pincode"
+    static let accountPinCurrentBody = "Typ je huidige pincode om een nieuwe te kiezen."
+    static let accountPinNewTitle = "Kies een nieuwe pincode"
+    static let accountPinNewBody = "Kies 4 nieuwe cijfers. Daarmee open je vanaf nu je vergrendelde chats."
+    static let accountPinChanged = "Je pincode is gewijzigd."
+    static let accountPinWasReset = "Je pincode is gereset. Je vergrendelde chats zijn bewaard."
+    static let accountPinDeleted = "Je pincode en je vergrendelde chats zijn verwijderd."
+    static let accountPinVerifyTitle = "Bevestig dat jij het bent"
+    static let accountPinVerifyBody = "Typ de code uit je authenticator-app. Daarna kies je een nieuwe pincode. Je vergrendelde chats blijven bewaard."
+    static let accountPinDeleteAll = "Of verwijder alles en begin opnieuw"
+    static let accountPinDeleteBody = "Je pincode wordt gewist en al je vergrendelde chats worden definitief verwijderd. Dit kan niet ongedaan worden gemaakt."
+    static let pinCheckFailed = "Er ging iets mis. Probeer het opnieuw."
+    static func deleteChatMessage(_ title: String) -> String { "De chat “\(title)” wordt voor altijd verwijderd. Dit kan niet terug." }
+    static let accountPinDeleteAllHint = "Kun je niet bij je authenticator-app? Dan kun je je vergrendelde chats verwijderen en een nieuwe pincode kiezen."
+    static let accountPinNotReady = "Dit komt beschikbaar zodra PAVE is bijgewerkt."
+    static let accountPinVerifyAgain = "Bevestig opnieuw met je authenticator-app en probeer het nog een keer."
     static let tooManyFiles = "Je kunt \(AylaAttachment.maxCount) bestanden tegelijk toevoegen."
 }

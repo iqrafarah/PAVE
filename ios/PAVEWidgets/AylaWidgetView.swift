@@ -154,6 +154,6 @@ struct AylaWidgetButton<Icon: View>: View {
 
     private var background: Color {
         guard isFullColor else { return Color.primary.opacity(isPrimary ? 0.22 : 0.12) }
-        return isPrimary ? accent : .white
+        return isPrimary ? accent : Color(.widgetSurface)
     }
 }

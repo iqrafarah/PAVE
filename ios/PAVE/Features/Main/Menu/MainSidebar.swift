@@ -23,6 +23,8 @@ struct MainSidebar: View {
     let onSignOut: () -> Void
     /// Closes the drawer, or hides the docked sidebar.
     let onClose: () -> Void
+    /// "Zoeken in PAVE", above your account and the bell, as on the web.
+    var onSearch: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -38,6 +40,7 @@ struct MainSidebar: View {
                 Spacer(minLength: 8)
                 switch style {
                 case .drawer:
+                    if let onSearch { MainSearchButton(action: onSearch) }
                     MainBellButton(isSelected: selection == .notifications) { onSelect(.notifications) }
                 case .docked:
                     hideButton
@@ -66,7 +69,7 @@ struct MainSidebar: View {
                 HStack(spacing: 12) {
                     MainNewChatButton(action: onNewConversation)
                     if style == .docked || style == .pane {
-                        MainAccountCapsule(axis: .horizontal, name: name, selection: selection, onSelect: onSelect, onSignOut: onSignOut)
+                        MainAccountCapsule(axis: .horizontal, name: name, selection: selection, onSelect: onSelect, onSignOut: onSignOut, onSearch: onSearch)
                     } else {
                         MainAccountMenu(name: name, isSettingsOpen: selection == .settings, onSettings: { onSelect(.settings) }, onSignOut: onSignOut)
                     }

@@ -223,6 +223,7 @@ async function save() {
         :organisation-name="draft.organisationName"
         :category="draft.category"
         :has-organisation-logo="hasOrganisationLogo"
+        :file-name="keptDocuments[0]?.name ?? newDocuments[0]?.name"
         :has-logo="Boolean(newLogo || (savedLogo && !removesLogo))"
         @pick="pickImage"
         @remove="removeImage"

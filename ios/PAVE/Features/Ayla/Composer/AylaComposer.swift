@@ -40,23 +40,34 @@ struct AylaComposer: View {
         onVoice != nil && text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && attachments.isEmpty
     }
 
+    private static let chipFade: CGFloat = 12
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if !attachments.isEmpty {
+                // The row stops short of the rounded corners, and a chip that runs on fades out instead of being cut off.
                 ScrollView(.horizontal) {
                     HStack(spacing: 8) {
                         ForEach(attachments) { file in
                             AylaAttachmentChip(name: file.name) { onRemoveAttachment(file) }
                         }
                     }
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, Self.chipFade)
                 }
                 .scrollIndicators(.hidden)
+                .mask {
+                    HStack(spacing: 0) {
+                        LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing).frame(width: Self.chipFade)
+                        Color.black
+                        LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing).frame(width: Self.chipFade)
+                    }
+                }
+                .padding(.horizontal, 8)
                 .padding(.top, 10)
             }
             field
         }
-        .glassEffect(isOverPanel ? .regular.tint(.white.opacity(0.8)) : .clear, in: .rect(cornerRadius: 25))
+        .glassEffect(isOverPanel ? .regular.tint(Color.panel.opacity(0.8)) : .clear, in: .rect(cornerRadius: 25))
         .matchedFrame("field", in: morph)
     }
 
@@ -112,7 +123,7 @@ struct AylaComposer: View {
                         .paveIconFrame(13)
                         .foregroundStyle(Color.white)
                         .paveIconFrame(30)
-                        .background(Color.paveAccent, in: .circle)
+                        .background(Color.paveAccentFill, in: .circle)
                         .shadow(color: .black.opacity(0.25), radius: 2)
                         .frame(width: Self.roundButtonWidth, height: 53)
                         .contentShape(.rect)
@@ -124,7 +135,7 @@ struct AylaComposer: View {
                 Button(action: onVoice) {
                     PixelWaveIcon()
                         .frame(width: 30, height: 30)
-                        .background(Color.paveAccent, in: .circle)
+                        .background(Color.paveAccentFill, in: .circle)
                         .shadow(color: .black.opacity(0.25), radius: 2)
                         .frame(width: Self.roundButtonWidth, height: 53)
                         .contentShape(.rect)
@@ -138,7 +149,7 @@ struct AylaComposer: View {
                 Button(action: send) {
                     Image(.iconSend)
                         .paveIconFrame(30)
-                        .background(Color.paveAccent, in: .circle)
+                        .background(Color.paveAccentFill, in: .circle)
                         .shadow(color: .black.opacity(0.25), radius: 2)
                         .frame(width: Self.roundButtonWidth, height: 53)
                         .contentShape(.rect)

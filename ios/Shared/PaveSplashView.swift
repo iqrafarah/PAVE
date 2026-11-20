@@ -1,10 +1,12 @@
 import SwiftUI
 
 struct PaveSplashView: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @State private var isRevealed = false
     /// The colour of the letters and the glow: PAVE green, or the theme colour on the iPhone.
     var accent = Color.brandGreen
+    /// The colour of the corners; the accent unless a deeper shade suits the background better (dark mode).
+    var glow: Color?
 
     private let letters: [ImageResource] = [.paveLetterP, .paveLetterA, .paveLetterV, .paveLetterE]
 
@@ -20,10 +22,10 @@ struct PaveSplashView: View {
 
             LinearGradient(
                 stops: [
-                    .init(color: accent, location: 0),
+                    .init(color: glow ?? accent, location: 0),
                     .init(color: .canvas, location: 0.25),
                     .init(color: .canvas, location: 0.74038),
-                    .init(color: accent, location: 1),
+                    .init(color: glow ?? accent, location: 1),
                 ],
                 startPoint: .topTrailing,
                 endPoint: .bottomLeading

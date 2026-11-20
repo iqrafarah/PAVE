@@ -8,5 +8,5 @@ const style = computed(() => {
 </script>
 
 <template>
-  <span :role="decorative ? undefined : 'img'" :aria-label="decorative ? undefined : 'PAVE'" :aria-hidden="decorative || undefined" :style="style" class="inline-block shrink-0 bg-brand" />
+  <span :role="decorative ? undefined : 'img'" :aria-label="decorative ? undefined : 'PAVE'" :aria-hidden="decorative || undefined" :style="style" class="pave-logo inline-block shrink-0 bg-brand" />
 </template>

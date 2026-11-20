@@ -7,7 +7,7 @@ struct PaveStepper: View {
     /// Zero-based.
     let current: Int
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     /// How far the dark line runs, in steps; animated on its own so it can lead the numbers.
     @State private var line: CGFloat = 0
     @State private var reached = 0
@@ -70,11 +70,11 @@ struct PaveStepper: View {
             .frame(width: Self.dot, height: Self.dot)
             .background {
                 ZStack {
-                    Circle().fill(Color.white)
+                    Circle().fill(Color.panel)
                     Circle().strokeBorder(Color.hairline, lineWidth: 1)
                     // The green fills from the middle, so the number seems to light up when the line arrives.
                     Circle()
-                        .fill(Color.paveAccent)
+                        .fill(Color.paveAccentFill)
                         .scaleEffect(isReached ? 1 : 0.01)
                         .opacity(isReached ? 1 : 0)
                 }

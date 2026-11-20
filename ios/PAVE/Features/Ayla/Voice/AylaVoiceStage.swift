@@ -25,11 +25,13 @@ struct AylaVoiceStage: View {
     let caption: AylaVoiceCaption
     /// The caption fades as the orb is pulled, and only shows while the orb is large in its place.
     var motion: AylaOrbMotion?
-    /// Off in Settings: no line at all, but its place stays, so the orb does not move.
+    /// Off in Settings: no line at all, and the orb sits in the middle of the room on its own.
     var showsText = true
     var onOrbFrame: (CGRect) -> Void = { _ in }
     /// Where the caption is on screen, so the field around the orb leaves it clear.
     var onCaptionFrame: (CGRect) -> Void = { _ in }
+    /// Cards to go through with the head, such as vacancies Ayla found, in place of the caption.
+    var card: AylaVoiceVacancyCard?
 
     var body: some View {
         // Well below the orb, clear of the ring that moves around it.
@@ -38,20 +40,23 @@ struct AylaVoiceStage: View {
                 .aspectRatio(1, contentMode: .fit)
                 .frame(maxWidth: 240)
                 .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { onOrbFrame($0) }
-            Text(caption.text)
-                .textStyle(caption.kind == .status ? .bodyMedium : .listTitle)
-                .foregroundStyle(caption.kind == .status ? Color.inkMuted : .ink)
-                .multilineTextAlignment(.center)
-                .lineLimit(6)
-                .truncationMode(caption.kind == .heard ? .head : .tail)
-                .frame(maxWidth: 313, minHeight: 96, alignment: .top)
-                .contentTransition(.opacity)
-                .animation(.easeOut(duration: 0.2), value: caption)
-                .modifier(AylaOrbFade(motion: motion) { $0.isLow || !$0.hasArrived ? 0 : 1 - Double($0.stretch) * 0.7 })
-                .animation(.easeOut(duration: 0.25), value: motion.map { !$0.isLow && $0.hasArrived } ?? true)
-                .opacity(showsText ? 1 : 0)
-                .accessibilityHidden(!showsText)
-                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { onCaptionFrame($0) }
+            if let card {
+                card
+                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
+            } else if showsText {
+                Text(caption.text)
+                    .textStyle(caption.kind == .status ? .bodyMedium : .listTitle)
+                    .foregroundStyle(caption.kind == .status ? Color.inkMuted : .ink)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(6)
+                    .truncationMode(caption.kind == .heard ? .head : .tail)
+                    .frame(maxWidth: 313, minHeight: 96, alignment: .top)
+                    .contentTransition(.opacity)
+                    .animation(.easeOut(duration: 0.2), value: caption)
+                    .modifier(AylaOrbFade(motion: motion) { $0.isLow || !$0.hasArrived ? 0 : 1 - Double($0.stretch) * 0.7 })
+                    .animation(.easeOut(duration: 0.25), value: motion.map { !$0.isLow && $0.hasArrived } ?? true)
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { onCaptionFrame($0) }
+            }
         }
         .padding(.horizontal, 32)
         .frame(maxWidth: .infinity)

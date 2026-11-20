@@ -25,7 +25,7 @@ export const CATEGORY_NAMES: Record<Category, string> = {
 export const VAULT_ITEM_SCHEMA = {
   type: ['object', 'null'],
   additionalProperties: false,
-  required: ['category', 'title', 'organisation', 'place', 'startDate', 'endDate', 'issuedOn', 'isCurrent'],
+  required: ['category', 'title', 'organisation', 'place', 'startDate', 'endDate', 'issuedOn', 'isCurrent', 'description', 'skills', 'attachments'],
   properties: {
     category: { type: 'string', enum: [...CATEGORIES] },
     title: { type: 'string' },
@@ -35,8 +35,15 @@ export const VAULT_ITEM_SCHEMA = {
     endDate: { type: ['string', 'null'] },
     issuedOn: { type: ['string', 'null'] },
     isCurrent: { type: 'boolean' },
+    description: { type: ['string', 'null'] },
+    skills: { type: 'array', items: { type: 'string' } },
+    attachments: { type: 'array', items: { type: 'string' } },
   },
 } as const
+
+const MAX_DESCRIPTION_LENGTH = 600
+const MAX_SKILLS = 5
+const MAX_SKILL_LENGTH = 60
 
 /** A checked proposal, or undefined when the model gave nothing usable. */
 export function vaultProposal(raw: unknown, id: string, now: Date): NonNullable<AylaReply['proposedAction']> | undefined {
@@ -58,6 +65,12 @@ export function vaultProposal(raw: unknown, id: string, now: Date): NonNullable<
   if (startDate) item.startDate = startDate
   if (endDate && !(startDate && endDate < startDate)) item.endDate = endDate
   if (issuedOn) item.issuedOn = issuedOn
+  const description = text(value.description, MAX_DESCRIPTION_LENGTH)
+  if (description) item.description = description
+  const skills = [...new Set((Array.isArray(value.skills) ? value.skills : []).map((s) => text(s, MAX_SKILL_LENGTH)).filter((s): s is string => !!s))].slice(0, MAX_SKILLS)
+  if (skills.length) item.skills = skills
+  const attachments = [...new Set((Array.isArray(value.attachments) ? value.attachments : []).map((s) => text(s, 200)).filter((s): s is string => !!s))].slice(0, 5)
+  if (attachments.length) item.attachments = attachments
   if (value.isCurrent === true) {
     item.isCurrent = true
     delete item.endDate

@@ -52,7 +52,7 @@ onMounted(loadSetup);
 </script>
 
 <template>
-  <AuthCard
+  <AuthEduidCard
     eyebrow="Eerste keer instellen"
     title="Beveilig je PAVE-account"
     :description="MFA_SETUP_INSTRUCTION"
@@ -60,8 +60,8 @@ onMounted(loadSetup);
     <ol class="space-y-4">
       <AuthSetupStep
         :number="1"
-        title="Download een authenticator-app"
-        description="Installeer bijvoorbeeld Google Authenticator of Microsoft Authenticator op je telefoon."
+        title="Installeer een authenticator-app"
+        description="Dit is een app op je telefoon die codes maakt om veilig in te loggen. Je kunt bijvoorbeeld Google Authenticator of Microsoft Authenticator gebruiken."
       />
       <AuthSetupStep
         :number="2"
@@ -114,5 +114,5 @@ onMounted(loadSetup);
     </p>
 
     <AuthBackToLogin @click="signOut" />
-  </AuthCard>
+  </AuthEduidCard>
 </template>

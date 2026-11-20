@@ -10,7 +10,7 @@ struct FigmaCardGradient: View {
     var body: some View {
         LinearGradient(
             stops: [
-                .init(color: .white, location: 0.5076),
+                .init(color: Color.panel, location: 0.5076),
                 .init(color: tint.mix(with: .white, by: 0.12), location: 1),
             ],
             startPoint: start,

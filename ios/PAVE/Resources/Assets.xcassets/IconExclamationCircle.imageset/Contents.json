@@ -3,6 +3,16 @@
     {
       "filename": "IconExclamationCircle.svg",
       "idiom": "universal"
+    },
+    {
+      "appearances": [
+        {
+          "appearance": "luminosity",
+          "value": "dark"
+        }
+      ],
+      "filename": "IconExclamationCircle-dark.svg",
+      "idiom": "universal"
     }
   ],
   "info": {

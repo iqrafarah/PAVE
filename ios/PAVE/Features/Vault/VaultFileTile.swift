@@ -4,16 +4,26 @@ import SwiftUI
 /// A file of an item in the vault: its first page or the photo, and its name. Tapping it opens it with QuickLook.
 struct VaultFileTile: View {
     let file: VaultItem.File
+    /// Chosen with the Camera Control button: outlined until a full press opens it.
+    var isChosen = false
+    /// Set to this file's id to open it without a tap (the Camera Control button).
+    var openRequest: Binding<String?> = .constant(nil)
     @Environment(VaultModel.self) private var model
     @State private var previewURL: URL?
     @State private var isOpening = false
     @State private var failed = false
+    @State private var download: VaultDownload?
 
     var body: some View {
         Button(action: open) {
             VStack(alignment: .leading, spacing: 8) {
                 VaultThumbnail(source: .file(file), cornerRadius: 10)
                     .aspectRatio(3 / 4, contentMode: .fit)
+                    .overlay {
+                        if isChosen {
+                            RoundedRectangle(cornerRadius: 10).strokeBorder(Color.paveAccent, lineWidth: 3)
+                        }
+                    }
                     .overlay {
                         if isOpening {
                             ProgressView()
@@ -33,8 +43,32 @@ struct VaultFileTile: View {
         .buttonStyle(.pave)
         .disabled(isOpening)
         .vaultQuickLook($previewURL)
+        .onChange(of: openRequest.wrappedValue) { _, id in
+            guard id == file.id else { return }
+            openRequest.wrappedValue = nil
+            open()
+        }
+        .contextMenu {
+            Button { startDownload() } label: { Label { Text(VaultMessages.download) } icon: { Image(.iconDownload) } }
+        }
+        .sheet(item: $download) { VaultShareSheet(urls: $0.urls).presentationDetents([.medium, .large]) }
+        .accessibilityAction(named: VaultMessages.downloadFile(file.name)) { startDownload() }
         .accessibilityLabel(file.name)
         .accessibilityHint(failed ? "Openen lukte niet. Tik om het opnieuw te proberen." : "Tik om te openen")
+    }
+
+    private func startDownload() {
+        isOpening = true
+        Task {
+            defer { isOpening = false }
+            guard let ready = await model.download([file]) else {
+                failed = true
+                PaveHaptics.error()
+                AccessibilityNotification.Announcement(VaultMessages.downloadFailed).post()
+                return
+            }
+            download = ready
+        }
     }
 
     private func open() {

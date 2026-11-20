@@ -13,11 +13,11 @@ export const VAULT_ADD_BACK = 'Terug';
 export const VAULT_ADD_SAVING = 'Bezig met opslaan…';
 export const VAULT_ADD_STEPS = ['Basis', 'Documenten', 'Vaardigheden', 'Toestemming'] as const;
 
-export const VAULT_DROP_FILE = 'Sleep een bestand hierheen of klik om te uploaden';
+export const VAULT_DROP_FILE = 'Sleep een bestand hierheen of kies een bestand';
 export const VAULT_UPLOAD_HINT = 'PDF, Word, tekst of foto, tot 20 MB';
 export const VAULT_OR = 'Of';
 export const VAULT_WITHOUT_FILE_TITLE = 'Voeg een ervaring toe zonder bestand';
-export const VAULT_WITHOUT_FILE_MESSAGE = 'Geen document, geen probleem. Je kunt ook zelf ervaringen toevoegen.';
+export const VAULT_WITHOUT_FILE_MESSAGE = 'Heb je geen document? Dan kun je je ervaring zelf beschrijven.';
 export const VAULT_REMOVE_FILE = 'Bestand weghalen';
 
 export const VAULT_FIELD_TITLE = 'Titel';
@@ -49,7 +49,7 @@ export const VAULT_COVER_REPLACE = 'Andere omslag kiezen';
 export const VAULT_COVER_REMOVE = 'Omslag weghalen';
 export const VAULT_NO_COVER_WITH_LOGO = 'De band krijgt de sterkste kleur uit je logo.';
 export const VAULT_NO_COVER_WITHOUT_LOGO = 'Kies je een logo, dan krijgt de band de sterkste kleur daaruit.';
-export const VAULT_LOGO_HINT_CHOSEN = 'Klik op het logo om het te verplaatsen, te vervangen of weg te halen.';
+export const VAULT_LOGO_HINT_CHOSEN = 'Kies het logo om het te verplaatsen, te vervangen of weg te halen.';
 export const VAULT_COVER_CHOSEN = 'Staat in de band boven je kaart';
 export const VAULT_COVER_ACTIONS = 'Omslag aanpassen';
 export const VAULT_REFRAME = 'Verplaatsen en schalen';
@@ -83,7 +83,7 @@ export const VAULT_AYLA_SKILLS_NONE =
   'Ayla vond geen nieuwe vaardigheden in dit bewijs. Vul de omschrijving aan of voeg een bestand toe en vraag het opnieuw.';
 export const VAULT_AYLA_SKILLS_FAILED = 'Ayla kon nu geen voorstel doen. Probeer het zo nog een keer.';
 export const VAULT_AYLA_SKILLS_NO_CONNECTION = 'Geen verbinding. Probeer het zo nog een keer.';
-export const VAULT_AYLA_SKILLS_SIGNED_OUT = 'Je sessie is verlopen. Log opnieuw in en vraag het nog een keer.';
+export const VAULT_AYLA_SKILLS_SIGNED_OUT = 'Je bent niet meer ingelogd. Log opnieuw in en vraag het nog een keer.';
 export const VAULT_AYLA_SKILLS_NOT_READY = 'Ayla kan nog geen vaardigheden voorstellen. Dat komt binnenkort.';
 export const VAULT_SKILLS_FROM_AYLA = 'Voorstel van';
 export const VAULT_SKILLS_ADD_OWN = 'Zelf een vaardigheid toevoegen';
@@ -180,9 +180,10 @@ export const VAULT_ADD_BUTTON = 'Toevoegen';
 export const VAULT_ADD_ITEM = 'Bewijs toevoegen';
 export const VAULT_SHOW_MORE = 'Meer tonen';
 export const VAULT_BACK_TO_VAULT = 'Terug naar je kluis';
+export const VAULT_BACK_TO_ALL_FOLDERS = 'Terug naar alle mappen';
 export const VAULT_FOLDERS = 'Mappen';
 
-export const VAULT_STATUS_TITLES = { verified: 'Geverifieerd', toVerify: 'Niet bevestigd', rejected: 'Afgewezen' } as const;
+export const VAULT_STATUS_TITLES = { verified: 'Bevestigd', toVerify: 'Niet bevestigd', rejected: 'Afgewezen' } as const;
 export const VAULT_STATUS_EXPLANATIONS = {
   verified: 'Bevestigd door een officiële of vertrouwde bron. Pas je iets aan, dan moet het opnieuw bevestigd worden.',
   toVerify: 'Nog niet bevestigd door een school, opleiding of werkgever.',
@@ -195,13 +196,18 @@ export const VAULT_SOURCE_TITLES = {
   import: 'Geïmporteerd',
 } as const;
 export const VAULT_ORIGIN_TITLES = { own: 'Zelf toegevoegd', organisation: 'Van een organisatie', ayla: 'Via Ayla' } as const;
-export const VAULT_ORDER_TITLES = { newest: 'Nieuwste eerst', oldest: 'Oudste eerst' } as const;
+export const VAULT_ORDER_TITLES = { newest: 'Nieuwste eerst', oldest: 'Oudste eerst', custom: 'Eigen volgorde' } as const;
+export const VAULT_DRAG_TO_FOLDER = 'Laat los op een map om het daarheen te verplaatsen.';
+export const VAULT_MOVED_INTO = (title: string, folder: string) => `${title} staat nu in ${folder}.`;
 
 export const VAULT_DETAIL_STATUS = 'Status';
 export const VAULT_DETAIL_DATA = 'Gegevens';
 export const VAULT_DETAIL_DESCRIPTION = 'Omschrijving';
 export const VAULT_DETAIL_SKILLS = 'Vaardigheden';
 export const VAULT_DETAIL_FILES = 'Bestanden';
+export const VAULT_DOWNLOAD_FILE = (name: string) => `${name} downloaden`;
+export const VAULT_DOWNLOAD_ALL = 'Alles downloaden';
+export const VAULT_DOWNLOAD_FAILED = 'Downloaden lukte niet. Probeer het opnieuw.';
 export const VAULT_DETAIL_DONE = 'Klaar';
 export const VAULT_EDIT = 'Aanpassen';
 export const VAULT_EDIT_TITLE = 'Bewijs aanpassen';
@@ -233,23 +239,39 @@ export const VAULT_FOLDER_CREATE = 'Map aanmaken';
 export const VAULT_FOLDER_NAME = 'Naam';
 export const VAULT_FOLDER_NAME_PLACEHOLDER = 'Bijvoorbeeld Stage of Bijbaan';
 export const VAULT_FOLDER_COLOR = 'Kleur';
+export const VAULT_FOLDER_CUSTOM_COLOR = 'Eigen kleur';
+export const VAULT_FOLDER_COLOR_NOT_READY = 'Deze kleur kan nog niet worden bewaard. Kies Groen, Blauw, Roze, Oranje of Paars.';
 export const VAULT_FOLDER_ICON = 'Icoon';
 export const VAULT_FOLDER_NAME_MISSING = 'Geef je map een naam.';
 export const VAULT_FOLDER_NAME_TAKEN = 'Je hebt al een map met deze naam. Kies een andere naam.';
 export const VAULT_FOLDER_EDIT = 'Map aanpassen';
 export const VAULT_FOLDER_DELETE = 'Map verwijderen';
+export const VAULT_FOLDER_PIN = 'Vastzetten';
+export const VAULT_FOLDER_UNPIN = 'Losmaken';
+export const VAULT_FOLDER_PINNED = 'Vastgezet';
+export const VAULT_FOLDER_PINNED_ANNOUNCEMENT = (name: string) => `${name} staat nu vooraan.`;
+export const VAULT_FOLDER_UNPINNED_ANNOUNCEMENT = (name: string) => `${name} is losgemaakt.`;
 export const VAULT_FOLDER_DELETE_TITLE = 'Map verwijderen?';
 export const VAULT_FOLDER_DELETE_MESSAGE = 'De items in deze map blijven gewoon in je kluis staan.';
 export const VAULT_FOLDER_EMPTY_TITLE = (name: string) => `${name} is nog leeg`;
+export const VAULT_ALL_FOLDERS = (count: number) => `Alle mappen (${count})`;
+export const VAULT_ALL_FOLDERS_TITLE = 'Alle mappen';
+export const VAULT_FOLDERS_COUNT = (count: number) => (count === 1 ? '1 map' : `${count} mappen`);
+export const VAULT_FOLDERS_SEARCH = 'Zoeken in je mappen';
+export const VAULT_FOLDERS_NONE_FOUND = (query: string) => `Geen mappen gevonden voor "${query}".`;
 export const VAULT_FOLDER_ACTIONS = (name: string) => `Opties voor ${name}`;
 export const VAULT_ITEM_ACTIONS = (title: string) => `Opties voor ${title}`;
 
+// The names of the themes in Instellingen.
 export const VAULT_FOLDER_COLOR_TITLES = {
   green: 'Groen',
   blue: 'Blauw',
-  purple: 'Paars',
-  rust: 'Roest',
+  gold: 'Goud',
   rose: 'Roze',
+  rust: 'Oranje',
+  purple: 'Paars',
+  red: 'Rood',
+  lime: 'Limoen',
   slate: 'Grijs',
 } as const;
 export const VAULT_FOLDER_ICON_TITLES = {
@@ -272,7 +294,7 @@ export const VAULT_FOLDER_ICON_TITLES = {
 } as const;
 
 export const VAULT_ERROR_NO_CONNECTION = 'Je kluis is niet bereikbaar. Controleer je internetverbinding en probeer het opnieuw.';
-export const VAULT_ERROR_NOT_SIGNED_IN = 'Je sessie is verlopen. Log opnieuw in om je kluis te openen.';
+export const VAULT_ERROR_NOT_SIGNED_IN = 'Je bent niet meer ingelogd. Log opnieuw in om je kluis te openen.';
 export const VAULT_ERROR_NOT_ALLOWED = 'Dit mag niet met je account. Log opnieuw in en probeer het nog een keer.';
 export const VAULT_ERROR_GENERIC = 'Er ging iets mis. Probeer het zo nog een keer.';
 export const VAULT_ERROR_NOT_READY = 'Dit is nog niet beschikbaar. Probeer het later nog een keer.';
@@ -285,11 +307,11 @@ export const VAULT_REQUEST_PREVIEW_ACCESSIBILITY = 'Voorbeeld, werkt nog niet';
 export const VAULT_REQUEST_NOT_ACTIVE =
   'Bevestiging aanvragen werkt nog niet. Je kunt alvast kijken hoe het wordt, maar er wordt niets verstuurd.';
 export const VAULT_REQUEST_WHO_TITLE = 'Wie kan dit bevestigen?';
-export const VAULT_REQUEST_ORGANISATION_PROMPT = 'Bijv. Fontys of LiveWall';
+export const VAULT_REQUEST_ORGANISATION_PROMPT = 'Bijvoorbeeld Fontys of LiveWall';
 export const VAULT_REQUEST_EMAIL_TITLE = 'E-mailadres van je contactpersoon';
 export const VAULT_REQUEST_EMAIL_PROMPT = 'naam@organisatie.nl';
 export const VAULT_REQUEST_MESSAGE_TITLE = 'Bericht';
-export const VAULT_REQUEST_MESSAGE_PROMPT = 'Bijv. Wil je mijn eindstage bevestigen?';
+export const VAULT_REQUEST_MESSAGE_PROMPT = 'Bijvoorbeeld: Wil je mijn eindstage bevestigen?';
 export const VAULT_REQUEST_SHARED_TITLE = 'Dit ziet de ontvanger';
 export const VAULT_REQUEST_SEND = 'Verzoek versturen';
 export const VAULT_REQUEST_NOT_SENT_TITLE = 'Nog niet verstuurd';
@@ -306,22 +328,64 @@ export const VAULT_REQUEST_RECIPIENTS = {
     title: 'School of opleiding',
     example: "Voor diploma's, cijfers en certificaten.",
     organisationLabel: 'School of opleiding',
-    icon: '/images/vault/icons/AcademicCapOutline.svg',
+    icon: '/images/vault/icons/AcademicCapSolid.svg',
   },
   employer: {
     title: 'Werkgever of stagebedrijf',
     example: 'Voor werkervaring en stages.',
     organisationLabel: 'Werkgever of stagebedrijf',
-    icon: '/images/vault/icons/BriefcaseOutline.svg',
+    icon: '/images/vault/icons/BriefcaseSolid.svg',
   },
   mentor: {
     title: 'Docent of begeleider',
     example: 'Voor projecten, feedback en vaardigheden.',
     organisationLabel: 'School of organisatie van je begeleider',
-    icon: '/images/vault/icons/UserGroupOutline.svg',
+    icon: '/images/vault/icons/UserGroupSolid.svg',
   },
 } as const;
 export const VAULT_SHARED_DESCRIPTION = 'Je omschrijving';
 export const VAULT_SHARED_TITLE = (title: string, kind: string) => `${title} (${kind.toLowerCase()})`;
 export const VAULT_SHARED_FILES = (count: number) => (count === 1 ? '1 bestand' : `${count} bestanden`);
 export const VAULT_SHARED_SKILLS = (count: number) => (count === 1 ? '1 vaardigheid' : `${count} vaardigheden`);
+
+// "Laat Ayla invullen" (iOS VaultMessages, aylaFill...)
+export const VAULT_AYLA_FILL = 'Laat Ayla invullen';
+export const VAULT_AYLA_FILL_READING_BUTTON = 'Ayla leest…';
+export const VAULT_AYLA_FILL_READING = 'Ayla leest je bestanden en vult alvast in…';
+export const VAULT_AYLA_FILL_STOP = 'Zelf invullen';
+export const VAULT_AYLA_FILL_AGAIN = 'Opnieuw proberen';
+export const VAULT_AYLA_FILL_EMPTY = 'Ayla kon niets uit je bestand halen. Vul het zelf in.';
+export const VAULT_AYLA_FILL_NOT_READY = 'Invullen door Ayla is nog niet beschikbaar. Vul het zelf in.';
+export const VAULT_AYLA_FILL_NO_CONNECTION = 'Geen verbinding. Probeer het zo nog een keer, of vul het zelf in.';
+export const VAULT_AYLA_FILL_FAILED = 'Ayla kon je bestand nu niet lezen. Probeer het zo nog een keer, of vul het zelf in.';
+export const VAULT_AYLA_FILLED_TITLE = 'Ayla heeft dit ingevuld';
+export const VAULT_AYLA_FILLED_MESSAGE = 'Controleer alles voordat je verdergaat. Wat Ayla niet in je bestand zag, is leeg gebleven.';
+export const VAULT_AYLA_FILLED_ANNOUNCEMENT = 'Ayla heeft het bewijs ingevuld. Controleer de velden.';
+export const VAULT_AYLA_SPLIT_ONE = 'Eén bewijs';
+export const VAULT_AYLA_SPLIT_APART = 'Apart toevoegen';
+export const VAULT_AYLA_COVER_NOTE = 'Foto uit je document, gekozen door Ayla';
+export const VAULT_NEXT_EVIDENCE = 'Volgende bewijs';
+export const VAULT_NEXT_EVIDENCE_SKIP = 'Klaar';
+
+/** "Door Ayla · pagina 1": short, so it fits under a field in two columns. */
+export const VAULT_FILLED_BY_AYLA = (source: string | null) => (source ? `Door Ayla · ${source}` : 'Ingevuld door Ayla');
+export const VAULT_AYLA_SPLIT_TITLE = (titles: string[]) => {
+  const list = titles.length > 1 ? `${titles.slice(0, -1).join(', ')} en ${titles[titles.length - 1]}` : (titles[0] ?? '');
+  return `Ayla ziet ${titles.length} bewijzen: ${list}.`;
+};
+export const VAULT_AYLA_SPLIT_HINT = (apart: boolean, first: string) =>
+  apart ? `Je voegt ze na elkaar toe, elk al ingevuld. Eerst ${first}.` : 'Al je bestanden komen bij dit ene bewijs.';
+export const VAULT_AYLA_LOGO_NOTE = (source: string | null) =>
+  source ? `Logo van ${source}, gevonden door Ayla` : 'Logo uit je document, gekozen door Ayla';
+export const VAULT_NEXT_EVIDENCE_NOTE = (title: string) => `Ga verder met ${title}, al ingevuld door Ayla. Of kies Klaar om te stoppen.`;
+
+export const VAULT_DRAFT_BACK = 'Je concept is terug, zoals je het net achterliet.';
+export const VAULT_DRAFT_START_OVER = 'Opnieuw beginnen';
+
+export const SEARCH_CLEAR = 'Zoekopdracht wissen';
+
+export const VAULT_FILE_DOWNLOAD = 'Downloaden';
+export const VAULT_FILE_CLOSE = 'Bestand sluiten';
+export const VAULT_FILE_LOADING = 'Bestand laden…';
+export const VAULT_FILE_FAILED = 'Dit bestand kon niet worden geopend. Probeer het opnieuw.';
+export const VAULT_FILE_NO_PREVIEW = 'Dit bestandstype kan hier niet worden getoond. Download het om het te openen.';

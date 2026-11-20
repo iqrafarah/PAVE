@@ -9,6 +9,8 @@ struct VaultItemCard: View {
     let tint: Color
     let isSelected: Bool
     var category: String?
+    /// The first document of the evidence: its kind shows in the badge, as in the vault.
+    var fileName = ""
     let action: () -> Void
 
     init(
@@ -39,12 +41,13 @@ struct VaultItemCard: View {
             category: item.category.title,
             action: action
         )
+        fileName = item.firstDocumentName ?? ""
     }
 
     var body: some View {
         Button(action: action) {
             HStack(alignment: .top, spacing: 12) {
-                CompanyMonogram(name: organisation.isEmpty ? title : organisation, size: 58)
+                VaultLogoAvatar(look: nil, name: organisation.isEmpty ? title : organisation, fileName: fileName, size: 58)
                     .padding(.top, 8)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(title)
@@ -80,7 +83,7 @@ struct VaultItemCard: View {
                 if isSelected {
                     FigmaCardGradient(tint: tint, start: UnitPoint(x: 0.77, y: 1.67), end: UnitPoint(x: 0.23, y: -0.67))
                 } else {
-                    Color.white
+                    Color.panel
                 }
             }
             .clipShape(.rect(cornerRadius: 17))

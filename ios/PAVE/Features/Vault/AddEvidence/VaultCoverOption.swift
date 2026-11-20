@@ -22,7 +22,7 @@ struct VaultCoverOption: View {
                     .foregroundStyle(Color.ink)
             }
             .frame(maxWidth: .infinity, minHeight: isShort ? 104 : 139)
-            .background(isSelected ? Color.paveDropZone : .white, in: .rect(cornerRadius: 7))
+            .background(isSelected ? Color.paveDropZone : Color.panel, in: .rect(cornerRadius: 7))
             .overlay {
                 RoundedRectangle(cornerRadius: 7)
                     .strokeBorder(isSelected ? Color.paveAccent : .railBorder, lineWidth: 2)

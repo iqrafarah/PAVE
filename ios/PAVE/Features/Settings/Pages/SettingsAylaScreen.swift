@@ -4,6 +4,7 @@ import SwiftUI
 struct SettingsAylaScreen: View {
     @AppStorage(AylaVoiceTextSetting.key) private var showsVoiceText = true
     @Environment(AylaMemoryModel.self) private var memory
+    @Environment(PaveCameraControl.self) private var cameraControl
 
     var body: some View {
         SettingsPage(title: "Ayla") {
@@ -29,7 +30,7 @@ struct SettingsAylaScreen: View {
                         .accessibilityHidden(true)
                 }
                 .padding(12)
-                .background(Color.white, in: .rect(cornerRadius: 14))
+                .background(Color.panel, in: .rect(cornerRadius: 14))
                 .contentShape(.rect)
             }
             .buttonStyle(.pave)
@@ -46,7 +47,42 @@ struct SettingsAylaScreen: View {
                     .foregroundStyle(Color.inkMuted)
             }
             .padding(12)
-            .background(Color.white, in: .rect(cornerRadius: 14))
+            .background(Color.panel, in: .rect(cornerRadius: 14))
+
+            cameraControlRow
+        }
+    }
+
+    /// Demo: knopmodus, the Camera Control button steering PAVE for a few minutes.
+    private var cameraControlRow: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Toggle(isOn: Binding(
+                get: { _ = cameraControl.enabledChanged; return cameraControl.isEnabled },
+                set: { cameraControl.isEnabled = $0 }
+            )) {
+                Text("Knopmodus (demo)")
+                    .textStyle(.listTitle)
+                    .foregroundStyle(Color.ink)
+            }
+            .tint(.paveAccent)
+            Text("Bedien PAVE met de cameraknop: druk licht voor Ga naar en veeg, druk twee keer licht voor Ayla, druk helemaal in om met Ayla te praten. De camera staat daarvoor aan zolang PAVE open is (het groene bolletje van iOS), maar neemt niets op. Zet het hier weer uit. De volumeknoppen werken zolang als de cameraknop.")
+                .textStyle(.caption)
+                .foregroundStyle(Color.inkMuted)
+            if let problem = cameraControl.problem {
+                Text(Self.message(for: problem))
+                    .textStyle(.caption)
+                    .foregroundStyle(Color.criticalInk)
+            }
+        }
+        .padding(12)
+        .background(Color.panel, in: .rect(cornerRadius: 14))
+    }
+
+    private static func message(for problem: PaveCameraControl.Problem) -> String {
+        switch problem {
+        case .notAllowed: "PAVE mag de camera niet gebruiken. Zet het aan in Instellingen › PAVE › Camera."
+        case .noCamera: "De camera is nu niet beschikbaar."
+        case .noButton: "Deze iPhone heeft geen cameraknop."
         }
     }
 

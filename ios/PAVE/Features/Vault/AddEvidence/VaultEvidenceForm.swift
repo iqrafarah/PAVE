@@ -13,6 +13,8 @@ struct VaultEvidenceForm: View {
     var onFolderChosen: () -> Void = {}
     /// A folder for the kind that does not exist yet and is made when saving, such as Stages; ticked on at first.
     var newFolder: NewFolder?
+    /// The fields Ayla filled in and that are still as she left them, with where she found them.
+    var aylaNotes: [VaultItemDraft.Field: String] = [:]
 
     struct NewFolder {
         let name: String
@@ -34,7 +36,7 @@ struct VaultEvidenceForm: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             LazyVGrid(columns: columns, alignment: .leading, spacing: 18) {
-                VaultFormField(title: "Titel", error: error(.title)) {
+                VaultFormField(title: "Titel", error: error(.title), note: aylaNotes[.title]) {
                     TextField("", text: $draft.title, prompt: prompt("Bijv. Eindstage"))
                         .textStyle(.input)
                         .foregroundStyle(Color.ink)
@@ -45,7 +47,7 @@ struct VaultEvidenceForm: View {
                 VaultFormField(title: "Soort bewijs") {
                     category
                 }
-                VaultFormField(title: "Organisatie / school", error: error(.organisation)) {
+                VaultFormField(title: "Organisatie / school", error: error(.organisation), note: aylaNotes[.organisation]) {
                     TextField("", text: $draft.organisationName, prompt: prompt("Bijv. LiveWall"))
                         .textStyle(.input)
                         .foregroundStyle(Color.ink)
@@ -54,7 +56,7 @@ struct VaultEvidenceForm: View {
                         .submitLabel(.done)
                         .onSubmit { focus = nil }
                 }
-                VaultFormField(title: "Periode", error: error(.period)) {
+                VaultFormField(title: "Periode", error: error(.period), note: aylaNotes[.period]) {
                     period
                 }
             }
@@ -63,7 +65,7 @@ struct VaultEvidenceForm: View {
                     folder
                 }
             }
-            VaultFormField(title: "Beschrijving", error: error(.description), minHeight: 114) {
+            VaultFormField(title: "Beschrijving", error: error(.description), minHeight: 114, note: aylaNotes[.description]) {
                 TextField("", text: $draft.description, prompt: prompt("Wat heb je gedaan of geleerd?"), axis: .vertical)
                     .lineLimit(4...10)
                     .textStyle(.input)
@@ -82,7 +84,7 @@ struct VaultEvidenceForm: View {
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .background {
-            Color.white
+            Color.panel
                 .contentShape(.rect)
                 .onTapGesture { focus = nil }
         }

@@ -5,7 +5,7 @@ import SwiftUI
 struct PinShake: ViewModifier {
     let trigger: Int
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
         content

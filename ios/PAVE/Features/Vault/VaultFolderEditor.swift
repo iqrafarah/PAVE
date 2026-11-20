@@ -5,7 +5,7 @@ import SwiftUI
 /// The style follows the "Bewijs toevoegen" sheet in Figma: a white sheet, a large title and one wide button.
 struct VaultFolderEditor: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @Environment(VaultModel.self) private var model
     let folder: VaultFolder?
     let onCreate: (VaultFolder) -> Void
@@ -16,6 +16,9 @@ struct VaultFolderEditor: View {
     @State private var isSaving = false
     @State private var created: VaultFolder?
     @State private var error: String?
+    /// The colour of your own stays while you try the named ones, so you can go back to it.
+    @State private var ownColor: UInt32?
+    @State private var picksOwnColor = false
     @FocusState private var isNameFocused: Bool
 
     init(
@@ -28,6 +31,7 @@ struct VaultFolderEditor: View {
         _name = State(initialValue: folder?.name ?? "")
         _color = State(initialValue: style?.color ?? .green)
         _icon = State(initialValue: style?.icon ?? .folder)
+        if case .custom(let hex) = style?.color { _ownColor = State(initialValue: hex) }
     }
 
     /// The outer display of the iPhone Duo and an iPhone held sideways have little height: less space between parts.
@@ -53,8 +57,29 @@ struct VaultFolderEditor: View {
         .frame(maxWidth: isWide ? 760 : 520)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onGeometryChange(for: CGSize.self) { $0.size } action: { size = $0 }
-        .background(Color.white.ignoresSafeArea())
+        .background(Color.panel.ignoresSafeArea())
         .tint(.paveAccent)
+        // Knopmodus: swipe through the colours and icons and see the folder change; a full press saves, and on the
+        // page after creating it goes to the folder.
+        .cameraControlMenus("folder-editor", menus: created != nil ? [] : [
+            CameraMenu(
+                id: "folder-color", title: "Kleur", symbol: "paintpalette", items: VaultFolderColor.presets.map(\.title),
+                selected: VaultFolderColor.presets.firstIndex(of: color) ?? 0,
+                onSwipe: { index in withAnimation(.snappy(duration: 0.2)) { color = VaultFolderColor.presets[index] } }
+            ),
+            CameraMenu(
+                id: "folder-icon", title: "Icoon", symbol: "square.grid.2x2", items: VaultFolderIcon.allCases.map(\.title),
+                selected: VaultFolderIcon.allCases.firstIndex(of: icon) ?? 0,
+                onSwipe: { index in withAnimation(.snappy(duration: 0.2)) { icon = VaultFolderIcon.allCases[index] } }
+            ),
+        ], press: {
+            if let created {
+                onCreate(created)
+                dismiss()
+            } else if !isSaving {
+                save()
+            }
+        })
     }
 
     private var form: some View {
@@ -90,7 +115,7 @@ struct VaultFolderEditor: View {
                 .padding(.bottom, 16)
                 // Tapping an empty spot closes the keyboard, also when everything fits and nothing scrolls.
                 .background {
-                    Color.white
+                    Color.panel
                         .contentShape(.rect)
                         .onTapGesture { isNameFocused = false }
                 }
@@ -124,6 +149,7 @@ struct VaultFolderEditor: View {
             icon: icon.image,
             color: color.color,
             surface: color.surface,
+            iconColor: color.foreground,
             count: folder.map { model.count(in: .folder($0.id)) } ?? 0,
             isSelected: false
         ) {}
@@ -146,7 +172,7 @@ struct VaultFolderEditor: View {
                 .onSubmit { isNameFocused = false }
                 .padding(.horizontal, 14)
                 .frame(minHeight: 52)
-                .background(Color.white, in: .rect(cornerRadius: 7))
+                .background(Color.panel, in: .rect(cornerRadius: 7))
                 .overlay {
                     RoundedRectangle(cornerRadius: 7)
                         .strokeBorder(error == nil ? Color.cardBorder : Color.critical, lineWidth: error == nil ? 1 : 1.5)
@@ -162,11 +188,71 @@ struct VaultFolderEditor: View {
             Text("Kleur")
                 .textStyle(.label)
                 .foregroundStyle(Color.ink)
+            // The theme colours of Instellingen and a colour wheel for one of your own, spread over the width; on a
+            // narrow screen the dots get a little smaller instead of running off.
             HStack(spacing: 0) {
-                ForEach(VaultFolderColor.allCases, id: \.self) { option in
+                ForEach(colorChoices, id: \.self) { option in
                     colorButton(option)
                         .frame(maxWidth: .infinity)
                 }
+                ownColorButton
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .sheet(isPresented: $picksOwnColor) {
+            OwnColorPicker(initial: ownColor ?? 0xC2410C, title: VaultMessages.ownFolderColor) { hex in
+                ownColor = hex
+                color = .custom(hex)
+            } onFinish: {
+                picksOwnColor = false
+            }
+            .presentationDetents([.medium, .large])
+            .ignoresSafeArea()
+        }
+    }
+
+    /// Slate is not offered any more, but a folder that has it keeps it as a choice.
+    private var colorChoices: [VaultFolderColor] {
+        color == .slate ? VaultFolderColor.presets + [.slate] : VaultFolderColor.presets
+    }
+
+    private var ownColorButton: some View {
+        let isOn = color.isCustom
+        return Button {
+            PaveHaptics.selection()
+            if let ownColor, !isOn {
+                color = .custom(ownColor)
+            } else {
+                picksOwnColor = true
+            }
+        } label: {
+            ZStack {
+                if isOn, let ownColor {
+                    Circle().fill(Color(uiColor: UIColor(hex: ownColor)))
+                } else {
+                    Circle().fill(AngularGradient.colorWheel)
+                    if let ownColor {
+                        Circle()
+                            .fill(Color(uiColor: UIColor(hex: ownColor)))
+                            .overlay { Circle().strokeBorder(.white, lineWidth: 2) }
+                            .padding(8)
+                    }
+                }
+            }
+            .padding(4)
+            .overlay { Circle().strokeBorder(isOn ? color.color : .clear, lineWidth: 2) }
+            .frame(minWidth: 32, maxWidth: 44)
+            .aspectRatio(1, contentMode: .fit)
+            .frame(minHeight: 44)
+            .contentShape(.circle)
+        }
+        .buttonStyle(.pave)
+        .accessibilityLabel(VaultMessages.ownFolderColor)
+        .accessibilityHint(isOn || ownColor == nil ? VaultMessages.ownFolderColorHint : "")
+        .accessibilityAddTraits(isOn ? .isSelected : [])
+        .contextMenu {
+            if ownColor != nil {
+                Button { picksOwnColor = true } label: { Label { Text(VaultMessages.changeOwnFolderColor) } icon: { Image(.iconPaintBrush) } }
             }
         }
     }
@@ -193,10 +279,11 @@ struct VaultFolderEditor: View {
         } label: {
             Circle()
                 .fill(option.color)
-                .frame(width: 30, height: 30)
                 .padding(4)
                 .overlay { Circle().strokeBorder(isOn ? option.color : .clear, lineWidth: 2) }
-                .frame(width: 44, height: 44)
+                .frame(minWidth: 32, maxWidth: 44)
+                .aspectRatio(1, contentMode: .fit)
+                .frame(minHeight: 44)
                 .contentShape(.circle)
         }
         .buttonStyle(.pave)
@@ -215,7 +302,7 @@ struct VaultFolderEditor: View {
                 .resizable()
                 .scaledToFit()
                 .paveIconFrame(20)
-                .foregroundStyle(isOn ? Color.white : Color.ink)
+                .foregroundStyle(isOn ? color.foreground : Color.ink)
                 .frame(maxWidth: .infinity, minHeight: 44)
                 .background(isOn ? color.color : Color.paveSurfaceTint, in: .rect(cornerRadius: 10))
                 .contentShape(.rect(cornerRadius: 10))
@@ -239,9 +326,9 @@ struct VaultFolderEditor: View {
                 .paveIconFrame(44)
                 .foregroundStyle(.white)
                 .paveIconFrame(112)
-                .background(Color.paveAccent, in: .circle)
+                .background(Color.paveAccentFill, in: .circle)
                 .accessibilityHidden(true)
-            VaultFolderTile(title: folder.name, icon: icon.image, color: color.color, surface: color.surface, count: 0, isSelected: false) {}
+            VaultFolderTile(title: folder.name, icon: icon.image, color: color.color, surface: color.surface, iconColor: color.foreground, count: 0, isSelected: false) {}
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
             Spacer(minLength: 0)

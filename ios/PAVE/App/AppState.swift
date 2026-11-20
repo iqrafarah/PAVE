@@ -163,6 +163,7 @@ final class AppState {
         defaults.set(false, forKey: Self.signedInKey)
         AylaSpotlight.forget(in: defaults)
         AylaDrafts.forget(in: defaults)
+        AylaPendingFiles.forget()
         conversationToOpen = nil
         link = nil
         isRelocked = false

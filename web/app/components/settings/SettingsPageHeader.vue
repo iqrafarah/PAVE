@@ -9,7 +9,10 @@ defineProps<{
 
 <template>
   <header class="sticky top-0 z-10 bg-surface/95 backdrop-blur">
-    <div :class="wide ? 'max-w-168' : 'max-w-140'" class="mx-auto grid min-h-16 w-full grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-2">
+    <div
+      :class="[wide ? 'max-w-168' : 'max-w-140', backTo ? 'pb-2 pt-6' : 'pb-2 pt-10']"
+      class="mx-auto grid min-h-16 w-full grid-cols-[1fr_auto_1fr] items-center gap-2 px-4"
+    >
       <NuxtLink
         v-if="backTo"
         :to="backTo"

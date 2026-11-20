@@ -1,6 +1,10 @@
+import AVFAudio
+import CoreMotion
 import Foundation
+import MediaPlayer
 import Observation
 import PAVECore
+import UIKit
 
 /// A spoken conversation with Ayla, like voice mode in ChatGPT and Claude: Ayla listens, sends the question after
 /// a short silence, reads her answer out loud and then listens again, until the user stops. The user can talk
@@ -25,8 +29,16 @@ final class AylaVoiceSession {
     /// How long Ayla's own voice may take to start before the iPhone's voice reads the answer instead.
     static let voiceWait = Duration.seconds(8)
 
-    private(set) var state = State.off
-    private(set) var isMuted = false
+    private(set) var state = State.off {
+        didSet { publishStatus() }
+    }
+    private(set) var isMuted = false {
+        didSet { publishStatus() }
+    }
+    /// The AirPods came out: Ayla stops talking and listening until they are back in.
+    private(set) var isPaused = false {
+        didSet { publishStatus() }
+    }
     /// What Ayla heard so far in this turn.
     private(set) var heard = ""
     var problem: SpeechDictation.Problem?
@@ -49,6 +61,16 @@ final class AylaVoiceSession {
     /// Starting and stopping the audio takes a moment, so it runs off the main thread (the intro keeps moving),
     /// one step after the other.
     private var audioWork: Task<Bool, Never>?
+
+    /// A spoken (or nodded) Ja: the screen may handle it itself, such as putting evidence in the vault. When it
+    /// returns true the Ja does not go to Ayla; the screen tells her what happened.
+    var onYes: ((String) -> Bool)?
+    @ObservationIgnored private let liveActivity = AylaVoiceLiveActivity()
+    @ObservationIgnored private var observers: [any NSObjectProtocol] = []
+    /// The answer that was cut off when the AirPods came out, said again from the start once they are back.
+    @ObservationIgnored private var currentReply: AylaReply?
+    @ObservationIgnored private var resumeReply: AylaReply?
+    @ObservationIgnored private var nextTurnChecksYes = true
 
     init(model: AylaChatModel) {
         self.model = model
@@ -98,11 +120,19 @@ final class AylaVoiceSession {
         }
         audio.play(.listen)
         listen()
+        followHeadphones()
+        liveActivity.start(status: currentStatus)
     }
 
     func stop() {
         guard state != .off else { return }
         attempt += 1
+        stopFollowingHeadphones()
+        headTimeout?.cancel()
+        listensForHead = false
+        isPaused = false
+        resumeReply = nil
+        currentReply = nil
         silence?.cancel()
         turn?.cancel()
         recognizer.end()
@@ -112,6 +142,180 @@ final class AylaVoiceSession {
         isMuted = false
         heard = ""
         cues = []
+        liveActivity.end()
+    }
+
+    /// For a question for Ja or Nee the iPhone's microphone listens, so the AirPods are ordinary headphones and iOS
+    /// passes on nods and head shakes; otherwise the AirPods' microphone, which hears you better with the phone in a
+    /// pocket. The switch happens before Ayla starts to say the question, so a nod already counts while she says it.
+    private(set) var listensForHead = false
+    @ObservationIgnored private var headTimeout: Task<Void, Never>?
+    /// The microphone switch that is busy; Ayla only starts talking once it is done.
+    @ObservationIgnored private var micSwitch: Task<Bool, Never>?
+
+    /// Waits until the microphone has switched (the engine starts again on the new route).
+    private func listenForHead(_ on: Bool) async {
+        headTimeout?.cancel()
+        guard isActive, on != listensForHead else { return }
+        if on {
+            guard hasBluetoothHeadphones, ![.denied, .restricted].contains(CMHeadphoneMotionManager.authorizationStatus()) else { return }
+        }
+        listensForHead = on
+        let work = queueAudio { audio in
+            audio.useHeadsetMicrophone(!on)
+            return true
+        }
+        micSwitch = work
+        _ = await work.value
+    }
+
+    /// No answer a while after Ayla finished her question: the AirPods' microphone listens again.
+    private func endHeadListeningLater() {
+        headTimeout?.cancel()
+        guard listensForHead else { return }
+        headTimeout = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(8))
+            guard let self, !Task.isCancelled, state == .listening, heard.isEmpty else { return }
+            await listenForHead(false)
+        }
+    }
+
+    /// A soft sound for what just happened, so you need not look at the screen.
+    func play(_ blip: VoiceBlip) {
+        audio.play(blip)
+    }
+
+    // MARK: AirPods
+
+    /// Out of your ears: Ayla stops talking and listening. An answer she was giving is said again when they are back.
+    func pause() {
+        guard isActive, !isPaused else { return }
+        isPaused = true
+        silence?.cancel()
+        heard = ""
+        audio.setMuted(true)
+        if state == .speaking {
+            resumeReply = currentReply
+            turn?.cancel()
+            audio.stopSpeech()
+            deviceVoice.stop()
+            speakingSince = nil
+            state = .listening
+        }
+    }
+
+    func resume() {
+        guard isPaused else { return }
+        isPaused = false
+        audio.setMuted(isMuted)
+        if let reply = resumeReply {
+            resumeReply = nil
+            state = .thinking
+            turn = Task { [weak self] in await self?.speak(reply) }
+        } else if state == .listening {
+            audio.play(.listen)
+        }
+    }
+
+    /// A press on the AirPods' stem: back from a pause; Ayla stops talking and listens; what you said is sent at
+    /// once; or, while she waits for you, the microphone goes off or on again.
+    func stemPressed() {
+        if isPaused {
+            resume()
+            return
+        }
+        switch state {
+        case .thinking, .speaking:
+            tapOrb()
+        case .listening where !heard.isEmpty:
+            tapOrb()
+        case .listening:
+            toggleMute()
+            audio.play(isMuted ? .end : .listen)
+        default:
+            break
+        }
+    }
+
+    private func followHeadphones() {
+        stopFollowingHeadphones()
+        let center = NotificationCenter.default
+        observers.append(center.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { [weak self] note in
+            let reason = (note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt).flatMap(AVAudioSession.RouteChangeReason.init(rawValue:))
+            let previous = note.userInfo?[AVAudioSessionRouteChangePreviousRouteKey] as? AVAudioSessionRouteDescription
+            let had = previous.map(Self.hasHeadphones) ?? false
+            let has = Self.hasHeadphones(AVAudioSession.sharedInstance().currentRoute)
+            MainActor.assumeIsolated {
+                if reason == .oldDeviceUnavailable, had, !has { self?.pause() }
+                if reason == .newDeviceAvailable, has { self?.resume() }
+            }
+        })
+        observers.append(center.addObserver(forName: AVAudioApplication.inputMuteStateChangeNotification, object: nil, queue: .main) { [weak self] note in
+            let muted = note.userInfo?[AVAudioApplication.muteStateKey] as? Bool
+            MainActor.assumeIsolated {
+                guard let self, let muted, muted != self.isMuted, !self.isPaused else { return }
+                self.toggleMute()
+            }
+        })
+
+        let commands = MPRemoteCommandCenter.shared()
+        commands.togglePlayPauseCommand.addTarget { [weak self] _ in
+            MainActor.assumeIsolated { self?.stemPressed() }
+            return .success
+        }
+        // One AirPod out pauses, back in plays: the same as taking both out.
+        commands.pauseCommand.addTarget { [weak self] _ in
+            MainActor.assumeIsolated { self?.pause() }
+            return .success
+        }
+        commands.playCommand.addTarget { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                if self.isPaused { self.resume() } else { self.stemPressed() }
+            }
+            return .success
+        }
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = [
+            MPMediaItemPropertyTitle: "Gesprek met Ayla",
+            MPMediaItemPropertyArtist: "PAVE",
+            MPNowPlayingInfoPropertyPlaybackRate: 1.0,
+        ]
+    }
+
+    private func stopFollowingHeadphones() {
+        observers.forEach(NotificationCenter.default.removeObserver)
+        observers = []
+        let commands = MPRemoteCommandCenter.shared()
+        commands.togglePlayPauseCommand.removeTarget(nil)
+        commands.pauseCommand.removeTarget(nil)
+        commands.playCommand.removeTarget(nil)
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+    }
+
+    /// Bluetooth headphones are where Ayla's voice goes now.
+    var hasBluetoothHeadphones: Bool {
+        AVAudioSession.sharedInstance().currentRoute.outputs.contains { [.bluetoothA2DP, .bluetoothHFP, .bluetoothLE].contains($0.portType) }
+    }
+
+    nonisolated private static func hasHeadphones(_ route: AVAudioSessionRouteDescription) -> Bool {
+        route.outputs.contains { [.bluetoothA2DP, .bluetoothHFP, .bluetoothLE, .headphones].contains($0.portType) }
+    }
+
+    // MARK: Lock Screen
+
+    private var currentStatus: AylaVoiceActivityAttributes.ContentState.Status {
+        if isPaused { return .paused }
+        if isMuted, state == .listening { return .muted }
+        return switch state {
+        case .thinking: .thinking
+        case .speaking: .speaking
+        default: .listening
+        }
+    }
+
+    private func publishStatus() {
+        guard state != .off else { return }
+        liveActivity.update(status: currentStatus)
     }
 
     @discardableResult
@@ -126,8 +330,10 @@ final class AylaVoiceSession {
         return work
     }
 
-    /// A typed question during the conversation: Ayla answers it out loud, like a spoken one.
-    func send(typed text: String) {
+    /// A typed question during the conversation: Ayla answers it out loud, like a spoken one. `checksYes` off for
+    /// what PAVE tells Ayla itself, such as that something went into the vault.
+    func send(typed text: String, checksYes: Bool = true) {
+        nextTurnChecksYes = checksYes
         let question = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard isActive, state != .starting, !question.isEmpty else { return }
         turn?.cancel()
@@ -141,7 +347,7 @@ final class AylaVoiceSession {
 
     func toggleMute() {
         isMuted.toggle()
-        audio.setMuted(isMuted)
+        audio.setMuted(isMuted || isPaused)
         if isMuted { silence?.cancel() }
     }
 
@@ -249,11 +455,25 @@ final class AylaVoiceSession {
 
     private func endTurn() {
         let question = heard.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard state == .listening, !question.isEmpty else { return }
+        guard state == .listening, !isPaused, !question.isEmpty else { return }
         silence?.cancel()
+        let checksYes = nextTurnChecksYes
+        nextTurnChecksYes = true
+        if checksYes, AylaVaultOffer.isConfirmation(question), onYes?(question) == true {
+            heard = ""
+            recognizer.end()
+            startRecognizing()
+            return
+        }
+        // The screen stopped the conversation for a form: Ayla still hears the answer, in writing.
+        guard state == .listening else {
+            model.send(question)
+            return
+        }
         recognizer.end()
         state = .thinking
         audio.play(.think)
+        if listensForHead { Task { await listenForHead(false) } }
         turn = Task { [weak self] in
             guard let self else { return }
             guard let reply = await model.ask(question, input: .voice) else {
@@ -265,11 +485,31 @@ final class AylaVoiceSession {
         }
     }
 
+    /// The screen is off or PAVE is not in front, such as with the iPhone in a pocket: the buttons cannot be seen.
+    private var isOutOfSight: Bool {
+        UIApplication.shared.applicationState != .active || !UIApplication.shared.isProtectedDataAvailable
+    }
+
     private func speak(_ reply: AylaReply) async {
-        let text = [reply.text, reply.question?.text]
+        currentReply = reply
+        if isPaused {
+            resumeReply = reply
+            state = .listening
+            return
+        }
+        // A question for Ja or Nee: the iPhone's microphone before she says it, so a nod counts at once.
+        if model.pendingYesNo { await listenForHead(true) }
+        _ = await micSwitch?.value
+        guard !Task.isCancelled, state == .thinking || state == .speaking else { return }
+        var text = [reply.text, reply.question?.text]
             .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
             .joined(separator: " ")
+        // Out of sight, the choices that are buttons on screen are said too.
+        if isOutOfSight, let choices = model.pendingQuestion?.choices.map(\.label),
+           let line = AylaSpokenReply.choicesLine(choices, canNod: listensForHead) {
+            text += " " + line
+        }
         heard = ""
         cues = AylaVoiceCue.cues(in: text)
         answerLength = text.count
@@ -314,7 +554,10 @@ final class AylaVoiceSession {
             await deviceVoice.speak(text)
         }
         guard !Task.isCancelled, state == .speaking else { return }
+        // Your turn: a soft sound, so you know without looking.
+        audio.play(.listen)
         listen()
+        endHeadListeningLater()
     }
 
     /// The audio started again after iOS reconfigured it, so the microphone's format may have changed: listening

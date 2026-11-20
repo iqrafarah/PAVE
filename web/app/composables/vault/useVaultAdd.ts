@@ -1,4 +1,15 @@
-import type { VaultItemCategory, VaultItemDraft } from '~/types/vault';
+import type { VaultEvidenceDocument, VaultEvidenceProposal, VaultItemCategory, VaultItemDraft } from '~/types/vault';
+import type { VaultEvidenceReading } from '~/utils/vault/vaultAylaFill';
+import type { AylaVaultItemProposal } from '~/types/ayla';
+
+/** What Ayla already read in the chat, so the form opens filled in without reading the files again. */
+export interface VaultAylaPrefill {
+  files: File[];
+  reading: VaultEvidenceReading;
+  proposals: VaultEvidenceProposal[];
+}
+
+export type VaultChatSave = { status: 'saved'; title: string; itemId: string; hasLogo: boolean; hasCover: boolean } | { status: 'needsForm'; prefill: VaultAylaPrefill | null };
 
 interface OpenOptions {
   // Skills Ayla suggested in the conversation that opened "Kluis aanvullen".
@@ -6,7 +17,17 @@ interface OpenOptions {
   // Opened for a kind of evidence, or from a folder in the vault (iOS: "Bewijs toevoegen" in the folder you look at).
   category?: VaultItemCategory;
   folderId?: string | null;
+  // The files of the chat that offered to add this: the upload step is skipped and Ayla reads them straight away.
+  documents?: File[];
+  prefill?: VaultAylaPrefill | null;
+  // "Zelf invullen" in the chat: the files come along, but Ayla reads nothing and fills in nothing.
+  fillsMyself?: boolean;
+  // Called once with the id of the new item when it is saved, e.g. to link it to a project as a source.
+  onSaved?: (itemId: string) => void;
 }
+
+// Kept outside the state (a function cannot be stored in it); there is only one dialog at a time.
+let savedHandler: ((itemId: string) => void) | null = null;
 
 interface VaultAddState {
   isOpen: boolean;
@@ -15,6 +36,9 @@ interface VaultAddState {
   suggestedSkills: string[];
   category: VaultItemCategory | null;
   folderId: string | null;
+  documents: File[];
+  prefill: VaultAylaPrefill | null;
+  fillsMyself: boolean;
 }
 
 export interface VaultSaveInput {
@@ -26,6 +50,8 @@ export interface VaultSaveInput {
   cover: File | null;
   logo: File | null;
   skills: string[];
+  // Ayla filled in the form (or saved it from the chat): the item shows under "Bron: Via Ayla".
+  isByAyla: boolean;
 }
 
 /**
@@ -55,15 +81,22 @@ export function useVaultAdd() {
     suggestedSkills: [],
     category: null,
     folderId: null,
+    documents: [],
+    prefill: null,
+    fillsMyself: false,
   }));
 
   function open(options: OpenOptions = {}) {
+    savedHandler = options.onSaved ?? null;
     state.value = {
       isOpen: true,
       session: state.value.session + 1,
       suggestedSkills: options.suggestedSkills ?? [],
       category: options.category ?? null,
       folderId: options.folderId ?? null,
+      documents: options.documents ?? [],
+      prefill: options.prefill ?? null,
+      fillsMyself: options.fillsMyself ?? false,
     };
   }
 
@@ -85,7 +118,7 @@ export function useVaultAdd() {
 
   /** Makes the folder of the kind just before saving, or finds it when it was made meanwhile. */
   async function kindFolderId(name: string, category: VaultItemCategory) {
-    const made = await vault.createFolder(name, 'green', CATEGORY_FOLDER_ICON_KEYS[category]);
+    const made = await vault.createFolder(name, vault.defaultFolderColor.value, CATEGORY_FOLDER_ICON_KEYS[category]);
     vault.state.value.problem = null;
     return made?.id ?? vault.state.value.folders.find((folder) => folder.name.toLowerCase() === name.toLowerCase())?.id ?? null;
   }
@@ -99,7 +132,7 @@ export function useVaultAdd() {
           const id = await kindFolderId(input.newFolderName, input.draft.category);
           if (id && !folderIds.includes(id)) folderIds.push(id);
         }
-        progress.itemId = await vault.addItem(input.draft, folderIds);
+        progress.itemId = await vault.addItem(input.draft, folderIds, input.isByAyla);
       }
       const itemId = progress.itemId;
       for (const [index, file] of input.documents.entries()) {
@@ -119,6 +152,10 @@ export function useVaultAdd() {
       }
       // The vault page shows the new item straight away.
       vault.load();
+      if (!progress.savedParts.has('notified')) {
+        progress.savedParts.add('notified');
+        savedHandler?.(itemId);
+      }
       return null;
     } catch (error) {
       return error instanceof VaultSaveError ? error.message : VAULT_SAVE_FAILED;
@@ -136,5 +173,149 @@ export function useVaultAdd() {
     }
   }
 
-  return { state, open, close, loadVaultSkills, save, allowAyla };
+  /**
+   * "Laat Ayla invullen": the documents that were read go to the Edge Function ayla-evidence, which proposes the whole
+   * item (up to three when the files hold more than one). Only on request; nothing is stored there. Like iOS it waits
+   * longer when photos go along, and says why it failed.
+   */
+  async function proposeEvidence(documents: VaultEvidenceDocument[], folders: string[], known: string[]): Promise<VaultEvidenceProposal[]> {
+    const { data: session } = await supabase.auth.getSession();
+    const token = session.session?.access_token;
+    if (!token) throw new VaultSaveError(VAULT_AYLA_SKILLS_SIGNED_OUT);
+
+    const { url, key } = useRuntimeConfig().public.supabase;
+    let response: Response;
+    try {
+      response = await fetch(`${url}/functions/v1/ayla-evidence`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, apikey: key },
+        body: JSON.stringify({ documents, folders, today: new Date().toISOString().slice(0, 10), known }),
+        signal: AbortSignal.timeout(documents.some((document) => document.image) ? 75_000 : 50_000),
+      });
+    } catch (error) {
+      if (import.meta.dev) console.error('ayla-evidence: no answer', error);
+      throw new VaultSaveError(VAULT_AYLA_FILL_NO_CONNECTION);
+    }
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '');
+      if (import.meta.dev) console.error(`ayla-evidence: ${response.status}`, detail);
+      const message =
+        response.status === 404
+          ? VAULT_AYLA_FILL_NOT_READY
+          : response.status === 401
+            ? VAULT_AYLA_SKILLS_SIGNED_OUT
+            : response.status === 403
+              ? INSUFFICIENT_AAL_MESSAGE
+              : VAULT_AYLA_FILL_FAILED;
+      throw new VaultSaveError(import.meta.dev ? `${message} [${response.status} ${detail.slice(0, 120)}]` : message);
+    }
+    const items = ((await response.json().catch(() => null)) as { items?: unknown } | null)?.items;
+    if (!Array.isArray(items)) throw new VaultSaveError(VAULT_AYLA_FILL_FAILED);
+    return items
+      .filter((item): item is Partial<VaultEvidenceProposal> & { title: string } => typeof item?.title === 'string')
+      .map((item) => ({
+        category: item.category ?? 'other',
+        title: item.title,
+        organisationName: item.organisationName ?? null,
+        organisationLocation: item.organisationLocation ?? null,
+        startDate: item.startDate ?? null,
+        endDate: item.endDate ?? null,
+        issuedOn: item.issuedOn ?? null,
+        isCurrent: item.isCurrent ?? false,
+        description: item.description ?? null,
+        skills: item.skills ?? [],
+        folder: item.folder ?? null,
+        documents: item.documents ?? [],
+        coverDocument: item.coverDocument ?? null,
+        coverBox: item.coverBox ?? null,
+        logoDocument: item.logoDocument ?? null,
+        logoBox: item.logoBox ?? null,
+        website: item.website ?? null,
+        sources: item.sources ?? {},
+        logo: item.logo ?? null,
+      }));
+  }
+
+  /**
+   * A yes to "Zal ik het in je kluis zetten?" (iOS addEvidenceForUser): Ayla reads the chat's files and saves the item
+   * without the form. When something required is missing, she sees more than one item, or reading or saving fails, the
+   * form is needed instead, filled in with what she read, so nothing is saved halfway out of sight.
+   */
+  async function saveFromChat(files: File[], suggestedSkills: string[], chatItem?: AylaVaultItemProposal | null): Promise<VaultChatSave> {
+    if (vault.state.value.status !== 'ready') await vault.load();
+    // The files that belong to this item, when Ayla named them; else all of the chat's files.
+    const itemFiles = new Set(chatItem?.attachments ?? []);
+    const own = itemFiles.size ? files.filter((file) => itemFiles.has(file.name)) : files;
+    const documents = (own.length ? own : files).slice(0, MAX_DOCUMENTS);
+    const fromChat = chatItem?.title ? proposalFromChat(chatItem) : null;
+    let prefill: VaultAylaPrefill;
+    if (!documents.length) {
+      // No files: what Ayla knows from the chat is all there is.
+      if (!fromChat) return { status: 'needsForm', prefill: null };
+      prefill = { files: [], reading: { documents: [] }, proposals: [fromChat] };
+    } else {
+      try {
+        const reading = await readEvidence(documents);
+        const known = await loadVaultSkills();
+        const proposals = await proposeEvidence(reading.documents, vault.state.value.folders.map((folder) => folder.name), known);
+        // One item: completed with what the user told in the chat.
+        const completed = proposals.length === 1 && chatItem?.title ? [mergedWithChat(proposals[0]!, chatItem)] : proposals;
+        prefill = { files: documents, reading, proposals: completed.length ? completed : fromChat ? [fromChat] : [] };
+      } catch {
+        return { status: 'needsForm', prefill: fromChat ? { files: documents, reading: { documents: [] }, proposals: [fromChat] } : null };
+      }
+    }
+    const [proposal] = prefill.proposals;
+    if (!proposal || prefill.proposals.length > 1) return { status: 'needsForm', prefill };
+
+    const draft = applyProposal(proposal, createDraft());
+    if (Object.keys(checkDraft(draft)).length) return { status: 'needsForm', prefill };
+
+    const folders = vault.state.value.folders;
+    const category = draft.category || 'other';
+    const folderIds: string[] = [];
+    const ownKind = kindFolder(category, folders);
+    if (ownKind) folderIds.push(ownKind.id);
+    const named = proposal.folder?.toLowerCase();
+    const chosen = named ? folders.find((folder) => folder.name.toLowerCase() === named) : null;
+    if (chosen && !folderIds.includes(chosen.id)) folderIds.push(chosen.id);
+    const pictures = await aylaPictures(proposal, documents, prefill.reading, true, true);
+    // In development: where Ayla saw the logo and cover, to tell a missing one apart from one that could not be cut.
+    if (import.meta.dev) {
+      console.info('ayla-evidence: logo and cover', {
+        logoDocument: proposal.logoDocument,
+        logoBox: proposal.logoBox,
+        website: proposal.website,
+        websiteLogo: Boolean(proposal.logo),
+        coverDocument: proposal.coverDocument,
+        coverBox: proposal.coverBox,
+        gotLogo: Boolean(pictures.logo),
+        gotCover: Boolean(pictures.cover),
+      });
+    }
+    const skills = new Map<string, string>();
+    for (const name of [...proposal.skills.map((skill) => skill.name), ...suggestedSkills]) {
+      const trimmed = name.trim();
+      if (trimmed && !skills.has(trimmed.toLowerCase())) skills.set(trimmed.toLowerCase(), trimmed);
+    }
+    const progress = createSaveProgress();
+    const problem = await save(
+      {
+        draft,
+        folderIds,
+        newFolderName: ownKind ? null : VAULT_CATEGORY_PLURALS[category],
+        documents,
+        cover: pictures.cover,
+        logo: pictures.logo,
+        skills: [...skills.values()],
+        isByAyla: true,
+      },
+      progress,
+    );
+    // Once the item exists it is not offered again in the form: that would add it twice.
+    if (problem && !progress.itemId) return { status: 'needsForm', prefill };
+    return { status: 'saved', title: draft.title, itemId: progress.itemId!, hasLogo: Boolean(pictures.logo), hasCover: Boolean(pictures.cover) };
+  }
+
+  return { state, open, close, loadVaultSkills, save, allowAyla, proposeEvidence, saveFromChat };
 }

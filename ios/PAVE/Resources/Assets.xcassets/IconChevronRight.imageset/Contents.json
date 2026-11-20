@@ -3,6 +3,16 @@
     {
       "filename": "IconChevronRight.svg",
       "idiom": "universal"
+    },
+    {
+      "appearances": [
+        {
+          "appearance": "luminosity",
+          "value": "dark"
+        }
+      ],
+      "filename": "IconChevronRight-dark.svg",
+      "idiom": "universal"
     }
   ],
   "info": {

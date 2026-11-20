@@ -13,6 +13,10 @@ const props = defineProps<{
   isMuted?: boolean;
   // Shown above the field when the chat sits on a screen, such as "Kluis" (Figma 1209:55066).
   contextLabel?: string;
+  // Replaces "Vraag het aan Ayla", such as "Nieuwe chat in Project" on the start page of a project.
+  placeholder?: string;
+  // No strip above the field (and no empty room for it): the tray is a plain bar.
+  isPlain?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -23,6 +27,8 @@ const emit = defineEmits<{
   stopTalking: [];
   // True while files are being read, so the chat can show "Gegevens ophalen" if that takes long.
   readingFiles: [isReading: boolean];
+  // "Item uit je kluis" in the plus menu: the chat opens its picker.
+  pickItem: [];
 }>();
 
 const text = defineModel<string>('text', { required: true });
@@ -30,6 +36,7 @@ const attachments = defineModel<AylaAttachment[]>('attachments', { required: tru
 
 const textareaRef = useTemplateRef<HTMLTextAreaElement>('textarea');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInput');
+const photoInputRef = useTemplateRef<HTMLInputElement>('photoInput');
 const fileError = ref<string | null>(null);
 const wasDictated = ref(false);
 let textBeforeDictation = '';
@@ -43,12 +50,14 @@ const isHome = computed(() => props.variant === 'home');
 const voice = useAylaVoice();
 const canTalk = ref(false);
 onMounted(() => (canTalk.value = voice.isSupported()));
-const canSend = computed(() => text.value.trim().length > 0);
+// A file or photo can go on its own: Ayla then hears "Bekijk dit bestand." and looks at it.
+const canSend = computed(() => text.value.trim().length > 0 || attachments.value.length > 0);
 const isAtLimit = computed(() => text.value.length >= MAX_TEXT_LENGTH);
 const notice = computed(() => fileError.value ?? dictation.error.value);
 
 function send() {
   if (!canSend.value) return;
+  if (!text.value.trim()) text.value = AYLA_FILES_ONLY_QUESTION(attachments.value.length);
   if (dictation.isListening.value) dictation.stop();
   emit('send', wasDictated.value ? 'voice' : 'text');
   wasDictated.value = false;
@@ -94,7 +103,7 @@ async function addFiles(files: File[]) {
         fileError.value = AYLA_TOO_MANY_FILES;
         return;
       }
-      const { attachment, error } = await readAttachment(file);
+      const { attachment, error } = await readAttachment(file, { imagesSoFar: attachments.value.filter((item) => item.image).length });
       if (error) fileError.value = error;
       if (attachment) attachments.value = [...attachments.value, attachment];
     }
@@ -118,6 +127,10 @@ function openFilePicker() {
   fileInputRef.value?.click();
 }
 
+function openPhotoPicker() {
+  photoInputRef.value?.click();
+}
+
 function focus() {
   textareaRef.value?.focus();
 }
@@ -137,7 +150,17 @@ defineExpose({ openFilePicker, focus });
       aria-hidden="true"
       @change="handleFileChange"
     />
-    <label for="ayla-question" class="sr-only">{{ AYLA_PLACEHOLDER }}</label>
+    <input
+      ref="photoInput"
+      type="file"
+      multiple
+      :accept="PHOTO_ACCEPT"
+      class="sr-only"
+      tabindex="-1"
+      aria-hidden="true"
+      @change="handleFileChange"
+    />
+    <label for="ayla-question" class="sr-only">{{ placeholder ?? AYLA_PLACEHOLDER }}</label>
 
     <!-- While dictating the bar takes the place of the text field, as on the iPhone. -->
     <AylaDictationBar
@@ -152,7 +175,7 @@ defineExpose({ openFilePicker, focus });
       <div class="absolute inset-x-6 bottom-0 top-9.25 rounded-composer bg-bubble shadow-composer sm:inset-x-12.5">
         <AylaHomeActions class="absolute inset-x-0 bottom-0 h-9.25" @add-file="openFilePicker" />
       </div>
-      <div class="relative flex min-h-27.25 flex-col rounded-composer bg-white px-4.5 pb-2.75 pt-4.25 shadow-composer focus-within:outline-2 focus-within:outline-brand">
+      <div class="relative flex min-h-27.25 flex-col rounded-composer bg-white px-4.5 pb-2.75 pt-4.25 shadow-composer">
         <div class="flex flex-1 gap-2">
           <AylaSlashIcon :blocks="4" class="mt-0.5 h-4.25 w-2.75" />
           <textarea
@@ -161,7 +184,7 @@ defineExpose({ openFilePicker, focus });
             v-model="text"
             rows="2"
             :maxlength="MAX_TEXT_LENGTH"
-            :placeholder="AYLA_PLACEHOLDER"
+            :placeholder="placeholder ?? AYLA_PLACEHOLDER"
             aria-describedby="ayla-composer-notice"
             class="h-10 flex-1 resize-none overflow-y-auto bg-transparent text-xs font-semibold text-heading placeholder:text-subtle/40 focus:outline-none"
             @keydown="handleKeydown"
@@ -195,7 +218,7 @@ defineExpose({ openFilePicker, focus });
 
     <!-- Figma Kluis doorzoeken: one-line white field (591 x 53) in the tray. -->
     <AylaTray v-else>
-      <template #strip>
+      <template v-if="!isPlain || attachments.length" #strip>
         <span v-if="contextLabel && !attachments.length" class="flex items-center gap-1.75 font-heading text-xs font-semibold text-heading">
           <VaultIcon src="/images/ayla/pill-vault.svg" :width="20.3122" :height="18" class="text-brand" />
           {{ contextLabel }}
@@ -208,8 +231,8 @@ defineExpose({ openFilePicker, focus });
           @remove="removeAttachment(index)"
         />
       </template>
-      <div class="flex min-h-13.25 items-center gap-3 rounded-composer bg-white py-2 pl-4.5 pr-2.75 focus-within:outline-2 focus-within:outline-brand">
-        <AylaAttachMenu @add-file="openFilePicker" />
+      <div class="flex min-h-13.25 items-center gap-3 rounded-composer bg-white py-2 pl-4.5 pr-2.75">
+        <AylaAttachMenu @add-file="openFilePicker" @add-photo="openPhotoPicker" @pick-item="emit('pickItem')" />
         <AylaSlashIcon :blocks="4" class="h-4.25 w-2.75" />
         <textarea
           id="ayla-question"
@@ -217,7 +240,7 @@ defineExpose({ openFilePicker, focus });
           v-model="text"
           rows="1"
           :maxlength="MAX_TEXT_LENGTH"
-          :placeholder="AYLA_PLACEHOLDER"
+          :placeholder="placeholder ?? AYLA_PLACEHOLDER"
           aria-describedby="ayla-composer-notice"
           class="h-7 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent py-1 text-sm font-medium text-heading placeholder:text-subtle/40 focus:outline-none"
           @keydown="handleKeydown"

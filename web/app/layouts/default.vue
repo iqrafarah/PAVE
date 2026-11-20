@@ -3,6 +3,17 @@ const route = useRoute();
 const voice = useAylaVoice();
 const personal = usePersonalisation();
 const user = useSupabaseUser();
+const search = useAylaSearch();
+
+// Cmd+K (Ctrl+K elsewhere) opens or closes the search from any screen.
+function onShortcut(event: KeyboardEvent) {
+  if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === 'k') {
+    event.preventDefault();
+    search.toggle();
+  }
+}
+onMounted(() => window.addEventListener('keydown', onShortcut));
+onBeforeUnmount(() => window.removeEventListener('keydown', onShortcut));
 
 onMounted(() => {
   // The look kept in the account is extra: when it cannot be read, the look of this browser simply stays.
@@ -30,7 +41,7 @@ const showsChats = computed(() => route.meta.showsChats === true);
     <LayoutIconRail class="max-md:hidden" />
     <LayoutMenuDrawer />
     <AylaChatSidebar v-if="showsChats" />
-    <div class="flex min-w-0 flex-1 flex-col bg-white">
+    <div class="flex min-w-0 flex-1 flex-col bg-canvas">
       <!-- A page that breaks while it is drawn is replaced by a message; the menu around it keeps working. -->
       <NuxtErrorBoundary>
         <slot />
@@ -40,5 +51,7 @@ const showsChats = computed(() => route.meta.showsChats === true);
       </NuxtErrorBoundary>
     </div>
     <VaultAddDialog />
+    <VaultFilePreview />
+    <AylaSearchDialog :open="search.isOpen.value" @close="search.close()" />
   </div>
 </template>

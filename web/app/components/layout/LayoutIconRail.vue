@@ -60,7 +60,7 @@ function hasPage(path: string) {
           :class="isPlaceActive(place, route.path) ? 'bg-brand text-white' : 'bg-tile text-brand'"
           class="flex h-9.5 w-10.25 items-center justify-center rounded-lg focus-visible:outline-2 focus-visible:outline-brand"
         >
-          <LayoutPaveIcon v-if="place.icon !== 'ayla'" :name="place.icon" class="size-5" />
+          <LayoutPaveIcon v-if="place.icon !== 'ayla'" :name="placeIcon(place, route.path)" class="size-5" />
           <span class="sr-only">{{ place.label }}</span>
         </NuxtLink>
         <button
@@ -70,7 +70,7 @@ function hasPage(path: string) {
           :title="`${place.label}: ${AYLA_NOT_AVAILABLE_YET}`"
           class="flex h-9.5 w-10.25 cursor-not-allowed items-center justify-center rounded-lg bg-tile text-heading"
         >
-          <LayoutPaveIcon v-if="place.icon !== 'ayla'" :name="place.icon" class="size-5" />
+          <LayoutPaveIcon v-if="place.icon !== 'ayla'" :name="placeIcon(place, route.path)" class="size-5" />
           <span class="sr-only">{{ place.label }} ({{ AYLA_NOT_AVAILABLE_YET }})</span>
         </button>
       </li>

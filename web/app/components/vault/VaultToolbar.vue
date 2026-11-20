@@ -29,7 +29,7 @@ const originOptions = computed(() =>
   VAULT_ORIGINS.map((origin) => ({ id: origin, label: VAULT_ORIGIN_TITLES[origin], isChecked: filter.value.origin === origin })),
 );
 const orderOptions = computed(() =>
-  (['newest', 'oldest'] as VaultOrder[]).map((order) => ({ id: order, label: VAULT_ORDER_TITLES[order], isChecked: filter.value.order === order })),
+  (['newest', 'oldest', 'custom'] as VaultOrder[]).map((order) => ({ id: order, label: VAULT_ORDER_TITLES[order], isChecked: filter.value.order === order })),
 );
 
 function selectStatus(id: string) {
@@ -56,7 +56,7 @@ const tabOff = `${tab} px-2 hover:bg-surface`;
 const iconButton =
   'flex size-9 shrink-0 items-center justify-center rounded-field border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand';
 const offButton = 'border-toolbar-line bg-surface text-heading hover:bg-tint';
-const onButton = 'border-brand bg-brand text-white';
+const onButton = 'border-transparent bg-brand text-white';
 </script>
 
 <template>

@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The same blocks in red, tumbling over once when something went wrong (from Figma).
 struct AylaFallenBlocks: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @State private var hasFallen = false
 
     private struct Block {

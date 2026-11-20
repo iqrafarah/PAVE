@@ -39,14 +39,18 @@ export type MemoryCategory =
 export interface AylaAttachment {
   name: string;
   text: string;
+  // A small photo (base64 JPEG), so Ayla looks at a picture herself instead of asking what is on it.
+  image?: string;
 }
 
 export interface AylaRequest {
   conversationId?: string;
+  // Starts the new conversation inside this project.
+  projectId?: string;
   text: string;
   device: AylaDevice;
   input: AylaInput;
-  context?: { screen: AylaScreen; itemId?: string };
+  context?: { screen: AylaScreen; itemId?: string; itemIds?: string[] };
   attachments?: AylaAttachment[];
 }
 
@@ -118,6 +122,22 @@ export interface UsedMemory {
   category: MemoryCategory;
 }
 
+/** An item Ayla proposes for the vault from the chat, in the fields of vault_items; dates as YYYY-MM-DD or YYYY-MM. */
+export interface AylaVaultItemProposal {
+  category: string;
+  title: string;
+  organisationName?: string | null;
+  organisationLocation?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  issuedOn?: string | null;
+  isCurrent?: boolean | null;
+  description?: string | null;
+  skills?: string[] | null;
+  // The names of the files sent in the chat that belong to this item.
+  attachments?: string[] | null;
+}
+
 export interface AylaReply {
   version: 1;
   id: string;
@@ -130,6 +150,8 @@ export interface AylaReply {
     kind: 'addVaultItem' | 'updatePlan' | 'draftProfile' | 'requestValidation';
     summary: string;
     expiresAt: string;
+    // With addVaultItem: what Ayla knows from the chat, to put in the vault once the user confirms.
+    vaultItem?: AylaVaultItemProposal;
   };
   blocks: AylaBlock[];
   navigation?: { screen: AylaScreen; itemId?: string };
@@ -156,13 +178,29 @@ export interface Conversation {
   title: string;
   updatedAt: string;
   pinnedAt: string | null;
+  archivedAt: string | null;
   startedOn: AylaDevice;
+}
+
+/** A folder for chats, with instructions Ayla follows in every chat inside it. */
+export interface Project {
+  id: string;
+  name: string;
+  instructions: string;
+  // The folder icon and theme colour of the project; null shows the default folder in the brand colour.
+  icon: string | null;
+  color: string | null;
+  updatedAt: string;
+  pinnedAt: string | null;
 }
 
 export interface MemoryNote {
   id: string;
   text: string;
+  /** The main category, the first of `categories`. */
   category: MemoryCategory;
+  /** Every folder the note is in, at least one (a note can be in more than one, as on iOS). */
+  categories: MemoryCategory[];
   source: 'ayla' | 'user';
   conversationId: string | null;
   createdAt: string;
@@ -175,6 +213,7 @@ export type AylaErrorCode =
   | 'not_signed_in'
   | 'insufficient_aal'
   | 'conversation_not_found'
+  | 'project_not_found'
   | 'unavailable'
   | 'offline';
 
@@ -183,4 +222,6 @@ export interface RowMenuItem {
   id: string;
   label: string;
   isDanger?: boolean;
+  // Opens a panel next to the menu (the `submenu` slot of the menu) instead of choosing something.
+  hasSubmenu?: boolean;
 }

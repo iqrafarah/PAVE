@@ -14,10 +14,19 @@ struct PaveAppShortcuts: AppShortcutsProvider {
             systemImageName: "waveform"
         )
         AppShortcut(
+            intent: AskAylaIntent(),
+            phrases: [
+                "Vraag Ayla iets in \(.applicationName)",
+                "Stel Ayla een vraag in \(.applicationName)",
+                "\(.applicationName) vraag Ayla",
+            ],
+            shortTitle: "Vraag Ayla",
+            systemImageName: "questionmark.bubble"
+        )
+        AppShortcut(
             intent: NewAylaConversationIntent(),
             phrases: [
                 "Nieuw gesprek in \(.applicationName)",
-                "Vraag Ayla iets in \(.applicationName)",
             ],
             shortTitle: "Nieuw gesprek",
             systemImageName: "bubble.left.fill"

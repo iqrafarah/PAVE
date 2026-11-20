@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Fourteen blocks that build up Ayla's four slashes one by one, in a 7-second loop (from Figma).
 struct AylaThinkingBlocks: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
 
     private static let size: CGFloat = 11.6
     private static let duration = 7.052
@@ -23,7 +23,7 @@ struct AylaThinkingBlocks: View {
             ZStack(alignment: .topLeading) {
                 ForEach(Self.blocks.indices, id: \.self) { index in
                     Rectangle()
-                        .fill(Color.paveAccent)
+                        .fill(Color.paveAccentFill)
                         .frame(width: Self.size, height: Self.size)
                         .offset(x: Self.blocks[index].x, y: Self.blocks[index].y)
                         .opacity(Self.opacity(of: index, at: progress))

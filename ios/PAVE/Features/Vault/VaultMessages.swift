@@ -2,6 +2,7 @@ import PAVECore
 
 /// The texts of the vault in one place, so web can use the same words.
 enum VaultMessages {
+    static let scanFailed = "Je scan kon niet gelezen worden. Probeer het nog eens of voeg een bestand toe."
     static let emptyTitle = "Je kluis is nog leeg"
     static let emptyMessage = "Bewaar hier je diploma's, certificaten, projecten en ervaringen. Dan heb je alles op één plek."
     static let noResultsTitle = "Niets gevonden"
@@ -14,6 +15,22 @@ enum VaultMessages {
     static let folderNameMissing = "Geef je map een naam."
     static let deleteFolderMessage = "De items in deze map blijven gewoon in je kluis staan."
     static let deleteItemMessage = "Dit haalt het item en de bestanden erbij voorgoed uit je kluis, ook op het web. Dit kun je niet ongedaan maken."
+    static let ownFolderColor = "Eigen kleur"
+    static let ownFolderColorHint = "Kies een kleur van je eigen."
+    static let changeOwnFolderColor = "Andere eigen kleur kiezen"
+    static let pinFolder = "Vastzetten"
+    static let unpinFolder = "Losmaken"
+    static func folderPinned(_ name: String) -> String { "\(name) staat nu vooraan." }
+    static func folderUnpinned(_ name: String) -> String { "\(name) is losgemaakt." }
+    static func allFolders(_ count: Int) -> String { "Alle mappen (\(count))" }
+    static let allFoldersTitle = "Alle mappen"
+    static func folderCount(_ count: Int) -> String { count == 1 ? "1 map" : "\(count) mappen" }
+    static let searchFolders = "Zoeken in je mappen"
+    static func noFoldersFound(_ query: String) -> String { "Geen mappen gevonden voor \"\(query)\"." }
+    static func downloadFile(_ name: String) -> String { "\(name) downloaden" }
+    static let downloadAll = "Alles downloaden"
+    static let download = "Downloaden"
+    static let downloadFailed = "Downloaden lukte niet. Probeer het opnieuw."
     static let folderNameTaken = "Je hebt al een map met deze naam. Kies een andere naam."
 
     static func newKindFolder(_ name: String) -> String {
@@ -39,6 +56,11 @@ enum VaultMessages {
         case .notAllowed: "Dit mag niet met je account. Log opnieuw in en probeer het nog een keer."
         case .duplicateFolderName: folderNameTaken
         case .notSetUp: "Dit is nog niet beschikbaar. Probeer het later nog een keer."
+        case .validationOrganisationNotFound: "Deze organisatie is niet bekend bij PAVE. Controleer de naam of neem contact op met je organisatie."
+        case .validationNoReviewer: "Er is nog geen beoordelaar ingesteld voor deze organisatie. Neem contact op met je organisatie."
+        case .validationAlreadyPending: "Voor dit bewijs staat al een verificatieaanvraag open."
+        case .validationItemUnavailable: "Dit bewijs kan niet meer worden aangevraagd. Vernieuw de kluis en probeer opnieuw."
+        case .validationInvalidChoice: "Deze organisatie-, vestigings- of contactkeuze is niet meer geldig. Kies de gegevens opnieuw."
         case .fileRejected: "Dit bestand kan niet in je kluis. Kies een PDF, Word-bestand, tekst of foto tot 20 MB."
         case .unavailable, .missingColumn: "Er ging iets mis. Probeer het zo nog een keer."
         }
@@ -112,6 +134,60 @@ enum VaultMessages {
         }
     }
 
+    // "Laat Ayla invullen"
+    static let aylaFillTitle = "Laat Ayla invullen"
+    static let aylaFillButtonReading = "Ayla leest…"
+    static let aylaFillReading = "Ayla leest je bestanden en vult alvast in…"
+    static let aylaFillStop = "Zelf invullen"
+    static let aylaFillAgain = "Opnieuw proberen"
+    static let aylaFillEmpty = "Ayla kon niets uit je bestand halen. Vul het zelf in."
+    static let aylaFilledTitle = "Ayla heeft dit ingevuld"
+    static let aylaFilledMessage = "Controleer alles voordat je verdergaat. Wat Ayla niet in je bestand zag, is leeg gebleven."
+    static let aylaFilledAnnouncement = "Ayla heeft het bewijs ingevuld. Controleer de velden."
+    static let aylaSplitOne = "Eén bewijs"
+    static let aylaSplitApart = "Apart toevoegen"
+    static let nextEvidence = "Volgende bewijs"
+    static let nextEvidenceSkip = "Klaar"
+
+    static let dragToFolder = "Laat los op een map om het daarheen te verplaatsen."
+
+    static func movedInto(_ title: String, folder: String) -> String {
+        "\(title) staat nu in \(folder)."
+    }
+    static let draftBack = "Je concept is terug, zoals je het net achterliet."
+    static let draftStartOver = "Opnieuw beginnen"
+    static let aylaCoverNote = "Foto uit je document, gekozen door Ayla"
+
+    static func aylaFill(_ error: VaultError) -> String {
+        switch error {
+        case .notSetUp: "Invullen door Ayla is nog niet beschikbaar. Vul het zelf in."
+        case .noConnection: "Geen verbinding. Probeer het zo nog een keer, of vul het zelf in."
+        default: "Ayla kon je bestand nu niet lezen. Probeer het zo nog een keer, of vul het zelf in."
+        }
+    }
+
+    /// "Door Ayla · pagina 1": short, so it fits under a field in two columns.
+    static func filledByAyla(source: String?) -> String {
+        source.map { "Door Ayla · \($0)" } ?? "Ingevuld door Ayla"
+    }
+
+    static func aylaSplitTitle(_ titles: [String]) -> String {
+        let list = titles.count > 1 ? titles.dropLast().joined(separator: ", ") + " en " + titles[titles.count - 1] : titles.first ?? ""
+        return "Ayla ziet \(titles.count) bewijzen: \(list)."
+    }
+
+    static func aylaSplitHint(apart: Bool, first: String) -> String {
+        apart ? "Je voegt ze na elkaar toe, elk al ingevuld. Eerst \(first)." : "Al je bestanden komen bij dit ene bewijs."
+    }
+
+    static func aylaLogoNote(source: String?) -> String {
+        source.map { "Logo van \($0), gevonden door Ayla" } ?? "Logo uit je document, gekozen door Ayla"
+    }
+
+    static func nextEvidenceNote(_ title: String) -> String {
+        "Ga verder met \(title), al ingevuld door Ayla. Of kies Klaar om te stoppen."
+    }
+
     static let added = "Bewijs toegevoegd"
     static let addedMessage = "Het staat als Niet bevestigd in je kluis, tot een school of werkgever het bevestigt."
     static let saving = "Toevoegen…"
@@ -123,6 +199,19 @@ enum VaultMessages {
 
     static let requestAction = "Bevestiging aanvragen"
     static let requestAgainAction = "Opnieuw bevestiging aanvragen"
+    static let awaitingReviewTitle = "In afwachting"
+
+    static func awaitingReviewExplanation(_ organisation: String?) -> String {
+        if let organisation, !organisation.isEmpty {
+            return "Je aanvraag ligt bij \(organisation). Je krijgt een melding zodra je bewijs is beoordeeld."
+        }
+        return "Je aanvraag is verstuurd. Je krijgt een melding zodra je bewijs is beoordeeld."
+    }
+
+    static func rejectionReasonTitle(_ organisation: String?) -> String {
+        if let organisation, !organisation.isEmpty { return "Reden van \(organisation)" }
+        return "Reden van afwijzing"
+    }
     static let requestPreviewLabel = "Voorbeeld"
     static let requestPreviewAccessibility = "Voorbeeld, werkt nog niet"
     static let requestNotActive = "Bevestiging aanvragen werkt nog niet. Je kunt alvast kijken hoe het wordt, maar er wordt niets verstuurd."
@@ -144,8 +233,10 @@ enum VaultMessages {
 
     static func requestMissing(_ field: VaultConfirmationRequest.Field) -> String {
         switch field {
-        case .organisation: "Vul de naam van de organisatie in."
-        case .email: "Vul een geldig e-mailadres in, zoals naam@organisatie.nl."
+        case .organisation: "Kies een organisatie."
+        case .location: "Kies een vestigingsplaats."
+        case .department: "Kies een afdeling of opleiding."
+        case .contact: "Kies de persoon die je bewijs kan bevestigen."
         }
     }
 
@@ -264,6 +355,7 @@ extension VaultFilter.Order {
         switch self {
         case .newest: "Nieuwste eerst"
         case .oldest: "Oudste eerst"
+        case .custom: "Eigen volgorde"
         }
     }
 }

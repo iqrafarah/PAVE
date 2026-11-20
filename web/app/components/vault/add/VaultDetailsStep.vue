@@ -11,8 +11,10 @@ withDefaults(
     problems: Partial<Record<DraftField, string>>;
     // A folder for the kind that does not exist yet ("Stages"), offered in Mappen; null when there is none.
     newFolderName?: string | null;
+    // What Ayla filled in, as notes under the fields ("Door Ayla · pagina 1").
+    notes?: Partial<Record<'title' | 'organisation' | 'period' | 'description', string>>;
   }>(),
-  { files: () => [], newFolderName: null },
+  { files: () => [], newFolderName: null, notes: () => ({}) },
 );
 
 const emit = defineEmits<{
@@ -40,7 +42,7 @@ function choosePeriod(isPeriod: boolean) {
 }
 
 const fieldClass =
-  'h-9.75 w-full min-w-0 rounded-field border border-field-line bg-white px-3 text-sm font-medium text-heading focus:border-brand focus:outline-none aria-invalid:border-danger';
+  'h-9.75 w-full min-w-0 rounded-field border border-field-line bg-white px-3 text-sm font-medium text-heading focus:border-subtle focus:outline-none aria-invalid:border-danger';
 
 function problemId(field: string) {
   return `${field}-problem`;
@@ -57,10 +59,11 @@ function focusFirstProblem(field: DraftField) {
 
 <template>
   <div class="flex flex-col gap-4">
+    <slot name="top" />
     <VaultFileChip v-for="(file, index) in files" :key="`${file.name}-${file.size}-${index}`" :file="file" @remove="emit('removeFile', index)" />
 
     <div class="grid gap-x-4.5 gap-y-4 sm:grid-cols-2">
-      <VaultField :label="VAULT_FIELD_TITLE" :for="ids.title" :problem="problems.title" :problem-id="problemId(ids.title)">
+      <VaultField :label="VAULT_FIELD_TITLE" :for="ids.title" :problem="problems.title" :problem-id="problemId(ids.title)" :note="notes.title">
         <input
           :id="ids.title"
           v-model="draft.title"
@@ -101,6 +104,7 @@ function focusFirstProblem(field: DraftField) {
         :for="ids.organisation"
         :problem="problems.organisationName"
         :problem-id="problemId(ids.organisation)"
+        :note="notes.organisation"
       >
         <input
           :id="ids.organisation"
@@ -120,6 +124,7 @@ function focusFirstProblem(field: DraftField) {
         :problem="problems.period"
         :problem-id="problemId(ids.period)"
         is-group
+        :note="notes.period"
       >
         <!-- A period or one date, for any kind; the kind only decides which comes first (as on iOS). It sits beside
              the label, so the field itself lines up with the one next to it. -->
@@ -144,7 +149,7 @@ function focusFirstProblem(field: DraftField) {
           role="group"
           :aria-labelledby="`${ids.period}-label`"
           :aria-describedby="problems.period ? problemId(ids.period) : undefined"
-          :class="problems.period ? 'border-danger' : 'border-field-line focus-within:border-brand'"
+          :class="problems.period ? 'border-danger' : 'border-field-line focus-within:border-subtle'"
           class="flex h-9.75 items-center gap-1 rounded-field border bg-white px-2"
         >
           <label :for="ids.period" class="sr-only">{{ VAULT_FIELD_START }}</label>
@@ -184,6 +189,7 @@ function focusFirstProblem(field: DraftField) {
       :for="ids.description"
       :problem="problems.description"
       :problem-id="problemId(ids.description)"
+      :note="notes.description"
     >
       <textarea
         :id="ids.description"
@@ -191,7 +197,7 @@ function focusFirstProblem(field: DraftField) {
         rows="4"
         :aria-invalid="Boolean(problems.description)"
         :aria-describedby="problems.description ? problemId(ids.description) : undefined"
-        class="h-28.5 w-full resize-none rounded-field border border-field-line bg-white px-3 py-2.5 text-sm font-medium text-heading focus:border-brand focus:outline-none aria-invalid:border-danger"
+        class="h-28.5 w-full resize-none rounded-field border border-field-line bg-white px-3 py-2.5 text-sm font-medium text-heading focus:border-subtle focus:outline-none aria-invalid:border-danger"
       />
     </VaultField>
   </div>

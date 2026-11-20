@@ -14,26 +14,26 @@ public enum PaveThemeColor: String, CaseIterable, Identifiable, Sendable {
     public var swatch: UInt32 {
         switch self {
         case .green, .custom: 0x355D4C
-        case .blue: 0x4F7DB8
-        case .gold: 0xC89A2E
-        case .pink: 0xC56A8C
-        case .orange: 0xC97A52
-        case .purple: 0x8A6AC8
-        case .red: 0xC86A6C
-        case .lime: 0xC8C36A
+        case .blue: 0x3F7FCB
+        case .gold: 0xE0A21B
+        case .pink: 0xE05C96
+        case .orange: 0xE8742E
+        case .purple: 0x8F6BE0
+        case .red: 0xE0524F
+        case .lime: 0x7FB02E
         }
     }
 
     public var accent: UInt32 {
         switch self {
         case .green, .custom: 0x355D4C
-        case .blue: 0x4C78B1
-        case .gold: 0x927022
-        case .pink: 0xAD5D7B
-        case .orange: 0xA76544
-        case .purple: 0x8466C0
-        case .red: 0xB25E60
-        case .lime: 0x7A7741
+        case .blue: 0x2F6DB5
+        case .gold: 0xA06400
+        case .pink: 0xC2477A
+        case .orange: 0xC0531A
+        case .purple: 0x7A55C7
+        case .red: 0xC23B3B
+        case .lime: 0x4F7A14
         }
     }
 
@@ -44,6 +44,11 @@ public enum PaveThemeColor: String, CaseIterable, Identifiable, Sendable {
             (red, green, blue) = ((red * 0.97).rounded(.down), (green * 0.97).rounded(.down), (blue * 0.97).rounded(.down))
         }
         return UInt32(red) << 16 | UInt32(green) << 8 | UInt32(blue)
+    }
+
+    /// The contrast of white on this colour (WCAG), from 1 to 21.
+    public static func contrastWithWhite(_ color: UInt32) -> Double {
+        contrastWithWhite(Double(color >> 16 & 0xFF), Double(color >> 8 & 0xFF), Double(color & 0xFF))
     }
 
     /// The theme colour whose hue is closest to an own colour, for what can only show the fixed colours, like the app
@@ -98,6 +103,13 @@ public enum PaveTextSize: String, CaseIterable, Identifiable, Sendable {
 }
 
 /// How the vault opens. The vault can still switch for a moment; the next time it opens like this again.
+/// Licht or Donker, or Automatisch: the light or dark setting of the device (`profiles.display_mode`, as on the web).
+public enum PaveDisplayMode: String, CaseIterable, Identifiable, Sendable {
+    case auto, light, dark
+
+    public var id: Self { self }
+}
+
 public enum PaveVaultLayout: String, CaseIterable, Identifiable, Sendable {
     case list, grid
     public var id: Self { self }

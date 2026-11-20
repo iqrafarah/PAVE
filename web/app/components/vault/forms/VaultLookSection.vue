@@ -17,6 +17,11 @@ const props = defineProps<{
   // A logo of your own is chosen; the circle may also show the cover when there is none.
   hasLogo: boolean;
   problem?: string | null;
+  // "Logo van coolblue.nl, gevonden door Ayla" and the same for the cover, while they are as she chose them.
+  logoNote?: string | null;
+  coverNote?: string | null;
+  // The first evidence file, whose type the circle shows when there is no logo.
+  fileName?: string | null;
 }>();
 
 const wantsCover = defineModel<boolean>('wantsCover', { required: true });
@@ -43,14 +48,14 @@ const OPTIONS = [
 ];
 
 const LOGO_ACTIONS: VaultMenuOption[] = [
-  { id: 'reframe', label: VAULT_REFRAME, icon: '/images/vault/icons/PencilOutline.svg' },
-  { id: 'replace', label: VAULT_LOGO_REPLACE, icon: '/images/vault/icons/PhotoOutline.svg' },
-  { id: 'remove', label: VAULT_LOGO_REMOVE, icon: '/images/vault/icons/TrashOutline.svg' },
+  { id: 'reframe', label: VAULT_REFRAME, icon: '/images/vault/icons/Pencil.svg' },
+  { id: 'replace', label: VAULT_LOGO_REPLACE, icon: '/images/vault/icons/PhotoSolid.svg' },
+  { id: 'remove', label: VAULT_LOGO_REMOVE, icon: '/images/vault/icons/Trash.svg' },
 ];
 const COVER_ACTIONS: VaultMenuOption[] = [
-  { id: 'reframe', label: VAULT_REFRAME, icon: '/images/vault/icons/PencilOutline.svg' },
-  { id: 'replace', label: VAULT_COVER_REPLACE, icon: '/images/vault/icons/PhotoOutline.svg' },
-  { id: 'remove', label: VAULT_COVER_REMOVE, icon: '/images/vault/icons/TrashOutline.svg' },
+  { id: 'reframe', label: VAULT_REFRAME, icon: '/images/vault/icons/Pencil.svg' },
+  { id: 'replace', label: VAULT_COVER_REPLACE, icon: '/images/vault/icons/PhotoSolid.svg' },
+  { id: 'remove', label: VAULT_COVER_REMOVE, icon: '/images/vault/icons/Trash.svg' },
 ];
 
 const tint = useImageTint(() => (props.hasLogo || props.hasOrganisationLogo ? props.logoUrl : null));
@@ -132,13 +137,13 @@ function handleAction(role: Role, action: string) {
       <div class="h-16 transition-colors duration-300" :style="{ background: band }">
         <img v-if="shownCover" :src="shownCover" alt="" class="size-full object-cover" />
       </div>
-      <VaultLogo :name="monogramName" :logo-url="logoUrl" :size="60" class="absolute left-4 top-8.5" />
+      <VaultLogo :name="monogramName" :logo-url="logoUrl" :file-name="fileName" :size="60" class="absolute left-4 top-8.5" />
       <p class="truncate px-4 pb-3.5 pt-10 text-base font-medium text-heading">{{ previewTitle }}</p>
     </div>
 
     <!-- Logo: the circle is the button. -->
     <section class="flex items-center gap-3.5">
-      <VaultLogo v-if="hasOrganisationLogo" :name="monogramName" :logo-url="logoUrl" :size="64" />
+      <VaultLogo v-if="hasOrganisationLogo" :name="monogramName" :logo-url="logoUrl" :file-name="fileName" :size="64" />
       <VaultMenu
         v-else-if="hasLogo"
         :label="VAULT_LOGO"
@@ -147,7 +152,7 @@ function handleAction(role: Role, action: string) {
         @select="handleAction('logo', $event)"
       >
         <template #label>
-          <VaultLogo :name="monogramName" :logo-url="logoUrl" :size="64" />
+          <VaultLogo :name="monogramName" :logo-url="logoUrl" :file-name="fileName" :size="64" />
           <span class="sr-only">{{ VAULT_LOGO }}</span>
         </template>
       </VaultMenu>
@@ -166,6 +171,7 @@ function handleAction(role: Role, action: string) {
         <p class="text-xs font-medium text-subtle">
           {{ hasOrganisationLogo ? VAULT_LOGO_FROM_ORGANISATION : hasLogo ? VAULT_LOGO_HINT_CHOSEN : VAULT_LOGO_HINT }}
         </p>
+        <VaultAylaNote v-if="logoNote && hasLogo" :text="logoNote" class="mt-0!" />
       </div>
     </section>
 
@@ -191,6 +197,7 @@ function handleAction(role: Role, action: string) {
           <span class="flex min-w-0 flex-1 flex-col gap-0.5">
             <span class="text-sm font-semibold text-heading">{{ VAULT_COVER }}</span>
             <span class="text-xs font-medium text-subtle">{{ VAULT_COVER_CHOSEN }}</span>
+            <VaultAylaNote v-if="coverNote" :text="coverNote" class="mt-0!" />
           </span>
           <VaultMenu
             :label="VAULT_COVER_ACTIONS"

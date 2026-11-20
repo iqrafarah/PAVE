@@ -1,7 +1,7 @@
 import type { MfaStatus } from '~/utils/auth/mfaRoutes';
 
 const LOGIN_PATH = '/login';
-const PATHS_WITHOUT_MFA = ['/forgot-password', '/confirm', PASSWORD_UPDATED_PATH];
+const PATHS_WITHOUT_MFA = ['/register', '/forgot-password', '/confirm', PASSWORD_UPDATED_PATH];
 const MFA_STEP_PATHS = [MFA_SETUP_PATH, MFA_VERIFY_PATH];
 
 function isAllowedBeforeMfa(path: string, status: MfaStatus | null) {

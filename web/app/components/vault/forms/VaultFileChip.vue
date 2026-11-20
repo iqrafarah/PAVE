@@ -27,7 +27,7 @@ const details = computed(() => describeFile(props.file));
       class="flex size-9 shrink-0 items-center justify-center rounded-full hover:bg-white focus-visible:outline-2 focus-visible:outline-brand"
       @click="emit('remove')"
     >
-      <VaultIcon src="/images/vault/file-remove.svg" :width="10.8778" :height="10.8778" class="text-heading" />
+      <VaultIcon src="/images/vault/file-remove.svg" :width="10.8778" :height="10.8778" class="text-brand" />
     </button>
   </div>
 </template>

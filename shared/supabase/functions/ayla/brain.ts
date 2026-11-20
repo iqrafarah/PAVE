@@ -2,7 +2,7 @@ import { type AylaReply, type AylaRequest, type Block, CATEGORIES, type Category
 import type { AllowedVault } from './vault.ts'
 import { cleanPurpose, CONSENT_QUESTION_CHOICES, consentQuestion, mayLookInVault, vaultConsent } from './consent.ts'
 import { cleanMemories, type Memory, type MemorySuggestion, usedNotes } from './memory.ts'
-import type { ChatMessage, Complete } from './openrouter.ts'
+import type { ContentPart, ChatMessage, Complete } from './openrouter.ts'
 import { buildSystemPrompt } from './prompt.ts'
 import { vaultProposal } from './proposal.ts'
 import type { FoundVacancy, SearchVacancies } from './vacancies.ts'
@@ -17,6 +17,8 @@ export interface BrainInput {
   firstName?: string
   /** What the user let Ayla remember. Missing means Ayla remembers nothing. */
   memory?: Memory
+  /** The project of this conversation, if any. */
+  project?: { name: string; instructions: string; sourceIds?: string[] }
   /** The vault items the user allowed Ayla to use. Missing means she sees none. She only sees them once the user said
    * Ja to looking in the vault in this conversation (see consent.ts). */
   vault?: AllowedVault
@@ -47,7 +49,13 @@ export interface StoredMessage { role: 'user' | 'ayla'; text: string; reply?: Pa
  * added: the model then knows what a Ja answers.
  */
 export function toPastMessage(message: StoredMessage): PastMessage {
-  const asked = message.role === 'ayla' && !!message.reply?.accessRequest
+  // A user message keeps the names of its files, so the model knows later which file went with what.
+  const names = (message.reply as { attachments?: unknown } | null | undefined)?.attachments
+  if (message.role === 'user') {
+    const files = Array.isArray(names) ? names.filter((n): n is string => typeof n === 'string' && !!n) : []
+    return { role: 'user', text: files.length ? `${message.text}\n(bijlagen: ${files.join(', ')})` : message.text }
+  }
+  const asked = !!message.reply?.accessRequest
   if (!asked) return { role: message.role, text: message.text }
   const question = message.reply?.question?.text
   return { role: 'ayla', text: question ? `${message.text}\n${question}` : message.text, askedVault: true }
@@ -72,11 +80,13 @@ interface ModelOutput {
 export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaReply> {
   const { request } = input
   const memory: Memory = input.memory ?? { status: 'unavailable' }
-  const consent = vaultConsent(input.history, request)
+  // Sources the user put in the project are a standing yes to look at those items (still only the allowed ones).
+  const asked = vaultConsent(input.history, request)
+  const consent = asked === 'notAsked' && input.project?.sourceIds?.length ? 'granted' : asked
   const mayLook = mayLookInVault(consent)
   const vault = mayLook ? input.vault : undefined
   const messages: ChatMessage[] = [
-    { role: 'system', content: buildSystemPrompt({ device: request.device, input: request.input, firstName: input.firstName, context: request.context, memory, vault, vaultConsent: consent }) },
+    { role: 'system', content: buildSystemPrompt({ device: request.device, input: request.input, firstName: input.firstName, context: request.context, memory, project: input.project, vault, vaultConsent: consent }) },
     ...input.history.slice(-HISTORY_LIMIT).map((m): ChatMessage => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text })),
     { role: 'user', content: withAttachments(request) },
   ]
@@ -122,14 +132,61 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   // A proposal for the vault: the Watch saves it after Ja; the iPhone and the web open adding evidence with it filled in.
   const action = vaultProposal(output.vaultItem, deps.newId(), new Date())
   if (action) reply.proposedAction = action
-  // Ayla wants to look in the vault and may not yet: the app asks, with fixed words, before she sees anything.
-  const purpose = mayLook ? null : cleanPurpose(output.askVault)
+  // Ayla wants to look in the vault and may not yet: the app asks, with fixed words, before she sees anything. When
+  // the model asked it in its text as well, that sentence goes, so the question is asked once; with nothing left to
+  // say, the question is the whole answer.
+  // A model that asked it in words instead ("Mag ik in je kluis kijken om …?", as its question or in its text) asked
+  // for the vault all the same.
+  const purpose = mayLook ? null : cleanPurpose(output.askVault) ?? consentAskIn(output.question?.text) ?? consentAskIn(output.text)
   if (purpose) {
     reply.accessRequest = { id: deps.newId(), purpose, categories: [] }
-    reply.question = { text: consentQuestion(purpose), choices: CONSENT_QUESTION_CHOICES }
+    const question = consentQuestion(purpose)
+    const lead = withoutConsentAsk(reply.text)
+    reply.text = lead || question
+    reply.question = { text: lead ? question : '', choices: CONSENT_QUESTION_CHOICES }
     delete reply.navigation
   }
+  // The user just said no to what Ayla offered: she does not offer it again, whatever the model wrote.
+  if (declinedOffer(input.history, request.text)) {
+    delete reply.proposedAction
+    if (reply.navigation?.screen === 'addEvidence') delete reply.navigation
+    if (reply.question?.choices.some((c) => /^(ja|yes)$/i.test(c.label))) delete reply.question
+  }
   return reply
+}
+
+const NO_ANSWER = /^(nee|nope|no|liever niet|niet nu|nee bedankt|nee dank je)\b/i
+
+/** The user answers no to a question or offer of Ayla in the last turn. */
+export function declinedOffer(history: PastMessage[], text: string): boolean {
+  if (!NO_ANSWER.test(text.trim())) return false
+  const last = history.at(-1)
+  return last?.role === 'ayla'
+}
+
+/** What the model asks the vault for when it asks in words; null when it does not ask. */
+export function consentAskIn(text: string | null | undefined): string | null {
+  const match = text?.match(/\bmag ik\b[^.?!]*\bkluis\b[^.?!]*?\bkijken\b(?:\s+om\s+([^.?!]+))?/i)
+  if (!match) return null
+  return cleanPurpose(match[1] ?? '') ?? 'te zien wat erin staat'
+}
+
+/**
+ * Ayla's last question is an open one ("Wat…", "Welke…"), which the user answers in words, not with Ja or Nee. A
+ * sentence after it ("Bijvoorbeeld een diploma.") does not change that.
+ */
+export function endsWithOpenQuestion(text: string): boolean {
+  const questions = text.trim().split(/(?<=[.!?])\s+|\n+/).map((s) => s.trim()).filter((s) => s.endsWith('?'))
+  const last = questions.at(-1) ?? ''
+  return /^(wat|welke?|hoe|wanneer|waar\w*|wie|waarom|hoeveel|hoelang)\b/i.test(last)
+}
+
+/** The text without the sentences in which the model itself asks whether it may look in the vault. */
+export function withoutConsentAsk(text: string): string {
+  const sentences = text.split(/(?<=[.!?])\s+|\n+/).map((s) => s.trim()).filter(Boolean)
+  const asksVault = (s: string) =>
+    /\bkluis\b/i.test(s) && (/^(mag|kan|zal|zou) ik\b|^(wil je dat|vind je het goed|is het goed)\b|\bin je kluis\b.*\bkijken\b/i.test(s))
+  return sentences.filter((s) => !asksVault(s)).join(' ')
 }
 
 /**
@@ -163,10 +220,17 @@ export function partialText(json: string): string {
 }
 
 /** The question plus the text of the files the user added, marked so the model treats it as data. */
-export function withAttachments(request: AylaRequest): string {
+/** The question with its files: their text between tags, and photos as images the model looks at. */
+export function withAttachments(request: AylaRequest): string | ContentPart[] {
   if (!request.attachments?.length) return request.text
   const files = request.attachments.map((file) => `<bijlage naam="${file.name.replaceAll('"', "'")}">\n${file.text}\n</bijlage>`)
-  return [request.text, ...files].join('\n\n')
+  const text = [request.text, ...files].join('\n\n')
+  const images = request.attachments.filter((file) => file.image)
+  if (!images.length) return text
+  return [
+    { type: 'text', text: `${text}\n\nDe afbeeldingen hierbij zijn, in deze volgorde: ${images.map((f) => f.name).join(', ')}.` },
+    ...images.map((file) => ({ type: 'image_url' as const, image_url: { url: `data:image/jpeg;base64,${file.image}` } })),
+  ]
 }
 
 type SearchResult = { status: 'ok'; items: FoundVacancy[] } | { status: 'unavailable' } | { status: 'failed' }
@@ -274,7 +338,11 @@ function toReply(output: ModelOutput, blocks: Block[], conversationId: string, i
     reply.navigation = item ? { screen: 'vaultItem', itemId: item.id } : { screen: 'vault' }
   }
   // Offering to add evidence is always a Ja/Nee question (Figma "Wil je iets toevoegen?"), also when the model forgot it.
-  if (reply.navigation?.screen === 'addEvidence' && !reply.question) reply.question = ADD_EVIDENCE_QUESTION
+  // After an open question of her own ("Wat wil je toevoegen?") the user answers in words: the conversation goes on.
+  if (reply.navigation?.screen === 'addEvidence' && !reply.question) {
+    if (endsWithOpenQuestion(reply.text)) delete reply.navigation
+    else reply.question = ADD_EVIDENCE_QUESTION
+  }
   return reply
 }
 

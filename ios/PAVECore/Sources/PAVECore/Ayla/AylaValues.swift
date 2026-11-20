@@ -39,6 +39,8 @@ public struct AylaScreen: AylaValue {
     public static let vacancies = Self(rawValue: "vacancies")
     public static let profile = Self(rawValue: "profile")
     public static let settings = Self(rawValue: "settings")
+    /// Only in the apps ("open mijn meldingen"); the brain does not point to it.
+    public static let notifications = Self(rawValue: "notifications")
 }
 
 public struct AylaActionKind: AylaValue {

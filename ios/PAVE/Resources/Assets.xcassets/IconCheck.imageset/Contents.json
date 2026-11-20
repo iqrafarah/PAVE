@@ -3,6 +3,16 @@
     {
       "filename": "IconCheck.svg",
       "idiom": "universal"
+    },
+    {
+      "appearances": [
+        {
+          "appearance": "luminosity",
+          "value": "dark"
+        }
+      ],
+      "filename": "IconCheck-dark.svg",
+      "idiom": "universal"
     }
   ],
   "info": {

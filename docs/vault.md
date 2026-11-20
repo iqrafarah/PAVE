@@ -46,7 +46,11 @@ What is in Supabase on 2026-11-10 (read-only check with the publishable key):
 | Table | From | Used by |
 | --- | --- | --- |
 | `profiles` (id, full_name, preferred_name, email, avatar_url, role, organization_id, program, created_at, updated_at) | web team, not in our migrations | Ayla function (name) |
-| `organizations` (id, name, created_at) | web team, not in our migrations | `profiles.organization_id` |
+| `organizations` (id, name, created_at, logo_url, kind) | web team, not in our migrations; `kind` and the places are added by `20261117120000_organisation_directory.sql` | `profiles.organization_id` |
+| `organization_locations` (organization_id, city) | `20261117120000_organisation_directory.sql` | The places of each organisation, for picking where to ask for verification. 37 organisations (15 schools, 22 companies), readable by signed-in users, written by trusted server code only. |
+| `organization_departments` (organization_id, location_id, name) | `20261117130000_organisation_contacts.sql` (not applied yet) | Departments or programmes of a school. Demo: ICT, Engineering and Pedagogiek at Fontys. Readable by signed-in users. |
+| `organization_contacts` (organization_id, location_id, department_id, name, job_title, is_active) | same | The person or desk a learner picks. Demo rows are roles (Stagebureau, Docent ICT, Stagebegeleider, HR-afdeling), not real people. Readable by signed-in users. |
+| `organization_contact_reviewers` (contact_id, organization_id, reviewer_id) | same | Private: the PAVE accounts behind a contact; each must be a `vault_validation_reviewers` row of the same organisation. A contact without one falls back to every reviewer of the organisation. |
 | `ayla_conversations`, `ayla_messages`, `ayla_memories`, `ayla_settings` | our migrations | iOS, Ayla function |
 | the 8 `vault_*` tables and the `pave-vault` bucket | `20261110120000_vault.sql` | iOS (items, files, skills, folders); web not yet |
 
@@ -86,6 +90,29 @@ Migration `20261112120000_vault_cover_example_folders_reverify.sql`. Run it toge
   - Until the migration runs, iOS makes them for an account without any folder.
 - **Ayla and the vault:** the `ayla` function reads the items with `ayla_allowed_at` set and uses them in answers and searches. It sees their details, skills and file names, not file contents. Other items stay invisible to her.
 
+## Round four: Ayla fills in, folders as pages, folder order (iOS first)
+
+- **Laat Ayla invullen** (Edge Function `ayla-evidence`, nothing stored): after you choose a file, "Laat Ayla invullen" sends the text of each document and an image of an image file or of the first page of a PDF. Ayla proposes the whole item, its folder and skills, and where she found each field. The user checks everything before saving.
+  - **Logo:** a photo that is only a logo; otherwise the logo of the organisation's website (schema.org logo, Apple icon, other icons, Google's icon service; the sharpest square one wins, only the domain goes out); otherwise the logo cut from the page where Ayla marked it (`logoBox`, fractions of the image).
+  - **Cover:** only a real photo from the files, or a photo cut from a page (`coverBox`). Never a whole PDF page, a scan or a logo.
+  - **More than one item:** Ayla may see a certificate and a grade list as two items; it stays one item unless you choose "Apart toevoegen".
+- **Skills from Ayla** (`ayla-skills` and `ayla-evidence`): `existing` are only the skills already chosen for this evidence; `known` are the other skills in the vault, which Ayla may propose again and writes the same way. A client that does not send `known` works as before.
+- **Folders as pages:** tapping a folder opens it, as on the web; back returns to the whole vault. Long-press a card to drag it onto a folder: from the whole vault it goes in, from an open folder it moves ("Verplaatsen naar" in the menu does the same). Long-press a folder to drag it to another place ("Naar voren" and "Naar achteren" in its menu).
+- **Evidence from the chat:** Ayla builds an item up with the user turn by turn ("Bouw het dan samen op" in the prompt): `proposedAction.vaultItem` now also carries `description` and `skills`, and the app shows it as a growing card ("Bewijs in opbouw") with "Zet in de kluis". Ja, the card's button or a spoken Ja opens adding evidence with the item filled in and with the files that were sent with the question (the app keeps those on the device; they never go to the chat function), and with files Ayla reads them at once as "Laat Ayla invullen" does. The chat reads the files of a proposed item itself (the same `ayla-evidence` reading, once per set of files, cached per conversation), so the card shows what the documents say completed with the chat (`VaultEvidenceProposal.merged(with:)`), names the files that go along (each can be left out on the card), and "Zet in de kluis" opens the form filled in without reading again. Ayla says in `vaultItem.attachments` which files belong to the item. After saving, the card says "Toegevoegd aan je kluis", the files are no longer taken along, and the app sends "Toegevoegd aan mijn kluis: …" so Ayla starts the next item clean.
+- **Folder order** (migration `20261113120000_vault_order.sql`, not applied; run it together with the web team): `vault_folders.position`, read as `position asc nulls last, created_at asc`, and `vault_items.position` for "Eigen volgorde". Until it runs, iOS keeps both orders on the device. A position never sets a confirmed item back to `toVerify`.
+- **Folder colours, own colour and pinned folders** (migration `20261119120000_vault_folder_custom_color_and_pin.sql`, not applied; run it together with the iOS team): the colours to choose from are the theme colours of Settings, so `vault_folders.color` also takes `gold`, `red` and `lime` (`rose` is Roze, `rust` is Oranje), or a colour of your own as `#rrggbb` (lower case). `vault_folders.pinned_at` puts a folder in front; read folders as `pinned_at is null, position asc nulls last, created_at asc`. iOS shows colours it does not know in the default green. Until it runs, the web keeps pins in the browser (moved to the database once it has run) and says Goud, Rood, Limoen or an own colour cannot be saved yet.
+- **Source "Via Ayla"** (migration `20261119130000_vault_item_source_ayla.sql`, guard verified deployed on 2026-11-18): the web adds an item with `source = 'ayla'` when Ayla filled it in, including a resumed draft, so the Bron filter finds it. It stays the user's own and unconfirmed. Failed inserts are reported instead of retrying as `user`. Older mislabelled items require a targeted correction based on confirmed origin; Ayla's permission to read an item does not establish who created it.
+
+## Round five: verval and archive (iOS first, not applied)
+
+Migration `20261120120000_chat_expiry_and_archive.sql`. Deleting is final; nothing expires unless the account chooses it.
+
+- **Verval for chats** (not for evidence). `profiles.chat_expiry_days` (null = no expiry; 1, 7, 30 or 90), `chat_expiry_from` (`last_message` or `created`), `chat_expiry_keeps_pinned` and `chat_expiry_keeps_locked` (both default true). Per chat `ayla_conversations.expiry_days`: null follows the account, 0 never, otherwise its own number of days. A chat in a project or in the archive never expires.
+- **Deleting** happens on the server: `ayla_delete_expired_chats()` every hour through pg_cron where it is installed, and `ayla_expire_my_chats()` (RPC, for the signed-in account) which the apps call when they load the chat list.
+- **Archive**: `ayla_conversations.archived_at` and `vault_items.archived_at`. The apps leave rows with `archived_at` out of the normal lists and show them in the archive (iOS: Instellingen › Archief). Archiving a chat unpins it. Web still has to hide archived rows and offer the archive.
+- **Ayla and the archive**: `profiles.ayla_uses_archive` (default false). The `ayla` function leaves archived evidence out unless it is true; deploy the function together with the migration.
+- The profile guard (`guard_profile_self_update`) is replaced with a list that also names `display_mode`, so it can be applied before or after the web's display mode migration.
+
 ## Test data
 
 [`shared/supabase/seed/vault_test_data.sql`](../shared/supabase/seed/vault_test_data.sql) fills the vault of one test account for trying the apps and the demo: 15 items in every category, all three statuses, every source, current and finished periods, skills, items Ayla may and may not use, and six folders. It is not a migration: fill in the account's e-mail address at the top and run it in the SQL editor. Running it again replaces the test data, and [`vault_test_data_remove.sql`](../shared/supabase/seed/vault_test_data_remove.sql) takes it out. It only touches rows whose id starts with `5eed0000`, and it reuses the example folders the account already has. There are no files: those go through the Storage API.
@@ -94,8 +121,12 @@ Migration `20261112120000_vault_cover_example_folders_reverify.sql`. Run it toge
 
 1. Review categories, folder behavior, status transitions, file limits and validation ownership with Daaf and the web team.
 2. ~~Build the `VaultService` against this model.~~ Done on iOS on 2026-11-10 (read, add, change, move, delete, folders). Still to do: file upload, and the web client.
-3. Add the server-side validation and task-consent behavior. Test that Ayla cannot read an item or category without an active, matching grant.
+3. ~~Verification of vault items.~~ Database, `vault-review` and iOS done on 2026-11-17; see [verificatie.md](verificatie.md). Separately add the Ayla task-consent behavior and verify grants before Ayla reads a vault item/category.
 4. ~~Apply the migration to the shared Supabase project.~~ Done on 2026-11-10.
 5. Update `ios/README.md`, `docs/ayla.md` and this page when the schema is applied or the contract changes.
+
+## Verification, organisations and notifications
+
+Everything about requesting verification, the organisation directory, reviewers and the notification inbox is described in [verificatie.md](verificatie.md). The database side is one migration: [`20261117180000_organisations_verification_notifications.sql`](../shared/supabase/migrations/20261117180000_organisations_verification_notifications.sql).
 
 The migration includes Realtime publication entries for the vault tables so other signed-in devices can refresh. Clients must still use the authenticated user's session; service-role keys belong only in trusted server functions.

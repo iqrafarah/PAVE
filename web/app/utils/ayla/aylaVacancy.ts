@@ -9,11 +9,11 @@ function toMonthly(amount: number, period: VacancySalary['period']) {
   return Math.round(amount);
 }
 
-/** "€2.800 - €3.400 p/m", with "(geschat)" for an estimate. A yearly salary is shown per month (same as iOS). */
+/** "€2.800 tot €3.400 per maand", with "(geschat)" for an estimate. A yearly salary is shown per month (same as iOS). */
 export function formatMonthlySalary(salary: VacancySalary) {
   const min = EURO_FORMAT.format(toMonthly(salary.min, salary.period));
   const max = EURO_FORMAT.format(toMonthly(salary.max, salary.period));
-  const range = min === max ? `€${min} p/m` : `€${min} - €${max} p/m`;
+  const range = min === max ? `€${min} per maand` : `€${min} tot €${max} per maand`;
   if (salary.isEstimate) return `${range} (geschat)`;
   return range;
 }

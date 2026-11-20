@@ -50,7 +50,8 @@ function openChats() {
 async function startNewConversation() {
   closeMenu();
   conversation.startNew();
-  await navigateTo('/');
+  await navigateTo(newChatPath(route));
+  conversation.focusComposer();
 }
 
 watch(isMenuOpen, async (isOpen) => {
@@ -105,7 +106,7 @@ watch(() => route.fullPath, closeMenu);
           >
             <span class="flex size-6 items-center justify-center text-brand" aria-hidden="true">
               <LayoutAylaGlyph v-if="place.icon === 'ayla'" class="h-4.25 w-3.75" />
-              <LayoutPaveIcon v-else :name="place.icon" class="size-5" />
+              <LayoutPaveIcon v-else :name="placeIcon(place, route.path)" class="size-5" />
             </span>
             {{ place.label }}
           </NuxtLink>
@@ -116,7 +117,7 @@ watch(() => route.fullPath, closeMenu);
             class="flex min-h-12 w-full cursor-not-allowed items-center gap-3.5 rounded-xl px-3 text-base font-semibold text-ink-soft"
           >
             <span class="flex size-6 items-center justify-center text-brand" aria-hidden="true">
-              <LayoutPaveIcon v-if="place.icon !== 'ayla'" :name="place.icon" class="size-5" />
+              <LayoutPaveIcon v-if="place.icon !== 'ayla'" :name="placeIcon(place, route.path)" class="size-5" />
             </span>
             {{ place.label }}
             <span class="sr-only">({{ AYLA_NOT_AVAILABLE_YET }})</span>

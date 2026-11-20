@@ -16,6 +16,9 @@
     --color-muted: #666d69;
     --color-line: #d9dedb;
     --color-surface: #f9f9f9;
+    --color-panel: #ffffff;
+    --color-canvas: #ffffff;
+    --color-sidebar: #ffffff;
     --color-tint: #e9eeea;
     /* Ayla screens (Figma: Start, Kluis doorzoeken, Geen resultaat) */
     --color-heading: #2b2b2b;
@@ -106,6 +109,128 @@
             transform: translateY(0);
         }
     }
+
+    /* The tray under the chat swaps between the composer and the choices (with or without the vault strip). */
+    @keyframes tray-in {
+        from {
+            opacity: 0;
+            transform: translateY(0.5rem) scale(0.98);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    /* Something Ayla put in the vault lands with a small bounce. */
+    @keyframes ayla-added {
+        from {
+            opacity: 0;
+            transform: translateY(0.75rem) scale(0.96);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+}
+
+/* Dark surfaces and theme-derived accents; the saved theme colours stay untouched. */
+:root[data-display-mode="dark"] {
+    color-scheme: dark;
+    /* PAVE green, for when the page has no theme colours of its own yet (the page sets these for every other colour). */
+    --dark-brand: #2b825d;
+    --dark-accent-text: #8cd9b8;
+    --dark-brand-soft: #273f35;
+    --dark-tint: #1a2b24;
+    --dark-badge: #233930;
+    --dark-drop: #13201a;
+    --dark-drop-line: #8cd9b8;
+    --dark-verified-surface: #16241e;
+    --color-canvas: #0a0a0a;
+    --color-sidebar: #101010;
+    --color-surface: #0d0d0d;
+    --color-panel: #161616;
+    --color-heading: #fafafa;
+    --color-ink: #ebebeb;
+    --color-subtle: #b3b3b3;
+    --color-muted: #b3b3b3;
+    --color-ink-soft: #a6a6a6;
+    --color-line: #3a3a3a;
+    --color-rail-line: #1f1f1f;
+    --color-card-line: #2c2c2c;
+    --color-card-border: #2c2c2c;
+    --color-toolbar-line: #3a3a3a;
+    --color-field-line: #2a2a2a;
+    --color-tile: #1e1e1e;
+    --color-bubble: #1e1e1e;
+    --color-chip: #262626;
+    --color-brand: var(--dark-brand) !important;
+    --color-tint: var(--dark-tint) !important;
+    --color-brand-soft: var(--dark-brand-soft) !important;
+    --color-badge: var(--dark-badge) !important;
+    --color-drop: var(--dark-drop) !important;
+    --color-drop-line: var(--dark-drop-line) !important;
+    --color-skill-idle: #1e1e1e;
+    --color-cover-selected: #2a2a2a;
+    --color-step-todo: #9e9e9e;
+    --color-skeleton: #262626;
+    --color-skeleton-image: #2e2e2e;
+    --color-status-verified-surface: var(--dark-verified-surface) !important;
+    --color-status-pending: #e5bf7d;
+    --color-status-pending-surface: #2b2722;
+    --color-status-rejected: #efa6a0;
+    --color-status-rejected-surface: #382120;
+    --color-danger: #ffaaa1;
+    --color-critical: #efa6a0;
+    --color-warning: #f0b37b;
+    --color-warning-soft: #302318;
+    --color-backdrop: rgb(0 0 0 / 0.75);
+    --shadow-composer: 0 0 0 1px #3a3a3a, 0 8px 32px rgb(0 0 0 / 0.4);
+    --shadow-modal: 0 24px 80px rgb(0 0 0 / 0.6);
+    --vault-tint-strength: 24%;
+    background: var(--color-canvas);
+}
+
+:root[data-display-mode="dark"] :is(.bg-white, .hover\:bg-white:hover) {
+    background-color: var(--color-panel);
+}
+:root[data-display-mode="dark"] :is(.bg-white\/85, .bg-white\/90) {
+    background-color: color-mix(in srgb, var(--color-panel) 92%, transparent);
+}
+:root[data-display-mode="dark"] .from-white {
+    --tw-gradient-from: var(--color-canvas);
+}
+:root[data-display-mode="dark"] :is(.text-brand, .hover\:text-brand:hover) {
+    color: #ffffff;
+}
+:root[data-display-mode="dark"] :is(.border-brand, [data-theme-selected="true"]) {
+    border-color: var(--dark-accent-text);
+}
+:root[data-display-mode="dark"] .ring-brand {
+    --tw-ring-color: var(--dark-accent-text);
+}
+:root[data-display-mode="dark"] :is(.focus-visible\:outline-brand:focus-visible, .focus-within\:outline-brand:focus-within, .has-focus-visible\:outline-brand:has(:focus-visible)) {
+    outline-color: var(--dark-accent-text);
+}
+:root[data-display-mode="dark"] nav[aria-label="Hoofdmenu"] .text-brand,
+:root[data-display-mode="dark"] nav[aria-label="Hoofdmenu"] a:not([aria-current="page"]) {
+    color: #ffffff;
+}
+:root[data-display-mode="dark"] nav[aria-label="Hoofdmenu"] .pave-logo {
+    background-color: #ffffff;
+}
+:root[data-display-mode="dark"] .pave-logo {
+    background-color: #ffffff;
+}
+:root[data-display-mode="dark"] .text-surface {
+    color: #ffffff;
+}
+:root[data-display-mode="dark"] :is(.bg-ink, .hover\:bg-ink:hover) {
+    background-color: color-mix(in srgb, var(--color-brand) 85%, black);
+}
+:root[data-display-mode="dark"] dialog::backdrop {
+    background: rgb(0 0 0 / 0.75);
 }
 /*
  * Everything you can click shows the hand cursor (Tailwind v4 gives buttons the arrow). Something that cannot be used
@@ -128,6 +253,16 @@
         overscroll-behavior: contain;
     }
 
+    /*
+     * Room for the scrollbar is always kept, so the page does not jump sideways a little when a filter, a search or an
+     * open folder makes the content shorter or longer and the scrollbar appears or goes away. Screens with scrollbars
+     * that float above the content (phones, trackpads) are not affected.
+     */
+    .overflow-y-auto,
+    .overflow-auto {
+        scrollbar-gutter: stable;
+    }
+
     button:not(:disabled),
     [role="button"]:not([aria-disabled="true"]),
     [role="menuitem"],
@@ -148,4 +283,106 @@
     [aria-disabled="true"] {
         cursor: not-allowed;
     }
+}
+
+/*
+ * The chat history panel has two parts that scroll (the list and the open chat). Their scrollbars stay hidden until
+ * the pointer is over that part, so the panel does not show two bars next to each other.
+ */
+.quiet-scroll .overflow-y-auto {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+}
+
+.quiet-scroll .overflow-y-auto:hover {
+    scrollbar-color: color-mix(in srgb, var(--color-ink) 28%, transparent) transparent;
+}
+
+/* The strip above the tray (caption or files) opens and closes its space instead of jumping. */
+@keyframes strip-open {
+    from {
+        grid-template-rows: 0fr;
+        opacity: 0;
+    }
+    to {
+        grid-template-rows: 1fr;
+        opacity: 1;
+    }
+}
+.strip-enter-active {
+    animation: strip-open 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.strip-leave-active {
+    animation: strip-open 0.16s ease-in reverse both;
+}
+.tray-swap-enter-active {
+    transform-origin: bottom center;
+    animation: tray-in 0.18s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.tray-shape-enter-active {
+    transition: opacity 0.22s ease-out 0.04s;
+}
+.tray-shape-leave-active {
+    transition: opacity 0.1s ease-in;
+}
+.tray-shape-enter-from,
+.tray-shape-leave-to {
+    opacity: 0;
+}
+.tray-swap-leave-active {
+    transform-origin: bottom center;
+    transition:
+        opacity 0.08s ease-out,
+        transform 0.08s ease-out;
+}
+.tray-swap-leave-to {
+    opacity: 0;
+    transform: translateY(0.25rem) scale(0.99);
+}
+@media (prefers-reduced-motion: reduce) {
+    .strip-enter-active,
+    .tray-shape-enter-active,
+    .tray-shape-leave-active,
+    .strip-leave-active,
+    .tray-swap-enter-active,
+    .tray-swap-leave-active {
+        animation: none;
+        transition: none;
+    }
+}
+
+/* "Animaties uitzetten" in the settings: everything moves at once, so nothing is seen moving. A near-zero duration (not
+   `none`) keeps animationend/transitionend firing, which Vue's <Transition> waits for. */
+:root[data-reduce-motion="true"] *,
+:root[data-reduce-motion="true"] *::before,
+:root[data-reduce-motion="true"] *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+}
+
+/* The PAVE logo button in the side menu: the lively theme colour behind the white logo. */
+:root[data-display-mode="dark"] nav[aria-label="Hoofdmenu"] button[data-panel-opener] {
+    background-color: var(--color-brand);
+}
+:root[data-display-mode="dark"] nav[aria-label="Hoofdmenu"] button[data-panel-opener]:hover {
+    background-color: color-mix(in srgb, var(--color-brand) 85%, white);
+}
+
+/* The fade under the chat, behind the composer: written out so it does not depend on the white of the light mode. */
+:root[data-display-mode="dark"] .bg-linear-to-t.from-white {
+    background-image: linear-gradient(to top, var(--color-canvas) 75%, transparent);
+}
+
+/* The ring around the chosen theme colour is plain white instead of a pale version of that colour. */
+:root[data-display-mode="dark"] [class*="border-(--ring)"] {
+    border-color: #ffffff;
+}
+
+/* The tray around the composer is a plain dark grey that sits with the composer bar and the page. */
+:root[data-display-mode="dark"] .ayla-tray {
+    --color-tint: #232323;
 }

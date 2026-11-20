@@ -3,6 +3,8 @@ import SwiftUI
 /// Puts views next to each other and continues on the next line when the row is full, like words in a sentence.
 struct FlowLayout: Layout {
     var spacing: CGFloat = 8
+    /// Rows start at the left, or end at the right for the user's side of a conversation.
+    var alignment: HorizontalAlignment = .leading
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let rows = rows(for: subviews, width: proposal.width ?? .infinity)
@@ -14,7 +16,7 @@ struct FlowLayout: Layout {
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         var y = bounds.minY
         for row in rows(for: subviews, width: bounds.width) {
-            var x = bounds.minX
+            var x = alignment == .trailing ? bounds.maxX - row.width : bounds.minX
             for index in row.indices {
                 let size = subviews[index].sizeThatFits(.unspecified)
                 subviews[index].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))

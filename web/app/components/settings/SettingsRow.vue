@@ -14,6 +14,6 @@ defineProps<{
     </span>
     <span class="min-w-0 flex-1 text-base font-semibold text-heading">{{ title }}</span>
     <span v-if="value" class="max-w-32 truncate text-sm font-medium text-subtle">{{ value }}</span>
-    <LayoutPaveIcon name="chevronRight" class="size-3.5 text-subtle" />
+    <LayoutPaveIcon name="chevronRight" class="size-3.5 text-brand" />
   </NuxtLink>
 </template>

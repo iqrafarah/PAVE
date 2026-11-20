@@ -1,10 +1,11 @@
 <script setup lang="ts">
 // The round logo on a vault card (Figma "image 4"): the organisation's logo when the item is linked to one, otherwise
-// the first letter (VaultMonogram). A logo that does not load also falls back to the letter.
+// an icon for its file or the first letter (VaultMonogram). A logo that does not load also falls back to that.
 const props = defineProps<{
   name: string;
   logoUrl: string | null;
   size: number;
+  fileName?: string | null;
 }>();
 
 const hasFailed = ref(false);
@@ -23,5 +24,5 @@ watch(
   >
     <img :src="logoUrl" alt="" class="size-full object-cover" loading="lazy" referrerpolicy="no-referrer" @error="hasFailed = true" />
   </span>
-  <VaultMonogram v-else :name="name" :size="size" />
+  <VaultMonogram v-else :name="name" :size="size" :file-name="fileName" />
 </template>

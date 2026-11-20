@@ -80,24 +80,45 @@ extension VaultItem.Status {
 }
 
 extension VaultFolderColor {
+    /// Green follows the accent of the app; the others are the theme colours, as on the web.
     var color: Color {
-        switch self {
-        case .green: .paveAccent
-        case .blue: .folderBlue
-        case .purple: .folderPurple
-        case .rust: .folderRust
-        case .rose: .folderRose
-        case .slate: .folderSlate
-        }
+        self == .green ? .paveAccentFill : Color(uiColor: UIColor(hex: hex))
     }
 
     /// The light band behind the folder: 11% of the colour on white, which for green is exactly the surface tint.
     var surface: Color {
-        self == .green ? .paveSurfaceTint : color.mix(with: .white, by: 0.89)
+        self == .green ? .paveSurfaceTint : color.mix(with: Color.panel, by: 0.89)
+    }
+
+    /// White on the colour when that reads well (WCAG AA for the icon), otherwise ink, as for lime or a light own colour.
+    var foreground: Color {
+        self == .green || PaveThemeColor.contrastWithWhite(hex) >= 3 ? .white : Color(uiColor: UIColor(hex: 0x2B2B2B))
     }
 }
 
 extension VaultFolderIcon {
+    /// Filled, for projects (web: every project icon is filled).
+    var solidImage: ImageResource {
+        switch self {
+        case .folder: .iconFolderSolid
+        case .briefcase: .iconBriefcaseSolid
+        case .academicCap: .iconAcademicCapSolid
+        case .checkBadge: .iconCheckBadgeSolid
+        case .wrenchScrewdriver: .iconWrenchScrewdriverSolid
+        case .chatBubble: .iconChatBubbleLeftEllipsisSolid
+        case .star: .iconStarSolid
+        case .heart: .iconHeartSolid
+        case .codeBracket: .iconCodeBracketSolid
+        case .lightBulb: .iconLightBulbSolid
+        case .rocket: .iconRocketLaunchSolid
+        case .globe: .iconGlobeEuropeAfricaSolid
+        case .paintBrush: .iconPaintBrushSolid
+        case .documentText: .iconDocumentTextSolid
+        case .userGroup: .iconUserGroupSolid
+        case .trophy: .iconTrophySolid
+        }
+    }
+
     /// Outline, like the icons on the category folders.
     var image: ImageResource {
         switch self {

@@ -5,7 +5,7 @@ import SwiftUI
 /// takes the evidence along when you switch it on. Lower parts on a short screen, so it never feels cramped.
 struct VaultEvidenceAddedView: View {
     @Bindable var flow: VaultAddEvidenceModel
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @Environment(\.isShortSheet) private var isShort
     @State private var landed = false
     @State private var consentShown = false
@@ -28,6 +28,9 @@ struct VaultEvidenceAddedView: View {
             }
             if flow.coverWaits || flow.logoWaits {
                 PaveNotice(message: VaultMessages.imagesNotYet(cover: flow.coverWaits, logo: flow.logoWaits))
+            }
+            if let next = flow.nextEvidence.first {
+                PaveNotice(message: VaultMessages.nextEvidenceNote(next.proposal.title))
             }
             Spacer(minLength: 0)
             VaultAylaConsentCard(isOn: $flow.allowsAyla, hasFile: flow.hasFile)
@@ -58,7 +61,7 @@ struct VaultEvidenceAddedView: View {
             .foregroundStyle(.white)
             .scaleEffect(landed ? 1 : 0.4)
             .frame(width: size, height: size)
-            .background(Color.paveAccent, in: .circle)
+            .background(Color.paveAccentFill, in: .circle)
             .scaleEffect(landed ? 1 : 0.6)
             .opacity(landed ? 1 : 0)
             .accessibilityHidden(true)

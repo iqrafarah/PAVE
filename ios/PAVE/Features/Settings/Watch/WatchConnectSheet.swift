@@ -7,7 +7,7 @@ import SwiftUI
 struct WatchConnectSheet: View {
     @Environment(WatchConnectionModel.self) private var model
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
 
     private enum Stage: Equatable {
         case boxed
@@ -109,7 +109,7 @@ struct WatchConnectSheet: View {
             }
             // The Watch rests on the surface: a soft shadow under it once it is out.
             Ellipse()
-                .fill(Color.black.opacity(0.18))
+                .fill(Color.backdrop)
                 .frame(width: 120, height: 16)
                 .blur(radius: 10)
                 .offset(y: 132)

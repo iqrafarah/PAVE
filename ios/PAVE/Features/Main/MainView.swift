@@ -9,7 +9,7 @@ import SwiftUI
 struct MainView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.horizontalSizeClass) private var sizeClass
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(AylaSpotlight.settingKey) private var chatsInSpotlight = false
     @State private var model: AylaChatModel
@@ -19,7 +19,10 @@ struct MainView: View {
     @State private var profile: ProfileModel
     @Environment(\.dynamicTypeSize) private var deviceTextSize
     @State private var watchConnection = WatchConnectionModel()
+    @State private var notificationsModel: NotificationsModel
     @State private var destination = MainDestination.ayla
+    /// Demo: the Camera Control button steers PAVE while "knopmodus" is on.
+    @State private var cameraControl = PaveCameraControl()
     @State private var isMenuOpen = false
     @State private var isSidebarHidden = false
     @State private var showsChats = false
@@ -29,6 +32,7 @@ struct MainView: View {
     @State private var isFolded = false
     /// When "Zoeken in chats" was asked for, so the search field of the chats takes the keyboard.
     @State private var chatSearchRequestedAt: Date?
+    @State private var showsSearch = false
     private let connection = PaveConnection.shared
 
     /// Wide enough to show the chats next to the conversation.
@@ -37,39 +41,33 @@ struct MainView: View {
     private static let sidebarWidth: CGFloat = 800
     private static let sidebarSize: CGFloat = 320
 
-    init(service: (any AylaService)?, vaultService: (any VaultService)?, devicesService: (any DevicesService)? = nil, profileService: (any ProfileService)? = nil) {
-        _model = State(initialValue: AylaChatModel(service: service, drafts: .standard))
+    init(service: (any AylaService)?, vaultService: (any VaultService)?, devicesService: (any DevicesService)? = nil, profileService: (any ProfileService)? = nil, notificationsService: SupabaseNotificationsService? = nil) {
+        _model = State(initialValue: AylaChatModel(service: service, drafts: .standard, pendingFiles: .standard))
         _memory = State(initialValue: AylaMemoryModel(service: service))
         _vault = State(initialValue: VaultModel(service: vaultService))
         _devices = State(initialValue: SignedInDevicesModel(service: devicesService))
         _profile = State(initialValue: ProfileModel(service: profileService))
+        _notificationsModel = State(initialValue: NotificationsModel(service: notificationsService))
     }
 
     var body: some View {
         GeometryReader { proxy in
-            Group {
-                if let fold = proxy.foldSplit(), fold.axis == .sideBySide {
-                    SplitPanes(split: fold) {
-                        sidebar(width: fold.first.width, canHide: false)
-                    } second: {
-                        screen(onShowMenu: nil)
-                    }
-                    .background(Color.canvas.ignoresSafeArea())
-                    .onAppear { isMenuOpen = false }
-                } else if hasSidebar {
-                    HStack(spacing: 0) {
-                        if !isSidebarHidden {
-                            sidebar(width: Self.sidebarSize, canHide: true)
-                                .transition(.move(edge: .leading))
-                        }
-                        screen(onShowMenu: isSidebarHidden ? { setSidebarHidden(false) } : nil)
-                    }
-                    .background(Color.canvas.ignoresSafeArea())
-                } else {
-                    // On the outer display of iPhone Duo the open menu draws its own close button in the menu button's
-                    // place; the real one hides meanwhile, so no second glass circle shows underneath.
-                    screen(onShowMenu: menuReplacesButtons ? nil : { isMenuOpen.toggle() })
-                        .overlay {
+            // One layout for every shape of screen, with the screen always in the same place in it: folding, turning
+            // or resizing only moves it, so what is open on it (a sheet, a half-filled form) stays open.
+            let fold = proxy.foldSplit().flatMap { $0.axis == .sideBySide ? $0 : nil }
+            let docksSidebar = fold == nil && hasSidebar && !isSidebarHidden
+            let usesDrawer = fold == nil && !hasSidebar
+            ZStack(alignment: .topLeading) {
+                screen(onShowMenu: menuAction(fold: fold))
+                    .sheet(isPresented: $showsSearch) { searchScreen }
+                    .frame(width: fold?.second.width, height: fold?.second.height)
+                    .offset(x: fold?.second.minX ?? 0, y: fold?.second.minY ?? 0)
+                    .padding(.leading, docksSidebar ? Self.sidebarSize : 0)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .overlay {
+                        // On the outer display of iPhone Duo the open menu draws its own close button in the menu
+                        // button's place; the real one hides meanwhile, so no second glass circle shows underneath.
+                        if usesDrawer {
                             MainMenuDrawer(
                                 isPresented: $isMenuOpen,
                                 selection: destination,
@@ -77,12 +75,27 @@ struct MainView: View {
                                 menuButtonFrame: menuButtonFrame,
                                 onSelect: open,
                                 onNewConversation: startNewConversation,
-                                onSignOut: appState.signOut
+                                onShowChats: openChats,
+                                onSignOut: appState.signOut,
+                                onSearch: { showsSearch = true }
                             )
                         }
+                    }
+                if let fold {
+                    sidebar(width: fold.first.width, canHide: false)
+                        .frame(width: fold.first.width, height: fold.first.height)
+                        .offset(x: fold.first.minX, y: fold.first.minY)
+                } else if docksSidebar {
+                    sidebar(width: Self.sidebarSize, canHide: true)
+                        .transition(.move(edge: .leading))
                 }
             }
-            .onChange(of: proxy.foldSplit() != nil, initial: true) { _, folded in isFolded = folded }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(Color.canvas.ignoresSafeArea())
+            .onChange(of: fold != nil, initial: true) { _, folded in
+                isFolded = folded
+                if folded { isMenuOpen = false }
+            }
         }
         // Your look from Instellingen: the photo in the menu, the text size, and the name Ayla uses.
         .environment(profile)
@@ -94,10 +107,52 @@ struct MainView: View {
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .environment(\.reportMenuButtonFrame) { menuButtonFrame = $0 }
         .environment(\.hidesScreenButtons, menuReplacesButtons)
+        .environment(\.toolbarIsBeside, MainMenuDrawer.isButtonBeside(menuButtonFrame))
+        .environment(\.menuButtonFrame, menuButtonFrame)
         .environment(\.chatSearchRequestedAt, chatSearchRequestedAt)
         .focusedSceneValue(\.paveActions, keyboardActions)
         .tint(.paveAccent)
         .environment(memory)
+        .environment(cameraControl)
+        // Knopmodus: a full press does Ayla's choice, or starts talking. The presses are caught on an empty layer
+        // behind the screen that only exists in knopmodus: around the whole screen, even switched off, iOS's catcher
+        // took every tap on the toolbar buttons. iOS's own green dot shows the camera is on.
+        // What the button rests on in a menu that is not lit up on the screen itself, such as a chat, a step or an action.
+        .overlay(alignment: .top) {
+            if cameraControl.topSource == nil, let highlight = cameraControl.highlight, !CameraMenu.litOnScreen.contains(highlight.menu) {
+                AylaHeadHint(text: "\(highlight.menuTitle): \(highlight.title)", isAnswer: true)
+                    .padding(.top, 52)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .allowsHitTesting(false)
+            }
+        }
+        .animation(.spring(duration: 0.3, bounce: 0.2), value: cameraControl.highlight)
+        .background {
+            if cameraControl.isOn {
+                PaveCameraControlSurface(camera: cameraControl.camera) { cameraControl.fullPress() }
+                    .ignoresSafeArea()
+                    .accessibilityHidden(true)
+            }
+        }
+        .onAppear {
+            cameraControl.onGoTo = { open($0) }
+            cameraControl.onAyla = { action in
+                switch action {
+                case .talk: talk()
+                case .newConversation: startNewConversation()
+                case .chats: openChats()
+                }
+            }
+        }
+        .onChange(of: destination) { _, destination in cameraControl.show(destination) }
+        // Knopmodus stays on: it starts whenever PAVE is in front and unlocked, and stops when it is not.
+        .onChange(of: CameraControlWanted(isEnabled: cameraControl.isEnabled && !cameraControl.isSuspended, changed: cameraControl.enabledChanged, isActive: scenePhase != .background, isOpen: appState.isOpen), initial: true) { _, wanted in
+            if wanted.isEnabled, wanted.isActive, wanted.isOpen {
+                Task { await cameraControl.start(at: destination) }
+            } else {
+                cameraControl.stop()
+            }
+        }
         .task { await model.start() }
         .task { await memory.load() }
         .task { await model.followConversationChanges() }
@@ -163,6 +218,13 @@ struct MainView: View {
         model.wantsToTalk = true
     }
 
+    /// The chats, from the menu on any screen.
+    private func openChats() {
+        destination = .ayla
+        isMenuOpen = false
+        showsChats = true
+    }
+
     private func searchChats() {
         destination = .ayla
         isMenuOpen = false
@@ -188,7 +250,8 @@ struct MainView: View {
             onSelect: open,
             onNewConversation: startNewConversation,
             onSignOut: appState.signOut,
-            onClose: { setSidebarHidden(true) }
+            onClose: { setSidebarHidden(true) },
+            onSearch: { showsSearch = true }
         )
         // The content starts at the top; the buttons sit at the bottom, as far from the bottom edge as from the side,
         // so they follow the rounded corner of the screen.
@@ -204,6 +267,14 @@ struct MainView: View {
                 }
                 .ignoresSafeArea()
         }
+    }
+
+    /// Next to a fold the menu is always there; next to a hidden sidebar the button brings it back; otherwise it opens
+    /// the menu over the screen.
+    private func menuAction(fold: FoldSplit?) -> (() -> Void)? {
+        if fold != nil { return nil }
+        if hasSidebar { return isSidebarHidden ? { setSidebarHidden(false) } : nil }
+        return menuReplacesButtons ? nil : { isMenuOpen.toggle() }
     }
 
     /// The open menu has taken over the buttons in the bar along the side (outer display of iPhone Duo).
@@ -227,7 +298,12 @@ struct MainView: View {
         switch destination {
         case .ayla:
             AylaRootView(model: model, onShowMenu: onShowMenu, isWide: isWide, showsChats: $showsChats)
+                .environment(notificationsModel)
                 .environment(vault)
+                // Settings can open over the chat when you ask Ayla for them.
+                .environment(devices)
+                .environment(profile)
+                .environment(watchConnection)
                 .environment(\.openFromAyla, openFromAyla)
         case .vault:
             VaultScreen(onShowMenu: onShowMenu)
@@ -242,12 +318,45 @@ struct MainView: View {
             ProfileScreen(onShowMenu: onShowMenu)
         case .settings:
             SettingsScreen(name: model.firstName, onShowMenu: onShowMenu, onSignOut: appState.signOut)
+                .environment(model)
+                .environment(\.openAylaChat) { chat in
+                    destination = .ayla
+                    isMenuOpen = false
+                    if !isWide { showsChats = false }
+                    Task { await model.open(chat) }
+                }
+                .environment(vault)
                 .environment(devices)
                 .environment(profile)
                 .environment(watchConnection)
         case .notifications:
-            NotificationsScreen(onShowMenu: onShowMenu)
+            NotificationsScreen(
+                onShowMenu: onShowMenu,
+                audience: notificationsModel.audience,
+                notifications: notificationsModel.notifications,
+                loadError: notificationsModel.problem,
+                onRefresh: { await notificationsModel.refresh() },
+                onMarkRead: { await notificationsModel.markRead($0) },
+                onOpenConversation: openNotificationConversation,
+                onOpenVerifiedEvidence: openNotificationEvidence,
+                onLoadReview: { await notificationsModel.review($0) },
+                onResolveRequest: { await notificationsModel.resolve($0, action: $1, response: $2) },
+                onDelete: { await notificationsModel.delete($0) },
+                onRestore: { await notificationsModel.restore($0) }
+            )
         }
+    }
+
+    /// A chat from a notification opens as one from the iPhone's search: a locked one only through the PIN.
+    private func openNotificationConversation(_ id: String) {
+        openFromSearch(id)
+    }
+
+    /// The evidence of a notification opens in the vault, as when Ayla points to it.
+    private func openNotificationEvidence(_ id: String) {
+        vault.itemToOpen = id
+        isMenuOpen = false
+        open(.vault)
     }
 
     private func setSidebarHidden(_ isHidden: Bool) {
@@ -272,13 +381,41 @@ struct MainView: View {
         }
     }
 
+    /// "Zoeken in PAVE" from the menu.
+    private var searchScreen: some View {
+        PaveSearchScreen(
+            list: model.conversationList,
+            searchMessages: model.searchMessages,
+            onOpenChat: { openFromSearch($0.id) },
+            onOpenProject: { project in
+                if let chat = model.conversationList.chats(in: project.id).first {
+                    openFromSearch(chat.id)
+                } else {
+                    model.newConversation(in: project)
+                    destination = .ayla
+                    if !isWide { showsChats = false }
+                }
+            },
+            onOpenItem: { item in
+                vault.itemToOpen = item.id
+                open(.vault)
+            }
+        )
+        .environment(vault)
+    }
+
     /// A chat tapped in the iPhone's search.
     private func openFromSearch(_ id: String) {
         destination = .ayla
         isMenuOpen = false
         if !isWide { showsChats = false }
-        let conversation = model.conversationList.conversations.first { $0.id == id }
-            ?? AylaConversation(id: id, title: "", updatedAt: .now)
+        let known = model.conversationList.conversations.first { $0.id == id }
+        // A locked chat opens only through the PIN, and an archived one from the archive.
+        if let known, (known.isLocked && !model.showsLockedChats) || known.isArchived {
+            if known.isLocked { showsChats = true }
+            return
+        }
+        let conversation = known ?? AylaConversation(id: id, title: "", updatedAt: .now)
         Task { await model.open(conversation) }
     }
 
@@ -294,4 +431,12 @@ struct MainView: View {
 #Preview {
     MainView(service: nil, vaultService: nil)
         .environment(AppState())
+}
+
+/// When knopmodus should run: chosen, PAVE in front, and unlocked.
+private struct CameraControlWanted: Equatable {
+    let isEnabled: Bool
+    let changed: Int
+    let isActive: Bool
+    let isOpen: Bool
 }

@@ -3,6 +3,16 @@
     {
       "filename": "IconEuro.svg",
       "idiom": "universal"
+    },
+    {
+      "appearances": [
+        {
+          "appearance": "luminosity",
+          "value": "dark"
+        }
+      ],
+      "filename": "IconEuro-dark.svg",
+      "idiom": "universal"
     }
   ],
   "info": {

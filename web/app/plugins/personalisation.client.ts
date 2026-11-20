@@ -6,6 +6,12 @@ export default defineNuxtPlugin(() => {
     const account = useAccount();
     personal.load();
     useSupabaseClient().auth.onAuthStateChange((event) => {
+      if (event === 'MFA_CHALLENGE_VERIFIED') {
+        // Only now (aal2) is the profile readable: fetch name and photo at once, before the first page is drawn.
+        // Not awaited and not inside this callback: Supabase calls made here can block.
+        setTimeout(() => void account.load(), 0);
+        return;
+      }
       if (event !== 'SIGNED_OUT') return;
       personal.resetAccount();
       // The name and photo kept for a quick start belong to the account that just signed out.

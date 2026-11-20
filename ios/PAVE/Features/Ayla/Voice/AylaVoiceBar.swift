@@ -13,7 +13,7 @@ struct AylaVoiceBar: View {
     /// Lets the text field shrink into this bar's field; the round buttons then slide out of it.
     var morph: Namespace.ID?
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @State private var showsButtons = false
 
     private var canSend: Bool { !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
@@ -48,7 +48,7 @@ struct AylaVoiceBar: View {
                     Button(action: send) {
                         Image(.iconSend)
                             .paveIconFrame(30)
-                            .background(Color.paveAccent, in: .circle)
+                            .background(Color.paveAccentFill, in: .circle)
                             .frame(width: AylaComposer.roundButtonWidth, height: 53)
                             .contentShape(.rect)
                     }

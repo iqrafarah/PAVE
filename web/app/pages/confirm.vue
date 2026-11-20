@@ -6,6 +6,7 @@ definePageMeta({ layout: 'auth' });
 const NEXT_PATH_BY_TYPE: Record<EmailLinkType, string> = {
   invite: SET_PASSWORD_PATH,
   email: HOME_PATH,
+  signup: HOME_PATH,
 };
 
 const route = useRoute();
@@ -37,7 +38,7 @@ onMounted(verifyLink);
 </script>
 
 <template>
-  <AuthCard
+  <AuthEduidCard
     eyebrow="E-maillink"
     title="We controleren je link"
     description="Dit duurt maar even."
@@ -45,8 +46,8 @@ onMounted(verifyLink);
     <p v-if="errorMessage" role="alert" class="text-sm text-danger">
       {{ errorMessage }}
     </p>
-    <p v-else role="status" class="text-sm text-muted">Even geduld...</p>
+    <p v-else role="status" class="text-sm text-muted">Een moment geduld…</p>
 
     <AuthBackToLogin @click="navigateTo('/login')" />
-  </AuthCard>
+  </AuthEduidCard>
 </template>

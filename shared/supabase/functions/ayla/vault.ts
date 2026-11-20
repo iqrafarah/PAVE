@@ -63,13 +63,20 @@ interface VaultRow {
 // deno-lint-ignore no-explicit-any
 type VaultQuery = { from: (table: string) => any }
 
+const VAULT_COLUMNS =
+  'id,category,title,description,organisation_name,organisation_location,start_date,end_date,issued_on,is_current,verification_status,vault_item_skills(name,status),vault_item_files(file_name)'
+
 export async function loadAllowedVault(supabase: VaultQuery): Promise<AllowedVault> {
-  const { data, error } = await supabase
-    .from('vault_items')
-    .select('id,category,title,description,organisation_name,organisation_location,start_date,end_date,issued_on,is_current,verification_status,vault_item_skills(name,status),vault_item_files(file_name)')
-    .not('ayla_allowed_at', 'is', null)
-    .order('updated_at', { ascending: false })
-    .limit(VAULT_LIMIT)
+  const allowed = (withArchive: boolean) => {
+    const items = supabase.from('vault_items').select(VAULT_COLUMNS).not('ayla_allowed_at', 'is', null)
+    return (withArchive ? items : items.is('archived_at', null)).order('updated_at', { ascending: false }).limit(VAULT_LIMIT)
+  }
+  // Archived evidence is out of use: Ayla only reads it when the account turned that on (profiles.ayla_uses_archive).
+  const { data: profile } = await supabase.from('profiles').select('ayla_uses_archive').maybeSingle()
+  const usesArchive = profile?.ayla_uses_archive === true
+  let { data, error } = await allowed(usesArchive)
+  // Before migration 20261120120000 there is no archive yet: the vault is read as before.
+  if (error?.code === '42703' && !usesArchive) ({ data, error } = await allowed(true))
   if (error) return { status: 'unavailable' }
   return { status: 'on', items: ((data ?? []) as VaultRow[]).map(toItem).filter((item): item is AllowedItem => item !== undefined) }
 }

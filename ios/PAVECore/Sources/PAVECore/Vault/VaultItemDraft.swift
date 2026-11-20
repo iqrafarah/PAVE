@@ -23,6 +23,9 @@ public struct VaultItemDraft: Equatable, Sendable {
     /// A period from a start to an end, or one date. Nil follows the category: a period for experience, one date for a
     /// diploma, certificate or badge. You can choose the other way for any category.
     public var usesPeriod: Bool?
+    /// Ayla filled it in ("Laat Ayla invullen" or a proposal from the chat): saved with source `ayla`, so it shows under
+    /// "Via Ayla". It is still your own, unconfirmed evidence (migration 20261119130000).
+    public var filledByAyla = false
 
     public var isPeriod: Bool { usesPeriod ?? category.hasPeriod }
 

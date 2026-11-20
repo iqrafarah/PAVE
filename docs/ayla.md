@@ -137,13 +137,14 @@ A single place that builds the prompt, calls the model and returns a structured 
 3. **Reply format** instead of tags hidden in the text:
    - `text`: what Ayla says
    - `question` and `choices` (at most three): for Yes or No on the Watch
-   - `accessRequest`: vault sections she wants to see, so the app can ask for consent
+   - (A stored user message keeps only the names of its attachments in its `reply` column, as `{ "attachments": [names] }`, so the chat can show them again.)
+   - `accessRequest`: vault sections she wants to see, so the app can ask for consent. The question is asked once: when the model also asked it in `text`, the function takes that sentence out, and with nothing else to say `text` is the question itself and `question.text` is empty (the choices stay).
    - `proposedAction`: something she suggests, which the user confirms
    - `blocks`: cards the apps draw (selection, consent request, vacancies, skill suggestions, CV), each with a type from a fixed list
    - `navigation`: a screen to open, chosen from a fixed list the apps map to their own routes
    - `usedData`: which allowed sections were used, set by the server so it is always true
 
-Each message also carries `device`, `input` (voice or text) and optionally `context` (the open screen or item id) and `attachments` (up to 3 files the user added with the plus button; the app reads their text on the device and sends only that text, which Ayla sees in that one message and which is not stored).
+Each message also carries `device`, `input` (voice or text) and optionally `context` (the open screen or item id) and `attachments` (up to 5 files the user added with the plus button, as many as evidence in the vault takes; the app reads their text on the device and sends that text, and for a photo also a small JPEG so Ayla can look at it; Ayla sees them in that one message and nothing of them is stored, only the file names).
 
 ### Models (from the demo)
 
@@ -264,7 +265,7 @@ const { data: reply, error } = await supabase.functions.invoke('ayla', {
     device: 'web',
     input: 'text',                          // 'voice' when the question was spoken
     conversationId,                         // leave out for a new conversation
-    attachments: [{ name: 'cv.pdf', text }],// optional, at most 3; only the text of a file (max 20,000 characters each), read in the browser
+    attachments: [{ name: 'cv.pdf', text }],// optional, at most 5; only the text of a file (max 20,000 characters each), read in the browser
     // context: { screen: 'vault', itemId } // optional: what the user has open
   },
 })
@@ -434,7 +435,7 @@ Turned off, Ayla uses none of the notes and suggests nothing; the notes stay unt
 ### Rules to keep
 
 - Never save a memory, delete one or change anything without the user's tap. Ayla's text never says she remembered something.
-- Never send attachments as files or store them: only their text, with that one question.
+- Never store attachments: their text, and for a photo a small image, go with that one question only; the stored message keeps the names.
 - Show "Gebaseerd op" whenever `usedMemories` is there; it is a promise of PAVE, not decoration.
 - Use the texts of the iPhone where they exist (`ios/PAVE/Features/Ayla/Shared/AylaMessages.swift`), so both apps say the same.
 

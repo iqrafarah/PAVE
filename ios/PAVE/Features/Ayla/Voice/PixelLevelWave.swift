@@ -6,7 +6,7 @@ struct PixelLevelWave: View {
     let meter: VoiceMeter
     var bars = 24
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @State private var history = LevelHistory()
 
     private static let block: CGFloat = 3

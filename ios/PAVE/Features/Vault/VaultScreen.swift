@@ -1,28 +1,32 @@
 import PAVECore
 import SwiftUI
 
-/// Your vault: folders on top, then everything in it as tiles or a list. It reads and writes your own Supabase rows.
+/// Your vault: folders on top, then everything in it as tiles or a list. A folder opens as a page of its own, as on the
+/// web; back brings you to the whole vault. The sheets and questions live here, once, for every page. It reads and
+/// writes your own Supabase rows.
 struct VaultScreen: View {
     @Environment(VaultModel.self) private var model
     let onShowMenu: (() -> Void)?
 
-    @Environment(\.verticalSizeClass) private var verticalSizeClass
-    /// The open menu on the outer display of iPhone Duo puts its own buttons where search and add are.
-    @Environment(\.hidesScreenButtons) private var hidesScreenButtons
-    /// How the vault opens, from Instellingen; switching here lasts until the vault is opened again.
-    @State private var isGrid = PaveAppearance.vaultLayout == .grid
-    /// The evidence moved under the folders and the filter bar: a thin line then separates them.
-    @State private var itemsScrolled = false
-    @State private var filter = VaultFilter()
-    @State private var isSearching = false
-    @FocusState private var isSearchFocused: Bool
+    @State private var path: [FolderRoute] = []
+    @Environment(AylaPageDriver.self) private var driver: AylaPageDriver?
     @State private var openedItem: VaultItem?
     @State private var editedItem: VaultItem?
     @State private var confirmedItem: VaultItem?
-    @State private var addsItem = false
+    @State private var addFlow: VaultAddEvidenceModel?
     @State private var deletedItem: VaultItem?
     @State private var folderSheet: FolderSheet?
     @State private var deletedFolder: VaultFolder?
+    @State private var isScanning = false
+    @State private var scanFolder: VaultFolder?
+    @Environment(PaveCameraControl.self) private var cameraControl: PaveCameraControl?
+
+    private struct FolderRoute: Hashable {
+        let id: String
+
+        /// "Alle mappen", which is not a folder of its own.
+        static let all = FolderRoute(id: "alle-mappen")
+    }
 
     private enum FolderSheet: Identifiable {
         case new
@@ -36,43 +40,69 @@ struct VaultScreen: View {
         }
     }
 
-    private var visibleItems: [VaultItem] { filter.apply(to: model.items) }
+    private var actions: VaultActions {
+        VaultActions(
+            open: { openedItem = $0 },
+            edit: { editedItem = $0 },
+            requestConfirmation: { confirmedItem = $0 },
+            delete: { deletedItem = $0 },
+            add: add,
+            scan: scan,
+            newFolder: { folderSheet = .new },
+            openFolder: { folder in
+                PaveHaptics.selection()
+                path.append(FolderRoute(id: folder.id))
+            },
+            openAllFolders: {
+                PaveHaptics.selection()
+                path.append(.all)
+            },
+            editFolder: { folderSheet = .edit($0) },
+            deleteFolder: { deletedFolder = $0 }
+        )
+    }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             content
                 .background(Color.canvas.ignoresSafeArea())
+                .navigationTitle("Kluis")
                 .mainScreenToolbar("Kluis", onShowMenu: onShowMenu)
-                .toolbar {
-                    if model.state == .ready, !hidesScreenButtons {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button(action: toggleSearch) {
-                                Image(isSearching ? .iconXMark : .iconSearch)
-                            }
-                            .accessibilityLabel(isSearching ? "Zoeken sluiten" : "Zoeken in je kluis")
-                        }
-                        ToolbarSpacer(.fixed, placement: .topBarTrailing)
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Menu {
-                                Button { addsItem = true } label: {
-                                    Label { Text("Bewijs toevoegen") } icon: { Image(.iconDocumentPlusSolid) }
-                                }
-                                Button { folderSheet = .new } label: {
-                                    Label { Text("Map aanmaken") } icon: { Image(.iconFolderPlusSolid) }
-                                }
-                            } label: {
-                                Image(.iconPlus)
-                            }
-                            .accessibilityLabel("Toevoegen")
+                .navigationDestination(for: FolderRoute.self) { route in
+                    Group {
+                        if route == .all {
+                            VaultAllFoldersPage(actions: actions)
+                        } else {
+                            VaultLibraryPage(folderID: route.id, actions: actions)
                         }
                     }
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
                 }
                 .task { await model.load() }
                 // Ayla pointed to one item: open it once the vault is there.
                 .onChange(of: model.itemToOpen, initial: true) { openRequestedItem() }
                 .onChange(of: model.state) { openRequestedItem() }
+                // Ayla opens a folder or goes back when you ask her to.
+                .onChange(of: driver?.vaultFolderID, initial: true) {
+                    guard let id = driver?.vaultFolderID else { return }
+                    driver?.vaultFolderID = nil
+                    openedItem = nil
+                    if path != [FolderRoute(id: id)] { path = [FolderRoute(id: id)] }
+                }
+                .onChange(of: driver?.backSteps) {
+                    if openedItem != nil { openedItem = nil } else if !path.isEmpty { path.removeLast() }
+                }
+                .onChange(of: path.count + (openedItem == nil ? 0 : 1), initial: true) { _, depth in
+                    driver?.vaultDepth = depth
+                }
+                .onDisappear { driver?.vaultDepth = 0 }
+                // A folder that is gone (deleted here or on another device) closes.
+                .onChange(of: model.folders.map(\.id)) { _, ids in
+                    path.removeAll { $0 != .all && !ids.contains($0.id) }
+                }
                 .sheet(item: $openedItem) { item in
-                    VaultItemDetailView(itemID: item.id)
+                    VaultItemDetailView(itemID: item.id, onShowMenu: onShowMenu)
                         .paveSheet()
                 }
                 .sheet(item: $editedItem) { item in
@@ -80,11 +110,36 @@ struct VaultScreen: View {
                         .paveSheet()
                 }
                 .sheet(item: $confirmedItem) { item in
-                    VaultRequestConfirmationSheet(item: item, documentCount: model.documents(of: item).count)
+                    VaultRequestConfirmationSheet(
+                        item: item,
+                        documentCount: model.documents(of: item).count,
+                        onShowMenu: onShowMenu,
+                        onSend: { request in
+                            await model.requestValidation(
+                                for: item,
+                                organizationID: request.organization!.id,
+                                locationID: request.location!.id,
+                                departmentID: request.department?.id,
+                                contactID: request.contact!.id,
+                                message: request.message
+                            )
+                        }
+                    )
                         .paveSheet()
                 }
-                .sheet(isPresented: $addsItem) {
-                    VaultAddEvidenceSheet(vault: model, category: newItemCategory, folderID: newItemFolderID)
+                // The document scanner of iOS needs the camera that knopmodus holds: knopmodus waits meanwhile.
+                .fullScreenCover(isPresented: $isScanning, onDismiss: { cameraControl?.isSuspended = false }) {
+                    DocumentScanner(
+                        onScan: { pages in
+                            isScanning = false
+                            Task { await addScan(pages) }
+                        },
+                        onCancel: { isScanning = false }
+                    )
+                    .ignoresSafeArea()
+                }
+                .sheet(item: $addFlow) { flow in
+                    VaultAddEvidenceSheet(flow: flow)
                         .paveSheet()
                 }
                 .sheet(item: $folderSheet) { sheet in
@@ -92,7 +147,7 @@ struct VaultScreen: View {
                         switch sheet {
                         case .new:
                             VaultFolderEditor(folder: nil, style: nil) { folder in
-                                filter.shelf = .folder(folder.id)
+                                path = [FolderRoute(id: folder.id)]
                             }
                         case .edit(let folder):
                             VaultFolderEditor(folder: folder, style: model.style(of: folder))
@@ -111,13 +166,13 @@ struct VaultScreen: View {
                 }
                 .confirmationDialog("Map verwijderen?", isPresented: isPresented($deletedFolder), titleVisibility: .visible, presenting: deletedFolder) { folder in
                     Button("Map verwijderen", role: .destructive) {
-                        if filter.shelf == .folder(folder.id) { filter.shelf = .all }
+                        path.removeAll { $0.id == folder.id }
                         Task { await model.deleteFolder(folder) }
                     }
                 } message: { _ in
                     Text(VaultMessages.deleteFolderMessage)
                 }
-                .alert("Dat lukte niet", isPresented: Binding(get: { model.problem != nil && !addsItem && editedItem == nil && openedItem == nil && folderSheet == nil }, set: { if !$0 { model.problem = nil } })) {
+                .alert("Dat lukte niet", isPresented: Binding(get: { model.problem != nil && addFlow == nil && editedItem == nil && openedItem == nil && folderSheet == nil }, set: { if !$0 { model.problem = nil } })) {
                     Button("OK", role: .cancel) {}
                 } message: {
                     Text(model.problem ?? "")
@@ -157,207 +212,59 @@ struct VaultScreen: View {
             .padding(20)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .ready:
-            library
+            VaultLibraryPage(folderID: nil, actions: actions)
         }
     }
 
-    /// The search field, the folders and the filter bar stay in place; only the evidence below them scrolls. On a
-    /// screen without the height for that (a phone on its side) everything scrolls together.
-    @ViewBuilder
-    private var library: some View {
-        if verticalSizeClass == .compact {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    controls
-                    items
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
-                .padding(.bottom, 28)
-                .frame(maxWidth: 1000)
-                .frame(maxWidth: .infinity)
-            }
-            .scrollDismissesKeyboard(.immediately)
-            .refreshable { await model.load() }
-        } else {
-            VStack(spacing: 0) {
-                controls
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
-                    .padding(.bottom, 14)
-                    .frame(maxWidth: 1000)
-                    .frame(maxWidth: .infinity)
-                    .overlay(alignment: .bottom) {
-                        Rectangle()
-                            .fill(Color.cardBorder)
-                            .frame(height: 1)
-                            .opacity(itemsScrolled ? 1 : 0)
-                            .animation(.easeOut(duration: 0.15), value: itemsScrolled)
-                    }
-                    .zIndex(1)
-                ScrollView {
-                    items
-                        .padding(.horizontal, 20)
-                        .padding(.top, 4)
-                        .padding(.bottom, 28)
-                        .frame(maxWidth: 1000)
-                        .frame(maxWidth: .infinity)
-                }
-                .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > 1 } action: { _, scrolled in
-                    itemsScrolled = scrolled
-                }
-                .scrollDismissesKeyboard(.immediately)
-                .refreshable { await model.load() }
-            }
+    /// A draft closed less than half a minute ago comes back; otherwise new evidence, in the open folder and in the
+    /// folder of its kind. Adding from an example folder starts with its kind, such as Project in Projecten.
+    private func add(_ folder: VaultFolder?) {
+        if let draft = model.takeDraft() {
+            addFlow = draft
+            return
+        }
+        let example = folder.flatMap { folder in
+            VaultExampleFolders.all.first { $0.name.localizedCaseInsensitiveCompare(folder.name) == .orderedSame }
+        }
+        addFlow = VaultAddEvidenceModel(vault: model, category: example?.category ?? .projects, folderID: folder?.id)
+    }
+
+    /// A full press of the Camera Control button in the vault: scan a document, then adding evidence opens with it and
+    /// Ayla fills it in. Without a scanner (the simulator) adding evidence simply opens.
+    private func scan(_ folder: VaultFolder?) {
+        guard DocumentScanner.isAvailable else {
+            add(folder)
+            return
+        }
+        scanFolder = folder
+        cameraControl?.isSuspended = true
+        Task {
+            // A moment for knopmodus to let go of the camera.
+            try? await Task.sleep(for: .milliseconds(350))
+            isScanning = true
         }
     }
 
-    private var controls: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            if isSearching {
-                PaveSearchField(text: $filter.searchText, prompt: "Zoek op titel, organisatie of vaardigheid", isFocused: $isSearchFocused)
-            }
-            shelves
-            VaultFilterBar(filter: $filter, isGrid: $isGrid)
+    private func addScan(_ pages: [CGImage]) async {
+        guard !pages.isEmpty else { return }
+        let day = Date.now.formatted(.iso8601.year().month().day())
+        guard let file = try? await AttachmentReader.file(pages: pages, name: "Scan \(day).pdf"), let upload = file.upload else {
+            model.problem = VaultMessages.scanFailed
+            return
         }
-    }
-
-    private var shelves: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 9) {
-                ForEach(model.folders) { folder in
-                    let style = model.style(of: folder)
-                    VaultFolderTile(
-                        title: folder.name,
-                        icon: style.icon.image,
-                        color: style.color.color,
-                        surface: style.color.surface,
-                        count: model.count(in: .folder(folder.id)),
-                        isSelected: filter.shelf == .folder(folder.id)
-                    ) {
-                        select(.folder(folder.id))
-                    }
-                    .contextMenu {
-                        Button { folderSheet = .edit(folder) } label: {
-                            Label { Text("Map aanpassen") } icon: { Image(.iconPencil) }
-                        }
-                        Button(role: .destructive) { deletedFolder = folder } label: {
-                            Label { Text("Map verwijderen") } icon: { Image(.iconTrash) }
-                        }
-                    }
-                }
-            }
-            .padding(.vertical, 2)
+        let example = scanFolder.flatMap { folder in
+            VaultExampleFolders.all.first { $0.name.localizedCaseInsensitiveCompare(folder.name) == .orderedSame }
         }
-        .scrollIndicators(.hidden)
-        .scrollClipDisabled()
-    }
-
-    @ViewBuilder
-    private var items: some View {
-        let visible = visibleItems
-        if visible.isEmpty {
-            emptyState
-                .frame(maxWidth: .infinity)
-                .padding(.top, 36)
-        } else if isGrid {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 12, alignment: .top)], spacing: 12) {
-                ForEach(visible) { card($0) }
-            }
-        } else {
-            LazyVStack(spacing: 12) {
-                ForEach(visible) { card($0) }
-            }
-        }
-    }
-
-    private func card(_ item: VaultItem) -> some View {
-        Button {
-            openedItem = item
-        } label: {
-            VaultLibraryCard(item: item, isGrid: isGrid)
-        }
-        .buttonStyle(.pave)
-        .accessibilityHint("Toont alles over dit item")
-        .contextMenu {
-            VaultItemActionButtons(item: item, onEdit: { editedItem = item }, onRequestConfirmation: { confirmedItem = item }, onDelete: { deletedItem = item })
-        }
-    }
-
-    @ViewBuilder
-    private var emptyState: some View {
-        if model.items.isEmpty {
-            emptyMessage(icon: .iconFolderSolid, title: VaultMessages.emptyTitle, message: VaultMessages.emptyMessage, button: "Bewijs toevoegen") {
-                addsItem = true
-            }
-        } else if !filter.searchText.isEmpty || filter.narrowsDown {
-            emptyMessage(icon: .iconSearch, title: VaultMessages.noResultsTitle, message: VaultMessages.noResultsMessage, button: "Filters wissen") {
-                filter = VaultFilter()
-                filter.shelf = .all
-            }
-        } else if case .folder(let id) = filter.shelf, let folder = model.folder(id) {
-            emptyMessage(icon: .iconFolderSolid, title: "\(folder.name) is nog leeg", message: VaultMessages.emptyFolderMessage)
-        } else if case .category(let category) = filter.shelf {
-            emptyMessage(
-                icon: category.icon,
-                title: VaultMessages.emptyCategoryTitle(category),
-                message: VaultMessages.emptyMessage,
-                button: "\(category.singularTitle) toevoegen"
-            ) {
-                addsItem = true
-            }
-        }
-    }
-
-    private func emptyMessage(icon: ImageResource, title: String, message: String, button: String? = nil, action: @escaping () -> Void = {}) -> some View {
-        VStack(spacing: 20) {
-            PaveEmptyState(icon: icon, title: title, message: message)
-            if let button {
-                PavePrimaryButton(title: button, action: action)
-                    .frame(maxWidth: 260)
-            }
-        }
-    }
-
-    /// Adding from an example folder starts with its kind, such as Project in Projecten.
-    private var newItemCategory: VaultCategory {
-        if case .category(let category) = filter.shelf { return category }
-        if case .folder(let id) = filter.shelf, let folder = model.folder(id),
-           let example = VaultExampleFolders.all.first(where: { $0.name.localizedCaseInsensitiveCompare(folder.name) == .orderedSame }) {
-            return example.category
-        }
-        return .projects
-    }
-
-    private var newItemFolderID: String? {
-        if case .folder(let id) = filter.shelf { return id }
-        return nil
+        let flow = VaultAddEvidenceModel(vault: model, category: example?.category ?? .projects, folderID: scanFolder?.id)
+        flow.pick(.success(upload))
+        flow.fillWithAyla()
+        addFlow = flow
     }
 
     private func openRequestedItem() {
         guard let id = model.itemToOpen, model.state == .ready else { return }
         model.itemToOpen = nil
         openedItem = model.items.first { $0.id == id }
-    }
-
-    private func select(_ shelf: VaultShelf) {
-        withAnimation(.snappy(duration: 0.22)) {
-            filter.shelf = filter.shelf == shelf ? .all : shelf
-        }
-        PaveHaptics.selection()
-    }
-
-    private func toggleSearch() {
-        withAnimation(.snappy(duration: 0.22)) {
-            if isSearching {
-                filter.searchText = ""
-                isSearching = false
-                isSearchFocused = false
-            } else {
-                isSearching = true
-                isSearchFocused = true
-            }
-        }
     }
 
     private func isPresented<Value>(_ value: Binding<Value?>) -> Binding<Bool> {

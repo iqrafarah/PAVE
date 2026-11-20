@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import SwiftUI
 import PAVECore
 
 /// Your vault as the app shows it. Everything comes from and goes to Supabase; there is nothing stored on the phone.
@@ -21,12 +22,19 @@ final class VaultModel {
     var itemToOpen: String?
 
     private let service: (any VaultService)?
+    /// "Bewijs toevoegen" closed before it was saved: for half a minute it comes back as it was, in case that was by
+    /// accident. Only in memory, on this device.
+    @ObservationIgnored private var addDraft: (flow: VaultAddEvidenceModel, until: Date)?
+    static let draftLifetime: TimeInterval = 30
     /// Files already fetched in this session, so a thumbnail or preview does not download twice.
     @ObservationIgnored private var fileCache: [String: Data] = [:]
     @ObservationIgnored private var lookCache: [String: VaultLogoLook] = [:]
     /// Folder colours and icons kept on this device while the database has no columns for them yet.
     @ObservationIgnored private let localStyles = UserDefaults.standard
     private static let localStylesKey = "vaultFolderStyles"
+    /// The folder order kept on this device while the database has no column for it yet.
+    private static let localOrderKey = "vaultFolderOrder"
+    private static let localItemOrderKey = "vaultItemOrder"
     /// The example folders were made on this phone once; deleting one later must not bring it back.
     static let exampleFoldersKey = "vaultExampleFoldersMade"
 
@@ -45,6 +53,15 @@ final class VaultModel {
     #endif
 
     var items: [VaultItem] { contents.items }
+    /// The archive: out of the vault, kept until it is put back or deleted.
+    var archived: [VaultItem] { contents.archived }
+    var canArchive: Bool { contents.canArchive }
+
+    /// Archives evidence or puts it back.
+    @discardableResult
+    func setArchived(_ isArchived: Bool, _ item: VaultItem) async -> Bool {
+        await perform { try await $0.setArchived(isArchived, itemID: item.id) }
+    }
     var folders: [VaultFolder] { contents.folders }
 
     func count(in shelf: VaultShelf) -> Int {
@@ -76,7 +93,7 @@ final class VaultModel {
     func load() async {
         guard let service else { return }
         do {
-            contents = try await service.contents()
+            contents = ordered(try await service.contents())
             state = .ready
         } catch {
             if state != .ready { state = .failed(VaultError(error)) }
@@ -101,7 +118,98 @@ final class VaultModel {
                 try? await service.setFolders([folder.id], itemID: item.id)
             }
         }
-        if let refreshed = try? await service.contents() { contents = refreshed }
+        if let refreshed = try? await service.contents() { contents = ordered(refreshed) }
+    }
+
+    /// The order kept on this device, while the database cannot keep it; new folders after the others.
+    private func ordered(_ loaded: VaultContents) -> VaultContents {
+        var result = loaded
+        if let itemOrder = localStyles.stringArray(forKey: Self.localItemOrderKey) {
+            for index in result.items.indices {
+                result.items[index].position = itemOrder.firstIndex(of: result.items[index].id)
+            }
+        }
+        if let order = localStyles.stringArray(forKey: Self.localOrderKey) {
+            let place = { (folder: VaultFolder) in order.firstIndex(of: folder.id) ?? Int.max }
+            result.folders = result.folders.enumerated()
+                .sorted { (place($0.element), $0.offset) < (place($1.element), $1.offset) }
+                .map(\.element)
+        }
+        // Pinned folders first, each group in its own order, as on the web.
+        result.folders = result.folders.filter(\.isPinned) + result.folders.filter { !$0.isPinned }
+        return result
+    }
+
+    /// "Vastzetten": the folder moves to the front at once; the server keeps it there on every device.
+    func setPinned(_ pinned: Bool, folder: VaultFolder) async {
+        guard let index = contents.folders.firstIndex(where: { $0.id == folder.id }) else { return }
+        contents.folders[index].pinnedAt = pinned ? .now : nil
+        contents = ordered(contents)
+        if await perform({ try await $0.setFolderPinned(pinned, folderID: folder.id) }) {
+            AccessibilityNotification.Announcement(pinned ? VaultMessages.folderPinned(folder.name) : VaultMessages.folderUnpinned(folder.name)).post()
+        }
+    }
+
+    // MARK: Moving
+
+    /// Dragged onto a folder: into that folder, and out of the folder it was dragged from. From the whole vault it only
+    /// goes in, and its other folders stay.
+    func move(_ item: VaultItem, to folder: VaultFolder, from sourceFolderID: String?) async {
+        var ids = item.folderIDs.filter { $0 != sourceFolderID }
+        if !ids.contains(folder.id) { ids.append(folder.id) }
+        guard ids != item.folderIDs else { return }
+        await perform { try await $0.setFolders(ids, itemID: item.id) }
+    }
+
+    /// "Eigen volgorde": the cards that were on screen in the order they were dragged into. Cards that were not on screen
+    /// (in another folder, or filtered out) keep their places around them.
+    func setItemOrder(_ visible: [String]) async {
+        var custom = VaultFilter()
+        custom.order = .custom
+        var all = custom.apply(to: items).map(\.id)
+        let slots = all.indices.filter { visible.contains(all[$0]) }
+        for (slot, id) in zip(slots, visible) { all[slot] = id }
+        for index in contents.items.indices {
+            contents.items[index].position = all.firstIndex(of: contents.items[index].id)
+        }
+        guard let service else { return }
+        do {
+            try await service.setItemOrder(all)
+            localStyles.removeObject(forKey: Self.localItemOrderKey)
+        } catch VaultError.missingColumn {
+            localStyles.set(all, forKey: Self.localItemOrderKey)
+        } catch {
+            fail(error)
+            await load()
+        }
+    }
+
+    /// One folder takes the place of another, for VoiceOver's "Naar voren" and "Naar achteren".
+    func moveFolder(_ id: String, onto targetID: String) async {
+        var order = folders.map(\.id)
+        guard let from = order.firstIndex(of: id), let to = order.firstIndex(of: targetID), from != to else { return }
+        order.remove(at: from)
+        order.insert(id, at: to)
+        await setFolderOrder(order)
+    }
+
+    /// The folders in this order at once, as they were dragged. The order is saved for every device, or on this device
+    /// until the database has a place for it.
+    func setFolderOrder(_ order: [String]) async {
+        let reordered = order.compactMap { id in folders.first { $0.id == id } } + folders.filter { !order.contains($0.id) }
+        guard reordered.map(\.id) != folders.map(\.id) else { return }
+        contents.folders = reordered
+        let ids = reordered.map(\.id)
+        guard let service else { return }
+        do {
+            try await service.setFolderOrder(ids)
+            localStyles.removeObject(forKey: Self.localOrderKey)
+        } catch VaultError.missingColumn {
+            localStyles.set(ids, forKey: Self.localOrderKey)
+        } catch {
+            fail(error)
+            await load()
+        }
     }
 
     func retry() async {
@@ -189,9 +297,28 @@ final class VaultModel {
         try await service.removeSkills(names, from: itemID)
     }
 
-    func suggestSkills(for draft: VaultItemDraft, material: VaultSkillsMaterial, existing: [String]) async throws -> [VaultSkillSuggestion] {
+    func keepDraft(_ flow: VaultAddEvidenceModel, now: Date = .now) {
+        guard flow.hasChanges, !flow.isSaving else { return }
+        addDraft = (flow, now.addingTimeInterval(Self.draftLifetime))
+    }
+
+    /// The draft closed less than half a minute ago, once; after that it is gone.
+    func takeDraft(now: Date = .now) -> VaultAddEvidenceModel? {
+        defer { addDraft = nil }
+        guard let addDraft, addDraft.until > now else { return nil }
+        addDraft.flow.isResumed = true
+        return addDraft.flow
+    }
+
+    /// Ayla may propose a skill that is elsewhere in the vault again, so this evidence counts for it too.
+    func suggestSkills(for draft: VaultItemDraft, material: VaultSkillsMaterial, chosen: [String]) async throws -> [VaultSkillSuggestion] {
         guard let service else { throw VaultError.unavailable }
-        return try await service.suggestSkills(for: draft, material: material, existing: existing)
+        return try await service.suggestSkills(for: draft, material: material, existing: chosen, known: VaultSkills.known(in: items))
+    }
+
+    func proposeEvidence(from documents: [VaultEvidenceDocument]) async throws -> [VaultEvidenceProposal] {
+        guard let service else { throw VaultError.unavailable }
+        return try await service.proposeEvidence(from: documents, folders: folders.map(\.name), known: VaultSkills.known(in: items))
     }
 
     /// The folders the item is in, in the order of the folder row.
@@ -240,6 +367,60 @@ final class VaultModel {
 
     func deleteFolder(_ folder: VaultFolder) async {
         await perform { try await $0.deleteFolder(id: folder.id) }
+    }
+
+    func validationOrganizations() async throws -> [VaultValidationOrganization] {
+        guard let service else { throw VaultError.notSetUp }
+        return try await service.validationOrganizations()
+    }
+
+    func validationLocations(organizationID: String) async throws -> [VaultValidationLocation] {
+        guard let service else { throw VaultError.notSetUp }
+        return try await service.validationLocations(organizationID: organizationID)
+    }
+
+    func validationDepartments(organizationID: String, locationID: String) async throws -> [VaultValidationDepartment] {
+        guard let service else { throw VaultError.notSetUp }
+        return try await service.validationDepartments(organizationID: organizationID, locationID: locationID)
+    }
+
+    func validationContacts(organizationID: String, locationID: String, departmentID: String?) async throws -> [VaultValidationContact] {
+        guard let service else { throw VaultError.notSetUp }
+        return try await service.validationContacts(organizationID: organizationID, locationID: locationID, departmentID: departmentID)
+    }
+
+    func requestValidation(
+        for item: VaultItem,
+        organizationID: String,
+        locationID: String,
+        departmentID: String?,
+        contactID: String,
+        message: String?
+    ) async -> String? {
+        guard let service else {
+            problem = VaultMessages.requestNotActive
+            return problem
+        }
+        do {
+            try await service.requestValidation(
+                itemID: item.id,
+                organizationID: organizationID,
+                locationID: locationID,
+                departmentID: departmentID,
+                contactID: contactID,
+                message: message
+            )
+            problem = nil
+            PaveHaptics.success()
+            // So the item shows "In afwachting" straight away.
+            await load()
+            return nil
+        } catch {
+            let message = VaultMessages.message(for: VaultError(error))
+            problem = message
+            PaveHaptics.error()
+            return message
+        }
     }
 
     /// Runs a change and then reads the vault again, so counts and folders are always what the server has.

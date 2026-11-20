@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { RowMenuItem } from '~/types/ayla';
-import type { VaultFilter, VaultFolder, VaultItem, VaultShelf } from '~/types/vault';
+import type { VaultFilter, VaultFolder, VaultItem, VaultShelf, VaultShelfEntry } from '~/types/vault';
 
 // Your vault (iOS VaultScreen, Figma 1209:55066 and 1209:53998): a row of folders on top that you can drag sideways,
 // then everything in it as tiles or a list. The folders and the filter bar stay in place; only the evidence scrolls.
@@ -14,6 +14,8 @@ const vaultAdd = useVaultAdd();
 const personal = usePersonalisation();
 
 const PAGE_SIZE = 9;
+// The row on top shows this many folders (pinned ones first); "Alle mappen" shows every one in a grid.
+const ROW_FOLDERS = 5;
 // Moved further than this, a press on the folder row is a drag and not a click on a folder.
 const DRAG_DISTANCE = 6;
 const primaryButton =
@@ -34,21 +36,47 @@ const hasScrolled = ref(false);
 // The folder row has more to the left or right: its edge fades there, so a folder never looks cut off.
 const shelfFade = ref({ left: false, right: false });
 const folderSheet = ref<VaultFolder | 'new' | null>(null);
+// The screen "Alle mappen" is ?map=alle in the address, as an open folder is ?map=<id>.
+const ALL_FOLDERS = 'alle';
+const isAllFolders = computed(() => route.query.map === ALL_FOLDERS);
 const deletedFolder = ref<VaultFolder | null>(null);
 const deletedItem = ref<VaultItem | null>(null);
 const deleteFolderRef = useTemplateRef<{ open: () => void }>('confirmDeleteFolder');
 const deleteItemRef = useTemplateRef<{ open: () => void }>('confirmDeleteItem');
-const searchRef = useTemplateRef<HTMLInputElement>('search');
-const searchId = useId();
+const searchRef = useTemplateRef<{ focus: () => void }>('search');
 
 const state = computed(() => vault.state.value);
 const visibleItems = computed(() => applyFilter(state.value.items, filter.value));
 const shownItems = computed(() => visibleItems.value.slice(0, shownCount.value));
 
-const FOLDER_ACTIONS: RowMenuItem[] = [
-  { id: 'edit', label: VAULT_FOLDER_EDIT },
-  { id: 'delete', label: VAULT_FOLDER_DELETE, isDanger: true },
-];
+// Dragging with the mouse (iOS VaultDrag): folders and cards change places live while you hold them; a card let go on a
+// folder goes into it. What you moved stays where it was moved to, and moving cards puts the vault in "Eigen volgorde".
+const dragged = ref<{ kind: 'folder' | 'item'; id: string } | null>(null);
+const liveFolders = ref<string[] | null>(null);
+const liveItems = ref<string[] | null>(null);
+const dropFolderId = ref<string | null>(null);
+const announcement = ref('');
+let droppedOnFolder = false;
+const shelves = computed(() => {
+  const order = liveFolders.value;
+  if (!order) return vault.shelves.value;
+  return order.flatMap((id) => vault.shelves.value.filter((entry) => entry.folder.id === id));
+});
+const rowShelves = computed(() => shelves.value.slice(0, ROW_FOLDERS));
+const cards = computed(() => {
+  const order = liveItems.value;
+  if (!order) return shownItems.value;
+  return order.flatMap((id) => shownItems.value.filter((item) => item.id === id));
+});
+
+/** Like the menu of a chat: Vastzetten or Losmaken, then the rest. */
+function folderActions(folder: VaultFolder): RowMenuItem[] {
+  return [
+    { id: 'pin', label: folder.pinnedAt ? VAULT_FOLDER_UNPIN : VAULT_FOLDER_PIN },
+    { id: 'edit', label: VAULT_FOLDER_EDIT },
+    { id: 'delete', label: VAULT_FOLDER_DELETE, isDanger: true },
+  ];
+}
 
 const shelfFolder = computed(() => (filter.value.shelf.kind === 'folder' ? vault.folder(filter.value.shelf.id) : null));
 const openEntry = computed(() => vault.shelves.value.find((entry) => entry.folder.id === shelfFolder.value?.id) ?? null);
@@ -67,13 +95,20 @@ function shelfFromRoute(): VaultShelf {
   return map && vault.folder(map) ? { kind: 'folder', id: map } : { kind: 'all' };
 }
 
+// A folder opened from "Alle mappen" remembers that (?van=alle): back goes there and not to the vault.
+const cameFromAll = computed(() => route.query.van === ALL_FOLDERS);
+
 function openFolder(folderId: string) {
-  router.push({ query: { ...route.query, map: folderId } });
+  router.push({ query: { ...route.query, map: folderId, ...(isAllFolders.value ? { van: ALL_FOLDERS } : {}) } });
+}
+
+function openAllFolders() {
+  router.push({ query: { ...route.query, map: ALL_FOLDERS } });
 }
 
 function closeShelf() {
-  const { map: _, ...query } = route.query;
-  router.push({ query });
+  const { map: _, van: __, ...query } = route.query;
+  router.push({ query: cameFromAll.value ? { ...query, map: ALL_FOLDERS } : query });
 }
 
 /** New evidence goes in the folder you look at, and in the folder of its kind (as on iOS). */
@@ -85,7 +120,14 @@ function clearFilters() {
   filter.value = createFilter();
 }
 
-function handleFolderAction(folder: VaultFolder, action: string) {
+async function handleFolderAction(folder: VaultFolder, action: string) {
+  if (action === 'pin') {
+    const isPinned = !folder.pinnedAt;
+    if (await vault.setFolderPinned(folder.id, isPinned)) {
+      announcement.value = (isPinned ? VAULT_FOLDER_PINNED_ANNOUNCEMENT : VAULT_FOLDER_UNPINNED_ANNOUNCEMENT)(folder.name);
+    }
+    return;
+  }
   if (action === 'edit') {
     folderSheet.value = folder;
     return;
@@ -109,7 +151,8 @@ function folderCreated(folder: VaultFolder) {
 
 // The folder row scrolls sideways by dragging it with the mouse, like swiping on a phone (touch already scrolls).
 function startDrag(event: PointerEvent) {
-  if (event.pointerType !== 'mouse' || event.button !== 0 || !shelfRowRef.value) return;
+  // A folder itself is dragged to another place (below); the empty parts of the row scroll it.
+  if (event.pointerType !== 'mouse' || event.button !== 0 || !shelfRowRef.value || (event.target as Element).closest('[draggable="true"]')) return;
   drag.value = { x: event.clientX, scrollLeft: shelfRowRef.value.scrollLeft, isDragging: false };
 }
 
@@ -132,6 +175,91 @@ function stopClickAfterDrag(event: MouseEvent) {
   if (!drag.value?.isDragging) return;
   event.preventDefault();
   event.stopPropagation();
+}
+
+function moveWithin(order: string[], id: string, targetId: string) {
+  const from = order.indexOf(id);
+  const to = order.indexOf(targetId);
+  if (from === -1 || to === -1 || from === to) return order;
+  const next = [...order];
+  next.splice(from, 1);
+  next.splice(to, 0, id);
+  return next;
+}
+
+function startDragging(kind: 'folder' | 'item', id: string, event: DragEvent) {
+  dragged.value = { kind, id };
+  droppedOnFolder = false;
+  if (kind === 'folder') liveFolders.value = vault.shelves.value.map((entry) => entry.folder.id);
+  else liveItems.value = shownItems.value.map((item) => item.id);
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', id);
+  }
+}
+
+/** Over another folder or card: the dragged one takes its place straight away. */
+function dragOverSibling(kind: 'folder' | 'item', targetId: string, event: DragEvent) {
+  if (dragged.value?.kind !== kind) return;
+  event.preventDefault();
+  const list = kind === 'folder' ? liveFolders : liveItems;
+  if (list.value) list.value = moveWithin(list.value, dragged.value.id, targetId);
+}
+
+/** Over a folder with a card: it will go into the folder. */
+function dragOverFolder(folderId: string, event: DragEvent) {
+  if (dragged.value?.kind === 'item') {
+    event.preventDefault();
+    dropFolderId.value = folderId;
+  } else dragOverSibling('folder', folderId, event);
+}
+
+async function dropOnFolder(folder: VaultFolder, event: DragEvent) {
+  const current = dragged.value;
+  if (current?.kind !== 'item') return;
+  event.preventDefault();
+  droppedOnFolder = true;
+  const item = state.value.items.find((candidate) => candidate.id === current.id);
+  const from = filter.value.shelf.kind === 'folder' ? filter.value.shelf.id : null;
+  if (item && (await vault.moveToFolder(item, folder.id, from))) announcement.value = VAULT_MOVED_INTO(item.title, folder.name);
+}
+
+/** The mouse is let go: what was dragged stays where it was moved to, wherever it was let go. */
+async function endDragging() {
+  const ended = dragged.value;
+  const folders = liveFolders.value;
+  const items = liveItems.value;
+  dragged.value = null;
+  dropFolderId.value = null;
+  if (ended?.kind === 'folder' && folders) await vault.setFolderOrder(folders);
+  else if (ended?.kind === 'item' && items && !droppedOnFolder) {
+    const before = shownItems.value.map((item) => item.id);
+    if (items.join() !== before.join()) {
+      await vault.setItemOrder(items);
+      filter.value.order = 'custom';
+    }
+  }
+  liveFolders.value = null;
+  liveItems.value = null;
+}
+
+/** A folder held near the edge of the row scrolls it, so it can be dragged to the far end. */
+function scrollShelfWhileDragging(event: DragEvent) {
+  const row = shelfRowRef.value;
+  if (!row || !dragged.value) return;
+  const { left, right } = row.getBoundingClientRect();
+  if (event.clientX < left + 48) row.scrollLeft -= 14;
+  else if (event.clientX > right - 48) row.scrollLeft += 14;
+}
+
+/** The keyboard way to move a folder (VoiceOver's "Naar voren" and "Naar achteren" on iOS). */
+async function nudgeFolder(entry: VaultShelfEntry, step: -1 | 1) {
+  const order = vault.shelves.value.map((candidate) => candidate.folder.id);
+  const target = order[order.indexOf(entry.folder.id) + step];
+  if (!target) return;
+  await vault.setFolderOrder(moveWithin(order, entry.folder.id, target));
+  await nextTick();
+  (document.getElementById(`vault-folder-${entry.folder.id}`)?.querySelector('button') as HTMLElement | null)?.focus();
 }
 
 function updateShelfFade() {
@@ -213,6 +341,18 @@ watch(
   (isVaultGrid) => (isGrid.value = isVaultGrid),
 );
 
+// Opened from the search (/kluis?item=<id>): that piece of evidence opens, and the address is clean again.
+watch(
+  () => [route.query.item, state.value.status] as const,
+  ([id, status]) => {
+    if (typeof id !== 'string' || status !== 'ready') return;
+    const { item: _, ...query } = route.query;
+    router.replace({ query });
+    if (state.value.items.some((item) => item.id === id)) openedId.value = id;
+  },
+  { immediate: true },
+);
+
 onMounted(() => {
   personal.load();
   isGrid.value = personal.state.value.isVaultGrid;
@@ -225,11 +365,11 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
 
 <template>
   <div
-    class="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-4 pb-40 sm:px-13.25"
+    class="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-4 pb-[max(10rem,var(--ayla-float-height,10rem))] sm:px-13.25"
     @scroll.passive="hasScrolled = ($event.target as HTMLElement).scrollTop > 1"
   >
-    <!-- From the left edge, like the title above it and the content of every other page; as wide as the window allows. -->
-    <div class="flex w-full flex-col">
+    <!-- As wide as the window allows up to 60rem, in the middle: with the sidebar closed the folders and cards do not stretch across the whole screen. -->
+    <div class="mx-auto flex w-full max-w-240 flex-col">
       <h2 class="sr-only">{{ VAULT_TITLE }}</h2>
 
       <!-- Loading: grey shapes where the folders and cards will appear. -->
@@ -239,7 +379,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
           <span v-for="index in 4" :key="index" class="h-27.5 rounded-2xl bg-tile" />
         </div>
         <span class="h-9 w-72 rounded-lg bg-tile" aria-hidden="true" />
-        <div class="grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-4" aria-hidden="true">
+        <div class="grid grid-cols-[repeat(auto-fill,minmax(13.5rem,1fr))] gap-4" aria-hidden="true">
           <span v-for="index in 3" :key="index" class="h-56 rounded-2xl bg-tile" />
         </div>
       </div>
@@ -259,10 +399,20 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
         <!-- The folders and the filter bar stay in place (under the title); the evidence scrolls away under them. -->
         <div
           :class="hasScrolled ? '[@media(min-height:44rem)]:border-card-line' : ''"
-          class="-mx-4 flex flex-col border-b border-transparent bg-white px-4 pb-3.5 pt-25.25 transition-colors sm:-mx-2 sm:px-2 [@media(min-height:44rem)]:sticky [@media(min-height:44rem)]:top-0 [@media(min-height:44rem)]:z-[5]"
+          class="-mx-4 flex flex-col border-b border-transparent bg-canvas px-4 pb-3.5 pt-25.25 transition-colors sm:-mx-2 sm:px-2 [@media(min-height:44rem)]:sticky [@media(min-height:44rem)]:top-0 [@media(min-height:44rem)]:z-[5]"
         >
         <!-- Folders: standard ones first, then your own. Drag the row (or scroll it) to see the rest. -->
-        <section v-if="filter.shelf.kind === 'all'" class="flex flex-col gap-1" :aria-label="VAULT_FOLDERS">
+        <section v-if="filter.shelf.kind === 'all' && !isAllFolders" class="flex flex-col gap-1" :aria-label="VAULT_FOLDERS">
+          <div v-if="shelves.length" class="mb-1 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-heading">{{ VAULT_FOLDERS }}</h3>
+            <button
+              type="button"
+              class="-mr-2 rounded-lg px-2 py-1 text-sm font-medium text-brand hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand"
+              @click="openAllFolders"
+            >
+              {{ VAULT_ALL_FOLDERS(shelves.length) }}
+            </button>
+          </div>
           <ul
             ref="shelfRow"
             :class="drag?.isDragging ? 'cursor-grabbing select-none' : shelfFade.left || shelfFade.right ? 'cursor-grab' : ''"
@@ -274,22 +424,41 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
             @pointerup="endDrag"
             @pointercancel="endDrag"
             @click.capture="stopClickAfterDrag"
-            @dragstart.prevent
+            @dragover="scrollShelfWhileDragging"
           >
             <!-- At least 9.5rem wide (six fit on a laptop); with room to spare the folders share the whole row, so it ends where the cards end. -->
-            <li v-for="entry in vault.shelves.value" :key="entry.folder.id" class="min-w-0 max-w-64 flex-[1_0_9.5rem]">
+            <li
+              v-for="entry in rowShelves"
+              :id="`vault-folder-${entry.folder.id}`"
+              :key="entry.folder.id"
+              draggable="true"
+              :class="[
+                dragged?.kind === 'folder' && dragged.id === entry.folder.id ? 'opacity-40' : '',
+                dropFolderId === entry.folder.id ? 'scale-[1.03] rounded-2xl ring-2 ring-brand' : '',
+              ]"
+              class="min-w-0 max-w-64 flex-[1_0_9.5rem] transition-transform"
+              @dragstart="startDragging('folder', entry.folder.id, $event)"
+              @dragover="dragOverFolder(entry.folder.id, $event)"
+              @dragleave="dropFolderId === entry.folder.id && (dropFolderId = null)"
+              @drop="dropOnFolder(entry.folder, $event)"
+              @dragend="endDragging"
+              @keydown.alt.left.prevent="nudgeFolder(entry, -1)"
+              @keydown.alt.right.prevent="nudgeFolder(entry, 1)"
+            >
               <VaultFolderTile
                 :title="entry.folder.name"
                 :icon="entry.iconSrc"
                 :color="entry.hex"
                 :surface="entry.surface"
+                :icon-color="entry.iconColor"
+                :is-pinned="Boolean(entry.folder.pinnedAt)"
                 :count="entry.count"
                 @open="openFolder(entry.folder.id)"
               >
                 <template #actions>
                   <AylaRowMenu
                     floats
-                    :items="FOLDER_ACTIONS"
+                    :items="folderActions(entry.folder)"
                     :label="VAULT_FOLDER_ACTIONS(entry.folder.name)"
                     @select="handleFolderAction(entry.folder, $event)"
                   />
@@ -299,8 +468,8 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
           </ul>
         </section>
 
-        <!-- An open folder: back to the whole vault, its name and how much is in it. -->
-        <div v-else class="flex flex-col items-start gap-3">
+        <!-- "Alle mappen": back to the whole vault, the title and a new folder. -->
+        <div v-else-if="isAllFolders" class="flex flex-col items-start gap-3">
           <button
             type="button"
             class="-ml-2 flex h-8 items-center gap-2 rounded-lg px-2 text-sm font-medium text-subtle hover:bg-surface hover:text-heading focus-visible:outline-2 focus-visible:outline-brand"
@@ -310,7 +479,26 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
             {{ VAULT_BACK_TO_VAULT }}
           </button>
           <div class="flex w-full items-center gap-3">
-            <VaultFolderBadge v-if="openEntry" :icon="openEntry.iconSrc" :color="openEntry.hex" size="large" />
+            <div class="flex min-w-0 flex-1 flex-col">
+              <h3 class="truncate font-heading text-xl font-semibold text-heading">{{ VAULT_ALL_FOLDERS_TITLE }}</h3>
+              <p class="text-xs font-medium text-ink-soft">{{ VAULT_FOLDERS_COUNT(shelves.length) }}</p>
+            </div>
+            <button type="button" :class="primaryButton" class="!min-w-0" @click="folderSheet = 'new'">{{ VAULT_FOLDER_CREATE }}</button>
+          </div>
+        </div>
+
+        <!-- An open folder: back to the whole vault, its name and how much is in it. -->
+        <div v-else class="flex flex-col items-start gap-3">
+          <button
+            type="button"
+            class="-ml-2 flex h-8 items-center gap-2 rounded-lg px-2 text-sm font-medium text-subtle hover:bg-surface hover:text-heading focus-visible:outline-2 focus-visible:outline-brand"
+            @click="closeShelf"
+          >
+            <VaultIcon src="/images/vault/icons/ArrowLeft.svg" class="size-4" />
+            {{ cameFromAll ? VAULT_BACK_TO_ALL_FOLDERS : VAULT_BACK_TO_VAULT }}
+          </button>
+          <div class="flex w-full items-center gap-3">
+            <VaultFolderBadge v-if="openEntry" :icon="openEntry.iconSrc" :color="openEntry.hex" :icon-color="openEntry.iconColor" size="large" />
             <div class="flex min-w-0 flex-1 flex-col">
               <h3 class="truncate font-heading text-xl font-semibold text-heading">{{ shelfFolder?.name }}</h3>
               <p class="text-xs font-medium text-ink-soft">{{ itemCount(vault.count(filter.shelf)) }}</p>
@@ -318,7 +506,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
             <AylaRowMenu
               v-if="openEntry"
               floats
-              :items="FOLDER_ACTIONS"
+              :items="folderActions(openEntry.folder)"
               :label="VAULT_FOLDER_ACTIONS(openEntry.folder.name)"
               @select="handleFolderAction(openEntry.folder, $event)"
             />
@@ -326,6 +514,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
         </div>
 
         <VaultToolbar
+          v-if="!isAllFolders"
           v-model:filter="filter"
           v-model:is-grid="isGrid"
           v-model:is-searching="isSearching"
@@ -334,24 +523,30 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
           @add="add"
         />
 
-        <div v-if="isSearching" class="mt-3 flex h-9.5 items-center gap-3 rounded-field border border-field-line bg-white px-3 focus-within:border-brand">
-          <VaultIcon src="/images/vault/toolbar-search.svg" class="size-5 text-subtle" />
-          <label :for="searchId" class="sr-only">{{ VAULT_SEARCH }}</label>
-          <input
-            :id="searchId"
-            ref="search"
-            v-model="filter.searchText"
-            type="search"
-            :placeholder="VAULT_SEARCH_PLACEHOLDER"
-            class="min-w-0 flex-1 bg-transparent text-sm font-medium text-heading placeholder:text-subtle/50 focus:outline-none"
-            @keydown.esc="isSearching = false"
-          />
-        </div>
+        <LayoutSearchInput
+          v-if="isSearching"
+          ref="search"
+          v-model="filter.searchText"
+          :label="VAULT_SEARCH"
+          :placeholder="VAULT_SEARCH_PLACEHOLDER"
+          class="mt-3"
+          @escape="isSearching = false"
+        />
 
         </div>
 
         <p class="sr-only" aria-live="polite">{{ itemCount(visibleItems.length) }}</p>
+        <p class="sr-only" role="status" aria-live="polite">{{ announcement }}</p>
 
+        <VaultFoldersGrid
+          v-if="isAllFolders"
+          :entries="shelves"
+          :actions="folderActions"
+          @open="openFolder"
+          @action="handleFolderAction"
+        />
+
+        <template v-else>
         <!-- Nothing to show: what to do next depends on why, as on iOS. -->
         <div v-if="emptyKind" class="flex flex-col items-center gap-5 py-12">
           <template v-if="emptyKind === 'vault'">
@@ -370,10 +565,19 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
 
         <ul
           v-else
-          :class="isGrid ? 'grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-4' : 'flex flex-col gap-2.5'"
+          :class="isGrid ? 'grid grid-cols-[repeat(auto-fill,minmax(13.5rem,1fr))] gap-4' : 'flex flex-col gap-2.5'"
           class="mt-1.5"
         >
-          <li v-for="item in shownItems" :key="item.id" class="flex">
+          <li
+            v-for="item in cards"
+            :key="item.id"
+            draggable="true"
+            :class="dragged?.kind === 'item' && dragged.id === item.id ? 'opacity-40' : ''"
+            class="flex"
+            @dragstart="startDragging('item', item.id, $event)"
+            @dragover="dragOverSibling('item', item.id, $event)"
+            @dragend="endDragging"
+          >
             <VaultItemCard
               :item="item"
               :is-grid="isGrid"
@@ -392,6 +596,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
           {{ VAULT_SHOW_MORE }}
           <img src="/images/vault/chevron-down.svg" alt="" width="16" height="16" />
         </button>
+        </template>
       </template>
     </div>
 

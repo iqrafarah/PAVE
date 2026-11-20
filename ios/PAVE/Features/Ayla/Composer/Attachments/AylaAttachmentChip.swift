@@ -4,11 +4,15 @@ import SwiftUI
 struct AylaAttachmentChip: View {
     let name: String
     var onRemove: (() -> Void)?
+    /// Above a sent message: smaller, several on a line.
+    var isCompact = false
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: isCompact ? 4 : 6) {
             Image(.iconPaperclip)
                 .renderingMode(.template)
+                .resizable()
+                .paveIconFrame(isCompact ? 12 : 16)
                 .foregroundStyle(Color.paveAccent)
                 .accessibilityHidden(true)
             Text(name)
@@ -33,12 +37,12 @@ struct AylaAttachmentChip: View {
                 .accessibilityLabel("\(name) weghalen")
             }
         }
-        .padding(.leading, 10)
-        .padding(.trailing, onRemove == nil ? 12 : 0)
-        .frame(height: 32)
-        .frame(maxWidth: 260, alignment: .leading)
+        .padding(.leading, isCompact ? 8 : 10)
+        .padding(.trailing, onRemove == nil ? (isCompact ? 9 : 12) : 0)
+        .frame(height: isCompact ? 26 : 32)
+        .frame(maxWidth: isCompact ? 190 : 260, alignment: .leading)
         .fixedSize(horizontal: true, vertical: false)
-        .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 12))
+        .background(Color.paveSurfaceTint, in: .rect(cornerRadius: isCompact ? 9 : 12))
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Bijlage \(name)")
     }

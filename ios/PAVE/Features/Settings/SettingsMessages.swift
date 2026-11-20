@@ -25,6 +25,8 @@ enum SettingsMessages {
     static let vaultLayout = "Weergave kluis"
     static let vaultLayoutHint = "Zo opent je kluis. In de kluis kun je even wisselen; de volgende keer opent hij weer zo."
     static let textSize = "Tekstgrootte"
+    static let animationsOff = "Animaties uitzetten"
+    static let animationsOffHint = "Alles in PAVE blijft stil staan: geen bewegende overgangen, laders of golven. Geldt alleen op dit apparaat."
     static let onThisDeviceOnly = "Je keuzes gelden nu alleen op dit toestel. Zodra PAVE er klaar voor is, gelden ze voor je hele account."
     static let notSetUp = "Je naam en foto aanpassen kan nog niet. Zodra PAVE er klaar voor is, kan het hier."
 
@@ -32,6 +34,19 @@ enum SettingsMessages {
         switch layout {
         case .list: "Lijstweergave"
         case .grid: "Rasterweergave"
+        }
+    }
+
+    static let displayMode = "Licht of donker"
+    static let displayAutoHint = "Automatisch volgt de instelling van je apparaat."
+    static let displaySynced = "Deze keuze volgt je account, ook op het web."
+    static let displayLocal = "Deze keuze geldt alleen op dit apparaat."
+
+    static func title(_ mode: PaveDisplayMode) -> String {
+        switch mode {
+        case .auto: "Automatisch"
+        case .light: "Licht"
+        case .dark: "Donker"
         }
     }
 

@@ -10,7 +10,7 @@ struct VaultSkillsPicker: View {
     let draft: VaultItemDraft
     /// When adding evidence, Ayla starts looking as soon as you reach the skills.
     var asksAylaOnAppear = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @State private var search = ""
     @State private var showsAll = false
     @State private var width: CGFloat = 400
@@ -46,7 +46,7 @@ struct VaultSkillsPicker: View {
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .background {
-            Color.white
+            Color.panel
                 .contentShape(.rect)
                 .onTapGesture { isSearching = false }
         }
@@ -59,7 +59,7 @@ struct VaultSkillsPicker: View {
     }
 
     private func askAyla() async {
-        await ayla.ask(for: draft, existing: VaultSkills.cleaned(skills + known))
+        await ayla.ask(for: draft, chosen: VaultSkills.cleaned(skills))
     }
 
     private var vaultSection: some View {

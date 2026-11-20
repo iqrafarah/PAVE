@@ -24,7 +24,7 @@ struct VaultSelectionBar: View {
                     .textStyle(.bodyMedium)
                     .foregroundStyle(Color.canvas)
                     .frame(width: 101, height: 35)
-                    .background(Color.paveAccent, in: .capsule)
+                    .background(Color.paveAccentFill, in: .capsule)
                     .frame(minHeight: 44)
                     .contentShape(.capsule)
             }
