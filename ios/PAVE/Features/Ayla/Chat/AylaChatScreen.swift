@@ -284,7 +284,7 @@ struct AylaChatScreen: View {
             .safeAreaInset(edge: .top, spacing: 0) {
                 // While talking the bubble follows "Tekst bij de stem" in Settings: off means her voice and the glow only.
                 if showsShelfReply, !isTalking || showsVoiceText, let reply = shelfReply {
-                    AylaShelfReply(text: reply.text, choices: reply.choices, onChoose: { choose($0) }) {
+                    AylaShelfReply(text: reply.text, thinking: model.activity.map(AylaMessages.activity) ?? AylaMessages.thinking, choices: reply.choices, onChoose: { choose($0) }) {
                         showsShelfReply = false
                     }
                     .transition(.move(edge: .top).combined(with: .opacity))
@@ -367,6 +367,9 @@ struct AylaChatScreen: View {
         }
         .onDisappear { headGestures.stop() }
         .onChange(of: model.lastAylaEntryID) { vacancyIndex = 0 }
+        .onChange(of: model.activity) { _, activity in
+            if let activity { AccessibilityNotification.Announcement(AylaMessages.activity(activity)).post() }
+        }
         // A spoken conversation goes on in the background, with the Lock Screen and the Dynamic Island showing it,
         // so you can keep talking with the phone in your pocket.
         .transform(voiceReactions)
@@ -983,7 +986,7 @@ struct AylaChatScreen: View {
         if voice.state == .listening, !model.entries.isEmpty, !voice.isMuted {
             return .init(text: "Ayla luistert…", kind: .status)
         }
-        return .init(text: voice.state == .thinking ? "Ayla denkt na…" : voiceHint(voice), kind: .status)
+        return .init(text: voice.state == .thinking ? AylaMessages.thinking : voiceHint(voice), kind: .status)
     }
 
     private func voiceHint(_ voice: AylaVoiceSession) -> String {
@@ -1012,7 +1015,8 @@ struct AylaChatScreen: View {
         VStack(spacing: 0) {
             switch model.phase {
             case .thinking:
-                AylaStatusIndicator(state: .thinking, message: "Ayla denkt na…")
+                AylaStatusIndicator(state: .thinking, message: model.activity.map(AylaMessages.activity) ?? AylaMessages.thinking)
+                    .padding(.horizontal, 32)
                     .padding(.bottom, 41)
                     .transition(.opacity)
             case .failed(let message):

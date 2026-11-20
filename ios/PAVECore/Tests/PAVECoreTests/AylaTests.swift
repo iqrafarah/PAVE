@@ -510,6 +510,19 @@ extension SupabaseAylaServiceTests {
         #expect(captured.request?.value(forHTTPHeaderField: "Accept") == "text/event-stream")
     }
 
+    @Test func whatAylaIsBusyWithComesAlong() {
+        let search = streamEvent("status", #"{"kind":"vacancySearch","what":"developer","where":"Eindhoven"}"#)
+        #expect(search == .success(.activity(.searchingVacancies(what: "developer", where: "Eindhoven"))))
+        let match = streamEvent("status", #"{"kind":"vacancyMatch","count":5,"withVault":true}"#)
+        #expect(match == .success(.activity(.comparingVacancies(count: 5, withVault: true))))
+        #expect(streamEvent("status", #"{"kind":"somethingNew"}"#) == nil)
+        #expect(streamEvent("status", #"{"kind":"vacancySearch","what":""}"#) == nil)
+    }
+
+    private func streamEvent(_ name: String, _ json: String) -> Result<AylaStreamEvent, AylaError>? {
+        SupabaseAylaService.streamEvent(name, data: Data(json.utf8))
+    }
+
     @Test func aStreamWithoutAReplyFails() async {
         let ayla = service { _ in (200, Data("event: start\ndata: {\"conversationId\":\"c9\"}\n\nevent: error\ndata: {\"error\":\"unavailable\"}\n\n".utf8)) }
         await #expect(throws: AylaError.unavailable) {

@@ -38,6 +38,11 @@ export interface Context { screen: Screen; itemId?: string; itemIds?: string[]; 
 
 export interface Choice { id: string; label: string }
 
+/** What Ayla is doing while she has nothing to say yet, so the app can show it. */
+export type Status =
+  | { kind: 'vacancySearch'; what: string; where: string }
+  | { kind: 'vacancyMatch'; count: number; withVault: boolean }
+
 export interface RequirementLink { skill: string; requirement: string }
 
 export interface Vacancy {

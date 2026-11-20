@@ -1,4 +1,4 @@
-import { type AylaReply, type AylaRequest, type Block, CATEGORIES, type Category, type RequirementLink, type Screen, SCREENS, type Vacancy } from './contract.ts'
+import { type AylaReply, type AylaRequest, type Block, type Status, CATEGORIES, type Category, type RequirementLink, type Screen, SCREENS, type Vacancy } from './contract.ts'
 import type { AllowedVault } from './vault.ts'
 import { cleanPurpose, CONSENT_QUESTION_CHOICES, consentQuestion, mayLookInVault, vaultConsent } from './consent.ts'
 import { cleanMemories, type Memory, type MemorySuggestion, usedNotes } from './memory.ts'
@@ -24,6 +24,8 @@ export interface BrainInput {
   vault?: AllowedVault
   /** Called with the text of the answer so far, while the model writes it. */
   onText?: (text: string) => void
+  /** Called when Ayla starts something that takes a while, such as searching vacancies. */
+  onStatus?: (status: Status) => void
   /** Stops the answer, for instance when the user taps stop. */
   signal?: AbortSignal
   /** Called with a short title for a new conversation, when the model gives one. */
@@ -93,19 +95,48 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   ]
 
   let lastText = ''
-  const options = {
-    signal: input.signal,
-    onContent: input.onText
-      ? (content: string) => {
-        const text = stripMarkdown(partialText(content))
-        if (text && text !== lastText) {
-          lastText = text
-          input.onText?.(text)
-        }
-      }
-      : undefined,
+  const showText = (content: string) => {
+    if (!input.onText) return
+    const text = stripMarkdown(partialText(content))
+    if (text && text !== lastText) {
+      lastText = text
+      input.onText(text)
+    }
   }
-  let output = parseOutput((await deps.complete(messages, options)).content)
+  const options = { signal: input.signal, onContent: input.onText ? showText : undefined }
+
+  // Ayla asks to look in the vault: the rest of what the model writes does not count for this turn, so it stops there
+  // and the Ja and Nee show at once.
+  const first = new AbortController()
+  if (input.signal?.aborted) first.abort()
+  input.signal?.addEventListener('abort', () => first.abort())
+  let asksVault: ModelOutput | null = null
+  // The search starts as soon as the model wrote what to search for, while it still writes the rest.
+  let early: { what: string; where: string; found: Promise<SearchResult> } | null = null
+  const firstOptions = {
+    signal: first.signal,
+    onContent: (content: string) => {
+      showText(content)
+      const terms = early ? null : vacancySearchSoFar(content)
+      if (terms) {
+        input.onStatus?.({ kind: 'vacancySearch', ...terms })
+        early = { ...terms, found: search(deps.searchVacancies, terms.what, terms.where) }
+      }
+      if (mayLook || asksVault) return
+      const ask = consentAskSoFar(content)
+      if (ask) {
+        asksVault = ask
+        first.abort()
+      }
+    },
+  }
+  let output: ModelOutput
+  try {
+    output = parseOutput((await deps.complete(messages, firstOptions)).content)
+  } catch (error) {
+    if (!asksVault || input.signal?.aborted) throw error
+    output = asksVault
+  }
   // The first answer heard what the user said; the second one only talks about the vacancies.
   const heard = cleanMemories(output.memories, memory)
   const firstUsed = usedNotes(output.usedMemories, memory)
@@ -115,7 +146,11 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
 
   if (output.vacancySearch) {
     const { what, where } = output.vacancySearch
-    const found = await search(deps.searchVacancies, what, where)
+    const started = early as { what: string; where: string; found: Promise<SearchResult> } | null
+    const sameSearch = started && started.what === what && started.where === where
+    if (!sameSearch) input.onStatus?.({ kind: 'vacancySearch', what, where })
+    const found = sameSearch ? await started.found : await search(deps.searchVacancies, what, where)
+    if (found.status === 'ok' && found.items.length) input.onStatus?.({ kind: 'vacancyMatch', count: found.items.length, withVault: mayLook })
     messages.push({ role: 'assistant', content: JSON.stringify(output) }, { role: 'system', content: describeSearch(found, mayLook) })
     output = parseOutput((await deps.complete(messages, options)).content)
     if (found.status === 'ok' && found.items.length && request.device !== 'watch') {
@@ -298,6 +333,32 @@ export function withMatches(found: FoundVacancy[], raw: unknown): Vacancy[] {
     const gaps = checkedLinks(entry.gaps, f.snippet).filter((gap) => !matches.some((m) => m.skill.toLocaleLowerCase('nl') === gap.skill.toLocaleLowerCase('nl')))
     return { ...f.vacancy, matches, skillGap: gaps }
   })
+}
+
+/** The search terms once the model wrote them completely; null before that. */
+export function vacancySearchSoFar(content: string): { what: string; where: string } | null {
+  const found = content.match(/"vacancySearch"\s*:\s*\{\s*"what"\s*:\s*"((?:[^"\\]|\\.)*)"\s*,\s*"where"\s*:\s*"((?:[^"\\]|\\.)*)"\s*\}/)
+  if (!found) return null
+  try {
+    const what = (JSON.parse(`"${found[1]}"`) as string).trim()
+    return what ? { what, where: (JSON.parse(`"${found[2]}"`) as string).trim() } : null
+  } catch {
+    return null
+  }
+}
+
+/** A model output that already asks to look in the vault, with its text complete; null while it is not that far. */
+export function consentAskSoFar(content: string): ModelOutput | null {
+  const text = content.match(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/)
+  const ask = content.match(/"askVault"\s*:\s*"((?:[^"\\]|\\.)*)"/)
+  if (!text || !ask) return null
+  try {
+    const purpose = JSON.parse(`"${ask[1]}"`) as string
+    if (!purpose.trim()) return null
+    return { ...parseOutput('{}'), text: JSON.parse(`"${text[1]}"`) as string, askVault: purpose }
+  } catch {
+    return null
+  }
 }
 
 function parseOutput(content: string): ModelOutput {

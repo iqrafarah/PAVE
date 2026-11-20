@@ -3,6 +3,18 @@ import PAVECore
 /// Texts the chat shows. They have no web counterpart yet; agree on them with the web team.
 enum AylaMessages {
     /// Above Ja and Nee when Ayla offers to add something to the vault, as on the web (AYLA_VAULT_LABEL).
+    static let thinking = "Ayla denkt na…"
+    /// On one line where "Ayla denkt na…" stands, so a long search is shortened in the middle.
+    static func activity(_ activity: AylaActivity) -> String {
+        switch activity {
+        case .searchingVacancies(let what, let place):
+            place.isEmpty ? "Ayla zoekt vacatures: \(what)…" : "Ayla zoekt vacatures: \(what) in \(place)…"
+        case .comparingVacancies(let count, let withVault):
+            withVault
+                ? "Ayla vergelijkt \(count == 1 ? "1 vacature" : "\(count) vacatures") met je kluis…"
+                : "Ayla bekijkt \(count == 1 ? "1 vacature" : "\(count) vacatures")…"
+        }
+    }
     static let vaultLabel = "Kluis"
     static let attachItem = "Item uit je kluis"
     static let vaultEmpty = "Je kluis is nog leeg"

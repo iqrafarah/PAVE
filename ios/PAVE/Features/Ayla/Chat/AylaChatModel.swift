@@ -34,7 +34,11 @@ final class AylaChatModel {
     private(set) var context: AylaRequest.Context?
     /// The title of that item, for the chip above the text field.
     private(set) var contextTitle: String?
-    private(set) var phase = Phase.idle
+    private(set) var phase = Phase.idle {
+        didSet { if phase != .thinking { activity = nil } }
+    }
+    /// What Ayla is busy with while she thinks, such as searching vacancies; nil is just thinking.
+    private(set) var activity: AylaActivity?
     private(set) var conversationID: String?
     /// A page Ayla opens over the chat after her answer ("open mijn kluis"), as on the web; the id is her answer's.
     struct ScreenRequest: Equatable {
@@ -339,9 +343,13 @@ final class AylaChatModel {
                     conversationID = id
                     newChatProject = nil
                     savePendingFiles()
+                case .activity(let activity):
+                    self.activity = activity
+                    phase = .thinking
                 case .text(let text):
                     if let writingIndex, entries.indices.contains(writingIndex) {
                         entries[writingIndex].text = text
+                        phase = .writing
                     } else {
                         entries.append(Entry(id: "writing-\(UUID().uuidString)", role: .ayla, text: text))
                         writingIndex = entries.count - 1

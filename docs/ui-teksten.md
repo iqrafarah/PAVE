@@ -106,3 +106,6 @@ Vacatures staan niet in het menu. Je zoekt ze in de chat met Ayla; ze openen in 
 | Vraag bij een ontbrekende vaardigheid | Hoe kan ik {vaardigheid} halen voor {functie} bij {bedrijf}? |
 | Bewaren mislukt | Bewaren lukte niet. Probeer het opnieuw. |
 | Laden mislukt | Je bewaarde vacatures konden niet worden geladen. |
+| Ayla zoekt (één regel, waar "Ayla denkt na…" staat) | Ayla zoekt vacatures: {zoekwoorden} in {plaats}… |
+| Ayla vergelijkt (met kluis) | Ayla vergelijkt {n} vacatures met je kluis… |
+| Ayla bekijkt (zonder kluis) | Ayla bekijkt {n} vacatures… |

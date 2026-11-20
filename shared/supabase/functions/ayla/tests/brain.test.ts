@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { test } from 'node:test'
-import { answer, cleanTitle, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
+import { answer, cleanTitle, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
 import { parseRequest } from '../contract.ts'
 import { openRouterCompletion } from '../openrouter.ts'
 import { buildSystemPrompt } from '../prompt.ts'
@@ -702,4 +702,63 @@ test('a vacancy in the context is only allowed with the vacancies screen and wit
 test('an Adzuna result keeps its piece of text for the app', () => {
   const found = toFoundVacancy({ id: 7, title: 'Tester', company: { display_name: 'Bedrijf' }, description: '<b>Je test</b>   apps.' })
   assert.equal(found?.vacancy.summary, 'Je test apps.')
+})
+
+
+/** A model that writes its answer in pieces and stops when it is asked to, as OpenRouter does. */
+function streamingModel(output: object) {
+  const content = JSON.stringify(output)
+  let written = ''
+  const complete = async (_messages: unknown, options?: { onContent?: (c: string) => void; signal?: AbortSignal }) => {
+    for (let end = 5; end <= content.length; end += 5) {
+      if (options?.signal?.aborted) throw new DOMException('stopped', 'AbortError')
+      written = content.slice(0, end)
+      options?.onContent?.(written)
+    }
+    return { model: 'fake', content }
+  }
+  return { complete, written: () => written, content }
+}
+
+test('a question about the vault stops the model at once, with Ja and Nee', async () => {
+  const fake = streamingModel({ text: 'Dan kijk ik even mee.', askVault: 'om vacatures te zoeken die bij je passen', question: null, navigation: null, usedVaultItems: [], title: 'Vacatures', usedMemories: [], memories: [], vaultItem: null, vacancySearch: null, vacancyMatches: [] })
+  const reply = await answer({ request, conversationId: 'c', history: [], onText: () => {} }, { complete: fake.complete, newId: ids() })
+  assert.ok(fake.written().length < fake.content.length - 40)
+  assert.ok(reply.accessRequest)
+  assert.deepEqual(reply.question?.choices.map((c) => c.label), ['Ja', 'Nee'])
+})
+
+test('stopping by the user still stops, also before the vault question', async () => {
+  const stop = new AbortController()
+  stop.abort()
+  const fake = streamingModel(say('Hoi'))
+  await assert.rejects(answer({ request, conversationId: 'c', history: [], signal: stop.signal, onText: () => {} }, { complete: fake.complete, newId: ids() }))
+})
+
+test('the vacancy search starts while the model still writes, and says so', async () => {
+  const statuses: unknown[] = []
+  let searches = 0
+  const first = { text: 'Ik zoek even.', askVault: null, question: null, navigation: null, usedVaultItems: [], title: null, usedMemories: [], memories: [], vaultItem: null, vacancySearch: { what: 'developer', where: 'Eindhoven' }, vacancyMatches: [] }
+  const outputs = [first, say('Ik vond er een.')]
+  let call = 0
+  const complete = async (_m: unknown, options?: { onContent?: (c: string) => void }) => {
+    const content = JSON.stringify(outputs[call++])
+    for (let end = 5; end <= content.length; end += 5) options?.onContent?.(content.slice(0, end))
+    return { model: 'fake', content }
+  }
+  const reply = await answer(
+    { request, conversationId: 'c', history: [], onText: () => {}, onStatus: (s) => statuses.push(s) },
+    { complete, newId: ids(), searchVacancies: async () => { searches++; return [{ vacancy: { id: 'a', title: 'Developer', company: 'Bedrijf', source: 'adzuna', matches: [], skillGap: [] }, snippet: 'Je bouwt apps.' }] } },
+  )
+  assert.equal(searches, 1)
+  assert.deepEqual(statuses, [{ kind: 'vacancySearch', what: 'developer', where: 'Eindhoven' }, { kind: 'vacancyMatch', count: 1, withVault: false }])
+  assert.equal(reply.blocks.length, 1)
+})
+
+test('what the model wrote so far is only used once it is complete', () => {
+  assert.equal(consentAskSoFar('{"text":"Hoi","askVault":"om te'), null)
+  assert.equal(consentAskSoFar('{"text":"Hoi","askVault":null'), null)
+  assert.equal(consentAskSoFar('{"text":"Hoi","askVault":"om je te helpen"')?.askVault, 'om je te helpen')
+  assert.equal(vacancySearchSoFar('{"vacancySearch":{"what":"dev","where":"Ein'), null)
+  assert.deepEqual(vacancySearchSoFar('{"vacancySearch":{"what":"dev \\"x\\"","where":""}'), { what: 'dev "x"', where: '' })
 })

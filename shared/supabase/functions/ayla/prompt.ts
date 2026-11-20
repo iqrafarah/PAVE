@@ -213,7 +213,8 @@ const REQUIREMENT_LINK_SCHEMA = {
 export const MODEL_OUTPUT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['text', 'question', 'navigation', 'vacancySearch', 'vacancyMatches', 'title', 'memories', 'usedMemories', 'usedVaultItems', 'vaultItem', 'askVault'],
+  // In the order of the properties: what the app needs first (the text, a question about the vault) comes first.
+  required: ['text', 'askVault', 'question', 'navigation', 'usedVaultItems', 'title', 'usedMemories', 'memories', 'vaultItem', 'vacancySearch', 'vacancyMatches'],
   properties: {
     text: { type: 'string' },
     askVault: { type: ['string', 'null'] },

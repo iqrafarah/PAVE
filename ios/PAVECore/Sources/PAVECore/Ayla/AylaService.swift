@@ -8,6 +8,14 @@ public enum AylaStreamEvent: Equatable, Sendable {
     case text(String)
     /// The whole answer, with its cards and suggestions.
     case reply(AylaReply)
+    /// Something that takes a while, before she has more to say.
+    case activity(AylaActivity)
+}
+
+/// What Ayla is busy with while she has nothing to say yet, so you see what is happening.
+public enum AylaActivity: Equatable, Sendable {
+    case searchingVacancies(what: String, where: String)
+    case comparingVacancies(count: Int, withVault: Bool)
 }
 
 public protocol AylaService: Sendable {
@@ -241,15 +249,34 @@ public struct SupabaseAylaService: AylaService {
         }
     }
 
-    /// One server-sent event of the Ayla function: `start`, `text`, `reply` or `error`.
+    /// One server-sent event of the Ayla function: `start`, `text`, `status`, `reply` or `error`.
     static func streamEvent(_ name: String, data: Data) -> Result<AylaStreamEvent, AylaError>? {
         struct Start: Decodable { let conversationId: String }
         struct Text: Decodable { let text: String }
+        struct Status: Decodable {
+            let kind: String
+            let what: String?
+            let `where`: String?
+            let count: Int?
+            let withVault: Bool?
+        }
         switch name {
         case "start":
             return (try? JSONDecoder().decode(Start.self, from: data)).map { .success(.started(conversationID: $0.conversationId)) }
         case "text":
             return (try? JSONDecoder().decode(Text.self, from: data)).map { .success(.text($0.text)) }
+        case "status":
+            guard let status = try? JSONDecoder().decode(Status.self, from: data) else { return nil }
+            switch status.kind {
+            case "vacancySearch":
+                guard let what = status.what, !what.isEmpty else { return nil }
+                return .success(.activity(.searchingVacancies(what: what, where: status.where ?? "")))
+            case "vacancyMatch":
+                guard let count = status.count, count > 0 else { return nil }
+                return .success(.activity(.comparingVacancies(count: count, withVault: status.withVault ?? false)))
+            default:
+                return nil
+            }
         case "reply":
             return .some((try? AylaReply.decode(data)).map { .success(.reply($0)) } ?? .failure(.unavailable))
         case "error":

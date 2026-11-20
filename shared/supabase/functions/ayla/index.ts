@@ -93,8 +93,8 @@ Deno.serve(async (req) => {
     newId: () => crypto.randomUUID(),
   }
 
-  /** Stores the question and the answer together, and touches the conversation. */
-  const save = async (reply: AylaReply) => {
+  /** Stores the question and the answer together. */
+  const store = async (reply: AylaReply) => {
     // A user message keeps only the names of its files in `reply`, so the chat shows them again; the files' text
     // is never stored.
     const attachments = request.attachments?.length ? { attachments: request.attachments.map((file) => file.name) } : null
@@ -102,11 +102,20 @@ Deno.serve(async (req) => {
       { conversation_id: conversationId, role: 'user', text: request.text, device: request.device, reply: attachments },
       { conversation_id: conversationId, role: 'ayla', text: reply.text, device: request.device, reply },
     ])
-    if (error) return false
+    return !error
+  }
+
+  /** Moves the conversation to the top of the list, with its title. */
+  const touch = async () => {
     await supabase
       .from('ayla_conversations')
       .update({ updated_at: new Date().toISOString(), ...(title ? { title } : {}) })
       .eq('id', conversationId)
+  }
+
+  const save = async (reply: AylaReply) => {
+    if (!await store(reply)) return false
+    await touch()
     return true
   }
 
@@ -128,9 +137,19 @@ Deno.serve(async (req) => {
         }
         send('start', { conversationId })
         try {
-          const reply = await answer({ ...input, signal: stop.signal, onText: (text) => { written = text; send('text', { text }) } }, deps)
-          if (await save(reply)) send('reply', reply)
-          else send('error', { error: 'unavailable' })
+          const reply = await answer({
+            ...input,
+            signal: stop.signal,
+            onText: (text) => { written = text; send('text', { text }) },
+            onStatus: (status) => send('status', status),
+          }, deps)
+          // The answer shows as soon as it is stored; the list of conversations catches up after.
+          if (await store(reply)) {
+            send('reply', reply)
+            await touch()
+          } else {
+            send('error', { error: 'unavailable' })
+          }
         } catch {
           if (stop.signal.aborted && written) {
             await save({ version: 1, id: crypto.randomUUID(), conversationId: conversationId!, text: written, blocks: [], usedData: [] })
