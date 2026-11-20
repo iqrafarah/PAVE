@@ -27,13 +27,8 @@ Deno.serve(async (req) => {
   if (!body || !['inbox', 'detail', 'create', 'resolve'].includes(body.action ?? '')) return json({ error: 'invalid_request' }, 400)
 
   try {
-    const { data: assignments, error: assignmentError } = await admin
-      .from('organization_reviewers').select('organization_id').eq('reviewer_id', user.id)
-    if (assignmentError) throw assignmentError
-    const hasReviewerAssignment = (assignments ?? []).length > 0
-
     if (body.action === 'create') {
-      if (!body.itemId || !body.organizationId || !body.locationId || !body.contactId) return json({ error: 'invalid_request' }, 400)
+      if (!body.itemId || !body.organizationId || !body.locationId || !body.departmentId || !body.contactId) return json({ error: 'invalid_request' }, 400)
       if (body.message !== undefined && body.message !== null && typeof body.message !== 'string') return json({ error: 'invalid_request' }, 400)
       if (body.message && body.message.length > 2000) return json({ error: 'message_too_long' }, 400)
       const [{ data: item }, { data: organization, error: organizationError }, { data: location, error: locationError }] = await Promise.all([
@@ -48,23 +43,15 @@ Deno.serve(async (req) => {
       if (!organization) return json({ error: 'organization_not_found' }, 404)
       if (!location) return json({ error: 'invalid_choice' }, 400)
 
-      // Location, then (at a school) a department of that location, then one person there.
-      let department: { id: string } | null = null
-      if (body.departmentId) {
-        const { data, error } = await admin.from('organization_departments')
-          .select('id').eq('id', body.departmentId).eq('location_id', location.id).maybeSingle()
-        if (error) throw error
-        department = data
-        if (!department) return json({ error: 'invalid_choice' }, 400)
-      }
-
-      const { data: contact, error: contactError } = await admin.from('organization_contacts')
-        .select('id,department_id')
-        .eq('id', body.contactId).eq('location_id', location.id).eq('is_active', true).maybeSingle()
+      // A department of that location, then one person there who has a PAVE account and is not the learner.
+      const [{ data: department, error: departmentError }, { data: contact, error: contactError }] = await Promise.all([
+        admin.from('organization_departments').select('id').eq('id', body.departmentId).eq('location_id', location.id).maybeSingle(),
+        admin.from('organization_contacts').select('id,reviewer_id')
+          .eq('id', body.contactId).eq('department_id', body.departmentId).eq('is_active', true).maybeSingle(),
+      ])
+      if (departmentError) throw departmentError
       if (contactError) throw contactError
-      if (!contact || contact.department_id !== (department?.id ?? null)) {
-        return json({ error: 'invalid_choice' }, 400)
-      }
+      if (!department || !contact?.reviewer_id || contact.reviewer_id === user.id) return json({ error: 'invalid_choice' }, 400)
 
       const { data: activeRequest, error: activeError } = await admin.from('vault_validation_requests')
         .select('id').eq('user_id', user.id).eq('item_id', item.id).eq('organization_id', organization.id).eq('status', 'pending').maybeSingle()
@@ -73,28 +60,18 @@ Deno.serve(async (req) => {
       const { data: request, error: createError } = await admin.from('vault_validation_requests').insert({
         user_id: user.id, item_id: item.id, organisation_name: organization.name,
         organization_id: organization.id, location_id: location.id,
-        department_id: department?.id ?? null, contact_id: contact.id,
+        department_id: department.id, contact_id: contact.id,
         message: body.message?.trim() || null, status: 'pending',
       }).select('id,requested_at').single()
       // The database partial unique index is the race-safe duplicate guard; keep the
       // friendly response in sync when two submissions arrive at the same time.
       if (createError?.code === '23505') return json({ error: 'already_pending' }, 409)
       if (createError || !request) throw createError ?? new Error('request insert returned no row')
-      const { data: recipients, error: recipientError } = await admin.rpc('vault_validation_recipients', { p_request_id: request.id })
-      if (recipientError) {
-        await admin.from('vault_validation_requests').delete().eq('id', request.id).eq('status', 'pending')
-        throw recipientError
-      }
-      if (!recipients?.length) {
-        await admin.from('vault_validation_requests').delete().eq('id', request.id).eq('status', 'pending')
-        return json({ error: 'no_reviewers' }, 409)
-      }
-      const notifications = recipients.map(({ reviewer_id }: { reviewer_id: string }) => ({
-        recipient_id: reviewer_id, kind: 'verification_request', title: 'Verificatie aanvraag',
+      const { error: notificationError } = await admin.from('user_notifications').insert({
+        recipient_id: contact.reviewer_id, kind: 'verification_request', title: 'Verificatie aanvraag',
         body: item.title, validation_request_id: request.id,
         dedupe_key: `vault-validation:${request.id}`,
-      }))
-      const { error: notificationError } = await admin.from('user_notifications').insert(notifications)
+      })
       if (notificationError) {
         await admin.from('vault_validation_requests').delete().eq('id', request.id).eq('status', 'pending')
         throw notificationError
@@ -200,7 +177,12 @@ Deno.serve(async (req) => {
           })
         }
       }
-      return json({ audience: hasReviewerAssignment ? 'administrator' : 'learner', notifications: visible })
+      // A reviewer is an account behind at least one contact person.
+      const { data: contacts, error: contactsError } = await admin.from('organization_contacts')
+        .select('id').eq('reviewer_id', user.id).limit(1)
+      if (contactsError) throw contactsError
+      const isReviewer = (contacts ?? []).length > 0
+      return json({ audience: isReviewer ? 'administrator' : 'learner', notifications: visible })
     }
 
     if (!body.requestId) return json({ error: 'invalid_request' }, 400)

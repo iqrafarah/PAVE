@@ -57,7 +57,6 @@ enum VaultMessages {
         case .duplicateFolderName: folderNameTaken
         case .notSetUp: "Dit is nog niet beschikbaar. Probeer het later nog een keer."
         case .validationOrganisationNotFound: "Deze organisatie is niet bekend bij PAVE. Controleer de naam of neem contact op met je organisatie."
-        case .validationNoReviewer: "Er is nog geen beoordelaar ingesteld voor deze organisatie. Neem contact op met je organisatie."
         case .validationAlreadyPending: "Voor dit bewijs staat al een verificatieaanvraag open."
         case .validationItemUnavailable: "Dit bewijs kan niet meer worden aangevraagd. Vernieuw de kluis en probeer opnieuw."
         case .validationInvalidChoice: "Deze organisatie-, vestigings- of contactkeuze is niet meer geldig. Kies de gegevens opnieuw."
