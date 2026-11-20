@@ -18,7 +18,7 @@ export const DEVICES_SIGN_OUT_QUESTION = (name: string) => `Uitloggen op ${name}
 export const DEVICES_ERRORS = {
   noConnection: 'Geen verbinding. Probeer het zo nog een keer.',
   notSignedIn: 'Je bent niet meer ingelogd. Log opnieuw in.',
-  notAllowed: 'Dit mag alleen na je tweestapsverificatie. Log opnieuw in.',
+  notAllowed: 'Bevestig eerst met een code uit je authenticator-app. Log daarna opnieuw in.',
   notSetUp: DEVICES_NOT_SET_UP_MESSAGE,
   unavailable: 'Dat lukte niet. Probeer het later nog een keer.',
 } as const;

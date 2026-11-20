@@ -12,6 +12,7 @@ interface MemoryRow {
   id: string;
   text: string;
   category?: string | null;
+  categories?: string[] | null;
   source: MemoryNote['source'];
   conversation_id: string | null;
   created_at: string;
@@ -19,10 +20,13 @@ interface MemoryRow {
 }
 
 function toNote(row: MemoryRow): MemoryNote {
+  const category = toMemoryCategory(row.category);
+  const categories = [...new Set((row.categories ?? []).map(toMemoryCategory))];
   return {
     id: row.id,
     text: row.text,
-    category: toMemoryCategory(row.category),
+    category: categories[0] ?? category,
+    categories: categories.length ? categories : [category],
     source: row.source,
     conversationId: row.conversation_id,
     createdAt: row.created_at,
@@ -48,7 +52,11 @@ export function useAylaMemory() {
     // After a refresh what Ayla remembers shows at once as it was, and is checked against the database right after.
     if (state.value.status !== 'ready') {
       const kept = readKept<{ notes: MemoryNote[]; isEnabled: boolean }>('memory', signedIn.value?.sub);
-      if (kept) Object.assign(state.value, { notes: kept.notes, isEnabled: kept.isEnabled, status: 'ready' });
+      if (kept) {
+        // Notes kept before notes could be in more than one folder only have their main category.
+        const notes = kept.notes.map((note) => ({ ...note, categories: note.categories?.length ? note.categories : [note.category] }));
+        Object.assign(state.value, { notes, isEnabled: kept.isEnabled, status: 'ready' });
+      }
     }
     if (state.value.status !== 'ready') state.value.status = 'loading';
 
@@ -71,28 +79,35 @@ export function useAylaMemory() {
     state.value.status = 'ready';
   }
 
-  /** Inserts a note. Before the category column exists Supabase refuses it (PGRST204), so it is sent without. */
+  /** Inserts a note. Before a category column exists Supabase refuses it (PGRST204), so it is sent without. */
   async function insertNote(values: Record<string, unknown>) {
     const result = await supabase.from('ayla_memories').insert(values).select();
     if (!isMissingColumn(result.error)) return result;
 
-    const { category: _category, ...withoutCategory } = values;
+    const { category: _category, categories: _categories, ...withoutCategory } = values;
     return supabase.from('ayla_memories').insert(withoutCategory).select();
   }
 
-  async function addNote(text: string, category: MemoryCategory) {
-    const result = await insertNote({ text: text.trim(), category, source: 'user' });
+  /** The columns for the folders of a note: `category` is the first of `categories`, as the database keeps them. */
+  function categoryColumns(categories: MemoryCategory[]) {
+    const unique = [...new Set(categories)];
+    const list = unique.length ? unique : ['personal' as const];
+    return { category: list[0], categories: list };
+  }
+
+  async function addNote(text: string, categories: MemoryCategory[]) {
+    const result = await insertNote({ text: text.trim(), ...categoryColumns(categories), source: 'user' });
     if (!hasChangedRows(result)) return { isFailed: true };
 
     await load();
     return { isFailed: false };
   }
 
-  async function updateNote(id: string, text: string, category: MemoryCategory) {
-    const values = { text: text.trim(), category, updated_at: new Date().toISOString() };
+  async function updateNote(id: string, text: string, categories: MemoryCategory[]) {
+    const values = { text: text.trim(), ...categoryColumns(categories), updated_at: new Date().toISOString() };
     let result = await supabase.from('ayla_memories').update(values).eq('id', id).select('id');
     if (isMissingColumn(result.error)) {
-      const { category: _category, ...withoutCategory } = values;
+      const { category: _category, categories: _categories, ...withoutCategory } = values;
       result = await supabase.from('ayla_memories').update(withoutCategory).eq('id', id).select('id');
     }
     if (!hasChangedRows(result)) return { isFailed: true };

@@ -18,7 +18,7 @@ const emit = defineEmits<{
     <span class="min-w-0 flex-1 text-sm font-medium text-heading">{{ message }}</span>
     <button
       type="button"
-      class="min-h-11 rounded-lg px-2 text-sm font-medium text-brand hover:underline focus-visible:outline-2 focus-visible:outline-brand"
+      class="min-h-11 rounded-lg px-2 text-sm font-medium text-brand hover:bg-tint focus-visible:outline-2 focus-visible:outline-brand"
       @click="emit('undo')"
     >
       {{ AYLA_UNDO }}

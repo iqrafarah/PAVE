@@ -14,6 +14,12 @@ export function projectLook(project: { icon?: string | null; color?: string | nu
   };
 }
 
+/** The default folder opens while its project is expanded; a project with its own icon keeps that icon. */
+export function projectIconSrc(project: { icon?: string | null; color?: string | null }, open: boolean) {
+  const look = projectLook(project);
+  return open && look.iconSrc === PROJECT_ICONS.folder ? '/images/vault/icons/FolderSolid.svg' : look.iconSrc;
+}
+
 export const PROJECT_ICON_SEARCH_PLACEHOLDER = 'Pictogrammen zoeken';
-export const PROJECT_ICON_PICKER_LABEL = 'Icoon en kleur kiezen';
+export const PROJECT_ICON_PICKER_LABEL = 'Pictogram en kleur kiezen';
 export const PROJECT_ICON_NONE_FOUND = 'Geen pictogram gevonden';

@@ -3,6 +3,17 @@ const route = useRoute();
 const voice = useAylaVoice();
 const personal = usePersonalisation();
 const user = useSupabaseUser();
+const search = useAylaSearch();
+
+// Cmd+K (Ctrl+K elsewhere) opens or closes the search from any screen.
+function onShortcut(event: KeyboardEvent) {
+  if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === 'k') {
+    event.preventDefault();
+    search.toggle();
+  }
+}
+onMounted(() => window.addEventListener('keydown', onShortcut));
+onBeforeUnmount(() => window.removeEventListener('keydown', onShortcut));
 
 onMounted(() => {
   // The look kept in the account is extra: when it cannot be read, the look of this browser simply stays.
@@ -41,5 +52,6 @@ const showsChats = computed(() => route.meta.showsChats === true);
     </div>
     <VaultAddDialog />
     <VaultFilePreview />
+    <AylaSearchDialog :open="search.isOpen.value" @close="search.close()" />
   </div>
 </template>

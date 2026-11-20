@@ -568,7 +568,7 @@ function handleClose() {
         <p class="min-w-0 flex-1 py-2.5 text-xs font-medium text-heading">{{ VAULT_DRAFT_BACK }}</p>
         <button
           type="button"
-          class="min-h-10 shrink-0 text-sm font-semibold text-brand hover:underline focus-visible:outline-2 focus-visible:outline-brand"
+          class="min-h-10 shrink-0 rounded-lg px-2 text-sm font-semibold text-brand hover:bg-tint focus-visible:outline-2 focus-visible:outline-brand"
           @click="startOver"
         >
           {{ VAULT_DRAFT_START_OVER }}

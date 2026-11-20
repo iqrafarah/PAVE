@@ -27,7 +27,7 @@ public enum PasswordRequirement: CaseIterable, Sendable {
         case .minimumLength: "Minimaal \(Self.minimumCharacterCount) tekens"
         case .mixedCase: "Hoofdletters en kleine letters"
         case .number: "Minimaal één cijfer"
-        case .symbol: "Minimaal één symbool"
+        case .symbol: "Minimaal één speciaal teken, zoals ! of ?"
         }
     }
 

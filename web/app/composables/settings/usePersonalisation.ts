@@ -19,6 +19,8 @@ function apply(settings: Personalisation) {
     else root.style.setProperty(name, value);
   }
   root.style.fontSize = ROOT_SIZES[settings.textSize];
+  if (settings.reduceMotion) root.dataset.reduceMotion = 'true';
+  else delete root.dataset.reduceMotion;
   // The icon in the browser tab follows along, PAVE green included: the same icon in every colour, and going back to
   // green shows at once (a browser only looks for the site's own icon again after a reload).
   setThemeFavicon(themeColours(isCustom ? color : theme.accent)['--color-brand']!);
@@ -29,10 +31,10 @@ export function usePersonalisation() {
   const keptLook = useCookie<KeptLook | null>('pave-look', { default: () => null, maxAge: 365 * 86_400, sameSite: 'lax', secure: !import.meta.dev });
 
   function keepLook() {
-    const { theme, customColor, textSize, isVaultGrid } = state.value;
+    const { theme, customColor, textSize, isVaultGrid, reduceMotion } = state.value;
     const kept = keptLook.value;
-    if (kept?.theme !== theme || kept?.customColor !== customColor || kept?.textSize !== textSize || kept?.isVaultGrid !== isVaultGrid) {
-      keptLook.value = { theme, customColor, textSize, isVaultGrid };
+    if (kept?.theme !== theme || kept?.customColor !== customColor || kept?.textSize !== textSize || kept?.isVaultGrid !== isVaultGrid || kept?.reduceMotion !== reduceMotion) {
+      keptLook.value = { theme, customColor, textSize, isVaultGrid, reduceMotion };
     }
   }
 
@@ -73,7 +75,7 @@ export function usePersonalisation() {
     const fromAccount = appearanceFromProfile(profile);
     // An account from before the display mode existed keeps the choice made on this device.
     const displayMode = 'display_mode' in profile ? fromAccount.displayMode : state.value.displayMode;
-    state.value = { ...fromAccount, displayMode, workMode: state.value.workMode };
+    state.value = { ...fromAccount, displayMode, workMode: state.value.workMode, reduceMotion: state.value.reduceMotion };
     displayCookie.value = displayMode;
     apply(state.value);
     store();

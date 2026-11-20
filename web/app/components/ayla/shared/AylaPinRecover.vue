@@ -78,7 +78,7 @@ onMounted(async () => {
       </div>
       <button
         type="button"
-        class="text-sm font-medium text-danger hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        class="rounded-lg px-2 py-1 text-sm font-medium text-danger hover:bg-tint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         @click="emit('deleteAll')"
       >
         {{ ACCOUNT_PIN_DELETE_ALL }}

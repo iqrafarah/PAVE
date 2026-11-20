@@ -18,12 +18,12 @@ export const VOICE_UNMUTE = 'Microfoon aanzetten';
 export const VOICE_THINKING = 'Ayla denkt na…';
 export const VOICE_LISTENING = 'Ayla luistert…';
 export const VOICE_STARTING = 'Microfoon aanzetten…';
-export const VOICE_MUTED_HINT = 'Je microfoon staat uit. Klik op de microfoon om verder te praten.';
+export const VOICE_MUTED_HINT = 'Je microfoon staat uit. Kies de microfoon om verder te praten.';
 export const VOICE_HINT = 'Ik luister. Vraag me bijvoorbeeld welke banen bij je passen of hoe je je cv sterker maakt.';
 export const VOICE_NOT_ALLOWED = 'Geef PAVE toegang tot je microfoon om met Ayla te praten.';
 export const VOICE_UNAVAILABLE = 'Praten met Ayla werkt niet in deze browser. Typ je vraag maar.';
 export const VOICE_SHOW_CHAT = 'Gesprek tonen';
-export const VOICE_SHOW_ORB = 'Orb groot tonen';
+export const VOICE_SHOW_ORB = 'Cirkel groot tonen';
 export const READ_ALOUD = 'Voorlezen';
 export const READ_ALOUD_STOP = 'Stop met voorlezen';
 

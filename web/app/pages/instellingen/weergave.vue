@@ -25,6 +25,10 @@ const textSize = computed({
   get: () => personal.state.value.textSize,
   set: (value: string) => personal.set({ textSize: value as TextSize }),
 });
+const reduceMotion = computed({
+  get: () => personal.state.value.reduceMotion,
+  set: (value: boolean) => personal.set({ reduceMotion: value }, { save: false }),
+});
 function setCustomColor(color: string) {
   personal.set({ theme: 'custom', customColor: color }, { save: false });
 }
@@ -50,7 +54,7 @@ onMounted(personal.load);
         </SettingsChoice>
       </div>
       <p class="text-xs/normal text-subtle">
-        <template v-if="mode === 'auto'">{{ PERSONAL_DISPLAY_AUTO_HINT }} </template>{{ sync.supportsDisplayMode ? PERSONAL_DISPLAY_SYNCED : PERSONAL_DISPLAY_LOCAL }}
+        <template v-if="mode === 'auto'">{{ PERSONAL_DISPLAY_AUTO_HINT }}{{ ' ' }}</template>{{ sync.supportsDisplayMode ? PERSONAL_DISPLAY_SYNCED : PERSONAL_DISPLAY_LOCAL }}
       </p>
     </section>
 
@@ -87,6 +91,7 @@ onMounted(personal.load);
         </SettingsChoice>
       </div>
     </section>
+    <SettingsSwitchCard v-model="reduceMotion" :title="PERSONAL_REDUCE_MOTION" :explanation="PERSONAL_REDUCE_MOTION_HINT" />
     <p v-if="!sync.problem" role="status" class="px-2 text-xs/normal text-subtle">{{ syncMessage }}</p>
     <div v-if="sync.problem" class="flex flex-col gap-2 px-2">
       <p role="alert" class="text-sm text-danger">{{ sync.problem }}</p>
