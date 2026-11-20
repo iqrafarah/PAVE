@@ -54,8 +54,8 @@ export interface Vacancy {
   salary?: { min: number; max: number; period: 'month' | 'year'; currency: 'EUR'; isEstimate: boolean }
   logoUrl?: string
   url?: string
-  source: 'example' | 'adzuna'
-  /** A short piece of the vacancy text, as Adzuna gives it. Never the whole text. */
+  source: 'example' | 'adzuna' | 'jooble' | 'web'
+  /** A short piece of the vacancy text, as the source gives it. Never the whole text. */
   summary?: string
   matches: RequirementLink[]
   skillGap: RequirementLink[]

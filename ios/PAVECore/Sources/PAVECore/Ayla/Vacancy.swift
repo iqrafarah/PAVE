@@ -16,6 +16,9 @@ public struct Vacancy: Codable, Hashable, Sendable, Identifiable {
         /// A fictional vacancy. The apps label it as an example.
         public static let example = Self(rawValue: "example")
         public static let adzuna = Self(rawValue: "adzuna")
+        public static let jooble = Self(rawValue: "jooble")
+        /// Found by a web search on a Dutch job site; only pages the search really returned.
+        public static let web = Self(rawValue: "web")
     }
 
     public struct Salary: Codable, Hashable, Sendable {

@@ -50,8 +50,9 @@ struct VacancyList: View {
                     onAsk: model.isAvailable ? { onAsk(vacancy) } : nil
                 )
             }
-            if shown.contains(where: { $0.source == .adzuna }) {
-                Text("Vacatures via Adzuna")
+            let sources = shown.map(\.source).reduce(into: [Vacancy.Source]()) { if !$0.contains($1) { $0.append($1) } }.compactMap(AylaMessages.vacancySource)
+            if !sources.isEmpty {
+                Text(sources.joined(separator: " · "))
                     .textStyle(.caption)
                     .foregroundStyle(Color.inkMuted)
                     .frame(maxWidth: .infinity)

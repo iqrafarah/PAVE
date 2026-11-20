@@ -47,7 +47,23 @@ enum AylaMessages {
     static let vacancyOpen = "Lees de hele vacature"
     static let vacancyTitle = "Vacature"
     static let vacancyFromText = "Uit de vacaturetekst"
-    static let vacancyTextNote = "Een stukje van de tekst, zoals Adzuna het geeft. De hele vacature lees je bij de werkgever."
+    static func vacancyTextNote(_ source: Vacancy.Source) -> String {
+        switch source {
+        case .web: "Een stukje van de pagina waar Ayla deze vacature vond. Controleer de hele vacature op die site."
+        case .jooble: "Een stukje van de tekst, zoals Jooble het geeft. De hele vacature lees je bij de werkgever."
+        default: "Een stukje van de tekst, zoals Adzuna het geeft. De hele vacature lees je bij de werkgever."
+        }
+    }
+    /// Where the vacancies come from, under the list and the vacancy.
+    static func vacancySource(_ source: Vacancy.Source) -> String? {
+        switch source {
+        case .adzuna: "Vacatures via Adzuna"
+        case .jooble: "Vacatures via Jooble"
+        case .web: "Gevonden op internet"
+        case .example: "Voorbeeldvacature"
+        default: nil
+        }
+    }
     static let vacancyNoMatch = "Ayla heeft deze vacature nog niet met je kluis vergeleken. Vraag het haar hieronder."
     static let vacancyAskButton = "Vraag Ayla"
     static let vacancyFits = "Past bij jou"

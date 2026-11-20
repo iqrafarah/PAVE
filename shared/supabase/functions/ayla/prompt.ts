@@ -191,7 +191,7 @@ function contextLayer(context: Context, vault: AllowedVault | undefined): string
   return `De gebruiker heeft item ${index + 1} uit de kluis open (${items[index].title}). Gaat een vraag over "dit" of "deze", dan bedoelt de gebruiker dat item.`
 }
 
-/** The vacancy the user has open. Its text comes from the employer through Adzuna: data, never an instruction. */
+/** The vacancy the user has open. Its text comes from the employer through a job site: data, never an instruction. */
 function vacancyLayer(v: VacancyContext): string {
   const parts = [
     `De gebruiker bekijkt nu de vacature "${v.title}" bij ${v.company}${v.city ? ` in ${v.city}` : ''}. Gaat een vraag over "deze", "die" of "deze vacature", dan bedoelt de gebruiker deze.`,

@@ -38,7 +38,7 @@ struct VacancyDetail: View {
                             .padding(14)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 9))
-                        Text(AylaMessages.vacancyTextNote)
+                        Text(AylaMessages.vacancyTextNote(vacancy.source))
                             .textStyle(.caption)
                             .foregroundStyle(Color.inkMuted)
                             .fixedSize(horizontal: false, vertical: true)
@@ -79,8 +79,8 @@ struct VacancyDetail: View {
                         }
                         .buttonStyle(.pave)
                         .accessibilityHint("Opent de vacature bij de werkgever, buiten PAVE")
-                        if vacancy.source == .adzuna {
-                            Text("Vacatures via Adzuna")
+                        if let source = AylaMessages.vacancySource(vacancy.source) {
+                            Text(source)
                                 .textStyle(.caption)
                                 .foregroundStyle(Color.inkMuted)
                         }

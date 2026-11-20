@@ -104,6 +104,8 @@ Rules for the card:
 
 ### Vacancies in the chat (2026-11-20)
 
+**Sources (2026-11-20).** Adzuna registration did not work out, so the server tries the sources in turn and takes the first that finds vacancies: Adzuna (only with `ADZUNA_APP_ID` and `ADZUNA_APP_KEY`), Jooble (only with `JOOBLE_API_KEY`, host `JOOBLE_HOST`, default `nl.jooble.org`; key through the form on jooble.org/api/about), and a web search through OpenRouter (Exa, limited to Dutch job sites in `JOB_SITES`, about $0.007 per search plus tokens). A web result counts only when its link is among the search results (`fromWebAnswer`), so the model cannot invent a vacancy. The Jooble client follows the commonly used format (POST with `keywords` and `location`, `jobs` with `title`, `company`, `location`, `snippet`, `salary`, `link`, `id`); its documentation comes with the key, so check it once the key is there. OpenRouter marks the `web` plugin as deprecated in favour of the `openrouter:web_search` server tool on the Responses API; it still works, but move over when it stops.
+
 Vacancies are not a page in the menu: you search them in the chat with Ayla, using the evidence in your vault.
 
 - **Ayla searches for you.** "Vacatures die bij me passen" without a job title: Ayla picks the search terms from the vault, and asks for consent first when she may not look in it.

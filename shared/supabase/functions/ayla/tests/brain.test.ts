@@ -6,7 +6,7 @@ import { parseRequest } from '../contract.ts'
 import { openRouterCompletion } from '../openrouter.ts'
 import { buildSystemPrompt } from '../prompt.ts'
 import { loadMemory, type MemoryCategory } from '../memory.ts'
-import { toFoundVacancy } from '../vacancies.ts'
+import { firstThatFinds, fromWebAnswer, salaryFrom, toFoundVacancy, toJoobleVacancy } from '../vacancies.ts'
 
 const request = { text: 'Welke banen passen bij mij?', device: 'phone' as const, input: 'text' as const }
 const ids = () => { let n = 0; return () => `id_${++n}` }
@@ -761,4 +761,47 @@ test('what the model wrote so far is only used once it is complete', () => {
   assert.equal(consentAskSoFar('{"text":"Hoi","askVault":"om je te helpen"')?.askVault, 'om je te helpen')
   assert.equal(vacancySearchSoFar('{"vacancySearch":{"what":"dev","where":"Ein'), null)
   assert.deepEqual(vacancySearchSoFar('{"vacancySearch":{"what":"dev \\"x\\"","where":""}'), { what: 'dev "x"', where: '' })
+})
+
+
+test('a Jooble result becomes a card, its text without HTML', () => {
+  const found = toJoobleVacancy({
+    id: 42, title: 'Junior <b>developer</b>', company: 'Bedrijf', location: 'Eindhoven', type: 'Fulltime',
+    salary: '€ 3.000 - € 3.800 per maand', link: 'https://nl.jooble.org/desc/42', snippet: 'Je bouwt&nbsp;apps in <b>React</b>.',
+  })
+  assert.equal(found?.vacancy.id, 'jooble_42')
+  assert.equal(found?.vacancy.title, 'Junior developer')
+  assert.equal(found?.vacancy.employment, 'fullTime')
+  assert.deepEqual(found?.vacancy.salary, { min: 3000, max: 3800, period: 'month', currency: 'EUR', isEstimate: false })
+  assert.equal(found?.snippet, 'Je bouwt apps in React.')
+  assert.equal(toJoobleVacancy({ id: 1, title: 'Zonder bedrijf' }), null)
+})
+
+test('a salary is only read when it says per month or per year', () => {
+  assert.deepEqual(salaryFrom('€40k - €48k per jaar'), { min: 40000, max: 48000, period: 'year', currency: 'EUR', isEstimate: false })
+  assert.equal(salaryFrom('€ 15 per uur'), undefined)
+  assert.equal(salaryFrom('marktconform'), undefined)
+})
+
+test('a web search only keeps vacancies the search really found', () => {
+  const citations = [{ url: 'https://www.werkzoeken.nl/vacature/123', title: 'Developer', content: 'Je werkt met React [...] in Eindhoven.' }]
+  const answer = JSON.stringify({ vacancies: [
+    { url: 'https://werkzoeken.nl/vacature/123/', title: 'Junior developer', company: 'Bedrijf', city: 'Eindhoven', employment: 'fullTime' },
+    { url: 'https://verzonnen.nl/vacature/9', title: 'Droombaan', company: 'Nergens', city: null, employment: null },
+  ] })
+  const found = fromWebAnswer(`Hier: ${answer}`, citations)
+  assert.equal(found.length, 1)
+  assert.equal(found[0].vacancy.source, 'web')
+  assert.equal(found[0].vacancy.url, 'https://www.werkzoeken.nl/vacature/123')
+  assert.equal(found[0].snippet, 'Je werkt met React in Eindhoven.')
+  assert.deepEqual(fromWebAnswer('geen json', citations), [])
+})
+
+test('the next source is tried when one fails or finds nothing', async () => {
+  const vacancy = { id: 'w', title: 't', company: 'c', source: 'web' as const, matches: [], skillGap: [] }
+  const search = firstThatFinds([async () => { throw new Error('down') }, async () => [], async () => [{ vacancy, snippet: '' }]])
+  assert.equal((await search!('dev', ''))[0].vacancy.id, 'w')
+  await assert.rejects(firstThatFinds([async () => { throw new Error('down') }])!('dev', ''))
+  assert.deepEqual(await firstThatFinds([async () => []])!('dev', ''), [])
+  assert.equal(firstThatFinds([]), undefined)
 })

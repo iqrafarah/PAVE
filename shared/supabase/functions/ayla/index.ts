@@ -7,7 +7,7 @@ import { loadAllowedVault } from './vault.ts'
 import { type AylaReply, parseRequest } from './contract.ts'
 import { openRouterCompletion } from './openrouter.ts'
 import { MODEL_OUTPUT_SCHEMA } from './prompt.ts'
-import { adzunaSearch } from './vacancies.ts'
+import { adzunaSearch, firstThatFinds, joobleSearch, type SearchVacancies, webSearch } from './vacancies.ts'
 import { CORS, json, sessionLevel } from '../_shared/http.ts'
 
 /**
@@ -82,14 +82,21 @@ Deno.serve(async (req) => {
   const history = ((past ?? []) as StoredMessage[]).reverse().map(toPastMessage)
   const firstName = (profile?.preferred_name || profile?.full_name?.split(' ')[0] || undefined) as string | undefined
 
+  // Vacancies from the first source that finds them: Adzuna and Jooble when they have a key, then the web.
   const adzunaId = Deno.env.get('ADZUNA_APP_ID')
   const adzunaKey = Deno.env.get('ADZUNA_APP_KEY')
+  const joobleKey = Deno.env.get('JOOBLE_API_KEY')
+  const sources: SearchVacancies[] = [
+    ...(adzunaId && adzunaKey ? [adzunaSearch(adzunaId, adzunaKey)] : []),
+    ...(joobleKey ? [joobleSearch(joobleKey, Deno.env.get('JOOBLE_HOST') || undefined)] : []),
+    webSearch(openRouterKey),
+  ]
 
   let title: string | undefined
   const input = { request, conversationId, history, firstName, memory, vault, project, onTitle: request.conversationId ? undefined : (t: string) => { title = t } }
   const deps = {
     complete: openRouterCompletion(openRouterKey, MODEL_OUTPUT_SCHEMA),
-    searchVacancies: adzunaId && adzunaKey ? adzunaSearch(adzunaId, adzunaKey) : undefined,
+    searchVacancies: firstThatFinds(sources),
     newId: () => crypto.randomUUID(),
   }
 

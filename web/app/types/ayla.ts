@@ -81,7 +81,7 @@ export interface Vacancy {
   salary?: VacancySalary;
   logoUrl?: string;
   url?: string;
-  source: 'example' | 'adzuna';
+  source: 'example' | 'adzuna' | 'jooble' | 'web';
   matches: RequirementLink[];
   skillGap: RequirementLink[];
 }

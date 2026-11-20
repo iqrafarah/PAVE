@@ -34,7 +34,7 @@ export interface BrainInput {
 
 export interface BrainDeps {
   complete: Complete
-  /** Missing when no Adzuna key is configured. */
+  /** Missing when no source for vacancies is configured. */
   searchVacancies?: SearchVacancies
   newId: () => string
 }
@@ -271,6 +271,8 @@ export function withAttachments(request: AylaRequest): string | ContentPart[] {
   ]
 }
 
+const SOURCE_NAMES: Record<Vacancy['source'], string> = { example: 'voorbeelden', adzuna: 'Adzuna', jooble: 'Jooble', web: 'internet' }
+
 type SearchResult = { status: 'ok'; items: FoundVacancy[] } | { status: 'unavailable' } | { status: 'failed' }
 
 async function search(searchVacancies: SearchVacancies | undefined, what: string, where: string): Promise<SearchResult> {
@@ -294,7 +296,9 @@ function describeSearch(result: SearchResult, mayLook = false): string {
     const v = f.vacancy
     return `${i + 1}. ${v.title} bij ${v.company}${v.city ? ` in ${v.city}` : ''}. ${f.snippet}`
   })
-  return `Gevonden vacatures (Adzuna). De gebruiker ziet ze als kaarten onder je antwoord. ${rules}\n${list.join('\n')}`
+  const web = result.items.some((f) => f.vacancy.source === 'web')
+  const from = web ? 'gevonden op internet; controleer of iets een echte vacature is en noem alleen wat hieronder staat' : `via ${SOURCE_NAMES[result.items[0].vacancy.source]}`
+  return `Gevonden vacatures (${from}). De gebruiker ziet ze als kaarten onder je antwoord. ${rules}\n${list.join('\n')}`
 }
 
 const MAX_LINKS = 4

@@ -94,13 +94,14 @@ Vacatures staan niet in het menu. Je zoekt ze in de chat met Ayla; ze openen in 
 | Knoppen | Bewaren / Bewaard / Vraag Ayla |
 | Vacature (titel) | Vacature |
 | Stukje tekst | Uit de vacaturetekst |
-| Uitleg bij het stukje | Een stukje van de tekst, zoals Adzuna het geeft. De hele vacature lees je bij de werkgever. |
+| Uitleg bij het stukje (Adzuna, Jooble) | Een stukje van de tekst, zoals {Adzuna/Jooble} het geeft. De hele vacature lees je bij de werkgever. |
+| Uitleg bij het stukje (internet) | Een stukje van de pagina waar Ayla deze vacature vond. Controleer de hele vacature op die site. |
 | Wat past | Past bij jou |
 | Wat ontbreekt | Wat je nog mist |
 | Uitleg vergelijking | Ayla vergeleek je kluis met een stukje van de vacaturetekst. Het is een inschatting, geen oordeel. |
 | Nog niet vergeleken | Ayla heeft deze vacature nog niet met je kluis vergeleken. Vraag het haar hieronder. |
 | Link naar de werkgever | Lees de hele vacature |
-| Bron | Vacatures via Adzuna |
+| Bron | Vacatures via Adzuna / Vacatures via Jooble / Gevonden op internet |
 | Bewaard leeg | Nog niets bewaard - Tik op Bewaren bij een vacature om hem hier terug te vinden, ook op je andere apparaten. |
 | Gevonden leeg | Nog geen vacatures - Vraag Ayla hieronder bijvoorbeeld: zoek vacatures die bij me passen. |
 | Vraag bij een ontbrekende vaardigheid | Hoe kan ik {vaardigheid} halen voor {functie} bij {bedrijf}? |
