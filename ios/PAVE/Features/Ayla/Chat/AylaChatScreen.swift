@@ -125,6 +125,8 @@ struct AylaChatScreen: View {
     @State private var photoTargetID: String?
     @State private var itemPhotoItems: [PhotosPickerItem] = []
     @State private var mutedForPhotos = false
+    /// Ayla holds while you pick from the vault by hand: she does not listen until the picker is gone.
+    @State private var heldForPicking = false
     @State private var isAddingItemPhotos = false
     @Environment(PaveCameraControl.self) private var cameraControl: PaveCameraControl?
     @Environment(\.toolbarIsBeside) private var toolbarIsBeside
@@ -348,11 +350,28 @@ struct AylaChatScreen: View {
             VaultRequestConfirmationSheet(item: item, documentCount: vault?.documents(of: item).count ?? 0)
                 .paveSheet()
         }
+        // Picking by hand takes a moment and may come with talk around you: she waits, and goes on when you are done.
+        .onChange(of: picksVaultItem) { _, isPicking in
+            guard let voice, isTalking else { return }
+            if isPicking, !voice.isMuted {
+                voice.toggleMute()
+                heldForPicking = true
+            } else if !isPicking, heldForPicking {
+                if voice.isMuted { voice.toggleMute() }
+                heldForPicking = false
+            }
+        }
         .sheet(isPresented: $picksVaultItem, onDismiss: { afterPick = nil }) {
             if let vault {
                 AylaVaultSelectionSheet { items in
                     model.attach(items)
-                    if let afterPick, !items.isEmpty { send(afterPick(items.count)) }
+                    guard let afterPick, !items.isEmpty else { return }
+                    // While you talk she answers out loud; typed, in the chat.
+                    if let voice, isTalking {
+                        voice.send(typed: afterPick(items.count), checksYes: false)
+                    } else {
+                        send(afterPick(items.count))
+                    }
                 }
                     .environment(vault)
                     .paveSheet(background: .panel)
@@ -1040,6 +1059,7 @@ struct AylaChatScreen: View {
     }
 
     private func voiceHint(_ voice: AylaVoiceSession) -> String {
+        if heldForPicking { return AylaMessages.voiceHolds }
         if voice.isMuted { return "Je microfoon staat uit. Tik op de microfoon om verder te praten." }
         if voice.state == .starting { return "Microfoon aanzetten…" }
         return "Ik luister. Vraag me bijvoorbeeld welke banen bij je passen of hoe je je cv sterker maakt."
@@ -1211,9 +1231,9 @@ struct AylaChatScreen: View {
     /// "Kies zelf" on Ayla's question about the vault, tapped, typed or said: the picker opens, and what you choose is
     /// all she uses in this conversation.
     private func choosesVaultItems(_ label: String) -> Bool {
-        let said = label.trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters))
+        // In your own words too ("laat mezelf kiezen"), not only the label of the button.
         guard vault != nil, let question = model.pendingQuestion, model.lastReply?.accessRequest != nil,
-              question.choices.contains(where: { $0.id == AylaVaultOffer.chooseChoiceID && $0.label.caseInsensitiveCompare(said) == .orderedSame })
+              question.choices.contains(where: { $0.id == AylaVaultOffer.chooseChoiceID }), AylaVaultOffer.wantsToChoose(label)
         else { return false }
         pickVaultItems(then: AylaMessages.useChosen)
         return true
@@ -2046,6 +2066,12 @@ struct AylaChatScreen: View {
     /// Returns what she says, or nil when the words are not something to do here.
     private func runAppCommand(_ text: String) -> String? {
         guard addEvidence == nil, !isSavingForUser else { return nil }
+        // "Laat mezelf kiezen" to her question about the vault, typed or said: the picker opens, and she says so
+        // instead of taking it for an answer she does not understand.
+        if choosesVaultItems(text) {
+            if !isTalking { AccessibilityNotification.Announcement(AylaMessages.chooseYourself).post() }
+            return AylaMessages.chooseYourself
+        }
         // Ja to "Zal ik dit gesprek verwijderen?": now she does it, once.
         if let waiting = model.actionsWaitingForYes, AylaVaultOffer.isYes(text), text.split(separator: " ").count <= 3 {
             // She only says it is done when it can be done: evidence that is not there, or a chat not in the list yet.
@@ -2156,6 +2182,7 @@ struct AylaChatScreen: View {
 
     /// What the small orb says next to it on an open page.
     private func shelfVoiceStatus(_ voice: AylaVoiceSession) -> String {
+        if heldForPicking { return AylaMessages.voiceHolds }
         if voice.isMuted { return AylaMessages.voiceMuted }
         switch voice.state {
         case .starting, .off: return AylaMessages.voiceStarting

@@ -254,6 +254,16 @@ struct AylaAppCommandTests {
         #expect(command("Sluit de instellingen") == .close)
     }
 
+    @Test func choosingYourselfIsHeardInYourOwnWords() {
+        for said in ["Kies zelf", "Laat mezelf kiezen", "Ik kies zelf", "Laat mij zelf kiezen.", "Ik wil het zelf bepalen", "Zelf kiezen",
+                     "Laat mij kiezen", "Ik wil zelf selecteren welke", "Nee, ik kies zelf", "Ja maar ik kies zelf wat je ziet", "Mijn eigen keuze"] {
+            #expect(AylaVaultOffer.wantsToChoose(said), "\(said)")
+        }
+        for said in ["Ja", "Nee", "Ik wil niet zelf kiezen", "Kies jij maar", "Zoek vacatures als developer", "Welke kies jij?", ""] {
+            #expect(!AylaVaultOffer.wantsToChoose(said), "\(said)")
+        }
+    }
+
     @Test func twoThingsInOneSentenceGoToAylasBrain() {
         #expect(command("Zet donkere modus aan en open mijn stages") == nil)
         #expect(command("Maak het thema blauw en zet de tekst groter") == nil)

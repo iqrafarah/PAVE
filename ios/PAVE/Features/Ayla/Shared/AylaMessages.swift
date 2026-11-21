@@ -57,7 +57,10 @@ enum AylaMessages {
     static let voiceListening = "Ayla luistert…"
     static let voiceSpeaking = "Ayla praat"
     static let voiceMuted = "Je microfoon staat uit"
+    static let voiceHolds = "Ayla wacht tot je klaar bent"
     static let voiceStarting = "Microfoon aanzetten…"
+    /// What she says when you want to choose the items yourself and the picker opens.
+    static let chooseYourself = "Kies maar. Ik gebruik alleen wat je kiest."
     static let vaultLabel = "Kluis"
     static let attachItem = "Item uit je kluis"
     static let vaultEmpty = "Je kluis is nog leeg"

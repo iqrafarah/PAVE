@@ -36,7 +36,8 @@ struct AylaShelfReply: View {
                     .accessibilityHidden(true)
             }
             if !choices.isEmpty {
-                HStack(spacing: 8) {
+                // Onto a second line when three do not fit, so no answer is cut off on a narrow screen.
+                FlowLayout(spacing: 8) {
                     ForEach(choices, id: \.self) { choice in
                         Button(choice) { onChoose(choice) }
                             .textStyle(.gapChip)

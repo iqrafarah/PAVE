@@ -109,6 +109,8 @@ Vacatures staan niet in het menu. Je zoekt ze in de chat met Ayla; ze openen in 
 | Ayla zoekt (één regel, waar "Ayla denkt na…" staat) | Ayla zoekt vacatures: {zoekwoorden} (en {verwante functie}) in {plaats}… |
 | Ayla vergelijkt (met gekozen gegevens) | Ayla vergelijkt {n} vacatures met wat je koos… |
 | Vraag om de kluis (iPhone) | Ja / Kies zelf / Nee |
+| Ayla als je zelf wilt kiezen | Kies maar. Ik gebruik alleen wat je kiest. |
+| Bol terwijl je met de hand kiest | Ayla wacht tot je klaar bent |
 | Na "Kies zelf" (jouw bericht) | Gebruik het item dat ik koos. / Gebruik de {n} gegevens die ik koos. |
 | Boven de gevonden vacatures | Gezocht op: {zoekwoorden} (en {verwante functie}) in {plaats} |
 | Welke gegevens Ayla gebruikte (rij) | Uit je kluis: {categorieën} / Met {n} gekozen gegevens / Met 1 gekozen item / Zonder je kluis |

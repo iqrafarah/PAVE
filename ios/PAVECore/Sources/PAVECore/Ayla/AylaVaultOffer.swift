@@ -8,6 +8,19 @@ public enum AylaVaultOffer {
     /// The choice "Kies zelf" on Ayla's question about the vault: the app opens the picker instead of answering.
     public static let chooseChoiceID = "choose"
 
+    /// "Kies zelf", "laat mezelf kiezen", "ik wil het zelf bepalen", "laat mij kiezen": you want to pick the items
+    /// yourself, said in your own words. Not when you say you do not want that.
+    public static func wantsToChoose(_ text: String) -> Bool {
+        let said = AylaScreenRequest.normalized(text)
+        guard !said.isEmpty, said.split(separator: " ").count <= 9, !AylaScreenRequest.matches(said, #"\b(niet|geen)\b"#) else { return false }
+        let own = #"(?:zelf|mezelf|zelluf|eigen)"#
+        let pick = #"(?:kies|kiezen|uitkiezen|selecteer|selecteren|bepaal|bepalen|uitzoeken|aangeven|aanwijzen|keuze)"#
+        return AylaScreenRequest.matches(said, "\\b\(own)\\b.*\\b\(pick)\\b")
+            || AylaScreenRequest.matches(said, "\\b\(pick)\\b.*\\b\(own)\\b")
+            || AylaScreenRequest.matches(said, #"^(?:(?:ja|nee|oke|ok) )?(?:laat|ik wil|ik ga|mag ik|wil ik)(?: \w+){0,3} (?:kiezen|selecteren|uitkiezen)$"#)
+            || AylaScreenRequest.matches(said, #"^(?:ik )?(?:kies|kiezen|selecteren)$"#)
+    }
+
     public static let question = AylaReply.Question(
         text: "Wil je iets toevoegen?",
         choices: [AylaReply.Choice(id: "yes", label: "Ja"), AylaReply.Choice(id: "no", label: "Nee")]
