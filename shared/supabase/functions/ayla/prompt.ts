@@ -114,7 +114,7 @@ Antwoord altijd met JSON volgens het schema:
 - question: alleen als je de gebruiker uit vaste keuzes laat kiezen, met 2 of 3 korte keuzes. Anders null.
 - navigation: alleen als de gebruiker vraagt een onderdeel te openen ("open mijn kluis"), of addEvidence als je aanbiedt iets aan de kluis toe te voegen. Kies screen uit: home, vault, vaultItem, addEvidence, plans, vacancies, profile, settings. Kies vaultItem om één item uit de kluis te openen en zet item op het nummer ervan; anders is item null. Anders null.
 - usedVaultItems: de nummers van de items uit de kluis die je voor dit antwoord gebruikte, anders een lege lijst.
-- vacancySearch: alleen als de gebruiker vacatures wil zien. Geef what (een functie of zoekwoorden zoals iemand ze op een vacaturesite typt, zonder persoonsgegevens), where (plaats of "" voor heel Nederland; gebruik de plaats die de gebruiker noemt of die je van de gebruiker onthoudt) en also (één verwante functie waar de gebruiker ook op zou kunnen passen, of null). Anders null. Noem in text dan nog geen vacatures: die krijg je eerst te zien.
+- vacancySearch: alleen als de gebruiker vacatures wil zien. Geef what (een functie of zoekwoorden zoals iemand ze op een vacaturesite typt, zonder persoonsgegevens), where (plaats of "" voor heel Nederland; gebruik de plaats die de gebruiker noemt of die je van de gebruiker onthoudt) en also (één verwante functie waar de gebruiker ook op zou kunnen passen, of null). Anders null. Noem in text dan nog geen vacatures: die krijg je eerst te zien. Zoeken gebeurt in ditzelfde antwoord: zeg nooit dat je gaat zoeken ("dan zoek ik vacatures", "ik kijk even") zonder vacancySearch te vullen, want dan gebeurt er niets en moet de gebruiker het nog een keer vragen. Mag je in de kluis kijken en weet je waarvoor, dan zoek je meteen.
   - Noemt de gebruiker zelf een functie ("zoek junior developer in Eindhoven"): zoek daar meteen op, ook als je niet in de kluis mag kijken. Zet also dan op null, tenzij de gebruiker om breder zoeken vraagt.
   - Vraagt de gebruiker om vacatures die bij hem of haar passen zonder een functie te noemen: kies what en also dan zelf uit de items in de kluis die je mag zien (de functie, opleiding of vaardigheden waar het meeste bewijs voor is, en daarnaast een verwante richting) en zeg in text kort waarop je zoekt en op welke items dat steunt. Koos de gebruiker items voor dit gesprek, dan zijn dat de enige die je ziet: baseer je daar alleen op. Mag je nog niet in de kluis kijken, vraag dat dan eerst met askVault ("om vacatures te zoeken die bij je passen") en zet vacancySearch op null. Zie je geen enkel item, vraag dan naar welke functie of richting de gebruiker zoekt.
   - Zei de gebruiker net ja op kijken in de kluis, of koos de gebruiker (andere) gegevens, nadat je vacatures liet zien: zoek dan opnieuw, zodat de kaarten laten zien wat past. Houd de zoekwoorden uit "Getoonde vacatures" als de gebruiker die zelf koos; kies ze anders opnieuw uit de items die je nu ziet.
@@ -234,7 +234,7 @@ Kies do uit:
 - newChat, openChat (target: woorden uit de titel van dat gesprek), renameChat (value: de nieuwe titel), pinChat (value: on of off), archiveChat, setChatExpiry (value: een aantal dagen, never of default). Deze gaan over het gesprek van nu, behalve openChat.
 - setTheme (value: green, blue, gold, pink, orange, purple, red of lime), setTextSize (value: small, standard, large, bigger of smaller), setDisplayMode (value: light, dark of auto), setVaultLayout (value: list of grid), setVoiceText, setChatsInSearch, setAnimations en setMemory (value: on of off).
 - createFolder (value: de naam), moveToFolder (target: de titel van het bewijs, value: de naam van de map), archiveEvidence (target: de titel), allowAyla (target: de titel, value: on of off; of jij dat bewijs mag bekijken en gebruiken), requestVerification (target: de titel; opent het formulier om het te laten bevestigen, de gebruiker kiest zelf wie en verstuurt zelf).
-- openVacancy en saveVacancy (value: de plaats in "Getoonde vacatures", 1 is de eerste, of last).
+- openVacancy en saveVacancy (value: de plaats in "Getoonde vacatures", 1 is de eerste, of last). Alleen als er al "Getoonde vacatures" in het gesprek staan; nieuwe resultaten opent PAVE zelf, dus zet deze nooit samen met vacancySearch.
 - deleteChat (het gesprek van nu), deleteEvidence (target: de titel), signOut en forgetAll (alles vergeten wat je onthoudt). PAVE vraagt hierbij zelf om bevestiging: stel die vraag niet in text en zeg niet dat het al gedaan is. Dat geldt ook voor allowAyla met on: jij krijgt dan toegang tot dat bewijs, dus de gebruiker zegt eerst ja.
 Grotere klussen doe je in rondes. Heb je meer dan 4 stappen nodig, of hangt een volgende stap af van of een eerdere lukte
 ("maak een map Certificaten en zet mijn certificaten erin"), zet dan continues op true: PAVE voert je acties uit en vertelt
@@ -290,10 +290,17 @@ export const MODEL_OUTPUT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
   // In the order of the properties: what the app needs first (the text, a question about the vault) comes first.
-  required: ['text', 'askVault', 'question', 'navigation', 'actions', 'continues', 'usedVaultItems', 'title', 'usedMemories', 'memories', 'vaultItem', 'vacancySearch', 'vacancyMatches', 'vacancySites'],
+  required: ['text', 'askVault', 'vacancySearch', 'question', 'navigation', 'actions', 'continues', 'usedVaultItems', 'title', 'usedMemories', 'memories', 'vaultItem', 'vacancyMatches', 'vacancySites'],
   properties: {
     text: { type: 'string' },
     askVault: { type: ['string', 'null'] },
+    // Right after the text: the search starts while the rest is written, and is never the part a long answer loses.
+    vacancySearch: {
+      type: ['object', 'null'],
+      additionalProperties: false,
+      required: ['what', 'where', 'also'],
+      properties: { what: { type: 'string' }, where: { type: 'string' }, also: { type: ['string', 'null'] } },
+    },
     question: {
       type: ['object', 'null'],
       additionalProperties: false,
@@ -344,12 +351,6 @@ export const MODEL_OUTPUT_SCHEMA = {
       },
     },
     vaultItem: VAULT_ITEM_SCHEMA,
-    vacancySearch: {
-      type: ['object', 'null'],
-      additionalProperties: false,
-      required: ['what', 'where', 'also'],
-      properties: { what: { type: 'string' }, where: { type: 'string' }, also: { type: ['string', 'null'] } },
-    },
     vacancySites: {
       type: 'array',
       items: {

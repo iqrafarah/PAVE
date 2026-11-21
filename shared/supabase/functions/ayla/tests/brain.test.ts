@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { test } from 'node:test'
-import { answer, bestFirst, cleanActions, cleanTitle, effortFor, resultsMessage, siteFits, withLogos, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
+import { announcesSearchOnly, answer, bestFirst, cleanActions, cleanTitle, effortFor, resultsMessage, siteFits, withLogos, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
 import { parseRequest } from '../contract.ts'
 import { MODELS, modelsFor, openRouterCompletion } from '../openrouter.ts'
 import { buildSystemPrompt } from '../prompt.ts'
@@ -1081,4 +1081,37 @@ test('a logo only shows for a site that fits and is really there', async () => {
   assert.deepEqual(asked, ['ogd.nl'])
   assert.equal((await withLogos(list, raw, async () => false))[0].vacancy.logoUrl, undefined)
   assert.equal((await withLogos(list, raw))[0].vacancy.logoUrl, undefined)
+})
+
+test('an answer that was cut off never shows as raw JSON, and keeps the search it asked for', async () => {
+  const cut = '{ "text": "Ik zoek vacatures voor iOS-ontwikkelaar in Eindhoven.", "askVault": null, "vacancySearch": { "what": "iOS-ontwikkelaar", "where": "Eindhoven", "also": "IT-consultant" }, "question": null, "navigation": null, "actions": [ { "do": "openVacancy", "value": "last"'
+  let call = 0
+  const complete = async () => ({ model: 'fake', content: call++ === 0 ? cut : JSON.stringify(say('Ik vond er een.')) })
+  const reply = await answer({ request, conversationId: 'c', history: [] }, { complete, newId: ids(), searchVacancies: async () => [job('1', 'iOS-ontwikkelaar', 'Bedrijf')] })
+  assert.equal(reply.text, 'Ik vond er een.')
+  assert.equal(reply.blocks.length, 1)
+  assert.equal(reply.actions, undefined)
+  const only = await answer({ request, conversationId: 'c', history: [] }, { complete: async () => ({ model: 'fake', content: '{ "text": "Dat zoek ik op", "askVault": null, "question": nu' }), newId: ids() })
+  assert.equal(only.text, 'Dat zoek ik op')
+  assert.doesNotMatch(only.text, /[{}"]/)
+})
+
+test('saying she will search without searching is not accepted: she searches in the same turn', async () => {
+  assert.ok(announcesSearchOnly({ text: 'Ik kijk in je kluis naar je vaardigheden en ervaring. Dan zoek ik vacatures die daarbij passen.', vacancySearch: null, question: null, askVault: null }))
+  assert.equal(announcesSearchOnly({ text: 'Wil je dat ik vacatures zoek?', vacancySearch: null, question: null, askVault: null }), false)
+  assert.equal(announcesSearchOnly({ text: 'Je hebt drie diploma\'s in je kluis.', vacancySearch: null, question: null, askVault: null }), false)
+
+  const fake = model(
+    say('Ik kijk in je kluis naar je vaardigheden en ervaring. Dan zoek ik vacatures die daarbij passen.'),
+    say('Ik zoek op iOS-ontwikkelaar in Eindhoven.', { vacancySearch: { what: 'iOS-ontwikkelaar', where: 'Eindhoven', also: null }, actions: [{ do: 'openVacancy', value: 'last', target: null }] }),
+    say('Ik vond er een die goed past.'),
+  )
+  const reply = await answer({ request: { ...request, text: 'Ja' }, conversationId: 'c', history: allowedChat, vault }, {
+    complete: fake.complete, newId: ids(), searchVacancies: async () => [job('1', 'iOS-ontwikkelaar', 'Bedrijf', 'Je bouwt apps in Swift.')],
+  })
+  assert.equal(fake.calls.length, 3)
+  assert.match(fake.calls[1].at(-1)!.content, /vacancySearch is leeg/)
+  assert.equal(reply.blocks.length, 1)
+  assert.equal(reply.text, 'Ik vond er een die goed past.')
+  assert.equal(reply.actions, undefined)
 })

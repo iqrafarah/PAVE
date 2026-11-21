@@ -129,7 +129,8 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
       input.onText(text)
     }
   }
-  const options = { signal: input.signal, onContent: input.onText ? showText : undefined, effort }
+  // Room for the whole answer with its actions: an answer that is cut off loses what comes last.
+  const options = { signal: input.signal, onContent: input.onText ? showText : undefined, effort, maxTokens: 900 }
 
   // Ayla asks to look in the vault: the rest of what the model writes does not count for this turn, so it stops there
   // and the Ja and Nee show at once.
@@ -141,6 +142,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   let early: (SearchTerms & { found: Promise<SearchResult> }) | null = null
   const firstOptions = {
     effort,
+    maxTokens: 900,
     signal: first.signal,
     onContent: (content: string) => {
       showText(content)
@@ -163,6 +165,22 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   } catch (error) {
     if (!asksVault || input.signal?.aborted) throw error
     output = asksVault
+  }
+  // She said she would search and did not: she is told so and does it now, instead of the user having to say "ga".
+  if (mayLook && deps.searchVacancies && !request.results?.length && announcesSearchOnly(output)) {
+    const nudge: ChatMessage[] = [
+      { role: 'assistant', content: JSON.stringify(output) },
+      { role: 'system', content: 'Je zegt dat je vacatures gaat zoeken, maar vacancySearch is leeg: er gebeurt nu niets. Zoek in dit antwoord: vul vacancySearch (what, where, also) op basis van wat de gebruiker vroeg en de items die je ziet, en zeg in text kort waarop je zoekt. Zet actions op [].' },
+    ]
+    const again = parseOutput((await deps.complete([...messages, ...nudge], { ...options, effort: 'hard' as const })).content)
+    if (again.vacancySearch) {
+      messages.push(...nudge)
+      output = { ...again, memories: Array.isArray(again.memories) && again.memories.length ? again.memories : output.memories, title: again.title ?? output.title }
+    }
+  }
+  // The cards of a search open by themselves: an action that opens or saves one of them comes too soon.
+  if (output.vacancySearch && Array.isArray(output.actions)) {
+    output.actions = (output.actions as Record<string, unknown>[]).filter((action) => !['openVacancy', 'saveVacancy', 'openSavedVacancies'].includes(String(action?.do)))
   }
   // The first answer heard what the user said; the second one only talks about the vacancies.
   const heard = cleanMemories(output.memories, memory)
@@ -577,8 +595,26 @@ function parseOutput(content: string): ModelOutput {
       askVault: typeof json.askVault === 'string' ? json.askVault : null,
     }
   } catch {
-    return { text: content, question: null, navigation: null, vacancySearch: null, vacancyMatches: [], vacancySites: [], title: null, memories: [], usedMemories: [], usedVaultItems: [], vaultItem: null, askVault: null, actions: [], continues: false }
+    const empty: ModelOutput = { text: '', question: null, navigation: null, vacancySearch: null, vacancyMatches: [], vacancySites: [], title: null, memories: [], usedMemories: [], usedVaultItems: [], vaultItem: null, askVault: null, actions: [], continues: false }
+    // Plain words instead of JSON: that is the answer. JSON that was cut off (a long answer ran out of room) never
+    // shows as it is: what was complete is kept (her text, a search she asked for), the rest is left out.
+    if (!content.trimStart().startsWith('{')) return { ...empty, text: content }
+    const ask = content.match(/"askVault"\s*:\s*"((?:[^"\\]|\\.)*)"/)
+    let askVault: string | null = null
+    try {
+      askVault = ask ? JSON.parse(`"${ask[1]}"`) as string : null
+    } catch {
+      askVault = null
+    }
+    return { ...empty, text: partialText(content), vacancySearch: vacancySearchSoFar(content), askVault }
   }
+}
+
+const SAYS_SHE_SEARCHES = /\b(zoek|zoeken|kijk|bekijk|ga)\b[^.?!]*\b(vacatures?|banen|functies)\b|\b(vacatures?|banen|functies)\b[^.?!]*\b(zoek|zoeken|op zoek)\b/i
+
+/** She says she will search for vacancies but asked for no search, and asks nothing: the user would have to ask again. */
+export function announcesSearchOnly(output: { text: string; vacancySearch: unknown; question: unknown; askVault: unknown }): boolean {
+  return !output.vacancySearch && !output.question && !output.askVault && SAYS_SHE_SEARCHES.test(output.text) && !output.text.trim().endsWith('?')
 }
 
 const MAX_TITLE_LENGTH = 60
