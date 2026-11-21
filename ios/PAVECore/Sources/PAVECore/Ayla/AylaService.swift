@@ -18,6 +18,8 @@ public enum AylaActivity: Equatable, Sendable {
     case searchingVacancies(what: String, where: String, also: String? = nil)
     /// chosen: how many vault items you picked for this conversation, when that is what she compares with.
     case comparingVacancies(count: Int, withVault: Bool, chosen: Int? = nil)
+    /// She looks at what came of her own actions and goes on (set by the app, not by the server).
+    case continuing
 }
 
 public protocol AylaService: Sendable {

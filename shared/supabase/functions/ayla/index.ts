@@ -105,10 +105,12 @@ Deno.serve(async (req) => {
     // A user message keeps only the names of its files in `reply`, so the chat shows them again; the files' text
     // is never stored.
     const attachments = request.attachments?.length ? { attachments: request.attachments.map((file) => file.name) } : null
-    const { error } = await supabase.from('ayla_messages').insert([
-      { conversation_id: conversationId, role: 'user', text: request.text, device: request.device, reply: attachments },
-      { conversation_id: conversationId, role: 'ayla', text: reply.text, device: request.device, reply },
-    ])
+    const answer = { conversation_id: conversationId, role: 'ayla', text: reply.text, device: request.device, reply }
+    // A turn the app sent itself (what came of Ayla's actions) is not something the user said: only her answer is kept.
+    const rows = request.results?.length
+      ? [answer]
+      : [{ conversation_id: conversationId, role: 'user', text: request.text, device: request.device, reply: attachments }, answer]
+    const { error } = await supabase.from('ayla_messages').insert(rows)
     return !error
   }
 

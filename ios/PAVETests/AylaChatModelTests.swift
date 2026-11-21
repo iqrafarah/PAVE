@@ -461,6 +461,24 @@ struct AylaChatModelTests {
         #expect(model.pendingQuestion == nil)
     }
 
+    @Test func afterHerActionsAylaGoesOnWithoutAMessageOfYours() async {
+        let ayla = FakeAyla()
+        let first = AylaReply(id: "r1", conversationId: "c", text: "Ik open je map Vakantie.", actions: [AylaAppAction("openFolder", target: "Vakantie")])
+        let second = AylaReply(id: "r2", conversationId: "c", text: "Die map bestaat niet. Zal ik hem maken?")
+        ayla.replies = [.success(first), .success(second)]
+        let model = AylaChatModel(service: ayla)
+        model.send("Open de map Vakantie")
+        await waitUntilIdle(model)
+        #expect(model.canContinue)
+        model.continueAfter([AylaRequest.ActionResult("openFolder", ok: false, said: "Ik kon de map Vakantie niet vinden.")], spoken: false, otherwise: "Ik kon de map Vakantie niet vinden.")
+        await waitUntilIdle(model)
+        // Your question, her first answer and her second: nothing of yours in between.
+        #expect(model.entries.map(\.role) == [.user, .ayla, .ayla])
+        #expect(model.entries.last?.text == "Die map bestaat niet. Zal ik hem maken?")
+        #expect(ayla.requests.last?.results == [AylaRequest.ActionResult("openFolder", ok: false, said: "Ik kon de map Vakantie niet vinden.")])
+        #expect(model.draft.isEmpty)
+    }
+
     @Test func anOpenVacancyGoesAlongWithTheChosenItems() async {
         let model = AylaChatModel(service: FakeAyla())
         let vacancy = Vacancy(id: "v", title: "Developer", company: "Bedrijf", source: .jooble)

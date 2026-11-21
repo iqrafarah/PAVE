@@ -50,6 +50,27 @@ public struct AylaRequest: Codable, Equatable, Sendable {
     public var attachments: [AylaAttachment]?
     /// How the app is set right now, so Ayla can say how something stands and does not do what is already so.
     public var app: AppState?
+    /// What came of the actions of Ayla's previous answer. The app sends this itself, so she can go on; it is not
+    /// something you said, and no message of yours is stored for it.
+    public var results: [ActionResult]?
+
+    public struct ActionResult: Codable, Equatable, Sendable {
+        public var kind: String
+        public var ok: Bool
+        public var said: String?
+
+        private enum CodingKeys: String, CodingKey {
+            case kind = "do"
+            case ok, said
+        }
+
+        public init(_ kind: String, ok: Bool, said: String? = nil) {
+            self.kind = kind
+            self.ok = ok
+            // The server takes at most 300 characters.
+            self.said = said.map { String($0.prefix(300)) }
+        }
+    }
 
     /// Settings and the open conversation as the app has them. No vault content, no names of folders or evidence.
     public struct AppState: Codable, Equatable, Sendable {
@@ -88,7 +109,8 @@ public struct AylaRequest: Codable, Equatable, Sendable {
         context: Context? = nil,
         attachments: [AylaAttachment] = [],
         projectId: String? = nil,
-        app: AppState? = nil
+        app: AppState? = nil,
+        results: [ActionResult]? = nil
     ) {
         self.conversationId = conversationId
         self.projectId = conversationId == nil ? projectId : nil
@@ -98,6 +120,7 @@ public struct AylaRequest: Codable, Equatable, Sendable {
         self.context = context
         self.attachments = attachments.isEmpty ? nil : attachments
         self.app = app
+        self.results = results?.isEmpty == false ? results.map { Array($0.prefix(8)) } : nil
     }
 }
 

@@ -5,6 +5,26 @@
 
 export const MODELS = ['mistralai/mistral-medium-3.1', 'mistralai/mistral-small-3.2-24b-instruct', 'mistralai/mistral-large-2512']
 export const HEDGE_MS = 3500
+
+/** How much thinking a turn asks for: a greeting, an ordinary question, or real work. */
+export type Effort = 'light' | 'normal' | 'hard'
+
+const SMALL = 'mistralai/mistral-small-3.2-24b-instruct'
+const MEDIUM = 'mistralai/mistral-medium-3.1'
+const LARGE = 'mistralai/mistral-large-2512'
+
+/**
+ * The models for a turn, the best fit first; the others still join when it is slow or fails. Hard work starts with the
+ * large model and gives it longer to begin, so the quicker ones do not take the turn from it. All Mistral: the user's
+ * data goes to no other provider than before.
+ */
+export function modelsFor(effort: Effort): { models: string[]; hedgeMs: number } {
+  switch (effort) {
+    case 'light': return { models: [SMALL, MEDIUM, LARGE], hedgeMs: 2500 }
+    case 'hard': return { models: [LARGE, MEDIUM, SMALL], hedgeMs: 7000 }
+    default: return { models: [MEDIUM, SMALL, LARGE], hedgeMs: HEDGE_MS }
+  }
+}
 const TIMEOUT_MS = 25000
 
 export type ContentPart = { type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }
@@ -16,6 +36,10 @@ export interface CompleteOptions {
   onContent?: (contentSoFar: string) => void
   /** Stops the models, for instance when the user taps stop. */
   signal?: AbortSignal
+  /** Picks the models for this turn; without it, the ones this function was made with. */
+  effort?: Effort
+  /** More room than usual for this answer, such as a match for every vacancy. */
+  maxTokens?: number
 }
 
 export type Complete = (messages: ChatMessage[], options?: CompleteOptions) => Promise<{ model: string; content: string }>
@@ -36,6 +60,11 @@ export function openRouterCompletion(
   return (messages, options = {}) => {
     const controllers: AbortController[] = []
     const streams = !!options.onContent
+    // Only the standard list is reordered: a caller that chose its own models keeps them.
+    const chosen = options.effort && models === MODELS ? modelsFor(options.effort) : { models, hedgeMs }
+    const turnModels = chosen.models
+    const turnHedgeMs = chosen.hedgeMs
+    const turnTokens = options.maxTokens ?? maxTokens
     let next = 0
     let failed = 0
     let done = false
@@ -52,11 +81,11 @@ export function openRouterCompletion(
       })
 
       const launch = () => {
-        if (done || leader || next >= models.length) return
-        const model = models[next++]
+        if (done || leader || next >= turnModels.length) return
+        const model = turnModels[next++]
         const controller = new AbortController()
         controllers.push(controller)
-        const hedge = setTimeout(launch, hedgeMs)
+        const hedge = setTimeout(launch, turnHedgeMs)
         const timeout = setTimeout(() => controller.abort(), timeoutMs)
 
         fetchImpl('https://openrouter.ai/api/v1/chat/completions', {
@@ -65,7 +94,7 @@ export function openRouterCompletion(
           body: JSON.stringify({
             model,
             temperature: 0.4,
-            max_tokens: maxTokens,
+            max_tokens: turnTokens,
             messages,
             ...(streams ? { stream: true } : {}),
             response_format: { type: 'json_schema', json_schema: { name: 'ayla_reply', strict: true, schema: responseSchema } },
@@ -103,7 +132,7 @@ export function openRouterCompletion(
             clearTimeout(timeout)
             if (done) return
             // Once a model has started writing, its failure is the answer's failure.
-            if (leader === model || ++failed === models.length) {
+            if (leader === model || ++failed === turnModels.length) {
               done = true
               stopAll()
               reject(error)

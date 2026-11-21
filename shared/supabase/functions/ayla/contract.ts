@@ -24,7 +24,14 @@ export interface AylaRequest {
   attachments?: Attachment[]
   /** How the app is set right now, so Ayla can say how something stands and does not do what is already so. */
   app?: AppState
+  /**
+   * What came of the actions of Ayla's previous answer, sent by the app itself and not typed by the user: she then
+   * goes on with what was asked. Such a turn stores no user message.
+   */
+  results?: ActionResult[]
 }
+
+export interface ActionResult { do: ActionKind; ok: boolean; said?: string }
 
 /** Settings and the open conversation as the app has them. No vault content and no names of folders or evidence. */
 export interface AppState {
@@ -148,6 +155,8 @@ export interface AylaReply {
   navigation?: { screen: Screen; itemId?: string }
   /** What Ayla does in the app with this answer, in order. With `confirm`, only after the user says Ja. */
   actions?: AppAction[]
+  /** She is not done yet: the app tells her what came of these actions (`results`) and she goes on. */
+  continues?: true
   /**
    * Ayla suggests remembering these facts, one per item, and taking away notes they make out of date (`replaces`,
    * the exact text of the user's note; with an empty `text` only that). Nothing changes before the user confirms.
@@ -171,7 +180,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 export function parseRequest(body: unknown): AylaRequest | string {
   if (typeof body !== 'object' || body === null) return 'body must be an object'
   const b = body as Record<string, unknown>
-  const allowed = new Set(['conversationId', 'projectId', 'text', 'device', 'input', 'context', 'attachments', 'app'])
+  const allowed = new Set(['conversationId', 'projectId', 'text', 'device', 'input', 'context', 'attachments', 'app', 'results'])
   const extra = Object.keys(b).find((key) => !allowed.has(key))
   if (extra) return `unknown field ${extra}`
   if (typeof b.text !== 'string' || !b.text.trim()) return 'text is required'
@@ -231,11 +240,24 @@ export function parseRequest(body: unknown): AylaRequest | string {
     if (!parsed) return 'app is not valid'
     app = parsed
   }
+  let results: ActionResult[] | undefined
+  if (b.results !== undefined) {
+    // Only for a conversation that exists: there is an answer of Ayla's these belong to.
+    if (!Array.isArray(b.results) || !b.results.length || b.results.length > 8 || !b.conversationId) return 'results are not valid'
+    results = []
+    for (const entry of b.results as Record<string, unknown>[]) {
+      if (typeof entry !== 'object' || entry === null || !ACTIONS.includes(entry.do as ActionKind) || typeof entry.ok !== 'boolean') return 'results are not valid'
+      if (entry.said !== undefined && (typeof entry.said !== 'string' || entry.said.length > 300)) return 'results are not valid'
+      const said = typeof entry.said === 'string' ? entry.said.replace(/\s+/g, ' ').trim() : ''
+      results.push({ do: entry.do as ActionKind, ok: entry.ok, ...(said ? { said } : {}) })
+    }
+  }
   return {
     text: b.text.trim(),
     device: b.device as Device,
     input: b.input,
     ...(app ? { app } : {}),
+    ...(results ? { results } : {}),
     ...(b.conversationId ? { conversationId: b.conversationId as string } : {}),
     ...(b.projectId && !b.conversationId ? { projectId: b.projectId as string } : {}),
     ...(context ? { context } : {}),

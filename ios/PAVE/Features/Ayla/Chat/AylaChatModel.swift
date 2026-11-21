@@ -278,11 +278,18 @@ final class AylaChatModel {
     /// the chat then shows what went wrong, just like after a typed question.
     func ask(_ text: String, input: AylaInput) async -> AylaReply? {
         // Spoken, she says what she did; nothing goes to the brain.
-        if !isAnswering, attachments.isEmpty, let said = appCommand?(text) {
+        if pendingResults == nil, !isAnswering, attachments.isEmpty, let said = appCommand?(text) {
             return AylaReply(id: UUID().uuidString, conversationId: conversationID ?? "", text: said)
         }
         guard let turn = prepare(text, input: input) else { return nil }
-        return await complete(turn)
+        let reply = await complete(turn)
+        // A round of her own that could not be made does not end the conversation: the app says what there is to say.
+        if reply == nil, turn.isFollowUp {
+            let words = followUpFallback ?? AylaMessages.actionCouldNotContinue
+            say(words)
+            return AylaReply(id: UUID().uuidString, conversationId: conversationID ?? "", text: words)
+        }
+        return reply
     }
 
     private struct Turn {
@@ -290,12 +297,19 @@ final class AylaChatModel {
         let request: AylaRequest
         let text: String
         let files: [AylaAttachment]
+        /// A round of her own after her actions: nothing you typed, so nothing goes back into the text field.
+        var isFollowUp = false
     }
 
     /// Shows the question at once and returns what to send, or nil when nothing can be sent now.
     private func prepare(_ text: String, input: AylaInput) -> Turn? {
+        if let results = pendingResults {
+            pendingResults = nil
+            return followUpTurn(results, input: input)
+        }
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let service, !text.isEmpty, !isAnswering else { return nil }
+        followUpRounds = 0
         let files = attachments
         // "Ja" or "Graag" to her own "Wil je naar je instellingen gaan?" opens that page too.
         let offered = pendingOffersEvidence || followUp != nil ? nil : AylaScreenRequest.screen(confirmedBy: text, after: entries.last?.reply)
@@ -334,7 +348,7 @@ final class AylaChatModel {
             self.removal = nil
             guard await removal.value else {
                 phase = .failed(AylaMessages.redoFailed)
-                if draft.isEmpty { draft = turn.text }
+                if draft.isEmpty, !turn.isFollowUp { draft = turn.text }
                 return
             }
         }
@@ -384,8 +398,8 @@ final class AylaChatModel {
                 return
             }
             if let writingIndex, entries.indices.contains(writingIndex) { entries.remove(at: writingIndex) }
-            phase = .failed(Self.message(for: AylaError(error)))
-            if draft.isEmpty { draft = turn.text }
+            phase = turn.isFollowUp ? .idle : .failed(Self.message(for: AylaError(error)))
+            if draft.isEmpty, !turn.isFollowUp { draft = turn.text }
             if attachments.isEmpty { attachments = turn.files }
         }
     }
@@ -396,7 +410,7 @@ final class AylaChatModel {
             self.removal = nil
             guard await removal.value else {
                 phase = .failed(AylaMessages.redoFailed)
-                if draft.isEmpty { draft = turn.text }
+                if draft.isEmpty, !turn.isFollowUp { draft = turn.text }
                 return nil
             }
         }
@@ -413,8 +427,8 @@ final class AylaChatModel {
             await refreshConversations()
             return reply
         } catch {
-            phase = .failed(Self.message(for: AylaError(error)))
-            if draft.isEmpty { draft = turn.text }
+            phase = turn.isFollowUp ? .idle : .failed(Self.message(for: AylaError(error)))
+            if draft.isEmpty, !turn.isFollowUp { draft = turn.text }
             if attachments.isEmpty { attachments = turn.files }
             return nil
         }
@@ -433,6 +447,50 @@ final class AylaChatModel {
     struct ActionRequest: Equatable {
         let id: String
         let actions: [AylaAppAction]
+        /// She wants to hear what came of them, to go on.
+        var continues = false
+    }
+
+    /// The words that stand in for a round of her own; they are never shown or stored as yours.
+    static let followUpText = "(vervolg)"
+    /// At most this many rounds of her own per question, so she cannot keep going in circles.
+    static let maxFollowUpRounds = 3
+    private var pendingResults: [AylaRequest.ActionResult]?
+    private var followUpRounds = 0
+
+    /// Whether she may take another round after her actions.
+    var canContinue: Bool { followUpRounds < Self.maxFollowUpRounds && conversationID != nil && service != nil }
+
+    /// What came of her actions is ready for her next round. Typed, that round starts here; spoken, the voice
+    /// conversation starts it (so she says her answer) by asking with `followUpText`.
+    /// `otherwise`: what the app says itself when she cannot be reached for that round, so a step that failed is
+    /// never left unsaid.
+    func continueAfter(_ results: [AylaRequest.ActionResult], spoken: Bool, otherwise: String?) {
+        guard canContinue, !results.isEmpty, !isAnswering else {
+            if let otherwise { say(otherwise) }
+            return
+        }
+        pendingResults = results
+        followUpFallback = otherwise
+        guard !spoken else { return }
+        guard let turn = prepare(Self.followUpText, input: .text) else { return }
+        answerTask = Task {
+            await stream(turn)
+            if case .idle = phase, entries.last?.reply == nil || entries.last?.role == .user, let otherwise { say(otherwise) }
+        }
+    }
+    private var followUpFallback: String?
+
+    private func followUpTurn(_ results: [AylaRequest.ActionResult], input: AylaInput) -> Turn? {
+        guard let service, !isAnswering, canContinue else { return nil }
+        followUpRounds += 1
+        phase = .thinking
+        activity = .continuing
+        let request = AylaRequest(
+            conversationId: conversationID, text: Self.followUpText, device: .phone, input: input, context: context,
+            app: appState?(), results: results
+        )
+        return Turn(service: service, request: request, text: Self.followUpText, files: [], isFollowUp: true)
     }
     /// The actions of her newest answer, for the screen to carry out. What needs your Ja first is not in here.
     private(set) var actionRequest: ActionRequest?
@@ -440,7 +498,7 @@ final class AylaChatModel {
 
     private func requestActions(of reply: AylaReply) {
         guard let actions = reply.actions, !actions.isEmpty, !actions.contains(where: \.needsConfirmation) else { return }
-        actionRequest = ActionRequest(id: reply.id, actions: actions)
+        actionRequest = ActionRequest(id: reply.id, actions: actions, continues: reply.continues == true)
     }
 
     /// What her newest answer wants to do once you say Ja (deleting, signing out); nil when that is done or not asked.

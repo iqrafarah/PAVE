@@ -16,6 +16,8 @@ enum AylaMessages {
             guard withVault else { return "Ayla bekijkt \(vacancies)…" }
             if let chosen, chosen > 0 { return "Ayla vergelijkt \(vacancies) met wat je koos…" }
             return "Ayla vergelijkt \(vacancies) met je kluis…"
+        case .continuing:
+            return "Ayla gaat verder…"
         }
     }
     // What the app says when something Ayla set out to do could not be done, or was done after your Ja.
@@ -31,6 +33,7 @@ enum AylaMessages {
     static let actionForgotAll = "Ik heb alles vergeten wat ik over je onthield."
     static let actionSignsOut = "Ik log je uit."
     static let actionDone = "Gedaan."
+    static let actionCouldNotContinue = "Verder gaan lukte nu niet. Probeer het zo opnieuw."
     static func actionAllowed(_ title: String) -> String { "Ik mag \(title) nu bekijken en gebruiken." }
     static let actionsBusy = "Ayla doet dit voor je"
     static let actionsDone = "Ayla deed dit voor je"

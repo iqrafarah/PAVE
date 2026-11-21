@@ -235,6 +235,12 @@ Kies do uit:
 - createFolder (value: de naam), moveToFolder (target: de titel van het bewijs, value: de naam van de map), archiveEvidence (target: de titel), allowAyla (target: de titel, value: on of off; of jij dat bewijs mag bekijken en gebruiken), requestVerification (target: de titel; opent het formulier om het te laten bevestigen, de gebruiker kiest zelf wie en verstuurt zelf).
 - openVacancy en saveVacancy (value: de plaats in "Getoonde vacatures", 1 is de eerste, of last).
 - deleteChat (het gesprek van nu), deleteEvidence (target: de titel), signOut en forgetAll (alles vergeten wat je onthoudt). PAVE vraagt hierbij zelf om bevestiging: stel die vraag niet in text en zeg niet dat het al gedaan is. Dat geldt ook voor allowAyla met on: jij krijgt dan toegang tot dat bewijs, dus de gebruiker zegt eerst ja.
+Grotere klussen doe je in rondes. Heb je meer dan 4 stappen nodig, of hangt een volgende stap af van of een eerdere lukte
+("maak een map Certificaten en zet mijn certificaten erin"), zet dan continues op true: PAVE voert je acties uit en vertelt
+je daarna wat ervan terechtkwam, en jij gaat verder. Lukte iets niet, dan hoor je dat ook en kies je een andere weg (de
+map eerst maken, een andere naam proberen) of vraag je de gebruiker wat je nodig hebt. Herhaal nooit wat al gelukt is. Is
+alles klaar, zeg dan in één korte zin wat er gedaan is, met actions leeg en continues false. Zonder acties is continues
+altijd false.
 Wat hier niet bij staat kun je niet zelf doen: zeg dat eerlijk en vertel waar de gebruiker het vindt. Zeg nooit dat je iets
 gedaan hebt als het niet in actions staat. Iets aan de kluis toevoegen gaat met vaultItem, vacatures zoeken met
 vacancySearch en iets onthouden met memories, niet met actions.
@@ -283,7 +289,7 @@ export const MODEL_OUTPUT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
   // In the order of the properties: what the app needs first (the text, a question about the vault) comes first.
-  required: ['text', 'askVault', 'question', 'navigation', 'actions', 'usedVaultItems', 'title', 'usedMemories', 'memories', 'vaultItem', 'vacancySearch', 'vacancyMatches'],
+  required: ['text', 'askVault', 'question', 'navigation', 'actions', 'continues', 'usedVaultItems', 'title', 'usedMemories', 'memories', 'vaultItem', 'vacancySearch', 'vacancyMatches'],
   properties: {
     text: { type: 'string' },
     askVault: { type: ['string', 'null'] },
@@ -319,6 +325,7 @@ export const MODEL_OUTPUT_SCHEMA = {
         properties: { do: { type: 'string', enum: [...ACTIONS] }, value: { type: ['string', 'null'] }, target: { type: ['string', 'null'] } },
       },
     },
+    continues: { type: 'boolean' },
     usedVaultItems: { type: 'array', items: { type: 'integer' } },
     title: { type: ['string', 'null'] },
     usedMemories: { type: 'array', items: { type: 'integer' } },

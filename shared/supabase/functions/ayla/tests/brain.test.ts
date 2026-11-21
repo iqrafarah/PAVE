@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { test } from 'node:test'
-import { answer, bestFirst, cleanActions, cleanTitle, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
+import { answer, bestFirst, cleanActions, cleanTitle, effortFor, resultsMessage, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
 import { parseRequest } from '../contract.ts'
-import { openRouterCompletion } from '../openrouter.ts'
+import { MODELS, modelsFor, openRouterCompletion } from '../openrouter.ts'
 import { buildSystemPrompt } from '../prompt.ts'
 import { loadMemory, type MemoryCategory } from '../memory.ts'
 import { firstThatFinds, fromWebAnswer, mergeFound, salaryFrom, toFoundVacancy, toJoobleVacancy, withSupport } from '../vacancies.ts'
@@ -994,4 +994,66 @@ test('Ayla knows how the app is set, on the iPhone only, and nothing else gets i
   assert.equal(parseRequest({ text: 'Hoi', device: 'phone', input: 'text', app: { folders: ['Stages'] } }), 'app is not valid')
   assert.equal(parseRequest({ text: 'Hoi', device: 'phone', input: 'text', app: { theme: 5 } }), 'app is not valid')
   assert.equal(parseRequest({ text: 'Hoi', device: 'phone', input: 'text', app: { chatTitle: 'x'.repeat(81) } }), 'app is not valid')
+})
+
+test('the model is picked by how much thinking a turn asks for', () => {
+  const ask = (text: string, extra: object = {}) => effortFor({ text, device: 'phone', input: 'text', ...extra })
+  assert.equal(ask('Hoi!'), 'light')
+  assert.equal(ask('Dankjewel'), 'light')
+  assert.equal(ask('Open mijn kluis'), 'normal')
+  assert.equal(ask('Schrijf een motivatiebrief voor deze vacature'), 'hard')
+  assert.equal(ask('Maak een map Certificaten en zet mijn Scrum-certificaat erin'), 'hard')
+  assert.equal(ask('x'.repeat(300)), 'hard')
+  assert.equal(ask('Bekijk dit', { attachments: [{ name: 'cv.pdf', text: 'tekst' }] }), 'hard')
+  assert.equal(ask('(vervolg)', { results: [{ do: 'openFolder', ok: false }] }), 'hard')
+  assert.equal(effortFor({ text: 'Past dit bij mij?', device: 'phone', input: 'text' }, true), 'hard')
+  assert.equal(effortFor({ text: 'Past dit bij mij?', device: 'phone', input: 'text' }, false), 'normal')
+  assert.equal(modelsFor('hard').models[0], 'mistralai/mistral-large-2512')
+  assert.equal(modelsFor('light').models[0], 'mistralai/mistral-small-3.2-24b-instruct')
+  assert.equal(modelsFor('normal').models[0], MODELS[0])
+  assert.ok(modelsFor('hard').hedgeMs > modelsFor('normal').hedgeMs)
+})
+
+test('hard work starts with the large model, and a list of the caller is left alone', async () => {
+  const asked: string[] = []
+  const fetchFake = (async (_url: unknown, init?: { body?: string }) => {
+    asked.push(JSON.parse(init?.body ?? '{}').model)
+    return new Response(JSON.stringify({ choices: [{ message: { content: '{"text":"Hoi"}' } }] }))
+  }) as typeof fetch
+  await openRouterCompletion('key', {}, fetchFake)([{ role: 'user', content: 'Hoi' }], { effort: 'hard' })
+  assert.equal(asked[0], 'mistralai/mistral-large-2512')
+  await openRouterCompletion('key', {}, fetchFake, ['mijn/model'])([{ role: 'user', content: 'Hoi' }], { effort: 'hard' })
+  assert.equal(asked[1], 'mijn/model')
+})
+
+test('Ayla goes on after her own actions: the app tells what came of them, not the user', async () => {
+  const results = [{ do: 'openFolder' as const, ok: false, said: 'Ik kon de map Vakantie niet vinden.' }, { do: 'setDisplayMode' as const, ok: true }]
+  const parsed = parseRequest({ text: '(vervolg)', device: 'phone', input: 'text', conversationId: '3f2b8c1e-5d4a-4f6b-9a7c-1e2d3c4b5a69', results })
+  assert.ok(typeof parsed !== 'string')
+  assert.equal(parseRequest({ text: '(vervolg)', device: 'phone', input: 'text', results }), 'results are not valid')
+  assert.equal(parseRequest({ text: 'x', device: 'phone', input: 'text', conversationId: '3f2b8c1e-5d4a-4f6b-9a7c-1e2d3c4b5a69', results: [{ do: 'flyToTheMoon', ok: true }] }), 'results are not valid')
+  assert.match(resultsMessage(results), /niet van de gebruiker/)
+  assert.match(resultsMessage(results), /1\. openFolder: niet gelukt\. Ik kon de map Vakantie niet vinden\./)
+  assert.match(resultsMessage(results), /2\. setDisplayMode: gelukt/)
+
+  const history = [
+    { role: 'user' as const, text: 'Open de map Vakantie en maak het donker' },
+    { role: 'ayla' as const, text: 'Ik open je map Vakantie.' },
+    { role: 'ayla' as const, text: 'En ik zet PAVE op donker.' },
+  ]
+  const fake = model(say('De map Vakantie bestaat niet. Zal ik hem maken?', { actions: [], continues: true }))
+  const reply = await answer({ request: parsed, conversationId: 'c', history }, { complete: fake.complete, newId: ids() })
+  const sent = fake.calls[0]
+  assert.match(sent.at(-1)!.content, /Dit kwam er van je acties/)
+  // Two answers in a row reach the model as one, so the roles keep taking turns.
+  assert.deepEqual(sent.slice(1).map((m) => m.role), ['user', 'assistant', 'user'])
+  assert.equal(sent[2].content, 'Ik open je map Vakantie.\nEn ik zet PAVE op donker.')
+  assert.equal(reply.continues, undefined)
+})
+
+test('continues only comes with actions that are carried out at once', async () => {
+  const more = model(say('Ik maak de map.', { actions: [{ do: 'createFolder', value: 'Certificaten', target: null }], continues: true }))
+  assert.equal((await answer({ request, conversationId: 'c', history: [] }, { complete: more.complete, newId: ids() })).continues, true)
+  const risky = model(say('Ik verwijder het.', { actions: [{ do: 'deleteChat', value: null, target: null }], continues: true }))
+  assert.equal((await answer({ request, conversationId: 'c', history: [] }, { complete: risky.complete, newId: ids() })).continues, undefined)
 })

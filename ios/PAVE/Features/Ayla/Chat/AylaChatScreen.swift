@@ -406,7 +406,7 @@ struct AylaChatScreen: View {
             guard let request = model.actionRequest else { return }
             try? await Task.sleep(for: .milliseconds(400))
             guard !Task.isCancelled else { return }
-            await run(request.actions)
+            await run(request.actions, continues: request.continues)
         }
         .onChange(of: model.activity) { _, activity in
             if let activity { AccessibilityNotification.Announcement(AylaMessages.activity(activity)).post() }
@@ -2082,13 +2082,14 @@ struct AylaChatScreen: View {
 
     /// Carries out what Ayla chose to do, one thing after the other, with a line per step so you follow her, also
     /// when you only talk. What could not be done is said in the chat and to VoiceOver.
-    private func run(_ actions: [AylaAppAction]) async {
+    private func run(_ actions: [AylaAppAction], continues: Bool = false) async {
         let token = UUID()
         actionRun = token
         withAnimation(.easeOut(duration: 0.2)) {
             actionSteps = actions.enumerated().map { AylaActionStep(id: $0.offset, title: AylaActionWords.doing($0.element)) }
         }
         var said: [String] = []
+        var results: [AylaRequest.ActionResult] = []
         for (index, action) in actions.enumerated() {
             if index > 0 { try? await Task.sleep(for: .milliseconds(700)) }
             guard actionRun == token else { return }
@@ -2098,16 +2099,37 @@ struct AylaChatScreen: View {
             switch outcome {
             case .done:
                 actionSteps[index].state = .done
+                results.append(AylaRequest.ActionResult(action.kind, ok: true))
             case .said(let words):
                 actionSteps[index].state = .done
                 said.append(words)
+                results.append(AylaRequest.ActionResult(action.kind, ok: true, said: words))
             case .failed(let words):
                 actionSteps[index].state = .failed
                 said.append(words)
+                results.append(AylaRequest.ActionResult(action.kind, ok: false, said: words))
                 PaveHaptics.tap(.rigid)
             }
         }
         if shelf != nil { showsShelfReply = true }
+        // She asked to hear what came of it, or something did not work: she looks at the result and goes on herself
+        // (another way, the next steps), instead of the app only saying it failed.
+        let goesOn = (continues || results.contains { !$0.ok }) && model.canContinue && !actions.contains(where: \.needsConfirmation)
+        if goesOn {
+            try? await Task.sleep(for: .milliseconds(500))
+            guard actionRun == token else { return }
+            let otherwise = said.isEmpty ? nil : said.joined(separator: " ")
+            if let voice, isTalking {
+                model.continueAfter(results, spoken: true, otherwise: otherwise)
+                voice.send(typed: AylaChatModel.followUpText, checksYes: false)
+            } else {
+                model.continueAfter(results, spoken: false, otherwise: otherwise)
+            }
+            try? await Task.sleep(for: .seconds(2.2))
+            guard actionRun == token else { return }
+            withAnimation(.easeOut(duration: 0.25)) { actionSteps = [] }
+            return
+        }
         if !said.isEmpty {
             let words = said.joined(separator: " ")
             model.say(words)

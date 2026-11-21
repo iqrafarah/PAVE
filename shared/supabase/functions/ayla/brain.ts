@@ -1,8 +1,8 @@
-import { ACTIONS, type ActionKind, type AppAction, needsConfirmation, type AylaReply, type AylaRequest, type Block, type Status, CATEGORIES, type Category, type RequirementLink, type Screen, SCREENS, type Vacancy } from './contract.ts'
+import { ACTIONS, type ActionKind, type ActionResult, type AppAction, needsConfirmation, type AylaReply, type AylaRequest, type Block, type Status, CATEGORIES, type Category, type RequirementLink, type Screen, SCREENS, type Vacancy } from './contract.ts'
 import type { AllowedVault } from './vault.ts'
 import { cleanPurpose, CONSENT_QUESTION_CHOICES, consentChoices, consentQuestion, mayLookInVault, type VaultConsent, vaultConsent } from './consent.ts'
 import { cleanMemories, type Memory, type MemorySuggestion, usedNotes } from './memory.ts'
-import type { ContentPart, ChatMessage, Complete } from './openrouter.ts'
+import type { ContentPart, ChatMessage, Complete, Effort } from './openrouter.ts'
 import { buildSystemPrompt } from './prompt.ts'
 import { vaultProposal } from './proposal.ts'
 import { type FoundVacancy, mergeFound, type SearchVacancies } from './vacancies.ts'
@@ -94,6 +94,7 @@ interface ModelOutput {
   vaultItem: unknown
   askVault: unknown
   actions: unknown
+  continues: boolean
 }
 
 /** One turn of the conversation: the prompt in layers, the model, and a reply in the contract format. */
@@ -110,9 +111,11 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   const vault = allowed?.status === 'on' && chosen?.length ? { ...allowed, items: allowed.items.filter((item) => chosen.includes(item.id)) } : allowed
   const messages: ChatMessage[] = [
     { role: 'system', content: buildSystemPrompt({ device: request.device, input: request.input, firstName: input.firstName, context: request.context, memory, project: input.project, vault, vaultConsent: consent, app: request.app }) },
-    ...input.history.slice(-HISTORY_LIMIT).map((m): ChatMessage => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text })),
-    { role: 'user', content: withAttachments(request) },
+    ...pastMessages(input.history.slice(-HISTORY_LIMIT)),
+    // What came of her actions is the app speaking, not the user: it is said so, and she goes on from there.
+    { role: 'user', content: request.results?.length ? resultsMessage(request.results) : withAttachments(request) },
   ]
+  const effort = effortFor(request, mayLook)
 
   let lastText = ''
   const showText = (content: string) => {
@@ -123,7 +126,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
       input.onText(text)
     }
   }
-  const options = { signal: input.signal, onContent: input.onText ? showText : undefined }
+  const options = { signal: input.signal, onContent: input.onText ? showText : undefined, effort }
 
   // Ayla asks to look in the vault: the rest of what the model writes does not count for this turn, so it stops there
   // and the Ja and Nee show at once.
@@ -134,6 +137,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   // The search starts as soon as the model wrote what to search for, while it still writes the rest.
   let early: (SearchTerms & { found: Promise<SearchResult> }) | null = null
   const firstOptions = {
+    effort,
     signal: first.signal,
     onContent: (content: string) => {
       showText(content)
@@ -176,7 +180,9 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
       input.onStatus?.({ kind: 'vacancyMatch', count: found.items.length, withVault: mayLook, ...picked })
     }
     messages.push({ role: 'assistant', content: JSON.stringify(output) }, { role: 'system', content: describeSearch(found, mayLook, consent) })
-    output = parseOutput((await deps.complete(messages, options)).content)
+    // Comparing every vacancy with the vault is the hardest thing she does, and its answer is long.
+    const matching = mayLook && found.status === 'ok' && found.items.length > 0
+    output = parseOutput((await deps.complete(messages, matching ? { ...options, effort: 'hard' as const, maxTokens: 1500 } : options)).content)
     if (found.status === 'ok' && found.items.length && request.device !== 'watch') {
       // What fits and what is missing only with the vault allowed, and only what the vacancy text really says. The
       // best fit comes first.
@@ -215,6 +221,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   if (actions.length) {
     reply.actions = actions
     const risky = actions.find((action) => action.confirm)
+    if (!risky && output.continues) reply.continues = true
     if (risky) {
       reply.text = CONFIRM_QUESTIONS[risky.do]?.(risky) ?? 'Weet je het zeker?'
       reply.question = { text: '', choices: CONSENT_QUESTION_CHOICES }
@@ -309,6 +316,44 @@ export function withAttachments(request: AylaRequest): string | ContentPart[] {
 }
 
 const SOURCE_NAMES: Record<Vacancy['source'], string> = { example: 'voorbeelden', adzuna: 'Adzuna', jooble: 'Jooble', web: 'internet' }
+
+/** The conversation so far for the model, with answers that follow each other (a round of her own) as one. */
+function pastMessages(history: PastMessage[]): ChatMessage[] {
+  const messages: ChatMessage[] = []
+  for (const turn of history) {
+    const role = turn.role === 'user' ? 'user' as const : 'assistant' as const
+    const last = messages.at(-1)
+    if (last && last.role === role && typeof last.content === 'string') last.content = `${last.content}\n${turn.text}`
+    else messages.push({ role, content: turn.text })
+  }
+  return messages
+}
+
+/** What the app tells Ayla after it carried out her actions. */
+export function resultsMessage(results: ActionResult[]): string {
+  const lines = results.map((result, index) => `${index + 1}. ${result.do}: ${result.ok ? 'gelukt' : 'niet gelukt'}${result.said ? `. ${result.said}` : ''}`)
+  return `(Bericht van PAVE, niet van de gebruiker.) Dit kwam er van je acties:
+${lines.join('\n')}
+Ga verder met wat de gebruiker vroeg: doe de stappen die nog moeten, kies een andere weg voor wat niet lukte, of vraag de gebruiker wat je nodig hebt. Herhaal niets wat gelukt is. Is alles klaar, zeg dan in één korte zin wat er gedaan is, met actions leeg.`
+}
+
+const LIGHT = /^(hoi|hey|hallo|hi|goedemorgen|goedemiddag|goedenavond|dank ?je( wel)?|dankjewel|bedankt|thanks|top|oke|oké|ok|prima|fijn|doei|tot ziens)[\s!.]*$/i
+const HARD = /\b(cv|curriculum|motivatiebrief|sollicitatiebrief|plan|stappenplan|vergelijk|analyseer|analyse|samenvat|samenvatting|herschrijf|verbeter|leg uit|waarom|voor- en nadelen|advies)\b/i
+const SEVERAL = /\b(en dan|daarna|vervolgens|en ook)\b| en (zet|maak|open|verplaats|archiveer|verwijder|bewaar|noem|start)\b/i
+
+/**
+ * How much thinking this turn asks for, which picks the model: a greeting is light, real work is hard (writing or
+ * comparing, files, a long or compound request, going on after her own actions), and the rest is normal.
+ */
+export function effortFor(request: AylaRequest, mayLook = false): Effort {
+  const text = request.text.trim()
+  if (request.results?.length || request.attachments?.length) return 'hard'
+  if (LIGHT.test(text)) return 'light'
+  if (text.length > 280 || HARD.test(text) || SEVERAL.test(text)) return 'hard'
+  // A question about what fits with the vault open asks for weighing evidence.
+  if (mayLook && /\b(past|passen|geschikt|sterk|zwak|mis|ontbreekt|kans)\b/i.test(text)) return 'hard'
+  return 'normal'
+}
 
 const CONFIRM_QUESTIONS: Partial<Record<ActionKind, (action: AppAction) => string>> = {
   deleteChat: () => 'Zal ik dit gesprek verwijderen?',
@@ -476,11 +521,12 @@ function parseOutput(content: string): ModelOutput {
       usedMemories: Array.isArray(json.usedMemories) ? json.usedMemories : [],
       usedVaultItems: Array.isArray(json.usedVaultItems) ? json.usedVaultItems : [],
       actions: Array.isArray(json.actions) ? json.actions : [],
+      continues: json.continues === true,
       vaultItem: json.vaultItem ?? null,
       askVault: typeof json.askVault === 'string' ? json.askVault : null,
     }
   } catch {
-    return { text: content, question: null, navigation: null, vacancySearch: null, vacancyMatches: [], title: null, memories: [], usedMemories: [], usedVaultItems: [], vaultItem: null, askVault: null, actions: [] }
+    return { text: content, question: null, navigation: null, vacancySearch: null, vacancyMatches: [], title: null, memories: [], usedMemories: [], usedVaultItems: [], vaultItem: null, askVault: null, actions: [], continues: false }
   }
 }
 
