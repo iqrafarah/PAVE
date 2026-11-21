@@ -25,12 +25,8 @@ struct VacancyList: View {
     var body: some View {
         LazyVStack(spacing: 14) {
             if model.canSaveVacancies {
-                Picker("Vacatures", selection: $tab) {
-                    Text(vacancies.isEmpty ? AylaMessages.vacancyFound : "\(AylaMessages.vacancyFound) (\(vacancies.count))").tag(Tab.found)
-                    Text(model.savedVacancies.isEmpty ? AylaMessages.vacancySavedTab : "\(AylaMessages.vacancySavedTab) (\(model.savedVacancies.count))").tag(Tab.saved)
-                }
-                .pickerStyle(.segmented)
-                .padding(.bottom, 4)
+                VacancyTabs(tab: $tab, found: vacancies.count, saved: model.savedVacancies.count)
+                    .padding(.bottom, 4)
             }
             if let problem = model.vacancyProblem {
                 PaveInlineError(message: problem)

@@ -313,9 +313,15 @@ final class AylaVoiceSession {
         }
     }
 
+    /// What Ayla is busy with in the app, for the Lock Screen and the Dynamic Island: words that say nothing about
+    /// you, such as "Stap 2 van 3". Nil when she is not doing anything there.
+    var doingNote: String? {
+        didSet { if doingNote != oldValue { publishStatus() } }
+    }
+
     private func publishStatus() {
         guard state != .off else { return }
-        liveActivity.update(status: currentStatus)
+        liveActivity.update(status: currentStatus, note: doingNote)
     }
 
     @discardableResult

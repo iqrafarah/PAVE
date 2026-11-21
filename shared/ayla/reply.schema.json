@@ -313,6 +313,7 @@
           "description": "What Ayla does in the app, in order. Only sent to the iPhone app for now.",
           "items": { "$ref": "#/$defs/action" }
         },
+        "continues": { "const": true, "description": "She is not done yet: the app sends what came of these actions (results in the request) and she goes on." },
         "memories": {
           "type": "array",
           "description": "Ayla suggests remembering these facts about the user, one per item, and taking away notes they make out of date. The app changes ayla_memories only after the user confirms; nothing is remembered or forgotten by itself.",

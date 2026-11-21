@@ -288,6 +288,15 @@ struct AylaChatScreen: View {
             .environment(pageDriver)
             // Keep talking with Ayla while the page is open: her answer shows on top of the page.
             .safeAreaInset(edge: .bottom, spacing: 0) {
+                // What she is doing floats just above where she lives, as in the chat.
+                if !actionSteps.isEmpty {
+                    AylaActivityPill(steps: actionSteps)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 6)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
                 // While you talk she stays with you on the page, as the small orb; typing is the text field.
                 if let voice, isTalking {
                     AylaShelfVoiceBar(
@@ -308,13 +317,6 @@ struct AylaChatScreen: View {
                         showsShelfReply = false
                     }
                     .transition(.move(edge: .top).combined(with: .opacity))
-                }
-                if !actionSteps.isEmpty {
-                    AylaActionTrail(steps: actionSteps)
-                        .padding(.horizontal, 20)
-                        .padding(.top, showsShelfReply ? 6 : 26)
-                        .padding(.bottom, 4)
-                        .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
             .overlay {
@@ -410,6 +412,7 @@ struct AylaChatScreen: View {
         }
         .onChange(of: model.activity) { _, activity in
             if let activity { AccessibilityNotification.Announcement(AylaMessages.activity(activity)).post() }
+            if actionSteps.isEmpty { voice?.doingNote = activity.map(AylaMessages.voiceNote) }
         }
         // A spoken conversation goes on in the background, with the Lock Screen and the Dynamic Island showing it,
         // so you can keep talking with the phone in your pocket.
@@ -473,7 +476,7 @@ struct AylaChatScreen: View {
         VStack(spacing: 10) {
             // What she is doing in the app, when no page is open over the chat (there it shows on the page).
             if !actionSteps.isEmpty, shelf == nil {
-                AylaActionTrail(steps: actionSteps)
+                AylaActivityPill(steps: actionSteps)
                     .padding(.horizontal, 21)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
@@ -2094,6 +2097,8 @@ struct AylaChatScreen: View {
             if index > 0 { try? await Task.sleep(for: .milliseconds(700)) }
             guard actionRun == token else { return }
             actionSteps[index].state = .running
+            // Outside PAVE (Lock Screen, Dynamic Island) only how far she is, never what it is about.
+            voice?.doingNote = AylaMessages.voiceStep(index + 1, of: actions.count)
             let outcome = await perform(action)
             guard actionRun == token, actionSteps.indices.contains(index) else { return }
             switch outcome {
@@ -2111,6 +2116,7 @@ struct AylaChatScreen: View {
                 PaveHaptics.tap(.rigid)
             }
         }
+        voice?.doingNote = nil
         if shelf != nil { showsShelfReply = true }
         // She asked to hear what came of it, or something did not work: she looks at the result and goes on herself
         // (another way, the next steps), instead of the app only saying it failed.
@@ -2136,7 +2142,7 @@ struct AylaChatScreen: View {
             AccessibilityNotification.Announcement(words).post()
         }
         // The steps stay a moment, so you see they are done, and then make room again.
-        try? await Task.sleep(for: .seconds(said.isEmpty ? 2.2 : 4))
+        try? await Task.sleep(for: .seconds(said.isEmpty ? 5 : 8))
         guard actionRun == token else { return }
         withAnimation(.easeOut(duration: 0.25)) { actionSteps = [] }
     }

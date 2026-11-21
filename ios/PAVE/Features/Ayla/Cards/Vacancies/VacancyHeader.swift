@@ -4,8 +4,6 @@ import SwiftUI
 /// Who, where and what it pays (Figma frame "Vacatures"), at the top of a vacancy card and of the vacancy itself.
 struct VacancyHeader: View {
     let vacancy: Vacancy
-    /// A card that opens the vacancy shows where to tap.
-    var showsChevron = false
     /// The vacancy itself also says when the source last saw it.
     var showsPosted = false
 
@@ -36,13 +34,6 @@ struct VacancyHeader: View {
                 .padding(.top, 13.6)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            if showsChevron {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color.inkMuted)
-                    .padding(.top, 20)
-                    .accessibilityHidden(true)
-            }
         }
         .accessibilityElement(children: .combine)
     }

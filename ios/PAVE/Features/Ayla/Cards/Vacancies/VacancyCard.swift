@@ -1,8 +1,8 @@
 import PAVECore
 import SwiftUI
 
-/// A vacancy in Ayla's results (Figma frame "Vacatures"): who, where and what it pays, a few skills that fit or that
-/// you miss, and Bewaren and Vraag Ayla. Tapping the card opens the vacancy in the same panel.
+/// A vacancy in Ayla's results (Figma frame "Vacatures"): who, where and what it pays, how many of the skills she
+/// found fit you, and the bookmark in the corner. Tapping the card opens the vacancy in the same panel.
 struct VacancyCard: View {
     let vacancy: Vacancy
     var tint = Color.cardTintRose
@@ -15,31 +15,48 @@ struct VacancyCard: View {
     /// The tints in the order Figma uses them for a list of cards.
     static let tints: [Color] = [.cardTintRose, .cardTintGreen, .cardTintLavender, .cardTintApricot, .cardTintLime]
 
+    private var hasFit: Bool { !vacancy.matches.isEmpty || !vacancy.skillGap.isEmpty }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             Button { onOpen?() } label: {
                 VStack(alignment: .leading, spacing: 14) {
-                    VacancyHeader(vacancy: vacancy, showsChevron: onOpen != nil)
-                    if !vacancy.matches.isEmpty || !vacancy.skillGap.isEmpty {
-                        VacancySkillChips(matches: vacancy.matches, gaps: vacancy.skillGap)
+                    VacancyHeader(vacancy: vacancy)
+                        // Room for the bookmark in the corner.
+                        .padding(.trailing, onToggleSave == nil ? 18 : 40)
+                    if hasFit {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(AylaMessages.vacancyFitCount(vacancy.matches.count, of: vacancy.matches.count + vacancy.skillGap.count))
+                                .textStyle(.caption)
+                                .foregroundStyle(Color.ink)
+                            VacancySkillChips(matches: vacancy.matches, gaps: vacancy.skillGap)
+                        }
+                        .padding(.trailing, 18)
                     }
                 }
-                .padding(.trailing, 18)
                 .contentShape(.rect)
             }
             .buttonStyle(.pave)
             .disabled(onOpen == nil)
             .accessibilityHint("Opent de vacature")
 
-            VacancyActions(vacancy: vacancy, isSaved: isSaved, onToggleSave: onToggleSave, onAsk: onAsk)
-                .padding(.trailing, 13)
+            if let onAsk {
+                VacancyAskButton(action: onAsk)
+            }
         }
         .padding(.leading, 13)
-        .padding(.bottom, 13)
+        .padding(.bottom, 11)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background { FigmaCardGradient(tint: tint, start: UnitPoint(x: 0.97, y: 1.08), end: UnitPoint(x: 0.03, y: -0.08)) }
         .clipShape(.rect(cornerRadius: 17))
         .overlay { RoundedRectangle(cornerRadius: 17).strokeBorder(Color.cardBorder, lineWidth: 1) }
+        .overlay(alignment: .topTrailing) {
+            if let onToggleSave {
+                VacancySaveButton(isSaved: isSaved, action: onToggleSave)
+                    .padding(.top, 6)
+                    .padding(.trailing, 6)
+            }
+        }
     }
 }
 

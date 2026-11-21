@@ -1,8 +1,8 @@
 import PAVECore
 import SwiftUI
 
-/// Above Ayla's vacancies: what she searched for, which of your data she used for it, and the way to choose that
-/// yourself. Nothing here is a guess: it is what the answer itself says it used.
+/// Above Ayla's vacancies: what she searched for, and one row that says which of your data she used and lets you
+/// choose that yourself. Nothing here is a guess: it is what the answer itself says it used.
 struct VacancySearchSummary: View {
     let search: VacancySearch?
     let usedData: [AylaVaultCategory]
@@ -21,36 +21,56 @@ struct VacancySearchSummary: View {
     private var hasChoice: Bool { (chosenCount ?? 0) > 0 || !usedNames.isEmpty }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 10) {
             if let search {
                 Text(AylaMessages.vacancySearchedFor(search))
                     .textStyle(.caption)
                     .foregroundStyle(Color.inkMuted)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Image(.iconFolderSolid)
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .paveIconFrame(12)
-                    .foregroundStyle(Color.paveAccent)
-                    .accessibilityHidden(true)
-                Text(usedText)
-                    .textStyle(.caption)
-                    .foregroundStyle(Color.inkMuted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .accessibilityElement(children: .combine)
             if let onChooseData {
-                Button(action: onChooseData) {
-                    VacancyActionLabel(title: hasChoice ? AylaMessages.vacancyOtherData : AylaMessages.vacancyChooseData, symbol: "slider.horizontal.3")
-                }
-                .buttonStyle(.pave)
-                .accessibilityHint("Je kiest uit je kluis; Ayla zoekt daarna opnieuw")
+                Button(action: onChooseData) { row(action: hasChoice ? AylaMessages.vacancyChangeData : AylaMessages.vacancyChooseData) }
+                    .buttonStyle(.pave)
+                    .accessibilityHint("Je kiest uit je kluis; Ayla zoekt daarna opnieuw")
+            } else {
+                row(action: nil)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func row(action: String?) -> some View {
+        HStack(spacing: 10) {
+            Image(.iconFolderSolid)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .paveIconFrame(16)
+                .foregroundStyle(Color.paveAccent)
+                .accessibilityHidden(true)
+            Text(usedText)
+                .textStyle(.chip)
+                .foregroundStyle(Color.ink)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if let action {
+                Text(action)
+                    .textStyle(.chip)
+                    .foregroundStyle(Color.paveAccent)
+                Image(.iconChevronRight)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .paveIconHeight(10)
+                    .foregroundStyle(Color.paveAccent)
+                    .accessibilityHidden(true)
+            }
+        }
+        .padding(.horizontal, 14)
+        .frame(minHeight: 48)
+        .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 14))
+        .contentShape(.rect(cornerRadius: 14))
     }
 }
 

@@ -89,7 +89,7 @@ Vacatures staan niet in het menu. Je zoekt ze in de chat met Ayla; ze openen in 
 | Kaart in de chat | 1 vacature gevonden / {n} vacatures gevonden |
 | Titel paneel | Vacatures |
 | Uitleg paneel | Vraag Ayla hieronder iets over deze vacatures. |
-| Tabs | Gevonden ({n}) / Bewaard ({n}) |
+| Tabs | Gevonden {n} / Bewaard {n} |
 | Knoppen | Bewaren / Bewaard / Vraag Ayla |
 | Vacature (titel) | Vacature |
 | Stukje tekst | Uit de vacaturetekst |
@@ -111,8 +111,9 @@ Vacatures staan niet in het menu. Je zoekt ze in de chat met Ayla; ze openen in 
 | Vraag om de kluis (iPhone) | Ja / Kies zelf / Nee |
 | Na "Kies zelf" (jouw bericht) | Gebruik het item dat ik koos. / Gebruik de {n} gegevens die ik koos. |
 | Boven de gevonden vacatures | Gezocht op: {zoekwoorden} (en {verwante functie}) in {plaats} |
-| Welke gegevens Ayla gebruikte | Uit je kluis: {categorieën} / Ayla gebruikte de {n} gegevens die je koos. / Ayla gebruikte het item dat je koos. / Ayla keek hiervoor niet in je kluis. |
-| Knop om gegevens te kiezen | Kies gegevens / Andere gegevens kiezen |
+| Welke gegevens Ayla gebruikte (rij) | Uit je kluis: {categorieën} / Met {n} gekozen gegevens / Met 1 gekozen item / Zonder je kluis |
+| Rechts in die rij | Wijzig / Kies |
+| Op de kaart | {n} van {m} vaardigheden passen |
 | Datum in de vacature | Geplaatst op {dag} {maand} |
 | Ayla vergelijkt (met kluis) | Ayla vergelijkt {n} vacatures met je kluis… |
 | Ayla bekijkt (zonder kluis) | Ayla bekijkt {n} vacatures… |
@@ -145,6 +146,9 @@ Ayla zegt in haar eigen woorden wat ze doet. Deze vaste teksten komen van de app
 | Map bestond al | De map {naam} bestond al. Ik open hem. |
 | Vraag vooraf: Ayla toegang geven | Mag ik "{titel}" voortaan bekijken en gebruiken? |
 | Na Ja op toegang | Ik mag {titel} nu bekijken en gebruiken. |
-| Kop boven de stappen | Ayla doet dit voor je / Ayla deed dit voor je |
+| Statuspil als ze klaar is | {n} dingen gedaan / {n} dingen gedaan, {m} niet gelukt / Dat lukte niet |
+| Statuspil, voortgang | {stap} van {aantal} |
+| Buiten de app (vergrendelscherm, Dynamic Island) | Ayla is bezig - Stap {n} van {m} / Zoekt vacatures / Vergelijkt vacatures / Gaat verder |
+| Ayla gaat zelf verder | Ayla gaat verder… / Verder gaan lukte nu niet. Probeer het zo opnieuw. |
 | Stappen (voorbeelden) | Donker aanzetten / Map {naam} openen / Chat {titel} noemen / Chat vastzetten / Map {naam} maken / {bewijs} in de map {naam} zetten |
 | Kleine bol op een pagina | Ayla luistert… / Ayla denkt na… / Ayla praat / Je microfoon staat uit |

@@ -1,8 +1,9 @@
 import PAVECore
 import SwiftUI
 
-/// One vacancy, in the panel over the chat: the piece of its text PAVE has, what fits you and what you still miss with
-/// the line each comes from, and at the bottom the way to the whole vacancy at the employer. Ayla stays below.
+/// One vacancy, in the panel over the chat. First what you want to know (does it fit, what do you miss, each with the
+/// line it comes from), then the piece of its text PAVE has, and last the way to the whole vacancy at the employer.
+/// Ayla stays below.
 struct VacancyDetail: View {
     let vacancy: Vacancy
     var tint = Color.cardTintRose
@@ -11,59 +12,62 @@ struct VacancyDetail: View {
     let onAsk: (() -> Void)?
     let onAskGap: ((String) -> Void)?
 
-    private var hasMatch: Bool { !vacancy.matches.isEmpty || !vacancy.skillGap.isEmpty }
+    private var hasFit: Bool { !vacancy.matches.isEmpty || !vacancy.skillGap.isEmpty }
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 26) {
-                VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 28) {
+                VStack(alignment: .leading, spacing: 12) {
                     VacancyHeader(vacancy: vacancy, showsPosted: true)
-                        .padding(.trailing, 18)
-                    VacancyActions(vacancy: vacancy, isSaved: isSaved, onToggleSave: onToggleSave, onAsk: onAsk)
-                        .padding(.trailing, 13)
+                        .padding(.trailing, onToggleSave == nil ? 18 : 40)
+                    if let onAsk {
+                        VacancyAskButton(action: onAsk)
+                    }
                 }
                 .padding(.leading, 13)
-                .padding(.bottom, 13)
+                .padding(.bottom, 11)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background { FigmaCardGradient(tint: tint, start: UnitPoint(x: 0.97, y: 1.08), end: UnitPoint(x: 0.03, y: -0.08)) }
                 .clipShape(.rect(cornerRadius: 17))
                 .overlay { RoundedRectangle(cornerRadius: 17).strokeBorder(Color.cardBorder, lineWidth: 1) }
-
-                if let summary = vacancy.summary, !summary.isEmpty {
-                    section(AylaMessages.vacancyFromText) {
-                        Text(summary)
-                            .textStyle(.bodyMedium)
-                            .foregroundStyle(Color.ink)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .padding(14)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 9))
-                        Text(AylaMessages.vacancyTextNote(vacancy.source))
-                            .textStyle(.caption)
-                            .foregroundStyle(Color.inkMuted)
-                            .fixedSize(horizontal: false, vertical: true)
+                .overlay(alignment: .topTrailing) {
+                    if let onToggleSave {
+                        VacancySaveButton(isSaved: isSaved, action: onToggleSave)
+                            .padding(.top, 6)
+                            .padding(.trailing, 6)
                     }
                 }
 
                 if !vacancy.matches.isEmpty {
-                    section(AylaMessages.vacancyFits) {
-                        ForEach(vacancy.matches, id: \.skill) { VacancyRequirementRow(link: $0, isGap: false) }
-                    }
+                    section(AylaMessages.vacancyFits) { VacancyFitGroup(links: vacancy.matches, isGap: false) }
                 }
                 if !vacancy.skillGap.isEmpty {
-                    section(AylaMessages.vacancyMissing) {
-                        ForEach(vacancy.skillGap, id: \.skill) { link in
-                            VacancyRequirementRow(link: link, isGap: true, onAsk: onAskGap.map { ask in { ask(link.skill) } })
-                        }
+                    section(AylaMessages.vacancyMissing) { VacancyFitGroup(links: vacancy.skillGap, isGap: true, onAsk: onAskGap) }
+                }
+                if !hasFit {
+                    Text(AylaMessages.vacancyNoMatch)
+                        .textStyle(.bodyMedium)
+                        .foregroundStyle(Color.inkMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if let summary = vacancy.summary, !summary.isEmpty {
+                    section(AylaMessages.vacancyFromText) {
+                        // A quote, not a box: a line of the theme colour beside the employer's own words.
+                        Text(summary)
+                            .textStyle(.bodyMedium)
+                            .foregroundStyle(Color.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.leading, 14)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .overlay(alignment: .leading) {
+                                Capsule().fill(Color.paveAccent.opacity(0.45)).frame(width: 3)
+                            }
                     }
                 }
-                Text(hasMatch ? AylaMessages.vacancyMatchNote : AylaMessages.vacancyNoMatch)
-                    .textStyle(.caption)
-                    .foregroundStyle(Color.inkMuted)
-                    .fixedSize(horizontal: false, vertical: true)
 
-                if let url = vacancy.url {
-                    VStack(spacing: 8) {
+                VStack(spacing: 12) {
+                    if let url = vacancy.url {
                         Link(destination: url) {
                             HStack(spacing: 8) {
                                 Text(AylaMessages.vacancyOpen)
@@ -72,19 +76,20 @@ struct VacancyDetail: View {
                                     .accessibilityHidden(true)
                             }
                             .textStyle(.button)
-                            .foregroundStyle(Color.paveAccent)
-                            .frame(maxWidth: .infinity, minHeight: 50)
-                            .background(Color.paveSurfaceTint, in: .capsule)
+                            .foregroundStyle(Color.white)
+                            .frame(maxWidth: .infinity, minHeight: 53)
+                            .background(Color.paveAccentFill, in: .capsule)
                             .contentShape(.capsule)
                         }
                         .buttonStyle(.pave)
                         .accessibilityHint("Opent de vacature bij de werkgever, buiten PAVE")
-                        if let source = AylaMessages.vacancySource(vacancy.source) {
-                            Text(source)
-                                .textStyle(.caption)
-                                .foregroundStyle(Color.inkMuted)
-                        }
                     }
+                    Text([AylaMessages.vacancySource(vacancy.source), hasFit ? AylaMessages.vacancyMatchNote : AylaMessages.vacancyTextNote(vacancy.source)].compactMap(\.self).joined(separator: ". "))
+                        .textStyle(.caption)
+                        .foregroundStyle(Color.inkMuted)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity)
                 }
             }
             .padding(.horizontal, 24)
@@ -101,7 +106,7 @@ struct VacancyDetail: View {
     }
 
     private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             Text(title)
                 .textStyle(.label)
                 .foregroundStyle(Color.ink)

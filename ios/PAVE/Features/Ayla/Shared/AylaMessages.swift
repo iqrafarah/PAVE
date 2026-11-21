@@ -45,6 +45,15 @@ enum AylaMessages {
         case .failed: "niet gelukt"
         }
     }
+    /// For the Lock Screen and the Dynamic Island: how far she is, and what kind of thing she does, without names.
+    static func voiceStep(_ step: Int, of total: Int) -> String { total == 1 ? "Doet iets in PAVE" : "Stap \(step) van \(total)" }
+    static func voiceNote(_ activity: AylaActivity) -> String {
+        switch activity {
+        case .searchingVacancies: "Zoekt vacatures"
+        case .comparingVacancies: "Vergelijkt vacatures"
+        case .continuing: "Gaat verder"
+        }
+    }
     static let voiceListening = "Ayla luistert…"
     static let voiceSpeaking = "Ayla praat"
     static let voiceMuted = "Je microfoon staat uit"
@@ -87,12 +96,21 @@ enum AylaMessages {
         let terms = search.also.map { "\(search.what) en \($0)" } ?? search.what
         return search.where.isEmpty ? "Gezocht op: \(terms)" : "Gezocht op: \(terms) in \(search.where)"
     }
-    static let vacancyNoData = "Ayla keek hiervoor niet in je kluis."
+    static let vacancyNoData = "Zonder je kluis"
     static func vacancyChosenData(_ count: Int) -> String {
-        count == 1 ? "Ayla gebruikte het item dat je koos." : "Ayla gebruikte de \(count) gegevens die je koos."
+        count == 1 ? "Met 1 gekozen item" : "Met \(count) gekozen gegevens"
     }
-    static let vacancyChooseData = "Kies gegevens"
-    static let vacancyOtherData = "Andere gegevens kiezen"
+    static let vacancyChooseData = "Kies"
+    static let vacancyChangeData = "Wijzig"
+    /// "2 van 3 vaardigheden passen": of the skills Ayla found in the piece of text she saw.
+    static func vacancyFitCount(_ fits: Int, of total: Int) -> String {
+        total == 1 ? (fits == 1 ? "De vaardigheid die Ayla vond past" : "De vaardigheid die Ayla vond mis je nog") : "\(fits) van \(total) vaardigheden passen"
+    }
+    static func actionsSummary(done: Int, failed: Int) -> String {
+        let did = done == 1 ? "1 ding gedaan" : "\(done) dingen gedaan"
+        guard failed > 0 else { return did }
+        return done == 0 ? (failed == 1 ? "Dat lukte niet" : "\(failed) dingen lukten niet") : "\(did), \(failed) niet gelukt"
+    }
     /// "Geplaatst op 20 november", from the day the source gives ("2026-11-20"); nil when that is not a day.
     static func vacancyPosted(_ day: String) -> String? {
         guard let date = try? Date(day, strategy: .iso8601.year().month().day()) else { return nil }

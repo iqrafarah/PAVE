@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// At the bottom of a page that opened while you talk with Ayla: she is still there as the small orb, alive with her
-/// voice and yours, with what she is doing next to it, the microphone and stop. So you see the page and her.
+/// On a page that opened while you talk with Ayla: she stays with you as the small orb, in one floating capsule with
+/// what she is doing, the microphone and stop. It is part of the layer of controls over the page, so the page itself
+/// stays whole and scrolls on under it.
 struct AylaShelfVoiceBar: View {
     let mode: AylaPixelOrb.Mode
     let meter: VoiceMeter?
@@ -12,24 +13,31 @@ struct AylaShelfVoiceBar: View {
     let onStop: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 4) {
             Button(action: onTapOrb) {
-                AylaPixelOrb(mode: mode, meter: meter)
-                    .frame(width: 48, height: 48)
-                    .frame(width: 56, height: 56)
-                    .contentShape(.circle)
+                HStack(spacing: 10) {
+                    // On a ground of its own, so her blocks read over whatever page is under the glass.
+                    AylaPixelOrb(mode: mode, meter: meter)
+                        .frame(width: 46, height: 46)
+                        .frame(width: 54, height: 54)
+                        .background(Color.panel, in: .circle)
+                    Text(status)
+                        .textStyle(.chip)
+                        .foregroundStyle(Color.ink)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .contentTransition(.opacity)
+                        .animation(.easeOut(duration: 0.2), value: status)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(.leading, 7)
+                .frame(minHeight: 68)
+                .contentShape(.rect)
             }
             .buttonStyle(.pave)
-            .accessibilityLabel("Ayla")
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Ayla, \(status)")
             .accessibilityHint(mode == .speaking ? "Tik om Ayla te onderbreken" : "Tik om je vraag nu te versturen")
-
-            Text(status)
-                .textStyle(.status)
-                .foregroundStyle(Color.paveAccent)
-                .lineLimit(2)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentTransition(.opacity)
-                .animation(.easeOut(duration: 0.2), value: status)
 
             Button(action: onMute) {
                 Image(.iconMicrophone)
@@ -44,8 +52,6 @@ struct AylaShelfVoiceBar: View {
                         }
                     }
                     .frame(width: 44, height: 44)
-                    .background(Color.panel, in: .circle)
-                    .overlay { Circle().strokeBorder(Color.cardBorder) }
                     .contentShape(.circle)
             }
             .buttonStyle(.pave)
@@ -55,19 +61,24 @@ struct AylaShelfVoiceBar: View {
                 Image(.iconPlus)
                     .renderingMode(.template)
                     .resizable()
-                    .paveIconFrame(14)
+                    .paveIconFrame(13)
                     .rotationEffect(.degrees(45))
                     .foregroundStyle(Color.white)
-                    .frame(width: 44, height: 44)
+                    .frame(width: 40, height: 40)
                     .background(Color.paveAccentFill, in: .circle)
+                    .frame(width: 44, height: 44)
                     .contentShape(.circle)
             }
             .buttonStyle(.pave)
             .accessibilityLabel("Gesprek stoppen")
         }
-        .padding(.leading, 10)
-        .padding(.trailing, 16)
-        .padding(.vertical, 6)
-        .background(.bar)
+        .padding(.trailing, 10)
+        // Tinted with the page's own white, so text under the glass never runs through her status.
+        .glassEffect(.regular.tint(Color.panel.opacity(0.78)), in: .capsule)
+        .frame(maxWidth: 420)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 16)
+        .padding(.top, 6)
+        .padding(.bottom, 8)
     }
 }
