@@ -1,6 +1,6 @@
 import { type AllowedVault, vaultPrompt } from './vault.ts'
 import type { VaultConsent } from './consent.ts'
-import type { Context, Device, Screen, VacancyContext } from './contract.ts'
+import { ACTIONS, type Context, type Device, type Screen, type VacancyContext } from './contract.ts'
 import { MEMORY_CATEGORIES, type Memory, memoryPrompt } from './memory.ts'
 import { VAULT_ITEM_SCHEMA } from './proposal.ts'
 
@@ -153,6 +153,7 @@ export function buildSystemPrompt(input: PromptInput): string {
   if (sources) layers.push(sources)
   if (input.context) layers.push(contextLayer(input.context, input.vault))
   layers.push(OUTPUT_PROMPT)
+  layers.push(input.device === 'phone' ? ACTIONS_PROMPT : NO_ACTIONS_PROMPT)
   return layers.join('\n\n')
 }
 
@@ -212,6 +213,35 @@ function vacancyLayer(v: VacancyContext): string {
   return parts.filter(Boolean).join(' ')
 }
 
+// Layer 5: what Ayla does in the app herself. Only the iPhone app carries these out.
+const ACTIONS_PROMPT = `
+## Zelf iets doen in de app
+Je kunt in PAVE zelf dingen doen voor de gebruiker, ook als die niet kan typen of tikken. Zet in actions wat je doet, in
+volgorde, hooguit 4. Doe dat alleen als de gebruiker erom vraagt, of ja zegt op wat jij voorstelde; anders is actions een
+lege lijst. Elke actie heeft do, value en target (null als die niet nodig is). Zeg in text kort wat je doet ("Ik zet PAVE
+op donker en open je map Stages."). Vraag niet eerst om bevestiging, behalve waar dat hieronder staat. Meer dingen in één
+zin doe je allemaal, in de volgorde waarin ze gevraagd zijn.
+Namen van mappen, bewijs en chats neem je over zoals de gebruiker ze zegt: de app zoekt ze op en meldt het zelf als iets
+niet bestaat. Vraag door als niet duidelijk is welke map, welk bewijs of welke waarde bedoeld is.
+Kies do uit:
+- openSettingsPage (value: appearance, devices, ayla, privacy, retention of archive), openMemory (wat je over de gebruiker onthoudt), openSavedVacancies, back (een stap terug), close (sluit wat open is).
+- openFolder (target: de naam van de map). Eén bewijsstuk openen doe je met navigation (vaultItem); een heel onderdeel openen met navigation.
+- newChat, openChat (target: woorden uit de titel van dat gesprek), renameChat (value: de nieuwe titel), pinChat (value: on of off), archiveChat, setChatExpiry (value: een aantal dagen, never of default). Deze gaan over het gesprek van nu, behalve openChat.
+- setTheme (value: green, blue, gold, pink, orange, purple, red of lime), setTextSize (value: small, standard, large, bigger of smaller), setDisplayMode (value: light, dark of auto), setVaultLayout (value: list of grid), setVoiceText, setChatsInSearch, setAnimations en setMemory (value: on of off).
+- createFolder (value: de naam), moveToFolder (target: de titel van het bewijs, value: de naam van de map), archiveEvidence (target: de titel), allowAyla (target: de titel, value: on of off; of jij dat bewijs mag bekijken en gebruiken), requestVerification (target: de titel; opent het formulier om het te laten bevestigen, de gebruiker kiest zelf wie en verstuurt zelf).
+- openVacancy en saveVacancy (value: de plaats in "Getoonde vacatures", 1 is de eerste, of last).
+- deleteChat (het gesprek van nu), deleteEvidence (target: de titel), signOut en forgetAll (alles vergeten wat je onthoudt). PAVE vraagt hierbij zelf om bevestiging: stel die vraag niet in text en zeg niet dat het al gedaan is.
+Wat hier niet bij staat kun je niet zelf doen: zeg dat eerlijk en vertel waar de gebruiker het vindt. Zeg nooit dat je iets
+gedaan hebt als het niet in actions staat. Iets aan de kluis toevoegen gaat met vaultItem, vacatures zoeken met
+vacancySearch en iets onthouden met memories, niet met actions.
+`.trim()
+
+const NO_ACTIONS_PROMPT = `
+## Zelf iets doen in de app
+Op dit apparaat kun je de app niet zelf bedienen: actions is altijd een lege lijst. Vraagt de gebruiker je iets in te
+stellen of te openen dat niet via navigation kan, vertel dan waar het staat.
+`.trim()
+
 const REQUIREMENT_LINK_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -224,7 +254,7 @@ export const MODEL_OUTPUT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
   // In the order of the properties: what the app needs first (the text, a question about the vault) comes first.
-  required: ['text', 'askVault', 'question', 'navigation', 'usedVaultItems', 'title', 'usedMemories', 'memories', 'vaultItem', 'vacancySearch', 'vacancyMatches'],
+  required: ['text', 'askVault', 'question', 'navigation', 'actions', 'usedVaultItems', 'title', 'usedMemories', 'memories', 'vaultItem', 'vacancySearch', 'vacancyMatches'],
   properties: {
     text: { type: 'string' },
     askVault: { type: ['string', 'null'] },
@@ -250,6 +280,15 @@ export const MODEL_OUTPUT_SCHEMA = {
       additionalProperties: false,
       required: ['screen', 'item'],
       properties: { screen: { type: 'string' }, item: { type: ['integer', 'null'] } },
+    },
+    actions: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['do', 'value', 'target'],
+        properties: { do: { type: 'string', enum: [...ACTIONS] }, value: { type: ['string', 'null'] }, target: { type: ['string', 'null'] } },
+      },
     },
     usedVaultItems: { type: 'array', items: { type: 'integer' } },
     title: { type: ['string', 'null'] },

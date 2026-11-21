@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { test } from 'node:test'
-import { answer, bestFirst, cleanTitle, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
+import { answer, bestFirst, cleanActions, cleanTitle, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
 import { parseRequest } from '../contract.ts'
 import { openRouterCompletion } from '../openrouter.ts'
 import { buildSystemPrompt } from '../prompt.ts'
@@ -926,4 +926,47 @@ test('choosing items right after Ayla asked counts as a fresh yes, for those ite
   assert.match(fake.calls[0][0].content, /gaf je net toestemming/)
   assert.match(fake.calls[0][0].content, /Diploma PXL/)
   assert.doesNotMatch(fake.calls[0][0].content, /Stage bij LiveWall/)
+})
+
+test('what Ayla does in the app reaches the iPhone as checked actions, in order', async () => {
+  const actions = [
+    { do: 'setDisplayMode', value: 'dark', target: null },
+    { do: 'openFolder', value: null, target: ' Stages ' },
+    { do: 'flyToTheMoon', value: null, target: null },
+    { do: 'openFolder', value: null, target: null },
+  ]
+  const fake = model(say('Ik zet PAVE op donker en open je map Stages.', { actions }))
+  const reply = await answer({ request, conversationId: 'c', history: [] }, { complete: fake.complete, newId: ids() })
+  assert.deepEqual(reply.actions, [{ do: 'setDisplayMode', value: 'dark' }, { do: 'openFolder', target: 'Stages' }])
+  assert.equal(reply.question, undefined)
+  assert.match(fake.calls[0][0].content, /Zelf iets doen in de app/)
+  assert.match(fake.calls[0][0].content, /Zeg nooit dat je iets\s+gedaan hebt als het niet in actions staat/)
+})
+
+test('other devices get no actions and are told so', async () => {
+  for (const device of ['web', 'watch'] as const) {
+    const fake = model(say('Dat staat bij Instellingen.', { actions: [{ do: 'setDisplayMode', value: 'dark', target: null }] }))
+    const reply = await answer({ request: { ...request, device }, conversationId: 'c', history: [] }, { complete: fake.complete, newId: ids() })
+    assert.equal(reply.actions, undefined)
+    assert.match(fake.calls[0][0].content, /actions is altijd een lege lijst/)
+  }
+})
+
+test('what cannot be undone waits for a Ja to a question with fixed words', async () => {
+  const fake = model(say('Ik heb het verwijderd!', { actions: [{ do: 'deleteEvidence', value: null, target: 'Eindstage' }], navigation: { screen: 'vault', item: null } }))
+  const reply = await answer({ request, conversationId: 'c', history: [] }, { complete: fake.complete, newId: ids() })
+  assert.deepEqual(reply.actions, [{ do: 'deleteEvidence', target: 'Eindstage', confirm: true }])
+  assert.equal(reply.text, 'Zal ik "Eindstage" uit je kluis verwijderen? Dat kan niet ongedaan worden gemaakt.')
+  assert.deepEqual(reply.question?.choices.map((c) => c.label), ['Ja', 'Nee'])
+  assert.equal(reply.navigation, undefined)
+})
+
+test('at most four actions, and none while Ayla still asks for the vault', async () => {
+  const many = Array.from({ length: 6 }, () => ({ do: 'newChat', value: null, target: null }))
+  assert.equal(cleanActions(many, 'phone').length, 4)
+  assert.deepEqual(cleanActions('nee', 'phone'), [])
+  const fake = model(say('Dat zoek ik op.', { askVault: 'te zien wat erin staat', actions: [{ do: 'openMemory', value: null, target: null }] }))
+  const reply = await answer({ request, conversationId: 'c', history: [] }, { complete: fake.complete, newId: ids() })
+  assert.ok(reply.accessRequest)
+  assert.equal(reply.actions, undefined)
 })

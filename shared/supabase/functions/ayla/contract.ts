@@ -38,6 +38,26 @@ export interface Context { screen: Screen; itemId?: string; itemIds?: string[]; 
 
 export interface Choice { id: string; label: string }
 
+/**
+ * What Ayla can do in the app herself, when the user asks for it. The app carries an action out and says so when it
+ * cannot (a folder that does not exist). Names of folders, evidence and chats are the user's own words: the app looks
+ * them up, the model never gets a list of them.
+ */
+export const ACTIONS = [
+  'openSettingsPage', 'openMemory', 'openSavedVacancies', 'openFolder', 'back', 'close',
+  'newChat', 'openChat', 'renameChat', 'pinChat', 'archiveChat', 'setChatExpiry',
+  'setTheme', 'setTextSize', 'setDisplayMode', 'setVaultLayout', 'setVoiceText', 'setChatsInSearch', 'setAnimations', 'setMemory',
+  'createFolder', 'moveToFolder', 'archiveEvidence', 'allowAyla', 'requestVerification',
+  'openVacancy', 'saveVacancy',
+  'deleteChat', 'deleteEvidence', 'signOut', 'forgetAll',
+] as const
+export type ActionKind = (typeof ACTIONS)[number]
+
+/** What cannot be undone: PAVE asks Ja or Nee first, and the app only acts after Ja. */
+export const CONFIRMED_ACTIONS: readonly ActionKind[] = ['deleteChat', 'deleteEvidence', 'signOut', 'forgetAll']
+
+export interface AppAction { do: ActionKind; value?: string; target?: string; confirm?: true }
+
 /** What Ayla is doing while she has nothing to say yet, so the app can show it. */
 export type Status =
   | { kind: 'vacancySearch'; what: string; where: string; also?: string }
@@ -106,6 +126,8 @@ export interface AylaReply {
   }
   blocks: Block[]
   navigation?: { screen: Screen; itemId?: string }
+  /** What Ayla does in the app with this answer, in order. With `confirm`, only after the user says Ja. */
+  actions?: AppAction[]
   /**
    * Ayla suggests remembering these facts, one per item, and taking away notes they make out of date (`replaces`,
    * the exact text of the user's note; with an empty `text` only that). Nothing changes before the user confirms.

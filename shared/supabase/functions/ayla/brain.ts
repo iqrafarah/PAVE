@@ -1,6 +1,6 @@
-import { type AylaReply, type AylaRequest, type Block, type Status, CATEGORIES, type Category, type RequirementLink, type Screen, SCREENS, type Vacancy } from './contract.ts'
+import { ACTIONS, type ActionKind, type AppAction, CONFIRMED_ACTIONS, type AylaReply, type AylaRequest, type Block, type Status, CATEGORIES, type Category, type RequirementLink, type Screen, SCREENS, type Vacancy } from './contract.ts'
 import type { AllowedVault } from './vault.ts'
-import { cleanPurpose, consentChoices, consentQuestion, mayLookInVault, type VaultConsent, vaultConsent } from './consent.ts'
+import { cleanPurpose, CONSENT_QUESTION_CHOICES, consentChoices, consentQuestion, mayLookInVault, type VaultConsent, vaultConsent } from './consent.ts'
 import { cleanMemories, type Memory, type MemorySuggestion, usedNotes } from './memory.ts'
 import type { ContentPart, ChatMessage, Complete } from './openrouter.ts'
 import { buildSystemPrompt } from './prompt.ts'
@@ -93,6 +93,7 @@ interface ModelOutput {
   usedVaultItems: unknown
   vaultItem: unknown
   askVault: unknown
+  actions: unknown
 }
 
 /** One turn of the conversation: the prompt in layers, the model, and a reply in the contract format. */
@@ -158,6 +159,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   }
   // The first answer heard what the user said; the second one only talks about the vacancies.
   const heard = cleanMemories(output.memories, memory)
+  const firstActions = output.actions
   const firstUsed = usedNotes(output.usedMemories, memory)
   const title = cleanTitle(output.title)
   if (title && input.onTitle) input.onTitle(title)
@@ -206,6 +208,18 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
     reply.text = lead || question
     reply.question = { text: lead ? question : '', choices: consentChoices(request.device) }
     delete reply.navigation
+  }
+  // What she does in the app herself. What cannot be undone waits for a Ja to a question with fixed words, so a model
+  // that says "gedaan" too soon changes nothing.
+  const actions = purpose ? [] : cleanActions(Array.isArray(output.actions) && output.actions.length ? output.actions : firstActions, request.device)
+  if (actions.length) {
+    reply.actions = actions
+    const risky = actions.find((action) => action.confirm)
+    if (risky) {
+      reply.text = CONFIRM_QUESTIONS[risky.do]?.(risky) ?? 'Weet je het zeker?'
+      reply.question = { text: '', choices: CONSENT_QUESTION_CHOICES }
+      delete reply.navigation
+    }
   }
   // The user just said no to what Ayla offered: she does not offer it again, whatever the model wrote.
   if (declinedOffer(input.history, request.text)) {
@@ -295,6 +309,36 @@ export function withAttachments(request: AylaRequest): string | ContentPart[] {
 }
 
 const SOURCE_NAMES: Record<Vacancy['source'], string> = { example: 'voorbeelden', adzuna: 'Adzuna', jooble: 'Jooble', web: 'internet' }
+
+const CONFIRM_QUESTIONS: Partial<Record<ActionKind, (action: AppAction) => string>> = {
+  deleteChat: () => 'Zal ik dit gesprek verwijderen?',
+  deleteEvidence: (action) => `Zal ik "${action.target}" uit je kluis verwijderen? Dat kan niet ongedaan worden gemaakt.`,
+  signOut: () => 'Zal ik je uitloggen?',
+  forgetAll: () => 'Zal ik alles vergeten wat ik over je onthoud? Dat kan niet ongedaan worden gemaakt.',
+}
+
+const NEEDS_TARGET: readonly ActionKind[] = ['openFolder', 'openChat', 'moveToFolder', 'archiveEvidence', 'allowAyla', 'requestVerification', 'deleteEvidence']
+const NEEDS_VALUE: readonly ActionKind[] = [
+  'openSettingsPage', 'renameChat', 'pinChat', 'setChatExpiry', 'setTheme', 'setTextSize', 'setDisplayMode', 'setVaultLayout', 'setVoiceText',
+  'setChatsInSearch', 'setAnimations', 'setMemory', 'createFolder', 'moveToFolder', 'allowAyla', 'openVacancy', 'saveVacancy',
+]
+
+/** The actions of an answer as the app gets them: known ones only, complete, at most 4, and only on the iPhone. */
+export function cleanActions(raw: unknown, device: AylaRequest['device']): AppAction[] {
+  if (device !== 'phone' || !Array.isArray(raw)) return []
+  const actions: AppAction[] = []
+  for (const entry of raw as Record<string, unknown>[]) {
+    const kind = entry?.do as ActionKind
+    if (!ACTIONS.includes(kind)) continue
+    const word = (value: unknown) => (typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, 120) : '')
+    const value = word(entry.value)
+    const target = word(entry.target)
+    if ((NEEDS_TARGET.includes(kind) && !target) || (NEEDS_VALUE.includes(kind) && !value)) continue
+    actions.push({ do: kind, ...(value ? { value } : {}), ...(target ? { target } : {}), ...(CONFIRMED_ACTIONS.includes(kind) ? { confirm: true as const } : {}) })
+    if (actions.length === 4) break
+  }
+  return actions
+}
 
 interface SearchTerms { what: string; where: string; also: string | null }
 
@@ -430,11 +474,12 @@ function parseOutput(content: string): ModelOutput {
       memories: Array.isArray(json.memories) ? json.memories : [],
       usedMemories: Array.isArray(json.usedMemories) ? json.usedMemories : [],
       usedVaultItems: Array.isArray(json.usedVaultItems) ? json.usedVaultItems : [],
+      actions: Array.isArray(json.actions) ? json.actions : [],
       vaultItem: json.vaultItem ?? null,
       askVault: typeof json.askVault === 'string' ? json.askVault : null,
     }
   } catch {
-    return { text: content, question: null, navigation: null, vacancySearch: null, vacancyMatches: [], title: null, memories: [], usedMemories: [], usedVaultItems: [], vaultItem: null, askVault: null }
+    return { text: content, question: null, navigation: null, vacancySearch: null, vacancyMatches: [], title: null, memories: [], usedMemories: [], usedVaultItems: [], vaultItem: null, askVault: null, actions: [] }
   }
 }
 

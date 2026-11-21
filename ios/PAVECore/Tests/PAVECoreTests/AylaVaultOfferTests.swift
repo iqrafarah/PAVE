@@ -254,6 +254,55 @@ struct AylaAppCommandTests {
         #expect(command("Sluit de instellingen") == .close)
     }
 
+    @Test func twoThingsInOneSentenceGoToAylasBrain() {
+        #expect(command("Zet donkere modus aan en open mijn stages") == nil)
+        #expect(command("Maak het thema blauw en zet de tekst groter") == nil)
+        #expect(command("Open de map stages en daarna mijn diploma's") == nil)
+        #expect(command("Zet de donkere modus aan") == .displayMode(.dark))
+        #expect(command("Open de map stages") == .vaultFolder(id: "f1"))
+    }
+
+    @Test func anActionFromAylaBecomesWhatTheAppAlreadyDoes() {
+        let folders = [AylaAppCommand.Named(id: "f1", name: "Stages"), AylaAppCommand.Named(id: "f2", name: "Diploma’s")]
+        #expect(AylaAppAction("setDisplayMode", value: "dark").command() == .displayMode(.dark))
+        #expect(AylaAppAction("setTheme", value: "blue").command() == .theme(.blue))
+        #expect(AylaAppAction("setTheme", value: "custom").command() == nil)
+        #expect(AylaAppAction("setTextSize", value: "bigger").command() == .textSizeStep(1))
+        #expect(AylaAppAction("setTextSize", value: "large").command() == .textSize(.large))
+        #expect(AylaAppAction("setVoiceText", value: "off").command() == .voiceText(false))
+        #expect(AylaAppAction("openSettingsPage", value: "privacy").command() == .settingsPage(.privacy))
+        #expect(AylaAppAction("openFolder", target: "de map stages").command(folders: folders) == .vaultFolder(id: "f1"))
+        #expect(AylaAppAction("openFolder", target: "diplomas").command(folders: folders) == .vaultFolder(id: "f2"))
+        #expect(AylaAppAction("openFolder", target: "Certificaten").command(folders: folders) == nil)
+        #expect(AylaAppAction("openVacancy", value: "2").command() == .openVacancy(1))
+        #expect(AylaAppAction("saveVacancy", value: "last").command() == .saveVacancy(-1))
+        #expect(AylaAppAction("newChat").command() == nil)
+    }
+
+    @Test func aNameFindsTheClosestThingOrNothingWhenItIsUnclear() {
+        let items = [
+            AylaAppCommand.Named(id: "1", name: "Eindstage bij Philips"), AylaAppCommand.Named(id: "2", name: "Stage LiveWall"),
+            AylaAppCommand.Named(id: "3", name: "Scrum-certificaat"), AylaAppCommand.Named(id: "4", name: "Scrum"),
+        ]
+        #expect(AylaAppAction.best("eindstage", in: items)?.id == "1")
+        #expect(AylaAppAction.best("mijn stage bij livewall", in: items)?.id == "2")
+        #expect(AylaAppAction.best("Scrum", in: items)?.id == "4")
+        #expect(AylaAppAction.best("scrum certificaat", in: items)?.id == "3")
+        #expect(AylaAppAction.best("diploma", in: items) == nil)
+        #expect(AylaAppAction.best("s", in: items) == nil)
+    }
+
+    @Test func actionsComeWithTheReplyAndABrokenOneDoesNotBreakIt() throws {
+        let json = #"{"version":1,"id":"r","conversationId":"c","text":"Zal ik je uitloggen?","blocks":[],"usedData":[],"actions":[{"do":"signOut","confirm":true},{"do":"setChatExpiry","value":"7"}]}"#
+        let reply = try AylaReply.decode(Data(json.utf8))
+        #expect(reply.actions == [AylaAppAction("signOut", confirm: true), AylaAppAction("setChatExpiry", value: "7")])
+        #expect(reply.actions?.first?.needsConfirmation == true)
+        #expect(reply.actions?.last?.expiry == .days(7))
+        #expect(AylaAppAction("setChatExpiry", value: "never").expiry == .never)
+        #expect(AylaAppAction("setChatExpiry", value: "default").expiry == .followsAccount)
+        #expect(AylaAppAction("setMemory", value: "aan").isOn == true)
+    }
+
     @Test func askingAboutVacanciesStaysAQuestionForAyla() {
         #expect(command("Zoek vacatures als developer in Eindhoven") == nil)
         #expect(command("Toon nieuwe vacatures") == nil)

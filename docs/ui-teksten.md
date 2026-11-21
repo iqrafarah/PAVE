@@ -124,3 +124,22 @@ Vacatures staan niet in het menu. Je zoekt ze in de chat met Ayla; ze openen in 
 | Schakelaar | Animaties uitzetten |
 | Uitleg (web) | Alles in PAVE blijft stil staan: geen bewegende overgangen, laders of golven. Geldt alleen voor deze browser. |
 | Uitleg (iOS) | Alles in PAVE blijft stil staan: geen bewegende overgangen, laders of golven. Geldt alleen op dit apparaat. |
+
+## Wat Ayla zelf doet in de app (iOS)
+
+Ayla zegt in haar eigen woorden wat ze doet. Deze vaste teksten komen van de app zelf.
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Vraag vooraf: gesprek verwijderen | Zal ik dit gesprek verwijderen? |
+| Vraag vooraf: bewijs verwijderen | Zal ik "{titel}" uit je kluis verwijderen? Dat kan niet ongedaan worden gemaakt. |
+| Vraag vooraf: uitloggen | Zal ik je uitloggen? |
+| Vraag vooraf: alles vergeten | Zal ik alles vergeten wat ik over je onthoud? Dat kan niet ongedaan worden gemaakt. |
+| Na Ja | Ik heb het gesprek verwijderd. / Ik heb {titel} uit je kluis verwijderd. / Ik heb alles vergeten wat ik over je onthield. / Ik log je uit. |
+| Map niet gevonden | Ik kon de map {naam} niet vinden. |
+| Bewijs niet gevonden | Ik kon {naam} niet vinden in je kluis. |
+| Gesprek niet gevonden | Ik kon geen gesprek vinden over {naam}. |
+| Gesprek nog niet in de lijst | Dit gesprek staat nog niet in je lijst, dus dat lukt nu nog niet. Probeer het zo opnieuw. |
+| Onbekende keuze | Dat kon ik niet instellen: die keuze ken ik niet. |
+| Lukt niet | Dat lukt nu niet. |
+| Map bestond al | De map {naam} bestond al. Ik open hem. |

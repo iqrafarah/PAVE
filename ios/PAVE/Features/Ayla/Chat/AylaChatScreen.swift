@@ -379,6 +379,13 @@ struct AylaChatScreen: View {
         }
         .onDisappear { headGestures.stop() }
         .onChange(of: model.lastAylaEntryID) { vacancyIndex = 0 }
+        // What Ayla chose to do in the app with her answer: carried out here, one thing at a time.
+        .task(id: model.actionRequest?.id) {
+            guard let request = model.actionRequest else { return }
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled else { return }
+            await run(request.actions)
+        }
         .onChange(of: model.activity) { _, activity in
             if let activity { AccessibilityNotification.Announcement(AylaMessages.activity(activity)).post() }
         }
@@ -2008,6 +2015,23 @@ struct AylaChatScreen: View {
     /// Returns what she says, or nil when the words are not something to do here.
     private func runAppCommand(_ text: String) -> String? {
         guard addEvidence == nil, !isSavingForUser else { return nil }
+        // Ja to "Zal ik dit gesprek verwijderen?": now she does it, once.
+        if let waiting = model.actionsWaitingForYes, AylaVaultOffer.isYes(text), text.split(separator: " ").count <= 3 {
+            // She only says it is done when it can be done: evidence that is not there, or a chat not in the list yet.
+            let items = (vault?.items ?? []).map { AylaAppCommand.Named(id: $0.id, name: $0.title) }
+            let missing = waiting.actions.lazy.compactMap { action -> String? in
+                switch action.kind {
+                case "deleteEvidence": AylaAppAction.best(action.target, in: items) == nil ? AylaMessages.actionNoItem(action.target ?? "") : nil
+                case "deleteChat": model.currentConversation == nil ? AylaMessages.actionNoCurrentChat : nil
+                default: nil
+                }
+            }.first
+            let done = missing ?? AylaActionWords.done(waiting.actions)
+            model.confirmActions(replyID: waiting.replyID, saying: text.trimmingCharacters(in: .whitespacesAndNewlines), done: done)
+            if missing == nil { Task { await run(waiting.actions) } }
+            if !isTalking { AccessibilityNotification.Announcement(done).post() }
+            return done
+        }
         let folders = vault?.folders.map { AylaAppCommand.Named(id: $0.id, name: $0.name) } ?? []
         let items = vault?.items.map { AylaAppCommand.Named(id: $0.id, name: $0.title) } ?? []
         guard let command = AylaAppCommand.command(in: text, folders: folders, items: items, inSettings: shelf == .settings) else { return nil }
@@ -2026,6 +2050,128 @@ struct AylaChatScreen: View {
         // Typed, the change is only seen; VoiceOver hears it. Spoken, Ayla says it herself.
         if !isTalking { AccessibilityNotification.Announcement(said).post() }
         return said
+    }
+
+    /// Carries out what Ayla chose to do, one thing after the other so you see it happen. What could not be done is
+    /// said in the chat, on top of an open page, and to VoiceOver.
+    private func run(_ actions: [AylaAppAction]) async {
+        var said: [String] = []
+        for (index, action) in actions.enumerated() {
+            if index > 0 { try? await Task.sleep(for: .milliseconds(700)) }
+            if let words = await perform(action) { said.append(words) }
+        }
+        if shelf != nil { showsShelfReply = true }
+        guard !said.isEmpty else { return }
+        let words = said.joined(separator: " ")
+        model.say(words)
+        AccessibilityNotification.Announcement(words).post()
+    }
+
+    /// One action of Ayla's. Returns what there is to say about it: why it could not be done, or what came of it when
+    /// her own words could not know that; nil when it simply happened.
+    private func perform(_ action: AylaAppAction) async -> String? {
+        let folders = vault?.folders.map { AylaAppCommand.Named(id: $0.id, name: $0.name) } ?? []
+        if let command = action.command(folders: folders) {
+            if (command == .back || command == .close), shelf == nil { return nil }
+            let said = perform(command)
+            switch command {
+            case .saveVacancy, .openVacancy, .textSizeStep: return said
+            default: return nil
+            }
+        }
+        func item() -> VaultItem? {
+            let named = (vault?.items ?? []).map { AylaAppCommand.Named(id: $0.id, name: $0.title) }
+            return AylaAppAction.best(action.target, in: named).flatMap { found in vault?.items.first { $0.id == found.id } }
+        }
+        func folder(_ name: String?) -> VaultFolder? {
+            AylaAppAction.best(name, in: folders).flatMap { found in vault?.folders.first { $0.id == found.id } }
+        }
+        /// The open conversation, once the list knows it (a new one takes a moment).
+        func chat() async -> AylaConversation? {
+            for _ in 0..<12 where model.currentConversation == nil { try? await Task.sleep(for: .milliseconds(150)) }
+            return model.currentConversation
+        }
+        switch action.kind {
+        case "openFolder":
+            return AylaMessages.actionNoFolder(action.target ?? "")
+        case "openSettingsPage", "setTheme", "setTextSize", "setDisplayMode", "setVaultLayout", "setVoiceText", "setChatsInSearch", "openVacancy", "saveVacancy":
+            return AylaMessages.actionUnknownValue
+        case "openMemory":
+            closingShelf { showsMemory = true }
+        case "newChat":
+            closeShelf()
+            model.newConversation()
+        case "openChat":
+            let chats = model.conversationList.conversations.filter { !$0.isArchived && (!$0.isLocked || model.showsLockedChats) }
+            guard let found = AylaAppAction.best(action.target, in: chats.map { AylaAppCommand.Named(id: $0.id, name: $0.title) }),
+                  let chat = chats.first(where: { $0.id == found.id }) else { return AylaMessages.actionNoChat(action.target ?? "") }
+            closeShelf()
+            await model.open(chat)
+        case "renameChat":
+            guard let title = action.value, let chat = await chat() else { return AylaMessages.actionNoCurrentChat }
+            model.rename(chat, to: title)
+        case "pinChat":
+            guard let isOn = action.isOn else { return AylaMessages.actionUnknownValue }
+            guard let chat = await chat() else { return AylaMessages.actionNoCurrentChat }
+            if chat.isPinned != isOn { model.togglePin(chat) }
+        case "archiveChat":
+            guard let chat = await chat() else { return AylaMessages.actionNoCurrentChat }
+            model.setArchived(true, [chat])
+        case "setChatExpiry":
+            guard let expiry = action.expiry else { return AylaMessages.actionUnknownValue }
+            guard let chat = await chat() else { return AylaMessages.actionNoCurrentChat }
+            model.setExpiry(expiry, chat)
+        case "deleteChat":
+            guard let chat = await chat() else { return AylaMessages.actionNoCurrentChat }
+            model.delete(chat)
+        case "setAnimations":
+            guard let isOn = action.isOn else { return AylaMessages.actionUnknownValue }
+            inSettings(.appearance) { UserDefaults.standard.set(!isOn, forKey: PaveAppearance.animationsOffKey) }
+        case "setMemory":
+            guard let isOn = action.isOn else { return AylaMessages.actionUnknownValue }
+            inSettings(.ayla) { memory.setEnabled(isOn) }
+        case "forgetAll":
+            memory.forgetAll()
+        case "createFolder":
+            guard let vault, let name = action.value else { return AylaMessages.actionUnavailable }
+            let existing = folder(name)
+            let made = existing == nil ? await vault.createFolder(named: name, color: VaultFolderColor.presets[0], icon: VaultFolderIcon.allCases[0]) : existing
+            guard let made else { return AylaMessages.actionUnavailable }
+            openPage(AylaReply.Navigation(screen: .vault))
+            pageDriver.vaultFolderID = made.id
+            return existing == nil ? nil : AylaMessages.actionFolderExists(made.name)
+        case "moveToFolder":
+            guard let vault, let item = item() else { return AylaMessages.actionNoItem(action.target ?? "") }
+            guard let folder = folder(action.value) else { return AylaMessages.actionNoFolder(action.value ?? "") }
+            if !item.folderIDs.contains(folder.id) { await vault.toggle(folder, for: item) }
+            openPage(AylaReply.Navigation(screen: .vault))
+            pageDriver.vaultFolderID = folder.id
+        case "archiveEvidence":
+            guard let vault, let item = item() else { return AylaMessages.actionNoItem(action.target ?? "") }
+            guard await vault.setArchived(true, item) else { return AylaMessages.actionUnavailable }
+        case "allowAyla":
+            guard let isOn = action.isOn else { return AylaMessages.actionUnknownValue }
+            guard let vault, let item = item() else { return AylaMessages.actionNoItem(action.target ?? "") }
+            do {
+                try await vault.setAylaAllowed(isOn, itemID: item.id)
+                await vault.load()
+            } catch {
+                return AylaMessages.actionUnavailable
+            }
+        case "requestVerification":
+            guard let item = item() else { return AylaMessages.actionNoItem(action.target ?? "") }
+            if isTalking { stopVoice() }
+            closingShelf { confirmationItem = item }
+        case "deleteEvidence":
+            guard let vault, let item = item() else { return AylaMessages.actionNoItem(action.target ?? "") }
+            await vault.delete(item)
+        case "signOut":
+            try? await Task.sleep(for: .milliseconds(900))
+            appState.signOut()
+        default:
+            return AylaMessages.actionUnavailable
+        }
+        return nil
     }
 
     private func perform(_ command: AylaAppCommand) -> String {

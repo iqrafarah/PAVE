@@ -434,6 +434,33 @@ struct AylaChatModelTests {
         #expect(model.contextTitle == "2 items uit je kluis")
     }
 
+    @Test func whatAylaDoesInTheAppIsHandedToTheScreenOnce() async {
+        let ayla = FakeAyla()
+        let actions = [AylaAppAction("setDisplayMode", value: "dark"), AylaAppAction("openFolder", target: "Stages")]
+        ayla.replies = [.success(AylaReply(id: "r1", conversationId: "c", text: "Ik zet PAVE op donker en open je map Stages.", actions: actions))]
+        let model = AylaChatModel(service: ayla)
+        model.send("Maak het donker en open mijn stages")
+        await waitUntilIdle(model)
+        #expect(model.actionRequest == AylaChatModel.ActionRequest(id: "r1", actions: actions))
+        #expect(model.actionsWaitingForYes == nil)
+    }
+
+    @Test func whatCannotBeUndoneWaitsForJaAndHappensOnce() async {
+        let ayla = FakeAyla()
+        let actions = [AylaAppAction("deleteEvidence", target: "Eindstage", confirm: true)]
+        let question = AylaReply.Question(text: "", choices: [.init(id: "yes", label: "Ja"), .init(id: "no", label: "Nee")])
+        ayla.replies = [.success(AylaReply(id: "r1", conversationId: "c", text: "Zal ik \"Eindstage\" uit je kluis verwijderen?", question: question, actions: actions))]
+        let model = AylaChatModel(service: ayla)
+        model.send("Verwijder mijn eindstage")
+        await waitUntilIdle(model)
+        #expect(model.actionRequest == nil)
+        #expect(model.actionsWaitingForYes?.actions == actions)
+        model.confirmActions(replyID: "r1", saying: "Ja", done: "Ik heb Eindstage uit je kluis verwijderd.")
+        #expect(model.actionsWaitingForYes == nil)
+        #expect(model.entries.suffix(2).map(\.text) == ["Ja", "Ik heb Eindstage uit je kluis verwijderd."])
+        #expect(model.pendingQuestion == nil)
+    }
+
     @Test func anOpenVacancyGoesAlongWithTheChosenItems() async {
         let model = AylaChatModel(service: FakeAyla())
         let vacancy = Vacancy(id: "v", title: "Developer", company: "Bedrijf", source: .jooble)

@@ -18,6 +18,19 @@ enum AylaMessages {
             return "Ayla vergelijkt \(vacancies) met je kluis…"
         }
     }
+    // What the app says when something Ayla set out to do could not be done, or was done after your Ja.
+    static func actionNoFolder(_ name: String) -> String { "Ik kon de map \(name) niet vinden." }
+    static func actionNoItem(_ name: String) -> String { "Ik kon \(name) niet vinden in je kluis." }
+    static func actionNoChat(_ name: String) -> String { "Ik kon geen gesprek vinden over \(name)." }
+    static let actionNoCurrentChat = "Dit gesprek staat nog niet in je lijst, dus dat lukt nu nog niet. Probeer het zo opnieuw."
+    static let actionUnknownValue = "Dat kon ik niet instellen: die keuze ken ik niet."
+    static let actionUnavailable = "Dat lukt nu niet."
+    static func actionFolderExists(_ name: String) -> String { "De map \(name) bestond al. Ik open hem." }
+    static func actionDeletedEvidence(_ title: String) -> String { "Ik heb \(title) uit je kluis verwijderd." }
+    static let actionDeletedChat = "Ik heb het gesprek verwijderd."
+    static let actionForgotAll = "Ik heb alles vergeten wat ik over je onthield."
+    static let actionSignsOut = "Ik log je uit."
+    static let actionDone = "Gedaan."
     static let vaultLabel = "Kluis"
     static let attachItem = "Item uit je kluis"
     static let vaultEmpty = "Je kluis is nog leeg"

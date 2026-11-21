@@ -73,6 +73,13 @@ public enum AylaAppCommand: Equatable, Sendable {
         if has(#"^(ga )?(even |eens )?(een (stap|pagina) )?terug$|^vorige( pagina)?$"#) { return .back }
         if has(#"^(sluit|sluiten|doe dicht)( (dit|het|maar|de pagina|het scherm|de kluis|instellingen|de instellingen))*$"#) { return .close }
         guard !has(#"^(wat|welke|welk|waarom|hoe|wanneer|wie|waar|is|staat|heb|kan ik|zijn)\b"#) else { return nil }
+        // Two things in one sentence ("zet donker aan en open mijn stages") are for Ayla's brain, which does both;
+        // here only the first would happen. "Licht of donker" and a name with "en" in it are still one thing.
+        // "Open instellingen en zet het thema op goud" is one thing: a setting opens Instellingen itself.
+        let afterSettings = asked.replacingOccurrences(of: #"^(?:open|ga naar|naar) (?:(?:de|mijn|je) )?(?:instellingen|settings) en "#, with: "", options: .regularExpression)
+        func hasTwo(_ pattern: String) -> Bool { AylaScreenRequest.matches(afterSettings, pattern) }
+        if hasTwo(#"\b(en dan|en daarna|daarna|vervolgens|en ook)\b"#) { return nil }
+        if hasTwo(#" en (?:(?:ook|dan|graag|even) )*(?:open|toon|zet|maak|ga|kies|sluit|bewaar|verander|wijzig|laat|start|begin|archiveer|verwijder|pin)\b"#) { return nil }
 
         let changes = has(#"\b(zet|zetten|maak|maken|kies|kiezen|verander|veranderen|wijzig|wijzigen|wissel|doe|selecteer|pas|gebruik|neem|stel)\b"#)
         let off = has(#"\b(uit|uitzetten|uitschakelen|niet)\b"#)

@@ -367,6 +367,7 @@ final class AylaChatModel {
                     phase = .idle
                     analyzeEvidenceIfNeeded(for: reply)
                     openPage(after: reply, asked: turn.text)
+                    requestActions(of: reply)
                 }
             }
             if Task.isCancelled { phase = .idle }
@@ -405,6 +406,7 @@ final class AylaChatModel {
             phase = .idle
             analyzeEvidenceIfNeeded(for: reply)
             openPage(after: reply, asked: turn.text)
+            requestActions(of: reply)
             await refreshConversations()
             return reply
         } catch {
@@ -421,6 +423,45 @@ final class AylaChatModel {
         guard let navigation = AylaScreenRequest.screenToOpen(after: reply, asked: asked) else { return }
         if opensPageAlready, navigation.itemId == nil { return }
         screenRequest = ScreenRequest(id: reply.id, navigation: navigation)
+    }
+
+    // MARK: What Ayla does in the app herself
+
+    struct ActionRequest: Equatable {
+        let id: String
+        let actions: [AylaAppAction]
+    }
+    /// The actions of her newest answer, for the screen to carry out. What needs your Ja first is not in here.
+    private(set) var actionRequest: ActionRequest?
+    private var confirmedActionReplies: Set<String> = []
+
+    private func requestActions(of reply: AylaReply) {
+        guard let actions = reply.actions, !actions.isEmpty, !actions.contains(where: \.needsConfirmation) else { return }
+        actionRequest = ActionRequest(id: reply.id, actions: actions)
+    }
+
+    /// What her newest answer wants to do once you say Ja (deleting, signing out); nil when that is done or not asked.
+    var actionsWaitingForYes: (replyID: String, actions: [AylaAppAction])? {
+        guard !isAnswering, let last = entries.last, last.role == .ayla, let reply = last.reply, let actions = reply.actions,
+              actions.contains(where: \.needsConfirmation), !confirmedActionReplies.contains(reply.id) else { return nil }
+        return (reply.id, actions)
+    }
+
+    /// You said Ja: your answer and what she then did show in the chat, and the same Ja cannot do it twice.
+    func confirmActions(replyID: String, saying yes: String, done: String) {
+        confirmedActionReplies.insert(replyID)
+        entries.append(Entry(id: "local-\(UUID().uuidString)", role: .user, text: yes))
+        entries.append(Entry(id: "local-\(UUID().uuidString)", role: .ayla, text: done))
+    }
+
+    /// Something the app says itself in Ayla's place: what she tried to do and could not.
+    func say(_ text: String) {
+        entries.append(Entry(id: "local-\(UUID().uuidString)", role: .ayla, text: text))
+    }
+
+    /// The conversation that is open, once it is in the list.
+    var currentConversation: AylaConversation? {
+        conversationID.flatMap { id in conversationList.conversations.first { $0.id == id } }
     }
 
     func analysis(for reply: AylaReply?) -> EvidenceAnalysis? {

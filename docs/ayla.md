@@ -122,6 +122,35 @@ Vacancies are not a page in the menu: you search them in the chat with Ayla, usi
 - **The web search supports the job API** (`withSupport`): Jooble's vacancies first, the web's after them, and a vacancy both found keeps the longer piece of text, which gives the match more to go on. The web gets 6 seconds after the API answered; when the API fails or finds nothing, the web is the source. Jooble's `updated` shows as "Geplaatst op" in the vacancy.
 - **Hands-free**, typed or spoken: "toon de vacatures", "open de tweede vacature", "bewaar deze" (the open one), "bewaar de laatste", "open mijn bewaarde vacatures", "terug".
 
+## What Ayla does in the app herself (2026-11-21)
+
+Ayla has to be able to do nearly everything for you, also hands-off (typed or spoken, no tapping). There are two ways, and they end in the same code in the app:
+
+1. **Fixed sentences, at once** (`AylaAppCommand` in PAVECore): "open de map Stages", "zet het thema op blauw", "ga terug". The app recognises them itself, so they work at once and mostly without a connection. Two things in one sentence ("zet donker aan en open mijn stages") are not handled here but go to the brain.
+2. **Actions her brain chooses** (`actions` in the reply, `ACTIONS` in `contract.ts`, `AylaAppAction` in PAVECore): any wording, up to four in a row, alongside her answer. The app carries them out one after the other so you see it happen (`run` in `AylaChatScreen`), and says so in the chat when something cannot be done (a folder that does not exist).
+
+Rules:
+
+- **Names are yours.** A folder, a piece of evidence or a chat is named in your own words; the app looks it up (`AylaAppAction.best`). The model never gets a list of your folders, evidence or chats for this.
+- **What cannot be undone asks first.** `deleteChat`, `deleteEvidence`, `signOut` and `forgetAll` come with `confirm`: the server replaces her text with a question in fixed words and Ja and Nee, and the app only acts after Ja, once. A model that says "gedaan" too soon changes nothing.
+- **She never says it is done when it is not.** The prompt forbids it, and after a Ja the app checks that the thing exists before she says so.
+- **Only on the iPhone for now.** Web and Watch get no actions and the prompt tells the model so; they can adopt the list (`reply.schema.json`, `$defs.action`).
+
+What she can do, by part of the app:
+
+| Part | By fixed sentence | By her brain as well |
+| --- | --- | --- |
+| Opening | Kluis, plan, profiel, instellingen, meldingen, a settings page, a folder, a piece of evidence, back, close | Wat Ayla onthoudt, bewaarde vacatures |
+| Looks and settings | Theme, text size, light or dark, vault as list or grid, text while talking, chats in iPhone search | Animations on or off, memory on or off |
+| Chats | | New chat, open a chat by its title, rename, pin, archive, expiry of this chat, delete (asks first) |
+| Vault | Open a folder or evidence | New folder, put evidence in a folder, archive evidence, let Ayla use a piece of evidence or not, open the form to have it confirmed, delete evidence (asks first) |
+| Adding evidence | | From a file, a photo or what you tell her (`vaultItem`, since 2026-11-10) |
+| Vacancies | Save one, open one, the saved ones | Search, a related job, choosing which data, the same by place in the list |
+| Memory | | Remember and forget single facts (`memories`), forget everything (asks first) |
+| Account | | Sign out (asks first) |
+
+Not by Ayla, on purpose: sending a verification request (you choose who and send it yourself), the PIN for locked chats, and changing a password. She says where you find them.
+
 ## What belongs to the account (shared state)
 
 These are proposals for tables, all with row level security on the user, like `profiles`.
