@@ -8,7 +8,7 @@ struct WatchOrbAura: View {
     let phase: WatchAylaModel.Phase
     let meter: VoiceMeter
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @Environment(\.isLuminanceReduced) private var isLuminanceReduced
     @State private var animator = WatchOrbAuraAnimator()
 

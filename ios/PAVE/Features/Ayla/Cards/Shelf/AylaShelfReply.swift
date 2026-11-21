@@ -12,7 +12,7 @@ struct AylaShelfReply: View {
     let onDismiss: () -> Void
 
     @State private var drag = CGSize.zero
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {

@@ -21,7 +21,7 @@ struct VaultLibraryPage: View {
     @Environment(\.vaultButtonsInPage) private var buttonsInPage
     @Environment(PaveCameraControl.self) private var cameraControl: PaveCameraControl?
     @Environment(\.menuButtonFrame) private var menuFrame
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     /// How the vault opens, from Instellingen; switching here lasts until the vault is opened again.
     @State private var isGrid = PaveAppearance.vaultLayout == .grid
     /// The evidence moved under the folders and the filter bar: a thin line then separates them.

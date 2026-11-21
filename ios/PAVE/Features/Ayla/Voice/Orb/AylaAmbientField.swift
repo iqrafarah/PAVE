@@ -15,7 +15,7 @@ struct AylaAmbientField: View {
     var quietFrame = CGRect.null
     let revealedAt: Date?
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @State private var animator = AmbientFieldAnimator()
     /// Where the field itself is on screen, measured on what it draws: it reaches under the bars, so its
     /// container's frame is not where it draws.

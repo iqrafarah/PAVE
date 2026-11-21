@@ -11,7 +11,7 @@ struct AylaTypingTitle: View {
     /// Typing starts when this becomes true.
     let isTyping: Bool
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @State private var isStarted = false
     @State private var isDone = false
     @State private var clock = AylaTypingClock()

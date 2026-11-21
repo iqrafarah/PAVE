@@ -4,7 +4,7 @@ import SwiftUI
 /// Verification request form backed by the trusted organisation directory.
 struct VaultRequestConfirmationSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @Environment(VaultModel.self) private var vault
     let item: VaultItem
     let documentCount: Int
@@ -19,7 +19,7 @@ struct VaultRequestConfirmationSheet: View {
             switch self {
             case .organization: "Organisatie kiezen"
             case .location: "Vestiging kiezen"
-            case .department: "Afdeling of opleiding kiezen"
+            case .department: "Afdeling kiezen"
             case .contactType: "Functie kiezen"
             case .contact: "Contactpersoon kiezen"
             }
@@ -52,8 +52,8 @@ struct VaultRequestConfirmationSheet: View {
     }
 
     private var hasChanges: Bool { !isFinished && isDirty }
-    /// Persons come after the location, and at a school after the department.
-    private var canPickPerson: Bool { request.location != nil && (!request.requiresDepartment || request.department != nil) }
+    private var canPickPerson: Bool { request.department != nil }
+    private var isSchool: Bool { request.organization?.kind == "school" }
 
     var body: some View {
         NavigationStack {
@@ -101,11 +101,9 @@ struct VaultRequestConfirmationSheet: View {
                     VStack(alignment: .leading, spacing: 22) {
                         pickerField(title: "Naam bedrijf", value: request.organization?.name, placeholder: "Kies een organisatie", error: error(.organisation)) { searchText = ""; choice = .organization }
                         pickerField(title: "Locatie van het bedrijf", value: request.location?.city, placeholder: "Typ of kies een vestigingsplaats", error: error(.location), isEnabled: request.organization != nil) { searchText = ""; choice = .location }
-                        if request.requiresDepartment {
-                            pickerField(title: "Afdeling of opleiding", value: request.department?.name, placeholder: "Kies een afdeling of opleiding", error: error(.department), isEnabled: request.location != nil) { searchText = ""; choice = .department }
-                        }
+                        pickerField(title: isSchool ? "Afdeling of opleiding" : "Afdeling", value: request.department?.name, placeholder: isSchool ? "Kies een afdeling of opleiding" : "Kies een afdeling", error: error(.department), isEnabled: request.location != nil) { searchText = ""; choice = .department }
                         pickerField(title: "Functie (optioneel)", value: request.contactType, placeholder: "Alle functies", isEnabled: canPickPerson && !contacts.isEmpty) { searchText = ""; choice = .contactType }
-                        pickerField(title: request.requiresDepartment ? "Docent of contactpersoon" : "Contactpersoon", value: request.contact.map(contactLine), placeholder: "Kies één persoon", error: error(.contact), isEnabled: canPickPerson) { searchText = ""; choice = .contact }
+                        pickerField(title: isSchool ? "Docent of contactpersoon" : "Contactpersoon", value: request.contact.map(contactLine), placeholder: "Kies één persoon", error: error(.contact), isEnabled: canPickPerson) { searchText = ""; choice = .contact }
                     }
                     .padding(20)
                     .background(Color.panel, in: .rect(cornerRadius: 16))
@@ -122,7 +120,7 @@ struct VaultRequestConfirmationSheet: View {
             PavePrimaryButton(title: isSending ? "Aanvraag versturen…" : "Aanvraag versturen") { send() }
                 .disabled(isSending || isLoading)
                 .padding(.horizontal, 28).padding(.top, 8).padding(.bottom, 4).frame(maxWidth: 440)
-            Text("Je aanvraag gaat naar de gekozen contactpersoon of naar de beoordelaars van de organisatie.")
+            Text("Je aanvraag gaat naar de gekozen contactpersoon.")
                 .textStyle(.caption).foregroundStyle(Color.inkMuted).multilineTextAlignment(.center)
                 .frame(maxWidth: 320).padding(.horizontal, 28).padding(.top, 10).padding(.bottom, 12)
         }
@@ -302,34 +300,20 @@ struct VaultRequestConfirmationSheet: View {
             locations = try await vault.validationLocations(organizationID: organization.id)
             if let city = item.organisationLocation, let match = locations.first(where: { $0.city.localizedCaseInsensitiveCompare(city) == .orderedSame }) {
                 request.location = match
-                await loadDepartmentsAndContacts()
+                await loadDepartments()
             }
         } catch { directoryError = "De vestigingen konden niet worden geladen. Probeer het opnieuw." }
     }
 
-    /// A school location with departments: first the department, then its teachers. Otherwise the persons of the location.
-    private func loadDepartmentsAndContacts() async {
-        guard let organization = request.organization, let location = request.location else { return }
-        departments = []
-        request.department = nil
-        // Not the previous location's answer while this one loads, or if loading fails: no stray department field,
-        // and no person field that is open with an empty list (`canPickPerson` waits for the department).
-        request.requiresDepartment = organization.kind == "school"
-        if organization.kind == "school" {
-            do {
-                departments = try await vault.validationDepartments(organizationID: organization.id, locationID: location.id)
-            } catch {
-                directoryError = "De afdelingen of opleidingen konden niet worden geladen. Probeer het opnieuw."
-                return
-            }
-        }
-        request.requiresDepartment = !departments.isEmpty
-        if !request.requiresDepartment { await loadContacts() }
+    private func loadDepartments() async {
+        guard let location = request.location else { return }
+        do { departments = try await vault.validationDepartments(locationID: location.id) }
+        catch { directoryError = "De afdelingen of opleidingen konden niet worden geladen. Probeer het opnieuw." }
     }
 
     private func loadContacts() async {
-        guard let organization = request.organization, let location = request.location else { return }
-        do { contacts = try await vault.validationContacts(organizationID: organization.id, locationID: location.id, departmentID: request.department?.id) }
+        guard let department = request.department else { return }
+        do { contacts = try await vault.validationContacts(departmentID: department.id) }
         catch { directoryError = "De contactpersonen konden niet worden geladen. Probeer het opnieuw." }
     }
 
@@ -337,7 +321,6 @@ struct VaultRequestConfirmationSheet: View {
         isDirty = true
         directoryError = nil
         request.organization = organization; request.location = nil; request.department = nil; request.contactType = nil; request.contact = nil
-        request.requiresDepartment = false
         locations = []; departments = []; contacts = []; searchText = ""; choice = nil
         isLoading = true; await loadLocations(); isLoading = false
     }
@@ -346,7 +329,7 @@ struct VaultRequestConfirmationSheet: View {
         directoryError = nil
         request.location = location; request.department = nil; request.contactType = nil; request.contact = nil
         departments = []; contacts = []; searchText = ""; choice = nil
-        isLoading = true; await loadDepartmentsAndContacts(); isLoading = false
+        isLoading = true; await loadDepartments(); isLoading = false
     }
     private func select(_ department: VaultValidationDepartment) async {
         isDirty = true
@@ -391,7 +374,8 @@ struct VaultRequestConfirmationSheet: View {
     private func send() {
         showsMissing = true
         guard request.missingFields.isEmpty else { PaveHaptics.error(); return }
-        guard let organization = request.organization, let location = request.location, let contact = request.contact else { return }
+        guard let organization = request.organization, let location = request.location, let department = request.department,
+              let contact = request.contact else { return }
         isSending = true; sendError = nil
         Task {
             let error: String? = if let onSend {
@@ -399,7 +383,7 @@ struct VaultRequestConfirmationSheet: View {
             } else {
                 await vault.requestValidation(
                     for: item, organizationID: organization.id, locationID: location.id,
-                    departmentID: request.department?.id, contactID: contact.id, message: request.message
+                    departmentID: department.id, contactID: contact.id, message: request.message
                 )
             }
             isSending = false

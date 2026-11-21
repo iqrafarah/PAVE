@@ -9,7 +9,7 @@ import SwiftUI
 struct MainView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.horizontalSizeClass) private var sizeClass
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(AylaSpotlight.settingKey) private var chatsInSpotlight = false
     @State private var model: AylaChatModel

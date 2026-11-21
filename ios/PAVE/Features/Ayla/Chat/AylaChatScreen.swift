@@ -12,7 +12,7 @@ struct AylaChatScreen: View {
     /// The navigation bar sits 4 pt higher than the header in Figma.
     private static let toolbarOffset: CGFloat = 4
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.hidesScreenButtons) private var hidesScreenButtons
     @Environment(VaultModel.self) private var vault: VaultModel?

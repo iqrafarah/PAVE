@@ -3,7 +3,7 @@ import SwiftUI
 /// While Ayla reads: the shape of the form she is about to fill in, with light sweeping across it, so the step after
 /// it lands in the same place.
 struct VaultAylaFillSkeleton: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @State private var isDim = false
 
     var body: some View {

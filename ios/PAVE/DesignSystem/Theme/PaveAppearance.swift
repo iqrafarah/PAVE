@@ -205,6 +205,8 @@ enum PaveAppearance {
     static let textSizeKey = "paveTextSize"
     static let vaultLayoutKey = "paveVaultLayout"
     static let displayModeKey = "paveDisplayMode"
+    /// "Animaties uitzetten": on this device only, not in the account, as on the web.
+    static let animationsOffKey = "paveAnimationsOff"
 
     /// Licht, Donker or Automatisch (the setting of the device). Kept here so PAVE starts in it before the account loads.
     static var displayMode: PaveDisplayMode {

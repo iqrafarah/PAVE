@@ -14,26 +14,26 @@ public enum PaveThemeColor: String, CaseIterable, Identifiable, Sendable {
     public var swatch: UInt32 {
         switch self {
         case .green, .custom: 0x355D4C
-        case .blue: 0x4F7DB8
-        case .gold: 0xC89A2E
-        case .pink: 0xC56A8C
-        case .orange: 0xC97A52
-        case .purple: 0x8A6AC8
-        case .red: 0xC86A6C
-        case .lime: 0xC8C36A
+        case .blue: 0x3F7FCB
+        case .gold: 0xE0A21B
+        case .pink: 0xE05C96
+        case .orange: 0xE8742E
+        case .purple: 0x8F6BE0
+        case .red: 0xE0524F
+        case .lime: 0x7FB02E
         }
     }
 
     public var accent: UInt32 {
         switch self {
         case .green, .custom: 0x355D4C
-        case .blue: 0x4C78B1
-        case .gold: 0x927022
-        case .pink: 0xAD5D7B
-        case .orange: 0xA76544
-        case .purple: 0x8466C0
-        case .red: 0xB25E60
-        case .lime: 0x7A7741
+        case .blue: 0x2F6DB5
+        case .gold: 0xA06400
+        case .pink: 0xC2477A
+        case .orange: 0xC0531A
+        case .purple: 0x7A55C7
+        case .red: 0xC23B3B
+        case .lime: 0x4F7A14
         }
     }
 

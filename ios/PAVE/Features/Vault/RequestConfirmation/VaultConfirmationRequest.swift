@@ -29,8 +29,6 @@ struct VaultConfirmationRequest: Equatable {
     var recipient: Recipient
     var organization: VaultValidationOrganization?
     var location: VaultValidationLocation?
-    /// At a school location with departments the teachers are in a department, so one has to be chosen first.
-    var requiresDepartment = false
     var department: VaultValidationDepartment?
     /// Only narrows the list of persons (docent, stagebegeleider); the request goes to the one chosen `contact`.
     var contactType: String?
@@ -45,7 +43,7 @@ struct VaultConfirmationRequest: Equatable {
         var fields = [Field]()
         if organization == nil { fields.append(.organisation) }
         if location == nil { fields.append(.location) }
-        if requiresDepartment, department == nil { fields.append(.department) }
+        if department == nil { fields.append(.department) }
         if contact == nil { fields.append(.contact) }
         return fields
     }

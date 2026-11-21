@@ -7,7 +7,7 @@ struct AylaVoiceEdgeGlow: View {
     let meter: VoiceMeter
     var cornerRadius: CGFloat = 25
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30, paused: mode == .idle)) { context in

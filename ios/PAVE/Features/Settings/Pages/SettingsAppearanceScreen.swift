@@ -1,10 +1,11 @@
 import PAVECore
 import SwiftUI
 
-/// Instellingen › Weergave (Figma FEDDIES 1393:5359): theme colour, how the vault opens and text size. Every choice
-/// shows at once; Werkwijze from the design is left out.
+/// Instellingen › Weergave (Figma FEDDIES 1393:5359): theme colour, how the vault opens, text size and turning the
+/// animations off. Every choice shows at once; Werkwijze from the design is left out.
 struct SettingsAppearanceScreen: View {
     @Environment(ProfileModel.self) private var profile
+    @AppStorage(PaveAppearance.animationsOffKey) private var animationsOff = false
 
     var body: some View {
         SettingsPage(title: SettingsMessages.appearance, cameraMenus: cameraMenus) {
@@ -43,6 +44,20 @@ struct SettingsAppearanceScreen: View {
                     VStack(spacing: 10) { textSizeOptions }
                 }
             }
+            VStack(alignment: .leading, spacing: 8) {
+                Toggle(isOn: $animationsOff) {
+                    Text(SettingsMessages.animationsOff)
+                        .textStyle(.listTitle)
+                        .foregroundStyle(Color.ink)
+                }
+                .tint(.paveAccent)
+                Text(SettingsMessages.animationsOffHint)
+                    .textStyle(.caption)
+                    .foregroundStyle(Color.inkMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(12)
+            .background(Color.panel, in: .rect(cornerRadius: 14))
             if profile.state == .ready, !profile.savesInAccount {
                 Text(SettingsMessages.onThisDeviceOnly)
                     .textStyle(.caption)

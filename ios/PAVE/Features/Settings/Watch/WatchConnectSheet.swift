@@ -7,7 +7,7 @@ import SwiftUI
 struct WatchConnectSheet: View {
     @Environment(WatchConnectionModel.self) private var model
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.paveReduceMotion) private var reduceMotion
 
     private enum Stage: Equatable {
         case boxed

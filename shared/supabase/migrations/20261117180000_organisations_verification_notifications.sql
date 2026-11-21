@@ -10,6 +10,9 @@
 -- Runs on a fresh database (after the vault and Ayla migrations) and on a database where the old files were already
 -- applied: every step is safe to run again and removes what the old setup left behind.
 --
+-- 20261120180000_simple_verification_directory simplifies this setup (no reviewer table, departments everywhere).
+-- Run that one after this file, and do not run this file again once it is applied.
+--
 --   organizations                 Fontys                          Coolblue
 --   └─ organization_locations     └─ Fontys Tilburg               └─ Coolblue Breda
 --      └─ organization_departments   └─ ICT (schools only)           └─ contact person(s)
@@ -511,26 +514,9 @@ create trigger ayla_message_notification
   after insert on public.ayla_messages
   for each row execute function public.notify_on_ayla_reply();
 
--- 7. Demo directory ----------------------------------------------------------------------------------------------------
--- Organisations in Brabant with their locations; at every school location three departments with two teachers each,
--- and at every company location one contact person. The names are made up: these are not real staff. Real people are
--- added by the team, and linked to their account with organization_contacts.reviewer_id. A person without an account
--- sends the request to the organisation's reviewers. Only empty departments and locations get demo persons, so running
--- this again never adds demo persons next to real ones.
-
-create or replace function pg_temp.demo_name(p_seed text)
-returns text
-language sql
-immutable
-as $$
-  select (array['Sanne', 'Daan', 'Fatima', 'Lucas', 'Noor', 'Milan', 'Yara', 'Sem', 'Eva', 'Mohamed',
-                'Lotte', 'Jesse', 'Amira', 'Thijs', 'Femke', 'Bram', 'Ilse', 'Ruben', 'Zeynep', 'Tim'])
-           [1 + abs(hashtext(p_seed)::bigint) % 20]
-      || ' ' ||
-         (array['de Vries', 'Jansen', 'Bakker', 'Visser', 'Smit', 'Meijer', 'de Boer', 'Mulder', 'de Groot', 'Bos',
-                'Vos', 'Peters', 'Hendriks', 'van Dijk', 'Dekker', 'Brouwer', 'van Leeuwen', 'Kaya', 'El Amrani', 'Verhoeven'])
-           [1 + abs(hashtext(p_seed || ':achternaam')::bigint) % 20];
-$$;
+-- 7. Directory --------------------------------------------------------------------------------------------------------
+-- Organisations in Brabant with their locations, and at every school location three departments. There are no persons:
+-- the team adds real contact persons with their PAVE account (docs/verificatie.md).
 
 do $$
 declare
@@ -539,7 +525,6 @@ declare
   v_city text;
   v_department text;
   v_place record;
-  v_number int;
 begin
   for entry in
     select * from (values
@@ -599,30 +584,6 @@ begin
         on conflict (organization_id, location_id, name) do nothing;
       end loop;
     end loop;
-  end loop;
-
-  -- Two teachers in every department that has nobody yet.
-  for v_place in
-    select d.id, d.organization_id, d.location_id from public.organization_departments d
-    where not exists (select 1 from public.organization_contacts c where c.department_id = d.id)
-  loop
-    for v_number in 1..2 loop
-      insert into public.organization_contacts (organization_id, location_id, department_id, name, job_title)
-      values (v_place.organization_id, v_place.location_id, v_place.id, pg_temp.demo_name(v_place.id::text || ':docent:' || v_number), 'Docent')
-      on conflict (organization_id, location_id, department_id, name) do nothing;
-    end loop;
-  end loop;
-
-  -- One contact person at every company location that has nobody yet.
-  for v_place in
-    select l.id, l.organization_id from public.organization_locations l
-    join public.organizations o on o.id = l.organization_id
-    where o.kind = 'company'
-      and not exists (select 1 from public.organization_contacts c where c.location_id = l.id)
-  loop
-    insert into public.organization_contacts (organization_id, location_id, name, job_title)
-    values (v_place.organization_id, v_place.id, pg_temp.demo_name(v_place.id::text || ':contact'), 'Stagebegeleider')
-    on conflict (organization_id, location_id, department_id, name) do nothing;
   end loop;
 end $$;
 

@@ -11,8 +11,8 @@
 | Organisatieplaceholder | Kies een organisatie |
 | Vestigingsveld | Locatie van het bedrijf |
 | Vestigingsplaceholder | Typ of kies een vestigingsplaats |
-| Afdelingsveld (bij een schoollocatie met afdelingen) | Afdeling of opleiding |
-| Afdelingsplaceholder | Kies een afdeling of opleiding |
+| Afdelingsveld | Afdeling of opleiding (bij een bedrijf: Afdeling) |
+| Afdelingsplaceholder | Kies een afdeling of opleiding (bij een bedrijf: Kies een afdeling) |
 | Ontbrekende afdeling | Kies een afdeling of opleiding. |
 | Functiefilter (optioneel) | Functie (optioneel) |
 | Functieplaceholder | Alle functies |
@@ -35,10 +35,9 @@
 | Ontbrekend contact | Kies de persoon die je bewijs kan bevestigen. |
 | Knop | Aanvraag versturen |
 | Verzenden | Aanvraag versturen… |
-| Routeringsuitleg | Je aanvraag gaat naar de gekozen contactpersoon of naar de beoordelaars van de organisatie. |
+| Routeringsuitleg | Je aanvraag gaat naar de gekozen contactpersoon. |
 | Succes | Je aanvraag is doorgestuurd. Je krijgt een melding zodra het bewijs is beoordeeld. |
 | Ongeldige keuze | Deze organisatie-, vestigings- of contactkeuze is niet meer geldig. Kies de gegevens opnieuw. |
-| Geen beoordelaars | Er is nog geen beoordelaar ingesteld voor deze organisatie. Neem contact op met je organisatie. |
 | Al aangevraagd | Voor dit bewijs staat al een verificatieaanvraag open. |
 
 ## Status van een aanvraag in de kluis (iOS)
@@ -110,3 +109,11 @@ Vacatures staan niet in het menu. Je zoekt ze in de chat met Ayla; ze openen in 
 | Ayla zoekt (één regel, waar "Ayla denkt na…" staat) | Ayla zoekt vacatures: {zoekwoorden} in {plaats}… |
 | Ayla vergelijkt (met kluis) | Ayla vergelijkt {n} vacatures met je kluis… |
 | Ayla bekijkt (zonder kluis) | Ayla bekijkt {n} vacatures… |
+
+## Animaties uitzetten (web en iOS, Instellingen › Weergave)
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Schakelaar | Animaties uitzetten |
+| Uitleg (web) | Alles in PAVE blijft stil staan: geen bewegende overgangen, laders of golven. Geldt alleen voor deze browser. |
+| Uitleg (iOS) | Alles in PAVE blijft stil staan: geen bewegende overgangen, laders of golven. Geldt alleen op dit apparaat. |
