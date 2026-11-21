@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { test } from 'node:test'
 import { announcesSearchOnly, answer, bestFirst, sitesFromName, cleanActions, cleanTitle, effortFor, resultsMessage, siteFits, withLogos, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
 import { parseRequest } from '../contract.ts'
+import { grantsWholeVault, vaultConsent } from '../consent.ts'
 import { MODELS, modelsFor, openRouterCompletion } from '../openrouter.ts'
 import { buildSystemPrompt } from '../prompt.ts'
 import { loadMemory, type MemoryCategory } from '../memory.ts'
@@ -1156,4 +1157,13 @@ test('asking whether to do it and doing it do not go together: the question wins
   assert.deepEqual((await answer({ request, conversationId: 'c', history: [] }, { complete: does.complete, newId: ids() })).actions, [{ do: 'saveVacancy', value: '1' }])
   const after = model(say('Ik zet PAVE op donker. Wil je ook grotere tekst?', { actions: [{ do: 'setDisplayMode', value: 'dark', target: null }] }))
   assert.deepEqual((await answer({ request, conversationId: 'c', history: [] }, { complete: after.complete, newId: ids() })).actions, [{ do: 'setDisplayMode', value: 'dark' }])
+})
+
+test('"met alles uit mijn kluis" is a yes to the vault without being asked', () => {
+  assert.ok(grantsWholeVault('Kun je nog een zoekronde doen, maar dan met alles uit mijn kluis?'))
+  assert.ok(grantsWholeVault('Gebruik mijn hele kluis'))
+  assert.equal(grantsWholeVault('Kijk niet in mijn hele kluis'), false)
+  assert.equal(grantsWholeVault('Open mijn kluis'), false)
+  assert.equal(vaultConsent([], { text: 'Zoek opnieuw met alles uit mijn kluis' }), 'justGranted')
+  assert.equal(vaultConsent([{ role: 'user', text: 'Zoek met alles uit mijn kluis' }, { role: 'ayla', text: 'Hier zijn ze.' }], { text: 'En in Utrecht?' }), 'granted')
 })

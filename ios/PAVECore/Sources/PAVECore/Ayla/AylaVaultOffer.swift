@@ -8,6 +8,14 @@ public enum AylaVaultOffer {
     /// The choice "Kies zelf" on Ayla's question about the vault: the app opens the picker instead of answering.
     public static let chooseChoiceID = "choose"
 
+    /// "Zoek opnieuw met alles uit mijn kluis", "gebruik mijn hele kluis": not only the items you picked any more.
+    public static func usesWholeVault(_ text: String) -> Bool {
+        let said = AylaScreenRequest.normalized(text)
+        guard !AylaScreenRequest.matches(said, #"\b(niet|geen|nooit)\b"#) else { return false }
+        return AylaScreenRequest.matches(said, #"\b(alles|heel|hele|volledige|complete|al)\b.*\bkluis\b"#)
+            || AylaScreenRequest.matches(said, #"\bkluis\b.*\b(helemaal|alles|volledig)\b"#)
+    }
+
     /// "Kies zelf", "laat mezelf kiezen", "ik wil het zelf bepalen", "laat mij kiezen": you want to pick the items
     /// yourself, said in your own words. Not when you say you do not want that.
     public static func wantsToChoose(_ text: String) -> Bool {

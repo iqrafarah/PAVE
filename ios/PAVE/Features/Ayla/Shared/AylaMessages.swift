@@ -35,6 +35,10 @@ enum AylaMessages {
     static let actionDone = "Gedaan."
     static let actionCouldNotContinue = "Verder gaan lukte nu niet. Probeer het zo opnieuw."
     static func actionAllowed(_ title: String) -> String { "Ik mag \(title) nu bekijken en gebruiken." }
+    static let searchStepFind = "Vacatures zoeken"
+    static func searchStepFound(_ count: Int) -> String { count == 1 ? "1 vacature gevonden" : "\(count) vacatures gevonden" }
+    static func searchStepCompare(withVault: Bool) -> String { withVault ? "Vergelijken met je kluis" : "Vacatures bekijken" }
+    static let searchStepShow = "Lijst openen"
     static let actionsBusy = "Ayla doet dit voor je"
     static let actionsDone = "Ayla deed dit voor je"
     static func actionState(_ state: AylaActionStep.State) -> String {

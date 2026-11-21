@@ -154,3 +154,4 @@ Ayla zegt in haar eigen woorden wat ze doet. Deze vaste teksten komen van de app
 | Ayla gaat zelf verder | Ayla gaat verder… / Verder gaan lukte nu niet. Probeer het zo opnieuw. |
 | Stappen (voorbeelden) | Donker aanzetten / Map {naam} openen / Chat {titel} noemen / Chat vastzetten / Map {naam} maken / {bewijs} in de map {naam} zetten |
 | Kleine bol op een pagina | Ayla luistert… / Ayla denkt na… / Ayla praat / Je microfoon staat uit |
+| Stappen bij vacatures zoeken | Vacatures zoeken / {n} vacatures gevonden / Vergelijken met je kluis / Vacatures bekijken / Lijst openen |

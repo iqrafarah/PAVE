@@ -264,6 +264,13 @@ struct AylaAppCommandTests {
         }
     }
 
+    @Test func theWholeVaultIsAskedForInSoManyWords() {
+        #expect(AylaVaultOffer.usesWholeVault("Kun je nog een zoekronde doen, maar dan met alles uit mijn kluis?"))
+        #expect(AylaVaultOffer.usesWholeVault("Gebruik mijn hele kluis"))
+        #expect(!AylaVaultOffer.usesWholeVault("Kijk niet in mijn hele kluis"))
+        #expect(!AylaVaultOffer.usesWholeVault("Open mijn kluis"))
+    }
+
     @Test func twoThingsInOneSentenceGoToAylasBrain() {
         #expect(command("Zet donkere modus aan en open mijn stages") == nil)
         #expect(command("Maak het thema blauw en zet de tekst groter") == nil)

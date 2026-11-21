@@ -22,6 +22,16 @@ const YES = /^(ja|jazeker|ja graag|graag|prima|oké|oke|ok|okay|goed|is goed|mag
 const NO = /^(nee|liever niet|niet|no|nope)\b/i
 const MAX_PURPOSE_LENGTH = 140
 
+/**
+ * "Zoek opnieuw met alles uit mijn kluis", "gebruik mijn hele kluis": the user says in so many words that Ayla may use
+ * the vault, which is a yes without her asking. Not when it is said with "niet" or "geen".
+ */
+export function grantsWholeVault(text: string): boolean {
+  const said = text.toLocaleLowerCase('nl').replace(/[.,!?;:]/g, ' ').replace(/\s+/g, ' ').trim()
+  if (/\b(niet|geen|nooit)\b/.test(said)) return false
+  return /\b(alles|heel|hele|volledige|complete|al)\b.*\bkluis\b/.test(said) || /\bkluis\b.*\b(helemaal|alles|volledig)\b/.test(said)
+}
+
 export function vaultConsent(history: ConsentTurn[], request: Pick<AylaRequest, 'text' | 'context'>): VaultConsent {
   if (request.context?.screen === 'vaultItem') return 'granted'
   // Items picked for the conversation are a yes for those items; picked right after Ayla asked ("Kies zelf"), she goes
@@ -29,9 +39,11 @@ export function vaultConsent(history: ConsentTurn[], request: Pick<AylaRequest, 
   if (request.context?.itemIds?.length) return history.at(-1)?.role === 'ayla' && history.at(-1)?.askedVault ? 'justGranted' : 'granted'
   const turns: ConsentTurn[] = [...history, { role: 'user', text: request.text }]
   let consent: VaultConsent = 'notAsked'
-  for (let i = 0; i < turns.length - 1; i++) {
+  for (let i = 0; i < turns.length; i++) {
+    // Said by the user without being asked: a yes from that moment on.
+    if (turns[i].role === 'user' && grantsWholeVault(turns[i].text)) consent = i === turns.length - 1 ? 'justGranted' : 'granted'
     const next = turns[i + 1]
-    if (turns[i].role !== 'ayla' || !turns[i].askedVault || next.role !== 'user') continue
+    if (!next || turns[i].role !== 'ayla' || !turns[i].askedVault || next.role !== 'user') continue
     const reply = next.text.trim()
     if (YES.test(reply)) consent = i + 1 === turns.length - 1 ? 'justGranted' : 'granted'
     else if (NO.test(reply)) consent = 'declined'

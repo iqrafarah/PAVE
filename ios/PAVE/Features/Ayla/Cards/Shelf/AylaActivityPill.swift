@@ -6,8 +6,14 @@ import SwiftUI
 struct AylaActivityPill: View {
     let steps: [AylaActionStep]
 
-    @State private var isOpen = false
+    /// Open from the start when there is more than one step: you watch her tick them off. One step is one line.
+    @State private var isOpen: Bool
     @Environment(\.paveReduceMotion) private var reduceMotion
+
+    init(steps: [AylaActionStep]) {
+        self.steps = steps
+        _isOpen = State(initialValue: steps.count > 1)
+    }
 
     private var finished: Int { steps.count { $0.state == .done || $0.state == .failed } }
     private var failed: Int { steps.count { $0.state == .failed } }
@@ -24,12 +30,12 @@ struct AylaActivityPill: View {
         } label: {
             VStack(alignment: .leading, spacing: 10) {
                 if isOpen {
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 10) {
                         ForEach(steps) { step in
                             HStack(spacing: 10) {
-                                AylaStepBlocks(steps: [step])
+                                AylaStepMark(state: step.state)
                                 Text(step.title)
-                                    .textStyle(.caption)
+                                    .textStyle(.chip)
                                     .foregroundStyle(step.state == .waiting ? Color.inkMuted : Color.ink)
                                     .multilineTextAlignment(.leading)
                                     .frame(maxWidth: .infinity, alignment: .leading)

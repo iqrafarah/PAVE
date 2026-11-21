@@ -78,6 +78,8 @@ struct AylaChatScreen: View {
     /// What Ayla is doing in the app right now, step by step; empty when she is doing nothing.
     @State private var actionSteps: [AylaActionStep] = []
     @State private var actionRun = UUID()
+    /// The steps on show are those of a vacancy search, which the server's status moves along.
+    @State private var showsSearchSteps = false
     @State private var fileProblem: String?
     @FocusState private var isComposerFocused: Bool
     @State private var readAloud = AylaReadAloud()
@@ -127,6 +129,9 @@ struct AylaChatScreen: View {
     @State private var mutedForPhotos = false
     /// Ayla holds while you pick from the vault by hand: she does not listen until the picker is gone.
     @State private var heldForPicking = false
+    /// Instellingen came up only to show a change Ayla makes: it goes down again when you have seen it.
+    @State private var settingsOpenedForChange = false
+    @State private var settingsClose: Task<Void, Never>?
     @State private var isAddingItemPhotos = false
     @Environment(PaveCameraControl.self) private var cameraControl: PaveCameraControl?
     @Environment(\.toolbarIsBeside) private var toolbarIsBeside
@@ -432,7 +437,13 @@ struct AylaChatScreen: View {
         }
         .onChange(of: model.activity) { _, activity in
             if let activity { AccessibilityNotification.Announcement(AylaMessages.activity(activity)).post() }
-            if actionSteps.isEmpty { voice?.doingNote = activity.map(AylaMessages.voiceNote) }
+            if actionSteps.isEmpty || showsSearchSteps { voice?.doingNote = activity.map(AylaMessages.voiceNote) }
+            followSearch(activity)
+        }
+        .onChange(of: model.phase) { _, phase in
+            // The search is over: the steps that are left are ticked off, or go when nothing came of it.
+            guard showsSearchSteps, phase == .idle || phase != .thinking && phase != .writing else { return }
+            finishSearchSteps()
         }
         // A spoken conversation goes on in the background, with the Lock Screen and the Dynamic Island showing it,
         // so you can keep talking with the phone in your pocket.
@@ -2124,11 +2135,59 @@ struct AylaChatScreen: View {
         return said
     }
 
+    /// Searching vacancies as steps she ticks off, like what she does in the app: search, compare, show. The server
+    /// says where she is (`AylaActivity`).
+    private func followSearch(_ activity: AylaActivity?) {
+        switch activity {
+        case .searchingVacancies:
+            actionRun = UUID()
+            showsSearchSteps = true
+            withAnimation(.easeOut(duration: 0.2)) {
+                actionSteps = [
+                    AylaActionStep(id: 0, title: AylaMessages.searchStepFind, state: .running),
+                    AylaActionStep(id: 1, title: AylaMessages.searchStepCompare(withVault: true)),
+                    AylaActionStep(id: 2, title: AylaMessages.searchStepShow),
+                ]
+            }
+        case .comparingVacancies(let count, let withVault, _):
+            guard showsSearchSteps else { return }
+            withAnimation(.easeOut(duration: 0.2)) {
+                actionSteps = [
+                    AylaActionStep(id: 0, title: AylaMessages.searchStepFound(count), state: .done),
+                    AylaActionStep(id: 1, title: AylaMessages.searchStepCompare(withVault: withVault), state: .running),
+                    AylaActionStep(id: 2, title: AylaMessages.searchStepShow),
+                ]
+            }
+        default:
+            break
+        }
+    }
+
+    private func finishSearchSteps() {
+        showsSearchSteps = false
+        let found = model.entries.last.map { !Self.vacancies(in: $0).isEmpty } ?? false
+        guard found else {
+            withAnimation(.easeOut(duration: 0.25)) { actionSteps = [] }
+            return
+        }
+        let token = UUID()
+        actionRun = token
+        withAnimation(.easeOut(duration: 0.2)) {
+            actionSteps = actionSteps.map { AylaActionStep(id: $0.id, title: $0.title, state: .done) }
+        }
+        Task {
+            try? await Task.sleep(for: .seconds(4))
+            guard actionRun == token else { return }
+            withAnimation(.easeOut(duration: 0.25)) { actionSteps = [] }
+        }
+    }
+
     /// Carries out what Ayla chose to do, one thing after the other, with a line per step so you follow her, also
     /// when you only talk. What could not be done is said in the chat and to VoiceOver.
     private func run(_ actions: [AylaAppAction], continues: Bool = false) async {
         let token = UUID()
         actionRun = token
+        showsSearchSteps = false
         withAnimation(.easeOut(duration: 0.2)) {
             actionSteps = actions.enumerated().map { AylaActionStep(id: $0.offset, title: AylaActionWords.doing($0.element)) }
         }
@@ -2371,7 +2430,7 @@ struct AylaChatScreen: View {
         switch command {
         case .settingsPage(let page):
             let destination = SettingsScreen.SettingsDestination(rawValue: page.rawValue) ?? .appearance
-            inSettings(destination) {}
+            inSettings(destination, staysOpen: true) {}
             return "Ik open \(destination.title)."
         case .theme(let theme):
             inSettings(.appearance) { await profile?.setTheme(theme) }
@@ -2447,14 +2506,28 @@ struct AylaChatScreen: View {
     }
 
     /// Opens Instellingen on the right page and then makes the change, a moment apart, so you see Ayla do it.
-    private func inSettings(_ page: SettingsScreen.SettingsDestination, change: @escaping () async -> Void) {
+    /// `staysOpen`: you asked to see the page itself. For a change she makes, Instellingen comes up, you see it
+    /// change, and it goes down again by itself, unless it was you who had it open.
+    private func inSettings(_ page: SettingsScreen.SettingsDestination, staysOpen: Bool = false, change: @escaping () async -> Void) {
         let wasOpen = shelf == .settings
+        if !wasOpen { settingsOpenedForChange = !staysOpen } else if staysOpen { settingsOpenedForChange = false }
         openPage(AylaReply.Navigation(screen: .settings))
         pageDriver.settingsPage = page
+        // Going down waits for the last change: a next one in the same breath starts the wait again, and never
+        // stops a change that is still to come.
+        settingsClose?.cancel()
         Task {
             try? await Task.sleep(for: .milliseconds(wasOpen ? 700 : 1300))
             await change()
             PaveHaptics.success()
+            settingsClose?.cancel()
+            settingsClose = Task {
+                // Long enough to see what changed.
+                try? await Task.sleep(for: .milliseconds(1700))
+                guard !Task.isCancelled, settingsOpenedForChange, shelf == .settings else { return }
+                settingsOpenedForChange = false
+                closeShelf()
+            }
         }
     }
 
