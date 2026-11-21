@@ -1,6 +1,6 @@
 import { type AllowedVault, vaultPrompt } from './vault.ts'
 import type { VaultConsent } from './consent.ts'
-import { ACTIONS, type Context, type Device, type Screen, type VacancyContext } from './contract.ts'
+import { ACTIONS, type AppState, type Context, type Device, type Screen, type VacancyContext } from './contract.ts'
 import { MEMORY_CATEGORIES, type Memory, memoryPrompt } from './memory.ts'
 import { VAULT_ITEM_SCHEMA } from './proposal.ts'
 
@@ -138,6 +138,8 @@ export interface PromptInput {
   vault?: AllowedVault
   /** Whether the user let Ayla look in the vault in this conversation. Missing means yes, as before consent existed. */
   vaultConsent?: VaultConsent
+  /** How the app is set right now. */
+  app?: AppState
 }
 
 // Layer 2b: the user talks and listens instead of reading.
@@ -154,6 +156,8 @@ export function buildSystemPrompt(input: PromptInput): string {
   if (input.context) layers.push(contextLayer(input.context, input.vault))
   layers.push(OUTPUT_PROMPT)
   layers.push(input.device === 'phone' ? ACTIONS_PROMPT : NO_ACTIONS_PROMPT)
+  const app = input.device === 'phone' ? appLayer(input.app) : null
+  if (app) layers.push(app)
   return layers.join('\n\n')
 }
 
@@ -230,11 +234,36 @@ Kies do uit:
 - setTheme (value: green, blue, gold, pink, orange, purple, red of lime), setTextSize (value: small, standard, large, bigger of smaller), setDisplayMode (value: light, dark of auto), setVaultLayout (value: list of grid), setVoiceText, setChatsInSearch, setAnimations en setMemory (value: on of off).
 - createFolder (value: de naam), moveToFolder (target: de titel van het bewijs, value: de naam van de map), archiveEvidence (target: de titel), allowAyla (target: de titel, value: on of off; of jij dat bewijs mag bekijken en gebruiken), requestVerification (target: de titel; opent het formulier om het te laten bevestigen, de gebruiker kiest zelf wie en verstuurt zelf).
 - openVacancy en saveVacancy (value: de plaats in "Getoonde vacatures", 1 is de eerste, of last).
-- deleteChat (het gesprek van nu), deleteEvidence (target: de titel), signOut en forgetAll (alles vergeten wat je onthoudt). PAVE vraagt hierbij zelf om bevestiging: stel die vraag niet in text en zeg niet dat het al gedaan is.
+- deleteChat (het gesprek van nu), deleteEvidence (target: de titel), signOut en forgetAll (alles vergeten wat je onthoudt). PAVE vraagt hierbij zelf om bevestiging: stel die vraag niet in text en zeg niet dat het al gedaan is. Dat geldt ook voor allowAyla met on: jij krijgt dan toegang tot dat bewijs, dus de gebruiker zegt eerst ja.
 Wat hier niet bij staat kun je niet zelf doen: zeg dat eerlijk en vertel waar de gebruiker het vindt. Zeg nooit dat je iets
 gedaan hebt als het niet in actions staat. Iets aan de kluis toevoegen gaat met vaultItem, vacatures zoeken met
 vacancySearch en iets onthouden met memories, niet met actions.
 `.trim()
+
+const THEME_NAMES: Record<string, string> = { green: 'groen', blue: 'blauw', gold: 'goud', pink: 'roze', orange: 'oranje', purple: 'paars', red: 'rood', lime: 'limoen', custom: 'een eigen kleur' }
+const SIZE_NAMES: Record<string, string> = { small: 'klein', standard: 'standaard', large: 'groot' }
+const MODE_NAMES: Record<string, string> = { auto: 'volgt het apparaat', light: 'licht', dark: 'donker' }
+const LAYOUT_NAMES: Record<string, string> = { list: 'lijst', grid: 'raster' }
+
+/** How the app stands now, in words, so Ayla can answer "staat donker aan?" and skips what is already so. */
+function appLayer(app: AppState | undefined): string | null {
+  if (!app) return null
+  const onOff = (value: boolean) => (value ? 'aan' : 'uit')
+  const lines = [
+    app.theme ? `Thema: ${THEME_NAMES[app.theme] ?? app.theme}.` : '',
+    app.textSize ? `Tekstgrootte: ${SIZE_NAMES[app.textSize] ?? app.textSize}.` : '',
+    app.displayMode ? `Licht of donker: ${MODE_NAMES[app.displayMode] ?? app.displayMode}.` : '',
+    app.vaultLayout ? `Kluis als: ${LAYOUT_NAMES[app.vaultLayout] ?? app.vaultLayout}.` : '',
+    app.voiceText !== undefined ? `Tekst bij praten: ${onOff(app.voiceText)}.` : '',
+    app.animations !== undefined ? `Animaties: ${onOff(app.animations)}.` : '',
+    app.memory !== undefined ? `Onthouden: ${onOff(app.memory)}.` : '',
+    app.chatTitle ? `Dit gesprek heet "${app.chatTitle}"${app.chatPinned === undefined ? '' : app.chatPinned ? ' en is vastgezet' : ' en is niet vastgezet'}.` : '',
+  ].filter(Boolean)
+  if (!lines.length) return null
+  return `## Zo staat de app nu
+${lines.join(' ')}
+Gebruik dit om te zeggen hoe iets nu staat. Staat iets al zoals de gebruiker het vraagt, zeg dat dan en zet het niet in actions. "Zet het terug" of "toch niet" gaat over wat je in dit gesprek veranderde.`
+}
 
 const NO_ACTIONS_PROMPT = `
 ## Zelf iets doen in de app

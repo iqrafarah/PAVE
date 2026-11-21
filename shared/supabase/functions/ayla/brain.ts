@@ -1,4 +1,4 @@
-import { ACTIONS, type ActionKind, type AppAction, CONFIRMED_ACTIONS, type AylaReply, type AylaRequest, type Block, type Status, CATEGORIES, type Category, type RequirementLink, type Screen, SCREENS, type Vacancy } from './contract.ts'
+import { ACTIONS, type ActionKind, type AppAction, needsConfirmation, type AylaReply, type AylaRequest, type Block, type Status, CATEGORIES, type Category, type RequirementLink, type Screen, SCREENS, type Vacancy } from './contract.ts'
 import type { AllowedVault } from './vault.ts'
 import { cleanPurpose, CONSENT_QUESTION_CHOICES, consentChoices, consentQuestion, mayLookInVault, type VaultConsent, vaultConsent } from './consent.ts'
 import { cleanMemories, type Memory, type MemorySuggestion, usedNotes } from './memory.ts'
@@ -109,7 +109,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   const allowed = mayLook ? input.vault : undefined
   const vault = allowed?.status === 'on' && chosen?.length ? { ...allowed, items: allowed.items.filter((item) => chosen.includes(item.id)) } : allowed
   const messages: ChatMessage[] = [
-    { role: 'system', content: buildSystemPrompt({ device: request.device, input: request.input, firstName: input.firstName, context: request.context, memory, project: input.project, vault, vaultConsent: consent }) },
+    { role: 'system', content: buildSystemPrompt({ device: request.device, input: request.input, firstName: input.firstName, context: request.context, memory, project: input.project, vault, vaultConsent: consent, app: request.app }) },
     ...input.history.slice(-HISTORY_LIMIT).map((m): ChatMessage => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text })),
     { role: 'user', content: withAttachments(request) },
   ]
@@ -315,6 +315,7 @@ const CONFIRM_QUESTIONS: Partial<Record<ActionKind, (action: AppAction) => strin
   deleteEvidence: (action) => `Zal ik "${action.target}" uit je kluis verwijderen? Dat kan niet ongedaan worden gemaakt.`,
   signOut: () => 'Zal ik je uitloggen?',
   forgetAll: () => 'Zal ik alles vergeten wat ik over je onthoud? Dat kan niet ongedaan worden gemaakt.',
+  allowAyla: (action) => `Mag ik "${action.target}" voortaan bekijken en gebruiken?`,
 }
 
 const NEEDS_TARGET: readonly ActionKind[] = ['openFolder', 'openChat', 'moveToFolder', 'archiveEvidence', 'allowAyla', 'requestVerification', 'deleteEvidence']
@@ -334,7 +335,7 @@ export function cleanActions(raw: unknown, device: AylaRequest['device']): AppAc
     const value = word(entry.value)
     const target = word(entry.target)
     if ((NEEDS_TARGET.includes(kind) && !target) || (NEEDS_VALUE.includes(kind) && !value)) continue
-    actions.push({ do: kind, ...(value ? { value } : {}), ...(target ? { target } : {}), ...(CONFIRMED_ACTIONS.includes(kind) ? { confirm: true as const } : {}) })
+    actions.push({ do: kind, ...(value ? { value } : {}), ...(target ? { target } : {}), ...(needsConfirmation(kind, value) ? { confirm: true as const } : {}) })
     if (actions.length === 4) break
   }
   return actions

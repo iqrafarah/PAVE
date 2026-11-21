@@ -257,6 +257,9 @@ final class AylaChatModel {
     /// she says, or nil when the words are a question for Ayla after all.
     @ObservationIgnored var appCommand: ((String) -> String?)?
 
+    /// How the app is set right now, sent along with every question so Ayla knows what she would change.
+    @ObservationIgnored var appState: (() -> AylaRequest.AppState?)?
+
     func send(_ text: String) {
         if !isAnswering, attachments.isEmpty, appCommand?(text) != nil {
             draft = ""
@@ -319,7 +322,7 @@ final class AylaChatModel {
         phase = .thinking
         let request = AylaRequest(
             conversationId: conversationID, text: text, device: .phone, input: input, context: context, attachments: files,
-            projectId: newChatProject?.id
+            projectId: newChatProject?.id, app: appState?()
         )
         return Turn(service: service, request: request, text: text, files: files)
     }
@@ -571,7 +574,7 @@ final class AylaChatModel {
             }
             let request = AylaRequest(
                 conversationId: conversationID, text: question.text, device: .phone, input: .text, context: context, attachments: files,
-                projectId: newChatProject?.id
+                projectId: newChatProject?.id, app: appState?()
             )
             await stream(Turn(service: service, request: request, text: question.text, files: files))
         }

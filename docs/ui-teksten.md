@@ -143,3 +143,8 @@ Ayla zegt in haar eigen woorden wat ze doet. Deze vaste teksten komen van de app
 | Onbekende keuze | Dat kon ik niet instellen: die keuze ken ik niet. |
 | Lukt niet | Dat lukt nu niet. |
 | Map bestond al | De map {naam} bestond al. Ik open hem. |
+| Vraag vooraf: Ayla toegang geven | Mag ik "{titel}" voortaan bekijken en gebruiken? |
+| Na Ja op toegang | Ik mag {titel} nu bekijken en gebruiken. |
+| Kop boven de stappen | Ayla doet dit voor je / Ayla deed dit voor je |
+| Stappen (voorbeelden) | Donker aanzetten / Map {naam} openen / Chat {titel} noemen / Chat vastzetten / Map {naam} maken / {bewijs} in de map {naam} zetten |
+| Kleine bol op een pagina | Ayla luistert… / Ayla denkt na… / Ayla praat / Je microfoon staat uit |

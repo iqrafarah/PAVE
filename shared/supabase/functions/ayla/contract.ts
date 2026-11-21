@@ -22,6 +22,21 @@ export interface AylaRequest {
   input: 'voice' | 'text'
   context?: Context
   attachments?: Attachment[]
+  /** How the app is set right now, so Ayla can say how something stands and does not do what is already so. */
+  app?: AppState
+}
+
+/** Settings and the open conversation as the app has them. No vault content and no names of folders or evidence. */
+export interface AppState {
+  theme?: string
+  textSize?: string
+  displayMode?: string
+  vaultLayout?: string
+  voiceText?: boolean
+  animations?: boolean
+  memory?: boolean
+  chatTitle?: string
+  chatPinned?: boolean
 }
 
 /** The vacancy the user has open in the app, as the card shows it, so "past deze bij mij?" is about that one. */
@@ -57,6 +72,11 @@ export type ActionKind = (typeof ACTIONS)[number]
 export const CONFIRMED_ACTIONS: readonly ActionKind[] = ['deleteChat', 'deleteEvidence', 'signOut', 'forgetAll']
 
 export interface AppAction { do: ActionKind; value?: string; target?: string; confirm?: true }
+
+/** Also asks first: Ayla giving herself the use of a piece of evidence. Taking it away needs no question. */
+export function needsConfirmation(kind: ActionKind, value: string): boolean {
+  return CONFIRMED_ACTIONS.includes(kind) || (kind === 'allowAyla' && /^(on|aan|true|ja)$/i.test(value))
+}
 
 /** What Ayla is doing while she has nothing to say yet, so the app can show it. */
 export type Status =
@@ -151,7 +171,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 export function parseRequest(body: unknown): AylaRequest | string {
   if (typeof body !== 'object' || body === null) return 'body must be an object'
   const b = body as Record<string, unknown>
-  const allowed = new Set(['conversationId', 'projectId', 'text', 'device', 'input', 'context', 'attachments'])
+  const allowed = new Set(['conversationId', 'projectId', 'text', 'device', 'input', 'context', 'attachments', 'app'])
   const extra = Object.keys(b).find((key) => !allowed.has(key))
   if (extra) return `unknown field ${extra}`
   if (typeof b.text !== 'string' || !b.text.trim()) return 'text is required'
@@ -205,15 +225,45 @@ export function parseRequest(body: unknown): AylaRequest | string {
       attachments.push(attachment)
     }
   }
+  let app: AppState | undefined
+  if (b.app !== undefined) {
+    const parsed = parseAppState(b.app)
+    if (!parsed) return 'app is not valid'
+    app = parsed
+  }
   return {
     text: b.text.trim(),
     device: b.device as Device,
     input: b.input,
+    ...(app ? { app } : {}),
     ...(b.conversationId ? { conversationId: b.conversationId as string } : {}),
     ...(b.projectId && !b.conversationId ? { projectId: b.projectId as string } : {}),
     ...(context ? { context } : {}),
     ...(attachments?.length ? { attachments } : {}),
   }
+}
+
+const APP_WORDS = ['theme', 'textSize', 'displayMode', 'vaultLayout', 'chatTitle'] as const
+const APP_SWITCHES = ['voiceText', 'animations', 'memory', 'chatPinned'] as const
+
+function parseAppState(raw: unknown): AppState | null {
+  const a = raw as Record<string, unknown>
+  if (typeof a !== 'object' || a === null || Array.isArray(a)) return null
+  const known = new Set<string>([...APP_WORDS, ...APP_SWITCHES])
+  if (Object.keys(a).some((key) => !known.has(key))) return null
+  const state: AppState = {}
+  for (const key of APP_WORDS) {
+    if (a[key] === undefined) continue
+    if (typeof a[key] !== 'string' || (a[key] as string).length > 80) return null
+    const word = (a[key] as string).replace(/\s+/g, ' ').trim()
+    if (word) state[key] = word
+  }
+  for (const key of APP_SWITCHES) {
+    if (a[key] === undefined) continue
+    if (typeof a[key] !== 'boolean') return null
+    state[key] = a[key] as boolean
+  }
+  return state
 }
 
 function parseVacancyContext(raw: unknown): VacancyContext | null {

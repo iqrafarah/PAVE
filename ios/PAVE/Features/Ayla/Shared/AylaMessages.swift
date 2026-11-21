@@ -31,6 +31,21 @@ enum AylaMessages {
     static let actionForgotAll = "Ik heb alles vergeten wat ik over je onthield."
     static let actionSignsOut = "Ik log je uit."
     static let actionDone = "Gedaan."
+    static func actionAllowed(_ title: String) -> String { "Ik mag \(title) nu bekijken en gebruiken." }
+    static let actionsBusy = "Ayla doet dit voor je"
+    static let actionsDone = "Ayla deed dit voor je"
+    static func actionState(_ state: AylaActionStep.State) -> String {
+        switch state {
+        case .waiting: "nog niet gedaan"
+        case .running: "bezig"
+        case .done: "gedaan"
+        case .failed: "niet gelukt"
+        }
+    }
+    static let voiceListening = "Ayla luistert…"
+    static let voiceSpeaking = "Ayla praat"
+    static let voiceMuted = "Je microfoon staat uit"
+    static let voiceStarting = "Microfoon aanzetten…"
     static let vaultLabel = "Kluis"
     static let attachItem = "Item uit je kluis"
     static let vaultEmpty = "Je kluis is nog leeg"

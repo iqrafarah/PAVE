@@ -970,3 +970,28 @@ test('at most four actions, and none while Ayla still asks for the vault', async
   assert.ok(reply.accessRequest)
   assert.equal(reply.actions, undefined)
 })
+
+test('Ayla giving herself the use of evidence asks first; taking it away does not', async () => {
+  const on = cleanActions([{ do: 'allowAyla', value: 'on', target: 'Eindstage' }], 'phone')
+  assert.deepEqual(on, [{ do: 'allowAyla', value: 'on', target: 'Eindstage', confirm: true }])
+  assert.deepEqual(cleanActions([{ do: 'allowAyla', value: 'off', target: 'Eindstage' }], 'phone'), [{ do: 'allowAyla', value: 'off', target: 'Eindstage' }])
+  const fake = model(say('Dat doe ik.', { actions: [{ do: 'allowAyla', value: 'on', target: 'Eindstage' }] }))
+  const reply = await answer({ request, conversationId: 'c', history: [] }, { complete: fake.complete, newId: ids() })
+  assert.equal(reply.text, 'Mag ik "Eindstage" voortaan bekijken en gebruiken?')
+  assert.deepEqual(reply.question?.choices.map((c) => c.label), ['Ja', 'Nee'])
+})
+
+test('Ayla knows how the app is set, on the iPhone only, and nothing else gets in', async () => {
+  const app = { theme: 'blue', displayMode: 'dark', textSize: 'large', voiceText: false, chatTitle: 'Sollicitatie Philips', chatPinned: true }
+  const parsed = parseRequest({ text: 'Staat donker aan?', device: 'phone', input: 'text', app })
+  assert.ok(typeof parsed !== 'string')
+  const prompt = buildSystemPrompt({ device: 'phone', app: parsed.app })
+  assert.match(prompt, /Zo staat de app nu/)
+  assert.match(prompt, /Thema: blauw\. Tekstgrootte: groot\. Licht of donker: donker\./)
+  assert.match(prompt, /Tekst bij praten: uit\./)
+  assert.match(prompt, /heet "Sollicitatie Philips" en is vastgezet/)
+  assert.doesNotMatch(buildSystemPrompt({ device: 'web', app: parsed.app }), /Zo staat de app nu/)
+  assert.equal(parseRequest({ text: 'Hoi', device: 'phone', input: 'text', app: { folders: ['Stages'] } }), 'app is not valid')
+  assert.equal(parseRequest({ text: 'Hoi', device: 'phone', input: 'text', app: { theme: 5 } }), 'app is not valid')
+  assert.equal(parseRequest({ text: 'Hoi', device: 'phone', input: 'text', app: { chatTitle: 'x'.repeat(81) } }), 'app is not valid')
+})

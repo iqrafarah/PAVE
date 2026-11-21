@@ -48,6 +48,37 @@ public struct AylaRequest: Codable, Equatable, Sendable {
     public var input: AylaInput
     public var context: Context?
     public var attachments: [AylaAttachment]?
+    /// How the app is set right now, so Ayla can say how something stands and does not do what is already so.
+    public var app: AppState?
+
+    /// Settings and the open conversation as the app has them. No vault content, no names of folders or evidence.
+    public struct AppState: Codable, Equatable, Sendable {
+        public var theme: String?
+        public var textSize: String?
+        public var displayMode: String?
+        public var vaultLayout: String?
+        public var voiceText: Bool?
+        public var animations: Bool?
+        public var memory: Bool?
+        public var chatTitle: String?
+        public var chatPinned: Bool?
+
+        public init(
+            theme: String? = nil, textSize: String? = nil, displayMode: String? = nil, vaultLayout: String? = nil,
+            voiceText: Bool? = nil, animations: Bool? = nil, memory: Bool? = nil, chatTitle: String? = nil, chatPinned: Bool? = nil
+        ) {
+            self.theme = theme
+            self.textSize = textSize
+            self.displayMode = displayMode
+            self.vaultLayout = vaultLayout
+            self.voiceText = voiceText
+            self.animations = animations
+            self.memory = memory
+            // The server takes at most 80 characters.
+            self.chatTitle = chatTitle.map { String($0.prefix(80)) }
+            self.chatPinned = chatPinned
+        }
+    }
 
     public init(
         conversationId: String? = nil,
@@ -56,7 +87,8 @@ public struct AylaRequest: Codable, Equatable, Sendable {
         input: AylaInput,
         context: Context? = nil,
         attachments: [AylaAttachment] = [],
-        projectId: String? = nil
+        projectId: String? = nil,
+        app: AppState? = nil
     ) {
         self.conversationId = conversationId
         self.projectId = conversationId == nil ? projectId : nil
@@ -65,6 +97,7 @@ public struct AylaRequest: Codable, Equatable, Sendable {
         self.input = input
         self.context = context
         self.attachments = attachments.isEmpty ? nil : attachments
+        self.app = app
     }
 }
 

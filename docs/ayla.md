@@ -136,6 +136,11 @@ Rules:
 - **She never says it is done when it is not.** The prompt forbids it, and after a Ja the app checks that the thing exists before she says so.
 - **Only on the iPhone for now.** Web and Watch get no actions and the prompt tells the model so; they can adopt the list (`reply.schema.json`, `$defs.action`).
 
+- **You follow what she does.** While she works, a line per step shows what she is on, what is done and what did not work (`AylaActionTrail`): in the chat above the text field, and on top of a page that is open. It stays a moment and then makes room.
+- **While you talk, she stays with you as the small orb.** A page that opens during a spoken conversation has the small orb at its bottom, alive with her voice and yours, with what she is doing, the microphone and stop (`AylaShelfVoiceBar`), next to the glow along the edge. Typed, that place is the text field.
+- **She knows how the app is set.** Every question carries `app` (theme, text size, light or dark, vault layout, text while talking, animations, memory on or off, the title of this chat and whether it is pinned): no vault content and no names of folders or evidence. So she can say how something stands and does not do what is already so.
+- **Her own access asks first.** `allowAyla` with `on` gives Ayla the use of a piece of evidence, so it is asked with Ja and Nee like the things that cannot be undone; taking access away is done at once.
+
 What she can do, by part of the app:
 
 | Part | By fixed sentence | By her brain as well |

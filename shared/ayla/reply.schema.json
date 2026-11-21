@@ -22,6 +22,22 @@
         "text": { "type": "string", "minLength": 1 },
         "device": { "$ref": "#/$defs/device" },
         "input": { "enum": ["voice", "text"] },
+        "app": {
+          "type": "object",
+          "description": "How the app is set right now, so Ayla can say how something stands and does not do what is already so. No vault content and no names of folders or evidence.",
+          "additionalProperties": false,
+          "properties": {
+            "theme": { "type": "string", "maxLength": 80 },
+            "textSize": { "type": "string", "maxLength": 80 },
+            "displayMode": { "type": "string", "maxLength": 80 },
+            "vaultLayout": { "type": "string", "maxLength": 80 },
+            "voiceText": { "type": "boolean" },
+            "animations": { "type": "boolean" },
+            "memory": { "type": "boolean" },
+            "chatTitle": { "type": "string", "maxLength": 80 },
+            "chatPinned": { "type": "boolean" }
+          }
+        },
         "context": {
           "type": "object",
           "description": "What the user has open. Only ids: the server reads the item itself, and only with consent.",
