@@ -35,7 +35,7 @@ struct AylaVoiceVacancyCard: View {
             if let gap = vacancy.skillGap.first?.skill {
                 line(icon: .iconPlus, text: "Mist nog: \(gap)", color: .inkMuted)
             }
-            HStack(spacing: 8) {
+            HStack(spacing: 2) {
                 arrow(isNext: false, label: "Vorige vacature", isEnabled: index > 0, action: onPrevious)
                 Text(AylaMessages.vacancyPosition(index, of: count))
                     .textStyle(.meta)
@@ -90,7 +90,9 @@ struct AylaVoiceVacancyCard: View {
                 .foregroundStyle(isEnabled ? Color.ink : Color.inkMuted.opacity(0.4))
                 .frame(width: 34, height: 34)
                 .background(Color.canvas, in: .circle)
-                .contentShape(.circle)
+                // A full 44 points to tap, around the 34 you see.
+                .frame(width: 44, height: 44)
+                .contentShape(.rect)
         }
         .buttonStyle(.pave)
         .disabled(!isEnabled)

@@ -9,6 +9,11 @@ struct CompanyLogo: View {
 
     @State private var logo: UIImage?
 
+    private var isSmall: Bool {
+        guard let logo else { return false }
+        return min(logo.size.width, logo.size.height) * logo.scale < 64
+    }
+
     var body: some View {
         ZStack {
             if let logo {
@@ -16,7 +21,8 @@ struct CompanyLogo: View {
                     .resizable()
                     .interpolation(.high)
                     .scaledToFit()
-                    .frame(width: size * 0.56, height: size * 0.56)
+                    // A small icon is drawn smaller, so it stays as sharp as it can be.
+                    .frame(width: size * (isSmall ? 0.44 : 0.56), height: size * (isSmall ? 0.44 : 0.56))
                     .frame(width: size, height: size)
                     .background(Color.white, in: .circle)
                     .overlay { Circle().strokeBorder(Color.cardBorder, lineWidth: 1) }
@@ -37,7 +43,7 @@ final class CompanyLogos {
 
     private let cache = NSCache<NSURL, UIImage>()
     /// Smaller than this (in pixels) is the service's placeholder or too blurry to show: the letter is better.
-    private static let minimumSide: CGFloat = 48
+    private static let minimumSide: CGFloat = 32
 
     func logo(at url: URL?) async -> UIImage? {
         guard let url, url.scheme == "https" else { return nil }

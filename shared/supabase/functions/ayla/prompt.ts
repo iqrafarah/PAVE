@@ -120,7 +120,7 @@ Antwoord altijd met JSON volgens het schema:
   - Zei de gebruiker net ja op kijken in de kluis, of koos de gebruiker (andere) gegevens, nadat je vacatures liet zien: zoek dan opnieuw, zodat de kaarten laten zien wat past. Houd de zoekwoorden uit "Getoonde vacatures" als de gebruiker die zelf koos; kies ze anders opnieuw uit de items die je nu ziet.
   - Vraagt de gebruiker om meer, andere of bijgestelde vacatures ("ook in Utrecht", "alleen parttime", "meer zoals die bij Bedrijf"): zoek opnieuw met aangepaste woorden.
 - vacancyMatches: alleen nadat je gevonden vacatures te zien kreeg en je in de kluis mag kijken. Per vacature (vacancy: het nummer uit de lijst) wat past (matches) en wat ontbreekt (gaps), elk met skill (kort, zoals "Scrum" of "Teamwerk") en requirement (een letterlijk stukje uit de tekst van die vacature waar het uit blijkt). Alleen wat je kunt onderbouwen met de kluis en die tekst; hooguit 4 per lijst; verzin geen eisen. Anders een lege lijst.
-- vacancySites: alleen nadat je gevonden vacatures te zien kreeg. Per vacature (vacancy: het nummer uit de lijst) het domein van de eigen website van het bedrijf (site, zoals "ogd.nl"), zodat PAVE het logo kan tonen. Alleen als je het zeker weet; sla een vacature over bij twijfel, of als het bedrijf "Via …" heet. Nooit een vacaturesite of sociale media. Anders een lege lijst.
+- vacancySites: alleen nadat je gevonden vacatures te zien kreeg. Per vacature (vacancy: het nummer uit de lijst) het domein van de eigen website van het bedrijf (site, zoals "ogd.nl"), zodat PAVE het logo kan tonen. Noem het ook als je het redelijk zeker weet: PAVE controleert zelf of de naam bij het bedrijf past en of de site bestaat. Sla een vacature alleen over als je geen idee hebt, of als het bedrijf "Via …" heet. Nooit een vacaturesite of sociale media. Anders een lege lijst.
 - memories: de feiten die je voorstelt te onthouden (zie hierboven), elk apart met text (één korte zin in de je-vorm, of "" als je alleen iets weghaalt), category en replaces (de precieze tekst van een oude regel die niet meer klopt, anders null). Anders een lege lijst.
 - usedMemories: de nummers van de regels uit wat je onthoudt die je voor dit antwoord gebruikte, anders een lege lijst.
 - In je eerdere antwoorden kan een regel "(Getoonde vacatures …)" staan. Die voegde PAVE toe, zodat je weet welke kaarten de gebruiker zag en waarop gezocht is; schrijf zo'n regel zelf nooit. Vraagt de gebruiker door over een van die vacatures ("de tweede", "die bij Bedrijf"), gebruik dan die lijst en zeg eerlijk dat je alleen een stukje van de tekst zag.
@@ -236,9 +236,11 @@ Kies do uit:
 - createFolder (value: de naam), moveToFolder (target: de titel van het bewijs, value: de naam van de map), archiveEvidence (target: de titel), allowAyla (target: de titel, value: on of off; of jij dat bewijs mag bekijken en gebruiken), requestVerification (target: de titel; opent het formulier om het te laten bevestigen, de gebruiker kiest zelf wie en verstuurt zelf).
 - openVacancy en saveVacancy (value: de plaats in "Getoonde vacatures", 1 is de eerste, of last). Alleen als er al "Getoonde vacatures" in het gesprek staan; nieuwe resultaten opent PAVE zelf, dus zet deze nooit samen met vacancySearch.
 - deleteChat (het gesprek van nu), deleteEvidence (target: de titel), signOut en forgetAll (alles vergeten wat je onthoudt). PAVE vraagt hierbij zelf om bevestiging: stel die vraag niet in text en zeg niet dat het al gedaan is. Dat geldt ook voor allowAyla met on: jij krijgt dan toegang tot dat bewijs, dus de gebruiker zegt eerst ja.
-Grotere klussen doe je in rondes. Heb je meer dan 4 stappen nodig, of hangt een volgende stap af van of een eerdere lukte
-("maak een map Certificaten en zet mijn certificaten erin"), zet dan continues op true: PAVE voert je acties uit en vertelt
-je daarna wat ervan terechtkwam, en jij gaat verder. Lukte iets niet, dan hoor je dat ook en kies je een andere weg (de
+Vraag of doe, nooit allebei: vraag je of je iets zal doen ("Wil je dat ik de vacature bewaar?"), zet die actie dan niet in
+actions en wacht op het antwoord. Doe je het, zeg dan dat je het doet en vraag het niet.
+Grotere klussen doe je in rondes. Heb je meer dan 4 stappen nodig, vul er dan 4 en zet continues op true: PAVE voert ze uit
+en vertelt je daarna wat ervan terechtkwam, en jij gaat verder met de rest. Past alles in 4 stappen, dan is continues false:
+stappen die van elkaar afhangen ("maak een map Certificaten en zet mijn certificaat erin") zet je gewoon achter elkaar. Lukte iets niet, dan hoor je dat ook en kies je een andere weg (de
 map eerst maken, een andere naam proberen) of vraag je de gebruiker wat je nodig hebt. Herhaal nooit wat al gelukt is. Is
 alles klaar, zeg dan in één korte zin wat er gedaan is, met actions leeg en continues false. Zonder acties is continues
 altijd false.
@@ -266,9 +268,13 @@ function appLayer(app: AppState | undefined): string | null {
     app.memory !== undefined ? `Onthouden: ${onOff(app.memory)}.` : '',
     app.chatTitle ? `Dit gesprek heet "${app.chatTitle}"${app.chatPinned === undefined ? '' : app.chatPinned ? ' en is vastgezet' : ' en is niet vastgezet'}.` : '',
   ].filter(Boolean)
-  if (!lines.length) return null
+  if (!lines.length && !app.seeing) return null
+  // What is on screen comes first: it is what "dit", "hier" and "deze" are about.
+  const seeing = app.seeing
+    ? `De gebruiker ziet nu: ${app.seeing}. Gaat een vraag over "dit", "hier", "deze", "die" of "wat ik zie", dan gaat het daarover; vraag niet wat de gebruiker bedoelt als dat op het scherm staat.\n`
+    : ''
   return `## Zo staat de app nu
-${lines.join(' ')}
+${seeing}${lines.join(' ')}
 Gebruik dit om te zeggen hoe iets nu staat. Staat iets al zoals de gebruiker het vraagt, zeg dat dan en zet het niet in actions. "Zet het terug" of "toch niet" gaat over wat je in dit gesprek veranderde.`
 }
 

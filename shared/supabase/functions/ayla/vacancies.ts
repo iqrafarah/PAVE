@@ -69,6 +69,11 @@ function plain(value: unknown): string {
     .trim()
 }
 
+/** The address the apps load a logo from: the icon of a site, as large as the service has it. */
+export function logoUrl(domain: string): string {
+  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=256`
+}
+
 /** Whether a site answers, quickly: a logo is not worth waiting long for. Only the domain leaves PAVE. */
 export function siteChecker(fetchImpl: typeof fetch = fetch, timeoutMs = 2000): (domain: string) => Promise<boolean> {
   return async (domain) => {
@@ -190,7 +195,8 @@ export function toJoobleVacancy(raw: unknown): FoundVacancy | null {
   const r = raw as Record<string, any>
   const title = plain(r?.title)
   // Without a company, the job site it came from, so that site is never shown as the employer.
-  const company = plain(r?.company) || (plain(r?.source) ? `Via ${plain(r?.source)}` : '')
+  const site = plain(r?.source).toLowerCase()
+  const company = plain(r?.company) || (site ? `Via ${plain(r?.source)}` : '')
   if (r?.id === undefined || r?.id === null || !title || !company) return null
   const vacancy: Vacancy = { id: `jooble_${r.id}`, title, company, source: 'jooble', matches: [], skillGap: [] }
   const city = plain(r.location)
@@ -203,6 +209,8 @@ export function toJoobleVacancy(raw: unknown): FoundVacancy | null {
   if (typeof r.link === 'string' && r.link.startsWith('https://')) vacancy.url = r.link
   const snippet = plain(r.snippet).replace(/^\.{3}\s*|\s*\.{3}$/g, '').slice(0, 500)
   if (snippet) vacancy.summary = snippet
+  // "Via werkzoeken.nl" shows that site's own icon: it is what the card names, and no guess.
+  if (!plain(r?.company) && /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(site)) vacancy.logoUrl = logoUrl(site)
   const day = typeof r.updated === 'string' ? r.updated.match(/^\d{4}-\d{2}-\d{2}/)?.[0] : undefined
   if (day) vacancy.postedAt = day
   return { vacancy, snippet }

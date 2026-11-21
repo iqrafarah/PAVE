@@ -44,6 +44,8 @@ export interface AppState {
   memory?: boolean
   chatTitle?: string
   chatPinned?: boolean
+  /** What is on screen right now, in a few words the app writes itself ("de lijst met vacatures, tabblad Bewaard"). */
+  seeing?: string
 }
 
 /** The vacancy the user has open in the app, as the card shows it, so "past deze bij mij?" is about that one. */
@@ -265,7 +267,7 @@ export function parseRequest(body: unknown): AylaRequest | string {
   }
 }
 
-const APP_WORDS = ['theme', 'textSize', 'displayMode', 'vaultLayout', 'chatTitle'] as const
+const APP_WORDS = ['theme', 'textSize', 'displayMode', 'vaultLayout', 'chatTitle', 'seeing'] as const
 const APP_SWITCHES = ['voiceText', 'animations', 'memory', 'chatPinned'] as const
 
 function parseAppState(raw: unknown): AppState | null {
@@ -276,7 +278,7 @@ function parseAppState(raw: unknown): AppState | null {
   const state: AppState = {}
   for (const key of APP_WORDS) {
     if (a[key] === undefined) continue
-    if (typeof a[key] !== 'string' || (a[key] as string).length > 80) return null
+    if (typeof a[key] !== 'string' || (a[key] as string).length > (key === 'seeing' ? 200 : 80)) return null
     const word = (a[key] as string).replace(/\s+/g, ' ').trim()
     if (word) state[key] = word
   }

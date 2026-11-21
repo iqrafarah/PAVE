@@ -453,6 +453,8 @@ final class AylaChatModel {
 
     /// The words that stand in for a round of her own; they are never shown or stored as yours.
     static let followUpText = "(vervolg)"
+    /// As many steps as one answer carries; a job with more goes on in a next round.
+    static let stepsPerRound = 4
     /// At most this many rounds of her own per question, so she cannot keep going in circles.
     static let maxFollowUpRounds = 3
     private var pendingResults: [AylaRequest.ActionResult]?

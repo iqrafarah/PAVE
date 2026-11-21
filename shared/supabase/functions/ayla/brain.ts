@@ -5,7 +5,7 @@ import { cleanMemories, type Memory, type MemorySuggestion, usedNotes } from './
 import type { ContentPart, ChatMessage, Complete, Effort } from './openrouter.ts'
 import { buildSystemPrompt } from './prompt.ts'
 import { vaultProposal } from './proposal.ts'
-import { type FoundVacancy, mergeFound, type SearchVacancies } from './vacancies.ts'
+import { type FoundVacancy, logoUrl, mergeFound, type SearchVacancies } from './vacancies.ts'
 
 /** A message so far. An Ayla turn says whether it asked to look in the vault, for the consent of this conversation. */
 export interface PastMessage { role: 'user' | 'ayla'; text: string; askedVault?: boolean }
@@ -240,7 +240,10 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   }
   // What she does in the app herself. What cannot be undone waits for a Ja to a question with fixed words, so a model
   // that says "gedaan" too soon changes nothing.
-  const actions = purpose ? [] : cleanActions(Array.isArray(output.actions) && output.actions.length ? output.actions : firstActions, request.device)
+  // Asking whether she should do something and doing it in the same answer contradict: the question wins, and
+  // nothing happens until the user answers.
+  const asksFirst = ASKS_BEFORE_DOING.test(reply.text.trim())
+  const actions = purpose || asksFirst ? [] : cleanActions(Array.isArray(output.actions) && output.actions.length ? output.actions : firstActions, request.device)
   if (actions.length) {
     reply.actions = actions
     const risky = actions.find((action) => action.confirm)
@@ -378,6 +381,9 @@ export function effortFor(request: AylaRequest, mayLook = false): Effort {
   return 'normal'
 }
 
+/** "Wil je dat ik de vacature bewaar?", "Zal ik de map maken?" as the last thing she says. */
+const ASKS_BEFORE_DOING = /\b(wil je dat ik|zal ik|moet ik|wil je dat ik dat|vind je het goed (als|dat) ik)\b[^.?!]*\?$/i
+
 const CONFIRM_QUESTIONS: Partial<Record<ActionKind, (action: AppAction) => string>> = {
   deleteChat: () => 'Zal ik dit gesprek verwijderen?',
   deleteEvidence: (action) => `Zal ik "${action.target}" uit je kluis verwijderen? Dat kan niet ongedaan worden gemaakt.`,
@@ -442,11 +448,6 @@ export function siteFits(domain: string, company: string): boolean {
   return name.replace(/ /g, '').includes(label) || words.some((word) => word.length >= 4 && label.includes(word)) || label === words.map((word) => word[0]).join('')
 }
 
-/** The domain as the apps load a logo for it: the icon of the company's own site, at a size that stays sharp. */
-export function logoUrl(domain: string): string {
-  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`
-}
-
 /** The found vacancies with a logo where the model named the company's site, the name fits and the site is there. */
 export async function withLogos(found: FoundVacancy[], raw: unknown, siteExists?: (domain: string) => Promise<boolean>): Promise<FoundVacancy[]> {
   if (!siteExists || !Array.isArray(raw)) return found
@@ -459,12 +460,32 @@ export async function withLogos(found: FoundVacancy[], raw: unknown, siteExists?
   }
   // The same site once, however many vacancies of that company.
   const checks = new Map<string, Promise<boolean>>()
-  for (const site of named.values()) if (!checks.has(site)) checks.set(site, siteExists(site).catch(() => false))
+  const exists = (site: string) => {
+    if (!checks.has(site)) checks.set(site, siteExists(site).catch(() => false))
+    return checks.get(site)!
+  }
   return Promise.all(found.map(async (f, index) => {
-    const site = named.get(index + 1)
-    if (!site || !(await checks.get(site))) return f
-    return { ...f, vacancy: { ...f.vacancy, logoUrl: logoUrl(site) } }
+    if (f.vacancy.logoUrl) return f
+    // What the model named first, then the company's own name as a site ("Synsel Techniek" is synseltechniek.nl).
+    const candidates = [...new Set([named.get(index + 1), ...sitesFromName(f.vacancy.company)].filter((site): site is string => !!site))]
+    const answers = await Promise.all(candidates.map(exists))
+    const site = candidates.find((_, i) => answers[i])
+    return site ? { ...f, vacancy: { ...f.vacancy, logoUrl: logoUrl(site) } } : f
   }))
+}
+
+/**
+ * The sites a company's name itself points to, to try when the model named none: the name when it is a domain
+ * ("Recruiting.ki"), and the whole name written together with .nl and .com. Never a part of the name, which could be
+ * someone else's site.
+ */
+export function sitesFromName(company: string): string[] {
+  if (/^via /i.test(company)) return []
+  const name = company.toLocaleLowerCase('nl').trim()
+  if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(name) && !NOT_A_COMPANY_SITE.test(name)) return [name]
+  const legal = new Set(['bv', 'nv', 'vof', 'holding', 'groep', 'group', 'nederland', 'netherlands', 'international', 'the'])
+  const slug = name.normalize('NFD').replace(/\b(b\.?v\.?|n\.?v\.?|v\.?o\.?f\.?)(?=\s|$)/g, ' ').replace(/[^a-z0-9 ]/g, ' ').split(' ').filter((word) => word && !legal.has(word)).join('')
+  return slug.length >= 4 && slug.length <= 30 ? [`${slug}.nl`, `${slug}.com`] : []
 }
 
 /** The vacancy that fits best first: more that fits, less that is missing. Vacancies without a match keep their place. */

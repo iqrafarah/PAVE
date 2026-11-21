@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { test } from 'node:test'
-import { announcesSearchOnly, answer, bestFirst, cleanActions, cleanTitle, effortFor, resultsMessage, siteFits, withLogos, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
+import { announcesSearchOnly, answer, bestFirst, sitesFromName, cleanActions, cleanTitle, effortFor, resultsMessage, siteFits, withLogos, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
 import { parseRequest } from '../contract.ts'
 import { MODELS, modelsFor, openRouterCompletion } from '../openrouter.ts'
 import { buildSystemPrompt } from '../prompt.ts'
@@ -1073,12 +1073,14 @@ test('a logo only shows for a site that fits and is really there', async () => {
   const list = [job('1', 'Trainee', 'OGD ict-diensten'), job('2', 'Engineer', 'Synsel Techniek'), job('3', 'Tester', 'Via werkzoeken.nl'), job('4', 'Developer', 'OGD ict-diensten')]
   const raw = [{ vacancy: 1, site: 'ogd.nl' }, { vacancy: 2, site: 'philips.com' }, { vacancy: 3, site: 'werkzoeken.nl' }, { vacancy: 4, site: 'www.ogd.nl' }, { vacancy: 9, site: 'x.nl' }]
   const asked: string[] = []
-  const found = await withLogos(list, raw, async (domain) => { asked.push(domain); return true })
-  assert.equal(found[0].vacancy.logoUrl, 'https://www.google.com/s2/favicons?domain=ogd.nl&sz=128')
+  const found = await withLogos(list, raw, async (domain) => { asked.push(domain); return domain === 'ogd.nl' })
+  assert.equal(found[0].vacancy.logoUrl, 'https://www.google.com/s2/favicons?domain=ogd.nl&sz=256')
   assert.equal(found[1].vacancy.logoUrl, undefined)
   assert.equal(found[2].vacancy.logoUrl, undefined)
   assert.equal(found[3].vacancy.logoUrl, found[0].vacancy.logoUrl)
-  assert.deepEqual(asked, ['ogd.nl'])
+  // The model's site and the company's name as a site are tried; every site once.
+  assert.equal(new Set(asked).size, asked.length)
+  assert.ok(asked.includes('ogd.nl') && asked.includes('synseltechniek.nl'))
   assert.equal((await withLogos(list, raw, async () => false))[0].vacancy.logoUrl, undefined)
   assert.equal((await withLogos(list, raw))[0].vacancy.logoUrl, undefined)
 })
@@ -1114,4 +1116,44 @@ test('saying she will search without searching is not accepted: she searches in 
   assert.equal(reply.blocks.length, 1)
   assert.equal(reply.text, 'Ik vond er een die goed past.')
   assert.equal(reply.actions, undefined)
+})
+
+test('a company without a site from the model still gets its logo when its name is its site', async () => {
+  assert.deepEqual(sitesFromName('Synsel Techniek'), ['synseltechniek.nl', 'synseltechniek.com'])
+  assert.deepEqual(sitesFromName('Recruiting.ki'), ['recruiting.ki'])
+  assert.deepEqual(sitesFromName('Coolblue B.V.'), ['coolblue.nl', 'coolblue.com'])
+  assert.deepEqual(sitesFromName('Via werkzoeken.nl'), [])
+  assert.deepEqual(sitesFromName('IT'), [])
+  const list = [job('1', 'Engineer', 'Synsel Techniek'), job('2', 'Developer', 'Recruiting.ki'), job('3', 'Tester', 'Onbekend Bedrijf')]
+  const found = await withLogos(list, [], async (domain) => domain === 'synseltechniek.nl' || domain === 'recruiting.ki')
+  assert.equal(found[0].vacancy.logoUrl, 'https://www.google.com/s2/favicons?domain=synseltechniek.nl&sz=256')
+  assert.equal(found[1].vacancy.logoUrl, 'https://www.google.com/s2/favicons?domain=recruiting.ki&sz=256')
+  assert.equal(found[2].vacancy.logoUrl, undefined)
+})
+
+test('a vacancy without a company shows the icon of the job site it names', () => {
+  const found = toJoobleVacancy({ id: 2, title: 'Developer', source: 'werkzoeken.nl' })
+  assert.equal(found?.vacancy.company, 'Via werkzoeken.nl')
+  assert.equal(found?.vacancy.logoUrl, 'https://www.google.com/s2/favicons?domain=werkzoeken.nl&sz=256')
+  assert.equal(toJoobleVacancy({ id: 3, title: 'Developer', company: 'Bedrijf', source: 'werkzoeken.nl' })?.vacancy.logoUrl, undefined)
+})
+
+test('Ayla knows what is on screen, so "deze" needs no asking back', () => {
+  const parsed = parseRequest({ text: 'Past deze bij mij?', device: 'phone', input: 'voice', app: { seeing: 'het gesprek met de bol, met vacature 2 van 6 op de kaart' } })
+  assert.ok(typeof parsed !== 'string')
+  const prompt = buildSystemPrompt({ device: 'phone', app: parsed.app })
+  assert.match(prompt, /De gebruiker ziet nu: het gesprek met de bol, met vacature 2 van 6 op de kaart\./)
+  assert.match(prompt, /vraag niet wat de gebruiker bedoelt/)
+  assert.equal(parseRequest({ text: 'Hoi', device: 'phone', input: 'text', app: { seeing: 'x'.repeat(201) } }), 'app is not valid')
+})
+
+test('asking whether to do it and doing it do not go together: the question wins', async () => {
+  const asks = model(say('Ik zie geen informatie over Skill Games. Wil je dat ik de vacature opsla voor je, zodat je later terug kunt kijken?', { actions: [{ do: 'saveVacancy', value: '1', target: null }], continues: true }))
+  const reply = await answer({ request, conversationId: 'c', history: [] }, { complete: asks.complete, newId: ids() })
+  assert.equal(reply.actions, undefined)
+  assert.equal(reply.continues, undefined)
+  const does = model(say('Ik bewaar de vacature voor je.', { actions: [{ do: 'saveVacancy', value: '1', target: null }] }))
+  assert.deepEqual((await answer({ request, conversationId: 'c', history: [] }, { complete: does.complete, newId: ids() })).actions, [{ do: 'saveVacancy', value: '1' }])
+  const after = model(say('Ik zet PAVE op donker. Wil je ook grotere tekst?', { actions: [{ do: 'setDisplayMode', value: 'dark', target: null }] }))
+  assert.deepEqual((await answer({ request, conversationId: 'c', history: [] }, { complete: after.complete, newId: ids() })).actions, [{ do: 'setDisplayMode', value: 'dark' }])
 })

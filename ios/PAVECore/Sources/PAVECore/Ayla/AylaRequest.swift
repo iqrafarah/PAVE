@@ -83,10 +83,13 @@ public struct AylaRequest: Codable, Equatable, Sendable {
         public var memory: Bool?
         public var chatTitle: String?
         public var chatPinned: Bool?
+        /// What is on screen right now, in a few words, so "deze" and "hier" need no asking back.
+        public var seeing: String?
 
         public init(
             theme: String? = nil, textSize: String? = nil, displayMode: String? = nil, vaultLayout: String? = nil,
-            voiceText: Bool? = nil, animations: Bool? = nil, memory: Bool? = nil, chatTitle: String? = nil, chatPinned: Bool? = nil
+            voiceText: Bool? = nil, animations: Bool? = nil, memory: Bool? = nil, chatTitle: String? = nil, chatPinned: Bool? = nil,
+            seeing: String? = nil
         ) {
             self.theme = theme
             self.textSize = textSize
@@ -98,6 +101,8 @@ public struct AylaRequest: Codable, Equatable, Sendable {
             // The server takes at most 80 characters.
             self.chatTitle = chatTitle.map { String($0.prefix(80)) }
             self.chatPinned = chatPinned
+            // The server takes at most 200 characters.
+            self.seeing = seeing.map { String($0.prefix(200)) }
         }
     }
 
