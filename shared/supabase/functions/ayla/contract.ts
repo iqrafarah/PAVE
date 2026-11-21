@@ -40,8 +40,9 @@ export interface Choice { id: string; label: string }
 
 /** What Ayla is doing while she has nothing to say yet, so the app can show it. */
 export type Status =
-  | { kind: 'vacancySearch'; what: string; where: string }
-  | { kind: 'vacancyMatch'; count: number; withVault: boolean }
+  | { kind: 'vacancySearch'; what: string; where: string; also?: string }
+  /** chosen: how many vault items the user picked for this conversation, when that is what Ayla compares with. */
+  | { kind: 'vacancyMatch'; count: number; withVault: boolean; chosen?: number }
 
 export interface RequirementLink { skill: string; requirement: string }
 
@@ -57,13 +58,16 @@ export interface Vacancy {
   source: 'example' | 'adzuna' | 'jooble' | 'web'
   /** A short piece of the vacancy text, as the source gives it. Never the whole text. */
   summary?: string
+  /** The day the source last saw it (YYYY-MM-DD), when it says so. */
+  postedAt?: string
   matches: RequirementLink[]
   skillGap: RequirementLink[]
 }
 
 export type Block =
   | { type: 'vaultSelection'; categories: { category: Category; count: number }[] }
-  | { type: 'vacancies'; items: Vacancy[] }
+  /** search: what Ayla searched for, so the apps can show it and a later turn can search the same again. */
+  | { type: 'vacancies'; items: Vacancy[]; search?: { what: string; where: string; also?: string } }
   | { type: 'skillSuggestions'; itemId: string; skills: { name: string; reason: string }[] }
   | { type: 'cv'; profile: string; experience: { title: string; organisation: string; period: string; description?: string }[]; skills: string[] }
 
@@ -148,7 +152,8 @@ export function parseRequest(body: unknown): AylaRequest | string {
     const itemIds = Array.isArray(c.itemIds) && c.itemIds.length ? (c.itemIds as string[]) : undefined
     let vacancy: VacancyContext | undefined
     if (c.vacancy !== undefined) {
-      if (c.screen !== 'vacancies') return 'context is not valid'
+      // Also with items chosen from the vault: the vacancy is open while those items are what Ayla may use.
+      if (c.screen !== 'vacancies' && c.screen !== 'vault' && c.screen !== 'vaultItem') return 'context is not valid'
       const parsed = parseVacancyContext(c.vacancy)
       if (!parsed) return 'context is not valid'
       vacancy = parsed

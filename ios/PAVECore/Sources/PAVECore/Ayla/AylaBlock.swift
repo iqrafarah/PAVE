@@ -4,7 +4,7 @@ import Foundation
 /// and is skipped, so the server can add cards without breaking older apps.
 public enum AylaBlock: Codable, Equatable, Sendable {
     case vaultSelection([CategoryCount])
-    case vacancies([Vacancy])
+    case vacancies([Vacancy], search: VacancySearch? = nil)
     case skillSuggestions(itemId: String, skills: [SkillSuggestion])
     case cv(CurriculumVitae)
     case unknown(type: String)
@@ -56,7 +56,7 @@ public enum AylaBlock: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case type, categories, items, itemId, skills, profile, experience
+        case type, categories, items, itemId, skills, profile, experience, search
     }
 
     public init(from decoder: any Decoder) throws {
@@ -66,7 +66,10 @@ public enum AylaBlock: Codable, Equatable, Sendable {
         case "vaultSelection":
             self = .vaultSelection(try container.decode([CategoryCount].self, forKey: .categories))
         case "vacancies":
-            self = .vacancies(try container.decode([Vacancy].self, forKey: .items))
+            self = .vacancies(
+                try container.decode([Vacancy].self, forKey: .items),
+                search: try? container.decodeIfPresent(VacancySearch.self, forKey: .search)
+            )
         case "skillSuggestions":
             self = .skillSuggestions(
                 itemId: try container.decode(String.self, forKey: .itemId),
@@ -89,9 +92,10 @@ public enum AylaBlock: Codable, Equatable, Sendable {
         case .vaultSelection(let categories):
             try container.encode("vaultSelection", forKey: .type)
             try container.encode(categories, forKey: .categories)
-        case .vacancies(let items):
+        case .vacancies(let items, let search):
             try container.encode("vacancies", forKey: .type)
             try container.encode(items, forKey: .items)
+            try container.encodeIfPresent(search, forKey: .search)
         case .skillSuggestions(let itemId, let skills):
             try container.encode("skillSuggestions", forKey: .type)
             try container.encode(itemId, forKey: .itemId)

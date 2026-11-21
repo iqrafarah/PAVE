@@ -72,6 +72,9 @@ struct AylaChatScreen: View {
     @State private var addingFromReplyID: String?
     @State private var photoItems: [PhotosPickerItem] = []
     @State private var picksVaultItem = false
+    /// What is said once items are picked ("Kies zelf", or other data for the vacancies); nil from the plus button,
+    /// where picking only sets what the conversation is about.
+    @State private var afterPick: ((Int) -> String)?
     @State private var fileProblem: String?
     @FocusState private var isComposerFocused: Bool
     @State private var readAloud = AylaReadAloud()
@@ -246,7 +249,13 @@ struct AylaChatScreen: View {
                         onRestore: { await notifications.restore($0) }
                     )
                 } else if shelf == .vacancies {
-                    AylaVacancyShelf(vacancies: openVacancies ?? [], model: model, tab: $vacancyTab) { vacancy in
+                    let shown = model.entries.first { $0.id == openVacanciesID }
+                    AylaVacancyShelf(
+                        vacancies: openVacancies ?? [], model: model, tab: $vacancyTab,
+                        search: shown.flatMap(Self.search(in:)),
+                        usedData: shown?.reply?.usedData ?? [],
+                        onChooseData: vault == nil || !model.isAvailable ? nil : { pickVaultItems(then: AylaMessages.useChosen) }
+                    ) { vacancy in
                         closeShelf()
                         send(AylaMessages.vacancyAsk(vacancy))
                     } onAskGap: { skill, vacancy in
@@ -318,9 +327,12 @@ struct AylaChatScreen: View {
             VaultRequestConfirmationSheet(item: item, documentCount: vault?.documents(of: item).count ?? 0)
                 .paveSheet()
         }
-        .sheet(isPresented: $picksVaultItem) {
+        .sheet(isPresented: $picksVaultItem, onDismiss: { afterPick = nil }) {
             if let vault {
-                AylaVaultSelectionSheet { items in model.attach(items) }
+                AylaVaultSelectionSheet { items in
+                    model.attach(items)
+                    if let afterPick, !items.isEmpty { send(afterPick(items.count)) }
+                }
                     .environment(vault)
                     .paveSheet(background: .panel)
             }
@@ -1150,11 +1162,33 @@ struct AylaChatScreen: View {
     /// Ja to "Wil je iets toevoegen?" opens adding evidence, filled with Ayla's proposal and skills; the answer still goes
     /// to Ayla, as on the web.
     private func choose(_ label: String) {
+        if choosesVaultItems(label) { return }
         if AylaVaultOffer.isYes(label), handleYes(saying: label) { return }
         if model.pendingOffersEvidence, AylaVaultOffer.isYes(label) {
             openProposedEvidence(from: model.lastReply)
         }
         send(label)
+    }
+
+    /// "Kies zelf" on Ayla's question about the vault, tapped, typed or said: the picker opens, and what you choose is
+    /// all she uses in this conversation.
+    private func choosesVaultItems(_ label: String) -> Bool {
+        let said = label.trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters))
+        guard vault != nil, let question = model.pendingQuestion, model.lastReply?.accessRequest != nil,
+              question.choices.contains(where: { $0.id == AylaVaultOffer.chooseChoiceID && $0.label.caseInsensitiveCompare(said) == .orderedSame })
+        else { return false }
+        pickVaultItems(then: AylaMessages.useChosen)
+        return true
+    }
+
+    /// The vault picker over the chat; once you chose, Ayla hears it and goes on with those items only.
+    private func pickVaultItems(then message: @escaping (Int) -> String) {
+        PaveHaptics.selection()
+        isComposerFocused = false
+        closingShelf {
+            afterPick = message
+            picksVaultItem = true
+        }
     }
 
     /// Adding evidence as Ayla proposed it, with the files she said belong to it. A spoken conversation stops: the form
@@ -1420,6 +1454,7 @@ struct AylaChatScreen: View {
     /// A tap on one of those choices while talking: Ja and Nee get the same feedback as a nod; another choice is sent
     /// as if it was said.
     private func chooseWhileTalking(_ choice: AylaChoice) {
+        if choosesVaultItems(choice.label) { return }
         if AylaVaultOffer.isYes(choice.label) || AylaVaultOffer.isNo(choice.label) {
             answerYesNo(AylaVaultOffer.isYes(choice.label), byHead: false)
             return
@@ -1528,6 +1563,10 @@ struct AylaChatScreen: View {
         let message = text ?? model.draft
         let words = message.trimmingCharacters(in: .whitespacesAndNewlines)
         if text == nil, !model.isAnswering, AylaVaultOffer.isConfirmation(words), handleYes(saying: words) {
+            model.draft = ""
+            return
+        }
+        if text == nil, !model.isAnswering, choosesVaultItems(words) {
             model.draft = ""
             return
         }
@@ -1866,6 +1905,10 @@ struct AylaChatScreen: View {
         openVacanciesID = entryID
         pageDriver.vacancy = nil
         if shelf != .vacancies { openShelf(.vacancies) }
+        // A question under the vacancies (may she show what fits you?) is answered on top of them.
+        if let entry = model.entries.first(where: { $0.id == entryID }), model.question(for: entry) != nil, entry.id == model.entries.last?.id {
+            showsShelfReply = true
+        }
     }
 
     /// The vacancies of Ayla's newest search in this chat.
@@ -2089,6 +2132,7 @@ struct AylaChatScreen: View {
         showsShelfReply = false
         localReply = nil
         guard let shelf else { return }
+        if shelf == .vacancies { model.showVacancy(nil) }
         model.hideScreen(shelf.screen)
         self.shelf = nil
     }
@@ -2138,8 +2182,15 @@ struct AylaChatScreen: View {
 
     private static func vacancies(in entry: AylaChatModel.Entry) -> [Vacancy] {
         (entry.reply?.blocks ?? []).flatMap { block -> [Vacancy] in
-            if case .vacancies(let items) = block { items } else { [] }
+            if case .vacancies(let items, _) = block { items } else { [] }
         }
+    }
+
+    /// What Ayla searched for to find them.
+    private static func search(in entry: AylaChatModel.Entry) -> VacancySearch? {
+        (entry.reply?.blocks ?? []).lazy.compactMap { block -> VacancySearch? in
+            if case .vacancies(_, let search) = block { search } else { nil }
+        }.first
     }
 }
 

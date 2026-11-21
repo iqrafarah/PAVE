@@ -6,10 +6,13 @@ struct VacancyHeader: View {
     let vacancy: Vacancy
     /// A card that opens the vacancy shows where to tap.
     var showsChevron = false
+    /// The vacancy itself also says when the source last saw it.
+    var showsPosted = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            CompanyMonogram(name: vacancy.company)
+            // "Via werkzoeken.nl" (no company known) shows the letter of the site, not of "Via".
+            CompanyMonogram(name: vacancy.company.hasPrefix("Via ") ? String(vacancy.company.dropFirst(4)) : vacancy.company)
                 .padding(.top, 11)
             VStack(alignment: .leading, spacing: 0) {
                 Text(vacancy.title)
@@ -25,6 +28,9 @@ struct VacancyHeader: View {
                     }
                     if let salary = vacancy.salary {
                         meta(.iconEuro, Self.salaryText(salary))
+                    }
+                    if showsPosted, let posted = vacancy.postedAt.flatMap(AylaMessages.vacancyPosted) {
+                        meta(.iconVaultCalendarOutline, posted)
                     }
                 }
                 .padding(.top, 13.6)

@@ -9,6 +9,10 @@ struct VacancyList: View {
     let vacancies: [Vacancy]
     let model: AylaChatModel
     @Binding var tab: Tab
+    /// What Ayla searched for and used, above the ones she found.
+    var search: VacancySearch?
+    var usedData: [AylaVaultCategory] = []
+    var onChooseData: (() -> Void)?
     let onOpen: (Vacancy) -> Void
     let onAsk: (Vacancy) -> Void
 
@@ -31,6 +35,9 @@ struct VacancyList: View {
             if let problem = model.vacancyProblem {
                 PaveInlineError(message: problem)
                     .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            if tab == .found, !vacancies.isEmpty {
+                VacancySearchSummary(search: search, usedData: usedData, chosenCount: model.chosenItemCount, onChooseData: onChooseData)
             }
             if shown.isEmpty {
                 PaveEmptyState(

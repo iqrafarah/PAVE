@@ -106,7 +106,14 @@ Vacatures staan niet in het menu. Je zoekt ze in de chat met Ayla; ze openen in 
 | Vraag bij een ontbrekende vaardigheid | Hoe kan ik {vaardigheid} halen voor {functie} bij {bedrijf}? |
 | Bewaren mislukt | Bewaren lukte niet. Probeer het opnieuw. |
 | Laden mislukt | Je bewaarde vacatures konden niet worden geladen. |
-| Ayla zoekt (één regel, waar "Ayla denkt na…" staat) | Ayla zoekt vacatures: {zoekwoorden} in {plaats}… |
+| Ayla zoekt (één regel, waar "Ayla denkt na…" staat) | Ayla zoekt vacatures: {zoekwoorden} (en {verwante functie}) in {plaats}… |
+| Ayla vergelijkt (met gekozen gegevens) | Ayla vergelijkt {n} vacatures met wat je koos… |
+| Vraag om de kluis (iPhone) | Ja / Kies zelf / Nee |
+| Na "Kies zelf" (jouw bericht) | Gebruik het item dat ik koos. / Gebruik de {n} gegevens die ik koos. |
+| Boven de gevonden vacatures | Gezocht op: {zoekwoorden} (en {verwante functie}) in {plaats} |
+| Welke gegevens Ayla gebruikte | Uit je kluis: {categorieën} / Ayla gebruikte de {n} gegevens die je koos. / Ayla gebruikte het item dat je koos. / Ayla keek hiervoor niet in je kluis. |
+| Knop om gegevens te kiezen | Kies gegevens / Andere gegevens kiezen |
+| Datum in de vacature | Geplaatst op {dag} {maand} |
 | Ayla vergelijkt (met kluis) | Ayla vergelijkt {n} vacatures met je kluis… |
 | Ayla bekijkt (zonder kluis) | Ayla bekijkt {n} vacatures… |
 

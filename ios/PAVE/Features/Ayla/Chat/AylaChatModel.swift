@@ -575,13 +575,9 @@ final class AylaChatModel {
     /// Items from the vault chosen with the plus button: the conversation is about them from here on.
     func attach(_ items: [VaultItem]) {
         guard let first = items.first else { return }
-        if items.count == 1 {
-            context = AylaRequest.Context(screen: .vaultItem, itemId: first.id)
-            contextTitle = first.title
-        } else {
-            context = AylaRequest.Context(screen: .vault, itemIds: items.map(\.id))
-            contextTitle = AylaMessages.contextItems(items.count)
-        }
+        // Chosen items are all Ayla uses in this conversation, also when it is one: she sees nothing else of the vault.
+        context = AylaRequest.Context(screen: .vault, itemIds: items.map(\.id), vacancy: context?.vacancy)
+        contextTitle = items.count == 1 ? first.title : AylaMessages.contextItems(items.count)
     }
 
     func clearContext() {
@@ -597,8 +593,19 @@ final class AylaChatModel {
 
     /// A vacancy is open in the vacancies panel: "past deze bij mij?" is about that one; nil is the list again.
     func showVacancy(_ vacancy: Vacancy?) {
+        let open = vacancy.map(AylaRequest.OpenVacancy.init)
+        // With items chosen for the conversation, the vacancy goes along with them.
+        if let chosen = context, chosen.itemIds?.isEmpty == false {
+            context = AylaRequest.Context(screen: chosen.screen, itemIds: chosen.itemIds, vacancy: open)
+            return
+        }
         guard contextTitle == nil, context == nil || context?.screen == .vacancies else { return }
-        context = AylaRequest.Context(screen: .vacancies, vacancy: vacancy.map(AylaRequest.OpenVacancy.init))
+        context = AylaRequest.Context(screen: .vacancies, vacancy: open)
+    }
+
+    /// How many items you chose for this conversation; nil when Ayla uses everything she may see.
+    var chosenItemCount: Int? {
+        context?.itemIds.flatMap { $0.isEmpty ? nil : $0.count }
     }
 
     func hideScreen(_ screen: AylaScreen) {

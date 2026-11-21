@@ -1,11 +1,11 @@
 import { type AylaReply, type AylaRequest, type Block, type Status, CATEGORIES, type Category, type RequirementLink, type Screen, SCREENS, type Vacancy } from './contract.ts'
 import type { AllowedVault } from './vault.ts'
-import { cleanPurpose, CONSENT_QUESTION_CHOICES, consentQuestion, mayLookInVault, vaultConsent } from './consent.ts'
+import { cleanPurpose, consentChoices, consentQuestion, mayLookInVault, type VaultConsent, vaultConsent } from './consent.ts'
 import { cleanMemories, type Memory, type MemorySuggestion, usedNotes } from './memory.ts'
 import type { ContentPart, ChatMessage, Complete } from './openrouter.ts'
 import { buildSystemPrompt } from './prompt.ts'
 import { vaultProposal } from './proposal.ts'
-import type { FoundVacancy, SearchVacancies } from './vacancies.ts'
+import { type FoundVacancy, mergeFound, type SearchVacancies } from './vacancies.ts'
 
 /** A message so far. An Ayla turn says whether it asked to look in the vault, for the consent of this conversation. */
 export interface PastMessage { role: 'user' | 'ayla'; text: string; askedVault?: boolean }
@@ -57,10 +57,26 @@ export function toPastMessage(message: StoredMessage): PastMessage {
     const files = Array.isArray(names) ? names.filter((n): n is string => typeof n === 'string' && !!n) : []
     return { role: 'user', text: files.length ? `${message.text}\n(bijlagen: ${files.join(', ')})` : message.text }
   }
+  // The cards under an answer are not in its text: without them a later "de tweede" or "meer zoals die" means nothing.
+  const shown = shownVacancies(message.reply?.blocks)
+  const said = shown ? `${message.text}\n${shown}` : message.text
   const asked = !!message.reply?.accessRequest
-  if (!asked) return { role: message.role, text: message.text }
+  if (!asked) return { role: message.role, text: said }
   const question = message.reply?.question?.text
-  return { role: 'ayla', text: question ? `${message.text}\n${question}` : message.text, askedVault: true }
+  return { role: 'ayla', text: question ? `${said}\n${question}` : said, askedVault: true }
+}
+
+/** The vacancies an answer showed, in the order of the cards, with what was searched for. */
+function shownVacancies(blocks: Block[] | undefined): string | null {
+  const block = (blocks ?? []).find((b): b is Extract<Block, { type: 'vacancies' }> => b?.type === 'vacancies' && Array.isArray(b.items) && b.items.length > 0)
+  if (!block) return null
+  const search = block.search
+  const terms = search ? `, gezocht op "${search.what}"${search.also ? ` en "${search.also}"` : ''}${search.where ? ` in ${search.where}` : ''}` : ''
+  const list = block.items.slice(0, 8).map((v, i) => {
+    const fit = [v.matches?.length ? `past: ${v.matches.map((m) => m.skill).join(', ')}` : '', v.skillGap?.length ? `mist: ${v.skillGap.map((m) => m.skill).join(', ')}` : ''].filter(Boolean).join('; ')
+    return `${i + 1}. ${v.title} bij ${v.company}${v.city ? ` in ${v.city}` : ''}${fit ? ` [${fit}]` : ''}`
+  })
+  return `(Getoonde vacatures${terms}: ${list.join('; ')})`
 }
 const NAVIGABLE = new Set<Screen>(['home', 'vault', 'addEvidence', 'plans', 'vacancies', 'profile', 'settings'])
 const FALLBACK_TEXT = 'Sorry, dat lukte me even niet. Wil je het nog een keer vragen?'
@@ -69,7 +85,7 @@ interface ModelOutput {
   text: string
   question: { text: string; choices: { id: string; label: string }[] } | null
   navigation: { screen: string; item?: number | null } | null
-  vacancySearch: { what: string; where: string } | null
+  vacancySearch: { what: string; where: string; also: string | null } | null
   vacancyMatches: unknown
   title: string | null
   memories: unknown
@@ -87,7 +103,10 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   const asked = vaultConsent(input.history, request)
   const consent = asked === 'notAsked' && input.project?.sourceIds?.length ? 'granted' : asked
   const mayLook = mayLookInVault(consent)
-  const vault = mayLook ? input.vault : undefined
+  // Items the user picked for this conversation are all Ayla uses, not the rest of what she may see.
+  const chosen = request.context?.itemIds
+  const allowed = mayLook ? input.vault : undefined
+  const vault = allowed?.status === 'on' && chosen?.length ? { ...allowed, items: allowed.items.filter((item) => chosen.includes(item.id)) } : allowed
   const messages: ChatMessage[] = [
     { role: 'system', content: buildSystemPrompt({ device: request.device, input: request.input, firstName: input.firstName, context: request.context, memory, project: input.project, vault, vaultConsent: consent }) },
     ...input.history.slice(-HISTORY_LIMIT).map((m): ChatMessage => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text })),
@@ -112,15 +131,15 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   input.signal?.addEventListener('abort', () => first.abort())
   let asksVault: ModelOutput | null = null
   // The search starts as soon as the model wrote what to search for, while it still writes the rest.
-  let early: { what: string; where: string; found: Promise<SearchResult> } | null = null
+  let early: (SearchTerms & { found: Promise<SearchResult> }) | null = null
   const firstOptions = {
     signal: first.signal,
     onContent: (content: string) => {
       showText(content)
       const terms = early ? null : vacancySearchSoFar(content)
       if (terms) {
-        input.onStatus?.({ kind: 'vacancySearch', ...terms })
-        early = { ...terms, found: search(deps.searchVacancies, terms.what, terms.where) }
+        input.onStatus?.(searchStatus(terms))
+        early = { ...terms, found: searchTerms(deps.searchVacancies, terms) }
       }
       if (mayLook || asksVault) return
       const ask = consentAskSoFar(content)
@@ -145,18 +164,22 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   const blocks: Block[] = []
 
   if (output.vacancySearch) {
-    const { what, where } = output.vacancySearch
-    const started = early as { what: string; where: string; found: Promise<SearchResult> } | null
-    const sameSearch = started && started.what === what && started.where === where
-    if (!sameSearch) input.onStatus?.({ kind: 'vacancySearch', what, where })
-    const found = sameSearch ? await started.found : await search(deps.searchVacancies, what, where)
-    if (found.status === 'ok' && found.items.length) input.onStatus?.({ kind: 'vacancyMatch', count: found.items.length, withVault: mayLook })
-    messages.push({ role: 'assistant', content: JSON.stringify(output) }, { role: 'system', content: describeSearch(found, mayLook) })
+    const terms = output.vacancySearch
+    const started = early as (SearchTerms & { found: Promise<SearchResult> }) | null
+    const sameSearch = started && started.what === terms.what && started.where === terms.where && started.also === terms.also
+    if (!sameSearch) input.onStatus?.(searchStatus(terms))
+    const found = sameSearch ? await started.found : await searchTerms(deps.searchVacancies, terms)
+    if (found.status === 'ok' && found.items.length) {
+      const picked = vault?.status === 'on' && chosen?.length ? { chosen: vault.items.length } : {}
+      input.onStatus?.({ kind: 'vacancyMatch', count: found.items.length, withVault: mayLook, ...picked })
+    }
+    messages.push({ role: 'assistant', content: JSON.stringify(output) }, { role: 'system', content: describeSearch(found, mayLook, consent) })
     output = parseOutput((await deps.complete(messages, options)).content)
     if (found.status === 'ok' && found.items.length && request.device !== 'watch') {
-      // What fits and what is missing only with the vault allowed, and only what the vacancy text really says.
-      const items = mayLook ? withMatches(found.items, output.vacancyMatches) : found.items.map((f) => f.vacancy)
-      blocks.push({ type: 'vacancies', items })
+      // What fits and what is missing only with the vault allowed, and only what the vacancy text really says. The
+      // best fit comes first.
+      const items = mayLook ? bestFirst(withMatches(found.items, output.vacancyMatches)) : found.items.map((f) => f.vacancy)
+      blocks.push({ type: 'vacancies', items, search: { what: terms.what, where: terms.where, ...(terms.also ? { also: terms.also } : {}) } })
     }
   }
 
@@ -181,7 +204,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
     const question = consentQuestion(purpose)
     const lead = withoutConsentAsk(reply.text)
     reply.text = lead || question
-    reply.question = { text: lead ? question : '', choices: CONSENT_QUESTION_CHOICES }
+    reply.question = { text: lead ? question : '', choices: consentChoices(request.device) }
     delete reply.navigation
   }
   // The user just said no to what Ayla offered: she does not offer it again, whatever the model wrote.
@@ -273,6 +296,26 @@ export function withAttachments(request: AylaRequest): string | ContentPart[] {
 
 const SOURCE_NAMES: Record<Vacancy['source'], string> = { example: 'voorbeelden', adzuna: 'Adzuna', jooble: 'Jooble', web: 'internet' }
 
+interface SearchTerms { what: string; where: string; also: string | null }
+
+function searchStatus(terms: SearchTerms): Status {
+  return { kind: 'vacancySearch', what: terms.what, where: terms.where, ...(terms.also ? { also: terms.also } : {}) }
+}
+
+/** The search itself, and a second one beside it when Ayla also looks for a related job; each vacancy once. */
+async function searchTerms(searchVacancies: SearchVacancies | undefined, terms: SearchTerms): Promise<SearchResult> {
+  const also = terms.also && terms.also.toLocaleLowerCase('nl') !== terms.what.toLocaleLowerCase('nl') ? [terms.also] : []
+  const results = await Promise.all([terms.what, ...also].map((what) => search(searchVacancies, what, terms.where)))
+  const found = results.flatMap((result) => (result.status === 'ok' ? [result.items] : []))
+  return found.length ? { status: 'ok', items: mergeFound(found) } : results[0]
+}
+
+/** The vacancy that fits best first: more that fits, less that is missing. Vacancies without a match keep their place. */
+export function bestFirst(vacancies: Vacancy[]): Vacancy[] {
+  const score = (v: Vacancy) => v.matches.length * 2 - v.skillGap.length
+  return vacancies.map((vacancy, index) => ({ vacancy, index })).sort((a, b) => score(b.vacancy) - score(a.vacancy) || a.index - b.index).map((entry) => entry.vacancy)
+}
+
 type SearchResult = { status: 'ok'; items: FoundVacancy[] } | { status: 'unavailable' } | { status: 'failed' }
 
 async function search(searchVacancies: SearchVacancies | undefined, what: string, where: string): Promise<SearchResult> {
@@ -284,11 +327,13 @@ async function search(searchVacancies: SearchVacancies | undefined, what: string
   }
 }
 
-function describeSearch(result: SearchResult, mayLook = false): string {
+function describeSearch(result: SearchResult, mayLook = false, consent: VaultConsent = 'notAsked'): string {
   const matching = mayLook
     ? ' Vul vacancyMatches: per vacature wat past en wat ontbreekt, met de letterlijke tekst uit die vacature waar het uit blijkt. Noem in text kort welke het best past en waarom, en het grootste gat met een concrete stap om dat te halen (een cursus, certificaat of project), als mogelijkheid en niet als garantie.'
-    : ' Je mag niet in de kluis kijken, dus laat vacancyMatches leeg. Je kunt zeggen dat je ook kunt uitleggen wat bij de gebruiker past als je in de kluis mag kijken.'
-  const rules = `Bespreek alleen wat hieronder staat en verzin niets. Het is maar een stukje van de vacaturetekst, dus zeg niet dat je alle eisen kent. Zet vacancySearch op null.${matching}`
+    : consent === 'declined'
+      ? ' Je mag niet in de kluis kijken, dus laat vacancyMatches leeg en vraag er niet opnieuw om.'
+      : ' Je mag nog niet in de kluis kijken, dus laat vacancyMatches leeg. Zet askVault op "te laten zien welke vacatures bij je passen": PAVE vraagt dat dan onder je antwoord, en de gebruiker kan ook zelf kiezen welke gegevens je gebruikt.'
+  const rules = `Bespreek alleen wat hieronder staat en verzin niets. Het is maar een stukje van de vacaturetekst, dus zeg niet dat je alle eisen kent. Noem een vacature bij functie en bedrijf, nooit bij nummer: de kaarten kunnen in een andere volgorde staan. Zet vacancySearch op null.${matching}`
   if (result.status === 'unavailable') return `Vacatures zoeken is nog niet ingesteld. Zeg dat eerlijk en kort. Zet vacancySearch op null.`
   if (result.status === 'failed') return `Vacatures zoeken lukte nu niet. Zeg dat eerlijk en kort. Zet vacancySearch op null.`
   if (!result.items.length) return `Er zijn geen vacatures gevonden. Zeg dat en stel andere zoekwoorden voor. Zet vacancySearch op null.`
@@ -340,12 +385,13 @@ export function withMatches(found: FoundVacancy[], raw: unknown): Vacancy[] {
 }
 
 /** The search terms once the model wrote them completely; null before that. */
-export function vacancySearchSoFar(content: string): { what: string; where: string } | null {
-  const found = content.match(/"vacancySearch"\s*:\s*\{\s*"what"\s*:\s*"((?:[^"\\]|\\.)*)"\s*,\s*"where"\s*:\s*"((?:[^"\\]|\\.)*)"\s*\}/)
+export function vacancySearchSoFar(content: string): SearchTerms | null {
+  const found = content.match(/"vacancySearch"\s*:\s*\{\s*"what"\s*:\s*"((?:[^"\\]|\\.)*)"\s*,\s*"where"\s*:\s*"((?:[^"\\]|\\.)*)"\s*(?:,\s*"also"\s*:\s*(?:null|"((?:[^"\\]|\\.)*)")\s*)?\}/)
   if (!found) return null
   try {
     const what = (JSON.parse(`"${found[1]}"`) as string).trim()
-    return what ? { what, where: (JSON.parse(`"${found[2]}"`) as string).trim() } : null
+    const also = found[3] ? (JSON.parse(`"${found[3]}"`) as string).trim() : ''
+    return what ? { what, where: (JSON.parse(`"${found[2]}"`) as string).trim(), also: also || null } : null
   } catch {
     return null
   }
@@ -373,7 +419,11 @@ function parseOutput(content: string): ModelOutput {
       question: json.question && Array.isArray(json.question.choices) ? json.question : null,
       navigation: json.navigation && typeof json.navigation.screen === 'string' ? json.navigation : null,
       vacancySearch: json.vacancySearch && typeof json.vacancySearch.what === 'string' && json.vacancySearch.what.trim()
-        ? { what: json.vacancySearch.what.trim(), where: String(json.vacancySearch.where ?? '').trim() }
+        ? {
+          what: json.vacancySearch.what.trim(),
+          where: String(json.vacancySearch.where ?? '').trim(),
+          also: typeof json.vacancySearch.also === 'string' && json.vacancySearch.also.trim() ? json.vacancySearch.also.trim() : null,
+        }
         : null,
       vacancyMatches: Array.isArray(json.vacancyMatches) ? json.vacancyMatches : [],
       title: typeof json.title === 'string' ? json.title : null,

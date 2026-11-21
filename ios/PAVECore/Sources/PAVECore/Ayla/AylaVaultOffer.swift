@@ -5,6 +5,9 @@ import Foundation
 /// addVaultItem. Only a request to put something in the vault gets the question without that; asking what is in the
 /// vault does not, and neither does her question whether she may look in it (accessRequest).
 public enum AylaVaultOffer {
+    /// The choice "Kies zelf" on Ayla's question about the vault: the app opens the picker instead of answering.
+    public static let chooseChoiceID = "choose"
+
     public static let question = AylaReply.Question(
         text: "Wil je iets toevoegen?",
         choices: [AylaReply.Choice(id: "yes", label: "Ja"), AylaReply.Choice(id: "no", label: "Nee")]

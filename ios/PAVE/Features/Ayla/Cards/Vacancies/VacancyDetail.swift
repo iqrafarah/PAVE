@@ -17,7 +17,7 @@ struct VacancyDetail: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 26) {
                 VStack(alignment: .leading, spacing: 14) {
-                    VacancyHeader(vacancy: vacancy)
+                    VacancyHeader(vacancy: vacancy, showsPosted: true)
                         .padding(.trailing, 18)
                     VacancyActions(vacancy: vacancy, isSaved: isSaved, onToggleSave: onToggleSave, onAsk: onAsk)
                         .padding(.trailing, 13)

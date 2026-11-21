@@ -69,6 +69,76 @@ function plain(value: unknown): string {
     .trim()
 }
 
+/** As many cards as a reply shows. */
+export const MAX_VACANCIES = 6
+
+const sameAs = (v: Vacancy) => `${v.title}|${v.company.replace(/^via /i, '')}`.toLocaleLowerCase('nl').replace(/[^a-z0-9|]+/g, ' ').trim()
+
+/** Lists in turn (first of each, second of each), each vacancy once; a second find only brings its longer text. */
+export function mergeFound(lists: FoundVacancy[][], max = MAX_VACANCIES): FoundVacancy[] {
+  const merged: FoundVacancy[] = []
+  const place = new Map<string, number>()
+  const longest = Math.max(0, ...lists.map((list) => list.length))
+  for (let i = 0; i < longest; i++) {
+    for (const list of lists) {
+      const found = list[i]
+      if (!found) continue
+      const at = place.get(sameAs(found.vacancy))
+      if (at === undefined) {
+        if (merged.length >= max) continue
+        place.set(sameAs(found.vacancy), merged.length)
+        merged.push(found)
+      } else if (found.snippet.length > merged[at].snippet.length) {
+        merged[at] = { vacancy: { ...merged[at].vacancy, summary: found.snippet }, snippet: found.snippet }
+      }
+    }
+  }
+  return merged
+}
+
+/**
+ * A job API with the web search beside it: the API's vacancies first, the web's after them, and a vacancy both found
+ * keeps the longer piece of text. The web gets a moment after the API answered; when the API finds nothing or fails,
+ * the web is the source.
+ */
+export function withSupport(primary: SearchVacancies | undefined, support: SearchVacancies, waitMs = 6000): SearchVacancies {
+  if (!primary) return support
+  return async (what, where) => {
+    let supportFailed = false
+    const extra = support(what, where).catch(() => {
+      supportFailed = true
+      return [] as FoundVacancy[]
+    })
+    let main: FoundVacancy[] = []
+    let mainFailed = false
+    try {
+      main = await primary(what, where)
+    } catch {
+      mainFailed = true
+    }
+    if (!main.length) {
+      const found = await extra
+      if (mainFailed && supportFailed) throw new Error('every source failed')
+      return found
+    }
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const late = await Promise.race([extra, new Promise<FoundVacancy[]>((resolve) => { timer = setTimeout(() => resolve([]), waitMs) })])
+    clearTimeout(timer)
+    const merged = mergeFound([main])
+    const place = new Map(merged.map((found, index) => [sameAs(found.vacancy), index]))
+    for (const found of late) {
+      const at = place.get(sameAs(found.vacancy))
+      if (at !== undefined) {
+        if (found.snippet.length > merged[at].snippet.length) merged[at] = { vacancy: { ...merged[at].vacancy, summary: found.snippet }, snippet: found.snippet }
+      } else if (merged.length < MAX_VACANCIES) {
+        place.set(sameAs(found.vacancy), merged.length)
+        merged.push(found)
+      }
+    }
+    return merged
+  }
+}
+
 /** Tries each source in turn: the next one when a source fails or finds nothing. */
 export function firstThatFinds(sources: SearchVacancies[]): SearchVacancies | undefined {
   if (!sources.length) return undefined
@@ -118,8 +188,10 @@ export function toJoobleVacancy(raw: unknown): FoundVacancy | null {
   const salary = salaryFrom(plain(r.salary))
   if (salary) vacancy.salary = salary
   if (typeof r.link === 'string' && r.link.startsWith('https://')) vacancy.url = r.link
-  const snippet = plain(r.snippet).slice(0, 500)
+  const snippet = plain(r.snippet).replace(/^\.{3}\s*|\s*\.{3}$/g, '').slice(0, 500)
   if (snippet) vacancy.summary = snippet
+  const day = typeof r.updated === 'string' ? r.updated.match(/^\d{4}-\d{2}-\d{2}/)?.[0] : undefined
+  if (day) vacancy.postedAt = day
   return { vacancy, snippet }
 }
 

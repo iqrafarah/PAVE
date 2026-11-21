@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { test } from 'node:test'
-import { answer, cleanTitle, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
+import { answer, bestFirst, cleanTitle, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
 import { parseRequest } from '../contract.ts'
 import { openRouterCompletion } from '../openrouter.ts'
 import { buildSystemPrompt } from '../prompt.ts'
 import { loadMemory, type MemoryCategory } from '../memory.ts'
-import { firstThatFinds, fromWebAnswer, salaryFrom, toFoundVacancy, toJoobleVacancy } from '../vacancies.ts'
+import { firstThatFinds, fromWebAnswer, mergeFound, salaryFrom, toFoundVacancy, toJoobleVacancy, withSupport } from '../vacancies.ts'
 
 const request = { text: 'Welke banen passen bij mij?', device: 'phone' as const, input: 'text' as const }
 const ids = () => { let n = 0; return () => `id_${++n}` }
@@ -124,7 +124,7 @@ test('Ayla asks before she looks in the vault, and sees nothing of it yet', asyn
   assert.match(reply.accessRequest?.id ?? '', /^id_\d+$/)
   assert.deepEqual({ ...reply.accessRequest, id: undefined }, { id: undefined, purpose: 'je diploma te zoeken', categories: [] })
   assert.equal(reply.question?.text, 'Mag ik in je kluis kijken om je diploma te zoeken?')
-  assert.deepEqual(reply.question?.choices.map((c) => c.label), ['Ja', 'Nee'])
+  assert.deepEqual(reply.question?.choices.map((c) => c.label), ['Ja', 'Kies zelf', 'Nee'])
   assert.equal(reply.navigation, undefined)
   assert.doesNotMatch(fake.calls[0][0].content, /Propedeuse|Eindstage/)
 })
@@ -136,7 +136,7 @@ test('the question for the vault is asked once, also when the model asked it its
   const one = await answer({ request: ask, conversationId: 'c', history: [], vault }, { complete: only.complete, newId: ids() })
   assert.equal(one.text, 'Mag ik in je kluis kijken om je diploma te zoeken?')
   assert.equal(one.question?.text, '')
-  assert.deepEqual(one.question?.choices.map((c) => c.label), ['Ja', 'Nee'])
+  assert.deepEqual(one.question?.choices.map((c) => c.label), ['Ja', 'Kies zelf', 'Nee'])
   // A lead plus the ask in other words: the lead stays, the fixed question follows it.
   const both = model(say('Dat zoek ik voor je op. Zal ik even in je kluis kijken?', { askVault: 'je diploma te zoeken' }))
   const two = await answer({ request: ask, conversationId: 'c', history: [], vault }, { complete: both.complete, newId: ids() })
@@ -691,10 +691,11 @@ test('an open vacancy is sent along, and its text is data for Ayla', () => {
   assert.match(prompt, /ontbreekt: Scrum/)
 })
 
-test('a vacancy in the context is only allowed with the vacancies screen and within limits', () => {
+test('a vacancy in the context is only allowed where vacancies show, and within limits', () => {
   const vacancy = { title: 'Junior developer', company: 'Bedrijf', matches: [], skillGap: [] }
   assert.equal(typeof parseRequest({ text: 'Hoi', device: 'phone', input: 'text', context: { screen: 'vacancies', vacancy } }), 'object')
-  assert.equal(typeof parseRequest({ text: 'Hoi', device: 'phone', input: 'text', context: { screen: 'vault', vacancy } }), 'string')
+  assert.equal(typeof parseRequest({ text: 'Hoi', device: 'phone', input: 'text', context: { screen: 'vault', itemIds: ['a'], vacancy } }), 'object')
+  assert.equal(typeof parseRequest({ text: 'Hoi', device: 'phone', input: 'text', context: { screen: 'settings', vacancy } }), 'string')
   assert.equal(typeof parseRequest({ text: 'Hoi', device: 'phone', input: 'text', context: { screen: 'vacancies', vacancy: { ...vacancy, summary: 'x'.repeat(601) } } }), 'string')
   assert.equal(typeof parseRequest({ text: 'Hoi', device: 'phone', input: 'text', context: { screen: 'vacancies', vacancy: { ...vacancy, matches: Array(9).fill('a') } } }), 'string')
 })
@@ -720,12 +721,12 @@ function streamingModel(output: object) {
   return { complete, written: () => written, content }
 }
 
-test('a question about the vault stops the model at once, with Ja and Nee', async () => {
+test('a question about the vault stops the model at once, with Ja, Kies zelf and Nee', async () => {
   const fake = streamingModel({ text: 'Dan kijk ik even mee.', askVault: 'om vacatures te zoeken die bij je passen', question: null, navigation: null, usedVaultItems: [], title: 'Vacatures', usedMemories: [], memories: [], vaultItem: null, vacancySearch: null, vacancyMatches: [] })
   const reply = await answer({ request, conversationId: 'c', history: [], onText: () => {} }, { complete: fake.complete, newId: ids() })
   assert.ok(fake.written().length < fake.content.length - 40)
   assert.ok(reply.accessRequest)
-  assert.deepEqual(reply.question?.choices.map((c) => c.label), ['Ja', 'Nee'])
+  assert.deepEqual(reply.question?.choices.map((c) => c.label), ['Ja', 'Kies zelf', 'Nee'])
 })
 
 test('stopping by the user still stops, also before the vault question', async () => {
@@ -760,7 +761,9 @@ test('what the model wrote so far is only used once it is complete', () => {
   assert.equal(consentAskSoFar('{"text":"Hoi","askVault":null'), null)
   assert.equal(consentAskSoFar('{"text":"Hoi","askVault":"om je te helpen"')?.askVault, 'om je te helpen')
   assert.equal(vacancySearchSoFar('{"vacancySearch":{"what":"dev","where":"Ein'), null)
-  assert.deepEqual(vacancySearchSoFar('{"vacancySearch":{"what":"dev \\"x\\"","where":""}'), { what: 'dev "x"', where: '' })
+  assert.deepEqual(vacancySearchSoFar('{"vacancySearch":{"what":"dev \\"x\\"","where":""}'), { what: 'dev "x"', where: '', also: null })
+  assert.equal(vacancySearchSoFar('{"vacancySearch":{"what":"dev","where":"","also":"tes'), null)
+  assert.deepEqual(vacancySearchSoFar('{"vacancySearch":{"what":"dev","where":"Eindhoven","also":"tester"}'), { what: 'dev', where: 'Eindhoven', also: 'tester' })
 })
 
 
@@ -805,4 +808,122 @@ test('the next source is tried when one fails or finds nothing', async () => {
   await assert.rejects(firstThatFinds([async () => { throw new Error('down') }])!('dev', ''))
   assert.deepEqual(await firstThatFinds([async () => []])!('dev', ''), [])
   assert.equal(firstThatFinds([]), undefined)
+})
+
+
+const job = (id: string, title: string, company: string, snippet = '', source: 'jooble' | 'web' = 'jooble') =>
+  ({ vacancy: { id, title, company, source, matches: [], skillGap: [] }, snippet })
+
+test('items chosen for the conversation are all Ayla sees and searches with', async () => {
+  const item = (id: string, title: string) => ({ id, kind: 'internships', category: 'Stage', title, status: 'bevestigd', skills: [], files: [] })
+  const chosenVault = { status: 'on' as const, items: [item('a', 'Stage bij LiveWall'), item('b', 'Diploma PXL')] }
+  const statuses: unknown[] = []
+  const fake = model(say('', { vacancySearch: { what: 'developer', where: '', also: null } }), say('Hier zijn ze.'))
+  await answer(
+    { request: { ...request, context: { screen: 'vault', itemIds: ['a'] } }, conversationId: 'c', history: [], vault: chosenVault as never, onStatus: (s) => statuses.push(s) },
+    { complete: fake.complete, newId: ids(), searchVacancies: async () => [job('1', 'Developer', 'Bedrijf', 'Je bouwt apps.')] },
+  )
+  assert.match(fake.calls[0][0].content, /Stage bij LiveWall/)
+  assert.doesNotMatch(fake.calls[0][0].content, /Diploma PXL/)
+  assert.match(fake.calls[0][0].content, /zoek en vergelijk alleen met deze items/)
+  assert.deepEqual(statuses.at(-1), { kind: 'vacancyMatch', count: 1, withVault: true, chosen: 1 })
+})
+
+test('after a search without the vault Ayla asks to show what fits, with Kies zelf on the phone only', async () => {
+  for (const [device, labels] of [['phone', ['Ja', 'Kies zelf', 'Nee']], ['web', ['Ja', 'Nee']]] as const) {
+    const fake = model(
+      say('', { vacancySearch: { what: 'junior developer', where: 'Eindhoven', also: null } }),
+      say('Ik vond er een.', { askVault: 'te laten zien welke vacatures bij je passen' }),
+    )
+    const reply = await answer({ request: { ...request, device }, conversationId: 'c', history: [] }, {
+      complete: fake.complete, newId: ids(), searchVacancies: async () => [job('1', 'Junior developer', 'Bedrijf')],
+    })
+    assert.match(fake.calls[1].at(-1)!.content, /Zet askVault op/)
+    assert.equal(reply.blocks.length, 1)
+    assert.ok(reply.accessRequest)
+    assert.deepEqual(reply.question?.choices.map((c) => c.label), [...labels])
+    assert.deepEqual((reply.blocks[0] as { search?: unknown }).search, { what: 'junior developer', where: 'Eindhoven' })
+  }
+})
+
+test('a related job is searched beside the first, each vacancy once', async () => {
+  const asked: string[] = []
+  const statuses: unknown[] = []
+  const fake = model(say('', { vacancySearch: { what: 'developer', where: 'Eindhoven', also: 'tester' } }), say('Hier zijn ze.'))
+  const reply = await answer({ request, conversationId: 'c', history: [], onStatus: (s) => statuses.push(s) }, {
+    complete: fake.complete, newId: ids(),
+    searchVacancies: async (what) => {
+      asked.push(what)
+      return what === 'developer' ? [job('1', 'Developer', 'Bedrijf'), job('2', 'Fullstack', 'Ander')] : [job('3', 'Tester', 'Bedrijf'), job('9', 'developer', 'bedrijf')]
+    },
+  })
+  assert.deepEqual(asked.sort(), ['developer', 'tester'])
+  assert.deepEqual((reply.blocks[0] as { items: { id: string }[] }).items.map((v) => v.id), ['1', '3', '2'])
+  assert.deepEqual(statuses[0], { kind: 'vacancySearch', what: 'developer', where: 'Eindhoven', also: 'tester' })
+})
+
+test('the vacancy that fits best comes first', () => {
+  const v = (id: string, matches: number, gaps: number) => ({
+    id, title: id, company: 'c', source: 'jooble' as const,
+    matches: Array.from({ length: matches }, (_, i) => ({ skill: `m${i}`, requirement: 'r' })),
+    skillGap: Array.from({ length: gaps }, (_, i) => ({ skill: `g${i}`, requirement: 'r' })),
+  })
+  assert.deepEqual(bestFirst([v('a', 0, 0), v('b', 2, 1), v('c', 1, 0), v('d', 0, 0)]).map((x) => x.id), ['b', 'c', 'a', 'd'])
+})
+
+test('a later turn knows which vacancies were shown and what was searched', () => {
+  const past = toPastMessage({ role: 'ayla', text: 'Ik vond er twee.', reply: { blocks: [{
+    type: 'vacancies', search: { what: 'developer', where: 'Eindhoven', also: 'tester' },
+    items: [
+      { id: '1', title: 'Developer', company: 'Bedrijf', city: 'Eindhoven', source: 'jooble', matches: [{ skill: 'React', requirement: 'r' }], skillGap: [{ skill: 'Scrum', requirement: 'r' }] },
+      { id: '2', title: 'Tester', company: 'Ander', source: 'web', matches: [], skillGap: [] },
+    ],
+  }] } })
+  assert.equal(past.text, 'Ik vond er twee.\n(Getoonde vacatures, gezocht op "developer" en "tester" in Eindhoven: 1. Developer bij Bedrijf in Eindhoven [past: React; mist: Scrum]; 2. Tester bij Ander)')
+  assert.equal(toPastMessage({ role: 'ayla', text: 'Hoi', reply: { blocks: [] } }).text, 'Hoi')
+})
+
+test('the web search supports the job API: more vacancies and more of their text', async () => {
+  const api = async () => [job('j1', 'Developer', 'Bedrijf', 'Kort.'), job('j2', 'Tester', 'Via werkzoeken.nl', 'Kort.')]
+  const web = async () => [job('w1', 'developer', 'bedrijf', 'Een veel langer stuk tekst over de vacature.', 'web'), job('w2', 'Designer', 'Studio', 'Tekst.', 'web')]
+  const found = await withSupport(api, web)('dev', '')
+  assert.deepEqual(found.map((f) => f.vacancy.id), ['j1', 'j2', 'w2'])
+  assert.equal(found[0].snippet, 'Een veel langer stuk tekst over de vacature.')
+  assert.equal(found[0].vacancy.summary, 'Een veel langer stuk tekst over de vacature.')
+  assert.equal(found[0].vacancy.source, 'jooble')
+})
+
+test('the web takes over when the job API fails or finds nothing, and a slow web is not waited for', async () => {
+  const web = async () => [job('w1', 'Designer', 'Studio', '', 'web')]
+  assert.equal((await withSupport(async () => { throw new Error('down') }, web)('dev', ''))[0].vacancy.id, 'w1')
+  assert.equal((await withSupport(async () => [], web)('dev', ''))[0].vacancy.id, 'w1')
+  await assert.rejects(withSupport(async () => { throw new Error('down') }, async () => { throw new Error('down') })('dev', ''))
+  const slow = () => new Promise<ReturnType<typeof job>[]>((resolve) => setTimeout(() => resolve([job('w9', 'Laat', 'Traag', '', 'web')]), 200))
+  assert.deepEqual((await withSupport(async () => [job('j1', 'Developer', 'Bedrijf')], slow, 10)('dev', '')).map((f) => f.vacancy.id), ['j1'])
+  assert.equal(withSupport(undefined, web), web)
+})
+
+test('lists are merged in turn and capped', () => {
+  const a = [job('a1', 'A1', 'x'), job('a2', 'A2', 'x'), job('a3', 'A3', 'x'), job('a4', 'A4', 'x')]
+  const b = [job('b1', 'B1', 'x'), job('b2', 'B2', 'x'), job('b3', 'B3', 'x'), job('b4', 'B4', 'x')]
+  assert.deepEqual(mergeFound([a, b]).map((f) => f.vacancy.id), ['a1', 'b1', 'a2', 'b2', 'a3', 'b3'])
+})
+
+test('a Jooble result keeps the day it was last seen', () => {
+  assert.equal(toJoobleVacancy({ id: 5, title: 'Developer', company: 'Bedrijf', updated: '2026-11-20T01:38:40.9600000' })?.vacancy.postedAt, '2026-11-20')
+  assert.equal(toJoobleVacancy({ id: 5, title: 'Developer', company: 'Bedrijf', updated: 'gisteren' })?.vacancy.postedAt, undefined)
+})
+
+test('choosing items right after Ayla asked counts as a fresh yes, for those items', async () => {
+  const item = (id: string, title: string) => ({ id, kind: 'internships', category: 'Stage', title, status: 'bevestigd', skills: [], files: [] })
+  const chosenVault = { status: 'on' as const, items: [item('a', 'Stage bij LiveWall'), item('b', 'Diploma PXL')] }
+  const history = [
+    { role: 'user' as const, text: 'Zoek vacatures die bij me passen' },
+    { role: 'ayla' as const, text: 'Mag ik in je kluis kijken om vacatures te zoeken die bij je passen?', askedVault: true },
+  ]
+  const fake = model(say('Ik zoek op developer.'))
+  await answer({ request: { ...request, text: 'Gebruik het item dat ik koos.', context: { screen: 'vault', itemIds: ['b'] } }, conversationId: 'c', history, vault: chosenVault as never }, { complete: fake.complete, newId: ids() })
+  assert.match(fake.calls[0][0].content, /gaf je net toestemming/)
+  assert.match(fake.calls[0][0].content, /Diploma PXL/)
+  assert.doesNotMatch(fake.calls[0][0].content, /Stage bij LiveWall/)
 })

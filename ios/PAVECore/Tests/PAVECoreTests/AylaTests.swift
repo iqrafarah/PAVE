@@ -57,7 +57,7 @@ struct AylaReplyTests {
     @Test(.enabled(if: AylaReplyTests.examplesAreAvailable))
     func vacanciesExampleKeepsEveryField() throws {
         let reply = try AylaReply.decode(Data(contentsOf: Self.examples.appending(path: "03-vacancies.json")))
-        guard case .vacancies(let items) = reply.blocks.first else {
+        guard case .vacancies(let items, _) = reply.blocks.first else {
             Issue.record("expected vacancies")
             return
         }
@@ -515,6 +515,12 @@ extension SupabaseAylaServiceTests {
         #expect(search == .success(.activity(.searchingVacancies(what: "developer", where: "Eindhoven"))))
         let match = streamEvent("status", #"{"kind":"vacancyMatch","count":5,"withVault":true}"#)
         #expect(match == .success(.activity(.comparingVacancies(count: 5, withVault: true))))
+        let both = streamEvent("status", #"{"kind":"vacancySearch","what":"developer","where":"","also":"tester"}"#)
+        #expect(both == .success(.activity(.searchingVacancies(what: "developer", where: "", also: "tester"))))
+        let chosen = streamEvent("status", #"{"kind":"vacancyMatch","count":3,"withVault":true,"chosen":2}"#)
+        #expect(chosen == .success(.activity(.comparingVacancies(count: 3, withVault: true, chosen: 2))))
+        let block = try? JSONDecoder().decode(AylaBlock.self, from: Data(#"{"type":"vacancies","items":[],"search":{"what":"developer","where":"Eindhoven","also":"tester"}}"#.utf8))
+        #expect(block == .vacancies([], search: VacancySearch(what: "developer", where: "Eindhoven", also: "tester")))
         #expect(streamEvent("status", #"{"kind":"somethingNew"}"#) == nil)
         #expect(streamEvent("status", #"{"kind":"vacancySearch","what":""}"#) == nil)
     }

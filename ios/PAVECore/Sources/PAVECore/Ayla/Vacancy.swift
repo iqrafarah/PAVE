@@ -70,8 +70,10 @@ public struct Vacancy: Codable, Hashable, Sendable, Identifiable {
     public var logoUrl: URL?
     public var url: URL?
     public var source: Source
-    /// A short piece of the vacancy text, as Adzuna gives it: never the whole text.
+    /// A short piece of the vacancy text, as the source gives it: never the whole text.
     public var summary: String?
+    /// The day the source last saw it, as "2026-11-20", when it says so.
+    public var postedAt: String?
     public var matches: [RequirementLink]
     public var skillGap: [RequirementLink]
 
@@ -86,6 +88,7 @@ public struct Vacancy: Codable, Hashable, Sendable, Identifiable {
         url: URL? = nil,
         source: Source,
         summary: String? = nil,
+        postedAt: String? = nil,
         matches: [RequirementLink] = [],
         skillGap: [RequirementLink] = []
     ) {
@@ -99,8 +102,22 @@ public struct Vacancy: Codable, Hashable, Sendable, Identifiable {
         self.url = url
         self.source = source
         self.summary = summary
+        self.postedAt = postedAt
         self.matches = matches
         self.skillGap = skillGap
+    }
+}
+
+/// What Ayla searched for, so the list can say so: the terms, the place, and a related job she looked for as well.
+public struct VacancySearch: Codable, Equatable, Sendable {
+    public var what: String
+    public var `where`: String
+    public var also: String?
+
+    public init(what: String, where place: String = "", also: String? = nil) {
+        self.what = what
+        self.where = place
+        self.also = also
     }
 }
 

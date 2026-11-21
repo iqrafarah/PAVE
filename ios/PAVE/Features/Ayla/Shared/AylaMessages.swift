@@ -1,3 +1,4 @@
+import Foundation
 import PAVECore
 
 /// Texts the chat shows. They have no web counterpart yet; agree on them with the web team.
@@ -7,12 +8,14 @@ enum AylaMessages {
     /// On one line where "Ayla denkt na…" stands, so a long search is shortened in the middle.
     static func activity(_ activity: AylaActivity) -> String {
         switch activity {
-        case .searchingVacancies(let what, let place):
-            place.isEmpty ? "Ayla zoekt vacatures: \(what)…" : "Ayla zoekt vacatures: \(what) in \(place)…"
-        case .comparingVacancies(let count, let withVault):
-            withVault
-                ? "Ayla vergelijkt \(count == 1 ? "1 vacature" : "\(count) vacatures") met je kluis…"
-                : "Ayla bekijkt \(count == 1 ? "1 vacature" : "\(count) vacatures")…"
+        case .searchingVacancies(let what, let place, let also):
+            let terms = also.map { "\(what) en \($0)" } ?? what
+            return place.isEmpty ? "Ayla zoekt vacatures: \(terms)…" : "Ayla zoekt vacatures: \(terms) in \(place)…"
+        case .comparingVacancies(let count, let withVault, let chosen):
+            let vacancies = count == 1 ? "1 vacature" : "\(count) vacatures"
+            guard withVault else { return "Ayla bekijkt \(vacancies)…" }
+            if let chosen, chosen > 0 { return "Ayla vergelijkt \(vacancies) met wat je koos…" }
+            return "Ayla vergelijkt \(vacancies) met je kluis…"
         }
     }
     static let vaultLabel = "Kluis"
@@ -45,6 +48,25 @@ enum AylaMessages {
     static let vacancySave = "Bewaren"
     static let vacancySavedLabel = "Bewaard"
     static let vacancyOpen = "Lees de hele vacature"
+    /// What you say after "Kies zelf": the items are sent along, these words say what they are for.
+    static func useChosen(_ count: Int) -> String {
+        count == 1 ? "Gebruik het item dat ik koos." : "Gebruik de \(count) gegevens die ik koos."
+    }
+    static func vacancySearchedFor(_ search: VacancySearch) -> String {
+        let terms = search.also.map { "\(search.what) en \($0)" } ?? search.what
+        return search.where.isEmpty ? "Gezocht op: \(terms)" : "Gezocht op: \(terms) in \(search.where)"
+    }
+    static let vacancyNoData = "Ayla keek hiervoor niet in je kluis."
+    static func vacancyChosenData(_ count: Int) -> String {
+        count == 1 ? "Ayla gebruikte het item dat je koos." : "Ayla gebruikte de \(count) gegevens die je koos."
+    }
+    static let vacancyChooseData = "Kies gegevens"
+    static let vacancyOtherData = "Andere gegevens kiezen"
+    /// "Geplaatst op 20 november", from the day the source gives ("2026-11-20"); nil when that is not a day.
+    static func vacancyPosted(_ day: String) -> String? {
+        guard let date = try? Date(day, strategy: .iso8601.year().month().day()) else { return nil }
+        return "Geplaatst op \(date.formatted(.dateTime.day().month(.wide).locale(Locale(identifier: "nl_NL"))))"
+    }
     static let vacancyTitle = "Vacature"
     static let vacancyFromText = "Uit de vacaturetekst"
     static func vacancyTextNote(_ source: Vacancy.Source) -> String {

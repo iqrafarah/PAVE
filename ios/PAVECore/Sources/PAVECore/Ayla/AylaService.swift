@@ -14,8 +14,10 @@ public enum AylaStreamEvent: Equatable, Sendable {
 
 /// What Ayla is busy with while she has nothing to say yet, so you see what is happening.
 public enum AylaActivity: Equatable, Sendable {
-    case searchingVacancies(what: String, where: String)
-    case comparingVacancies(count: Int, withVault: Bool)
+    /// also: a related job she searches beside it.
+    case searchingVacancies(what: String, where: String, also: String? = nil)
+    /// chosen: how many vault items you picked for this conversation, when that is what she compares with.
+    case comparingVacancies(count: Int, withVault: Bool, chosen: Int? = nil)
 }
 
 public protocol AylaService: Sendable {
@@ -259,6 +261,8 @@ public struct SupabaseAylaService: AylaService {
             let `where`: String?
             let count: Int?
             let withVault: Bool?
+            let also: String?
+            let chosen: Int?
         }
         switch name {
         case "start":
@@ -270,10 +274,10 @@ public struct SupabaseAylaService: AylaService {
             switch status.kind {
             case "vacancySearch":
                 guard let what = status.what, !what.isEmpty else { return nil }
-                return .success(.activity(.searchingVacancies(what: what, where: status.where ?? "")))
+                return .success(.activity(.searchingVacancies(what: what, where: status.where ?? "", also: status.also.flatMap { $0.isEmpty ? nil : $0 })))
             case "vacancyMatch":
                 guard let count = status.count, count > 0 else { return nil }
-                return .success(.activity(.comparingVacancies(count: count, withVault: status.withVault ?? false)))
+                return .success(.activity(.comparingVacancies(count: count, withVault: status.withVault ?? false, chosen: status.chosen)))
             default:
                 return nil
             }

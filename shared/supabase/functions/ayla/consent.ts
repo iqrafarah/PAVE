@@ -10,13 +10,23 @@ export type VaultConsent = 'notAsked' | 'granted' | 'justGranted' | 'declined'
 export interface ConsentTurn { role: 'user' | 'ayla'; text: string; askedVault?: boolean }
 
 export const CONSENT_QUESTION_CHOICES = [{ id: 'yes', label: 'Ja' }, { id: 'no', label: 'Nee' }]
+/** "Kies zelf": the app opens the vault picker and the user says which items Ayla may use for this conversation. */
+export const CONSENT_CHOOSE = { id: 'choose', label: 'Kies zelf' }
+
+/** Ja, Kies zelf and Nee where the app has the picker behind that choice; elsewhere Ja and Nee. */
+export function consentChoices(device: AylaRequest['device']) {
+  return device === 'phone' ? [CONSENT_QUESTION_CHOICES[0], CONSENT_CHOOSE, CONSENT_QUESTION_CHOICES[1]] : CONSENT_QUESTION_CHOICES
+}
 
 const YES = /^(ja|jazeker|ja graag|graag|prima|oké|oke|ok|okay|goed|is goed|mag|yes)\b/i
 const NO = /^(nee|liever niet|niet|no|nope)\b/i
 const MAX_PURPOSE_LENGTH = 140
 
 export function vaultConsent(history: ConsentTurn[], request: Pick<AylaRequest, 'text' | 'context'>): VaultConsent {
-  if (request.context?.screen === 'vaultItem' || request.context?.itemIds?.length) return 'granted'
+  if (request.context?.screen === 'vaultItem') return 'granted'
+  // Items picked for the conversation are a yes for those items; picked right after Ayla asked ("Kies zelf"), she goes
+  // on with what she asked it for.
+  if (request.context?.itemIds?.length) return history.at(-1)?.role === 'ayla' && history.at(-1)?.askedVault ? 'justGranted' : 'granted'
   const turns: ConsentTurn[] = [...history, { role: 'user', text: request.text }]
   let consent: VaultConsent = 'notAsked'
   for (let i = 0; i < turns.length - 1; i++) {

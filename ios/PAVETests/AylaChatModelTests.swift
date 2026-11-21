@@ -425,11 +425,29 @@ struct AylaChatModelTests {
         await waitUntilIdle(model)
         model.attach([VaultItem(id: "item-1", category: .internships, title: "Eindstage")])
         #expect(model.entries.count == 2)
-        #expect(model.context == AylaRequest.Context(screen: .vaultItem, itemId: "item-1"))
+        // One chosen item is still a choice: Ayla sees that item and nothing else of the vault.
+        #expect(model.context == AylaRequest.Context(screen: .vault, itemIds: ["item-1"]))
         #expect(model.contextTitle == "Eindstage")
+        #expect(model.chosenItemCount == 1)
         model.attach([VaultItem(id: "item-1", category: .internships, title: "Eindstage"), VaultItem(id: "item-2", category: .diplomas, title: "Propedeuse")])
         #expect(model.context == AylaRequest.Context(screen: .vault, itemIds: ["item-1", "item-2"]))
         #expect(model.contextTitle == "2 items uit je kluis")
+    }
+
+    @Test func anOpenVacancyGoesAlongWithTheChosenItems() async {
+        let model = AylaChatModel(service: FakeAyla())
+        let vacancy = Vacancy(id: "v", title: "Developer", company: "Bedrijf", source: .jooble)
+        model.attach([VaultItem(id: "item-1", category: .internships, title: "Eindstage")])
+        model.showVacancy(vacancy)
+        #expect(model.context?.itemIds == ["item-1"])
+        #expect(model.context?.vacancy?.title == "Developer")
+        model.showVacancy(nil)
+        #expect(model.context == AylaRequest.Context(screen: .vault, itemIds: ["item-1"]))
+        model.clearContext()
+        #expect(model.chosenItemCount == nil)
+        model.showVacancy(vacancy)
+        #expect(model.context?.screen == .vacancies)
+        #expect(model.context?.vacancy?.company == "Bedrijf")
     }
 
     @Test func aLoadedConversationShowsTheFilesAgain() async {

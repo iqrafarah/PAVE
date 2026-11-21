@@ -7,6 +7,9 @@ struct AylaVacancyShelf: View {
     let vacancies: [Vacancy]
     let model: AylaChatModel
     @Binding var tab: VacancyList.Tab
+    var search: VacancySearch?
+    var usedData: [AylaVaultCategory] = []
+    var onChooseData: (() -> Void)?
     let onAsk: (Vacancy) -> Void
     let onAskGap: (String, Vacancy) -> Void
 
@@ -27,7 +30,10 @@ struct AylaVacancyShelf: View {
                             .foregroundStyle(Color.inkMuted)
                     }
                     .padding(.top, 4)
-                    VacancyList(vacancies: vacancies, model: model, tab: $tab, onOpen: { driver.vacancy = $0 }, onAsk: onAsk)
+                    VacancyList(
+                        vacancies: vacancies, model: model, tab: $tab, search: search, usedData: usedData, onChooseData: onChooseData,
+                        onOpen: { driver.vacancy = $0 }, onAsk: onAsk
+                    )
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 28)
