@@ -10,7 +10,7 @@ struct VacancyHeader: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             // "Via werkzoeken.nl" (no company known) shows the letter of the site, not of "Via".
-            CompanyMonogram(name: vacancy.company.hasPrefix("Via ") ? String(vacancy.company.dropFirst(4)) : vacancy.company)
+            CompanyLogo(name: vacancy.company.hasPrefix("Via ") ? String(vacancy.company.dropFirst(4)) : vacancy.company, url: vacancy.logoUrl)
                 .padding(.top, 11)
             VStack(alignment: .leading, spacing: 0) {
                 Text(vacancy.title)

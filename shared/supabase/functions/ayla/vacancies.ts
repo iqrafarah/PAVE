@@ -69,6 +69,19 @@ function plain(value: unknown): string {
     .trim()
 }
 
+/** Whether a site answers, quickly: a logo is not worth waiting long for. Only the domain leaves PAVE. */
+export function siteChecker(fetchImpl: typeof fetch = fetch, timeoutMs = 2000): (domain: string) => Promise<boolean> {
+  return async (domain) => {
+    try {
+      const response = await fetchImpl(`https://${domain}/`, { method: 'HEAD', redirect: 'follow', signal: AbortSignal.timeout(timeoutMs), headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PAVE)' } })
+      // Some sites refuse HEAD or a visitor they do not know: they are there all the same.
+      return response.status < 400 || response.status === 403 || response.status === 405
+    } catch {
+      return false
+    }
+  }
+}
+
 /** As many cards as a reply shows. */
 export const MAX_VACANCIES = 6
 

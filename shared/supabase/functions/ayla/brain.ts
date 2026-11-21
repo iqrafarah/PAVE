@@ -37,6 +37,8 @@ export interface BrainDeps {
   /** Missing when no source for vacancies is configured. */
   searchVacancies?: SearchVacancies
   newId: () => string
+  /** Whether a site the model named for a company really is there; without it no logos are shown. */
+  siteExists?: (domain: string) => Promise<boolean>
 }
 
 export const HISTORY_LIMIT = 20
@@ -87,6 +89,7 @@ interface ModelOutput {
   navigation: { screen: string; item?: number | null } | null
   vacancySearch: { what: string; where: string; also: string | null } | null
   vacancyMatches: unknown
+  vacancySites: unknown
   title: string | null
   memories: unknown
   usedMemories: unknown
@@ -186,7 +189,9 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
     if (found.status === 'ok' && found.items.length && request.device !== 'watch') {
       // What fits and what is missing only with the vault allowed, and only what the vacancy text really says. The
       // best fit comes first.
-      const items = mayLook ? bestFirst(withMatches(found.items, output.vacancyMatches)) : found.items.map((f) => f.vacancy)
+      // A logo for the companies whose own site the model named: only a name that fits and a site that is there.
+      const withLogo = await withLogos(found.items, output.vacancySites, deps.siteExists)
+      const items = mayLook ? bestFirst(withMatches(withLogo, output.vacancyMatches)) : withLogo.map((f) => f.vacancy)
       blocks.push({ type: 'vacancies', items, search: { what: terms.what, where: terms.where, ...(terms.also ? { also: terms.also } : {}) } })
     }
   }
@@ -400,6 +405,50 @@ async function searchTerms(searchVacancies: SearchVacancies | undefined, terms: 
   return found.length ? { status: 'ok', items: mergeFound(found) } : results[0]
 }
 
+const NOT_A_COMPANY_SITE = /(^|\.)(jooble|adzuna|indeed|linkedin|glassdoor|werkzoeken|nationalevacaturebank|monsterboard|stepstone|intermediair|jobbird|werk|facebook|instagram|x|twitter|youtube|tiktok|wikipedia|google)\.[a-z.]+$/
+const GENERIC_WORDS = new Set(['groep', 'group', 'nederland', 'holding', 'diensten', 'services', 'solutions', 'international', 'gemeente', 'stichting', 'bedrijf', 'company', 'consultancy', 'software', 'techniek', 'technology'])
+
+/**
+ * Whether a domain can be this company's own site, by name alone: its main label is in the company's name, or the
+ * company's own word is in the label ("ogd.nl" for "OGD ict-diensten", "synseltechniek.nl" for "Synsel Techniek").
+ * A site the model made up for another company does not pass.
+ */
+export function siteFits(domain: string, company: string): boolean {
+  const site = domain.toLowerCase().trim().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '')
+  if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(site) || NOT_A_COMPANY_SITE.test(site) || /^via /i.test(company)) return false
+  const label = site.split('.').slice(-2)[0].replace(/-/g, '')
+  const letters = (text: string) => text.toLocaleLowerCase('nl').normalize('NFD').replace(/[^a-z0-9 ]/g, '')
+  const name = letters(company)
+  const words = name.split(' ').filter((word) => word.length >= 3 && !GENERIC_WORDS.has(word))
+  if (label.length < 3 || !words.length) return false
+  return name.replace(/ /g, '').includes(label) || words.some((word) => word.length >= 4 && label.includes(word)) || label === words.map((word) => word[0]).join('')
+}
+
+/** The domain as the apps load a logo for it: the icon of the company's own site, at a size that stays sharp. */
+export function logoUrl(domain: string): string {
+  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`
+}
+
+/** The found vacancies with a logo where the model named the company's site, the name fits and the site is there. */
+export async function withLogos(found: FoundVacancy[], raw: unknown, siteExists?: (domain: string) => Promise<boolean>): Promise<FoundVacancy[]> {
+  if (!siteExists || !Array.isArray(raw)) return found
+  const named = new Map<number, string>()
+  for (const entry of raw as Record<string, unknown>[]) {
+    if (typeof entry?.vacancy !== 'number' || typeof entry.site !== 'string' || named.has(entry.vacancy)) continue
+    const site = entry.site.toLowerCase().trim().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '')
+    const vacancy = found[entry.vacancy - 1]?.vacancy
+    if (vacancy && siteFits(site, vacancy.company)) named.set(entry.vacancy, site)
+  }
+  // The same site once, however many vacancies of that company.
+  const checks = new Map<string, Promise<boolean>>()
+  for (const site of named.values()) if (!checks.has(site)) checks.set(site, siteExists(site).catch(() => false))
+  return Promise.all(found.map(async (f, index) => {
+    const site = named.get(index + 1)
+    if (!site || !(await checks.get(site))) return f
+    return { ...f, vacancy: { ...f.vacancy, logoUrl: logoUrl(site) } }
+  }))
+}
+
 /** The vacancy that fits best first: more that fits, less that is missing. Vacancies without a match keep their place. */
 export function bestFirst(vacancies: Vacancy[]): Vacancy[] {
   const score = (v: Vacancy) => v.matches.length * 2 - v.skillGap.length
@@ -423,7 +472,8 @@ function describeSearch(result: SearchResult, mayLook = false, consent: VaultCon
     : consent === 'declined'
       ? ' Je mag niet in de kluis kijken, dus laat vacancyMatches leeg en vraag er niet opnieuw om.'
       : ' Je mag nog niet in de kluis kijken, dus laat vacancyMatches leeg. Zet askVault op "te laten zien welke vacatures bij je passen": PAVE vraagt dat dan onder je antwoord, en de gebruiker kan ook zelf kiezen welke gegevens je gebruikt.'
-  const rules = `Bespreek alleen wat hieronder staat en verzin niets. Het is maar een stukje van de vacaturetekst, dus zeg niet dat je alle eisen kent. Noem een vacature bij functie en bedrijf, nooit bij nummer: de kaarten kunnen in een andere volgorde staan. Zet vacancySearch op null.${matching}`
+  const sites = ' Vul vacancySites voor de bedrijven waarvan je de eigen website zeker weet.'
+  const rules = `Bespreek alleen wat hieronder staat en verzin niets.${sites} Het is maar een stukje van de vacaturetekst, dus zeg niet dat je alle eisen kent. Noem een vacature bij functie en bedrijf, nooit bij nummer: de kaarten kunnen in een andere volgorde staan. Zet vacancySearch op null.${matching}`
   if (result.status === 'unavailable') return `Vacatures zoeken is nog niet ingesteld. Zeg dat eerlijk en kort. Zet vacancySearch op null.`
   if (result.status === 'failed') return `Vacatures zoeken lukte nu niet. Zeg dat eerlijk en kort. Zet vacancySearch op null.`
   if (!result.items.length) return `Er zijn geen vacatures gevonden. Zeg dat en stel andere zoekwoorden voor. Zet vacancySearch op null.`
@@ -516,6 +566,7 @@ function parseOutput(content: string): ModelOutput {
         }
         : null,
       vacancyMatches: Array.isArray(json.vacancyMatches) ? json.vacancyMatches : [],
+      vacancySites: Array.isArray(json.vacancySites) ? json.vacancySites : [],
       title: typeof json.title === 'string' ? json.title : null,
       memories: Array.isArray(json.memories) ? json.memories : [],
       usedMemories: Array.isArray(json.usedMemories) ? json.usedMemories : [],
@@ -526,7 +577,7 @@ function parseOutput(content: string): ModelOutput {
       askVault: typeof json.askVault === 'string' ? json.askVault : null,
     }
   } catch {
-    return { text: content, question: null, navigation: null, vacancySearch: null, vacancyMatches: [], title: null, memories: [], usedMemories: [], usedVaultItems: [], vaultItem: null, askVault: null, actions: [], continues: false }
+    return { text: content, question: null, navigation: null, vacancySearch: null, vacancyMatches: [], vacancySites: [], title: null, memories: [], usedMemories: [], usedVaultItems: [], vaultItem: null, askVault: null, actions: [], continues: false }
   }
 }
 

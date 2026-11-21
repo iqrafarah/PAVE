@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { test } from 'node:test'
-import { answer, bestFirst, cleanActions, cleanTitle, effortFor, resultsMessage, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
+import { answer, bestFirst, cleanActions, cleanTitle, effortFor, resultsMessage, siteFits, withLogos, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
 import { parseRequest } from '../contract.ts'
 import { MODELS, modelsFor, openRouterCompletion } from '../openrouter.ts'
 import { buildSystemPrompt } from '../prompt.ts'
@@ -1056,4 +1056,29 @@ test('continues only comes with actions that are carried out at once', async () 
   assert.equal((await answer({ request, conversationId: 'c', history: [] }, { complete: more.complete, newId: ids() })).continues, true)
   const risky = model(say('Ik verwijder het.', { actions: [{ do: 'deleteChat', value: null, target: null }], continues: true }))
   assert.equal((await answer({ request, conversationId: 'c', history: [] }, { complete: risky.complete, newId: ids() })).continues, undefined)
+})
+
+test('a company site only counts when its name fits the company', () => {
+  assert.ok(siteFits('ogd.nl', 'OGD ict-diensten'))
+  assert.ok(siteFits('https://www.synseltechniek.nl/vacatures', 'Synsel Techniek'))
+  assert.ok(siteFits('philips.com', 'Philips'))
+  assert.ok(siteFits('asml.com', 'ASML Netherlands'))
+  assert.equal(siteFits('philips.com', 'Synsel Techniek'), false)
+  assert.equal(siteFits('werkzoeken.nl', 'Via werkzoeken.nl'), false)
+  assert.equal(siteFits('linkedin.com', 'LinkedIn Jobs BV'), false)
+  assert.equal(siteFits('niet een domein', 'Bedrijf'), false)
+})
+
+test('a logo only shows for a site that fits and is really there', async () => {
+  const list = [job('1', 'Trainee', 'OGD ict-diensten'), job('2', 'Engineer', 'Synsel Techniek'), job('3', 'Tester', 'Via werkzoeken.nl'), job('4', 'Developer', 'OGD ict-diensten')]
+  const raw = [{ vacancy: 1, site: 'ogd.nl' }, { vacancy: 2, site: 'philips.com' }, { vacancy: 3, site: 'werkzoeken.nl' }, { vacancy: 4, site: 'www.ogd.nl' }, { vacancy: 9, site: 'x.nl' }]
+  const asked: string[] = []
+  const found = await withLogos(list, raw, async (domain) => { asked.push(domain); return true })
+  assert.equal(found[0].vacancy.logoUrl, 'https://www.google.com/s2/favicons?domain=ogd.nl&sz=128')
+  assert.equal(found[1].vacancy.logoUrl, undefined)
+  assert.equal(found[2].vacancy.logoUrl, undefined)
+  assert.equal(found[3].vacancy.logoUrl, found[0].vacancy.logoUrl)
+  assert.deepEqual(asked, ['ogd.nl'])
+  assert.equal((await withLogos(list, raw, async () => false))[0].vacancy.logoUrl, undefined)
+  assert.equal((await withLogos(list, raw))[0].vacancy.logoUrl, undefined)
 })

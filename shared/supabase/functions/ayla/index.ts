@@ -7,7 +7,7 @@ import { loadAllowedVault } from './vault.ts'
 import { type AylaReply, parseRequest } from './contract.ts'
 import { openRouterCompletion } from './openrouter.ts'
 import { MODEL_OUTPUT_SCHEMA } from './prompt.ts'
-import { adzunaSearch, firstThatFinds, joobleSearch, type SearchVacancies, webSearch, withSupport } from './vacancies.ts'
+import { adzunaSearch, firstThatFinds, joobleSearch, type SearchVacancies, siteChecker, webSearch, withSupport } from './vacancies.ts'
 import { CORS, json, sessionLevel } from '../_shared/http.ts'
 
 /**
@@ -98,6 +98,7 @@ Deno.serve(async (req) => {
     complete: openRouterCompletion(openRouterKey, MODEL_OUTPUT_SCHEMA),
     searchVacancies: withSupport(firstThatFinds(apis), webSearch(openRouterKey)),
     newId: () => crypto.randomUUID(),
+    siteExists: siteChecker(),
   }
 
   /** Stores the question and the answer together. */

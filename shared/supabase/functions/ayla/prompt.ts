@@ -120,6 +120,7 @@ Antwoord altijd met JSON volgens het schema:
   - Zei de gebruiker net ja op kijken in de kluis, of koos de gebruiker (andere) gegevens, nadat je vacatures liet zien: zoek dan opnieuw, zodat de kaarten laten zien wat past. Houd de zoekwoorden uit "Getoonde vacatures" als de gebruiker die zelf koos; kies ze anders opnieuw uit de items die je nu ziet.
   - Vraagt de gebruiker om meer, andere of bijgestelde vacatures ("ook in Utrecht", "alleen parttime", "meer zoals die bij Bedrijf"): zoek opnieuw met aangepaste woorden.
 - vacancyMatches: alleen nadat je gevonden vacatures te zien kreeg en je in de kluis mag kijken. Per vacature (vacancy: het nummer uit de lijst) wat past (matches) en wat ontbreekt (gaps), elk met skill (kort, zoals "Scrum" of "Teamwerk") en requirement (een letterlijk stukje uit de tekst van die vacature waar het uit blijkt). Alleen wat je kunt onderbouwen met de kluis en die tekst; hooguit 4 per lijst; verzin geen eisen. Anders een lege lijst.
+- vacancySites: alleen nadat je gevonden vacatures te zien kreeg. Per vacature (vacancy: het nummer uit de lijst) het domein van de eigen website van het bedrijf (site, zoals "ogd.nl"), zodat PAVE het logo kan tonen. Alleen als je het zeker weet; sla een vacature over bij twijfel, of als het bedrijf "Via …" heet. Nooit een vacaturesite of sociale media. Anders een lege lijst.
 - memories: de feiten die je voorstelt te onthouden (zie hierboven), elk apart met text (één korte zin in de je-vorm, of "" als je alleen iets weghaalt), category en replaces (de precieze tekst van een oude regel die niet meer klopt, anders null). Anders een lege lijst.
 - usedMemories: de nummers van de regels uit wat je onthoudt die je voor dit antwoord gebruikte, anders een lege lijst.
 - In je eerdere antwoorden kan een regel "(Getoonde vacatures …)" staan. Die voegde PAVE toe, zodat je weet welke kaarten de gebruiker zag en waarop gezocht is; schrijf zo'n regel zelf nooit. Vraagt de gebruiker door over een van die vacatures ("de tweede", "die bij Bedrijf"), gebruik dan die lijst en zeg eerlijk dat je alleen een stukje van de tekst zag.
@@ -289,7 +290,7 @@ export const MODEL_OUTPUT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
   // In the order of the properties: what the app needs first (the text, a question about the vault) comes first.
-  required: ['text', 'askVault', 'question', 'navigation', 'actions', 'continues', 'usedVaultItems', 'title', 'usedMemories', 'memories', 'vaultItem', 'vacancySearch', 'vacancyMatches'],
+  required: ['text', 'askVault', 'question', 'navigation', 'actions', 'continues', 'usedVaultItems', 'title', 'usedMemories', 'memories', 'vaultItem', 'vacancySearch', 'vacancyMatches', 'vacancySites'],
   properties: {
     text: { type: 'string' },
     askVault: { type: ['string', 'null'] },
@@ -348,6 +349,15 @@ export const MODEL_OUTPUT_SCHEMA = {
       additionalProperties: false,
       required: ['what', 'where', 'also'],
       properties: { what: { type: 'string' }, where: { type: 'string' }, also: { type: ['string', 'null'] } },
+    },
+    vacancySites: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['vacancy', 'site'],
+        properties: { vacancy: { type: 'integer' }, site: { type: 'string' } },
+      },
     },
     vacancyMatches: {
       type: 'array',
