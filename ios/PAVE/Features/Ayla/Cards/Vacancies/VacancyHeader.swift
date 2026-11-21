@@ -58,7 +58,9 @@ struct VacancyHeader: View {
     static func salaryText(_ salary: Vacancy.Salary) -> String {
         let range = salary.monthlyRange
         let format = IntegerFormatStyle<Int>().locale(Locale(identifier: "nl_NL"))
-        let text = "€\(range.lowerBound.formatted(format)) - €\(range.upperBound.formatted(format)) p/m"
+        let text = range.lowerBound == range.upperBound
+            ? "€\(range.lowerBound.formatted(format)) p/m"
+            : "€\(range.lowerBound.formatted(format)) - €\(range.upperBound.formatted(format)) p/m"
         return salary.isEstimate ? "\(text) (geschat)" : text
     }
 }

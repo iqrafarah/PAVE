@@ -775,6 +775,7 @@ test('a Jooble result becomes a card, its text without HTML', () => {
   assert.deepEqual(found?.vacancy.salary, { min: 3000, max: 3800, period: 'month', currency: 'EUR', isEstimate: false })
   assert.equal(found?.snippet, 'Je bouwt apps in React.')
   assert.equal(toJoobleVacancy({ id: 1, title: 'Zonder bedrijf' }), null)
+  assert.equal(toJoobleVacancy({ id: 2, title: 'Developer', source: 'werkzoeken.nl' })?.vacancy.company, 'Via werkzoeken.nl')
 })
 
 test('a salary is only read when it says per month or per year', () => {

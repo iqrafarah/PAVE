@@ -106,7 +106,8 @@ export function joobleSearch(key: string, host = 'nl.jooble.org', fetchImpl: typ
 export function toJoobleVacancy(raw: unknown): FoundVacancy | null {
   const r = raw as Record<string, any>
   const title = plain(r?.title)
-  const company = plain(r?.company) || plain(r?.source)
+  // Without a company, the job site it came from, so that site is never shown as the employer.
+  const company = plain(r?.company) || (plain(r?.source) ? `Via ${plain(r?.source)}` : '')
   if (r?.id === undefined || r?.id === null || !title || !company) return null
   const vacancy: Vacancy = { id: `jooble_${r.id}`, title, company, source: 'jooble', matches: [], skillGap: [] }
   const city = plain(r.location)
