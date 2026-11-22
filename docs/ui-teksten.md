@@ -136,6 +136,7 @@ Ayla zegt in haar eigen woorden wat ze doet. Deze vaste teksten komen van de app
 | --- | --- |
 | Vraag vooraf: gesprek verwijderen | Zal ik dit gesprek verwijderen? |
 | Vraag vooraf: bewijs verwijderen | Zal ik "{titel}" uit je kluis verwijderen? Dat kan niet ongedaan worden gemaakt. |
+| Vraag vooraf: meer bewijs verwijderen | Zal ik "{titel}" en "{titel}" uit je kluis verwijderen? Dat kan niet ongedaan worden gemaakt. |
 | Vraag vooraf: uitloggen | Zal ik je uitloggen? |
 | Vraag vooraf: alles vergeten | Zal ik alles vergeten wat ik over je onthoud? Dat kan niet ongedaan worden gemaakt. |
 | Na Ja | Ik heb het gesprek verwijderd. / Ik heb {titel} uit je kluis verwijderd. / Ik heb alles vergeten wat ik over je onthield. / Ik log je uit. |
@@ -147,6 +148,8 @@ Ayla zegt in haar eigen woorden wat ze doet. Deze vaste teksten komen van de app
 | Lukt niet | Dat lukt nu niet. |
 | Map bestond al | De map {naam} bestond al. Ik open hem. |
 | Vraag vooraf: Ayla toegang geven | Mag ik "{titel}" voortaan bekijken en gebruiken? |
+| Vraag vooraf: Ayla toegang geven tot meer bewijs | Mag ik "{titel}" en "{titel}" voortaan bekijken en gebruiken? |
+| Vacatures gevonden, maar Ayla kon er niets over zeggen | Dit heb ik gevonden. Er meer over vertellen lukte me nu niet; vraag gerust door over een van deze vacatures. |
 | Na Ja op toegang | Ik mag {titel} nu bekijken en gebruiken. |
 | Statuspil als ze klaar is | {n} dingen gedaan / {n} dingen gedaan, {m} niet gelukt / Dat lukte niet |
 | Statuspil, voortgang | {stap} van {aantal} |

@@ -40,6 +40,8 @@ export interface CompleteOptions {
   effort?: Effort
   /** More room than usual for this answer, such as a match for every vacancy. */
   maxTokens?: number
+  /** Another shape than usual for this answer, such as the round that only compares vacancies. */
+  schema?: object
 }
 
 export type Complete = (messages: ChatMessage[], options?: CompleteOptions) => Promise<{ model: string; content: string }>
@@ -97,7 +99,7 @@ export function openRouterCompletion(
             max_tokens: turnTokens,
             messages,
             ...(streams ? { stream: true } : {}),
-            response_format: { type: 'json_schema', json_schema: { name: 'ayla_reply', strict: true, schema: responseSchema } },
+            response_format: { type: 'json_schema', json_schema: { name: 'ayla_reply', strict: true, schema: options.schema ?? responseSchema } },
           }),
           signal: controller.signal,
         })

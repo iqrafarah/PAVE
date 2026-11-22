@@ -9,11 +9,39 @@ public enum AylaVaultOffer {
     public static let chooseChoiceID = "choose"
 
     /// "Zoek opnieuw met alles uit mijn kluis", "gebruik mijn hele kluis": not only the items you picked any more.
+    /// The same as `grantsWholeVault` in the Ayla function: a question about the vault ("gebruik je alles uit mijn
+    /// kluis?"), a remark that only names it ("ik heb mijn hele kluis opgeruimd") and anything with "niet" or "geen"
+    /// change nothing; "niet alleen mijn diploma" asks for more, not less.
     public static func usesWholeVault(_ text: String) -> Bool {
         let said = AylaScreenRequest.normalized(text)
-        guard !AylaScreenRequest.matches(said, #"\b(niet|geen|nooit)\b"#) else { return false }
-        return AylaScreenRequest.matches(said, #"\b(alles|heel|hele|volledige|complete|al)\b.*\bkluis\b"#)
-            || AylaScreenRequest.matches(said, #"\bkluis\b.*\b(helemaal|alles|volledig)\b"#)
+        guard !AylaScreenRequest.matches(said, #"^(staat|staan|is|zijn|wat|welke|welk|waar|hoe|heb|zit|zitten|waarom|wanneer|wie)\b"#) else { return false }
+        let withoutMore = said.replacingOccurrences(of: #"\bniet alleen\b"#, with: " ", options: .regularExpression)
+        guard !AylaScreenRequest.matches(withoutMore, #"\b(niet|geen|nooit)\b"#) else { return false }
+        let mine = "(mijn|m'n|de)"
+        let whole = "(hele|volledige|complete)"
+        let patterns = [
+            "\\b(met|op basis van|aan de hand van) (alles|al het bewijs) (uit|in|van) \(mine) (\(whole) )?kluis\\b",
+            "\\b(met|op basis van|aan de hand van) \(mine) \(whole) kluis\\b",
+            "\\b(gebruik|neem|pak)\\b(?! (je|jij)\\b).*(\\b\(mine) \(whole) kluis\\b|\\balles (uit|in|van) \(mine) kluis\\b)",
+            "\\b(kijk|zoek) in \(mine) \(whole) kluis\\b",
+            "\\bmag\\b.*(\\b\(mine) \(whole) kluis\\b|\\balles (uit|in|van) \(mine) kluis\\b).*\\b(gebruiken|bekijken|zien|inzien)\\b",
+        ]
+        return patterns.contains { AylaScreenRequest.matches(said, $0) }
+    }
+
+    /// "Kijk niet meer in mijn kluis", "ik trek mijn toestemming in": Ayla may not look any more, so what you picked
+    /// for this conversation is let go as well. The same as `revokesVault` in the Ayla function.
+    public static func takesVaultBack(_ text: String) -> Bool {
+        let said = AylaScreenRequest.normalized(text)
+        let patterns = [
+            #"\b(kijk|gebruik|lees|zoek)\b.*\b(niet meer|niet langer)\b.*\bkluis\b"#,
+            #"\b(stop met|hou op met)\b.*\bkluis\b"#,
+            #"\bkluis\b.*\b(niet meer|niet langer)\b.*\b(gebruiken|bekijken|zien|inzien|kijken|lezen)\b"#,
+            #"\b(niet meer|niet langer)\b.*\bkluis\b.*\b(gebruiken|bekijken|zien|inzien|kijken|lezen)\b"#,
+            #"\b(trek|intrekken|ingetrokken)\b.*\b(toestemming|kluis)\b"#,
+            #"\btoestemming\b.*\b(in ?trek|intrekken|terug)\b"#,
+        ]
+        return patterns.contains { AylaScreenRequest.matches(said, $0) }
     }
 
     /// "Kies zelf", "laat mezelf kiezen", "ik wil het zelf bepalen", "laat mij kiezen": you want to pick the items

@@ -94,11 +94,7 @@ Haal een bericht uit elkaar: "Ik studeer ICT op Fontys en werk als leidinggevend
 - { text: "Je werkt als leidinggevende bij de Plus.", category: "work" }
 Meer voorbeelden:
 - "Ik wil later IT-consultant worden" → { text: "Je wilt IT-consultant worden.", category: "goals" }
-- "Ik ben goed in plannen en spreek Duits" → { text: "Je bent goed in plannen.", category: "skills" } en { text: "Je spreekt Duits.", category: "skills" }
-- "Ik wil iets betekenen voor anderen en vind vrijheid in mijn werk belangrijk" → { text: "Je wilt iets betekenen voor anderen.", category: "values" } en { text: "Je vindt vrijheid in je werk belangrijk.", category: "values" }
 - "Ik werk liever in een klein team" → { text: "Je werkt het liefst in een klein team.", category: "workStyle" }
-- "In mijn vrije tijd voetbal ik" → { text: "Je voetbalt in je vrije tijd.", category: "interests" }
-- "Onthoud dat ik in Eindhoven woon" → { text: "Je woont in Eindhoven.", category: "personal" }
 De categorieën:
 ${categories}
 Niet voorstellen:
@@ -112,9 +108,8 @@ Regels: één feit per regel in de je-vorm, hooguit ${MAX_SUGGESTIONS} per antwo
 Maakt wat de gebruiker vertelt iets hierboven onwaar, zet dan in replaces precies de tekst van die oude regel. De gebruiker beslist of het weg mag, want iemand kan bijvoorbeeld twee banen tegelijk hebben.
 - "Ik werk nu bij Albert Heijn" terwijl er staat "Je werkt als leidinggevende bij de Plus." → { text: "Je werkt bij Albert Heijn.", category: "work", replaces: "Je werkt als leidinggevende bij de Plus." }
 - "Ik werk niet meer bij de Plus" → { text: "", category: "work", replaces: "Je werkt als leidinggevende bij de Plus." }
-- "Ik heb mijn diploma ICT gehaald" terwijl er staat "Je studeert ICT aan Fontys." → { text: "Je hebt je diploma ICT van Fontys.", category: "education", replaces: "Je studeert ICT aan Fontys." }
-- "Ik woon nu in Tilburg" terwijl er staat "Je woont in Eindhoven." → { text: "Je woont in Tilburg.", category: "personal", replaces: "Je woont in Eindhoven." }
 Alleen voor wat nu geldt: een huidige baan of functie, een opleiding die je nu volgt, waar je woont, een doel dat verandert. Stel nooit voor om dit weg te halen: een diploma of afgeronde opleiding, een stage of baan die al voorbij is, een vaardigheid of iets wat waar blijft.
+Vraagt de gebruiker je één ding te vergeten ("vergeet dat ik in Eindhoven woon"), doe dat dan op dezelfde manier: text "" en in replaces die regel. Alles vergeten is iets anders en gaat alleen als de gebruiker uitdrukkelijk "alles" zegt.
 `.trim()
 }
 

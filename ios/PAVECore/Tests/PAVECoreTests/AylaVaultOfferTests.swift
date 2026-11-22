@@ -269,6 +269,18 @@ struct AylaAppCommandTests {
         #expect(AylaVaultOffer.usesWholeVault("Gebruik mijn hele kluis"))
         #expect(!AylaVaultOffer.usesWholeVault("Kijk niet in mijn hele kluis"))
         #expect(!AylaVaultOffer.usesWholeVault("Open mijn kluis"))
+        // A question about the vault gives nothing away, and "niet alleen" asks for more.
+        #expect(!AylaVaultOffer.usesWholeVault("Staat mijn diploma al in mijn kluis?"))
+        #expect(!AylaVaultOffer.usesWholeVault("Is alles in mijn kluis veilig?"))
+        #expect(AylaVaultOffer.usesWholeVault("Zoek met alles uit mijn kluis, niet alleen mijn diploma"))
+        #expect(!AylaVaultOffer.usesWholeVault("Gebruik je alles uit mijn kluis?"))
+        #expect(!AylaVaultOffer.usesWholeVault("Ik heb gisteren met mijn docent mijn hele kluis doorgenomen"))
+        #expect(AylaVaultOffer.usesWholeVault("Je mag mijn hele kluis gebruiken"))
+        // Taking it back needs a word for looking or using.
+        #expect(AylaVaultOffer.takesVaultBack("Kijk niet meer in mijn kluis"))
+        #expect(AylaVaultOffer.takesVaultBack("Ik trek mijn toestemming in"))
+        #expect(!AylaVaultOffer.takesVaultBack("Mijn diploma staat niet meer in mijn kluis"))
+        #expect(!AylaVaultOffer.takesVaultBack("Ik weet niet meer wat er in mijn kluis staat"))
     }
 
     @Test func twoThingsInOneSentenceGoToAylasBrain() {

@@ -310,8 +310,8 @@ final class AylaChatModel {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let service, !text.isEmpty, !isAnswering else { return nil }
         followUpRounds = 0
-        // "Met alles uit mijn kluis": the items picked earlier no longer limit what she uses.
-        if chosenItemCount != nil, AylaVaultOffer.usesWholeVault(text) { clearContext() }
+        // "Met alles uit mijn kluis" or "kijk niet meer in mijn kluis": the items picked earlier no longer count.
+        if chosenItemCount != nil, AylaVaultOffer.usesWholeVault(text) || AylaVaultOffer.takesVaultBack(text) { clearContext() }
         let files = attachments
         // "Ja" or "Graag" to her own "Wil je naar je instellingen gaan?" opens that page too.
         let offered = pendingOffersEvidence || followUp != nil ? nil : AylaScreenRequest.screen(confirmedBy: text, after: entries.last?.reply)
