@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { test } from 'node:test'
-import { alreadySo, asksToSave, writesEnglish, announcesSearchOnly, answer, asksBeforeDoing, confirmable, declinedOffer, entriesSoFar, ownWords, vaultScope, bestFirst, sitesFromName, cleanActions, cleanTitle, effortFor, resultsMessage, siteFits, withLogos, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
+import { alreadySo, asksAboutShown, asksForWork, asksToSave, moreThanOneRound, writesEnglish, announcesSearchOnly, answer, asksBeforeDoing, confirmable, declinedOffer, entriesSoFar, ownWords, vaultScope, bestFirst, sitesFromName, cleanActions, cleanTitle, effortFor, resultsMessage, siteFits, withLogos, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
 import { parseRequest } from '../contract.ts'
 import { cleanPurpose, grantsWholeVault, revokesVault, saysNo, saysYes, vaultConsent } from '../consent.ts'
 import { MODELS, modelsFor, openRouterCompletion } from '../openrouter.ts'
@@ -1489,4 +1489,42 @@ test('she never says she removed something she does not remember', async () => {
   // With notes, and for "vergeet alles", her own answer stands.
   const known = await answer({ request: { ...request, text: 'Vergeet dat ik in Eindhoven woon' }, conversationId: 'c', history: [], memory: { status: 'on', notes: [{ text: 'Je woont in Eindhoven.', category: 'personal' }] } }, { complete: fake.complete, newId: ids() })
   assert.equal(known.text, 'Ik heb weggehaald dat je in Eindhoven woont.')
+})
+
+test('an order that only points at nothing is asked about, not guessed', async () => {
+  const fake = model(say('Ik zet PAVE op donker.', { intent: 'act', actions: [{ do: 'setDisplayMode', value: 'dark', target: null }] }))
+  const reply = await answer({ request: { ...request, text: 'zet hem uit' }, conversationId: 'c', history: [] }, { complete: fake.complete, newId: ids() })
+  assert.equal(reply.actions, undefined)
+  assert.equal(reply.text, 'Wat bedoel je precies? Zeg even wat ik moet doen, dan regel ik het.')
+  // With something to point at, she goes ahead.
+  const after = await answer({ request: { ...request, text: 'zet hem uit' }, conversationId: 'c', history: [{ role: 'user', text: 'Staat donker aan?' }, { role: 'ayla', text: 'Ja.' }] }, { complete: fake.complete, newId: ids() })
+  assert.deepEqual(after.actions, [{ do: 'setDisplayMode', value: 'dark' }])
+})
+
+test('a question about vacancies already shown is answered, not searched again; more than four steps go on', async () => {
+  const shownHistory = [{ role: 'ayla' as const, text: 'Ik vond er twee.\n(Getoonde vacatures: 1. iOS developer bij Appwerk [mist: CI/CD])' }]
+  assert.ok(asksAboutShown('Wat moet ik nog leren voor de iOS-baan?', shownHistory))
+  assert.equal(asksAboutShown('Wat zijn er nog meer?', shownHistory), false)
+  assert.equal(asksAboutShown('Zoek ook in Utrecht', shownHistory), false)
+  assert.equal(asksAboutShown('Wat moet ik leren?', []), false)
+  const fake = model(
+    say('Ik zoek op CI/CD cursus.', { intent: 'search', vacancySearch: { what: 'CI/CD cursus', where: '' } }),
+    say('Voor de iOS-baan mis je CI/CD. Dat leer je in een paar weken met een eigen project.', { intent: 'answer' }),
+  )
+  let searched = 0
+  const reply = await answer({ request: { ...request, text: 'Wat moet ik nog leren voor de iOS-baan?' }, conversationId: 'c', history: shownHistory }, { complete: fake.complete, newId: ids(), searchVacancies: async () => { searched += 1; return found } })
+  assert.equal(searched, 0)
+  assert.match(fake.calls[1].at(-1)!.content, /geen zoekvraag/)
+  assert.deepEqual(reply.blocks, [])
+
+  assert.ok(moreThanOneRound([1, 2, 3, 4, 5].map((n) => ({ do: 'createFolder', value: `Map ${n}`, target: null }))))
+  const five = model(say('Ik maak vijf mappen.', { intent: 'act', actions: [1, 2, 3, 4, 5].map((n) => ({ do: 'createFolder', value: `Map ${n}`, target: null })), continues: false }))
+  const goesOn = await answer({ request: { ...request, text: 'Maak vijf mappen' }, conversationId: 'c', history: [] }, { complete: five.complete, newId: ids() })
+  assert.equal(goesOn.actions?.length, 4)
+  assert.equal(goesOn.continues, true)
+})
+
+test('a search nobody asked for does not start; one asked for in any wording does', () => {
+  for (const said of ['Zoek vacatures als developer', 'kun je vacaturs zoekn voor frontend', 'Zoek ook in Utrecht', 'Heb je parttime banen?', 'Ik zoek een afstudeerstage', 'welke banen passen bij mij']) assert.ok(asksForWork(said), said)
+  for (const said of ['Wat staat er in mijn kluis?', 'Hoe laat ik mijn diploma verifiëren?', 'Zet donker aan']) assert.equal(asksForWork(said), false, said)
 })

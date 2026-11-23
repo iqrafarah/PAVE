@@ -99,7 +99,7 @@ De categorieën:
 ${categories}
 Niet voorstellen:
 - Een vraag zonder feit over de gebruiker, zoals "Welke banen passen bij mij?".
-- Iets wat maar even geldt, zoals "Ik ben moe vandaag".
+- Iets wat maar even geldt, zoals "Ik ben moe vandaag", en gevoelens of zorgen, zoals "Ik ben bang dat ik geen baan vind".
 - Iets wat hierboven al staat, ook niet in andere woorden.
 - Iets over gezondheid, geloof, politiek, seksualiteit, afkomst, geld, wachtwoorden of andere mensen.
 Regels: één feit per regel in de je-vorm, hooguit ${MAX_SUGGESTIONS} per antwoord, alleen wat de gebruiker zelf zei, en zeg in text nooit dat je het al hebt onthouden. Zet replaces op null, tenzij hieronder anders staat.

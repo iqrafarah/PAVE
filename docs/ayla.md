@@ -172,6 +172,22 @@ What `openrouter.ts` does now:
 
 `node evals/run.ts` prints which model answered how often; run it when answers get worse, because models are retired without notice.
 
+### Intelligence round 2 (2026-11-23)
+
+29 new scenarios in `evals/run.ts` (names starting with "r2"): unexpected questions (a joke, "help", typos, English words in a Dutch sentence, fear of not finding work, salary, a BSN, an attempt to make her delete everything), several tasks at once, five folders in two rounds, an order that points at nothing ("zet hem uit"), a one-year plan, preparing an application, a motivation letter, interview questions, and vacancy follow-ups (another city, part-time, compare two, why one fits less, more like one, save the second, what to learn and how long, an internship, search then open the second). The harness now records what she searched for, so a check can see that "ook in Utrecht" searches in Utrecht and keeps the job.
+
+First run 24 of 29. What changed:
+
+- **Answer the question asked.** Questions about a job, salary, study or applying are answered (salary as a rough range that differs per employer), not turned into a search; "welke banen passen bij mij" still searches at once.
+- **A search nobody asked for does not start** (`asksForWork`): when neither the message nor a yes to her own offer is about work or searching, a search she wants is held back and she is told to answer instead. A question about vacancies already shown ("wat mis ik voor de tweede?", `asksAboutShown`) is answered from "Getoonde vacatures", never searched again.
+- **"Zet hem uit" with nothing to point at** gets "Wat bedoel je precies?" instead of a guess.
+- **Plans** are numbered steps, at most five, with "maand 1-3" when a term is named; she no longer offers to save a plan. **A big job** (an application, a cv, a switch) starts with the plan for that situation, including what is missing for that vacancy, before she asks where to begin. **Comparing** names each option by job and company and ends with which fits best and why. **"Schrijf …"** gets a draft at once.
+- **Found vacancies that do not match the search** (looked for UX, found developers) are said so in the first sentence, with an offer of other words, never a promise that she already searches again.
+- **More than four steps** asked at once always go on in a next round, even when the model forgot to say so.
+- **Feelings and worries** are not proposed as memories.
+
+Result: all 68 scenarios twice, 135 of 136 (the one miss was a check, not her answer), median 2.7 s per scenario.
+
 ### How the server holds her to her word (review round, 2026-11-22)
 
 The model is not trusted to be consistent; `brain.ts` checks each answer against what it says it is.

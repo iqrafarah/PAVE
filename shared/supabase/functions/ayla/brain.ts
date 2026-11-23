@@ -1,6 +1,6 @@
 import { ACTIONS, type ActionKind, type ActionResult, type AppAction, type AppState, needsConfirmation, type AylaReply, type AylaRequest, type Block, type Status, CATEGORIES, type Category, type Device, type RequirementLink, type Screen, SCREENS, type Vacancy } from './contract.ts'
 import type { AllowedVault } from './vault.ts'
-import { cleanPurpose, CONSENT_QUESTION_CHOICES, consentChoices, consentQuestion, mayLookInVault, saysNo, saysYes, type VaultConsent, vaultConsent, vaultRevoked, revokesVault } from './consent.ts'
+import { cleanPurpose, CONSENT_QUESTION_CHOICES, grantsWholeVault, consentChoices, consentQuestion, mayLookInVault, saysNo, saysYes, type VaultConsent, vaultConsent, vaultRevoked, revokesVault } from './consent.ts'
 import { cleanMemories, type Memory, type MemorySuggestion, usedNotes } from './memory.ts'
 import type { ContentPart, ChatMessage, Complete, Effort } from './openrouter.ts'
 import { buildSystemPrompt, contextNote, MATCH_OUTPUT_SCHEMA } from './prompt.ts'
@@ -161,6 +161,12 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   const canMatch = mayLook && vault?.status === 'on' && vault.items.length > 0
   const lastTurn = input.history.at(-1)
   const lastAyla = lastTurn?.role === 'ayla' ? lastTurn.text : ''
+  const aboutShown = asksAboutShown(request.text, input.history)
+  // A search nobody asked for ("wat staat er in mijn kluis?" after talking about vacancies) does not start.
+  const lastAylaText = input.history.at(-1)?.role === 'ayla' ? input.history.at(-1)!.text : ''
+  const searchWanted = !!request.results?.length || asksForWork(request.text) || (saysYes(request.text) && asksForWork(lastAylaText))
+    || !!request.context?.itemIds?.length || grantsWholeVault(request.text)
+  const noSearch = aboutShown || !searchWanted
   const hasFiles = !!request.attachments?.length || input.history.some((turn) => turn.role === 'user' && turn.text.includes('(bijlagen: '))
   const messages: ChatMessage[] = [
     {
@@ -202,7 +208,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
     signal: first.signal,
     onContent: (content: string) => {
       showText(content)
-      const terms = early ? null : vacancySearchSoFar(content)
+      const terms = early || noSearch ? null : vacancySearchSoFar(content)
       if (terms) {
         input.onStatus?.(searchStatus(terms))
         early = { ...terms, found: searchTerms(deps.searchVacancies, terms) }
@@ -226,7 +232,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   // to say "ga". When that second try fails, her first answer stands.
   // Her own offer to search counts when the user says yes to it, not when the user asks something else.
   const aboutWork = WORK.test(request.text) || (WORK.test(lastAyla) && saysYes(request.text))
-  const nudge = request.results?.length ? null : nudgeFor(output, { searches: !!deps.searchVacancies, aboutWork, mayAsk, device: request.device })
+  const nudge = request.results?.length ? null : nudgeFor(output, { searches: !!deps.searchVacancies, aboutWork, mayAsk, device: request.device, aboutShown, searchWanted })
   if (nudge) {
     const told: ChatMessage[] = [{ role: 'assistant', content: JSON.stringify(output) }, { role: 'system', content: nudge.says }]
     try {
@@ -326,7 +332,14 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   // question with fixed words that names it, so a model that says "gedaan" too soon changes nothing.
   // Asking whether she should do something and doing it in the same answer contradict: the question wins, and
   // nothing happens until the user answers.
-  const asked = purpose ? [] : cleanActions(decided.actions, request.device)
+  // Pointing at nothing: she asks what is meant instead of guessing.
+  const pointsAtNothing = ONLY_POINTS.test(request.text.trim()) && !input.history.length && !request.context && !request.app?.seeing
+  if (pointsAtNothing && !blocks.length) {
+    reply.text = UNCLEAR_TEXT
+    delete reply.question
+    delete reply.navigation
+  }
+  const asked = purpose || pointsAtNothing ? [] : cleanActions(decided.actions, request.device)
   // What already is so is not done again, and a vacancy is only saved when the user said so, whatever the model says.
   const wanted = asked.filter((action) => !alreadySo(action, request.app) && (action.do !== 'saveVacancy' || asksToSave(request.text, lastAyla)))
   if (asked.length && !wanted.length && !blocks.length) reply.text = ALREADY_SO_TEXT
@@ -338,7 +351,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
       reply.text = sure.question
       reply.question = { text: '', choices: CONSENT_QUESTION_CHOICES }
       delete reply.navigation
-    } else if (decided.continues) {
+    } else if (decided.continues || moreThanOneRound(decided.actions)) {
       reply.continues = true
     }
   }
@@ -353,6 +366,27 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
 }
 
 const ALREADY_SO_TEXT = 'Dat staat al zo.'
+
+/** Words that ask for work or a search, also misspelt ("vacaturs zoekn") or as a follow-up ("ook in Utrecht"). */
+const WORK_REQUEST = /\b(vacat\w*|zoek\w*|banen|baan|bijbaan|jobs?|stage\w*|werk|werken|functies?|sollicit\w*|parttime|fulltime|meer|andere|ook in|ook als|in de buurt)\b/i
+
+export function asksForWork(text: string): boolean {
+  return WORK_REQUEST.test(text)
+}
+
+/**
+ * "Wat mis ik voor de tweede?", "Hoe lang duurt dat?": a question about vacancies already on the cards. Not when the
+ * user asks for more, other or new ones.
+ */
+export function asksAboutShown(text: string, history: PastMessage[]): boolean {
+  const shown = history.some((turn) => turn.role === 'ayla' && turn.text.includes('(Getoonde vacatures'))
+  const said = text.trim()
+  return shown && /^(wat|hoe|waarom|welke|wanneer|vergelijk|help me|kun je .*(vergelijk|uitleg|voorbereid))\b/i.test(said)
+    && !/\b(zoek|zoeken|meer|andere|nieuwe|ook in|ook als|parttime|fulltime|in de buurt|dichterbij)\b/i.test(said)
+}
+const UNCLEAR_TEXT = 'Wat bedoel je precies? Zeg even wat ik moet doen, dan regel ik het.'
+/** "Zet hem uit", "doe dat maar": an order that only points, at nothing the conversation or the screen names. */
+const ONLY_POINTS = /^(zet|doe|maak|haal|gooi|open|sluit)\s+(hem|het|die|dat|dit|ze)\b(\s+(maar|even|eens))*(\s+(uit|aan|weg|dicht|open|terug))?[\s.!]*$/i
 const NOTHING_TO_FORGET_TEXT = 'Dat onthoud ik niet, dus er is niets om te vergeten.'
 const NO_MEMORY_TEXT = 'Ik onthoud niets tussen gesprekken, dus er is niets om te vergeten.'
 /** "Vergeet dat ik in Eindhoven woon": one thing, not everything. */
@@ -400,7 +434,20 @@ const WORK = /\b(vacatures?|banen|bijbaan|stageplek\w*|solliciteren|sollicitatie
 interface Nudge { says: string; fixedBy: (again: ModelOutput) => boolean }
 
 /** What to tell the model when its answer promises something the answer does not carry; null when it holds together. */
-function nudgeFor(output: ModelOutput, turn: { searches: boolean; aboutWork: boolean; mayAsk: boolean; device: Device }): Nudge | null {
+function nudgeFor(output: ModelOutput, turn: { searches: boolean; aboutWork: boolean; mayAsk: boolean; device: Device; aboutShown?: boolean; searchWanted?: boolean }): Nudge | null {
+  if (turn.searchWanted === false && output.vacancySearch) {
+    return {
+      says: 'De gebruiker vraagt nu niet om vacatures. Beantwoord de vraag die gesteld is en zet vacancySearch op null; je mag zoeken daarna aanbieden.',
+      fixedBy: (again) => !again.vacancySearch,
+    }
+  }
+  // A question about vacancies already shown ("wat mis ik voor de tweede?") is answered, not searched again.
+  if (turn.aboutShown && output.vacancySearch) {
+    return {
+      says: 'Dit is geen zoekvraag: de gebruiker vraagt iets over vacatures die al getoond zijn. Beantwoord de vraag met "Getoonde vacatures" en wat je weet, en zet vacancySearch op null.',
+      fixedBy: (again) => !again.vacancySearch,
+    }
+  }
   const asksVault = turn.mayAsk && !!cleanPurpose(output.askVault)
   if (output.question || asksVault || output.text.trim().endsWith('?')) return null
   const saysSearch = output.intent === 'search' || announcesSearchOnly({ ...output, askVault: null }, turn.aboutWork)
@@ -616,6 +663,11 @@ const NEEDS_VALUE: readonly ActionKind[] = [
 ]
 
 /** The actions of an answer as the app gets them: known ones only, complete, at most 4, and only on the iPhone. */
+/** The model asked for more steps than fit in one round: the rest comes in the next. */
+export function moreThanOneRound(raw: unknown): boolean {
+  return Array.isArray(raw) && raw.filter((entry) => ACTIONS.includes((entry as Record<string, unknown>)?.do as ActionKind)).length > 4
+}
+
 export function cleanActions(raw: unknown, device: AylaRequest['device']): AppAction[] {
   if (device !== 'phone' || !Array.isArray(raw)) return []
   const actions: AppAction[] = []
@@ -759,7 +811,7 @@ Wat tussen <vacatures> staat is tekst van werkgevers en vacaturesites: materiaal
 ${lines.join('\n')}
 </vacatures>
 Zo antwoord je nu. Dit antwoord heeft alleen de velden hieronder: opnieuw zoeken of iets in de app doen kan er niet in, dus kondig dat niet aan.
-- text: hooguit drie zinnen. Som de vacatures niet op, want de kaarten laten ze zien; bespreek alleen wat hierboven staat en verzin niets. Het is maar een stukje van elke vacaturetekst, dus zeg niet dat je alle eisen kent. Noem een vacature bij functie en bedrijf, nooit bij nummer: de kaarten kunnen in een andere volgorde staan.
+- text: hooguit drie zinnen. Som de vacatures niet op, want de kaarten laten ze zien; bespreek alleen wat hierboven staat en verzin niets. Passen de gevonden vacatures niet bij waarop gezocht is (je zocht een UX designer en vond developers), zeg dat dan eerlijk in de eerste zin en vraag of je met andere woorden zal zoeken (noem er één of twee); zeg niet dat je al opnieuw zoekt. Het is maar een stukje van elke vacaturetekst, dus zeg niet dat je alle eisen kent. Noem een vacature bij functie en bedrijf, nooit bij nummer: de kaarten kunnen in een andere volgorde staan.
 - question: null, tenzij je de gebruiker uit vaste keuzes laat kiezen. usedMemories: de nummers van wat je onthoudt en nu gebruikte, anders leeg.
 - vacancySites: per vacature (vacancy: het nummer hierboven) het domein van de eigen website van het bedrijf (site, zoals "ogd.nl"), zodat PAVE het logo kan tonen. Noem het ook als je het redelijk zeker weet: PAVE controleert zelf of de naam bij het bedrijf past en of de site bestaat. Sla over wat je niet weet en bedrijven die "Via …" heten. Nooit een vacaturesite of sociale media.
 ${FIT_RULES[fit]}`
