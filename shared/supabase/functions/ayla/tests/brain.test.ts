@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { test } from 'node:test'
-import { announcesSearchOnly, answer, asksBeforeDoing, confirmable, declinedOffer, entriesSoFar, ownWords, vaultScope, bestFirst, sitesFromName, cleanActions, cleanTitle, effortFor, resultsMessage, siteFits, withLogos, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
+import { alreadySo, asksToSave, writesEnglish, announcesSearchOnly, answer, asksBeforeDoing, confirmable, declinedOffer, entriesSoFar, ownWords, vaultScope, bestFirst, sitesFromName, cleanActions, cleanTitle, effortFor, resultsMessage, siteFits, withLogos, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
 import { parseRequest } from '../contract.ts'
 import { cleanPurpose, grantsWholeVault, revokesVault, saysNo, saysYes, vaultConsent } from '../consent.ts'
 import { MODELS, modelsFor, openRouterCompletion } from '../openrouter.ts'
@@ -1009,20 +1009,24 @@ test('the model is picked by how much thinking a turn asks for', () => {
   assert.equal(ask('(vervolg)', { results: [{ do: 'openFolder', ok: false }] }), 'hard')
   assert.equal(effortFor({ text: 'Past dit bij mij?', device: 'phone', input: 'text' }, true), 'hard')
   assert.equal(effortFor({ text: 'Past dit bij mij?', device: 'phone', input: 'text' }, false), 'normal')
-  assert.equal(modelsFor('hard').models[0], 'mistralai/mistral-large-2512')
-  assert.equal(modelsFor('light').models[0], 'mistralai/mistral-small-3.2-24b-instruct')
+  assert.equal(modelsFor('hard').models[0], 'mistralai/mistral-medium-3-5')
+  assert.equal(modelsFor('light').models[0], 'mistralai/mistral-small-2603')
   assert.equal(modelsFor('normal').models[0], MODELS[0])
   assert.ok(modelsFor('hard').hedgeMs > modelsFor('normal').hedgeMs)
 })
 
-test('hard work starts with the large model, and a list of the caller is left alone', async () => {
+test('hard work starts with the strongest model, only Mistral gets the request, and a list of the caller is left alone', async () => {
   const asked: string[] = []
+  const providers: unknown[] = []
   const fetchFake = (async (_url: unknown, init?: { body?: string }) => {
-    asked.push(JSON.parse(init?.body ?? '{}').model)
+    const body = JSON.parse(init?.body ?? '{}')
+    asked.push(body.model)
+    providers.push(body.provider)
     return new Response(JSON.stringify({ choices: [{ message: { content: '{"text":"Hoi"}' } }] }))
   }) as typeof fetch
   await openRouterCompletion('key', {}, fetchFake)([{ role: 'user', content: 'Hoi' }], { effort: 'hard' })
-  assert.equal(asked[0], 'mistralai/mistral-large-2512')
+  assert.equal(asked[0], 'mistralai/mistral-medium-3-5')
+  assert.deepEqual(providers[0], { only: ['mistral'] })
   await openRouterCompletion('key', {}, fetchFake, ['mijn/model'])([{ role: 'user', content: 'Hoi' }], { effort: 'hard' })
   assert.equal(asked[1], 'mijn/model')
 })
@@ -1154,7 +1158,7 @@ test('asking whether to do it and doing it do not go together: the question wins
   assert.equal(reply.actions, undefined)
   assert.equal(reply.continues, undefined)
   const does = model(say('Ik bewaar de vacature voor je.', { actions: [{ do: 'saveVacancy', value: '1', target: null }] }))
-  assert.deepEqual((await answer({ request, conversationId: 'c', history: [] }, { complete: does.complete, newId: ids() })).actions, [{ do: 'saveVacancy', value: '1' }])
+  assert.deepEqual((await answer({ request: { ...request, text: 'Bewaar de eerste' }, conversationId: 'c', history: [] }, { complete: does.complete, newId: ids() })).actions, [{ do: 'saveVacancy', value: '1' }])
   const after = model(say('Ik zet PAVE op donker. Wil je ook grotere tekst?', { actions: [{ do: 'setDisplayMode', value: 'dark', target: null }] }))
   assert.deepEqual((await answer({ request, conversationId: 'c', history: [] }, { complete: after.complete, newId: ids() })).actions, [{ do: 'setDisplayMode', value: 'dark' }])
 })
@@ -1381,7 +1385,7 @@ test('the prompt fits the device and the conversation', () => {
   assert.doesNotMatch(watch, /via de bol/)
   assert.doesNotMatch(phone, /hoeft geen diploma of certificaat te zijn/)
   assert.match(buildSystemPrompt({ device: 'phone', hasFiles: true }), /hoeft geen diploma of certificaat te zijn/)
-  assert.match(phone, /Tot slot, bij elk antwoord[\s\S]*één vraag tegelijk\.$/)
+  assert.match(phone, /Tot slot, bij elk antwoord[\s\S]*één vraag tegelijk, in de taal van de gebruiker\.$/)
   // The first round no longer carries the matches; the round after a search does.
   assert.equal('vacancyMatches' in MODEL_OUTPUT_SCHEMA.properties, false)
   assert.deepEqual(MODEL_OUTPUT_SCHEMA.required[0], 'intent')
@@ -1421,4 +1425,67 @@ test('the last line of the prompt says what holds for the vault in this conversa
   assert.match(buildSystemPrompt({ device: 'phone', vaultConsent: 'declined' }), /help zonder en vraag er niet opnieuw om\./)
   assert.match(buildSystemPrompt({ device: 'phone', vaultConsent: 'granted', vault }), /2\. Gebruik uit de kluis alleen wat je bij "De kluis" ziet; askVault is null\./)
   assert.match(buildSystemPrompt({ device: 'phone', vaultConsent: 'granted', vault, vaultPart: { mayAskMore: true } }), /Heb je meer nodig, vraag het dan met askVault/)
+})
+
+test('what already is so is not done again, and the Watch hears where the vacancies are', async () => {
+  assert.ok(alreadySo({ do: 'setDisplayMode', value: 'dark' }, { displayMode: 'dark' }))
+  assert.equal(alreadySo({ do: 'setDisplayMode', value: 'dark' }, { displayMode: 'light' }), false)
+  assert.equal(alreadySo({ do: 'setTextSize', value: 'bigger' }, { textSize: 'large' }), false)
+  assert.ok(alreadySo({ do: 'setMemory', value: 'off' }, { memory: false }))
+  const fake = model(say('Ik zet PAVE op donker.', { intent: 'act', actions: [{ do: 'setDisplayMode', value: 'dark', target: null }] }))
+  const reply = await answer({ request: { ...request, text: 'Zet donker aan', app: { displayMode: 'dark' } }, conversationId: 'c', history: [] }, { complete: fake.complete, newId: ids() })
+  assert.equal(reply.actions, undefined)
+  assert.equal(reply.text, 'Dat staat al zo.')
+
+  const watch = model(say('', { vacancySearch: { what: 'developer', where: '' } }), say('Ik vond er één; hij staat in de app op je iPhone.', { askVault: 'te laten zien welke vacatures bij je passen' }))
+  const onWatch = await answer({ request: { ...request, device: 'watch' }, conversationId: 'c', history: [] }, { complete: watch.complete, newId: ids(), searchVacancies: async () => found })
+  assert.match(watch.calls[1].at(-1)!.content, /Op het horloge zijn ze niet te zien/)
+  assert.equal(onWatch.accessRequest, undefined)
+  assert.deepEqual(onWatch.blocks, [])
+})
+
+test('an answer that only writes spaces any more is cut there, and what was whole is kept', async () => {
+  const written = '{"intent":"act","text":"Ik zet PAVE op donker.","actions":[{"do":"setDisplayMode","value":"dark","target":null}],"usedVaultItems":[1],"memories":[]'
+  const events = [written, ' '.repeat(80), '\t'.repeat(80), ',"vaultItem":null}'].map((piece) => `data: ${JSON.stringify({ choices: [{ delta: { content: piece } }] })}\n\n`)
+  const fetchFake = (async () => new Response(events.join(''))) as typeof fetch
+  const seen: string[] = []
+  const result = await openRouterCompletion('key', {}, fetchFake)([{ role: 'user', content: 'Zet donker aan' }], { onContent: (content) => seen.push(content) })
+  assert.equal(result.content, written)
+  // The server still reads the actions and the items from it.
+  const reply = await answer({ request: { ...request, text: 'Zet donker aan' }, conversationId: 'c', history: allowedChat, vault }, { complete: async () => result, newId: ids() })
+  assert.deepEqual(reply.actions, [{ do: 'setDisplayMode', value: 'dark' }])
+  assert.deepEqual(reply.usedData, ['internships'])
+})
+
+test('where the user is goes with the question, English is answered in English, and a named item counts as used', async () => {
+  const fake = model(say('Je propedeuse laat zien dat je de basis hebt.'))
+  const reply = await answer({ request: { ...request, text: 'Wat kan ik hiermee?', context: { screen: 'vaultItem', itemId: 'item-2' } }, conversationId: 'c', history: [], vault }, { complete: fake.complete, newId: ids() })
+  assert.match(fake.calls[0].at(-1)!.content, /^\(Bericht van PAVE: de gebruiker heeft nu het bewijsstuk "Propedeuse" uit de kluis open\.[^\n]*\)\nWat kan ik hiermee\?$/)
+  assert.deepEqual(reply.usedData, ['diplomas'])
+  assert.ok(writesEnglish('Can you help me find a job that fits me?'))
+  assert.equal(writesEnglish('Kun je me helpen een baan te vinden die bij me past?'), false)
+  assert.equal(writesEnglish('Ik zoek een job als developer'), false)
+  assert.match(buildSystemPrompt({ device: 'phone', english: true }), /The user writes in English\.[^\n]*$/)
+})
+
+test('interest is not an order to save, and the purpose never says "in je kluis" twice', async () => {
+  assert.ok(asksToSave('Bewaar de eerste', ''))
+  assert.ok(asksToSave('Ja', 'Zal ik hem voor je bewaren?'))
+  assert.equal(asksToSave('Die eerste lijkt me wel wat', 'Ik vond drie vacatures.'), false)
+  const fake = model(say('Ik bewaar hem voor je.', { intent: 'act', actions: [{ do: 'saveVacancy', value: '1', target: null }] }))
+  const reply = await answer({ request: { ...request, text: 'Die eerste lijkt me wel wat' }, conversationId: 'c', history: [] }, { complete: fake.complete, newId: ids() })
+  assert.equal(reply.actions, undefined)
+  assert.equal(cleanPurpose('te zien wat er in je kluis staat'), 'te zien wat erin staat')
+  assert.equal(cleanPurpose('je diploma in je kluis te zoeken'), 'je diploma erin te zoeken')
+})
+
+test('she never says she removed something she does not remember', async () => {
+  const fake = model(say('Ik heb weggehaald dat je in Eindhoven woont.'))
+  const empty = await answer({ request: { ...request, text: 'Vergeet dat ik in Eindhoven woon' }, conversationId: 'c', history: [], memory: { status: 'on', notes: [] } }, { complete: fake.complete, newId: ids() })
+  assert.equal(empty.text, 'Dat onthoud ik niet, dus er is niets om te vergeten.')
+  const off = await answer({ request: { ...request, text: 'Vergeet dat ik in Eindhoven woon' }, conversationId: 'c', history: [], memory: { status: 'off' } }, { complete: fake.complete, newId: ids() })
+  assert.equal(off.text, 'Ik onthoud niets tussen gesprekken, dus er is niets om te vergeten.')
+  // With notes, and for "vergeet alles", her own answer stands.
+  const known = await answer({ request: { ...request, text: 'Vergeet dat ik in Eindhoven woon' }, conversationId: 'c', history: [], memory: { status: 'on', notes: [{ text: 'Je woont in Eindhoven.', category: 'personal' }] } }, { complete: fake.complete, newId: ids() })
+  assert.equal(known.text, 'Ik heb weggehaald dat je in Eindhoven woont.')
 })

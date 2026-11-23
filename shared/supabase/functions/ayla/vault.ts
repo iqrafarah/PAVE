@@ -123,7 +123,9 @@ kijken, kort en in het Nederlands, zodat het past in "Mag ik in je kluis kijken 
 of "te zien welke vaardigheden je al hebt"). Zeg in text in één korte zin wat je gaat doen als het mag, en zet question en
 navigation op null: PAVE stelt de vraag. Geef nog geen antwoord uit de kluis en doe niet alsof je erin kijkt.
 Zonder toestemming kan wel: iets nieuws in de kluis zetten (dan lees je niets), vacatures zoeken op een functie die de
-gebruiker zelf noemt, en werken met wat de gebruiker je in dit gesprek zelf vertelt. Dan is askVault null.`
+gebruiker zelf noemt, werken met wat de gebruiker je in dit gesprek zelf vertelt, en iets doen met een map of bewijsstuk
+dat de gebruiker bij naam noemt (openen, verplaatsen, archiveren, verwijderen), want de app zoekt dat zelf op. Dan is
+askVault null.`
 
 const DECLINED = `## De kluis
 De gebruiker wil niet dat je in dit gesprek in de kluis kijkt. Help zonder de kluis en vraag het niet opnieuw. Alleen als de

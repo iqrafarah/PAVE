@@ -141,6 +141,9 @@ Ayla zegt in haar eigen woorden wat ze doet. Deze vaste teksten komen van de app
 | Vraag vooraf: alles vergeten | Zal ik alles vergeten wat ik over je onthoud? Dat kan niet ongedaan worden gemaakt. |
 | Na Ja | Ik heb het gesprek verwijderd. / Ik heb {titel} uit je kluis verwijderd. / Ik heb alles vergeten wat ik over je onthield. / Ik log je uit. |
 | Map niet gevonden | Ik kon de map {naam} niet vinden. |
+| Staat al zo | Dat staat al zo. |
+| Iets vergeten wat Ayla niet onthoudt | Dat onthoud ik niet, dus er is niets om te vergeten. |
+| Iets vergeten terwijl het geheugen uit staat | Ik onthoud niets tussen gesprekken, dus er is niets om te vergeten. |
 | Bewijs niet gevonden | Ik kon {naam} niet vinden in je kluis. |
 | Gesprek niet gevonden | Ik kon geen gesprek vinden over {naam}. |
 | Gesprek nog niet in de lijst | Dit gesprek staat nog niet in je lijst, dus dat lukt nu nog niet. Probeer het zo opnieuw. |

@@ -51,7 +51,7 @@ Speech recognition stays on each device (watchOS, iOS, browser). Only text goes 
 | Retention | Conversations are kept until the user deletes them, one at a time or all at once. Deleting removes them on every device. |
 | Offline | The Watch says clearly that Ayla is not reachable. It does not queue or guess. |
 | Cost limits | No limit during the prototype, but an emergency cap on credits in OpenRouter. |
-| Model provider | OpenRouter, with the same Mistral models as in the demo (see below). |
+| Model provider | OpenRouter, with Mistral models that Mistral hosts itself (see below). |
 | Where Ayla runs | A Supabase Edge Function (`ayla`) in the shared project. It runs with the user's own session, so row level security and two-step verification apply. |
 | Real data only | No example data in the apps. Ayla only knows what the user tells her and, later, the vault items the user allows. |
 | Consent | Per item: "Ayla mag dit bekijken en gebruiken" on the evidence, which the user can switch off at any time. In a conversation Ayla first asks whether she may look in the vault; only after Ja does she use the allowed items. |
@@ -151,9 +151,26 @@ Rules:
 - **While you talk, she stays with you as the small orb.** A page that opens during a spoken conversation has one floating glass capsule at its bottom: the orb, what she is doing, the microphone and stop (`AylaShelfVoiceBar`), next to the glow along the edge. Typed, that place is the text field. Glass is only used for this layer of controls over the page, tinted so text under it does not run through.
 - **Outside the app** the Live Activity of the spoken conversation (Lock Screen and Dynamic Island, `PAVEWidgets`) also says that she is busy: "Stap 2 van 3", "Zoekt vacatures". Never names of folders, evidence or chats and never search terms, because the Lock Screen can be seen by others.
 - **She goes on after her own actions (the loop).** When she set `continues`, or a step did not work, the app sends what came of her actions (`results` in the request: per action whether it worked and what the app said) and she takes another way or does the next steps. At most three rounds per question; such a round stores no message of the user, and it works spoken too. If she cannot be reached for it, the app says itself what failed.
-- **A model by how hard the turn is** (`effortFor`, `modelsFor`): a greeting starts with Mistral Small, an ordinary question with Medium, and real work (writing or comparing, files, a long or compound request, comparing vacancies with the vault, a round after her own actions) with Large, which also gets longer to start before a quicker model joins. All Mistral through OpenRouter, so the data goes to no other provider than before.
+- **A model by how hard the turn is** (`effortFor`, `modelsFor`): a greeting starts with Mistral Small (`mistral-small-2603`), an ordinary question with `mistral-large-2512`, and real work (writing or comparing, files, a long or compound request, comparing vacancies with the vault, a round after her own actions, a question about data and privacy, the turn right after a yes to the vault) with `mistral-medium-3-5`, which also gets longer to start before the next model joins. When a model is slow or refuses (Mistral answers 429 when it is busy), the next one takes the turn at once; the small model is the last resort outside a greeting, because it follows the prompt least well.
 - **She knows how the app is set.** Every question carries `app` (theme, text size, light or dark, vault layout, text while talking, animations, memory on or off, the title of this chat and whether it is pinned): no vault content and no names of folders or evidence. So she can say how something stands and does not do what is already so.
 - **Her own access asks first.** `allowAyla` with `on` gives Ayla the use of a piece of evidence, so it is asked with Ja and Nee like the things that cannot be undone; taking access away is done at once.
+
+### Which models, and where the data goes (found 2026-11-23)
+
+Running the scenarios against the real models showed that the live function had been answering ordinary questions with the wrong model for some time:
+
+- `mistralai/mistral-medium-3.1`, the model for ordinary questions, was retired by Mistral (error 400, "Invalid model"). Every such turn fell back at once to `mistral-small-3.2-24b-instruct`, the weakest of the three, which explains many of the careless answers seen on the Duo.
+- OpenRouter does not serve `mistral-small-3.2` through Mistral at all, only through DeepInfra, Parasail and Venice. So what people told Ayla on those turns went to those companies, not to Mistral. The same holds for `ayla-evidence` and `ayla-skills`, which use the same list (`MODELS`).
+- That model also sometimes wrote only spaces and tabs after a field until its room ran out: 20 seconds of waiting and an answer that lost its actions and the vault items it used.
+
+What `openrouter.ts` does now:
+
+- Only models Mistral hosts itself (`mistral-small-2603`, `mistral-large-2512`, `mistral-medium-3-5`), and every request carries `provider: { only: ['mistral'] }`, so OpenRouter cannot route it elsewhere. `mistral-large-4-0` was tried and left out: it has the same whitespace problem.
+- A model that answers with an error is logged by name and status (never the question), so a retired model shows in the function's logs.
+- A stream that only writes whitespace any more is cut there (`MAX_TRAILING_SPACE`), and JSON that stopped between two fields is read as whole up to there (`parsed` in `brain.ts`).
+- Costs: the prompt is about 7,600 tokens per call. An ordinary turn costs roughly $0.004 on `mistral-large-2512`; a hard turn or a fallback on `mistral-medium-3-5` roughly $0.012.
+
+`node evals/run.ts` prints which model answered how often; run it when answers get worse, because models are retired without notice.
 
 ### How the server holds her to her word (review round, 2026-11-22)
 
@@ -170,7 +187,8 @@ The model is not trusted to be consistent; `brain.ts` checks each answer against
 - **She knows what she did.** Her earlier answers carry "(Je acties bij dit antwoord: …)", so "zet het terug" has something to point at.
 - **The model for the turn** also looks at what she asked: "prima" after her question is an answer (Medium, or Large when she offered to write a cv), not a greeting, and the turn right after a yes to the vault is hard.
 - **The prompt** (`prompt.ts`): what the app can really do today (`APP_PROMPT`, the iPhone-only part apart), evidence statuses in the words of the app ("Geverifieerd", "Niet bevestigd", "Afgewezen"), the rules for files only in a conversation that has files, building evidence as a list instead of one paragraph, and a five-line recap at the end. New rules: two directions and a search at once for "welke banen passen bij mij", a cv or letter of at most 150 words (spoken: the outline first), no names of courses or providers and no prices, "stop", forgetting one thing versus everything, and an honest answer about what happens with data, without promises about where it is stored.
-- **Checking it against the real models:** `node evals/run.ts` in `shared/supabase/functions/ayla` runs the scenarios through the real brain and models with a made-up vault and vacancies. It needs `OPENROUTER_API_KEY` (environment, or `shared/supabase/functions/.env`, which is not in git).
+- **Small things the server decides itself**, because the model got them wrong against the real thing: an action that sets what is already so is dropped (`alreadySo`, "Dat staat al zo."); a vacancy is only saved when the user said so or said yes to her offer (`asksToSave`); asked to forget one thing while she remembers nothing, she says so; an item she names by its title counts as used ("Uit je kluis"); the item or vacancy that is open goes with the question itself (`contextNote`); English is answered in English (`writesEnglish`); on the Watch she says how many vacancies she found and that they can be asked for in the app.
+- **Checking it against the real models:** `node evals/run.ts` in `shared/supabase/functions/ayla` runs 39 scenarios through the real brain and models with a made-up vault and vacancies (`--only`, `--verbose`, `--raw`, `--times`). It needs `OPENROUTER_API_KEY` (environment, or `shared/supabase/functions/.env`, which is not in git). On 2026-11-23 all 39 passed, with a median of 2.2 seconds per scenario.
 
 What she can do, by part of the app:
 
@@ -234,8 +252,8 @@ Each message also carries `device`, `input` (voice or text) and optionally `cont
 
 | Job | Model |
 | --- | --- |
-| Answers | `mistralai/mistral-medium-3.1` |
-| Fallback | `mistralai/mistral-small-3.2-24b-instruct`, `mistralai/mistral-large-2512` |
+| Answers | `mistralai/mistral-large-2512` (ordinary), `mistralai/mistral-small-2603` (greeting), `mistralai/mistral-medium-3-5` (hard) |
+| Fallback | the other two, the small one last |
 | Voice | `openai/gpt-audio-mini`, voice `coral` |
 
 ## Voice mode
@@ -525,7 +543,7 @@ Turned off, Ayla uses none of the notes and suggests nothing; the notes stay unt
 
 ## Privacy: things to be honest about
 
-- OpenRouter does not guarantee that data stays in Europe, and the voice model is from OpenAI. The demo prompt says that data stays in Europe and that conversations are not used for training. **Only keep claims in the prompt that are true for this setup.**
+- The chat models are hosted by Mistral and requests are pinned to it (`provider.only`), but they still pass through OpenRouter, which does not guarantee that data stays in Europe; and the voice model is from OpenAI. Until 2026-11-23 ordinary turns went to DeepInfra, Parasail or Venice without anyone having chosen that (see "Which models, and where the data goes"). The demo prompt says that data stays in Europe and that conversations are not used for training. **Only keep claims in the prompt that are true for this setup.**
 - The server must not log what people say.
 - Memory notes are personal data: the user can see, change and delete them, and can turn memory off.
 - Real personal data should only go through a provider we have checked against the AVG.

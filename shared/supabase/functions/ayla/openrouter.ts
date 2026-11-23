@@ -2,27 +2,35 @@
 // slow, the next one starts alongside it and the first good answer wins.
 // When the caller wants to see the answer while it is written (`onContent`), the
 // models stream: the first one that starts writing wins and the others stop.
+//
+// Only models that Mistral hosts itself, and every request says so (`PROVIDER`): OpenRouter serves some Mistral models
+// through other companies (mistral-small-3.2 only through DeepInfra, Parasail and Venice), and what people tell Ayla
+// should go to Mistral alone. Models are retired without notice (mistral-medium-3.1 was, in 2026): a model that
+// answers with an error is logged by name, and `node evals/run.ts` shows which ones still answer.
 
-export const MODELS = ['mistralai/mistral-medium-3.1', 'mistralai/mistral-small-3.2-24b-instruct', 'mistralai/mistral-large-2512']
+const SMALL = 'mistralai/mistral-small-2603'
+const STEADY = 'mistralai/mistral-large-2512'
+const STRONG = 'mistralai/mistral-medium-3-5'
+
+export const MODELS = [STEADY, STRONG, SMALL]
 export const HEDGE_MS = 3500
+/** OpenRouter may only send a request to Mistral's own servers. */
+export const PROVIDER = { only: ['mistral'] }
 
 /** How much thinking a turn asks for: a greeting, an ordinary question, or real work. */
 export type Effort = 'light' | 'normal' | 'hard'
 
-const SMALL = 'mistralai/mistral-small-3.2-24b-instruct'
-const MEDIUM = 'mistralai/mistral-medium-3.1'
-const LARGE = 'mistralai/mistral-large-2512'
-
 /**
  * The models for a turn, the best fit first; the others still join when it is slow or fails. Hard work starts with the
- * large model and gives it longer to begin, so the quicker ones do not take the turn from it. All Mistral: the user's
- * data goes to no other provider than before.
+ * strongest model and gives it longer to begin, so the quicker ones do not take the turn from it. The small model
+ * follows the prompt least well: outside a greeting it is the last resort (Mistral refuses requests when it is busy,
+ * and the turn then goes to the next model at once).
  */
 export function modelsFor(effort: Effort): { models: string[]; hedgeMs: number } {
   switch (effort) {
-    case 'light': return { models: [SMALL, MEDIUM, LARGE], hedgeMs: 2500 }
-    case 'hard': return { models: [LARGE, MEDIUM, SMALL], hedgeMs: 7000 }
-    default: return { models: [MEDIUM, SMALL, LARGE], hedgeMs: HEDGE_MS }
+    case 'light': return { models: [SMALL, STEADY, STRONG], hedgeMs: 2500 }
+    case 'hard': return { models: [STRONG, STEADY, SMALL], hedgeMs: 6000 }
+    default: return { models: [STEADY, STRONG, SMALL], hedgeMs: HEDGE_MS }
   }
 }
 const TIMEOUT_MS = 25000
@@ -98,13 +106,18 @@ export function openRouterCompletion(
             temperature: 0.4,
             max_tokens: turnTokens,
             messages,
+            provider: PROVIDER,
             ...(streams ? { stream: true } : {}),
             response_format: { type: 'json_schema', json_schema: { name: 'ayla_reply', strict: true, schema: options.schema ?? responseSchema } },
           }),
           signal: controller.signal,
         })
           .then(async (response) => {
-            if (!response.ok) throw new Error(`${model} answered ${response.status}`)
+            if (!response.ok) {
+              // The name of the model and the status only, never what was asked: a retired model shows up here.
+              console.warn(`ayla: ${model} answered ${response.status}`)
+              throw new Error(`${model} answered ${response.status}`)
+            }
             if (!streams) {
               const json = await response.json()
               return json?.choices?.[0]?.message?.content
@@ -148,6 +161,8 @@ export function openRouterCompletion(
   }
 }
 
+const MAX_TRAILING_SPACE = 120
+
 /** Reads OpenRouter's server-sent events and returns everything the model wrote. */
 async function readStream(response: Response, onContent: (content: string) => void): Promise<string> {
   const reader = response.body?.getReader()
@@ -170,6 +185,11 @@ async function readStream(response: Response, onContent: (content: string) => vo
         const delta = JSON.parse(data)?.choices?.[0]?.delta?.content
         if (typeof delta === 'string' && delta) {
           content += delta
+          // A model that only writes spaces and tabs any more never finishes its JSON: what it wrote is the answer.
+          if (content.length - content.trimEnd().length > MAX_TRAILING_SPACE) {
+            await reader.cancel().catch(() => {})
+            return content.trimEnd()
+          }
           onContent(content)
         }
       } catch {

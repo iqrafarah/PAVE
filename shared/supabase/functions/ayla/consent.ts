@@ -126,6 +126,8 @@ export function mayLookInVault(consent: VaultConsent): boolean {
 export function cleanPurpose(raw: unknown): string | null {
   if (typeof raw !== 'string') return null
   let purpose = raw.replace(/\s+/g, ' ').trim().replace(/^om\s+/i, '').replace(/[?.!,;:\s]+$/, '')
+  // The question already says "in je kluis": "te zien wat er in je kluis staat" becomes "te zien wat erin staat".
+  purpose = purpose.replace(/\ber (in|uit) (je|jouw|de|mijn) kluis\b/gi, 'er$1').replace(/\b(in|uit) (je|jouw|de|mijn) kluis\b/gi, 'er$1')
   // A model that writes the word instead of leaving it empty is not asking for anything.
   if (purpose.length < 3 || /^(null|geen|nvt|n\.v\.t\.?|niets|-+)$/i.test(purpose)) return null
   if (purpose.length > MAX_PURPOSE_LENGTH) purpose = `${purpose.slice(0, MAX_PURPOSE_LENGTH - 1).replace(/\s+\S*$/, '')}…`
