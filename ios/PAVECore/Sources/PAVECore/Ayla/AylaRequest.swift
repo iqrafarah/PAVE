@@ -8,13 +8,38 @@ public struct AylaRequest: Codable, Equatable, Sendable {
         public var itemIds: [String]?
         /// The vacancy you have open, so "past deze bij mij?" is about that one.
         public var vacancy: OpenVacancy?
+        /// Two or three vacancies you picked to compare.
+        public var compare: [OpenVacancy]?
+        /// What you asked for with a button on a vacancy, or the practice interview that is going on.
+        public var task: VacancyTask?
 
-        public init(screen: AylaScreen, itemId: String? = nil, itemIds: [String]? = nil, vacancy: OpenVacancy? = nil) {
+        public init(
+            screen: AylaScreen,
+            itemId: String? = nil,
+            itemIds: [String]? = nil,
+            vacancy: OpenVacancy? = nil,
+            compare: [OpenVacancy]? = nil,
+            task: VacancyTask? = nil
+        ) {
             self.screen = screen
             self.itemId = itemId
             self.itemIds = itemIds
             self.vacancy = vacancy
+            self.compare = compare
+            self.task = task
         }
+    }
+
+    /// The things you can do with a vacancy you picked. `compare` needs `compare`; the others need `vacancy`.
+    public enum VacancyTask: String, Codable, Sendable, CaseIterable {
+        /// Side by side, ending with advice.
+        case compare
+        /// What you still miss, and steps toward the job.
+        case gaps
+        /// What to send along and a first go at the motivation letter.
+        case prepare
+        /// Ayla plays the recruiter, one question at a time.
+        case interview
     }
 
     /// A vacancy as its card shows it, within the limits the server accepts.

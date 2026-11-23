@@ -122,6 +122,8 @@ struct AylaChatScreen: View {
     @State private var waveFromOrb = false
     /// The vacancy shown under the orb while talking, gone through by turning the head.
     @State private var vacancyIndex = 0
+    /// Vacancies picked to compare, in the order they were picked.
+    @State private var compareIDs: [String] = []
     /// Photos for an item that just went into the vault, after a Ja to Ayla's question for them.
     @State private var photosForItemID: String?
     @State private var photoTargetID: String?
@@ -264,7 +266,18 @@ struct AylaChatScreen: View {
                         vacancies: openVacancies ?? [], model: model, tab: $vacancyTab,
                         search: shown.flatMap(Self.search(in:)),
                         usedData: shown?.reply?.usedData ?? [],
-                        onChooseData: vault == nil || !model.isAvailable ? nil : { pickVaultItems(then: AylaMessages.useChosen) }
+                        onChooseData: vault == nil || !model.isAvailable ? nil : { pickVaultItems(then: AylaMessages.useChosen) },
+                        compareIDs: compareIDs,
+                        onTask: { task, vacancy in
+                            closeShelf()
+                            run(task, on: [vacancy])
+                        },
+                        onToggleCompare: toggleCompare,
+                        onCompare: {
+                            closeShelf()
+                            compareChosen()
+                        },
+                        onClearCompare: { compareIDs = [] }
                     ) { vacancy in
                         closeShelf()
                         askAyla(AylaMessages.vacancyAsk(vacancy))
@@ -421,7 +434,11 @@ struct AylaChatScreen: View {
             }
         }
         .onDisappear { headGestures.stop() }
-        .onChange(of: model.lastAylaEntryID) { vacancyIndex = 0 }
+        // A new search starts at its first vacancy, with nothing picked to compare.
+        .onChange(of: voiceSearchID) {
+            vacancyIndex = 0
+            compareIDs = []
+        }
         // The card under the orb is what you look at: Ayla gets that vacancy, and loses it when the card goes.
         .onChange(of: cardVacancy?.id) { _, id in
             guard shelf == nil else { return }
@@ -614,7 +631,8 @@ struct AylaChatScreen: View {
                         showsText: showsVoiceText,
                         onOrbFrame: { place(.center, at: $0) },
                         onCaptionFrame: { captionFrame = $0 },
-                        card: vacancyCard
+                        deck: vacancyDeck,
+                        practice: practiceBar
                     )
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1000,7 +1018,7 @@ struct AylaChatScreen: View {
                 .contentShape(.rect)
                 .gesture(orbDragGesture, isEnabled: canDragOrb)
                 // Only while the orb is down here: with the orb in the middle this strip lies over what is under it
-                // (the vacancy card with its arrows and "Kies deze"), and would take every tap meant for that.
+                // (the vacancy cards and their buttons), and would take every tap meant for that.
                 .allowsHitTesting(orbMotion.isLow)
                 .padding(.top, 36)
                 .padding(.bottom, 8)
@@ -1464,10 +1482,38 @@ struct AylaChatScreen: View {
 
     // MARK: Vacancies while talking
 
-    /// Vacancies in Ayla's newest answer, gone through one by one under the orb while talking.
+    /// How many messages the cards stay under the orb after a search, so you can ask about them, compare them or
+    /// practise for one; after that the conversation has moved on.
+    private static let voiceVacancyReach = 6
+
+    /// The newest search while talking, as long as the conversation is still about it; not during a practice
+    /// interview, which is about one vacancy only.
+    private var voiceSearch: AylaChatModel.Entry? {
+        guard isTalking, model.practice == nil,
+              let index = model.entries.lastIndex(where: { !Self.vacancies(in: $0).isEmpty }),
+              model.entries.count - index <= Self.voiceVacancyReach
+        else { return nil }
+        return model.entries[index]
+    }
+
+    private var voiceSearchID: String? { voiceSearch?.id }
+
+    /// The vacancies under the orb while talking, gone through one by one.
     private var voiceVacancies: [Vacancy] {
-        guard isTalking, let last = model.entries.last(where: { $0.role == .ayla }) else { return [] }
-        return Self.vacancies(in: last)
+        voiceSearch.map(Self.vacancies(in:)) ?? []
+    }
+
+    /// Names the speech model may hear: what Ayla found and showed. Nothing from the vault, which only goes to the AI
+    /// when you allow it.
+    private var voiceHints: [String] {
+        var names = ["Ayla", "PAVE"]
+        if let first = model.firstName { names.append(first) }
+        for vacancy in latestVacancies {
+            names += [vacancy.company, vacancy.title] + (vacancy.city.map { [$0] } ?? [])
+            names += (vacancy.matches + vacancy.skillGap).map(\.skill)
+        }
+        if let practice = model.practice { names += [practice.company, practice.title] }
+        return names
     }
 
     /// Knopmodus in the chat: Ayla's answer choices, the vacancies under the orb, and your recent chats. A full press
@@ -1561,19 +1607,61 @@ struct AylaChatScreen: View {
         HeadMode(yesNo: asksYesNoByHead, browse: browsesByHead)
     }
 
-    private var vacancyCard: AylaVoiceVacancyCard? {
+    private var vacancyDeck: AylaVoiceVacancyDeck? {
         let vacancies = voiceVacancies
         guard browsesByHead, !vacancies.isEmpty else { return nil }
-        let index = min(vacancyIndex, vacancies.count - 1)
-        return AylaVoiceVacancyCard(
-            vacancy: vacancies[index],
-            index: index,
-            count: vacancies.count,
+        return AylaVoiceVacancyDeck(
+            vacancies: vacancies,
+            index: $vacancyIndex,
             followsHead: headGestures.isReceiving,
-            onPrevious: { moveVacancy(by: -1) },
-            onNext: { moveVacancy(by: 1) },
-            onChoose: chooseVacancy
+            chosenIDs: compareIDs,
+            isSaved: { model.isSaved($0) },
+            onToggleSave: model.canSaveVacancies ? { vacancy in
+                model.toggleSaved(vacancy)
+                voice?.play(.tick)
+            } : nil,
+            onOpen: { vacancy in
+                guard let index = voiceVacancies.firstIndex(where: { $0.id == vacancy.id }) else { return }
+                _ = openVacancy(at: index)
+            },
+            onTask: { task, vacancy in run(task, on: [vacancy]) },
+            onToggleCompare: toggleCompare,
+            onCompare: compareChosen,
+            onClearCompare: { compareIDs = [] }
         )
+    }
+
+    private var practiceBar: VacancyPracticeBar? {
+        guard let practice = model.practice else { return nil }
+        return VacancyPracticeBar(vacancy: practice, onStop: stopPractice)
+    }
+
+    /// A button on a vacancy: the question goes in the chat as yours, and Ayla answers it, out loud while talking.
+    private func run(_ task: AylaRequest.VacancyTask, on vacancies: [Vacancy]) {
+        guard let question = model.question(for: task, about: vacancies) else { return }
+        PaveHaptics.tap(.medium)
+        if task == .compare { compareIDs = [] }
+        voice?.play(.tick)
+        askAyla(question)
+    }
+
+    private func toggleCompare(_ vacancy: Vacancy) {
+        if let index = compareIDs.firstIndex(of: vacancy.id) {
+            compareIDs.remove(at: index)
+        } else if compareIDs.count < 3 {
+            compareIDs.append(vacancy.id)
+        }
+    }
+
+    private func compareChosen() {
+        let all = latestVacancies + model.savedVacancies.map(\.vacancy)
+        let chosen = compareIDs.compactMap { id in all.first { $0.id == id } }
+        run(.compare, on: chosen)
+    }
+
+    private func stopPractice() {
+        guard let question = model.stopPracticeQuestion() else { return }
+        askAyla(question)
     }
 
     private func moveVacancy(by step: Int) {
@@ -1771,6 +1859,7 @@ struct AylaChatScreen: View {
         isAttachMenuOpen = false
         let session = voice ?? AylaVoiceSession(model: model)
         session.onYes = { handleYes(saying: $0) }
+        session.hints = { voiceHints }
         voice = session
         stageSlot = .zero
         barSlot = .zero

@@ -32,6 +32,12 @@ final class AylaChatModel {
     /// every question in it, so Ayla knows what "dit" means. Only the id travels; the server reads the item itself and
     /// only when the user allowed Ayla to use it.
     private(set) var context: AylaRequest.Context?
+    /// A practice interview for this vacancy is going on: every question goes along with it until it stops.
+    private(set) var practice: Vacancy?
+    /// A button on a vacancy: the next question goes along with this, once.
+    @ObservationIgnored private var nextTask: AylaRequest.Context?
+    /// The question that ends the practice is still sent as part of it, so Ayla sums it up.
+    @ObservationIgnored private var endsPractice = false
     /// The title of that item, for the chip above the text field.
     private(set) var contextTitle: String?
     private(set) var phase = Phase.idle {
@@ -337,7 +343,7 @@ final class AylaChatModel {
         uploads = [:]
         phase = .thinking
         let request = AylaRequest(
-            conversationId: conversationID, text: text, device: .phone, input: input, context: context, attachments: files,
+            conversationId: conversationID, text: text, device: .phone, input: input, context: requestContext(for: text), attachments: files,
             projectId: newChatProject?.id, app: appState?()
         )
         return Turn(service: service, request: request, text: text, files: files)
@@ -691,6 +697,57 @@ final class AylaChatModel {
         contextTitle = nil
     }
 
+    // MARK: Doing something with a vacancy
+
+    /// A button on one vacancy, or on two or three picked to compare: the question for the chat, which goes to Ayla
+    /// with what she needs to answer it. Nil when the vacancies do not fit the task.
+    func question(for task: AylaRequest.VacancyTask, about vacancies: [Vacancy]) -> String? {
+        guard let first = vacancies.first else { return nil }
+        let chosen = context?.itemIds
+        switch task {
+        case .compare:
+            guard (2...3).contains(vacancies.count) else { return nil }
+            nextTask = AylaRequest.Context(screen: .vacancies, itemIds: chosen, compare: vacancies.map(AylaRequest.OpenVacancy.init), task: .compare)
+            return AylaMessages.vacancyCompareQuestion(vacancies)
+        case .gaps, .prepare:
+            nextTask = AylaRequest.Context(screen: .vacancies, itemIds: chosen, vacancy: .init(first), task: task)
+            return task == .gaps ? AylaMessages.vacancyGapsQuestion(first) : AylaMessages.vacancyPrepareQuestion(first)
+        case .interview:
+            practice = first
+            endsPractice = false
+            return AylaMessages.vacancyPracticeQuestion(first)
+        }
+    }
+
+    /// "Stoppen" on the practice: the last question still belongs to it, so Ayla ends with a summary.
+    func stopPracticeQuestion() -> String? {
+        guard practice != nil else { return nil }
+        endsPractice = true
+        return AylaMessages.practiceStopQuestion
+    }
+
+    /// Ends the practice at once, such as when the conversation changes.
+    func endPractice() {
+        practice = nil
+        endsPractice = false
+        nextTask = nil
+    }
+
+    /// What goes along with this question: a task from a button, the practice interview, or what is open.
+    private func requestContext(for text: String) -> AylaRequest.Context? {
+        if let task = nextTask {
+            nextTask = nil
+            return task
+        }
+        guard let practice else { return context }
+        let sent = AylaRequest.Context(screen: .vacancies, itemIds: context?.itemIds, vacancy: .init(practice), task: .interview)
+        if endsPractice || AylaMessages.endsPractice(text) {
+            self.practice = nil
+            endsPractice = false
+        }
+        return sent
+    }
+
     /// Kluis, Plan or Profiel is open over the chat: questions are about that place, unless they are about one item.
     func showScreen(_ screen: AylaScreen) {
         guard contextTitle == nil, AylaScreenRequest.knownToBrain.contains(screen) else { return }
@@ -724,6 +781,7 @@ final class AylaChatModel {
         openProject = nil
         newChatProject = project
         clearContext()
+        endPractice()
         entries = []
         conversationID = nil
         lastQuestion = nil
@@ -748,6 +806,7 @@ final class AylaChatModel {
         openProject = nil
         guard let service, !isAnswering else { return }
         clearContext()
+        endPractice()
         isLoadingConversation = true
         defer { isLoadingConversation = false }
         do {

@@ -10,6 +10,12 @@ struct AylaVacancyShelf: View {
     var search: VacancySearch?
     var usedData: [AylaVaultCategory] = []
     var onChooseData: (() -> Void)?
+    /// Picked to compare, in the order they were picked.
+    var compareIDs: [String] = []
+    var onTask: ((AylaRequest.VacancyTask, Vacancy) -> Void)?
+    var onToggleCompare: (Vacancy) -> Void = { _ in }
+    var onCompare: () -> Void = {}
+    var onClearCompare: () -> Void = {}
     let onAsk: (Vacancy) -> Void
     let onAskGap: (String, Vacancy) -> Void
 
@@ -30,6 +36,9 @@ struct AylaVacancyShelf: View {
                             .foregroundStyle(Color.inkMuted)
                     }
                     .padding(.top, 4)
+                    if !compareIDs.isEmpty {
+                        VacancyCompareBar(count: compareIDs.count, onCompare: onCompare, onClear: onClearCompare)
+                    }
                     VacancyList(
                         vacancies: vacancies, model: model, tab: $tab, search: search, usedData: usedData, onChooseData: onChooseData,
                         onOpen: { driver.vacancy = $0 }, onAsk: onAsk
@@ -51,7 +60,16 @@ struct AylaVacancyShelf: View {
                     isSaved: model.isSaved(vacancy),
                     onToggleSave: model.canSaveVacancies ? { model.toggleSaved(vacancy) } : nil,
                     onAsk: model.isAvailable ? { onAsk(vacancy) } : nil,
-                    onAskGap: model.isAvailable ? { onAskGap($0, vacancy) } : nil
+                    onAskGap: model.isAvailable ? { onAskGap($0, vacancy) } : nil,
+                    actions: model.isAvailable ? onTask.map { onTask in
+                        VacancyActions(
+                            isChosen: compareIDs.contains(vacancy.id),
+                            canChoose: compareIDs.count < 3,
+                            onTask: { onTask($0, vacancy) },
+                            onToggleCompare: { onToggleCompare(vacancy) }
+                        )
+                    } : nil,
+                    compareBar: compareIDs.isEmpty ? nil : VacancyCompareBar(count: compareIDs.count, onCompare: onCompare, onClear: onClearCompare)
                 )
             }
         }

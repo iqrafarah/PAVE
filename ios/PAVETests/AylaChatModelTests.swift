@@ -136,6 +136,64 @@ struct AylaChatModelTests {
         #expect(!model.pendingOffersEvidence)
     }
 
+    private static let appwerk = Vacancy(id: "a", title: "iOS-ontwikkelaar", company: "Appwerk", source: .adzuna)
+    private static let pixelwerk = Vacancy(id: "b", title: "Front-end developer", company: "Pixelwerk", source: .adzuna)
+
+    @Test func aVacancyTaskGoesAlongOnceWithItsQuestion() async throws {
+        let ayla = FakeAyla()
+        ayla.replies = [.success(AylaReply(id: "r1", conversationId: "conv", text: "Appwerk past beter.")), .success(AylaReply(id: "r2", conversationId: "conv", text: "Graag."))]
+        let model = AylaChatModel(service: ayla)
+
+        let question = try #require(model.question(for: .compare, about: [Self.appwerk, Self.pixelwerk]))
+        #expect(question == "Vergelijk iOS-ontwikkelaar bij Appwerk met Front-end developer bij Pixelwerk. Welke past het best bij mij?")
+        model.send(question)
+        await waitUntilIdle(model)
+        model.send("Dankjewel")
+        await waitUntilIdle(model)
+
+        #expect(ayla.requests.first?.context?.task == .compare)
+        #expect(ayla.requests.first?.context?.compare?.map(\.company) == ["Appwerk", "Pixelwerk"])
+        #expect(ayla.requests.last?.context == nil)
+    }
+
+    @Test func comparingNeedsTwoOrThreeVacancies() {
+        let model = AylaChatModel(service: FakeAyla())
+        #expect(model.question(for: .compare, about: [Self.appwerk]) == nil)
+        #expect(model.question(for: .compare, about: Array(repeating: Self.appwerk, count: 4)) == nil)
+    }
+
+    @Test func aPracticeInterviewGoesOnUntilItStops() async throws {
+        let ayla = FakeAyla()
+        ayla.replies = (1...3).map { .success(AylaReply(id: "r\($0)", conversationId: "conv", text: "Vraag \($0)")) }
+        let model = AylaChatModel(service: ayla)
+
+        model.send(try #require(model.question(for: .interview, about: [Self.appwerk])))
+        await waitUntilIdle(model)
+        #expect(model.practice?.id == "a")
+        model.send("Ik heb een app gemaakt met SwiftUI.")
+        await waitUntilIdle(model)
+        model.send(try #require(model.stopPracticeQuestion()))
+        await waitUntilIdle(model)
+
+        #expect(ayla.requests.map(\.context?.task) == [.interview, .interview, .interview])
+        #expect(ayla.requests.allSatisfy { $0.context?.vacancy?.company == "Appwerk" })
+        #expect(model.practice == nil)
+    }
+
+    @Test func sayingStopEndsThePracticeToo() async throws {
+        let ayla = FakeAyla()
+        ayla.replies = (1...2).map { .success(AylaReply(id: "r\($0)", conversationId: "conv", text: "Antwoord \($0)")) }
+        let model = AylaChatModel(service: ayla)
+        model.send(try #require(model.question(for: .interview, about: [Self.appwerk])))
+        await waitUntilIdle(model)
+        model.send("Stop maar.")
+        await waitUntilIdle(model)
+        #expect(ayla.requests.last?.context?.task == .interview)
+        #expect(model.practice == nil)
+        model.newConversation()
+        #expect(model.practice == nil)
+    }
+
     @Test func askingAboutAnItemSendsItWithEveryQuestionUntilANewConversation() async {
         let ayla = FakeAyla()
         ayla.replies = (1...3).map { .success(AylaReply(id: "r\($0)", conversationId: "c", text: "Oké")) }

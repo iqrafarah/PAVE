@@ -89,8 +89,7 @@ enum AylaMessages {
     static let siriSignInFirst = "Log eerst in bij PAVE, dan kan Ayla je vragen beantwoorden."
     static let siriUnavailable = "Ayla is er nu even niet. Probeer het straks nog eens in PAVE."
     static let siriFailed = "Ayla kon nu geen antwoord geven. Probeer het zo nog eens."
-    static let vacancyHint = "Draai je hoofd voor de volgende, knik om te kiezen"
-    static let vacancyChoose = "Kies deze"
+    static let vacancyHint = "Draai je hoofd voor de volgende, knik om er meer over te horen"
     static func vacancyPosition(_ index: Int, of count: Int) -> String { "\(index + 1) van \(count)" }
     static let vacancySave = "Bewaren"
     static let vacancySavedLabel = "Bewaard"
@@ -144,6 +143,36 @@ enum AylaMessages {
     }
     static let vacancyNoMatch = "Ayla heeft deze vacature nog niet met je kluis vergeleken. Vraag het haar hieronder."
     static let vacancyAskButton = "Vraag Ayla"
+    static let vacancyActionGaps = "Wat mis ik?"
+    static let vacancyActionPrepare = "Solliciteren"
+    static let vacancyActionPractice = "Oefen gesprek"
+    static let vacancyActionCompare = "Vergelijk"
+    static let vacancyActionCompareChosen = "Gekozen"
+    static func vacancyCompareButton(_ count: Int) -> String { "Vergelijk \(count) vacatures" }
+    static let vacancyCompareHint = "Kies nog een vacature om te vergelijken"
+    static let vacancyCompareFull = "Je kunt er 3 tegelijk vergelijken"
+    static func vacancyCompareQuestion(_ vacancies: [Vacancy]) -> String {
+        let names = vacancies.map { "\($0.title) bij \($0.company)" }
+        let list = names.count > 2 ? names.dropLast().joined(separator: ", ") + " en " + (names.last ?? "") : names.joined(separator: " met ")
+        return "Vergelijk \(list). Welke past het best bij mij?"
+    }
+    static func vacancyGapsQuestion(_ vacancy: Vacancy) -> String {
+        "Wat mis ik nog voor \(vacancy.title) bij \(vacancy.company), en hoe kom ik daar?"
+    }
+    static func vacancyPrepareQuestion(_ vacancy: Vacancy) -> String {
+        "Help me solliciteren op \(vacancy.title) bij \(vacancy.company)."
+    }
+    static func vacancyPracticeQuestion(_ vacancy: Vacancy) -> String {
+        "Oefen een sollicitatiegesprek met mij voor \(vacancy.title) bij \(vacancy.company)."
+    }
+    static let practiceStopQuestion = "Ik wil stoppen met oefenen."
+    static func practiceTitle(_ vacancy: Vacancy) -> String { "Oefengesprek · \(vacancy.company)" }
+    static let practiceStop = "Stoppen"
+    /// "Stop", "ik ben klaar", "genoeg zo": the practice ends after this answer.
+    static func endsPractice(_ text: String) -> Bool {
+        let said = text.lowercased().trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters))
+        return said.range(of: #"^(stop|stoppen|klaar|genoeg|ik ben klaar|ik wil stoppen|genoeg zo|laten we stoppen)\b"#, options: .regularExpression) != nil
+    }
     static let vacancyFits = "Past bij jou"
     static let vacancyMissing = "Wat je nog mist"
     static let vacancyMatchNote = "Ayla vergeleek je kluis met een stukje van de vacaturetekst. Het is een inschatting, geen oordeel."

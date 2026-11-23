@@ -11,6 +11,9 @@ struct VacancyDetail: View {
     let onToggleSave: (() -> Void)?
     let onAsk: (() -> Void)?
     let onAskGap: ((String) -> Void)?
+    /// What you can do with it: ask what you miss, apply, practise, compare.
+    var actions: VacancyActions?
+    var compareBar: VacancyCompareBar?
 
     private var hasFit: Bool { !vacancy.matches.isEmpty || !vacancy.skillGap.isEmpty }
 
@@ -36,6 +39,14 @@ struct VacancyDetail: View {
                             .padding(.top, 6)
                             .padding(.trailing, 6)
                     }
+                }
+
+                if actions != nil || compareBar != nil {
+                    VStack(spacing: 8) {
+                        actions
+                        compareBar
+                    }
+                    .padding(.top, -12)
                 }
 
                 if !vacancy.matches.isEmpty {

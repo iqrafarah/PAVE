@@ -1,13 +1,15 @@
 import SwiftUI
 
-/// A round white badge with the first letter of a company, used when there is no logo.
-struct CompanyMonogram: View {
-    let name: String
+/// A round white badge with a building, used when a company has no logo: an icon, never its first letter.
+struct CompanyIconBadge: View {
     var size: CGFloat = 64
 
     var body: some View {
-        Text(name.prefix(1).uppercased())
-            .font(.custom("InterVariable-Bold", size: size * 26 / 64, relativeTo: .title2))
+        Image(.iconVaultBuildingOutline)
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .frame(width: size * 0.42, height: size * 0.42)
             .foregroundStyle(Color.paveAccent)
             .frame(width: size, height: size)
             .background(Color.panel, in: .circle)
@@ -18,8 +20,8 @@ struct CompanyMonogram: View {
 
 #Preview {
     HStack {
-        CompanyMonogram(name: "Pixelwerk")
-        CompanyMonogram(name: "Golfstroom")
+        CompanyIconBadge()
+        CompanyIconBadge(size: 44)
     }
     .padding()
     .background(Color.canvas)

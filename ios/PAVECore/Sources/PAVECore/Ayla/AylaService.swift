@@ -81,6 +81,8 @@ public protocol AylaService: Sendable {
     func speech(for text: String) -> AsyncThrowingStream<Data, any Error>
     /// Wakes Ayla up on the server, so the first spoken answer does not wait for her to start.
     func warmUp() async
+    /// What was said in `audio` (16 kHz mono WAV), heard by the server's speech model; see `AylaListenService`.
+    func transcribe(_ audio: Data, hints: [String]) async throws -> String
     /// What Ayla remembers about the user, the newest first. `notSetUp` until the tables exist.
     func memories() async throws -> AylaMemories
     /// Saves a note the user kept or wrote.
@@ -147,6 +149,8 @@ extension AylaService {
     }
 
     public func warmUp() async {}
+
+    public func transcribe(_ audio: Data, hints: [String]) async throws -> String { throw AylaError.unavailable }
 
     public func memories() async throws -> AylaMemories { throw AylaError.notSetUp }
     public func remember(
@@ -337,7 +341,7 @@ public struct SupabaseAylaService: AylaService {
     public func warmUp() async {
         guard let token = await accessToken() else { return }
         await withTaskGroup(of: Void.self) { group in
-            for url in [endpoint, voiceEndpoint] {
+            for url in [endpoint, voiceEndpoint, projectURL.appending(path: "functions/v1/ayla-listen")] {
                 var urlRequest = URLRequest(url: url, timeoutInterval: 15)
                 urlRequest.httpMethod = "OPTIONS"
                 urlRequest.setValue(publishableKey, forHTTPHeaderField: "apikey")
@@ -346,6 +350,11 @@ public struct SupabaseAylaService: AylaService {
                 group.addTask { _ = try? await session.data(for: urlRequest) }
             }
         }
+    }
+
+    public func transcribe(_ audio: Data, hints: [String]) async throws -> String {
+        try await SupabaseAylaListenService(projectURL: projectURL, publishableKey: publishableKey, session: session, accessToken: accessToken)
+            .transcribe(audio, hints: hints)
     }
 
     public func speech(for text: String) -> AsyncThrowingStream<Data, any Error> {

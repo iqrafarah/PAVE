@@ -120,6 +120,24 @@ Vacatures staan niet in het menu. Je zoekt ze in de chat met Ayla; ze openen in 
 | Ayla vergelijkt (met kluis) | Ayla vergelijkt {n} vacatures met je kluis… |
 | Ayla bekijkt (zonder kluis) | Ayla bekijkt {n} vacatures… |
 
+## Iets doen met een vacature (iOS, chat en praten met Ayla)
+
+Onder een vacature staan vier acties. Tik je erop, dan komt de vraag als jouw bericht in de chat en antwoordt Ayla. Vergelijken doe je door 2 of 3 vacatures te kiezen.
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Knoppen | Wat mis ik? / Solliciteren / Oefen gesprek / Vergelijk |
+| Vergelijk gekozen | Gekozen |
+| Knop met 2 of 3 gekozen | Vergelijk {n} vacatures |
+| Met 1 gekozen | Kies nog een vacature om te vergelijken |
+| Al 3 gekozen | Je kunt er 3 tegelijk vergelijken |
+| Jouw bericht: vergelijken | Vergelijk {functie} bij {bedrijf} met {functie} bij {bedrijf}. Welke past het best bij mij? |
+| Jouw bericht: wat mis ik | Wat mis ik nog voor {functie} bij {bedrijf}, en hoe kom ik daar? |
+| Jouw bericht: solliciteren | Help me solliciteren op {functie} bij {bedrijf}. |
+| Jouw bericht: oefenen | Oefen een sollicitatiegesprek met mij voor {functie} bij {bedrijf}. |
+| Tijdens het oefenen | Oefengesprek · {bedrijf} / Stoppen |
+| Jouw bericht bij Stoppen | Ik wil stoppen met oefenen. |
+
 ## Animaties uitzetten (web en iOS, Instellingen › Weergave)
 
 | Onderdeel | Tekst |

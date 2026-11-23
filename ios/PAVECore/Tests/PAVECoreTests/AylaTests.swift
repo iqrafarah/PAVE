@@ -340,6 +340,18 @@ extension SupabaseAylaServiceTests {
         #expect((sent["vacancy"] as? [String: Any])?["company"] as? String == "Bedrijf")
     }
 
+    @Test func aTaskAndTheVacanciesToCompareGoAlong() throws {
+        let one = AylaRequest.OpenVacancy(Vacancy(id: "a", title: "iOS-ontwikkelaar", company: "Appwerk", source: .adzuna))
+        let two = AylaRequest.OpenVacancy(Vacancy(id: "b", title: "Front-end developer", company: "Pixelwerk", source: .adzuna))
+        let json = try JSONEncoder().encode(AylaRequest.Context(screen: .vacancies, compare: [one, two], task: .compare))
+        let sent = try #require(try JSONSerialization.jsonObject(with: json) as? [String: Any])
+        #expect(sent["task"] as? String == "compare")
+        #expect((sent["compare"] as? [[String: Any]])?.map { $0["company"] as? String } == ["Appwerk", "Pixelwerk"])
+        #expect(sent["vacancy"] == nil)
+        let plain = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(AylaRequest.Context(screen: .vacancies))) as? [String: Any])
+        #expect(plain["task"] == nil && plain["compare"] == nil)
+    }
+
     @Test func aSavedVacancyKeepsHowAylaShowedIt() async throws {
         let captured = Captured()
         let ayla = service { urlRequest in
@@ -724,7 +736,7 @@ extension SupabaseAylaServiceTests {
         #expect(body == ["text": "Hoi Daaf"])
     }
 
-    @Test func warmingUpOnlyWakesBothFunctions() async {
+    @Test func warmingUpOnlyWakesTheVoiceFunctions() async {
         let captured = CapturedList()
         let ayla = service { urlRequest in
             captured.append(urlRequest)
@@ -735,6 +747,7 @@ extension SupabaseAylaServiceTests {
         #expect(Set(requests.compactMap(\.url?.absoluteString)) == [
             "https://example.supabase.co/functions/v1/ayla",
             "https://example.supabase.co/functions/v1/ayla-voice",
+            "https://example.supabase.co/functions/v1/ayla-listen",
         ])
         #expect(requests.allSatisfy { $0.httpMethod == "OPTIONS" && $0.bodyData == nil })
         #expect(requests.allSatisfy { $0.value(forHTTPHeaderField: "Authorization") == "Bearer token" })

@@ -29,7 +29,7 @@ struct CompanyLogo: View {
                     .transition(.opacity)
                     .accessibilityHidden(true)
             } else {
-                CompanyMonogram(name: name, size: size)
+                CompanyIconBadge(size: size)
             }
         }
         .animation(.easeOut(duration: 0.2), value: logo != nil)
@@ -42,7 +42,7 @@ final class CompanyLogos {
     static let shared = CompanyLogos()
 
     private let cache = NSCache<NSURL, UIImage>()
-    /// Smaller than this (in pixels) is the service's placeholder or too blurry to show: the letter is better.
+    /// Smaller than this (in pixels) is the service's placeholder or too blurry to show: the icon is better.
     private static let minimumSide: CGFloat = 32
 
     func logo(at url: URL?) async -> UIImage? {
