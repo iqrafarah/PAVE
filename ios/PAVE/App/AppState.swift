@@ -64,7 +64,9 @@ final class AppState {
         backgroundedAt = date
     }
 
-    func didBecomeActive(at date: Date = .now) {
+    /// Back from the background (inactive or active, whichever comes first); without a stay in the background nothing
+    /// happens.
+    func didReturn(at date: Date = .now) {
         defer { backgroundedAt = nil }
         guard phase == .main, let backgroundedAt, pinVault.hasPin else { return }
         if date.timeIntervalSince(backgroundedAt) >= lockAfter { isRelocked = true }

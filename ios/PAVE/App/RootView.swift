@@ -6,6 +6,9 @@ struct RootView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(PaveAppearance.displayModeKey) private var displayModeRaw = PaveDisplayMode.auto.rawValue
+    /// Set only when the app leaves or returns, not when it is unlocked: Face ID makes the app inactive for a moment,
+    /// and the logo should not flash over the app right after it opens.
+    @State private var showsPrivacyCover = false
 
     private var colorScheme: ColorScheme? {
         switch PaveDisplayMode(rawValue: displayModeRaw) ?? .auto {
@@ -38,9 +41,10 @@ struct RootView: View {
                 )
                     // Back after being away too long: the PIN screen over the app, which stays as it was.
                     .overlay {
+                        // At once when it locks, so nothing of the app shows before it; fading only when it opens.
                         if appState.isRelocked {
                             PinLockView()
-                                .transition(.opacity)
+                                .transition(.asymmetric(insertion: .identity, removal: .opacity))
                         }
                     }
             }
@@ -60,7 +64,7 @@ struct RootView: View {
         .animation(.easeOut(duration: 0.2), value: appState.isRelocked)
         // In the app switcher and under Control Center only the logo shows.
         .overlay {
-            if scenePhase != .active, appState.isOpen {
+            if showsPrivacyCover {
                 PavePrivacyCover()
             }
         }
@@ -76,11 +80,16 @@ struct RootView: View {
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .background: appState.didEnterBackground()
+            case .inactive:
+                // Coming back, iOS makes the app inactive before active: the PIN screen is decided here, under the
+                // logo, so the app itself never shows before it.
+                appState.didReturn()
             case .active:
-                appState.didBecomeActive()
+                appState.didReturn()
                 WatchBridge.shared.update()
-            default: break
+            @unknown default: break
             }
+            showsPrivacyCover = phase != .active && appState.isOpen
         }
         // The Watch follows: signed in here means signed in there, signed out means out there too.
         .onChange(of: appState.phase) { WatchBridge.shared.update() }

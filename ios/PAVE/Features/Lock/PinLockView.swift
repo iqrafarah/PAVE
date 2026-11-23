@@ -3,6 +3,7 @@ import SwiftUI
 
 struct PinLockView: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.scenePhase) private var scenePhase
     @State private var digits = ""
     @State private var errorMessage: String?
     @State private var shakes = 0
@@ -44,8 +45,9 @@ struct PinLockView: View {
         } message: {
             Text("Je wordt uitgelogd. Log opnieuw in met je wachtwoord en verificatiecode en kies daarna een nieuwe pincode.")
         }
-        .task {
-            guard !didOfferBiometrics else { return }
+        // Once the app is fully in front: returning, the PIN screen is already up while iOS is still bringing it back.
+        .task(id: scenePhase == .active) {
+            guard scenePhase == .active, !didOfferBiometrics else { return }
             didOfferBiometrics = true
             await appState.unlockWithBiometrics()
         }
