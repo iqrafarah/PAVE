@@ -1,4 +1,5 @@
 import type { Vacancy } from './contract.ts'
+import { PROVIDER, SMALL } from './openrouter.ts'
 
 export interface FoundVacancy {
   vacancy: Vacancy
@@ -239,13 +240,14 @@ export const JOB_SITES = [
  * Searches the web through OpenRouter (Exa) when no job API is available. Only pages the search really returned count:
  * a vacancy whose link is not among the search results is dropped, so the model cannot invent one.
  */
-export function webSearch(apiKey: string, fetchImpl: typeof fetch = fetch, model = 'mistralai/mistral-medium-3.1'): SearchVacancies {
+export function webSearch(apiKey: string, fetchImpl: typeof fetch = fetch, model = SMALL): SearchVacancies {
   return async (what, where) => {
     const response = await fetchImpl('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model,
+        provider: PROVIDER,
         temperature: 0,
         max_tokens: 1200,
         plugins: [{ id: 'web', engine: 'exa', max_results: 10, include_domains: JOB_SITES }],

@@ -22,6 +22,8 @@ struct VacancySkillChips: View {
                         .renderingMode(.template)
                         .resizable()
                         .scaledToFit()
+                        // The plus is drawn on a smaller canvas than the check: this keeps both lines equally thick.
+                        .frame(width: chip.isGap ? 8 : 11, height: chip.isGap ? 8 : 11)
                         .frame(width: 11, height: 11)
                         .accessibilityHidden(true)
                     Text(chip.skill)

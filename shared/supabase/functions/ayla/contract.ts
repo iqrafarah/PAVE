@@ -58,7 +58,22 @@ export interface VacancyContext {
   skillGap: string[]
 }
 
-export interface Context { screen: Screen; itemId?: string; itemIds?: string[]; vacancy?: VacancyContext }
+/**
+ * What the user asked for with a button on a vacancy card, or the mode of the spoken conversation: compare the vacancies
+ * in `compare`, or what is missing, help to apply, or practise an interview for the open `vacancy`.
+ */
+export const VACANCY_TASKS = ['compare', 'gaps', 'prepare', 'interview'] as const
+export type VacancyTask = (typeof VACANCY_TASKS)[number]
+
+export interface Context {
+  screen: Screen
+  itemId?: string
+  itemIds?: string[]
+  vacancy?: VacancyContext
+  /** Two or three vacancies the user picked to compare. */
+  compare?: VacancyContext[]
+  task?: VacancyTask
+}
 
 export interface Choice { id: string; label: string }
 
@@ -203,19 +218,35 @@ export function parseRequest(body: unknown): AylaRequest | string {
     // Several items chosen with the plus button, for the whole conversation.
     if (c.itemIds !== undefined && (!Array.isArray(c.itemIds) || c.itemIds.length > 10 || !c.itemIds.every((id) => typeof id === 'string' && id.trim()))) return 'context is not valid'
     const itemIds = Array.isArray(c.itemIds) && c.itemIds.length ? (c.itemIds as string[]) : undefined
+    // Also with items chosen from the vault: the vacancy is open while those items are what Ayla may use.
+    const showsVacancies = c.screen === 'vacancies' || c.screen === 'vault' || c.screen === 'vaultItem'
     let vacancy: VacancyContext | undefined
     if (c.vacancy !== undefined) {
-      // Also with items chosen from the vault: the vacancy is open while those items are what Ayla may use.
-      if (c.screen !== 'vacancies' && c.screen !== 'vault' && c.screen !== 'vaultItem') return 'context is not valid'
+      if (!showsVacancies) return 'context is not valid'
       const parsed = parseVacancyContext(c.vacancy)
       if (!parsed) return 'context is not valid'
       vacancy = parsed
+    }
+    let compare: VacancyContext[] | undefined
+    if (c.compare !== undefined) {
+      if (!showsVacancies || !Array.isArray(c.compare) || c.compare.length < 2 || c.compare.length > 3) return 'context is not valid'
+      const parsed = c.compare.map(parseVacancyContext)
+      if (parsed.some((entry) => !entry)) return 'context is not valid'
+      compare = parsed as VacancyContext[]
+    }
+    let task: VacancyTask | undefined
+    if (c.task !== undefined) {
+      if (!VACANCY_TASKS.includes(c.task as VacancyTask)) return 'context is not valid'
+      task = c.task as VacancyTask
+      if (task === 'compare' ? !compare : !vacancy) return 'context is not valid'
     }
     context = {
       screen: c.screen as Screen,
       ...(c.itemId ? { itemId: c.itemId as string } : {}),
       ...(itemIds ? { itemIds } : {}),
       ...(vacancy ? { vacancy } : {}),
+      ...(compare ? { compare } : {}),
+      ...(task ? { task } : {}),
     }
   }
   let attachments: Attachment[] | undefined

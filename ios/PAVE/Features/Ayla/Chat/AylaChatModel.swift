@@ -171,6 +171,9 @@ final class AylaChatModel {
         self.undoWindow = undoWindow
         isGreetingReady = service == nil
         draft = drafts[nil]
+        if let service {
+            CompanyLogos.shared.finder = { company, city in try? await service.companyLogo(company: company, city: city) }
+        }
     }
 
     var isAvailable: Bool { service != nil }

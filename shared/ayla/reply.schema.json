@@ -60,6 +60,29 @@
                 "matches": { "type": "array", "items": { "type": "string" } },
                 "skillGap": { "type": "array", "items": { "type": "string" } }
               }
+            },
+            "compare": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 3,
+              "description": "Two or three vacancies the user picked to compare, each as its card shows it (like vacancy). Needed for task compare.",
+              "items": {
+                "type": "object",
+                "required": ["title", "company", "matches", "skillGap"],
+                "additionalProperties": false,
+                "properties": {
+                  "title": { "type": "string" },
+                  "company": { "type": "string" },
+                  "city": { "type": "string" },
+                  "summary": { "type": "string" },
+                  "matches": { "type": "array", "items": { "type": "string" } },
+                  "skillGap": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            },
+            "task": {
+              "enum": ["compare", "gaps", "prepare", "interview"],
+              "description": "A button on a vacancy, or the practice interview that is going on. compare needs compare; gaps, prepare and interview need vacancy. The app sends interview with every question while the practice lasts."
             }
           }
         },

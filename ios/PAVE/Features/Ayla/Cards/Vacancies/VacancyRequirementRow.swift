@@ -24,7 +24,8 @@ struct VacancyRequirementRow: View {
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 11, height: 11)
+                // The plus is drawn on a smaller canvas than the check: this keeps both lines equally thick.
+                .frame(width: isGap ? 8 : 11, height: isGap ? 8 : 11)
                 .foregroundStyle(isGap ? Color.inkMuted : Color.white)
                 .frame(width: 22, height: 22)
                 .background(isGap ? Color.paveSurfaceTint : Color.paveAccentFill, in: .circle)

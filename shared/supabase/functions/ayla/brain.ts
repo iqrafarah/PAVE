@@ -1,4 +1,4 @@
-import { ACTIONS, type ActionKind, type ActionResult, type AppAction, type AppState, needsConfirmation, type AylaReply, type AylaRequest, type Block, type Status, CATEGORIES, type Category, type Device, type RequirementLink, type Screen, SCREENS, type Vacancy } from './contract.ts'
+import { ACTIONS, type ActionKind, type ActionResult, type AppAction, type AppState, needsConfirmation, type AylaReply, type AylaRequest, type Block, type Status, CATEGORIES, type Category, type Context, type Device, type RequirementLink, type Screen, SCREENS, type Vacancy, type VacancyContext } from './contract.ts'
 import type { AllowedVault } from './vault.ts'
 import { cleanPurpose, CONSENT_QUESTION_CHOICES, grantsWholeVault, consentChoices, consentQuestion, mayLookInVault, saysNo, saysYes, type VaultConsent, vaultConsent, vaultRevoked, revokesVault } from './consent.ts'
 import { cleanMemories, type Memory, type MemorySuggestion, usedNotes } from './memory.ts'
@@ -155,17 +155,20 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   const { request } = input
   const memory: Memory = input.memory ?? { status: 'unavailable' }
   const { consent, mayLook, mayAskMore, part, vault } = vaultScope(input)
-  const mayAsk = !mayLook || mayAskMore
+  // A task from a vacancy card (compare, what is missing, apply, practise an interview) is never a search, and only
+  // helping to apply waits for the vault: the others go on with what she sees.
+  const task = request.context?.task
+  const mayAsk = (!mayLook || mayAskMore) && (!task || task === 'prepare')
   const chosen = request.context?.itemIds
   // Without a single item there is nothing to weigh a vacancy against.
   const canMatch = mayLook && vault?.status === 'on' && vault.items.length > 0
   const lastTurn = input.history.at(-1)
   const lastAyla = lastTurn?.role === 'ayla' ? lastTurn.text : ''
-  const aboutShown = asksAboutShown(request.text, input.history)
+  const aboutShown = asksAboutShown(request.text, input.history, request.context)
   // A search nobody asked for ("wat staat er in mijn kluis?" after talking about vacancies) does not start.
   const lastAylaText = input.history.at(-1)?.role === 'ayla' ? input.history.at(-1)!.text : ''
-  const searchWanted = !!request.results?.length || asksForWork(request.text) || (saysYes(request.text) && asksForWork(lastAylaText))
-    || !!request.context?.itemIds?.length || grantsWholeVault(request.text)
+  const searchWanted = !task && (!!request.results?.length || asksForWork(request.text) || (saysYes(request.text) && asksForWork(lastAylaText))
+    || !!request.context?.itemIds?.length || grantsWholeVault(request.text))
   const noSearch = aboutShown || !searchWanted
   const hasFiles = !!request.attachments?.length || input.history.some((turn) => turn.role === 'user' && turn.text.includes('(bijlagen: '))
   const messages: ChatMessage[] = [
@@ -232,7 +235,9 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   // to say "ga". When that second try fails, her first answer stands.
   // Her own offer to search counts when the user says yes to it, not when the user asks something else.
   const aboutWork = WORK.test(request.text) || (WORK.test(lastAyla) && saysYes(request.text))
-  const nudge = request.results?.length ? null : nudgeFor(output, { searches: !!deps.searchVacancies, aboutWork, mayAsk, device: request.device, aboutShown, searchWanted })
+  // A task never searches: a search the model wants anyway is dropped without asking it again.
+  if (task) output.vacancySearch = null
+  const nudge = request.results?.length || task ? null : nudgeFor(output, { searches: !!deps.searchVacancies, aboutWork, mayAsk, device: request.device, aboutShown, searchWanted })
   if (nudge) {
     const told: ChatMessage[] = [{ role: 'assistant', content: JSON.stringify(output) }, { role: 'system', content: nudge.says }]
     try {
@@ -374,15 +379,59 @@ export function asksForWork(text: string): boolean {
   return WORK_REQUEST.test(text)
 }
 
+/** Asks for other results than the ones shown: a new search, not a question about the cards. */
+const NEW_RESULTS = /\b(zoek\w*|nieuwe?|ook in|ook als|ook voor|parttime|fulltime|deeltijd|voltijd|in de buurt|dichterbij|verder weg|nog (een paar|meer|andere)|meer (vacatures|banen|resultaten|zoals|van die|opties)|zijn er (nog )?meer|heb je (nog )?(meer|andere)|andere (vacatures|banen|functies|bedrijven|plaats|stad|regio)|iets anders)\b|^en (in|rond|buiten) \S+$/
+/** How people point at cards they saw: by place in the list, side by side, or which of them. */
+const POINTS_AT_SHOWN = /\b(eerste|tweede|derde|vierde|vijfde|zesde|laatste|vorige|volgende|bovenste|onderste|naast elkaar|vergelijk\w*|welke van|allebei|alle (twee|drie)|die (twee|drie))\b|\b(die|deze|dat|dit)( \S+)? (vacatures?|baan|banen|functie|job|stage|plek)\b/
+/** The questions that were about the cards before people pointed at them. */
+const ASKS_ABOUT = /^(wat|hoe|waarom|welke|wanneer|help me|kun je .*(vergelijk|uitleg|voorbereid))\b/
+/** "En qua reistijd?", "en die?": a short follow-up that leans on what was just said. */
+const FOLLOW_UP = /^(en|maar|qua|hoe zit het met|wat dacht je van)\b/
+/** Words in a job title that do not tell one vacancy from another. */
+const PLAIN_TITLE_WORDS = new Set(['junior', 'medior', 'senior', 'developer', 'ontwikkelaar', 'medewerker', 'engineer', 'stagiair', 'stage', 'vacature', 'baan', 'functie', 'bij', 'voor', 'met', 'van', 'en', 'de', 'het', 'een'])
+
+/** Lowercase words with single spaces, hyphens and punctuation as spaces: "iOS-baan" is "ios baan". */
+function words(text: string): string {
+  return ` ${text.toLocaleLowerCase('nl').normalize('NFC').replace(/[^\p{L}\p{N}#+/&]+/gu, ' ').replace(/\s+/g, ' ').trim()} `
+}
+
+/** The companies and titles of the cards shown last, as "(Getoonde vacatures …)" in her answer lists them. */
+export function shownNames(history: PastMessage[]): { companies: string[]; titles: string[] } {
+  const line = [...history].reverse().find((turn) => turn.role === 'ayla' && turn.text.includes('(Getoonde vacatures'))?.text
+  const list = line?.slice(line.indexOf('(Getoonde vacatures')).replace(/^\(Getoonde vacatures[^:]*: /, '') ?? ''
+  const companies: string[] = []
+  const titles: string[] = []
+  for (const entry of list.split(/;\s*(?=\d+\.\s)/)) {
+    const card = entry.match(/^\d+\.\s+(.+?)\s+bij\s+(.+?)(?:\s+in\s+[^[;)]+)?(?:\s+\[[^\]]*\])?\)?$/)
+    if (!card) continue
+    titles.push(card[1].trim())
+    companies.push(card[2].trim().replace(/^via\s+/i, ''))
+  }
+  return { companies, titles }
+}
+
 /**
- * "Wat mis ik voor de tweede?", "Hoe lang duurt dat?": a question about vacancies already on the cards. Not when the
- * user asks for more, other or new ones.
+ * A question or order about vacancies already on the cards or open in front of the user: "wat mis ik voor de
+ * tweede?", "en die tweede?", "is die van Appwerk beter?", "kun je die twee naast elkaar zetten", "welke van de drie
+ * past het best", "en qua reistijd?". Not when the user asks for more, other or new ones.
  */
-export function asksAboutShown(text: string, history: PastMessage[]): boolean {
+export function asksAboutShown(text: string, history: PastMessage[], context?: Context): boolean {
+  const names = shownNames(history)
+  const open = [context?.vacancy, ...(context?.compare ?? [])].filter((v): v is VacancyContext => !!v)
   const shown = history.some((turn) => turn.role === 'ayla' && turn.text.includes('(Getoonde vacatures'))
-  const said = text.trim()
-  return shown && /^(wat|hoe|waarom|welke|wanneer|vergelijk|help me|kun je .*(vergelijk|uitleg|voorbereid))\b/i.test(said)
-    && !/\b(zoek|zoeken|meer|andere|nieuwe|ook in|ook als|parttime|fulltime|in de buurt|dichterbij)\b/i.test(said)
+  if (!shown && !open.length) return false
+  const said = text.trim().toLocaleLowerCase('nl').replace(/^(?:(?:eh|ehm|uh|uhm|nou|oké|oke|ok|hmm|ja|nee)[,.!]?\s+)+/, '')
+  if (NEW_RESULTS.test(said)) return false
+  if (POINTS_AT_SHOWN.test(said) || ASKS_ABOUT.test(said)) return true
+  // The card in front of the user is what "deze" and "die" mean.
+  if (open.length && /\b(deze|die|dit|dat|hij|hem|ze)\b/.test(said)) return true
+  const heard = words(said)
+  const companies = [...names.companies, ...open.map((v) => v.company)]
+  const titles = [...names.titles, ...open.map((v) => v.title)]
+  if (companies.some((company) => { const name = words(company).trim(); return name.length >= 3 && heard.includes(` ${name} `) })) return true
+  const titleWords = titles.flatMap((title) => words(title).trim().split(' ')).filter((word) => word.length >= 3 && !PLAIN_TITLE_WORDS.has(word))
+  if (titleWords.some((word) => heard.includes(` ${word} `))) return true
+  return FOLLOW_UP.test(said) && said.split(/\s+/).length <= 8 && (said.endsWith('?') || /^(en|qua) /.test(said))
 }
 const UNCLEAR_TEXT = 'Wat bedoel je precies? Zeg even wat ik moet doen, dan regel ik het.'
 /** "Zet hem uit", "doe dat maar": an order that only points, at nothing the conversation or the screen names. */
@@ -647,6 +696,9 @@ const SEVERAL = /\b(en dan|daarna|vervolgens|en ook)\b| en (zet|maak|open|verpla
 export function effortFor(request: AylaRequest, mayLook = false, turn: { justGranted?: boolean; lastAyla?: string } = {}): Effort {
   const text = request.text.trim()
   if (request.results?.length || request.attachments?.length || turn.justGranted) return 'hard'
+  // Comparing, what is missing and applying weigh evidence and write; a turn of interview practice is short.
+  const task = request.context?.task
+  if (task) return task === 'interview' ? 'normal' : 'hard'
   const asked = turn.lastAyla?.includes('?') ? turn.lastAyla : ''
   if (asked && saysYes(text)) return HARD.test(asked) ? 'hard' : 'normal'
   if (LIGHT.test(text)) return asked ? 'normal' : 'light'

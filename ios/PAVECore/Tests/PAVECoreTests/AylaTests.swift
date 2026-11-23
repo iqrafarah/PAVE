@@ -340,6 +340,23 @@ extension SupabaseAylaServiceTests {
         #expect((sent["vacancy"] as? [String: Any])?["company"] as? String == "Bedrijf")
     }
 
+    @Test func aCompanyLogoIsLookedUpByNameAndPlace() async throws {
+        let captured = Captured()
+        let ayla = service { urlRequest in
+            captured.request = urlRequest
+            return (200, Data(#"{"logoUrl":"https://appwerk.nl/apple-touch-icon.png","site":"appwerk.nl"}"#.utf8))
+        }
+        let logo = try await ayla.companyLogo(company: "Appwerk", city: "Eindhoven")
+        #expect(logo == URL(string: "https://appwerk.nl/apple-touch-icon.png"))
+        let request = try #require(captured.request)
+        #expect(request.url?.path() == "/functions/v1/company-logo")
+        let sent = try #require(request.bodyData)
+        let body = try #require(try JSONSerialization.jsonObject(with: sent) as? [String: String])
+        #expect(body == ["company": "Appwerk", "city": "Eindhoven"])
+        let none = service { _ in (200, Data("{}".utf8)) }
+        #expect(try await none.companyLogo(company: "Bakkerij", city: nil) == nil)
+    }
+
     @Test func aTaskAndTheVacanciesToCompareGoAlong() throws {
         let one = AylaRequest.OpenVacancy(Vacancy(id: "a", title: "iOS-ontwikkelaar", company: "Appwerk", source: .adzuna))
         let two = AylaRequest.OpenVacancy(Vacancy(id: "b", title: "Front-end developer", company: "Pixelwerk", source: .adzuna))

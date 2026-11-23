@@ -83,6 +83,9 @@ public protocol AylaService: Sendable {
     func warmUp() async
     /// What was said in `audio` (16 kHz mono WAV), heard by the server's speech model; see `AylaListenService`.
     func transcribe(_ audio: Data, hints: [String]) async throws -> String
+    /// The logo of a company on a vacancy without one, from its own website (the `company-logo` function); nil when
+    /// none was found. Only the name and place go out.
+    func companyLogo(company: String, city: String?) async throws -> URL?
     /// What Ayla remembers about the user, the newest first. `notSetUp` until the tables exist.
     func memories() async throws -> AylaMemories
     /// Saves a note the user kept or wrote.
@@ -151,6 +154,8 @@ extension AylaService {
     public func warmUp() async {}
 
     public func transcribe(_ audio: Data, hints: [String]) async throws -> String { throw AylaError.unavailable }
+
+    public func companyLogo(company: String, city: String?) async throws -> URL? { nil }
 
     public func memories() async throws -> AylaMemories { throw AylaError.notSetUp }
     public func remember(
@@ -355,6 +360,30 @@ public struct SupabaseAylaService: AylaService {
     public func transcribe(_ audio: Data, hints: [String]) async throws -> String {
         try await SupabaseAylaListenService(projectURL: projectURL, publishableKey: publishableKey, session: session, accessToken: accessToken)
             .transcribe(audio, hints: hints)
+    }
+
+    public func companyLogo(company: String, city: String?) async throws -> URL? {
+        guard let token = await accessToken() else { throw AylaError.notSignedIn }
+        var urlRequest = URLRequest(url: projectURL.appending(path: "functions/v1/company-logo"), timeoutInterval: 30)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue(publishableKey, forHTTPHeaderField: "apikey")
+        urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        urlRequest.httpBody = try JSONEncoder().encode(LogoQuestion(company: company, city: city))
+        let data = try await perform(urlRequest, accepting: [200])
+        guard let found = try? JSONDecoder().decode(LogoAnswer.self, from: data), let address = found.logoUrl,
+              let url = URL(string: address), url.scheme == "https"
+        else { return nil }
+        return url
+    }
+
+    private struct LogoQuestion: Encodable {
+        let company: String
+        let city: String?
+    }
+
+    private struct LogoAnswer: Decodable {
+        let logoUrl: String?
     }
 
     public func speech(for text: String) -> AsyncThrowingStream<Data, any Error> {

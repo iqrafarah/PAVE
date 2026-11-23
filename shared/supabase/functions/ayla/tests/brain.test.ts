@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { test } from 'node:test'
-import { alreadySo, asksAboutShown, asksForWork, asksToSave, moreThanOneRound, writesEnglish, announcesSearchOnly, answer, asksBeforeDoing, confirmable, declinedOffer, entriesSoFar, ownWords, vaultScope, bestFirst, sitesFromName, cleanActions, cleanTitle, effortFor, resultsMessage, siteFits, withLogos, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
+import { alreadySo, asksAboutShown, shownNames, asksForWork, asksToSave, moreThanOneRound, writesEnglish, announcesSearchOnly, answer, asksBeforeDoing, confirmable, declinedOffer, entriesSoFar, ownWords, vaultScope, bestFirst, sitesFromName, cleanActions, cleanTitle, effortFor, resultsMessage, siteFits, withLogos, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
 import { parseRequest } from '../contract.ts'
 import { cleanPurpose, grantsWholeVault, revokesVault, saysNo, saysYes, vaultConsent } from '../consent.ts'
 import { MODELS, modelsFor, openRouterCompletion } from '../openrouter.ts'
-import { buildSystemPrompt, MATCH_OUTPUT_SCHEMA, MODEL_OUTPUT_SCHEMA } from '../prompt.ts'
+import { buildSystemPrompt, contextNote, MATCH_OUTPUT_SCHEMA, MODEL_OUTPUT_SCHEMA } from '../prompt.ts'
 import { loadMemory, type MemoryCategory } from '../memory.ts'
 import { firstThatFinds, fromWebAnswer, mergeFound, salaryFrom, toFoundVacancy, toJoobleVacancy, withSupport } from '../vacancies.ts'
 
@@ -1527,4 +1527,121 @@ test('a question about vacancies already shown is answered, not searched again; 
 test('a search nobody asked for does not start; one asked for in any wording does', () => {
   for (const said of ['Zoek vacatures als developer', 'kun je vacaturs zoekn voor frontend', 'Zoek ook in Utrecht', 'Heb je parttime banen?', 'Ik zoek een afstudeerstage', 'welke banen passen bij mij']) assert.ok(asksForWork(said), said)
   for (const said of ['Wat staat er in mijn kluis?', 'Hoe laat ik mijn diploma verifiëren?', 'Zet donker aan']) assert.equal(asksForWork(said), false, said)
+})
+
+// Ronde 3 (2026-11-23): four tasks on a vacancy card, a list to compare, and follow-ups about the cards, also spoken.
+const appwerk = { title: 'iOS developer', company: 'Appwerk', city: 'Eindhoven', summary: 'Je maakt apps in Swift en SwiftUI.', matches: ['Swift', 'SwiftUI'], skillGap: ['CI/CD'] }
+const noord = { title: 'Junior frontend developer', company: 'Studio Noord', city: 'Eindhoven', matches: ['React'], skillGap: ['Scrum-certificaat'] }
+
+test('a task and a list to compare are checked', () => {
+  const valid = (context: object) => typeof parseRequest({ text: 'Vergelijk deze vacatures', device: 'phone', input: 'voice', context }) === 'object'
+  assert.ok(valid({ screen: 'vacancies', compare: [appwerk, noord] }))
+  assert.ok(valid({ screen: 'vacancies', compare: [appwerk, noord, appwerk], task: 'compare' }))
+  assert.ok(valid({ screen: 'vault', itemIds: ['a'], vacancy: appwerk, task: 'gaps' }))
+  for (const task of ['gaps', 'prepare', 'interview']) assert.ok(valid({ screen: 'vacancies', vacancy: appwerk, task }), task)
+  assert.equal(valid({ screen: 'vacancies', compare: [appwerk] }), false)
+  assert.equal(valid({ screen: 'vacancies', compare: [appwerk, noord, appwerk, noord] }), false)
+  assert.equal(valid({ screen: 'vacancies', compare: [appwerk, { ...noord, title: '' }] }), false)
+  assert.equal(valid({ screen: 'vacancies', compare: 'Appwerk' }), false)
+  assert.equal(valid({ screen: 'settings', compare: [appwerk, noord] }), false)
+  assert.equal(valid({ screen: 'vacancies', vacancy: appwerk, task: 'compare' }), false)
+  assert.equal(valid({ screen: 'vacancies', compare: [appwerk, noord], task: 'gaps' }), false)
+  assert.equal(valid({ screen: 'vacancies', vacancy: appwerk, task: 'apply' }), false)
+  const parsed = parseRequest({ text: 'Vergelijk deze vacatures', device: 'phone', input: 'text', context: { screen: 'vacancies', compare: [appwerk, noord], task: 'compare' } })
+  assert.ok(typeof parsed !== 'string')
+  assert.deepEqual(parsed.context, { screen: 'vacancies', compare: [appwerk, noord], task: 'compare' })
+})
+
+test('each task has its own layer, with the question itself, and only applying asks for the vault', () => {
+  const prompt = (context: object, extra: object = {}) => buildSystemPrompt({ device: 'phone', input: 'text', context: { screen: 'vacancies', ...context } as never, vaultConsent: 'notAsked', ...extra })
+  const compare = prompt({ compare: [appwerk, noord], task: 'compare' })
+  assert.match(compare, /## Taak: vacatures vergelijken/)
+  assert.match(compare, /1\. "iOS developer" bij Appwerk in Eindhoven\. .*Past \(uit de vergelijking met de kluis\): Swift, SwiftUI\. Ontbreekt \(uit die vergelijking\): CI\/CD\./)
+  assert.match(compare, /Verzin geen salaris, uren/)
+  assert.match(compare, /welke het best past en waarom/)
+  assert.match(compare, /Gebruik uit de kluis alleen wat je bij "De kluis" ziet; askVault is null/)
+  assert.match(prompt({ compare: [appwerk, noord], task: 'compare' }, { input: 'voice' }), /drie tot vijf korte zinnen, zonder lijstjes/)
+  const gaps = prompt({ vacancy: appwerk, task: 'gaps' })
+  assert.match(gaps, /## Taak: wat mist er nog/)
+  assert.match(gaps, /altijd twee tot vijf stappen/)
+  assert.match(gaps, /bied niet aan dit als plan te bewaren/)
+  const prepare = prompt({ vacancy: appwerk, task: 'prepare' })
+  assert.match(prepare, /zet askVault op "je te helpen solliciteren op deze vacature"/)
+  assert.match(prepare, /Heb je meer nodig, vraag het dan met askVault/)
+  assert.match(prompt({ vacancy: appwerk, task: 'prepare' }, { vaultConsent: 'declined' }), /\[je opleiding\]/)
+  assert.match(prompt({ vacancy: appwerk, task: 'prepare' }, { vaultConsent: 'granted', vault }), /Noem bij titel welke items uit de kluis/)
+  const interview = prompt({ vacancy: appwerk, task: 'interview' })
+  assert.match(interview, /Jij speelt een recruiter van Appwerk/)
+  assert.match(interview, /hooguit vijf in totaal/)
+  assert.match(interview, /twee sterke punten en één punt om te verbeteren/)
+  assert.match(interview, /askVault is null/)
+  assert.doesNotMatch(prompt({ vacancy: appwerk }), /## Taak/)
+  assert.match(contextNote({ screen: 'vacancies', compare: [appwerk, noord], task: 'compare' }, undefined) ?? '', /vergelijken: "iOS developer" bij Appwerk, "Junior frontend developer" bij Studio Noord/)
+  assert.match(contextNote({ screen: 'vacancies', vacancy: appwerk, task: 'interview' }, undefined) ?? '', /oefengesprek voor de vacature "iOS developer" bij Appwerk staat aan/)
+})
+
+test('a task never searches and does not wait for the vault, except to help apply', async () => {
+  let searched = 0
+  const searchVacancies = async () => { searched += 1; return found }
+  const wantsSearch = model(say('Ik zoek ook andere iOS-banen.', { intent: 'search', vacancySearch: { what: 'iOS developer', where: 'Eindhoven', also: null } }))
+  const compared = await answer({ request: { ...request, text: 'Vergelijk deze vacatures', context: { screen: 'vacancies', compare: [appwerk, noord], task: 'compare' } }, conversationId: 'c', history: [] }, { complete: wantsSearch.complete, newId: ids(), searchVacancies })
+  assert.equal(searched, 0)
+  assert.equal(wantsSearch.calls.length, 1)
+  assert.deepEqual(compared.blocks, [])
+  assert.match(wantsSearch.calls[0].at(-1)!.content, /^\(Bericht van PAVE: de gebruiker wil deze vacatures vergelijken/)
+
+  const asks = model(say('Dan kan ik je beter helpen.', { intent: 'askVault', askVault: 'je vragen te stellen over je ervaring' }))
+  const interview = await answer({ request: { ...request, text: 'Oefen een sollicitatiegesprek met mij', context: { screen: 'vacancies', vacancy: appwerk, task: 'interview' } }, conversationId: 'c', history: [] }, { complete: asks.complete, newId: ids() })
+  assert.equal(interview.accessRequest, undefined)
+  const prepare = await answer({ request: { ...request, text: 'Help me solliciteren op deze vacature', context: { screen: 'vacancies', vacancy: appwerk, task: 'prepare' } }, conversationId: 'c', history: [] }, { complete: asks.complete, newId: ids() })
+  assert.ok(prepare.accessRequest)
+})
+
+test('comparing, what is missing and applying are hard work; a turn of interview practice is not', () => {
+  const ask = (task: string, text = 'Vergelijk deze vacatures') => effortFor({ text, device: 'phone', input: 'voice', context: { screen: 'vacancies', vacancy: appwerk, compare: [appwerk, noord], task } as never })
+  assert.equal(ask('compare'), 'hard')
+  assert.equal(ask('gaps', 'Wat mis ik voor deze baan?'), 'hard')
+  assert.equal(ask('prepare', 'Help me solliciteren op deze vacature'), 'hard')
+  assert.equal(ask('interview', 'Ik heb in mijn stage bij LiveWall in een Scrum-team gewerkt en daar leerde ik plannen en samenwerken, en ik heb ook een eigen app gemaakt in Swift met SwiftUI, en daarna heb ik die in de App Store gezet en verbeterd op basis van feedback van gebruikers, wat ik heel leerzaam vond omdat het echt werk was.'), 'normal')
+})
+
+test('spoken follow-ups about the cards are questions about them, not a new search', () => {
+  const shownHistory = [toPastMessage({ role: 'ayla', text: 'Ik vond er drie.', reply: { blocks: [{ type: 'vacancies', search: { what: 'developer', where: 'Eindhoven' }, items: [
+    { id: 'j1', title: 'Junior frontend developer', company: 'Studio Noord', city: 'Eindhoven', source: 'jooble', matches: [], skillGap: [] },
+    { id: 'j2', title: 'iOS developer', company: 'Appwerk', city: 'Eindhoven', source: 'jooble', matches: [{ skill: 'Swift', requirement: 'Swift' }], skillGap: [] },
+    { id: 'j3', title: 'Servicedesk medewerker', company: 'Via werkzoeken.nl', city: 'Den Bosch', source: 'jooble', matches: [], skillGap: [] },
+  ] }] } })]
+  assert.deepEqual(shownNames(shownHistory), { companies: ['Studio Noord', 'Appwerk', 'werkzoeken.nl'], titles: ['Junior frontend developer', 'iOS developer', 'Servicedesk medewerker'] })
+  for (const said of [
+    'en die tweede?', 'is die van Appwerk beter?', 'vergelijk deze met de vorige', 'die eerste, wat mis ik daarvoor',
+    'eh kun je die twee naast elkaar zetten', 'welke van de drie past het best', 'en qua reistijd?', 'Wat mis ik nog voor de tweede?',
+    'Past die frontend baan beter bij mij?', 'Nou, die servicedesk is niks voor mij toch?', 'Is studio noord een groot bedrijf?',
+    'Wat moet ik nog leren voor de iOS-baan?', 'Open de laatste',
+  ]) assert.ok(asksAboutShown(said, shownHistory), said)
+  for (const said of [
+    'Zoek ook in Utrecht', 'Wat zijn er nog meer?', 'Heb je ook parttime banen?', 'Zoek meer vacatures zoals die bij Appwerk',
+    'Heb je andere vacatures?', 'en in Utrecht?', 'Zet het thema op blauw', 'Ik wil liever iets met data doen',
+  ]) assert.equal(asksAboutShown(said, shownHistory), false, said)
+  // Without cards nothing is a follow-up; with a card open in front of the user, "deze" is that one.
+  assert.equal(asksAboutShown('en die tweede?', []), false)
+  assert.equal(asksAboutShown('Past deze bij mij?', []), false)
+  const open = { screen: 'vacancies' as const, vacancy: appwerk }
+  assert.ok(asksAboutShown('Past deze bij mij?', [], open))
+  assert.ok(asksAboutShown('is die van Appwerk een goed bedrijf', [], open))
+  assert.equal(asksAboutShown('zoek er meer zoals deze', [], open), false)
+})
+
+test('a spoken follow-up about the cards answers without searching again', async () => {
+  const shownHistory = [{ role: 'ayla' as const, text: 'Ik vond er twee.\n(Getoonde vacatures, gezocht op "developer": 1. Junior frontend developer bij Studio Noord [mist: Scrum]; 2. iOS developer bij Appwerk [mist: CI/CD])' }]
+  const fake = model(
+    say('Ik zoek nog wat meer.', { intent: 'search', vacancySearch: { what: 'iOS developer', where: '' } }),
+    say('Die bij Appwerk past beter: je kent Swift al.', { intent: 'answer' }),
+  )
+  let searched = 0
+  const reply = await answer({ request: { ...request, input: 'voice', text: 'is die van Appwerk beter?' }, conversationId: 'c', history: shownHistory }, { complete: fake.complete, newId: ids(), searchVacancies: async () => { searched += 1; return found } })
+  assert.equal(searched, 0)
+  assert.match(reply.text, /Appwerk/)
+  // Pointing at nothing is still asked back.
+  const unclear = await answer({ request: { ...request, text: 'zet hem uit' }, conversationId: 'c', history: [] }, { complete: model(say('Ik zet het uit.', { intent: 'act', actions: [{ do: 'setAnimations', value: 'off', target: null }] })).complete, newId: ids() })
+  assert.equal(unclear.text, 'Wat bedoel je precies? Zeg even wat ik moet doen, dan regel ik het.')
 })

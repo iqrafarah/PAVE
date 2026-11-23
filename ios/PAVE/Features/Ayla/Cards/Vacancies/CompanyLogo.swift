@@ -6,6 +6,10 @@ struct CompanyLogo: View {
     let name: String
     let url: URL?
     var size: CGFloat = 64
+    /// Where the company is, so the search for its site finds the right one.
+    var city: String?
+    /// Off for "Via werkzoeken.nl": that site's own icon is what the card names, and nothing is looked up.
+    var looksUp = true
 
     @State private var logo: UIImage?
 
@@ -33,7 +37,11 @@ struct CompanyLogo: View {
             }
         }
         .animation(.easeOut(duration: 0.2), value: logo != nil)
-        .task(id: url) { logo = await CompanyLogos.shared.logo(at: url) }
+        .task(id: url) {
+            logo = await CompanyLogos.shared.logo(at: url)
+            // No logo, or only a favicon too small to show: PAVE looks for the logo on the company's own site.
+            if logo == nil, looksUp { logo = await CompanyLogos.shared.logo(of: name, in: city) }
+        }
     }
 }
 
@@ -42,6 +50,18 @@ final class CompanyLogos {
     static let shared = CompanyLogos()
 
     private let cache = NSCache<NSURL, UIImage>()
+    /// Asks the server for a company's logo; set once Ayla is there.
+    var finder: (@Sendable (String, String?) async -> URL?)?
+    /// One lookup per company and place while the app runs, also when it found nothing.
+    private var lookups: [String: Task<URL?, Never>] = [:]
+
+    func logo(of company: String, in city: String?) async -> UIImage? {
+        guard let finder, !company.isEmpty else { return nil }
+        let key = "\(company)|\(city ?? "")".lowercased()
+        let lookup = lookups[key] ?? Task { await finder(company, city) }
+        lookups[key] = lookup
+        return await logo(at: await lookup.value)
+    }
     /// Smaller than this (in pixels) is the service's placeholder or too blurry to show: the icon is better.
     private static let minimumSide: CGFloat = 32
 

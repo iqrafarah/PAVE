@@ -8,7 +8,7 @@
 // should go to Mistral alone. Models are retired without notice (mistral-medium-3.1 was, in 2026): a model that
 // answers with an error is logged by name, and `node evals/run.ts` shows which ones still answer.
 
-const SMALL = 'mistralai/mistral-small-2603'
+export const SMALL = 'mistralai/mistral-small-2603'
 const STEADY = 'mistralai/mistral-large-2512'
 const STRONG = 'mistralai/mistral-medium-3-5'
 

@@ -188,6 +188,42 @@ First run 24 of 29. What changed:
 
 Result: all 68 scenarios twice, 135 of 136 (the one miss was a check, not her answer), median 2.7 s per scenario.
 
+### Vacatures met de stem en vier taken (2026-11-23)
+
+**Two new fields on `context`** (`contract.ts`, checked in `parseRequest`):
+
+```jsonc
+"context": {
+  "screen": "vacancies",                  // compare is allowed where vacancy is: vacancies, vault, vaultItem
+  "vacancy": { "title": "…", "company": "…", "city": "…", "summary": "…", "matches": ["…"], "skillGap": ["…"] },
+  "compare": [ /* 2 or 3 vacancies in the same shape as vacancy */ ],
+  "task": "compare" | "gaps" | "prepare" | "interview"
+}
+```
+
+`task: "compare"` needs `compare`; `gaps`, `prepare` and `interview` need `vacancy`. Anything else is `context is not valid`. The visible message stays a plain Dutch sentence ("Vergelijk deze vacatures", "Wat mis ik voor deze baan?", "Help me solliciteren op deze vacature", "Oefen een sollicitatiegesprek met mij"); the task tells the brain what the button meant.
+
+**The four tasks** are a prompt layer (`taskLayer` in `prompt.ts`, after where the user is) plus a note with the question (`contextNote`):
+
+- `compare`: each vacancy by job and company, what fits (`matches`), what is missing (`skillGap`), practical points only when they are in the data, and an advice which fits best and why. No made-up salary or hours. Spoken: three to five sentences, no lists.
+- `gaps`: what is still missing, checked against the vault she may see, then two to five numbered steps with a rough timeline ("maand 1-2"). She never offers to save it as a plan: Plan does not exist yet.
+- `prepare`: which vault items to mention (by title, only items she may see), what to stress, and the opening of a motivation letter (three to five honest sentences). Without the vault she asks for it with the usual question (Ja, Kies zelf, Nee); after a no she writes with `[je opleiding]`-style gaps to fill in. Nothing is sent and nobody has applied. Spoken: she names the items and asks whether to put the letter in the chat.
+- `interview`: she plays a recruiter of that company. First turn: one sentence about the practice and the first question; then feedback on the answer and the next question, one at a time, at most five; after the fifth answer or "stop", "klaar" or "genoeg" a summary with two strengths and one point to improve. The app keeps sending `task: "interview"` while practice mode is on.
+
+The server keeps them to it (`brain.ts`): a task never searches (a `vacancySearch` is dropped, no nudge), only `prepare` may ask for the vault (the others go on with what she sees, so interview practice also works without the vault), and `compare`, `gaps` and `prepare` use the hard model while an interview turn is normal (`effortFor`).
+
+**Follow-ups about the cards, also spoken** (`asksAboutShown`): anything that points at the cards shown last or the card that is open (`context.vacancy`) is answered from them and never searched again: places in the list ("en die tweede?", "de vorige", "de laatste"), "naast elkaar", "vergelijk", "welke van", "die/deze vacature", a company or a distinctive word of a title from "(Getoonde vacatures …)" ("is die van Appwerk beter?", "die iOS-baan"), "deze" or "die" while a card is open, and short follow-ups such as "en qua reistijd?". Asking for other results ("zoek", "ook in Utrecht", "nog meer", "andere vacatures", "parttime", "en in Utrecht?") is still a search. Travel times are not made up: she names the places and says what is closer only when she is sure.
+
+**Listening with Voxtral** (`ayla-listen`): the recording goes to `mistralai/voxtral-small-24b-2507`, only on Mistral's servers (`provider: { only: ['mistral'] }`), about a second per sentence. The app may send `X-Ayla-Hints`: a percent-encoded, comma-separated list of names the user may say (companies, job titles, skills, vault titles). The server keeps at most 40 names of at most 80 characters, 1000 characters in all, and only letters, digits, spaces and `-'.&+#/()`, so the list cannot carry an instruction; the model is told it is only a list. With hints "Appwerk" is heard as Appwerk, without them as "Upwork". The limit is about 60 seconds (2 MB of 16 kHz mono 16-bit WAV).
+
+What testing against the real model showed, and what the function does about it:
+
+- A system message, or the instruction before the recording, makes Voxtral answer or make up a story instead of writing out short sentences ("Stop maar" became "Ik ben klaar om te beginnen"). So there is one user message: the recording first, then the instruction.
+- For silence or steady noise it writes whole made-up sentences, with the hint names in them. A recording without speech (`hasSpeech`: at least 150 ms clearly louder than the quietest part) is not sent and gives empty text, and a transcript with more words than fit in the recording (`plausibleTranscript`, five words a second) counts as nothing heard. The answer gets room for what fits in the recording (`max_tokens`).
+- Without hints it sometimes answers a spoken question instead of writing it out; with hints that did not happen in the tests. Tested with the macOS voice Xander, not with real people yet.
+
+**Evals.** 17 scenarios starting with "r3" in `evals/run.ts`: each task typed and spoken, applying without the vault, an interview of three turns ending in "stop", and the spoken follow-ups above. First run 15 of 17: steps were checked too strictly (a check bug), and "stop" in an interview gave only "Het is goed" (her mistake). Fixed since: the summary after "stop", steps that are always given (they were sometimes left out), and no made-up travel times ("20 minuten met de auto"). The "wat mis ik" scenarios then passed 6 of 6; a full run with all r3 scenarios after the last changes is still to do (the OpenRouter credit ran out during it).
+
 ### How the server holds her to her word (review round, 2026-11-22)
 
 The model is not trusted to be consistent; `brain.ts` checks each answer against what it says it is.
