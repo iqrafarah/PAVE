@@ -82,8 +82,11 @@ struct VacancyDetail: View {
                         Link(destination: url) {
                             HStack(spacing: 8) {
                                 Text(AylaMessages.vacancyOpen)
-                                Image(systemName: "arrow.up.right")
-                                    .font(.system(size: 13, weight: .semibold))
+                                Image(.iconArrowUpRightOutline)
+                                    .renderingMode(.template)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 15, height: 15)
                                     .accessibilityHidden(true)
                             }
                             .textStyle(.button)

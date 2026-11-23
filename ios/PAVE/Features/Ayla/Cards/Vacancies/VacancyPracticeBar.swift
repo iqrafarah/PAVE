@@ -8,7 +8,7 @@ struct VacancyPracticeBar: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(.iconChatBubbleLeftEllipsisSolid)
+            Image(.iconChatBubbleLeftEllipsisOutline)
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()

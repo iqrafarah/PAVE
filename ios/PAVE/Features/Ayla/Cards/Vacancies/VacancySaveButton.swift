@@ -7,10 +7,15 @@ struct VacancySaveButton: View {
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
-                .font(.system(size: 17, weight: .semibold))
+            // The line icons of PAVE, as on the rest of the card; filled once kept.
+            Image(isSaved ? .iconBookmarkSolid : .iconBookmarkOutline)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .paveIconFrame(20)
                 .foregroundStyle(isSaved ? Color.paveAccent : Color.inkMuted)
-                .contentTransition(.symbolEffect(.replace))
+                .scaleEffect(isSaved ? 1 : 0.94)
+                .animation(.spring(duration: 0.3, bounce: 0.4), value: isSaved)
                 .frame(width: 44, height: 44)
                 .contentShape(.rect)
         }

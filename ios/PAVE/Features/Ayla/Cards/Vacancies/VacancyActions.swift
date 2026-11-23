@@ -14,7 +14,7 @@ struct VacancyActions: View {
     var body: some View {
         Grid(horizontalSpacing: 8, verticalSpacing: 8) {
             GridRow {
-                action(.iconMap, AylaMessages.vacancyActionGaps) { onTask(.gaps) }
+                action(.iconPlusCircleOutline, AylaMessages.vacancyActionGaps) { onTask(.gaps) }
                 action(.iconDocumentTextOutline, AylaMessages.vacancyActionPrepare) { onTask(.prepare) }
             }
             GridRow {
@@ -27,7 +27,7 @@ struct VacancyActions: View {
     private var compare: some View {
         Button(action: onToggleCompare) {
             label(
-                isChosen ? .iconCheck : .iconSquares2X2Solid,
+                isChosen ? .iconCheckCircleOutline : .iconArrowsRightLeftOutline,
                 isChosen ? AylaMessages.vacancyActionCompareChosen : AylaMessages.vacancyActionCompare,
                 isOn: isChosen
             )

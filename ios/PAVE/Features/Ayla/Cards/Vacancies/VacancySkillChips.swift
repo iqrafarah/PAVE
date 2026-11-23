@@ -18,8 +18,11 @@ struct VacancySkillChips: View {
         FlowLayout(spacing: 6) {
             ForEach(shown, id: \.skill) { chip in
                 HStack(spacing: 5) {
-                    Image(systemName: chip.isGap ? "plus" : "checkmark")
-                        .font(.system(size: 10, weight: .bold))
+                    Image(chip.isGap ? .iconPlus : .iconCheck)
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 11, height: 11)
                         .accessibilityHidden(true)
                     Text(chip.skill)
                         .lineLimit(1)

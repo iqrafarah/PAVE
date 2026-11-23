@@ -20,8 +20,11 @@ struct VacancyRequirementRow: View {
 
     private var row: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: isGap ? "plus" : "checkmark")
-                .font(.system(size: 11, weight: .bold))
+            Image(isGap ? .iconPlus : .iconCheck)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 11, height: 11)
                 .foregroundStyle(isGap ? Color.inkMuted : Color.white)
                 .frame(width: 22, height: 22)
                 .background(isGap ? Color.paveSurfaceTint : Color.paveAccentFill, in: .circle)
