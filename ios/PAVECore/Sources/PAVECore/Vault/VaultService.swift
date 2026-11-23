@@ -154,7 +154,7 @@ public struct SupabaseVaultService: VaultService {
         do {
             return try await contents(select: base + ",vault_validation_requests(status,organisation_name,requested_at,response)")
         } catch VaultError.missingColumn {
-            // Without the requests the vault still loads; only "In afwachting" and the reason are missing.
+            // Without the requests the vault still loads; only "Wordt geverifieerd" and the reason are missing.
         }
         do {
             return try await contents(select: base)

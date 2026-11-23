@@ -31,11 +31,11 @@ struct VaultStatusBadge: View {
                 .textStyle(.caption)
                 .lineLimit(1)
         }
-        .foregroundStyle(status.foreground)
+        .foregroundStyle(isAwaitingReview ? Color.statusPending : status.foreground)
         .padding(.leading, 4)
         .padding(.trailing, 6)
         .frame(minHeight: 24)
-        .background(status.background, in: .rect(cornerRadius: 6))
+        .background(isAwaitingReview ? Color.statusPendingSurface : status.background, in: .rect(cornerRadius: 6))
         .fixedSize()
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Status: \(title)")

@@ -94,7 +94,7 @@ struct VaultRequestConfirmationSheet: View {
                 VStack(alignment: .leading, spacing: 24) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Verificatie aanvraag").textStyle(.calloutTitle).foregroundStyle(Color.ink).accessibilityAddTraits(.isHeader)
-                        Text("Laat je gegevens bevestigen.").textStyle(.bodyMedium).foregroundStyle(Color.inkMuted)
+                        Text("Laat je bewijs verifiëren.").textStyle(.bodyMedium).foregroundStyle(Color.inkMuted)
                     }
                     if let sendError { PaveNotice(message: sendError) }
                     if let directoryError { PaveNotice(message: directoryError) }

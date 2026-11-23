@@ -88,7 +88,7 @@ enum VaultMessages {
     // MARK: Uit je wallet (demo, Npuls)
 
     static let walletChoiceTitle = "Haal bewijs uit je wallet"
-    static let walletChoiceMessage = "Diploma's, certificaten en badges die je school of werkgever al bevestigde. Ze komen geverifieerd in je kluis."
+    static let walletChoiceMessage = "Diploma's, certificaten en badges die je school of werkgever al ondertekende. Ze komen geverifieerd in je kluis."
     static let walletTitle = "Uit je wallet"
     static let walletSteps = ["Kiezen", "Controleren", "Toestemming"]
     static let walletIntro = "Kies wat je in je kluis zet. Het komt erin als Geverifieerd, omdat je school of werkgever het al ondertekende."
@@ -229,17 +229,26 @@ enum VaultMessages {
     }
 
     static let added = "Bewijs toegevoegd"
-    static let addedMessage = "Het staat als Niet bevestigd in je kluis, tot een school of werkgever het bevestigt."
+    static let addedMessage = "Het staat als Niet geverifieerd in je kluis, tot een school of werkgever het verifieert."
     static let saving = "Toevoegen…"
     static let discardChangesTitle = "Wijzigingen weggooien?"
-    static let reconfirmTitle = "Dit bewijs is bevestigd"
-    static let reconfirmMessage = "Pas je de gegevens of bestanden aan, dan staat het weer als Niet bevestigd in je kluis. Daarna kun je opnieuw bevestiging aanvragen."
+    static let reconfirmTitle = "Dit bewijs is geverifieerd"
+    static let reconfirmMessage = "Pas je de gegevens of bestanden aan, dan staat het weer als Niet geverifieerd in je kluis. Daarna kun je het opnieuw laten verifiëren."
 
-    // MARK: Bevestiging aanvragen (only the front for now)
+    // MARK: Laten verifiëren
 
-    static let requestAction = "Bevestiging aanvragen"
-    static let requestAgainAction = "Opnieuw bevestiging aanvragen"
-    static let awaitingReviewTitle = "In afwachting"
+    static let requestAction = "Laten verifiëren"
+    static let requestAgainAction = "Opnieuw laten verifiëren"
+    static let awaitingReviewTitle = "Wordt geverifieerd"
+
+    // MARK: Uitleg bij de status (tik op het label)
+
+    static let statusInfoHint = "Tik voor uitleg"
+    static let statusStepsTitle = "De stappen van verifiëren"
+    static let statusStepAdded = "Je zet het zelf in je kluis."
+    static let statusStepChecking = "Je vraagt een school, opleiding of werkgever om het te controleren."
+    static let statusStepVerified = "Zij hebben gecontroleerd dat het klopt. Scholen en werkgevers kunnen erop vertrouwen."
+    static let statusStepRejected = "Zij konden niet verifiëren dat het klopt. Pas het aan en vraag het opnieuw aan."
 
     static func awaitingReviewExplanation(_ organisation: String?) -> String {
         if let organisation, !organisation.isEmpty {
@@ -254,12 +263,12 @@ enum VaultMessages {
     }
     static let requestPreviewLabel = "Voorbeeld"
     static let requestPreviewAccessibility = "Voorbeeld, werkt nog niet"
-    static let requestNotActive = "Bevestiging aanvragen werkt nog niet. Je kunt alvast kijken hoe het wordt, maar er wordt niets verstuurd."
-    static let requestWhoTitle = "Wie kan dit bevestigen?"
+    static let requestNotActive = "Laten verifiëren werkt nog niet. Je kunt alvast kijken hoe het wordt, maar er wordt niets verstuurd."
+    static let requestWhoTitle = "Wie kan dit verifiëren?"
     static let requestOrganisationPrompt = "Bijv. Fontys of LiveWall"
     static let requestEmailTitle = "E-mailadres van je contactpersoon"
     static let requestMessageTitle = "Bericht"
-    static let requestMessagePrompt = "Bijv. Wil je mijn eindstage bevestigen?"
+    static let requestMessagePrompt = "Bijv. Wil je mijn eindstage verifiëren?"
     static let requestSharedTitle = "Dit ziet de ontvanger"
     static let requestSend = "Verzoek versturen"
     static let requestNotSentTitle = "Nog niet verstuurd"
@@ -268,7 +277,7 @@ enum VaultMessages {
 
     static func requestNotSentMessage(_ organisation: String) -> String {
         let to = organisation.trimmingCharacters(in: .whitespacesAndNewlines)
-        return "Bevestiging aanvragen werkt nog niet in deze versie van PAVE. Er is niets naar \(to.isEmpty ? "de organisatie" : to) gestuurd en niets bewaard."
+        return "Laten verifiëren werkt nog niet in deze versie van PAVE. Er is niets naar \(to.isEmpty ? "de organisatie" : to) gestuurd en niets bewaard."
     }
 
     static func requestMissing(_ field: VaultConfirmationRequest.Field) -> String {
@@ -276,14 +285,14 @@ enum VaultMessages {
         case .organisation: "Kies een organisatie."
         case .location: "Kies een vestigingsplaats."
         case .department: "Kies een afdeling of opleiding."
-        case .contact: "Kies de persoon die je bewijs kan bevestigen."
+        case .contact: "Kies de persoon die je bewijs kan verifiëren."
         }
     }
 
     static func sharedTitle(_ title: String, kind: String) -> String { "\(title) (\(kind.lowercased()))" }
     static func sharedFiles(_ count: Int) -> String { count == 1 ? "1 bestand" : "\(count) bestanden" }
     static func sharedSkills(_ count: Int) -> String { count == 1 ? "1 vaardigheid" : "\(count) vaardigheden" }
-    static let reconfirmQuestion = "Opnieuw laten bevestigen?"
+    static let reconfirmQuestion = "Opnieuw laten verifiëren?"
     static let discardTitle = "Stoppen met toevoegen?"
     static let discardMessage = "Wat je hebt ingevuld, wordt niet bewaard."
 
@@ -355,16 +364,16 @@ extension VaultItem.Status {
     var title: String {
         switch self {
         case .verified: "Geverifieerd"
-        case .toVerify: "Niet bevestigd"
+        case .toVerify: "Niet geverifieerd"
         case .rejected: "Afgewezen"
         }
     }
 
     var explanation: String {
         switch self {
-        case .verified: "Bevestigd door een officiële of vertrouwde bron. Pas je iets aan, dan moet het opnieuw bevestigd worden."
-        case .toVerify: "Nog niet bevestigd door een school, opleiding of werkgever."
-        case .rejected: "De organisatie kon dit niet bevestigen. Kijk of alles klopt en pas het zo nodig aan."
+        case .verified: "Een school, opleiding of werkgever heeft gecontroleerd dat dit klopt. Pas je iets aan, dan moet het opnieuw geverifieerd worden."
+        case .toVerify: "Dit heb je zelf toegevoegd. Nog geen school, opleiding of werkgever heeft gecontroleerd dat het klopt."
+        case .rejected: "De organisatie kon niet verifiëren dat dit klopt. Kijk of alles klopt, pas het zo nodig aan en vraag het opnieuw aan."
         }
     }
 }

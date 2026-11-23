@@ -445,7 +445,7 @@ final class VaultModel {
             )
             problem = nil
             PaveHaptics.success()
-            // So the item shows "In afwachting" straight away.
+            // So the item shows "Wordt geverifieerd" straight away.
             await load()
             return nil
         } catch {

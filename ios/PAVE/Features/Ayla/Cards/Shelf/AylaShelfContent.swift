@@ -28,7 +28,7 @@ struct AylaShelfContent: View {
                 PaveEmptyState(
                     icon: .iconMailOpen,
                     title: "Je hebt geen meldingen",
-                    message: "Nieuwe berichten over je plannen en over het bevestigen van je gegevens zie je hier."
+                    message: "Nieuwe berichten over je plannen en over het verifiëren van je bewijs zie je hier."
                 )
                 .padding(.vertical, 24)
             case .plan:

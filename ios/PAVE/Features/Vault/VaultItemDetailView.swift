@@ -26,6 +26,42 @@ struct VaultItemDetailView: View {
     /// once. Kept for this view, so it does not turn again when the vault reloads.
     @State private var newsFrom: VaultStatusMorph.Badge?
 
+    /// "Wat betekent dit?": the status with a small (i); a tap shows what it means, the steps and what you can do.
+    @State private var showsStatusInfo = false
+
+    private func statusButton(_ item: VaultItem) -> some View {
+        Button {
+            PaveHaptics.selection()
+            showsStatusInfo = true
+        } label: {
+            HStack(spacing: 6) {
+                if let news = statusNews(for: item) {
+                    news
+                } else {
+                    VaultStatusBadge(item: item)
+                }
+                Image(.iconInformationCircle)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 16, height: 16)
+                    .foregroundStyle(Color.inkMuted)
+                    .accessibilityHidden(true)
+            }
+            .frame(minHeight: 44)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.pave)
+        .accessibilityHint(VaultMessages.statusInfoHint)
+        .popover(isPresented: $showsStatusInfo, attachmentAnchor: .rect(.bounds), arrowEdge: .top) {
+            VaultStatusInfo(item: item, onRequest: item.status == .verified || item.isAwaitingReview ? nil : {
+                showsStatusInfo = false
+                requestsConfirmation = true
+            })
+            .presentationCompactAdaptation(.popover)
+        }
+    }
+
     private func statusNews(for item: VaultItem) -> VaultStatusMorph? {
         guard let newsFrom, !item.isAwaitingReview, item.status != .toVerify else { return nil }
         return VaultStatusMorph(from: newsFrom, to: .init(status: item.status), delay: .milliseconds(600), hapticOnChange: item.status == .verified)
@@ -114,7 +150,7 @@ struct VaultItemDetailView: View {
         var actions: [(String, () -> Void)] = []
         if askAylaAbout != nil { actions.append((AylaMessages.askAboutItem, { ask(about: item) })) }
         actions.append(("Aanpassen", { isEditing = true }))
-        if item.status != .verified { actions.append(("Bevestiging aanvragen", { requestsConfirmation = true })) }
+        if item.status != .verified { actions.append((VaultMessages.requestAction, { requestsConfirmation = true })) }
         actions.append(("Klaar", { dismiss() }))
         var menus = [CameraMenu(id: "item-actions", title: "Acties", symbol: "ellipsis.circle", items: actions.map(\.0), onPress: { index in
             if actions.indices.contains(index) { actions[index].1() }
@@ -147,11 +183,7 @@ struct VaultItemDetailView: View {
                             .foregroundStyle(Color.ink)
                             .fixedSize(horizontal: false, vertical: true)
                             .accessibilityAddTraits(.isHeader)
-                        if let news = statusNews(for: item) {
-                            news
-                        } else {
-                            VaultStatusBadge(item: item)
-                        }
+                        statusButton(item)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     // In the content rather than the navigation bar: on the outer display of the iPhone Duo the bar puts
@@ -196,7 +228,7 @@ struct VaultItemDetailView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(Color.statusRejectedSurface, in: .rect(cornerRadius: 12))
                         }
-                        // Also after a change: a confirmed item that was changed is Niet bevestigd again and can be sent anew.
+                        // Also after a change: a verified item that was changed is Niet geverifieerd again and can be sent anew.
                         // While a request is open there is nothing to send: the reviewer decides first.
                         if item.status != .verified, !item.isAwaitingReview {
                             PaveSecondaryButton(
