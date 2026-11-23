@@ -28,7 +28,7 @@ Categories match `shared/ayla/reply.schema.json`: `diplomas`, `certificates`, `b
 
 ## How iOS shows it
 
-- Status labels: `verified` is "Geverifieerd", `toVerify` is "Niet bevestigd" (not "Verifiëren": nobody is checking it unless a validation request exists), `rejected` is "Afgewezen". Origin: `user` "Zelf toegevoegd", `organization`/`import` "Van een organisatie", `ayla` "Via Ayla".
+- Status labels: `verified` is "Geverifieerd", `toVerify` is "Niet bevestigd" (not "Verifiëren": nobody is checking it unless a validation request exists), `rejected` is "Afgewezen". Origin: `user` "Zelf toegevoegd", `organization` "Van een organisatie", `import` "Uit je wallet (demo)" on iOS (the filter still counts it under "Van een organisatie"), `ayla` "Via Ayla".
 - New items are always `source = user` and `toVerify`; the app never sends `verification_status` or `source`. An item that is `verified`, or that comes from an organisation, cannot be changed in the app, so a confirmed item never shows edited content under a confirmed label.
 - Dates use `start_date`/`end_date`/`is_current` for categories with a period, and `issued_on` for diplomas, certificates and badges. Cards show them as "mrt 2025 - dec 2025", "nov 2025 - nu" or "jul 2024".
 - Folders have a colour and an icon on iOS. The columns for them come from round two below (applied). Before that, iOS kept the colour and icon on the device; that fallback still works if a column is ever missing.
@@ -107,6 +107,17 @@ Migration `20261120120000_chat_expiry_and_archive.sql`. Deleting is final; nothi
 - **Ayla and the archive**: `profiles.ayla_uses_archive` (default false). The `ayla` function leaves archived evidence out unless it is true; deploy the function together with the migration.
 - **One setting** (migration `20261120150000_chat_expiry_one_setting.sql`): the web's own version (`20261119170000`, `ayla_settings.chat_auto_delete_days`) clashed with this one. The repair carries a choice made on the web over to `profiles.chat_expiry_days`, drops that column and the web's `ayla_delete_expired_chats()` without arguments (with both, the hourly job failed as "not unique"), and schedules the job again. The web now reads and saves `profiles.chat_expiry_days`, with 1, 7, 30 or 90 days, as iOS.
 - The profile guard (`guard_profile_self_update`) is replaced with a list that also names `display_mode`, so it can be applied before or after the web's display mode migration.
+
+## Demo wallet: evidence from a wallet (iOS, 2026-11-23)
+
+Npuls asked for another way to add evidence: taking credentials from a wallet, which come in already verified. In the Netherlands this exists only as a pilot (the Npuls/SURF eduwallet proeftuin, with fictional people; see https://eduwallet.nl/en), so PAVE shows it as a **demo** and says so on the screen.
+
+- **Where:** the first step of "Bewijs toevoegen" has a third choice, "Haal bewijs uit je wallet". It opens "Je wallet": the credentials in the account's wallet as cards, to tick and put in the vault. While they go in, three checks tick off per credential (signed by the issuer, issuer known, not revoked), headed "Echtheid gecontroleerd (nagespeeld)". A note at the top says the wallet and the check are made up.
+- **The wallet** comes from the Edge Function `vault-wallet` (`shared/supabase/functions/vault-wallet`). Every account gets five credentials (a diploma, a certificate, two badges, a work experience or internship), picked from a pool of sixteen by the account id, so the same account always sees the same wallet and nothing has to be stored. The institutions are invented (Hogeschool Kempenland, Studio Noord and so on).
+- **Into the vault:** the function adds the chosen ones with `source = import` and `verification_status = verified`, with their skills (`source = import`, accepted). Only trusted server code may do that (`guard_vault_item_authority`), so the function uses the service key, after checking the session (two-step verification) and only for the credentials of the caller's own demo wallet. A credential whose title and institution are already in the vault as an import is shown as "Staat al in je kluis" and cannot be added twice; after it is deleted from the vault it can be taken again. The app puts each new item in the folder of its kind when there is one, and in the folder "Bewijs toevoegen" was opened from.
+- **No database change.** Everything uses the existing tables and the existing `import` source. Ayla may not use an imported item until "Ayla mag dit bekijken en gebruiken" is turned on, as with any other item. Changing an imported item makes it "Niet bevestigd" again, as with any confirmed item.
+- **Web** does not have it yet; the texts are in `docs/ui-teksten.md` ("Bewijs uit je wallet").
+- **Towards the real thing:** the pilot's open source (https://github.com/eduwallet) has a verifier for OpenID4VP and a revocation list. A real version would replace the function's made-up wallet with a presentation request to the learner's wallet, check the signature, the issuer against a trust list and the status list on the server, and then add the item the same way.
 
 ## Test data
 

@@ -40,6 +40,30 @@
 | Ongeldige keuze | Deze organisatie-, vestigings- of contactkeuze is niet meer geldig. Kies de gegevens opnieuw. |
 | Al aangevraagd | Voor dit bewijs staat al een verificatieaanvraag open. |
 
+## Bewijs uit je wallet (iOS, demo)
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Keuze bij Bewijs toevoegen | Haal bewijs uit je wallet |
+| Uitleg bij die keuze | Diploma's, certificaten en badges die je school of werkgever al bevestigde. Ze komen geverifieerd in je kluis. |
+| Titel | Je wallet |
+| Onder de titel | Kies wat je in je kluis wilt zetten. |
+| Melding bovenaan | Demo. Deze wallet is nagemaakt, met verzonnen bewijs. De controle wordt nagespeeld en er gaat niets naar of uit een echte wallet. |
+| Laden | Je wallet openen… |
+| Al in de kluis | Staat al in je kluis |
+| Alles al in de kluis | Alles uit je wallet staat al in je kluis. |
+| Knop zonder keuze | Kies wat je wilt toevoegen |
+| Knop | Zet 1 bewijsstuk in je kluis / Zet {n} bewijsstukken in je kluis |
+| Knop tijdens het toevoegen | Echtheid controleren… |
+| Kop boven de controle | Echtheid gecontroleerd (nagespeeld) |
+| Controles | Ondertekend door de uitgever / Uitgever is bekend / Niet ingetrokken |
+| Klaar (voorgelezen) | 1 bewijsstuk staat geverifieerd in je kluis. / {n} bewijsstukken staan geverifieerd in je kluis. |
+| Bron bij het bewijs | Uit je wallet (demo) |
+| Wallet laadt niet | Je wallet kon niet geopend worden. Probeer het zo nog eens. |
+| Functie staat nog niet aan | De demowallet staat nog niet aan. Vraag het team om de functie vault-wallet te zetten. |
+| Toevoegen mislukt | Het lukte niet om dit in je kluis te zetten. Probeer het zo nog eens. |
+| Knop na een fout | Opnieuw proberen |
+
 ## Status van een aanvraag in de kluis (iOS)
 
 | Onderdeel | Tekst |

@@ -16,6 +16,9 @@ struct VaultAddEvidenceSheet: View {
     /// While you type, the buttons step aside: return closes the keyboard and brings them back.
     @State private var isTyping = false
     @State private var isScanning = false
+    /// "Haal bewijs uit je wallet" (demo): the wallet opens over this sheet; once something came in, both close.
+    @State private var showsWallet = false
+    @State private var walletImported = false
     @Environment(PaveCameraControl.self) private var cameraControl: PaveCameraControl?
 
     init(vault: VaultModel, category: VaultCategory, folderID: String?) {
@@ -90,6 +93,10 @@ struct VaultAddEvidenceSheet: View {
         // Closed before saving, also by accident: it comes back as it was when you add evidence within half a minute.
         .onDisappear { flow.vault.keepDraft(flow) }
         .cameraControlMenus("add-evidence", menus: cameraMenus, press: { primaryAction() })
+        .sheet(isPresented: $showsWallet, onDismiss: { if walletImported { dismiss() } }) {
+            VaultWalletSheet(vault: flow.vault, folderID: flow.startFolderID) { _ in walletImported = true }
+                .paveSheet(background: .panel)
+        }
         // A scan from the Camera Control button: the scanner needs the camera knopmodus holds, so knopmodus waits.
         .fullScreenCover(isPresented: $isScanning, onDismiss: { cameraControl?.isSuspended = false }) {
             DocumentScanner(
@@ -115,6 +122,7 @@ struct VaultAddEvidenceSheet: View {
             ways.append(("Foto", { source = .photos }))
             ways.append(("Bestand", { source = .files }))
             ways.append(("Zonder bestand", { withAnimation(pageAnimation) { flow.withoutFile() } }))
+            ways.append(("Uit je wallet", { showsWallet = true }))
             menus.append(CameraMenu(id: "add-ways", title: "Toevoegen", symbol: "plus.circle", items: ways.map(\.0), onPress: { index in
                 if ways.indices.contains(index) { ways[index].1() }
             }))
@@ -310,6 +318,9 @@ struct VaultAddEvidenceSheet: View {
                 VaultOrDivider()
                 VaultChoiceCard(title: VaultMessages.withoutFileTitle, message: VaultMessages.withoutFileMessage) {
                     flow.withoutFile()
+                }
+                VaultChoiceCard(title: VaultMessages.walletChoiceTitle, message: VaultMessages.walletChoiceMessage) {
+                    showsWallet = true
                 }
             }
         }

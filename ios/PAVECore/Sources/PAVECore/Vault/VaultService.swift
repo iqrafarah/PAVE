@@ -59,6 +59,11 @@ public protocol VaultService: Sendable {
         contactID: String,
         message: String?
     ) async throws
+    /// "Uit je wallet": the credentials in the demo wallet of this account, made up by the `vault-wallet` function.
+    func walletCredentials() async throws -> [VaultWalletCredential]
+    /// Puts these credentials of the demo wallet in the vault, confirmed. Returns the ids of the new items; a
+    /// credential that is already in the vault is skipped.
+    func importFromWallet(_ credentialIDs: [String]) async throws -> [String]
 }
 
 public extension VaultService {
@@ -73,6 +78,9 @@ public extension VaultService {
     func setFolderOrder(_ folderIDs: [String]) async throws {
         throw VaultError.missingColumn
     }
+
+    func walletCredentials() async throws -> [VaultWalletCredential] { throw VaultError.notSetUp }
+    func importFromWallet(_ credentialIDs: [String]) async throws -> [String] { throw VaultError.notSetUp }
 
     func setItemOrder(_ itemIDs: [String]) async throws {
         throw VaultError.missingColumn
@@ -408,6 +416,24 @@ public struct SupabaseVaultService: VaultService {
         ]
         let urlRequest = try await request(functionsURL.appending(path: "vault-review"), method: "POST", json: body)
         _ = try await sendFunction(urlRequest)
+    }
+
+    public func walletCredentials() async throws -> [VaultWalletCredential] {
+        let urlRequest = try await request(functionsURL.appending(path: "vault-wallet"), method: "POST", json: ["action": "list"])
+        let data = try await sendFunction(urlRequest)
+        struct Reply: Decodable { let credentials: [VaultWalletCredential] }
+        do {
+            return try JSONDecoder().decode(Reply.self, from: data).credentials
+        } catch {
+            throw VaultError.unavailable
+        }
+    }
+
+    public func importFromWallet(_ credentialIDs: [String]) async throws -> [String] {
+        let urlRequest = try await request(functionsURL.appending(path: "vault-wallet"), method: "POST", json: ["action": "import", "ids": credentialIDs])
+        let data = try await sendFunction(urlRequest)
+        struct Reply: Decodable { let itemIds: [String] }
+        return (try? JSONDecoder().decode(Reply.self, from: data).itemIds) ?? []
     }
 
     private func insertFile(_ row: [String: Any]) async throws {

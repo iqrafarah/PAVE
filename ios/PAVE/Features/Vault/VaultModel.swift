@@ -258,6 +258,31 @@ final class VaultModel {
         return look
     }
 
+    // MARK: Uit je wallet (demo)
+
+    /// The credentials in this account's demo wallet.
+    func walletCredentials() async throws -> [VaultWalletCredential] {
+        guard let service else { throw VaultError.unavailable }
+        return try await service.walletCredentials()
+    }
+
+    /// Puts the chosen credentials in the vault, confirmed, each in the folder of its kind when you have one, and in the
+    /// folder you started from. Returns how many came in.
+    func importFromWallet(_ credentials: [VaultWalletCredential], folderID: String?) async throws -> Int {
+        guard let service else { throw VaultError.unavailable }
+        let itemIDs = try await service.importFromWallet(credentials.map(\.id))
+        if let refreshed = try? await service.contents() { contents = ordered(refreshed) }
+        for item in items where itemIDs.contains(item.id) {
+            var folderIDs: [String] = []
+            for id in [folderID, VaultExampleFolders.folder(for: item.category, in: folders)?.id].compactMap({ $0 }) where !folderIDs.contains(id) {
+                folderIDs.append(id)
+            }
+            if !folderIDs.isEmpty { try? await service.setFolders(folderIDs, itemID: item.id) }
+        }
+        await load()
+        return itemIDs.count
+    }
+
     // MARK: Bewijs toevoegen
 
     /// The steps of adding evidence report their own errors, so these throw instead of setting `problem`.

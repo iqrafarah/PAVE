@@ -81,6 +81,36 @@ enum VaultMessages {
     static let uploadHint = "PDF, Word, tekst of foto, tot 20 MB"
     static let withoutFileTitle = "Voeg een ervaring toe zonder bestand"
     static let withoutFileMessage = "Geen document, geen probleem. Je kunt ook zelf ervaringen toevoegen."
+
+    // MARK: Uit je wallet (demo, Npuls)
+
+    static let walletChoiceTitle = "Haal bewijs uit je wallet"
+    static let walletChoiceMessage = "Diploma's, certificaten en badges die je school of werkgever al bevestigde. Ze komen geverifieerd in je kluis."
+    static let walletTitle = "Je wallet"
+    static let walletIntro = "Kies wat je in je kluis wilt zetten."
+    static let walletDemoTitle = "Demo"
+    static let walletDemoMessage = "Deze wallet is nagemaakt, met verzonnen bewijs. De controle wordt nagespeeld en er gaat niets naar of uit een echte wallet."
+    static let walletLoading = "Je wallet openen…"
+    static let walletInVault = "Staat al in je kluis"
+    static let walletAllInVault = "Alles uit je wallet staat al in je kluis."
+    static let walletChooseFirst = "Kies wat je wilt toevoegen"
+    static let walletChecking = "Echtheid controleren…"
+    static let walletFailed = "Je wallet kon niet geopend worden. Probeer het zo nog eens."
+    static let walletNotSetUp = "De demowallet staat nog niet aan. Vraag het team om de functie vault-wallet te zetten."
+    static let walletImportFailed = "Het lukte niet om dit in je kluis te zetten. Probeer het zo nog eens."
+    static let walletChecksTitle = "Echtheid gecontroleerd (nagespeeld)"
+    static let walletCheckSignature = "Ondertekend door de uitgever"
+    static let walletCheckIssuer = "Uitgever is bekend"
+    static let walletCheckRevoked = "Niet ingetrokken"
+    static let walletRetry = "Opnieuw proberen"
+
+    static func walletAdd(_ count: Int) -> String {
+        count == 1 ? "Zet 1 bewijsstuk in je kluis" : "Zet \(count) bewijsstukken in je kluis"
+    }
+
+    static func walletAdded(_ count: Int) -> String {
+        count == 1 ? "1 bewijsstuk staat geverifieerd in je kluis." : "\(count) bewijsstukken staan geverifieerd in je kluis."
+    }
     static let coverTitle = "Omslag"
     static let noCover = "Geen omslag"
     static let withCover = "Omslag"
@@ -334,7 +364,7 @@ extension VaultItem.Source {
         case .user: "Zelf toegevoegd"
         case .organization: "Van een organisatie"
         case .ayla: "Voorgesteld door Ayla"
-        case .import: "Geïmporteerd"
+        case .import: "Uit je wallet (demo)"
         }
     }
 }
