@@ -20,6 +20,9 @@ final class VaultModel {
     var problem: String?
     /// An item to open in the vault, for example from Ayla's "Open Eindstage".
     var itemToOpen: String?
+    /// An item whose verification result just came in, opened from its notification: its status turns from "In
+    /// afwachting" into the result once, then this is cleared.
+    var statusNews: String?
 
     private let service: (any VaultService)?
     /// "Bewijs toevoegen" closed before it was saved: for half a minute it comes back as it was, in case that was by

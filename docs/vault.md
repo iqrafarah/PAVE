@@ -108,6 +108,17 @@ Migration `20261120120000_chat_expiry_and_archive.sql`. Deleting is final; nothi
 - **One setting** (migration `20261120150000_chat_expiry_one_setting.sql`): the web's own version (`20261119170000`, `ayla_settings.chat_auto_delete_days`) clashed with this one. The repair carries a choice made on the web over to `profiles.chat_expiry_days`, drops that column and the web's `ayla_delete_expired_chats()` without arguments (with both, the hourly job failed as "not unique"), and schedules the job again. The web now reads and saves `profiles.chat_expiry_days`, with 1, 7, 30 or 90 days, as iOS.
 - The profile guard (`guard_profile_self_update`) is replaced with a list that also names `display_mode`, so it can be applied before or after the web's display mode migration.
 
+## Motion around a status (iOS, 2026-11-23)
+
+The wallet made one thing visible that the rest of the app did not show: the moment evidence changes status. The same motion now runs wherever that happens, so verification feels like one story from "Niet bevestigd" to "In afwachting" to "Geverifieerd". It is used only at those moments, not on things you do many times a day (unlocking, signing in, toggles), where motion only makes the app slower.
+
+- **One badge that turns** (`VaultStatusMorph`): the status badge shows the old status, then turns into the new one once with a spring (0.45 s, bounce 0.35), the same as on the wallet's cards. A success tick in the hand only when something is confirmed.
+- **Request sent** (`VaultRequestConfirmationSheet`): the tick lands as at the end of adding evidence, the evidence rises in under it, and its badge turns from its old status to "In afwachting". Sending gives a success tick, a failure an error buzz.
+- **Result arrives** (opening "Bewijs geverifieerd" or "Bewijs afgewezen" from Meldingen, `VaultModel.statusNews`): the evidence opens with "In afwachting", which turns into the result once; only "Geverifieerd" gives a success tick. Opened any other way, the status is simply there.
+- **Reviewer verifies** (Meldingen, the request): the badge on the evidence turns to "Geverifieerd" and the buttons become a "Geverifieerd" confirmation; the screen stays 0.9 s before it closes, instead of closing at once.
+- **Ayla filled the form** (`vaultFillReveal`): the first time the details show after "Laat Ayla invullen" (or a proposal from the chat), the fields she filled come in one after the other (40 ms apart, 6 pt and fading in), so you see what to check. Going back and forth shows them at once.
+- With "minder beweging" (`paveReduceMotion`) everything simply fades or is there at once.
+
 ## Demo wallet: evidence from a wallet (iOS, 2026-11-23)
 
 Npuls asked for another way to add evidence: taking credentials from a wallet, which come in already verified. In the Netherlands this exists only as a pilot (the Npuls/SURF eduwallet proeftuin, with fictional people; see https://eduwallet.nl/en), so PAVE shows it as a **demo** and says so on the screen.

@@ -22,6 +22,14 @@ struct VaultItemDetailView: View {
     @State private var downloadFailed = false
 
     private var item: VaultItem? { model.items.first { $0.id == itemID } }
+    /// Opened from "Bewijs geverifieerd" or "Bewijs afgewezen": the status turns from "In afwachting" into the result,
+    /// once. Kept for this view, so it does not turn again when the vault reloads.
+    @State private var newsFrom: VaultStatusMorph.Badge?
+
+    private func statusNews(for item: VaultItem) -> VaultStatusMorph? {
+        guard let newsFrom, !item.isAwaitingReview, item.status != .toVerify else { return nil }
+        return VaultStatusMorph(from: newsFrom, to: .init(status: item.status), delay: .milliseconds(600), hapticOnChange: item.status == .verified)
+    }
 
     var body: some View {
         NavigationStack {
@@ -33,6 +41,11 @@ struct VaultItemDetailView: View {
                 }
             }
             .background(Color.canvas.ignoresSafeArea())
+            .onAppear {
+                guard model.statusNews == itemID else { return }
+                model.statusNews = nil
+                newsFrom = .init(status: .toVerify, isAwaitingReview: true)
+            }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -134,7 +147,11 @@ struct VaultItemDetailView: View {
                             .foregroundStyle(Color.ink)
                             .fixedSize(horizontal: false, vertical: true)
                             .accessibilityAddTraits(.isHeader)
-                        VaultStatusBadge(item: item)
+                        if let news = statusNews(for: item) {
+                            news
+                        } else {
+                            VaultStatusBadge(item: item)
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     // In the content rather than the navigation bar: on the outer display of the iPhone Duo the bar puts

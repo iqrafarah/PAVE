@@ -93,6 +93,8 @@ final class VaultAddEvidenceModel: Identifiable {
     /// New evidence goes in the folder of its kind (a project in Projecten) and in the folder you add it from. The
     /// folder of the kind follows when you change the kind, until you choose folders yourself.
     private var folderFollowsCategory = true
+    /// Ayla just filled the form: the first time the details show, her fields come in one after the other.
+    var revealsAylaFill = false
     private var kindFolderID: String?
     /// The kind has no folder yet: one with its name (such as Stages) is made when you save, unless you untick it.
     private(set) var newKindFolder: String?

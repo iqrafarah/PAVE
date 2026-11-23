@@ -40,6 +40,12 @@
 | Ongeldige keuze | Deze organisatie-, vestigings- of contactkeuze is niet meer geldig. Kies de gegevens opnieuw. |
 | Al aangevraagd | Voor dit bewijs staat al een verificatieaanvraag open. |
 
+## Beoordelaar heeft geverifieerd (iOS)
+
+| Onderdeel | Tekst |
+| --- | --- |
+| In plaats van de knoppen, en voorgelezen | Geverifieerd |
+
 ## Bewijs uit je wallet (iOS, demo)
 
 Een eigen route binnen Bewijs toevoegen, met de stappen Kiezen, Controleren en Toestemming.

@@ -128,6 +128,8 @@ struct VaultAddEvidenceTests {
         let (flow, service) = await aylaFilled([certificate], uploads: [pdf])
         #expect(flow.aylaFill == .filled)
         #expect(flow.page == .details)
+        // Her fields come in one by one the first time the details show.
+        #expect(flow.revealsAylaFill)
         #expect(flow.draft.title == "Professional Scrum Master I")
         #expect(flow.draft.category == .certificates)
         #expect(flow.draft.organisationName == "Scrum.org")
@@ -164,6 +166,7 @@ struct VaultAddEvidenceTests {
         let flow = VaultAddEvidenceModel.proposed(by: reply, vault: VaultModel(service: service), documents: [pdf], analysis: analysis)
         #expect(flow.page == .details)
         #expect(flow.aylaFill == .filled)
+        #expect(flow.revealsAylaFill)
         #expect(flow.draft.title == "PSM I")
         #expect(flow.draft.organisationName == "Scrum.org")
         #expect(flow.skills == ["Scrum"])
@@ -173,6 +176,7 @@ struct VaultAddEvidenceTests {
     @Test func nothingFoundLeavesTheFormToYou() async {
         let (flow, _) = await aylaFilled([], uploads: [pdf])
         #expect(flow.aylaFill == .failed(VaultMessages.aylaFillEmpty))
+        #expect(!flow.revealsAylaFill)
         #expect(flow.page == .source)
         #expect(flow.aylaProposal == nil)
     }

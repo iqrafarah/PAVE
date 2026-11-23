@@ -599,6 +599,9 @@ private struct VerificationRequestNotificationDetail: View {
     @State private var previewURL: URL?
     @State private var writesRejection = false
     @State private var isRejected = false
+    /// Verified: the status of the evidence turns and the button becomes the confirmation, for a moment before it closes.
+    @State private var isVerified = false
+    @Environment(\.paveReduceMotion) private var reduceMotion
 
     private var requestID: String? { notification.validationRequestID }
 
@@ -689,15 +692,20 @@ private struct VerificationRequestNotificationDetail: View {
                 if let errorMessage {
                     Text(errorMessage).textStyle(.caption).foregroundStyle(Color.statusRejected)
                 }
-                PavePrimaryButton(title: isWorking ? "Bezig…" : "Verifieer document") {
-                    Task { await verify() }
-                }
-                .disabled(isWorking || onResolve == nil || review == nil)
-                Button("Aanvraag afwijzen", role: .destructive) { writesRejection = true }
-                    .textStyle(.caption)
-                    .frame(maxWidth: .infinity)
-                    .buttonStyle(.pave)
+                if isVerified {
+                    verifiedConfirmation
+                        .transition(reduceMotion ? .opacity : .scale(scale: 0.92).combined(with: .opacity))
+                } else {
+                    PavePrimaryButton(title: isWorking ? "Bezig…" : "Verifieer document") {
+                        Task { await verify() }
+                    }
                     .disabled(isWorking || onResolve == nil || review == nil)
+                    Button("Aanvraag afwijzen", role: .destructive) { writesRejection = true }
+                        .textStyle(.caption)
+                        .frame(maxWidth: .infinity)
+                        .buttonStyle(.pave)
+                        .disabled(isWorking || onResolve == nil || review == nil)
+                }
             }
             .padding(20)
             .frame(maxWidth: 560, alignment: .leading)
@@ -760,7 +768,11 @@ private struct VerificationRequestNotificationDetail: View {
             HStack {
                 Text(item.title).textStyle(.bodyMedium).foregroundStyle(Color.ink).lineLimit(2)
                 Spacer(minLength: 4)
-                Text("In afwachting").textStyle(.meta).foregroundStyle(Color.statusPending)
+                if isVerified {
+                    VaultStatusMorph(from: .init(status: .toVerify, isAwaitingReview: true), to: .init(status: .verified), delay: .milliseconds(120))
+                } else {
+                    VaultStatusBadge(status: .toVerify, isAwaitingReview: true)
+                }
             }
             .padding(.top, 28)
             Text(item.categoryTitle).textStyle(.caption).foregroundStyle(Color.inkMuted)
@@ -866,8 +878,30 @@ private struct VerificationRequestNotificationDetail: View {
             PaveHaptics.error()
         } else {
             PaveHaptics.success()
+            AccessibilityNotification.Announcement(VaultMessages.reviewVerified).post()
+            withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.45, bounce: 0.3)) { isVerified = true }
+            // A moment to see it turn, as at the end of the wallet; then back to the notifications.
+            try? await Task.sleep(for: .milliseconds(reduceMotion ? 500 : 900))
             dismiss()
         }
+    }
+
+    /// In place of the buttons once the evidence is verified: the same shape as the button, with the tick of a
+    /// confirmed item.
+    private var verifiedConfirmation: some View {
+        HStack(spacing: 10) {
+            Image(.iconCheckBadgeSolid)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 20, height: 20)
+                .accessibilityHidden(true)
+            Text(VaultMessages.reviewVerified)
+                .textStyle(.button)
+        }
+        .foregroundStyle(Color.paveAccent)
+        .frame(maxWidth: .infinity, minHeight: 53)
+        .background(Color.paveVerifiedSurface, in: .capsule)
     }
 
     private func detailField(_ title: String, value: String) -> some View {

@@ -306,8 +306,11 @@ struct VaultAddEvidenceSheet: View {
                 } ?? (flow.kindFolderMissing
                     ? VaultEvidenceForm.NewFolder(name: flow.draft.category.title, isOn: false) { flow.setMakesKindFolder($0) }
                     : nil),
-                aylaNotes: flow.aylaNotes
+                aylaNotes: flow.aylaNotes,
+                revealsAylaFill: flow.revealsAylaFill
             )
+            // Only the first time after she filled it: going back and forth shows the fields at once.
+            .onDisappear { flow.revealsAylaFill = false }
         }
         .animation(.snappy(duration: 0.3), value: flow.documents)
         .onChange(of: flow.draft.category) { flow.categoryChanged() }

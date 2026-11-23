@@ -82,6 +82,9 @@ enum VaultMessages {
     static let withoutFileTitle = "Voeg een ervaring toe zonder bestand"
     static let withoutFileMessage = "Geen document, geen probleem. Je kunt ook zelf ervaringen toevoegen."
 
+    /// The reviewer verified a request: in place of the buttons, and read aloud.
+    static let reviewVerified = "Geverifieerd"
+
     // MARK: Uit je wallet (demo, Npuls)
 
     static let walletChoiceTitle = "Haal bewijs uit je wallet"

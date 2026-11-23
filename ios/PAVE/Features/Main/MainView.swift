@@ -354,6 +354,7 @@ struct MainView: View {
 
     /// The evidence of a notification opens in the vault, as when Ayla points to it.
     private func openNotificationEvidence(_ id: String) {
+        vault.statusNews = id
         vault.itemToOpen = id
         isMenuOpen = false
         open(.vault)

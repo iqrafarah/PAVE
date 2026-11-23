@@ -32,6 +32,7 @@ extension VaultAddEvidenceModel {
             flow.aylaProposals = readBefore.proposals
             flow.apply(proposal.map(first.merged(with:)) ?? first, documents: documents, pictures: readBefore.pictures)
             flow.aylaFill = .filled
+            flow.revealsAylaFill = true
             flow.go(to: .details)
         } else if flow.hasFile {
             flow.fillWithAyla()

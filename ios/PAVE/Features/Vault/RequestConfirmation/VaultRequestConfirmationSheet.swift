@@ -35,6 +35,8 @@ struct VaultRequestConfirmationSheet: View {
     @State private var searchText = ""
     @State private var isLoading = false
     @State private var isFinished = false
+    @State private var sentLanded = false
+    @State private var sentCardShown = false
     @State private var isSending = false
     @State private var isDirty = false
     @State private var showsMissing = false
@@ -338,9 +340,12 @@ struct VaultRequestConfirmationSheet: View {
         isLoading = true; await loadContacts(); isLoading = false
     }
 
-    private var evidenceSummary: some View {
+    private var evidenceSummary: some View { evidenceSummary(status: EmptyView()) }
+
+    /// The evidence the request is about, with its status at the end when there is one to show.
+    private func evidenceSummary(status: some View) -> some View {
         HStack(spacing: 12) {
-            VaultLogoAvatar(look: evidenceLogo, name: item.organisationName ?? item.title, size: 56)
+            VaultLogoAvatar(look: evidenceLogo, name: item.organisationName ?? item.title, fileName: item.firstDocumentName ?? "", size: 56)
             VStack(alignment: .leading, spacing: 5) {
                 Text(item.title).textStyle(.bodyMedium).foregroundStyle(Color.ink).lineLimit(2)
                 if let organization = item.organisationName, !organization.isEmpty {
@@ -348,6 +353,7 @@ struct VaultRequestConfirmationSheet: View {
                     PaveIconLabel(icon: .iconBuildingOfficeSolid, text: organization + location)
                 }
                 if let period = item.period { PaveIconLabel(icon: .iconCalendarDaysSolid, text: period) }
+                status
             }
             Spacer(minLength: 0)
         }
@@ -356,19 +362,36 @@ struct VaultRequestConfirmationSheet: View {
         .overlay { RoundedRectangle(cornerRadius: 14).strokeBorder(Color.cardBorder) }
     }
 
+    /// Sent: the tick lands as when evidence is added, then the evidence rises in and its status turns from "Niet
+    /// bevestigd" to "In afwachting", so you see what the request changed.
     private var successView: some View {
         VStack(spacing: 18) {
             Spacer(minLength: 0)
-            Image(systemName: "checkmark.seal.fill").resizable().scaledToFit().frame(width: 32, height: 32)
-                .foregroundStyle(Color.paveAccent).frame(width: 72, height: 72).background(Color.paveSurfaceTint, in: .circle).accessibilityHidden(true)
+            VaultAddedTick(landed: sentLanded)
             VStack(spacing: 8) {
                 Text("Verzoek verstuurd").textStyle(.emptyTitle).foregroundStyle(Color.ink).multilineTextAlignment(.center).accessibilityAddTraits(.isHeader)
                 Text("Je aanvraag is doorgestuurd. Je krijgt een melding zodra het bewijs is beoordeeld.")
                     .textStyle(.bodyMedium).foregroundStyle(Color.inkMuted).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             }.frame(maxWidth: 380)
+            evidenceSummary(status: VaultStatusMorph(from: .init(status: item.status), to: .init(status: .toVerify, isAwaitingReview: true), delay: .milliseconds(650)))
+                .frame(maxWidth: 420)
+                .opacity(sentCardShown ? 1 : 0)
+                .offset(y: sentCardShown ? 0 : 16)
             Spacer(minLength: 0)
             PavePrimaryButton(title: "Sluiten") { dismiss() }.frame(maxWidth: 560)
-        }.padding(.horizontal, 24).padding(.bottom, 12).frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .padding(.horizontal, 24).padding(.bottom, 12).frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task {
+            guard !sentLanded else { return }
+            if reduceMotion {
+                sentLanded = true
+                sentCardShown = true
+                return
+            }
+            withAnimation(.spring(duration: 0.5, bounce: 0.35)) { sentLanded = true }
+            try? await Task.sleep(for: .milliseconds(320))
+            withAnimation(.spring(duration: 0.5, bounce: 0.2)) { sentCardShown = true }
+        }
     }
 
     private func send() {
@@ -387,8 +410,13 @@ struct VaultRequestConfirmationSheet: View {
                 )
             }
             isSending = false
-            if let error { sendError = error }
-            else { isFinished = true }
+            if let error {
+                sendError = error
+                PaveHaptics.error()
+            } else {
+                PaveHaptics.success()
+                isFinished = true
+            }
         }
     }
 
