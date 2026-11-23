@@ -141,7 +141,7 @@ final class AylaChatModel {
         guard before.role == .user, before.text.contains(AylaMessages.addedToVault(nil).dropLast()),
               AylaVaultOffer.endsWithYesNoQuestion(last.text),
               let question = AylaVaultOffer.lastQuestionSentence(in: last.text)?.lowercased() else { return nil }
-        if question.contains("bevestig") { return .confirmation(itemID: itemID) }
+        if question.contains("bevestig") || question.contains("verifi") { return .confirmation(itemID: itemID) }
         if ["foto", "bestand", "afbeelding", "document"].contains(where: question.contains) { return .photos(itemID: itemID) }
         return nil
     }

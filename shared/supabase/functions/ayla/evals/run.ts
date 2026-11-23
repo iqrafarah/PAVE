@@ -28,8 +28,8 @@ const vault: AllowedVault = {
   status: 'on',
   items: [
     { id: 'i1', kind: 'diplomas', category: 'Diploma', title: 'Propedeuse HBO-ICT', organisation: 'Fontys', place: 'Eindhoven', period: '2023', status: 'geverifieerd', skills: ['Programmeren', 'Samenwerken'], files: ['propedeuse.pdf'] },
-    { id: 'i2', kind: 'internships', category: 'Stage', title: 'Eindstage', organisation: 'LiveWall', place: 'Tilburg', period: 'feb 2025 tot nu', description: 'Webapps bouwen in een Scrum-team', status: 'niet bevestigd', skills: ['React', 'TypeScript', 'Scrum'], files: [] },
-    { id: 'i3', kind: 'projects', category: 'Project', title: 'PAVE iOS-app', organisation: 'Fontys', period: '2026', description: 'Een iOS-app in Swift en SwiftUI', status: 'niet bevestigd', skills: ['Swift', 'SwiftUI'], files: [] },
+    { id: 'i2', kind: 'internships', category: 'Stage', title: 'Eindstage', organisation: 'LiveWall', place: 'Tilburg', period: 'feb 2025 tot nu', description: 'Webapps bouwen in een Scrum-team', status: 'niet geverifieerd', skills: ['React', 'TypeScript', 'Scrum'], files: [] },
+    { id: 'i3', kind: 'projects', category: 'Project', title: 'PAVE iOS-app', organisation: 'Fontys', period: '2026', description: 'Een iOS-app in Swift en SwiftUI', status: 'niet geverifieerd', skills: ['Swift', 'SwiftUI'], files: [] },
   ],
 }
 
