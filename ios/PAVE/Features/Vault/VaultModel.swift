@@ -266,11 +266,16 @@ final class VaultModel {
         return try await service.walletCredentials()
     }
 
-    /// Puts the chosen credentials in the vault, confirmed, each in the folder of its kind when you have one, and in the
-    /// folder you started from. Returns how many came in.
-    func importFromWallet(_ credentials: [VaultWalletCredential], folderID: String?) async throws -> Int {
+    /// Puts the chosen credentials in the vault, confirmed, with the issuer's logo when there is one, each in the folder
+    /// of its kind when you have one, and in the folder you started from. Returns the new items.
+    func importFromWallet(_ credentials: [VaultWalletCredential], folderID: String?) async throws -> [String] {
         guard let service else { throw VaultError.unavailable }
-        let itemIDs = try await service.importFromWallet(credentials.map(\.id))
+        let made = try await service.importFromWallet(credentials.map(\.id))
+        let itemIDs = credentials.compactMap { made[$0.id] }
+        for credential in credentials {
+            guard let logo = credential.logo, let itemID = made[credential.id] else { continue }
+            try? await service.attach(VaultUpload(data: logo.data, fileName: logo.fileName, mimeType: logo.mimeType, role: .logo), to: itemID)
+        }
         if let refreshed = try? await service.contents() { contents = ordered(refreshed) }
         for item in items where itemIDs.contains(item.id) {
             var folderIDs: [String] = []
@@ -280,7 +285,7 @@ final class VaultModel {
             if !folderIDs.isEmpty { try? await service.setFolders(folderIDs, itemID: item.id) }
         }
         await load()
-        return itemIDs.count
+        return itemIDs
     }
 
     // MARK: Bewijs toevoegen

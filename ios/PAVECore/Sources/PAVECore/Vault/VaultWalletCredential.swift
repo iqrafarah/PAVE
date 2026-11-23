@@ -3,6 +3,27 @@ import Foundation
 /// One credential in the demo wallet ("Uit je wallet"): evidence a school or employer already signed, which comes into
 /// the vault confirmed. The wallet is made up per account by the `vault-wallet` function; nothing is real.
 public struct VaultWalletCredential: Identifiable, Equatable, Sendable {
+    /// The issuer's logo from its own site, as "Laat Ayla invullen" finds it.
+    public struct Logo: Equatable, Sendable {
+        public let data: Data
+        public let mimeType: String
+
+        public init(data: Data, mimeType: String) {
+            self.data = data
+            self.mimeType = mimeType
+        }
+
+        /// The file name it gets as the logo of the item in the vault.
+        public var fileName: String {
+            switch mimeType {
+            case "image/jpeg": "logo.jpg"
+            case "image/webp": "logo.webp"
+            case "image/gif": "logo.gif"
+            default: "logo.png"
+            }
+        }
+    }
+
     public let id: String
     public let category: VaultCategory
     /// The kind of credential, such as "Open Badge", "Diploma" or "Werkgeversverklaring".
@@ -18,6 +39,7 @@ public struct VaultWalletCredential: Identifiable, Equatable, Sendable {
     public let skills: [String]
     /// Already taken into the vault.
     public let imported: Bool
+    public let logo: Logo?
 
     public init(
         id: String,
@@ -32,7 +54,8 @@ public struct VaultWalletCredential: Identifiable, Equatable, Sendable {
         isCurrent: Bool = false,
         description: String? = nil,
         skills: [String] = [],
-        imported: Bool = false
+        imported: Bool = false,
+        logo: Logo? = nil
     ) {
         self.id = id
         self.category = category
@@ -47,6 +70,7 @@ public struct VaultWalletCredential: Identifiable, Equatable, Sendable {
         self.description = description
         self.skills = skills
         self.imported = imported
+        self.logo = logo
     }
 
     /// "mrt 2025", or "feb 2025 – jul 2025" and "sep 2023 – nu" for a period.
@@ -60,7 +84,12 @@ public struct VaultWalletCredential: Identifiable, Equatable, Sendable {
 
 extension VaultWalletCredential: Decodable {
     private enum CodingKeys: String, CodingKey {
-        case id, category, format, title, issuer, place, issuedOn, startDate, endDate, isCurrent, description, skills, imported
+        case id, category, format, title, issuer, place, issuedOn, startDate, endDate, isCurrent, description, skills, imported, logo
+    }
+
+    private struct LogoRow: Decodable {
+        let data: String
+        let mimeType: String
     }
 
     public init(from decoder: any Decoder) throws {
@@ -79,7 +108,10 @@ extension VaultWalletCredential: Decodable {
             isCurrent: try container.decodeIfPresent(Bool.self, forKey: .isCurrent) ?? false,
             description: try container.decodeIfPresent(String.self, forKey: .description),
             skills: try container.decodeIfPresent([String].self, forKey: .skills) ?? [],
-            imported: try container.decodeIfPresent(Bool.self, forKey: .imported) ?? false
+            imported: try container.decodeIfPresent(Bool.self, forKey: .imported) ?? false,
+            logo: (try? container.decodeIfPresent(LogoRow.self, forKey: .logo)).flatMap { row in
+                Data(base64Encoded: row.data).map { Logo(data: $0, mimeType: row.mimeType) }
+            }
         )
     }
 }

@@ -61,9 +61,9 @@ public protocol VaultService: Sendable {
     ) async throws
     /// "Uit je wallet": the credentials in the demo wallet of this account, made up by the `vault-wallet` function.
     func walletCredentials() async throws -> [VaultWalletCredential]
-    /// Puts these credentials of the demo wallet in the vault, confirmed. Returns the ids of the new items; a
-    /// credential that is already in the vault is skipped.
-    func importFromWallet(_ credentialIDs: [String]) async throws -> [String]
+    /// Puts these credentials of the demo wallet in the vault, confirmed. Returns which credential became which new
+    /// item; a credential that is already in the vault is skipped.
+    func importFromWallet(_ credentialIDs: [String]) async throws -> [String: String]
 }
 
 public extension VaultService {
@@ -80,7 +80,7 @@ public extension VaultService {
     }
 
     func walletCredentials() async throws -> [VaultWalletCredential] { throw VaultError.notSetUp }
-    func importFromWallet(_ credentialIDs: [String]) async throws -> [String] { throw VaultError.notSetUp }
+    func importFromWallet(_ credentialIDs: [String]) async throws -> [String: String] { throw VaultError.notSetUp }
 
     func setItemOrder(_ itemIDs: [String]) async throws {
         throw VaultError.missingColumn
@@ -429,11 +429,13 @@ public struct SupabaseVaultService: VaultService {
         }
     }
 
-    public func importFromWallet(_ credentialIDs: [String]) async throws -> [String] {
+    public func importFromWallet(_ credentialIDs: [String]) async throws -> [String: String] {
         let urlRequest = try await request(functionsURL.appending(path: "vault-wallet"), method: "POST", json: ["action": "import", "ids": credentialIDs])
         let data = try await sendFunction(urlRequest)
-        struct Reply: Decodable { let itemIds: [String] }
-        return (try? JSONDecoder().decode(Reply.self, from: data).itemIds) ?? []
+        struct Made: Decodable { let id: String?; let itemId: String }
+        struct Reply: Decodable { let items: [Made] }
+        let made = (try? JSONDecoder().decode(Reply.self, from: data).items) ?? []
+        return Dictionary(made.compactMap { entry in entry.id.map { ($0, entry.itemId) } }, uniquingKeysWith: { first, _ in first })
     }
 
     private func insertFile(_ row: [String: Any]) async throws {

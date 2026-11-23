@@ -42,23 +42,28 @@
 
 ## Bewijs uit je wallet (iOS, demo)
 
+Een eigen route binnen Bewijs toevoegen, met de stappen Kiezen, Controleren en Toestemming.
+
 | Onderdeel | Tekst |
 | --- | --- |
 | Keuze bij Bewijs toevoegen | Haal bewijs uit je wallet |
 | Uitleg bij die keuze | Diploma's, certificaten en badges die je school of werkgever al bevestigde. Ze komen geverifieerd in je kluis. |
-| Titel, met label | Je wallet · Demo |
-| Onder de titel | Kies wat je met PAVE deelt. Het komt geverifieerd in je kluis. |
-| Onder de kaarten | Deze wallet en de controle zijn nagemaakt, met verzonnen bewijs. Er gaat niets naar of uit een echte wallet. |
-| Onder de kaarten | Pas je dit later aan, dan moet het opnieuw bevestigd worden. |
-| Laden | Je wallet openen… |
-| Op een kaart die al in de kluis staat | In je kluis |
+| Titel, met label | Uit je wallet · Demo |
+| Stappen | Kiezen / Controleren / Toestemming |
+| Kiezen, bovenaan | Kies wat je in je kluis zet. Het komt erin als Geverifieerd, omdat je school of werkgever het al ondertekende. |
+| Kiezen, onderaan | Dit is een demo: de wallet en de controle zijn nagemaakt, met verzonnen bewijs. Er gaat niets naar of uit een echte wallet. |
+| Laden (voorgelezen) | Je wallet openen… |
 | Alles al in de kluis | Alles uit je wallet staat al in je kluis. |
-| Knop zonder keuze | Kies wat je wilt toevoegen |
-| Knop | Zet 1 bewijsstuk in je kluis / Zet {n} bewijsstukken in je kluis |
-| Knop tijdens het toevoegen | Echtheid controleren… |
-| Op de kaart tijdens de controle | Handtekening controleren… / Uitgever opzoeken… / Kijken of het nog geldt… |
-| Op de kaart na de controle | Geverifieerd (nagespeeld) |
-| Klaar (voorgelezen) | 1 bewijsstuk staat geverifieerd in je kluis. / {n} bewijsstukken staan geverifieerd in je kluis. |
+| Knop zonder keuze | Kies eerst iets |
+| Knop | Voeg {n} toe |
+| Controleren, bovenaan | PAVE kijkt bij elk bewijsstuk of het echt is: wie het ondertekende, of die uitgever bekend is en of het nog geldt. |
+| Label op de kaart tijdens de controle | Controleren (wordt Geverifieerd) |
+| Regel op de kaart | Handtekening controleren… / Uitgever opzoeken… / Kijken of het nog geldt… |
+| Knop tijdens de controle | Controleren… |
+| Toestemming, titel | In je kluis |
+| Toestemming, onder de titel | 1 bewijsstuk staat geverifieerd in je kluis. / {n} bewijsstukken staan geverifieerd in je kluis. |
+| Toestemming, kaart | Ayla mag dit bewijs bekijken en gebruiken / Ayla mag deze bewijsstukken bekijken en gebruiken |
+| Knop | Klaar |
 | Bron bij het bewijs | Uit je wallet (demo) |
 | Wallet laadt niet | Je wallet kon niet geopend worden. Probeer het zo nog eens. |
 | Functie staat nog niet aan | De demowallet staat nog niet aan. Vraag het team om de functie vault-wallet te zetten. |

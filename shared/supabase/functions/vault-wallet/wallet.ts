@@ -19,6 +19,8 @@ export interface DemoCredential {
   isCurrent?: boolean
   description: string
   skills: string[]
+  /** The issuer's own site, to look up its logo. The made-up institutions have none, so they show the icon of their kind. */
+  website?: string
 }
 
 const KEMPENLAND = 'Hogeschool Kempenland'

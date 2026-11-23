@@ -1,206 +1,177 @@
 import PAVECore
 import SwiftUI
 
-/// One credential in the demo wallet, drawn the way wallet apps draw a pass: a coloured card per issuer with its
-/// initials, the kind of credential, the title and when. Tapping chooses it; while it goes into the vault the check runs
-/// at the bottom of the card. One that is already in the vault is greyed out and cannot be chosen.
+/// One credential from the demo wallet, drawn as the card it becomes in the vault (the tile of the grid, Figma 1348:9):
+/// the band in the colour of its kind with the issuer's avatar, the title, where and when, and its skills. Choosing it
+/// shows the outline and the tick of a chosen vault card. While it is checked, the badge in the band runs from
+/// "Controleren" to "Geverifieerd", as it will stand in the vault.
 struct VaultWalletCard: View {
+    enum Mode: Equatable {
+        /// Choosing: a checkbox in the band.
+        case choose(isSelected: Bool)
+        /// Being checked: how many of the checks are done.
+        case checking(done: Int)
+    }
+
     let credential: VaultWalletCredential
-    let isSelected: Bool
-    /// How many checks are done; nil while it is not being checked.
-    let checksDone: Int?
-    let action: () -> Void
+    let mode: Mode
+    var action: () -> Void = {}
 
     @Environment(\.paveReduceMotion) private var reduceMotion
+    @State private var logoLook: VaultLogoLook?
 
-    private var palette: VaultFolderColor { VaultWalletCard.color(for: credential.issuer) }
-    private var foreground: Color { palette.foreground }
+    private var isSelected: Bool { mode == .choose(isSelected: true) }
+    private var checksDone: Int? {
+        if case .checking(let done) = mode { return done }
+        return nil
+    }
+    private var isVerified: Bool { (checksDone ?? 0) >= VaultWalletModel.Check.allCases.count }
 
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 10) {
-                    issuerBadge
-                    Text(credential.issuer)
-                        .textStyle(.caption)
-                        .foregroundStyle(foreground.opacity(0.9))
-                        .lineLimit(1)
-                    Spacer(minLength: 8)
+                band
+                VStack(alignment: .leading, spacing: 8) {
                     Text(credential.format)
-                        .textStyle(.tag)
-                        .foregroundStyle(foreground)
-                        .padding(.horizontal, 8)
-                        .frame(minHeight: 22)
-                        .background(foreground.opacity(0.16), in: .capsule)
-                }
-                Spacer(minLength: 22)
-                Text(credential.title)
-                    .textStyle(.choice)
-                    .foregroundStyle(foreground)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                if !meta.isEmpty {
-                    Text(meta)
                         .textStyle(.caption)
-                        .foregroundStyle(foreground.opacity(0.82))
-                        .padding(.top, 2)
-                }
-                HStack(alignment: .center, spacing: 8) {
-                    status
-                    Spacer(minLength: 8)
-                    if !credential.imported {
-                        selectionMark
+                        .foregroundStyle(Color.inkMuted)
+                    Text(credential.title)
+                        .textStyle(.bubble)
+                        .foregroundStyle(Color.ink)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, -4)
+                    PaveIconLabel(icon: .iconVaultBuildingOutline, text: [credential.issuer, credential.place].compactMap { $0 }.joined(separator: ", "))
+                        .lineLimit(1)
+                    if let when = credential.when {
+                        PaveIconLabel(icon: .iconVaultCalendarOutline, text: when)
+                            .lineLimit(1)
+                    }
+                    if let checksDone, !isVerified {
+                        progress(checksDone)
+                            .transition(.opacity)
+                    } else if !credential.skills.isEmpty {
+                        skills
                     }
                 }
-                .frame(minHeight: 28)
-                .padding(.top, 12)
+                .padding(.horizontal, 14)
+                .padding(.top, 32)
+                .padding(.bottom, 14)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(18)
-            .frame(maxWidth: .infinity, minHeight: 184, alignment: .topLeading)
-            .background { cardBackground }
-            .clipShape(.rect(cornerRadius: 20, style: .continuous))
-            .saturation(credential.imported ? 0.25 : 1)
-            .opacity(credential.imported ? 0.75 : 1)
+            .background(Color.panel)
+            .clipShape(.rect(cornerRadius: 16))
             .overlay {
-                // A ring around the card when it is chosen, as multi-select does elsewhere in iOS.
-                RoundedRectangle(cornerRadius: 25, style: .continuous)
-                    .strokeBorder(Color.paveAccent, lineWidth: 2.5)
-                    .padding(-5)
-                    .opacity(isSelected ? 1 : 0)
+                RoundedRectangle(cornerRadius: 16)
+                    .strokeBorder(isSelected ? Color.paveAccent : Color.cardBorder, lineWidth: isSelected ? 2 : 1)
             }
-            .contentShape(.rect(cornerRadius: 20, style: .continuous))
+            .opacity(credential.imported ? 0.55 : 1)
+            .contentShape(.rect(cornerRadius: 16))
         }
         .buttonStyle(.pave)
-        .disabled(credential.imported)
-        .padding(.horizontal, 5)
-        .animation(reduceMotion ? nil : .snappy(duration: 0.25), value: isSelected)
-        .animation(reduceMotion ? nil : .snappy(duration: 0.25), value: checksDone)
+        .disabled(credential.imported || checksDone != nil)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: isSelected)
+        .animation(reduceMotion ? nil : .spring(duration: 0.45, bounce: 0.35), value: isVerified)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(credential.format), \(credential.title), \(credential.issuer)\(meta.isEmpty ? "" : ", \(meta)")")
-        .accessibilityValue(accessibilityStatus)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityValue(accessibilityValue)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
-    }
-
-    /// "jul 2024 · Eindhoven"
-    private var meta: String {
-        [credential.when, credential.place].compactMap { $0 }.joined(separator: " · ")
-    }
-
-    /// The colour of the issuer, a little darker towards the bottom, as wallet passes are.
-    private var cardBackground: some View {
-        LinearGradient(
-            colors: [palette.color, palette.color.mix(with: .black, by: 0.12)],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-    }
-
-    private var issuerBadge: some View {
-        Text(VaultWalletCard.initials(of: credential.issuer))
-            .textStyle(.tag)
-            .foregroundStyle(palette.color)
-            .frame(width: 30, height: 30)
-            .background(foreground, in: .circle)
-            .accessibilityHidden(true)
-    }
-
-    private var selectionMark: some View {
-        ZStack {
-            Circle()
-                .strokeBorder(foreground.opacity(0.75), lineWidth: 1.5)
-                .opacity(isSelected ? 0 : 1)
-            Circle()
-                .fill(foreground)
-                .opacity(isSelected ? 1 : 0)
-            Image(.iconCheck)
-                .renderingMode(.template)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 13, height: 13)
-                .foregroundStyle(palette.color)
-                .opacity(isSelected ? 1 : 0)
+        .task(id: credential.id) {
+            guard let data = credential.logo?.data else { logoLook = nil; return }
+            let look = await VaultLogoLook.make(from: data)
+            withAnimation(.easeOut(duration: 0.25)) { logoLook = look }
         }
-        .frame(width: 26, height: 26)
-        .accessibilityHidden(true)
+    }
+
+    /// A light tint of the logo's colour, or of the kind of evidence, with the avatar over its edge, as on a vault tile.
+    private var band: some View {
+        (logoLook?.tint ?? credential.category.tint)
+            .frame(height: 52)
+            .overlay(alignment: .bottomLeading) {
+                VaultWalletAvatar(look: logoLook, category: credential.category, size: 48)
+                    .padding(.leading, 14)
+                    .offset(y: 24)
+            }
+            .overlay(alignment: .topTrailing) {
+                corner
+                    .padding(10)
+            }
+            .zIndex(1)
     }
 
     @ViewBuilder
-    private var status: some View {
+    private var corner: some View {
         if credential.imported {
-            seal(icon: .iconCheckBadgeSolid, text: VaultMessages.walletInVault)
+            VaultStatusBadge(status: .verified)
         } else if let checksDone {
             if checksDone >= VaultWalletModel.Check.allCases.count {
-                seal(icon: .iconShieldCheckSolid, text: VaultMessages.walletVerifiedSeal)
-                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                VaultStatusBadge(status: .verified)
+                    .transition(.scale(scale: 0.6).combined(with: .opacity))
             } else {
-                HStack(spacing: 6) {
-                    ProgressView()
-                        .controlSize(.mini)
-                        .tint(foreground)
-                    Text(VaultWalletModel.Check(rawValue: checksDone)?.progress ?? "")
-                        .textStyle(.caption)
-                        .foregroundStyle(foreground)
-                        .contentTransition(.opacity)
+                VaultWalletCheckingBadge()
+                    .transition(.opacity)
+            }
+        } else {
+            PaveCheckbox(isOn: isSelected, size: 22)
+                .padding(4)
+                .background(Color.panel, in: .rect(cornerRadius: 7))
+        }
+    }
+
+    /// The check that runs now, with the three as small steps.
+    private func progress(_ done: Int) -> some View {
+        HStack(spacing: 8) {
+            HStack(spacing: 3) {
+                ForEach(VaultWalletModel.Check.allCases, id: \.self) { check in
+                    Capsule()
+                        .fill(check.rawValue < done ? Color.paveAccent : Color.railBorder)
+                        .frame(width: 14, height: 4)
                 }
-                .padding(.horizontal, 10)
-                .frame(minHeight: 28)
-                .background(foreground.opacity(0.16), in: .capsule)
+            }
+            Text(VaultWalletModel.Check(rawValue: done)?.progress ?? "")
+                .textStyle(.caption)
+                .foregroundStyle(Color.inkMuted)
+                .contentTransition(.opacity)
+                .animation(.easeOut(duration: 0.2), value: done)
+        }
+        .padding(.top, 2)
+        .accessibilityHidden(true)
+    }
+
+    private var skills: some View {
+        HStack(spacing: 6) {
+            ForEach(credential.skills.prefix(2), id: \.self) { VaultSkillChip(text: $0) }
+            if credential.skills.count > 2 {
+                VaultSkillChip(text: "+\(credential.skills.count - 2)")
             }
         }
+        .padding(.top, 2)
     }
 
-    private func seal(icon: ImageResource, text: String) -> some View {
-        HStack(spacing: 5) {
-            Image(icon)
-                .renderingMode(.template)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 15, height: 15)
-            Text(text)
-                .textStyle(.caption)
-        }
-        .foregroundStyle(foreground)
-        .padding(.horizontal, 10)
-        .frame(minHeight: 28)
-        .background(foreground.opacity(0.16), in: .capsule)
+    private var accessibilityLabel: String {
+        ([credential.format, credential.title, credential.issuer, credential.when].compactMap { $0 }).joined(separator: ", ")
     }
 
-    private var accessibilityStatus: String {
+    private var accessibilityValue: String {
         if credential.imported { return VaultMessages.walletInVault }
-        guard let checksDone else { return isSelected ? "Gekozen" : "Niet gekozen" }
-        if checksDone >= VaultWalletModel.Check.allCases.count { return VaultMessages.walletVerifiedSeal }
-        return VaultWalletModel.Check(rawValue: checksDone)?.progress ?? ""
-    }
-
-    /// The colour of an issuer's cards: the same for every card of that issuer, from the folder colours of the vault.
-    static func color(for issuer: String) -> VaultFolderColor {
-        let colors: [VaultFolderColor] = [.green, .blue, .purple, .rust, .rose]
-        let sum = issuer.unicodeScalars.reduce(0) { ($0 &* 31 &+ Int($1.value)) & 0xFFFF }
-        return colors[sum % colors.count]
-    }
-
-    /// "HK" for Hogeschool Kempenland, "SN" for Studio Noord.
-    static func initials(of issuer: String) -> String {
-        let words = issuer.split(separator: " ").filter { $0.first?.isLetter == true }
-        return String(words.prefix(2).compactMap(\.first)).uppercased()
+        if let checksDone {
+            return isVerified ? VaultItem.Status.verified.title : VaultWalletModel.Check(rawValue: checksDone)?.progress ?? ""
+        }
+        return isSelected ? "Gekozen" : "Niet gekozen"
     }
 }
 
 #Preview {
     ScrollView {
-        VStack(spacing: 16) {
+        VStack(spacing: 12) {
             VaultWalletCard(
-                credential: VaultWalletCredential(id: "a", category: .badges, format: "Open Badge", title: "Samenwerken in een projectteam", issuer: "Hogeschool Kempenland", place: "Eindhoven", issuedOn: VaultDay(year: 2025, month: 1, day: 24)),
-                isSelected: true, checksDone: 1
-            ) {}
+                credential: VaultWalletCredential(id: "a", category: .badges, format: "Open Badge", title: "Samenwerken in een projectteam", issuer: "Hogeschool Kempenland", place: "Eindhoven", issuedOn: VaultDay(year: 2025, month: 1, day: 24), skills: ["Samenwerken", "Plannen"]),
+                mode: .choose(isSelected: true)
+            )
             VaultWalletCard(
                 credential: VaultWalletCredential(id: "b", category: .internships, format: "Werkgeversverklaring", title: "Stage front-end development", issuer: "Studio Noord", place: "Eindhoven", startDate: VaultDay(year: 2025, month: 2, day: 3), endDate: VaultDay(year: 2025, month: 7, day: 4)),
-                isSelected: false, checksDone: nil
-            ) {}
-            VaultWalletCard(
-                credential: VaultWalletCredential(id: "c", category: .diplomas, format: "Diploma", title: "Propedeuse HBO-ICT", issuer: "Hogeschool Kempenland", issuedOn: VaultDay(year: 2024, month: 7, day: 12), imported: true),
-                isSelected: false, checksDone: nil
-            ) {}
+                mode: .checking(done: 1)
+            )
         }
         .padding(24)
     }

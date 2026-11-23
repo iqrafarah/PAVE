@@ -4,6 +4,7 @@
 // caller and only for the credentials of the caller's own demo wallet. Nothing comes from or goes to a real wallet.
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { CORS, json, sessionLevel } from '../_shared/http.ts'
+import { findLogo } from '../ayla-evidence/logo.ts'
 import { itemRow, sameEvidence, walletFor } from './wallet.ts'
 
 const URL = Deno.env.get('SUPABASE_URL')!
@@ -36,14 +37,21 @@ Deno.serve(async (req) => {
     }
 
     if (body.action === 'list') {
-      return json({ credentials: wallet.map((credential) => ({ ...credential, imported: isImported(credential.id) })) })
+      // The issuer's logo from its own site, as "Laat Ayla invullen" finds it; only the domain goes out.
+      const logos = await Promise.all(wallet.map((credential) => (credential.website ? findLogo(credential.website) : Promise.resolve(undefined))))
+      return json({
+        credentials: wallet.map((credential, index) => {
+          const logo = logos[index]
+          return { ...credential, imported: isImported(credential.id), ...(logo ? { logo: { data: logo.data, mimeType: logo.mimeType } } : {}) }
+        }),
+      })
     }
 
     if (!Array.isArray(body.ids) || !body.ids.length || body.ids.length > wallet.length || body.ids.some((id) => typeof id !== 'string')) {
       return json({ error: 'invalid_request' }, 400)
     }
     const chosen = wallet.filter((credential) => (body.ids as string[]).includes(credential.id) && !isImported(credential.id))
-    if (!chosen.length) return json({ itemIds: [] })
+    if (!chosen.length) return json({ itemIds: [], items: [] })
 
     const admin = createClient(URL, SERVICE, { auth: { persistSession: false, autoRefreshToken: false } })
     const { data: items, error: insertError } = await admin.from('vault_items')
@@ -57,7 +65,9 @@ Deno.serve(async (req) => {
       const { error: skillsError } = await admin.from('vault_item_skills').insert(skills)
       if (skillsError) throw skillsError
     }
-    return json({ itemIds: (items ?? []).map((item) => item.id) })
+    // Which credential became which item, so the app can give each its logo.
+    const made = (items ?? []).map((item) => ({ id: chosen.find((c) => c.title === item.title)?.id, itemId: item.id }))
+    return json({ itemIds: made.map((entry) => entry.itemId), items: made })
   } catch (error) {
     console.error('vault-wallet failed', (error as { code?: string })?.code ?? '')
     return json({ error: 'failed' }, 500)

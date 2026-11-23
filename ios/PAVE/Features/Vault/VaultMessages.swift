@@ -86,27 +86,34 @@ enum VaultMessages {
 
     static let walletChoiceTitle = "Haal bewijs uit je wallet"
     static let walletChoiceMessage = "Diploma's, certificaten en badges die je school of werkgever al bevestigde. Ze komen geverifieerd in je kluis."
-    static let walletTitle = "Je wallet"
-    static let walletIntro = "Kies wat je met PAVE deelt. Het komt geverifieerd in je kluis."
+    static let walletTitle = "Uit je wallet"
+    static let walletSteps = ["Kiezen", "Controleren", "Toestemming"]
+    static let walletIntro = "Kies wat je in je kluis zet. Het komt erin als Geverifieerd, omdat je school of werkgever het al ondertekende."
     static let walletDemoTitle = "Demo"
-    static let walletDemoMessage = "Deze wallet en de controle zijn nagemaakt, met verzonnen bewijs. Er gaat niets naar of uit een echte wallet."
+    static let walletDemoMessage = "Dit is een demo: de wallet en de controle zijn nagemaakt, met verzonnen bewijs. Er gaat niets naar of uit een echte wallet."
     static let walletLoading = "Je wallet openen…"
     static let walletInVault = "In je kluis"
     static let walletAllInVault = "Alles uit je wallet staat al in je kluis."
-    static let walletChooseFirst = "Kies wat je wilt toevoegen"
-    static let walletChecking = "Echtheid controleren…"
-    static let walletFailed = "Je wallet kon niet geopend worden. Probeer het zo nog eens."
-    static let walletNotSetUp = "De demowallet staat nog niet aan. Vraag het team om de functie vault-wallet te zetten."
-    static let walletImportFailed = "Het lukte niet om dit in je kluis te zetten. Probeer het zo nog eens."
-    static let walletVerifiedSeal = "Geverifieerd (nagespeeld)"
+    static let walletChooseFirst = "Kies eerst iets"
+    static let walletChecking = "Controleren…"
+    static let walletCheckingBadge = "Controleren"
+    static let walletCheckingIntro = "PAVE kijkt bij elk bewijsstuk of het echt is: wie het ondertekende, of die uitgever bekend is en of het nog geldt."
     static let walletCheckSignature = "Handtekening controleren…"
     static let walletCheckIssuer = "Uitgever opzoeken…"
     static let walletCheckRevoked = "Kijken of het nog geldt…"
-    static let walletEditNote = "Pas je dit later aan, dan moet het opnieuw bevestigd worden."
+    static let walletDoneTitle = "In je kluis"
+    static let walletFinish = "Klaar"
+    static let walletFailed = "Je wallet kon niet geopend worden. Probeer het zo nog eens."
+    static let walletNotSetUp = "De demowallet staat nog niet aan. Vraag het team om de functie vault-wallet te zetten."
+    static let walletImportFailed = "Het lukte niet om dit in je kluis te zetten. Probeer het zo nog eens."
     static let walletRetry = "Opnieuw proberen"
 
+    static func walletAylaConsent(_ count: Int) -> String {
+        count == 1 ? "Ayla mag dit bewijs bekijken en gebruiken" : "Ayla mag deze bewijsstukken bekijken en gebruiken"
+    }
+
     static func walletAdd(_ count: Int) -> String {
-        count == 1 ? "Zet 1 bewijsstuk in je kluis" : "Zet \(count) bewijsstukken in je kluis"
+        "Voeg \(count) toe"
     }
 
     static func walletAdded(_ count: Int) -> String {
