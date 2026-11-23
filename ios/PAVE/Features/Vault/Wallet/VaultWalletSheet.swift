@@ -5,6 +5,7 @@ import SwiftUI
 /// come in confirmed, the way evidence a school signed would. Opened from the first step of "Bewijs toevoegen".
 struct VaultWalletSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @State private var wallet: VaultWalletModel
     /// Called with how many came in, so "Bewijs toevoegen" can close as well.
     let onImported: (Int) -> Void
@@ -35,13 +36,22 @@ struct VaultWalletSheet: View {
 
     private var header: some View {
         HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(VaultMessages.walletTitle)
-                    .textStyle(.listTitle)
-                    .foregroundStyle(Color.ink)
-                    .accessibilityAddTraits(.isHeader)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Text(VaultMessages.walletTitle)
+                        .textStyle(.title)
+                        .foregroundStyle(Color.ink)
+                        .accessibilityAddTraits(.isHeader)
+                    Text(VaultMessages.walletDemoTitle)
+                        .textStyle(.tag)
+                        .foregroundStyle(Color.paveAccent)
+                        .padding(.horizontal, 8)
+                        .frame(minHeight: 22)
+                        .background(Color.paveSurfaceTint, in: .capsule)
+                        .accessibilityLabel(VaultMessages.walletDemoMessage)
+                }
                 Text(VaultMessages.walletIntro)
-                    .textStyle(.caption)
+                    .textStyle(.footnote)
                     .foregroundStyle(Color.inkMuted)
             }
             Spacer()
@@ -86,9 +96,7 @@ struct VaultWalletSheet: View {
             .padding(24)
         case .ready:
             ScrollView {
-                VStack(spacing: 12) {
-                    PaveNotice(title: VaultMessages.walletDemoTitle, message: VaultMessages.walletDemoMessage)
-                        .padding(.bottom, 4)
+                VStack(spacing: 18) {
                     if wallet.available.isEmpty {
                         PaveIconLabel(icon: .iconInformationCircle, text: VaultMessages.walletAllInVault)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -106,6 +114,12 @@ struct VaultWalletSheet: View {
                     if let problem = wallet.problem {
                         PaveNotice(message: problem, tone: .critical)
                     }
+                    VStack(alignment: .leading, spacing: 6) {
+                        PaveIconLabel(icon: .iconInformationCircle, text: VaultMessages.walletDemoMessage)
+                        PaveIconLabel(icon: .iconShieldCheck, text: VaultMessages.walletEditNote)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 4)
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 4)
@@ -125,6 +139,8 @@ struct VaultWalletSheet: View {
                 guard let count = await wallet.importSelected() else { return }
                 let added = VaultMessages.walletAdded(count)
                 AccessibilityNotification.Announcement(added).post()
+                // A moment to see the seals before the sheet goes.
+                if !reduceMotion { try? await Task.sleep(for: .milliseconds(700)) }
                 onImported(count)
                 dismiss()
             }

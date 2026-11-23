@@ -18,7 +18,8 @@ final class VaultWalletModel {
         case issuer
         case notRevoked
 
-        var title: String {
+        /// What shows on the card while this check runs.
+        var progress: String {
             switch self {
             case .signature: VaultMessages.walletCheckSignature
             case .issuer: VaultMessages.walletCheckIssuer
@@ -38,7 +39,7 @@ final class VaultWalletModel {
     private(set) var isImporting = false
     var problem: String?
     /// How long one check takes on screen; zero in tests.
-    var checkDuration: Duration = .milliseconds(260)
+    var checkDuration: Duration = .milliseconds(380)
 
     init(vault: VaultModel, folderID: String?) {
         self.vault = vault

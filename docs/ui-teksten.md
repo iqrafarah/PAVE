@@ -46,17 +46,18 @@
 | --- | --- |
 | Keuze bij Bewijs toevoegen | Haal bewijs uit je wallet |
 | Uitleg bij die keuze | Diploma's, certificaten en badges die je school of werkgever al bevestigde. Ze komen geverifieerd in je kluis. |
-| Titel | Je wallet |
-| Onder de titel | Kies wat je in je kluis wilt zetten. |
-| Melding bovenaan | Demo. Deze wallet is nagemaakt, met verzonnen bewijs. De controle wordt nagespeeld en er gaat niets naar of uit een echte wallet. |
+| Titel, met label | Je wallet · Demo |
+| Onder de titel | Kies wat je met PAVE deelt. Het komt geverifieerd in je kluis. |
+| Onder de kaarten | Deze wallet en de controle zijn nagemaakt, met verzonnen bewijs. Er gaat niets naar of uit een echte wallet. |
+| Onder de kaarten | Pas je dit later aan, dan moet het opnieuw bevestigd worden. |
 | Laden | Je wallet openen… |
-| Al in de kluis | Staat al in je kluis |
+| Op een kaart die al in de kluis staat | In je kluis |
 | Alles al in de kluis | Alles uit je wallet staat al in je kluis. |
 | Knop zonder keuze | Kies wat je wilt toevoegen |
 | Knop | Zet 1 bewijsstuk in je kluis / Zet {n} bewijsstukken in je kluis |
 | Knop tijdens het toevoegen | Echtheid controleren… |
-| Kop boven de controle | Echtheid gecontroleerd (nagespeeld) |
-| Controles | Ondertekend door de uitgever / Uitgever is bekend / Niet ingetrokken |
+| Op de kaart tijdens de controle | Handtekening controleren… / Uitgever opzoeken… / Kijken of het nog geldt… |
+| Op de kaart na de controle | Geverifieerd (nagespeeld) |
 | Klaar (voorgelezen) | 1 bewijsstuk staat geverifieerd in je kluis. / {n} bewijsstukken staan geverifieerd in je kluis. |
 | Bron bij het bewijs | Uit je wallet (demo) |
 | Wallet laadt niet | Je wallet kon niet geopend worden. Probeer het zo nog eens. |
