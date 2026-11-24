@@ -17,9 +17,26 @@ Organisatie            Fontys                         Coolblue
                           └─ ICT  (een andere afdeling dan ICT in Tilburg, met eigen docenten)
 ```
 
-De lerende kiest een organisatie en dan één persoon; vestiging, afdeling en functie zijn alleen zoekfilters. Dat is bij onderwijs, bedrijven, overheid en overige instellingen hetzelfde. De organisatie wordt ingevuld als het bewijs of een eerdere aanvraag haar ID heeft; een getypte naam is alleen een suggestie. Een persoon is altijd gekoppeld aan een PAVE-account: dat account krijgt de aanvraag en beslist. Er is geen aparte lijst met beoordelaars.
+De lerende kiest een organisatie mét vestiging in één keer ("Albert Heijn · Breda"), omdat een vestiging vaak een eigen ondernemer of bestuur heeft, en dan één persoon van die vestiging; afdeling en functie zijn alleen zoekfilters. Dat is bij onderwijs, bedrijven, overheid en overige instellingen hetzelfde. De organisatie wordt ingevuld als het bewijs of een eerdere aanvraag haar ID heeft; een getypte naam is alleen een suggestie. Een persoon is altijd gekoppeld aan een PAVE-account: dat account krijgt de aanvraag en beslist. Er is geen aparte lijst met beoordelaars.
+
+Een vestiging is een stad, en heeft een eigen naam zodra de organisatie er meer dan één heeft: "McDonald's · Centrum, Tilburg" en "McDonald's · Reeshof, Tilburg" (`organization_locations.name`, met eventueel `address` eronder). Zoeken gaat op organisatie, stad, naam en adres. Noemt het bewijs alleen "Tilburg", dan kiest de app niet zelf maar opent het zoeken met "McDonald's Tilburg", zodat de lerende kiest. Een naam of straat in het bewijs ("Reeshof", "Heuvelstraat") beslist wel. Een tweede vestiging in dezelfde stad voeg je toe met een naam, en geef de bestaande dan ook een naam ([`20261124170000_named_locations.sql`](../shared/supabase/migrations/20261124170000_named_locations.sql)):
+
+```sql
+update public.organization_locations l set name = 'Centrum', address = 'Straat 1, 5000 AA Tilburg'
+from public.organizations o where o.id = l.organization_id and o.name = 'McDonald''s' and l.city = 'Tilburg' and l.name is null;
+
+insert into public.organization_locations (organization_id, city, name, address)
+select id, 'Tilburg', 'Reeshof', null from public.organizations where name = 'McDonald''s';
+
+insert into public.organization_departments (location_id, name)
+select l.id, d.name from public.organization_locations l join public.organizations o on o.id = l.organization_id
+cross join (values ('Stage'), ('HR')) as d (name)
+where o.name = 'McDonald''s' and l.city = 'Tilburg' and l.name = 'Reeshof';
+```
 
 Een account is niet genoeg: een persoon mag alleen de soorten bewijs bevestigen die in `organization_contact_evidence_types` staan. Alleen die personen zijn te vinden en te kiezen.
+
+Standaard mag iedereen alles bevestigen, behalve een diploma: dat kan alleen onderwijs. Een bedrijf geeft ook certificaten (VCA, BHV, een eigen training) en badges, leest een reflectie op een stage en geeft feedback; een vereniging bevestigt vrijwilligerswerk als werkervaring. Uitzonderingen per persoon maak je in `organization_contact_evidence_types` ([`20261124160000_wider_default_evidence_types.sql`](../shared/supabase/migrations/20261124160000_wider_default_evidence_types.sql)).
 
 De database: [`20261117180000_organisations_verification_notifications.sql`](../shared/supabase/migrations/20261117180000_organisations_verification_notifications.sql), vereenvoudigd door [`20261120180000_simple_verification_directory.sql`](../shared/supabase/migrations/20261120180000_simple_verification_directory.sql) en landelijk gemaakt door [`20261124120000_national_verification_directory.sql`](../shared/supabase/migrations/20261124120000_national_verification_directory.sql).
 
@@ -53,10 +70,12 @@ De app zoekt in de database, per pagina van 25 (hooguit 50), met tweestapsverifi
 
 | Functie | Wat |
 | --- | --- |
-| `validation_search_organizations(categorie, zoekterm, soort, limit, offset)` | Organisaties met minstens één zo'n persoon, met hun steden. |
+| `validation_search_places(categorie, zoekterm, soort, organisatie, limit, offset)` | Eén rij per vestiging ("Albert Heijn · Breda") met minstens één zo'n persoon; zoekt op organisatienaam en stad. |
+| `validation_places_by_id(categorie, vestigingen)` | De vestiging van een eerdere aanvraag. |
+| `validation_search_organizations(categorie, zoekterm, soort, limit, offset)` | Organisaties met minstens één zo'n persoon, met hun steden (niet meer gebruikt door de app). |
 | `validation_organizations_by_id(categorie, ids)` | De organisatie van het bewijs of van een eerdere aanvraag. |
 | `validation_search_contacts(organisatie, categorie, zoekterm, vestiging, afdeling, functie, limit, offset)` | Personen, gezocht op naam, functie, afdeling en stad. |
-| `validation_contact_filters(organisatie, categorie)` | De vestigingen, afdelingen en functies om op te filteren. |
+| `validation_contact_filters(organisatie, categorie)` | De afdelingen en functies om op te filteren, per vestiging. |
 | `validation_previous_contacts(categorie, limit)` | Wie de lerende eerder vroeg en het nog mag bevestigen. |
 
 ## Hoe een aanvraag loopt

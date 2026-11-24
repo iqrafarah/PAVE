@@ -1,9 +1,10 @@
 import PAVECore
 import SwiftUI
 
-/// "Bevestiging aanvragen": automatic where possible, by hand where needed. The organisation comes from the evidence
-/// by its ID; a typed name only suggests one. The learner then picks one person, found by searching the directory on
-/// the server, a page at a time, among the persons who may confirm this kind of evidence.
+/// "Bevestiging aanvragen": automatic where possible, by hand where needed. The learner chooses an organisation with
+/// one of its locations ("Albert Heijn · Breda"), known by ID from an earlier request where possible; a typed name only
+/// suggests one. Then one person there, found by searching the directory on the server, a page at a time, among the
+/// persons who may confirm this kind of evidence.
 struct VaultRequestConfirmationSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.paveReduceMotion) private var reduceMotion
@@ -15,17 +16,22 @@ struct VaultRequestConfirmationSheet: View {
     var onSend: ((VaultConfirmationRequest) async -> String?)?
 
     private struct PeopleQuery: Hashable {
-        var organizationID: String?
+        var place: VaultValidationPlace?
         var search: String
         var filters: VaultValidationFilters
     }
 
     @State private var request: VaultConfirmationRequest
-    @State private var suggestion: VaultValidationOrganization?
+    @State private var suggestion: VaultValidationPlace?
+    /// What the place search starts with: the organisation of the evidence, when its location is not certain.
+    @State private var suggestedSearch = ""
     @State private var previousPeople: [VaultValidationPerson] = []
     @State private var people: [VaultValidationPerson] = []
     @State private var peopleTotal = 0
     @State private var filterOptions: [VaultValidationFilterOption] = []
+    /// Profile photos by contact person, fetched for the persons on screen.
+    @State private var photos: [String: URL] = [:]
+    @State private var photosAsked: Set<String> = []
     @State private var isStarting = true
     @State private var isLoadingPeople = false
     @State private var isLoadingMorePeople = false
@@ -48,7 +54,7 @@ struct VaultRequestConfirmationSheet: View {
     }
 
     private var hasChanges: Bool { !isFinished && isDirty }
-    private var peopleQuery: PeopleQuery { .init(organizationID: request.organization?.id, search: request.search, filters: request.filters) }
+    private var peopleQuery: PeopleQuery { .init(place: request.place, search: request.search, filters: request.filters) }
 
     var body: some View {
         NavigationStack {
@@ -71,9 +77,12 @@ struct VaultRequestConfirmationSheet: View {
             Button("Verder met invullen", role: .cancel) {}
         }
         .sheet(isPresented: $choosesOrganization) {
-            VaultOrganizationSearchSheet(category: item.category, selectedID: request.organization?.id) { organization in
-                if organization.id != request.organization?.id { isDirty = true }
-                request.choose(organization)
+            VaultOrganizationSearchSheet(
+                category: item.category, selectedID: request.place?.locationId,
+                initialQuery: request.place == nil ? suggestedSearch : ""
+            ) { place in
+                if place.locationId != request.place?.locationId { isDirty = true }
+                request.choose(place)
             }
             .paveSheet()
         }
@@ -82,8 +91,9 @@ struct VaultRequestConfirmationSheet: View {
             if let logo = vault.logo(of: item) { evidenceLogo = await vault.look(of: logo) }
             await start()
         }
-        .task(id: request.organization?.id) { await loadFilterOptions() }
+        .task(id: request.place?.organizationId) { await loadFilterOptions() }
         .task(id: peopleQuery) { await loadPeople() }
+        .task(id: (people + previousPeople).map(\.id)) { await loadPhotos() }
     }
 
     // MARK: - Form
@@ -97,7 +107,7 @@ struct VaultRequestConfirmationSheet: View {
                     if let directoryError { PaveNotice(message: directoryError) }
                     evidenceSummary
                     organizationSection
-                    if request.organization != nil || !previousPeople.isEmpty { contactSection }
+                    if request.place != nil || !previousPeople.isEmpty { contactSection }
                 }
                 .padding(.horizontal, 28)
                 .padding(.top, 32)
@@ -159,45 +169,50 @@ struct VaultRequestConfirmationSheet: View {
 
     private var organizationSection: some View {
         section(title: "Organisatie", error: error(.organisation)) {
-            if let organization = request.organization {
-                organizationRow(organization) {
+            if let place = request.place {
+                placeRow(place) {
                     Button("Wijzig") { choosesOrganization = true }
                         .textStyle(.link).foregroundStyle(Color.paveAccent).buttonStyle(.pave)
-                        .accessibilityLabel("Andere organisatie kiezen")
+                        .accessibilityLabel("Andere organisatie of vestiging kiezen")
                 }
             } else if isStarting {
                 ProgressView().frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 6)
             } else {
                 if let suggestion {
-                    organizationRow(suggestion, prefix: "Bedoel je ") {
+                    placeRow(suggestion, asks: true) {
                         Button("Kiezen") {
                             isDirty = true
                             request.choose(suggestion)
                         }
                         .textStyle(.link).foregroundStyle(Color.paveAccent).buttonStyle(.pave)
-                        .accessibilityLabel("\(suggestion.name) kiezen")
+                        .accessibilityLabel("\(suggestion.title) kiezen")
                     }
                 }
-                searchButton(suggestion == nil ? "Zoek een organisatie" : "Andere organisatie zoeken") { choosesOrganization = true }
+                searchButton(searchTitle) { choosesOrganization = true }
             }
         }
     }
 
-    private func organizationRow<Action: View>(
-        _ organization: VaultValidationOrganization, prefix: String = "", @ViewBuilder action: () -> Action
+    private var searchTitle: String {
+        if suggestion != nil { return "Andere zoeken" }
+        if !suggestedSearch.isEmpty { return "Kies een vestiging van \(suggestedSearch)" }
+        return "Zoek een organisatie of plaats"
+    }
+
+    /// "Albert Heijn" with "Bedrijf · Breda" under it, or "Bedrijf · Westermarkt, Tilburg" and the address.
+    private func placeRow<Action: View>(
+        _ place: VaultValidationPlace, asks: Bool = false, @ViewBuilder action: () -> Action
     ) -> some View {
         HStack(spacing: 12) {
-            Image(organization.organizationKind.icon)
-                .renderingMode(.template).resizable().scaledToFit().paveIconFrame(18)
-                .foregroundStyle(Color.paveAccent)
-                .paveIconFrame(40)
-                .background(Color.paveDropZone, in: .rect(cornerRadius: 10))
-                .accessibilityHidden(true)
+            VaultPlaceLogo(place: place, size: 40)
             VStack(alignment: .leading, spacing: 3) {
-                Text(prefix.isEmpty ? organization.name : "\(prefix)\(organization.name)?")
+                Text(asks ? "Bedoel je \(place.organizationName)?" : place.organizationName)
                     .textStyle(.label).foregroundStyle(Color.ink).lineLimit(2)
-                Text([organization.kindTitle, organization.citySummary].compactMap { $0 }.joined(separator: " · "))
-                    .textStyle(.caption).foregroundStyle(Color.inkMuted).lineLimit(1)
+                Text("\(place.organizationKind.title) · \(place.locationTitle)")
+                    .textStyle(.caption).foregroundStyle(Color.inkMuted).lineLimit(2)
+                if let address = place.addressLine {
+                    Text(address).textStyle(.caption).foregroundStyle(Color.inkMuted).lineLimit(1)
+                }
             }
             Spacer(minLength: 8)
             action()
@@ -208,16 +223,16 @@ struct VaultRequestConfirmationSheet: View {
 
     private var contactSection: some View {
         section(title: "Contactpersoon", error: error(.contact)) {
-            if request.organization == nil {
+            if request.place == nil {
                 subheading("Eerder benaderd")
                 ForEach(previousPeople) { person in
                     personRow(person, details: [person.details, person.organizationName].compactMap { $0 }.joined(separator: " · "))
                 }
-            } else if request.organization?.availableContacts == 0 {
-                Text("Hier kan niemand dit soort bewijs bevestigen.")
+            } else if request.place?.availableContacts == 0 {
+                Text("Bij deze vestiging kan niemand dit soort bewijs bevestigen.")
                     .textStyle(.caption).foregroundStyle(Color.inkMuted)
             } else {
-                PaveSearchField(text: $request.search, prompt: "Zoek op naam, functie of plaats")
+                PaveSearchField(text: $request.search, prompt: "Zoek op naam of functie")
                 filterBar
                 peopleList
             }
@@ -227,7 +242,7 @@ struct VaultRequestConfirmationSheet: View {
     @ViewBuilder
     private var peopleList: some View {
         let isBrowsing = request.search.isEmpty && request.filters.isEmpty
-        let previousHere = isBrowsing ? previousPeople.filter { $0.organizationId == request.organization?.id } : []
+        let previousHere = isBrowsing ? previousPeople.filter { $0.locationId == request.place?.locationId } : []
         let rest = people.filter { person in !previousHere.contains { $0.id == person.id } }
         if !previousHere.isEmpty {
             subheading("Eerder benaderd")
@@ -262,25 +277,14 @@ struct VaultRequestConfirmationSheet: View {
         }
     }
 
-    /// Only filters that narrow something: one location means no location filter.
+    /// Only filters that narrow something at this location. The location itself is chosen, not filtered.
     @ViewBuilder
     private var filterBar: some View {
-        let locations = filterOptions.filter { $0.filter == .location }
-        let departments = departmentOptions(at: request.filters.locationID)
-        let functions = filterOptions.filter { $0.filter == .function }
-        if locations.count > 1 || departments.count > 1 || functions.count > 1 {
+        let departments = options(.department, at: request.place?.locationId)
+        let functions = options(.function, at: request.place?.locationId)
+        if departments.count > 1 || functions.count > 1 {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    if locations.count > 1 {
-                        filterMenu("Vestiging", all: "Alle vestigingen", options: locations, value: request.filters.locationID) { value in
-                            request.filters.locationID = value
-                            // A department that this location does not have goes; one it has stays.
-                            if value != nil, let department = request.filters.department,
-                               !departmentOptions(at: value).contains(where: { $0.value == department }) {
-                                request.filters.department = nil
-                            }
-                        }
-                    }
                     if departments.count > 1 {
                         filterMenu("Afdeling", all: "Alle afdelingen", options: departments, value: request.filters.department) {
                             request.filters.department = $0
@@ -297,12 +301,13 @@ struct VaultRequestConfirmationSheet: View {
         }
     }
 
-    /// The departments of one location, or of all, each name once: "ICT" in Tilburg and in Eindhoven is one choice.
-    private func departmentOptions(at locationID: String?) -> [VaultValidationFilterOption] {
-        let shown = filterOptions.filter { $0.filter == .department && (locationID == nil || $0.locationId == locationID) }
+    /// The departments or functions at one location, each name once. Before migration 20261124150000 functions come
+    /// without a location: then all of them.
+    private func options(_ filter: VaultValidationFilterOption.Filter, at locationID: String?) -> [VaultValidationFilterOption] {
+        let shown = filterOptions.filter { $0.filter == filter && ($0.locationId == nil || locationID == nil || $0.locationId == locationID) }
         return Dictionary(grouping: shown, by: \.label)
             .map { name, options in
-                VaultValidationFilterOption(filter: .department, value: name, label: name, people: options.reduce(0) { $0 + $1.people })
+                VaultValidationFilterOption(filter: filter, value: name, label: name, people: options.reduce(0) { $0 + $1.people })
             }
             .sorted { $0.label.localizedStandardCompare($1.label) == .orderedAscending }
     }
@@ -337,6 +342,7 @@ struct VaultRequestConfirmationSheet: View {
             choose(person)
         } label: {
             HStack(spacing: 12) {
+                VaultPersonPhoto(name: person.name, url: photos[person.id])
                 VStack(alignment: .leading, spacing: 3) {
                     Text(person.name).textStyle(.label).foregroundStyle(Color.ink)
                     Text(details ?? person.details)
@@ -359,14 +365,15 @@ struct VaultRequestConfirmationSheet: View {
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 
-    /// An earlier contact of another organisation brings that organisation along.
+    /// An earlier contact elsewhere brings their organisation and location along.
     private func choose(_ person: VaultValidationPerson) {
         isDirty = true
-        if person.organizationId != request.organization?.id {
-            request.choose(VaultValidationOrganization(
-                id: person.organizationId, name: person.organizationName ?? "", kind: "other", cities: [person.city]
+        if person.locationId != request.place?.locationId {
+            request.choose(VaultValidationPlace(
+                organizationId: person.organizationId, organizationName: person.organizationName ?? "",
+                kind: "other", locationId: person.locationId, city: person.city, locationName: person.locationName
             ))
-            Task { await refreshOrganization(person.organizationId) }
+            Task { await refreshPlace(person.locationId) }
         }
         request.contact = person
     }
@@ -406,25 +413,46 @@ struct VaultRequestConfirmationSheet: View {
 
     // MARK: - Loading
 
-    /// The organisation by ID when the evidence or an earlier request names one; otherwise a suggestion from the typed
-    /// name. And who the learner asked before.
+    /// The organisation by ID, at the location in the city the evidence names (the location field, or else the
+    /// description). The location of an earlier request only
+    /// when the evidence names no city, or one where the organisation has no location: what the learner wrote with
+    /// the evidence wins. Otherwise a suggestion from the typed name. And who the learner asked before.
     private func start() async {
         isStarting = true; defer { isStarting = false }
         async let previous = try? vault.previousValidationPeople(category: item.category)
-        let known = VaultConfirmationRequest.knownOrganizationIDs(for: item)
         do {
-            if !known.isEmpty {
-                let found = try await vault.validationOrganizations(ids: known.map(\.id), category: item.category)
-                // The first known organisation where someone may confirm it, otherwise simply the first known one.
-                let ranked = known.compactMap { entry in found.first { $0.id == entry.id }.map { ($0, entry.source) } }
-                if request.organization == nil,
-                   let (organization, source) = ranked.first(where: { ($0.0.availableContacts ?? 0) > 0 }) ?? ranked.first {
-                    request.choose(organization, source: source)
+            var earlier: VaultValidationPlace?
+            if let locationID = VaultConfirmationRequest.knownLocationID(for: item) {
+                earlier = try await vault.validationPlaces(locationIDs: [locationID], category: item.category).first
+            }
+            if let earlier, VaultConfirmationRequest.fitsTypedCity(earlier, of: item) {
+                request.choose(earlier, source: .earlierRequest)
+            }
+            for known in VaultConfirmationRequest.knownOrganizationIDs(for: item) where request.place == nil {
+                let places = try await vault.searchValidationPlaces(
+                    category: item.category, query: "", kind: nil, organizationID: known.id, offset: 0
+                ).rows
+                if let place = VaultConfirmationRequest.onlyPlace(
+                    places, typedCity: item.organisationLocation, described: item.description
+                ) {
+                    request.choose(place, source: known.source)
+                } else if let first = places.first, suggestedSearch.isEmpty {
+                    // Two locations in the typed city: the search lists just those.
+                    suggestedSearch = VaultConfirmationRequest.searchHint(places, for: item) ?? first.organizationName
                 }
             }
-            if request.organization == nil, let name = item.organisationName, !name.trimmingCharacters(in: .whitespaces).isEmpty {
-                let page = try await vault.searchValidationOrganizations(category: item.category, query: name, kind: nil, offset: 0)
-                suggestion = VaultConfirmationRequest.suggestion(for: item, among: page.rows)
+            // The typed city is not one of its locations: then the earlier request after all.
+            if request.place == nil, let earlier { request.choose(earlier, source: .earlierRequest) }
+            if request.place == nil, suggestedSearch.isEmpty, let name = item.organisationName,
+               !name.trimmingCharacters(in: .whitespaces).isEmpty {
+                let places = try await vault.searchValidationPlaces(
+                    category: item.category, query: name, kind: nil, offset: 0
+                ).rows
+                suggestion = VaultConfirmationRequest.suggestion(for: item, among: places)
+                if suggestion == nil {
+                    let named = places.filter { VaultConfirmationRequest.normalised($0.organizationName) == VaultConfirmationRequest.normalised(name) }
+                    suggestedSearch = VaultConfirmationRequest.searchHint(named, for: item) ?? ""
+                }
             }
         } catch {
             directoryError = "De organisaties konden niet worden geladen. Probeer het opnieuw."
@@ -432,31 +460,32 @@ struct VaultRequestConfirmationSheet: View {
         previousPeople = await previous ?? []
     }
 
-    /// Fills in kind and cities of an organisation that came along with an earlier contact.
-    private func refreshOrganization(_ id: String) async {
-        guard let found = try? await vault.validationOrganizations(ids: [id], category: item.category).first,
-              request.organization?.id == id else { return }
-        request.organization = found
+    /// Fills in the kind of a location that came along with an earlier contact.
+    private func refreshPlace(_ locationID: String) async {
+        guard let found = try? await vault.validationPlaces(locationIDs: [locationID], category: item.category).first,
+              request.place?.locationId == locationID else { return }
+        request.place = found
     }
 
     private func loadFilterOptions() async {
         filterOptions = []
-        guard let organization = request.organization else { return }
-        filterOptions = (try? await vault.validationFilterOptions(organizationID: organization.id, category: item.category)) ?? []
+        guard let place = request.place else { return }
+        filterOptions = (try? await vault.validationFilterOptions(organizationID: place.organizationId, category: item.category)) ?? []
     }
 
     /// The first page for the current search; typing waits a moment so not every letter goes to the server.
     private func loadPeople() async {
         let query = peopleQuery
-        guard let organizationID = query.organizationID else { people = []; peopleTotal = 0; return }
-        // Another organisation: its people only, not those of the one before.
-        if people.first.map({ $0.organizationId != organizationID }) == true { people = []; peopleTotal = 0 }
+        guard let place = query.place else { people = []; peopleTotal = 0; return }
+        // Another location: its people only, not those of the one before.
+        if people.first.map({ $0.locationId != place.locationId }) == true { people = []; peopleTotal = 0 }
         if !people.isEmpty || !query.search.isEmpty { try? await Task.sleep(for: .milliseconds(300)) }
         guard !Task.isCancelled else { return }
         isLoadingPeople = true; defer { isLoadingPeople = false }
         do {
             let page = try await vault.searchValidationPeople(
-                organizationID: organizationID, category: item.category, query: query.search, filters: query.filters, offset: 0
+                organizationID: place.organizationId, category: item.category, query: query.search,
+                filters: Self.filters(query.filters, at: place), offset: 0
             )
             guard !Task.isCancelled, query == peopleQuery else { return }
             people = page.rows
@@ -470,13 +499,33 @@ struct VaultRequestConfirmationSheet: View {
 
     private func loadMorePeople() async {
         let query = peopleQuery
-        guard let organizationID = query.organizationID, !isLoadingMorePeople else { return }
+        guard let place = query.place, !isLoadingMorePeople else { return }
         isLoadingMorePeople = true; defer { isLoadingMorePeople = false }
         guard let page = try? await vault.searchValidationPeople(
-            organizationID: organizationID, category: item.category, query: query.search, filters: query.filters, offset: people.count
+            organizationID: place.organizationId, category: item.category, query: query.search,
+            filters: Self.filters(query.filters, at: place), offset: people.count
         ), query == peopleQuery else { return }
         people += page.rows.filter { row in !people.contains { $0.id == row.id } }
         peopleTotal = page.total
+    }
+
+    /// The photos of the persons on screen that were not asked for yet. Only an answered request counts as asked: when
+    /// the list changes halfway (the earlier contacts arrive after the first people), this task is cancelled and the
+    /// next one asks for these persons again.
+    private func loadPhotos() async {
+        let missing = (people + previousPeople).map(\.id).filter { !photosAsked.contains($0) }
+        guard !missing.isEmpty else { return }
+        let found = await vault.validationContactPhotos(contactIDs: missing)
+        photos.merge(found) { _, new in new }
+        guard !Task.isCancelled else { return }
+        photosAsked.formUnion(missing)
+    }
+
+    /// The chosen filters, always at the chosen location.
+    private static func filters(_ filters: VaultValidationFilters, at place: VaultValidationPlace) -> VaultValidationFilters {
+        var filters = filters
+        filters.locationID = place.locationId
+        return filters
     }
 
     // MARK: - Result
@@ -518,14 +567,43 @@ struct VaultRequestConfirmationSheet: View {
     }
 }
 
-extension VaultOrganizationKind {
-    var icon: ImageResource {
-        switch self {
-        case .school: .iconAcademicCapSolid
-        case .company: .iconBuildingOfficeSolid
-        case .government: .iconShieldCheckSolid
-        case .other: .iconUserGroupSolid
+/// The organisation's logo: its `logo_url`, otherwise the logo PAVE finds on its own site (only the public name goes
+/// out), otherwise an icon. Loaded once while the app runs.
+struct VaultPlaceLogo: View {
+    let place: VaultValidationPlace
+    var size: CGFloat = 40
+
+    var body: some View {
+        // One logo for the whole organisation: looked up by name only, so every location shows the same one.
+        CompanyLogo(name: place.organizationName, url: place.logoURL, size: size, fills: true)
+            .id(place.organizationId)
+    }
+}
+
+/// A contact person's profile photo, or their initials.
+struct VaultPersonPhoto: View {
+    let name: String
+    let url: URL?
+    var size: CGFloat = 36
+
+    private var initials: String {
+        name.split(separator: " ").compactMap(\.first).prefix(2).map(String.init).joined().uppercased()
+    }
+
+    var body: some View {
+        AsyncImage(url: url) { phase in
+            if let image = phase.image {
+                image.resizable().scaledToFill()
+            } else {
+                Text(initials).textStyle(.caption).foregroundStyle(Color.paveAccent)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.paveDropZone)
+            }
         }
+        .frame(width: size, height: size)
+        .clipShape(.circle)
+        .overlay { Circle().strokeBorder(Color.cardBorder, lineWidth: 1) }
+        .accessibilityHidden(true)
     }
 }
 

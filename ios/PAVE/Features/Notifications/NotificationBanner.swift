@@ -17,7 +17,7 @@ struct NotificationBanner: View {
                     .frame(width: 18, height: 18)
                     .frame(width: 36, height: 36)
                     .background(notification.kind.surface, in: .rect(cornerRadius: 10))
-                VStack(alignment: .leading, spacing: 2) 
+                VStack(alignment: .leading, spacing: 2) {
                     Text(notification.title)
                         .textStyle(.bodyMedium)
                         .foregroundStyle(Color.ink)

@@ -10,6 +10,8 @@ struct CompanyLogo: View {
     var city: String?
     /// Off for "Via werkzoeken.nl": that site's own icon is what the card names, and nothing is looked up.
     var looksUp = true
+    /// The logo fills the whole circle, like the logo of evidence in the vault, instead of sitting small in the middle.
+    var fills = false
 
     @State private var logo: UIImage?
 
@@ -20,7 +22,18 @@ struct CompanyLogo: View {
 
     var body: some View {
         ZStack {
-            if let logo {
+            if let logo, fills {
+                Image(uiImage: logo)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFill()
+                    .frame(width: size, height: size)
+                    .background(Color.white)
+                    .clipShape(.circle)
+                    .overlay { Circle().strokeBorder(Color.cardBorder, lineWidth: 1) }
+                    .transition(.opacity)
+                    .accessibilityHidden(true)
+            } else if let logo {
                 Image(uiImage: logo)
                     .resizable()
                     .interpolation(.high)
@@ -41,7 +54,43 @@ struct CompanyLogo: View {
             logo = await CompanyLogos.shared.logo(at: url)
             // No logo, or only a favicon too small to show: PAVE looks for the logo on the company's own site.
             if logo == nil, looksUp { logo = await CompanyLogos.shared.logo(of: name, in: city) }
+            // A site's icon often has a white or transparent margin: without it the logo itself fills the circle.
+            if fills, let found = logo {
+                logo = await Task.detached(priority: .userInitiated) { Self.withoutMargin(found) }.value
+            }
         }
+    }
+
+    /// The image without its white or transparent edges; the image itself when there are none, or nothing else.
+    nonisolated static func withoutMargin(_ image: UIImage) -> UIImage {
+        guard let cgImage = image.cgImage else { return image }
+        let width = cgImage.width, height = cgImage.height
+        guard width > 2, height > 2, width * height <= 2_048 * 2_048 else { return image }
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        guard let context = CGContext(
+            data: &pixels, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return image }
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+        var minX = width, minY = height, maxX = -1, maxY = -1
+        for y in 0..<height {
+            for x in 0..<width {
+                let i = (y * width + x) * 4
+                let alpha = Int(pixels[i + 3])
+                guard alpha > 24 else { continue }
+                // Premultiplied: near white means each channel close to the alpha.
+                let isWhite = [0, 1, 2].allSatisfy { alpha - Int(pixels[i + $0]) < 16 } && alpha > 230
+                guard !isWhite else { continue }
+                minX = min(minX, x); maxX = max(maxX, x); minY = min(minY, y); maxY = max(maxY, y)
+            }
+        }
+        guard maxX >= minX, maxY >= minY else { return image }
+        let box = CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
+        // Hardly a margin, or almost nothing left: keep the image as it is.
+        guard box.width * box.height < CGFloat(width * height) * 0.95, box.width >= 16, box.height >= 16,
+              let cropped = cgImage.cropping(to: box) else { return image }
+        return UIImage(cgImage: cropped, scale: image.scale, orientation: image.imageOrientation)
     }
 }
 

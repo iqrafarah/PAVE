@@ -1,7 +1,7 @@
 import PAVECore
 import SwiftUI
 
-/// One conversation in the list: its name, and underneath when it was last used and, when it began elsewhere, where.
+/// One conversation in the list: only its name, as on the web.
 struct AylaChatRow: View {
     let conversation: AylaConversation
     let isCurrent: Bool
@@ -9,32 +9,18 @@ struct AylaChatRow: View {
 
     var body: some View {
         Button(action: onOpen) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(conversation.title)
-                    .textStyle(.listTitle)
-                    .foregroundStyle(Color.ink)
-                    .lineLimit(1)
-                HStack(spacing: 6) {
-                    Text(Self.when(conversation.updatedAt))
-                    if let place = Self.place(conversation.startedOn) {
-                        Image(systemName: place.symbol)
-                            .imageScale(.small)
-                            .accessibilityHidden(true)
-                        Text(place.label)
+            Text(conversation.title)
+                .textStyle(.listTitle)
+                .foregroundStyle(Color.ink)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .padding(.horizontal, 12)
+                .background {
+                    if isCurrent {
+                        RoundedRectangle(cornerRadius: 12).fill(Color.paveSurfaceTint)
                     }
                 }
-                .textStyle(.caption)
-                .foregroundStyle(Color.inkMuted)
-                .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
-            .padding(.horizontal, 12)
-            .background {
-                if isCurrent {
-                    RoundedRectangle(cornerRadius: 12).fill(Color.paveSurfaceTint)
-                }
-            }
-            .contentShape(.rect(cornerRadius: 12))
+                .contentShape(.rect(cornerRadius: 12))
         }
         .buttonStyle(.pave)
         .hoverEffect(.highlight)
@@ -59,15 +45,6 @@ struct AylaChatRow: View {
                 ? Date.FormatStyle().day().month(.abbreviated)
                 : Date.FormatStyle().day().month(.abbreviated).year()
             return date.formatted(style.locale(dutch))
-        }
-    }
-
-    /// Only conversations that began somewhere else than on this phone say so.
-    static func place(_ device: AylaDevice?) -> (symbol: String, label: String)? {
-        switch device {
-        case .web: ("globe.europe.africa.fill", "Op web")
-        case .watch: WatchConnectMessages.isShown ? ("applewatch", "Op Apple Watch") : nil
-        case .phone, nil: nil
         }
     }
 }
