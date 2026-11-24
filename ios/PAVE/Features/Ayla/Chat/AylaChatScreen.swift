@@ -1682,7 +1682,9 @@ struct AylaChatScreen: View {
             onTask: { task, vacancy in run(task, on: [vacancy]) },
             onToggleCompare: toggleCompare,
             onCompare: compareChosen,
-            onClearCompare: { compareIDs = [] }
+            onClearCompare: { compareIDs = [] },
+            savedCount: model.canSaveVacancies ? model.savedVacancies.count : 0,
+            onShowSaved: openSavedVacancies
         )
     }
 

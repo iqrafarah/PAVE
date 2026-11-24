@@ -249,6 +249,8 @@ final class AylaChatModel {
             guard !Task.isCancelled else { return }
             self?.isGreetingReady = true
         }
+        // Kept vacancies are known from the start, also while talking hands-free, when the panel is not opened.
+        async let saved: Void = loadSavedVacancies()
         let name = await service.firstName()
         timeout.cancel()
         // A name that comes in after the welcome is shown is left out, so the welcome does not jump.
@@ -257,6 +259,7 @@ final class AylaChatModel {
             isGreetingReady = true
         }
         await refreshConversations()
+        await saved
     }
 
     /// Ayla is thinking or writing; the send button is a stop button meanwhile.
@@ -1115,9 +1118,12 @@ final class AylaChatModel {
         do {
             savedVacancies = try await service.savedVacancies()
             canSaveVacancies = true
+            vacancyProblem = nil
         } catch AylaError.notSetUp {
             canSaveVacancies = false
         } catch {
+            // The panel closed or was built again while loading: that is not a failure, and the next load will do.
+            guard !Task.isCancelled else { return }
             vacancyProblem = AylaMessages.vacancySavedLoadFailed
         }
     }
