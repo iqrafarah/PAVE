@@ -70,5 +70,7 @@ struct CVCoralLayout: View {
             .allowsHitTesting(false)
         }
         .clipped()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .pageRegion()
     }
 }

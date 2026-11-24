@@ -1,7 +1,8 @@
 import PAVECore
 import SwiftUI
 
-/// The motivation letter on A4, with the letterhead of the chosen design so it belongs with the CV.
+/// The motivation letter with the letterhead of the chosen design, so it belongs with the CV, as one long sheet;
+/// `ApplicationPages` cuts it into A4 pages.
 struct LetterPage: View {
     let draft: ApplicationDraft
     var interaction: ApplicationPageInteraction?
@@ -67,36 +68,12 @@ struct LetterPage: View {
             .padding(.leading, leading)
             .padding(.trailing, 56)
             .padding(.vertical, 30)
-        }
-        .frame(width: ApplicationPage.size.width, alignment: .topLeading)
-        .frame(minHeight: ApplicationPage.size.height, alignment: .top)
-        .background(alignment: .leading) { side }
-        .background(ApplicationPage.paper)
-        .clipped()
-        .environment(\.colorScheme, .light)
-    }
-
-    /// What runs down the left of the page: the soft band of Salie, the timeline of Lijn.
-    @ViewBuilder
-    private var side: some View {
-        switch draft.template {
-        case .sage: theme.tint.frame(width: 18)
-        case .block:
-            // A white sheet on the soft page, under the tile with the name, down to the bottom.
-            ZStack(alignment: .top) {
-                theme.tint
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(.white)
-                    .padding(.horizontal, 28)
-                    .padding(.top, 28 + Self.blockHeaderHeight + 12)
-                    .padding(.bottom, 28)
-            }
-        case .line: Rectangle().fill(theme.accent.opacity(0.35)).frame(width: 1.5).padding(.leading, 40)
-        default: EmptyView()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .pageRegion()
         }
     }
 
-    private static let blockHeaderHeight: CGFloat = 96
+    static let blockHeaderHeight: CGFloat = 96
 
     @ViewBuilder
     private var letterhead: some View {

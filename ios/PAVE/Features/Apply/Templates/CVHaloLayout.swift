@@ -48,6 +48,8 @@ struct CVHaloLayout: View {
         .background(alignment: .top) {
             theme.tint.frame(height: photo == nil ? 90 : 125)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .pageRegion()
     }
 }
 

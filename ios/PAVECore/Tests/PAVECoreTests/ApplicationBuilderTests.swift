@@ -12,18 +12,43 @@ struct ApplicationBuilderTests {
         VaultItem(id: id, category: category, title: title, organisationName: "Org \(id)", endDate: end, status: status, skills: skills)
     }
 
-    @Test func evidenceThatFitsTheVacancyComesFirst() {
+    @Test func everyPartIsNewestFirstAndTheSkillsOfTheVacancyLead() {
+        var current = item("d", .workExperience, "Bijbaan", skills: ["Plannen"])
+        current.startDate = VaultDay(year: 2023, month: 9, day: 1)
+        current.isCurrent = true
+        var newerCurrent = item("e", .internships, "Afstudeerstage")
+        newerCurrent.startDate = VaultDay(year: 2026, month: 9, day: 1)
+        newerCurrent.isCurrent = true
         let items = [
-            item("a", .workExperience, "Teamleider avondploeg", skills: ["Plannen"], end: VaultDay(year: 2025, month: 6, day: 1)),
             item("b", .internships, "Eindstage front-end", skills: ["Swift"], end: VaultDay(year: 2024, month: 1, day: 1)),
+            item("a", .workExperience, "Teamleider avondploeg", skills: ["Plannen"], end: VaultDay(year: 2025, month: 6, day: 1)),
+            current, newerCurrent,
             item("c", .diplomas, "HBO-ICT", end: VaultDay(year: 2026, month: 7, day: 1)),
         ]
         let draft = ApplicationBuilder.draft(for: vacancy, items: items, name: "Daaf")
         let experience = draft.cv.sections.first { $0.kind == .experience }
-        #expect(experience?.entries.map(\.sourceItemID) == ["b", "a"])
+        #expect(experience?.entries.map(\.sourceItemID) == ["e", "d", "a", "b"])
         #expect(draft.cv.skills.first == "Swift")
         #expect(draft.cv.headline == "Student HBO-ICT")
         #expect(draft.cv.visibleSections.map(\.kind) == [.experience, .education])
+    }
+
+    @Test func aDiplomaOrCertificateIsNameSchoolAndYear() {
+        var diploma = item("c", .diplomas, "Vwo-diploma", end: VaultDay(year: 2022, month: 7, day: 1))
+        diploma.description = "Je haalde je vwo-diploma."
+        diploma.organisationName = "Stedelijk College Eindhoven"
+        diploma.organisationLocation = "Eindhoven"
+        var stage = item("b", .internships, "Stage")
+        stage.description = "Websites gebouwd in Vue."
+        stage.organisationName = "Studio Noord"
+        stage.organisationLocation = "Tilburg"
+        let draft = ApplicationBuilder.draft(for: vacancy, items: [diploma, stage], name: "Daaf")
+        let education = draft.cv.sections.first { $0.kind == .education }?.entries.first
+        let experience = draft.cv.sections.first { $0.kind == .experience }?.entries.first
+        #expect(education?.description == "")
+        #expect(education?.organisation == "Stedelijk College Eindhoven")
+        #expect(experience?.description == "Websites gebouwd in Vue.")
+        #expect(experience?.organisation == "Studio Noord, Tilburg")
     }
 
     @Test func rejectedAndArchivedEvidenceStaysOff() {

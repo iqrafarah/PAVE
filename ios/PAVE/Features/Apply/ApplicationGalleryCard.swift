@@ -15,10 +15,10 @@ struct ApplicationGalleryCard: View {
                 GeometryReader { proxy in
                     let scale = (proxy.size.width - 12) / ApplicationPage.size.width
                     ZStack(alignment: .topLeading) {
-                        page(LetterPage(draft: draft), scale: scale)
+                        page(ApplicationPages(draft: draft, document: .letter), scale: scale)
                             .offset(x: 12, y: 0)
                             .opacity(0.9)
-                        page(CVPage(draft: draft, photo: photo), scale: scale)
+                        page(ApplicationPages(draft: draft, document: .cv, photo: photo), scale: scale)
                             .offset(y: 10)
                     }
                 }

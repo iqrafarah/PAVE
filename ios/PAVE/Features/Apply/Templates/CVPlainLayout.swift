@@ -44,5 +44,7 @@ struct CVPlainLayout: View {
         .padding(.horizontal, 52)
         .padding(.top, 52)
         .padding(.bottom, 44)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .pageRegion()
     }
 }

@@ -9,8 +9,11 @@ struct ApplicationStudioTests {
     private final class Writer: AylaService, @unchecked Sendable {
         var answer = ApplicationWriting()
         var requests: [ApplicationWritingRequest] = []
+        /// An older server does not know a kind yet.
+        var unknownKinds: Set<ApplicationWritingRequest.Kind> = []
         func writeApplication(_ request: ApplicationWritingRequest) async throws -> ApplicationWriting {
             requests.append(request)
+            if unknownKinds.contains(request.kind) { throw AylaError.unavailable }
             return answer
         }
         func send(_ request: AylaRequest) async throws -> AylaReply { throw AylaError.unavailable }
@@ -116,6 +119,41 @@ struct ApplicationStudioTests {
         #expect(model.stage == .editor)
         #expect(model.draft.cv.profile == "Ik bouw apps.")
         #expect(model.draft.letter.paragraphs.map(\.text) == ["Bij Pixelwerk werkte ik met Swift."])
+    }
+
+    @Test func aylaWritesWhatYouDidInTheWordsOfACV() async {
+        let writer = Writer()
+        writer.answer = ApplicationWriting(
+            profile: "Ik bouw apps.", headline: "Student HBO-ICT",
+            entries: [.init(sourceItemID: "a", text: "Bouwde mee aan een iOS-app."), .init(sourceItemID: "b", text: "Mag ze niet zien.")],
+            paragraphs: [.init(text: "Brief.")]
+        )
+        var items = items()
+        items[0].description = "Je bouwde mee aan een iOS-app."
+        items[1].description = "Je vulde vakken."
+        let model = ApplicationStudioModel(vacancy: vacancy, items: items, name: "Daaf", email: "", service: writer, store: store)
+        model.choose(.plain)
+        await model.begin(withAyla: true)
+        let entries = model.draft.cv.sections.first { $0.kind == .experience }?.entries ?? []
+        #expect(entries.first { $0.sourceItemID == "a" }?.description == "Bouwde mee aan een iOS-app.")
+        // What she may not see, she does not get and does not rewrite.
+        #expect(entries.first { $0.sourceItemID == "b" }?.description == "Je vulde vakken.")
+        #expect(writer.requests.first { $0.kind == .entries }?.items.map(\.id) == ["a"])
+        #expect(model.draft.cv.headline == "Student HBO-ICT")
+        #expect(model.writingEntries.isEmpty)
+    }
+
+    @Test func whenAylaCannotWriteTheEntriesTheVaultTextStays() async {
+        let writer = Writer()
+        writer.unknownKinds = [.entries]
+        writer.answer = ApplicationWriting(profile: "Ik bouw apps.", paragraphs: [.init(text: "Brief.")])
+        var items = items()
+        items[0].description = "Je bouwde mee aan een iOS-app."
+        let model = ApplicationStudioModel(vacancy: vacancy, items: items, name: "Daaf", email: "", service: writer, store: store)
+        await model.begin(withAyla: true)
+        #expect(model.draft.cv.sections.first?.entries.first { $0.sourceItemID == "a" }?.description == "Je bouwde mee aan een iOS-app.")
+        #expect(model.problem == nil)
+        #expect(model.draft.cv.profile == "Ik bouw apps.")
     }
 
     @Test func aLongCVBecomesMoreThanOneA4Page() throws {

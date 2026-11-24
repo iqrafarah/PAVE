@@ -11,8 +11,8 @@ struct ApplicationStartView: View {
         ScrollView {
             VStack(spacing: 22) {
                 HStack(alignment: .top, spacing: 14) {
-                    page(CVPage(draft: model.draft, photo: photo))
-                    page(LetterPage(draft: model.draft))
+                    page(ApplicationPages(draft: model.draft, document: .cv, photo: photo))
+                    page(ApplicationPages(draft: model.draft, document: .letter))
                 }
                 .frame(maxWidth: 520)
                 .accessibilityHidden(true)

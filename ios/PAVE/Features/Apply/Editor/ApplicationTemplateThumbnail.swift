@@ -15,7 +15,7 @@ struct ApplicationTemplateThumbnail: View {
     var body: some View {
         Button(action: action) {
             VStack(spacing: 8) {
-                CVPage(draft: shown, photo: photo)
+                ApplicationPages(draft: shown, document: .cv, photo: photo)
                     .scaleEffect(scale, anchor: .topLeading)
                     .frame(width: Self.width, height: ApplicationPage.size.height * scale, alignment: .topLeading)
                     .clipShape(.rect(cornerRadius: 6))

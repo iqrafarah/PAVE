@@ -4,7 +4,11 @@ import Foundation
 /// along; the caller picks it.
 public struct ApplicationWritingRequest: Encodable, Equatable, Sendable {
     public enum Kind: String, Encodable, Sendable {
-        case profile, letter, rewrite
+        /// The profile, with the line under the name.
+        case profile
+        /// What was done at each job and project, in the words of a CV.
+        case entries
+        case letter, rewrite
     }
 
     /// Ways to write one block again.
@@ -70,14 +74,32 @@ public struct ApplicationWriting: Decodable, Equatable, Sendable {
         }
     }
 
+    /// What was done at one job or project, written from that piece of evidence only.
+    public struct Entry: Decodable, Equatable, Sendable {
+        public var sourceItemID: String
+        public var text: String
+
+        public init(sourceItemID: String, text: String) {
+            self.sourceItemID = sourceItemID
+            self.text = text
+        }
+    }
+
     public var profile: String?
+    public var headline: String?
+    public var entries: [Entry]?
     public var salutation: String?
     public var paragraphs: [Paragraph]?
     public var closing: String?
     public var text: String?
 
-    public init(profile: String? = nil, salutation: String? = nil, paragraphs: [Paragraph]? = nil, closing: String? = nil, text: String? = nil) {
+    public init(
+        profile: String? = nil, headline: String? = nil, entries: [Entry]? = nil,
+        salutation: String? = nil, paragraphs: [Paragraph]? = nil, closing: String? = nil, text: String? = nil
+    ) {
         self.profile = profile
+        self.headline = headline
+        self.entries = entries
         self.salutation = salutation
         self.paragraphs = paragraphs
         self.closing = closing

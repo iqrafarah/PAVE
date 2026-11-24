@@ -52,14 +52,16 @@ struct CVColumnLayout: View {
                         }
                         .applicationBlock(.skills, interaction, accent: theme.accent)
                     }
-                    CVSectionsBlock(cv: cv, theme: theme, titleStyle: { _ in .caps }, entryStyle: .dateRight, kinds: [.education, .certificates], interaction: interaction)
+                    CVSectionsBlock(cv: cv, theme: theme, titleStyle: { _ in .caps }, entryStyle: .stacked, kinds: [.education, .certificates], interaction: interaction)
                 }
                 .frame(width: 170, alignment: .leading)
+                .pageRegion()
                 VStack(alignment: .leading, spacing: 22) {
                     CVProfileBlock(cv: cv, theme: theme, titleStyle: .caps, interaction: interaction)
                     CVSectionsBlock(cv: cv, theme: theme, titleStyle: { _ in .caps }, entryStyle: .dateRight, kinds: [.experience, .projects], interaction: interaction)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .pageRegion()
             }
             .padding(.horizontal, 44)
             .padding(.top, hasPhoto ? 70 : 34)

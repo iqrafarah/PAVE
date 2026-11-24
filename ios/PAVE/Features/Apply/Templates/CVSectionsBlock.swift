@@ -18,6 +18,7 @@ struct CVSectionsBlock: View {
                 let entries = section.entries.filter(\.isVisible)
                 VStack(alignment: .leading, spacing: entryStyle == .timeline ? 8 : 10) {
                     CVSectionTitle(title: ApplyMessages.section(section.kind), style: titleStyle(section.kind), theme: theme)
+                        .pageMark(.block(keepsWithNext: true))
                     VStack(alignment: .leading, spacing: entryStyle == .timeline ? 0 : 10) {
                         ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
                             CVEntryView(entry: entry, style: entryStyle, theme: theme, isLast: index == entries.count - 1)

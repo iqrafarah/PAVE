@@ -32,6 +32,7 @@ struct CVNightLayout: View {
             .padding(.horizontal, 26)
             .padding(.top, 44)
             .frame(width: Self.sideWidth, alignment: .leading)
+            .pageRegion()
             VStack(alignment: .leading, spacing: 22) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(cv.name.isEmpty ? (interaction == nil ? " " : ApplyMessages.name) : cv.name)
@@ -51,6 +52,7 @@ struct CVNightLayout: View {
             .padding(.top, 48)
             .padding(.bottom, 44)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .pageRegion()
         }
     }
 }

@@ -29,6 +29,7 @@ struct CVBlockLayout: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .pageRegion()
                 VStack(alignment: .leading, spacing: Self.gap) {
                     if !cv.skills.isEmpty {
                         tile {
@@ -44,6 +45,7 @@ struct CVBlockLayout: View {
                     }
                 }
                 .frame(width: Self.sideWidth, alignment: .leading)
+                .pageRegion()
             }
         }
         .padding(28)
@@ -83,8 +85,6 @@ struct CVBlockLayout: View {
 
     private func tile(@ViewBuilder _ content: () -> some View) -> some View {
         content()
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.white, in: .rect(cornerRadius: 14))
+            .pagePanel(.white, cornerRadius: 14, padding: 16)
     }
 }

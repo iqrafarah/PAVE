@@ -44,5 +44,7 @@ struct CVLineLayout: View {
         }
         .padding(.horizontal, 48)
         .padding(.vertical, 50)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .pageRegion()
     }
 }

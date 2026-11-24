@@ -42,5 +42,7 @@ struct CVFrameLayout: View {
         }
         .padding(.horizontal, 60)
         .padding(.vertical, 56)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .pageRegion()
     }
 }

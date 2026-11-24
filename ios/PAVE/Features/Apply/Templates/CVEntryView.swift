@@ -79,6 +79,7 @@ struct CVEntryView: View {
         Text(entry.title)
             .font(theme.body(10, .semibold))
             .foregroundStyle(theme.ink)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     @ViewBuilder
@@ -87,6 +88,7 @@ struct CVEntryView: View {
             Text(entry.period)
                 .font(font)
                 .foregroundStyle(color)
+                .fixedSize()
         }
     }
 
@@ -96,6 +98,7 @@ struct CVEntryView: View {
             Text(entry.organisation)
                 .font(theme.body(9, .medium))
                 .foregroundStyle(theme.muted)
+                .fixedSize(horizontal: false, vertical: true)
         }
         if !entry.description.isEmpty {
             Text(entry.description)

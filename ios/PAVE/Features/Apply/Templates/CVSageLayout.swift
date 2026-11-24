@@ -32,6 +32,7 @@ struct CVSageLayout: View {
             .padding(.horizontal, 24)
             .padding(.top, 50)
             .frame(width: Self.sideWidth, alignment: .leading)
+            .pageRegion()
             VStack(alignment: .leading, spacing: 24) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(cv.name.isEmpty ? (interaction == nil ? " " : ApplyMessages.name) : cv.name)
@@ -52,6 +53,7 @@ struct CVSageLayout: View {
             .padding(.top, 54)
             .padding(.bottom, 44)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .pageRegion()
         }
     }
 }

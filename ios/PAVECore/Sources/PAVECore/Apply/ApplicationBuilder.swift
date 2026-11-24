@@ -1,7 +1,8 @@
 import Foundation
 
 /// The first version of a CV and a letter, made on the device from the vault and the vacancy: no AI, and nothing that
-/// is not in the vault. Evidence that fits the vacancy comes first; Ayla can rewrite the texts afterwards.
+/// is not in the vault. Laid out the way a CV is read: every part newest first, the skills the vacancy asks for in
+/// front; Ayla can rewrite the texts afterwards.
 public enum ApplicationBuilder {
     /// At most this many skills on the CV, the ones the vacancy asks for first.
     public static let maximumSkills = 12
@@ -13,17 +14,17 @@ public enum ApplicationBuilder {
     ) -> ApplicationDraft {
         let relevant = items.filter { $0.archivedAt == nil && $0.status != .rejected }
         let wanted = Set((vacancy.matches + vacancy.skillGap).map { $0.skill.lowercased() })
-        func score(_ item: VaultItem) -> Int { item.skills.filter { wanted.contains($0.lowercased()) }.count }
-        func entries(_ categories: Set<VaultCategory>) -> [CVEntry] {
+        func entries(_ categories: Set<VaultCategory>, describes: Bool = true) -> [CVEntry] {
             relevant
                 .filter { categories.contains($0.category) }
-                .sorted { (score($0), sortDay($0)) > (score($1), sortDay($1)) }
-                .map(entry)
+                .sorted(by: isNewer)
+                .map { entry($0, describes: describes) }
         }
+        // A diploma or a certificate says what it is by its name, school and year; the story is for work and projects.
         let sections = [
             CVSection(kind: .experience, entries: entries([.workExperience, .internships])),
-            CVSection(kind: .education, entries: entries([.diplomas])),
-            CVSection(kind: .certificates, entries: entries([.certificates, .badges])),
+            CVSection(kind: .education, entries: entries([.diplomas], describes: false)),
+            CVSection(kind: .certificates, entries: entries([.certificates, .badges], describes: false)),
             CVSection(kind: .projects, entries: entries([.projects])),
         ]
         let education = relevant.filter { $0.category == .diplomas }.max { sortDay($0) < sortDay($1) }
@@ -71,19 +72,33 @@ public enum ApplicationBuilder {
         return LetterContent(salutation: "Beste team van \(vacancy.company),", paragraphs: paragraphs, closing: "Met vriendelijke groet,", signature: name)
     }
 
-    static func entry(_ item: VaultItem) -> CVEntry {
+    static func entry(_ item: VaultItem, describes: Bool = true) -> CVEntry {
         CVEntry(
             title: item.title,
-            organisation: [item.organisationName, item.organisationLocation].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", "),
+            organisation: organisation(item),
             period: item.period ?? "",
-            description: item.description ?? "",
+            description: describes ? item.description ?? "" : "",
             sourceItemID: item.id
         )
+    }
+
+    /// "Pixelwerk, Eindhoven"; the place once when the name already says it ("Stedelijk College Eindhoven").
+    static func organisation(_ item: VaultItem) -> String {
+        let name = item.organisationName ?? ""
+        let place = item.organisationLocation ?? ""
+        if name.isEmpty || place.isEmpty || name.localizedCaseInsensitiveContains(place) { return name.isEmpty ? place : name }
+        return "\(name), \(place)"
     }
 
     /// Current first, then the newest.
     static func sortDay(_ item: VaultItem) -> VaultDay {
         if item.isCurrent { return VaultDay(year: 9999, month: 12, day: 31) }
         return item.endDate ?? item.issuedOn ?? item.startDate ?? VaultDay(year: 0, month: 1, day: 1)
+    }
+
+    /// The order of a CV: what is going on now first (the one that started last on top), then back in time.
+    static func isNewer(_ a: VaultItem, _ b: VaultItem) -> Bool {
+        let start = VaultDay(year: 0, month: 1, day: 1)
+        return (sortDay(a), a.startDate ?? start) > (sortDay(b), b.startDate ?? start)
     }
 }

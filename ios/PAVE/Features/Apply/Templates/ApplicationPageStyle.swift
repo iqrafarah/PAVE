@@ -11,6 +11,21 @@ enum ApplicationPage {
         .custom("InterVariable", fixedSize: size).weight(weight)
     }
 
+    /// The white kept free at the top of a following page and at the bottom of every page, per design.
+    static func margins(_ template: ApplicationTemplate, _ document: ApplicationDocumentKind) -> (top: CGFloat, bottom: CGFloat) {
+        if document == .letter { return template == .block ? (46, 46) : (54, 48) }
+        return switch template {
+        case .plain: (52, 44)
+        case .frame: (56, 56)
+        case .line: (50, 50)
+        case .sage: (54, 44)
+        case .night: (48, 44)
+        case .block: (28, 28)
+        case .coral: (52, 44)
+        case .column, .halo, .tilt: (44, 44)
+        }
+    }
+
     static let ink = Color(red: 0.12, green: 0.13, blue: 0.13)
     static let muted = Color(red: 0.40, green: 0.42, blue: 0.42)
     static let paper = Color.white
@@ -66,6 +81,7 @@ struct ApplicationPageInteraction {
     var selection: ApplicationBlock?
     var writing: ApplicationBlock?
     var isWritingLetter = false
+    var writingEntries: Set<String> = []
     var onSelect: (ApplicationBlock) -> Void
 }
 
@@ -85,10 +101,13 @@ private struct ApplicationBlockFrame: ViewModifier {
     private var isWriting: Bool {
         interaction?.writing == block || (interaction?.isWritingLetter == true && [.salutation, .closing].contains(block)) || {
             if case .paragraph = block { return interaction?.isWritingLetter == true }
+            if case .entry(let id) = block { return interaction?.writingEntries.contains(id) == true }
             return false
         }()
     }
 
+    /// A block stays whole when the document is cut into pages. The tap itself is handled by the pages, which know
+    /// where the block ended up.
     func body(content: Content) -> some View {
         if let interaction {
             content
@@ -103,8 +122,8 @@ private struct ApplicationBlockFrame: ViewModifier {
                 }
                 .opacity(isWriting ? 0.35 : 1)
                 .padding(-4)
-                .contentShape(.rect)
-                .onTapGesture { interaction.onSelect(block) }
+                .pageMark(.block(keepsWithNext: false))
+                .pageMark(.tap(block))
                 .accessibilityAddTraits(.isButton)
                 .accessibilityAction { interaction.onSelect(block) }
                 .accessibilityAddTraits(isSelected ? .isSelected : [])
@@ -112,6 +131,7 @@ private struct ApplicationBlockFrame: ViewModifier {
                 .animation(.easeInOut(duration: 0.3), value: isWriting)
         } else {
             content
+                .pageMark(.block(keepsWithNext: false))
         }
     }
 }

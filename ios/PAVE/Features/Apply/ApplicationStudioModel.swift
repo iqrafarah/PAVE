@@ -16,6 +16,8 @@ final class ApplicationStudioModel: Identifiable {
     /// Ayla is writing this block, or the whole letter.
     private(set) var writing: ApplicationBlock?
     private(set) var isWritingLetter = false
+    /// The entries Ayla is writing in the words of a CV.
+    private(set) var writingEntries: Set<String> = []
     var problem: String?
     /// What a block said before Ayla wrote it again, so it can go back once.
     private(set) var before: (block: ApplicationBlock, text: String)?
@@ -55,8 +57,8 @@ final class ApplicationStudioModel: Identifiable {
         return copy
     }
 
-    /// "Ayla vult het in" writes the profile and the letter at once; "Zelf invullen" leaves them to the user, with
-    /// hints. The data from the vault is in both.
+    /// "Ayla vult het in" writes the profile, what you did at each job and project, and the letter at once; "Zelf
+    /// invullen" leaves the texts to the user, with hints. The data from the vault is in both.
     func begin(withAyla: Bool) async {
         let chosen = draft
         var fresh = ApplicationBuilder.draft(
@@ -68,9 +70,10 @@ final class ApplicationStudioModel: Identifiable {
         store.save(draft)
         stage = .editor
         guard withAyla, service != nil else { return }
-        async let profile: Void = writeProfile()
+        async let profile: Void = writeProfile(withHeadline: true)
+        async let entries: Void = writeEntries()
         async let letter: Void = writeLetter()
-        _ = await (profile, letter)
+        _ = await (profile, entries, letter)
     }
 
     /// Only evidence Ayla may look at goes to her.
@@ -143,7 +146,8 @@ final class ApplicationStudioModel: Identifiable {
         }
     }
 
-    func writeProfile() async {
+    /// `withHeadline`: also the line under the name, when Ayla fills a new CV; later it is the user's.
+    func writeProfile(withHeadline: Bool = false) async {
         guard let service, writing == nil else { return }
         writing = .profile
         defer { writing = nil }
@@ -152,8 +156,36 @@ final class ApplicationStudioModel: Identifiable {
             guard let profile = answer.profile, !profile.isEmpty else { throw AylaError.unavailable }
             before = (.profile, draft.cv.profile)
             setText(profile, of: .profile)
+            if withHeadline, let headline = answer.headline, !headline.isEmpty { update { $0.cv.headline = headline } }
         } catch {
             problem = ApplyMessages.aylaFailed
+        }
+    }
+
+    /// The vault says what you did in its own words, often to you ("Je bouwde…"); a CV says it short and without a
+    /// subject. Ayla rewrites each from its own piece of evidence. When she cannot, what the vault says stays.
+    func writeEntries() async {
+        guard let service, writingEntries.isEmpty else { return }
+        let entries = draft.cv.sections
+            .filter { [.experience, .projects].contains($0.kind) }
+            .flatMap(\.entries)
+            .filter { $0.isVisible && !$0.description.isEmpty && $0.sourceItemID != nil }
+        let sources = itemsForAyla.filter { item in entries.contains { $0.sourceItemID == item.id } }
+        guard !sources.isEmpty else { return }
+        writingEntries = Set(entries.filter { entry in sources.contains { $0.id == entry.sourceItemID } }.map(\.id))
+        defer { writingEntries = [] }
+        guard let answer = try? await service.writeApplication(.init(kind: .entries, vacancy: draft.vacancy, name: draft.cv.name, items: sources)),
+              let written = answer.entries, !written.isEmpty
+        else { return }
+        update { draft in
+            for section in draft.cv.sections.indices {
+                for index in draft.cv.sections[section].entries.indices where writingEntries.contains(draft.cv.sections[section].entries[index].id) {
+                    let source = draft.cv.sections[section].entries[index].sourceItemID
+                    if let text = written.first(where: { $0.sourceItemID == source })?.text, !text.isEmpty {
+                        draft.cv.sections[section].entries[index].description = text
+                    }
+                }
+            }
         }
     }
 

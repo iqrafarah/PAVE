@@ -20,6 +20,12 @@ enum ApplyMessages {
     static let tapToEdit = "Tik op een onderdeel om het aan te passen."
 
     // Choosing a design
+    static func page(_ number: Int, of count: Int) -> String { "Pagina \(number) van \(count)" }
+    static func pagesNote(_ count: Int, _ document: ApplicationDocumentKind) -> String {
+        document == .cv
+            ? "Je cv is \(count) pagina's. Eén pagina leest het prettigst: tik op een blok om het korter te maken of te verbergen."
+            : "Je brief is \(count) pagina's. Een brief past het best op één pagina."
+    }
     static let chooseDesign = "Kies een ontwerp"
     static func chooseDesignHint(_ vacancy: Vacancy) -> String {
         "Voor \(vacancy.title) bij \(vacancy.company). Al ingevuld met jouw gegevens; wisselen kan later altijd."
@@ -33,7 +39,7 @@ enum ApplyMessages {
     static func aylaFillsHint(_ count: Int) -> String {
         count == 0
             ? "Ayla schrijft je profiel en brief. Ze mag nog geen bewijs uit je kluis bekijken, dus ze schrijft algemeen. Jij past daarna alles aan."
-            : "Ayla schrijft je profiel en brief met het bewijs uit je kluis dat ze mag bekijken (\(count)). Jij past daarna alles aan."
+            : "Ayla schrijft je profiel, wat je bij je werk en projecten deed, en je brief, met het bewijs uit je kluis dat ze mag bekijken (\(count)). Jij past daarna alles aan."
     }
     static let fillYourself = "Zelf invullen"
     static let fillYourselfHint = "Je gegevens uit de kluis staan erin. Je profiel en brief schrijf je zelf, met hints waar wat komt."

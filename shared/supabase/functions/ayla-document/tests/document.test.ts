@@ -47,3 +47,29 @@ Deno.test('she says nothing about the company or the job that is not in the data
   assertEquals(documentMessages(letter)[0].content.includes('schrijf nooit alsof hij of zij de functie al heeft'), true)
   assertEquals(documentMessages(rewrite)[1].content.includes('Voeg niets toe wat niet al in de tekst staat'), true)
 })
+
+Deno.test('the line under the name comes with the profile, without a full stop', () => {
+  const request = parseDocumentRequest({ kind: 'profile', vacancy, name: 'Daaf', items })
+  if (typeof request === 'string') throw new Error(request)
+  assertEquals(documentMessages(request)[1].content.includes('Nooit de functie uit de vacature'), true)
+  const answer = documentAnswer({ profile: 'Ik bouw apps.', headline: 'Student HBO-ICT.' }, request)
+  assertEquals(answer.headline, 'Student HBO-ICT')
+  assertEquals(answer.profile, 'Ik bouw apps.')
+})
+
+Deno.test('what was done at a job is only rewritten from its own description', () => {
+  const described = [{ ...items[0], description: 'Je bouwde mee aan een iOS-app.' }, items[1]]
+  const request = parseDocumentRequest({ kind: 'entries', vacancy, name: 'Daaf', items: described })
+  if (typeof request === 'string') throw new Error(request)
+  assertEquals(documentMessages(request)[1].content.includes('zonder "ik" of "je" als onderwerp'), true)
+  const answer = documentAnswer({
+    entries: [
+      { source: 1, text: 'Bouwde mee aan een iOS-app.' },
+      { source: 1, text: 'Nog een keer.' },
+      { source: 2, text: 'Verzonnen bij een diploma zonder beschrijving.' },
+      { source: 9, text: 'Bestaat niet.' },
+    ],
+  }, request)
+  assertEquals(answer.entries, [{ sourceItemID: 'a', text: 'Bouwde mee aan een iOS-app.' }])
+  assertEquals(answer.profile, undefined)
+})
