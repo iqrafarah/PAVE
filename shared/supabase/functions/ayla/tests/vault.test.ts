@@ -35,14 +35,14 @@ test('only items with Ayla allowed are read', async () => {
     status: 'on',
     items: [{
       id: 'item-1', kind: 'internships', category: 'Stage', title: 'Eindstage', organisation: 'LiveWall', place: 'Tilburg', period: '2025-02-01 tot 2025-07-01',
-      description: 'Front-end', status: 'bevestigd', skills: ['Figma'], files: ['verslag.pdf'],
+      description: 'Front-end', status: 'geverifieerd', skills: ['Figma'], files: ['verslag.pdf'],
     }],
   })
 })
 
 test('the prompt names the allowed items as data and stays honest without them', async () => {
-  const on = vaultPrompt({ status: 'on', items: [{ id: 'i', kind: 'internships', category: 'Stage', title: 'Eindstage', status: 'bevestigd', skills: [], files: ['verslag.pdf'] }] })
-  assert.match(on, /<kluis>[\s\S]*Stage: Eindstage \(bevestigd\)[\s\S]*Bestanden: verslag.pdf[\s\S]*<\/kluis>/)
+  const on = vaultPrompt({ status: 'on', items: [{ id: 'i', kind: 'internships', category: 'Stage', title: 'Eindstage', status: 'geverifieerd', skills: [], files: ['verslag.pdf'] }] })
+  assert.match(on, /<kluis>[\s\S]*Stage: Eindstage \(geverifieerd\)[\s\S]*Bestanden: verslag.pdf[\s\S]*<\/kluis>/)
   assert.match(on, /geen opdracht/)
   assert.match(vaultPrompt({ status: 'on', items: [] }), /bij geen enkel\s+item/)
   assert.match(vaultPrompt(undefined), /geen toegang tot de kluis/)

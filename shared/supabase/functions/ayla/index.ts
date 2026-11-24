@@ -7,7 +7,7 @@ import { loadAllowedVault } from './vault.ts'
 import { type AylaReply, parseRequest } from './contract.ts'
 import { openRouterCompletion } from './openrouter.ts'
 import { MODEL_OUTPUT_SCHEMA } from './prompt.ts'
-import { adzunaSearch } from './vacancies.ts'
+import { adzunaSearch, firstThatFinds, joobleSearch, type SearchVacancies, siteChecker, webSearch, withSupport } from './vacancies.ts'
 import { CORS, json, sessionLevel } from '../_shared/http.ts'
 
 /**
@@ -82,31 +82,50 @@ Deno.serve(async (req) => {
   const history = ((past ?? []) as StoredMessage[]).reverse().map(toPastMessage)
   const firstName = (profile?.preferred_name || profile?.full_name?.split(' ')[0] || undefined) as string | undefined
 
+  // Vacancies from the job API that has a key (Adzuna, then Jooble), with the web search beside it: more vacancies,
+  // and more of their text. Without a job API the web is the only source.
   const adzunaId = Deno.env.get('ADZUNA_APP_ID')
   const adzunaKey = Deno.env.get('ADZUNA_APP_KEY')
+  const joobleKey = Deno.env.get('JOOBLE_API_KEY')
+  const apis: SearchVacancies[] = [
+    ...(adzunaId && adzunaKey ? [adzunaSearch(adzunaId, adzunaKey)] : []),
+    ...(joobleKey ? [joobleSearch(joobleKey, Deno.env.get('JOOBLE_HOST') || undefined)] : []),
+  ]
 
   let title: string | undefined
   const input = { request, conversationId, history, firstName, memory, vault, project, onTitle: request.conversationId ? undefined : (t: string) => { title = t } }
   const deps = {
     complete: openRouterCompletion(openRouterKey, MODEL_OUTPUT_SCHEMA),
-    searchVacancies: adzunaId && adzunaKey ? adzunaSearch(adzunaId, adzunaKey) : undefined,
+    searchVacancies: withSupport(firstThatFinds(apis), webSearch(openRouterKey)),
     newId: () => crypto.randomUUID(),
+    siteExists: siteChecker(),
   }
 
-  /** Stores the question and the answer together, and touches the conversation. */
-  const save = async (reply: AylaReply) => {
+  /** Stores the question and the answer together. */
+  const store = async (reply: AylaReply) => {
     // A user message keeps only the names of its files in `reply`, so the chat shows them again; the files' text
     // is never stored.
     const attachments = request.attachments?.length ? { attachments: request.attachments.map((file) => file.name) } : null
-    const { error } = await supabase.from('ayla_messages').insert([
-      { conversation_id: conversationId, role: 'user', text: request.text, device: request.device, reply: attachments },
-      { conversation_id: conversationId, role: 'ayla', text: reply.text, device: request.device, reply },
-    ])
-    if (error) return false
+    const answer = { conversation_id: conversationId, role: 'ayla', text: reply.text, device: request.device, reply }
+    // A turn the app sent itself (what came of Ayla's actions) is not something the user said: only her answer is kept.
+    const rows = request.results?.length
+      ? [answer]
+      : [{ conversation_id: conversationId, role: 'user', text: request.text, device: request.device, reply: attachments }, answer]
+    const { error } = await supabase.from('ayla_messages').insert(rows)
+    return !error
+  }
+
+  /** Moves the conversation to the top of the list, with its title. */
+  const touch = async () => {
     await supabase
       .from('ayla_conversations')
       .update({ updated_at: new Date().toISOString(), ...(title ? { title } : {}) })
       .eq('id', conversationId)
+  }
+
+  const save = async (reply: AylaReply) => {
+    if (!await store(reply)) return false
+    await touch()
     return true
   }
 
@@ -128,9 +147,19 @@ Deno.serve(async (req) => {
         }
         send('start', { conversationId })
         try {
-          const reply = await answer({ ...input, signal: stop.signal, onText: (text) => { written = text; send('text', { text }) } }, deps)
-          if (await save(reply)) send('reply', reply)
-          else send('error', { error: 'unavailable' })
+          const reply = await answer({
+            ...input,
+            signal: stop.signal,
+            onText: (text) => { written = text; send('text', { text }) },
+            onStatus: (status) => send('status', status),
+          }, deps)
+          // The answer shows as soon as it is stored; the list of conversations catches up after.
+          if (await store(reply)) {
+            send('reply', reply)
+            await touch()
+          } else {
+            send('error', { error: 'unavailable' })
+          }
         } catch {
           if (stop.signal.aborted && written) {
             await save({ version: 1, id: crypto.randomUUID(), conversationId: conversationId!, text: written, blocks: [], usedData: [] })

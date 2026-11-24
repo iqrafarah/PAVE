@@ -19,8 +19,11 @@ final class AylaVoiceSession {
         case speaking
     }
 
-    /// Silence after which a question is sent, as in the voice demo: a short pause halfway does not cut it off.
-    static let endOfTurn = Duration.milliseconds(1200)
+    /// The silence after which a question is sent depends on how the words end: see `AylaTurnEnd`.
+    /// How long the server's speech model may take before the iPhone's own words are sent instead.
+    static let transcriptionWait = Duration.seconds(5)
+    /// The recording of a turn starts this long before the first words were recognized, which come in a bit late.
+    static let recordingLead = 1.5
     /// Ayla only lets herself be interrupted after this long, and by at least two words, so a cough does not stop her.
     static let interruptAfter: TimeInterval = 0.8
     /// The voice says about this many characters per second; used to time the icons in the orb.
@@ -48,6 +51,7 @@ final class AylaVoiceSession {
     private let model: AylaChatModel
     private let audio = VoiceAudio()
     private let recognizer = VoiceRecognizer()
+    private let recorder = VoiceTurnRecorder()
     private let deviceVoice = DeviceVoice()
     private var silence: Task<Void, Never>?
     private var turn: Task<Void, Never>?
@@ -71,6 +75,18 @@ final class AylaVoiceSession {
     @ObservationIgnored private var currentReply: AylaReply?
     @ObservationIgnored private var resumeReply: AylaReply?
     @ObservationIgnored private var nextTurnChecksYes = true
+    /// Names the user may say right now (the vacancies on screen, the evidence in the vault), so the server's speech
+    /// model writes them the way PAVE does.
+    @ObservationIgnored var hints: (() -> [String])?
+    /// Where the recording of this turn starts; nil until the first words were heard.
+    @ObservationIgnored private var turnStart: Int?
+    /// How many words were heard when the turn ended: more words while the question is still being written out
+    /// means the user was not done, and the turn goes on.
+    @ObservationIgnored private var wordsAtEnd = 0
+    /// The question has gone to Ayla: from here on, talking interrupts instead of adding to it.
+    @ObservationIgnored private var isSent = false
+    /// Typed or sent by PAVE itself: there is no recording to write out.
+    @ObservationIgnored private var isTyped = false
 
     init(model: AylaChatModel) {
         self.model = model
@@ -102,9 +118,12 @@ final class AylaVoiceSession {
         let restarted: @Sendable () -> Void = { [weak self] in
             Task { @MainActor in self?.audioRestarted() }
         }
-        let started = await queueAudio { [recognizer] audio in
+        let started = await queueAudio { [recognizer, recorder] audio in
             do {
-                try audio.start(onMicrophone: { buffer in recognizer.append(buffer) }, onRestart: restarted)
+                try audio.start(onMicrophone: { buffer in
+                    recognizer.append(buffer)
+                    recorder.append(buffer)
+                }, onRestart: restarted)
                 return true
             } catch {
                 audio.stop()
@@ -142,6 +161,7 @@ final class AylaVoiceSession {
         isMuted = false
         heard = ""
         cues = []
+        recorder.reset()
         liveActivity.end()
     }
 
@@ -313,9 +333,15 @@ final class AylaVoiceSession {
         }
     }
 
+    /// What Ayla is busy with in the app, for the Lock Screen and the Dynamic Island: words that say nothing about
+    /// you, such as "Stap 2 van 3". Nil when she is not doing anything there.
+    var doingNote: String? {
+        didSet { if doingNote != oldValue { publishStatus() } }
+    }
+
     private func publishStatus() {
         guard state != .off else { return }
-        liveActivity.update(status: currentStatus)
+        liveActivity.update(status: currentStatus, note: doingNote)
     }
 
     @discardableResult
@@ -341,6 +367,7 @@ final class AylaVoiceSession {
         audio.stopSpeech()
         deviceVoice.stop()
         heard = question
+        isTyped = true
         state = .listening
         endTurn()
     }
@@ -390,8 +417,25 @@ final class AylaVoiceSession {
         silence?.cancel()
         heard = ""
         speakingSince = nil
+        startTurn()
         state = .listening
         startRecognizing()
+    }
+
+    private func startTurn() {
+        turnStart = nil
+        isSent = false
+        isTyped = false
+    }
+
+    /// The first words of a turn: the recording of it starts a little before them.
+    private func markTurnStart() {
+        guard turnStart == nil else { return }
+        turnStart = max(0, recorder.position - Int(Self.recordingLead * Double(VoiceTurnRecorder.sampleRate)))
+    }
+
+    private static func wordCount(_ text: String) -> Int {
+        text.split(whereSeparator: \.isWhitespace).count
     }
 
     /// Starting the recognizer takes a moment, so it starts off the main thread (the orb keeps moving).
@@ -410,6 +454,13 @@ final class AylaVoiceSession {
     private func recognized(_ text: String) {
         switch state {
         case .listening:
+            markTurnStart()
+            heard = text
+            scheduleEndOfTurn()
+        case .thinking where !isSent && !isTyped && Self.wordCount(text) > wordsAtEnd:
+            // Still talking after a pause, while the question was being written out: it was not finished yet.
+            turn?.cancel()
+            state = .listening
             heard = text
             scheduleEndOfTurn()
         case .speaking:
@@ -418,6 +469,8 @@ final class AylaVoiceSession {
             audio.stopSpeech()
             silence?.cancel()
             speakingSince = nil
+            startTurn()
+            markTurnStart()
             state = .listening
             heard = text
             scheduleEndOfTurn()
@@ -446,8 +499,9 @@ final class AylaVoiceSession {
     private func scheduleEndOfTurn() {
         silence?.cancel()
         guard !isMuted else { return }
+        let pause = AylaTurnEnd.pause(after: heard)
         silence = Task { [weak self] in
-            try? await Task.sleep(for: Self.endOfTurn)
+            try? await Task.sleep(for: pause)
             guard !Task.isCancelled else { return }
             self?.endTurn()
         }
@@ -462,6 +516,7 @@ final class AylaVoiceSession {
         if checksYes, AylaVaultOffer.isConfirmation(question), onYes?(question) == true {
             heard = ""
             recognizer.end()
+            startTurn()
             startRecognizing()
             return
         }
@@ -470,12 +525,18 @@ final class AylaVoiceSession {
             model.send(question)
             return
         }
-        recognizer.end()
+        // The recognizer keeps listening while the question is written out, so more words still count.
+        wordsAtEnd = Self.wordCount(question)
         state = .thinking
         audio.play(.think)
         if listensForHead { Task { await listenForHead(false) } }
         turn = Task { [weak self] in
             guard let self else { return }
+            let question = await writtenOut(question)
+            guard !Task.isCancelled, state == .thinking else { return }
+            isSent = true
+            recognizer.end()
+            heard = question
             guard let reply = await model.ask(question, input: .voice) else {
                 stop()
                 return
@@ -483,6 +544,26 @@ final class AylaVoiceSession {
             guard !Task.isCancelled, state == .thinking else { return }
             await speak(reply)
         }
+    }
+
+    /// The question as the server's speech model heard it: Voxtral knows Dutch and the names on screen better than the
+    /// iPhone. What the iPhone heard is the fallback, also when the recording is gone or the server is slow.
+    private func writtenOut(_ heardHere: String) async -> String {
+        guard !isTyped, let turnStart, let wav = recorder.wav(from: turnStart), let service = model.service else { return heardHere }
+        let hints = hints?() ?? []
+        let transcription = Task { try await service.transcribe(wav, hints: hints) }
+        let timeout = Task {
+            try? await Task.sleep(for: Self.transcriptionWait)
+            transcription.cancel()
+        }
+        defer { timeout.cancel() }
+        let text = await withTaskCancellationHandler {
+            (try? await transcription.value) ?? ""
+        } onCancel: {
+            transcription.cancel()
+        }
+        let written = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return written.isEmpty ? heardHere : written
     }
 
     /// The screen is off or PAVE is not in front, such as with the iPhone in a pocket: the buttons cannot be seen.

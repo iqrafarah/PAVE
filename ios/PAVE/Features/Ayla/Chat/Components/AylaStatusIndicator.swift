@@ -24,7 +24,12 @@ struct AylaStatusIndicator: View {
                 .textStyle(.status)
                 .foregroundStyle(state == .thinking ? Color.paveAccent : .criticalInk)
                 .multilineTextAlignment(.center)
+                // Thinking stays one line, so a longer status never moves the conversation.
+                .lineLimit(state == .thinking ? 1 : nil)
+                .truncationMode(.middle)
                 .fixedSize(horizontal: false, vertical: true)
+                .contentTransition(.opacity)
+                .animation(.easeOut(duration: 0.2), value: message)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)

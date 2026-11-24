@@ -5,6 +5,8 @@ import SwiftUI
 struct AylaShelfReply: View {
     /// Nil while she is still thinking.
     let text: String?
+    /// What shows while she thinks.
+    var thinking = AylaMessages.thinking
     var choices: [String] = []
     var onChoose: (String) -> Void = { _ in }
     let onDismiss: () -> Void
@@ -19,7 +21,7 @@ struct AylaShelfReply: View {
                     .frame(width: 18, height: 18)
                     .padding(.top, 2)
                     .accessibilityHidden(true)
-                Text(text ?? "Ayla denkt na…")
+                Text(text ?? thinking)
                     .textStyle(.bubble)
                     .foregroundStyle(Color.paveAccent.opacity(text == nil ? 0.6 : 1))
                     .lineLimit(6)
@@ -34,7 +36,8 @@ struct AylaShelfReply: View {
                     .accessibilityHidden(true)
             }
             if !choices.isEmpty {
-                HStack(spacing: 8) {
+                // Onto a second line when three do not fit, so no answer is cut off on a narrow screen.
+                FlowLayout(spacing: 8) {
                     ForEach(choices, id: \.self) { choice in
                         Button(choice) { onChoose(choice) }
                             .textStyle(.gapChip)

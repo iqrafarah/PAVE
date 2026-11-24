@@ -68,6 +68,39 @@ struct AylaListenServiceTests {
         let tooLong = Data(count: SupabaseAylaListenService.maximumBytes + 1)
         await #expect(throws: AylaError.unavailable) { try await service { _ in (200, Data()) }.transcribe(tooLong) }
     }
+
+    @Test func sendsTheNamesOnScreenAsHints() async throws {
+        let listen = service { request in
+            #expect(request.value(forHTTPHeaderField: "X-Ayla-Hints") == "Appwerk,Junior%20iOS%2Dontwikkelaar,Rock%20%20Roll")
+            return (200, Data(#"{"text":"Vergelijk Appwerk"}"#.utf8))
+        }
+        _ = try await listen.transcribe(Data([1]), hints: ["Appwerk", " Junior iOS-ontwikkelaar ", "appwerk", "", "Rock, Roll"])
+    }
+
+    @Test func leavesOutTheHintsHeaderWithoutNames() async throws {
+        let listen = service { request in
+            #expect(request.value(forHTTPHeaderField: "X-Ayla-Hints") == nil)
+            return (200, Data(#"{"text":"Hoi"}"#.utf8))
+        }
+        _ = try await listen.transcribe(Data([1]), hints: [" ", String(repeating: "a", count: 200)])
+    }
+
+    @Test func limitsTheNumberOfHints() throws {
+        let header = try #require(SupabaseAylaListenService.hintsHeader((1...60).map { "Bedrijf \($0)" }))
+        #expect(header.split(separator: ",").count == SupabaseAylaListenService.maximumHints)
+    }
+}
+
+struct AylaWAVTests {
+    @Test func writesAStandardHeader() {
+        let wav = AylaWAV.data(samples: [0, 1, -1], sampleRate: 16_000)
+        #expect(wav.count == 44 + 6)
+        #expect(String(decoding: wav.prefix(4), as: UTF8.self) == "RIFF")
+        #expect(String(decoding: wav[8..<16], as: UTF8.self) == "WAVEfmt ")
+        #expect(wav[24..<28].withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) } == 16_000)
+        #expect(wav[40..<44].withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) } == 6)
+        #expect(wav[46..<48].withUnsafeBytes { $0.loadUnaligned(as: Int16.self) } == 1)
+    }
 }
 
 private final class ListenStub: URLProtocol, @unchecked Sendable {
