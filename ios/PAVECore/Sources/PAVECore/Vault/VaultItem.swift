@@ -31,15 +31,20 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
         public let requestedAt: Date
         /// The reviewer's reason; required when a request is rejected.
         public let response: String?
-        /// The organisation it went to, by its ID in the directory.
+        /// The organisation and location it went to, by their IDs in the directory.
         public let organizationID: String?
+        public let locationID: String?
 
-        public init(status: Status, organisationName: String, requestedAt: Date, response: String? = nil, organizationID: String? = nil) {
+        public init(
+            status: Status, organisationName: String, requestedAt: Date, response: String? = nil,
+            organizationID: String? = nil, locationID: String? = nil
+        ) {
             self.status = status
             self.organisationName = organisationName
             self.requestedAt = requestedAt
             self.response = response
             self.organizationID = organizationID
+            self.locationID = locationID
         }
     }
 

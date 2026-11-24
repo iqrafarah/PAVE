@@ -50,12 +50,13 @@ public protocol VaultService: Sendable {
     func validationLocations(organizationID: String) async throws -> [VaultValidationLocation]
     func validationDepartments(locationID: String) async throws -> [VaultValidationDepartment]
     func validationContacts(departmentID: String) async throws -> [VaultValidationContact]
-    /// A page of organisations where someone may confirm this kind of evidence; `kind` nil for every kind.
-    func searchValidationOrganizations(
-        category: VaultCategory, query: String, kind: VaultOrganizationKind?, offset: Int
-    ) async throws -> VaultValidationPage<VaultValidationOrganization>
-    /// Organisations known by ID (from the evidence or an earlier request), also when nobody there may confirm it.
-    func validationOrganizations(ids: [String], category: VaultCategory) async throws -> [VaultValidationOrganization]
+    /// A page of locations ("Albert Heijn · Breda") where someone may confirm this kind of evidence, searched on
+    /// organisation name and city. `kind` nil for every kind; `organizationID` for the locations of one organisation.
+    func searchValidationPlaces(
+        category: VaultCategory, query: String, kind: VaultOrganizationKind?, organizationID: String?, offset: Int
+    ) async throws -> VaultValidationPage<VaultValidationPlace>
+    /// Locations known by ID (from an earlier request), also when nobody there may confirm it any more.
+    func validationPlaces(locationIDs: [String], category: VaultCategory) async throws -> [VaultValidationPlace]
     /// A page of the persons of one organisation who may confirm this kind of evidence, searched in the database.
     func searchValidationPeople(
         organizationID: String, category: VaultCategory, query: String, filters: VaultValidationFilters, offset: Int
@@ -64,6 +65,8 @@ public protocol VaultService: Sendable {
     func validationFilterOptions(organizationID: String, category: VaultCategory) async throws -> [VaultValidationFilterOption]
     /// The persons this learner asked before, most recent first, as far as they may still confirm this kind of evidence.
     func previousValidationPeople(category: VaultCategory) async throws -> [VaultValidationPerson]
+    /// The profile photos of these contact persons, as links valid for an hour; persons without a photo are left out.
+    func validationContactPhotos(contactIDs: [String]) async throws -> [String: URL]
     /// Routes the request by trusted directory IDs. The server finds the account behind the person; the client never sends it.
     func requestValidation(
         itemID: String,
@@ -80,10 +83,10 @@ public extension VaultService {
     func validationLocations(organizationID: String) async throws -> [VaultValidationLocation] { throw VaultError.notSetUp }
     func validationDepartments(locationID: String) async throws -> [VaultValidationDepartment] { throw VaultError.notSetUp }
     func validationContacts(departmentID: String) async throws -> [VaultValidationContact] { throw VaultError.notSetUp }
-    func searchValidationOrganizations(
-        category: VaultCategory, query: String, kind: VaultOrganizationKind?, offset: Int
-    ) async throws -> VaultValidationPage<VaultValidationOrganization> { throw VaultError.notSetUp }
-    func validationOrganizations(ids: [String], category: VaultCategory) async throws -> [VaultValidationOrganization] {
+    func searchValidationPlaces(
+        category: VaultCategory, query: String, kind: VaultOrganizationKind?, organizationID: String?, offset: Int
+    ) async throws -> VaultValidationPage<VaultValidationPlace> { throw VaultError.notSetUp }
+    func validationPlaces(locationIDs: [String], category: VaultCategory) async throws -> [VaultValidationPlace] {
         throw VaultError.notSetUp
     }
     func searchValidationPeople(
@@ -93,6 +96,7 @@ public extension VaultService {
         throw VaultError.notSetUp
     }
     func previousValidationPeople(category: VaultCategory) async throws -> [VaultValidationPerson] { throw VaultError.notSetUp }
+    func validationContactPhotos(contactIDs: [String]) async throws -> [String: URL] { [:] }
     func requestValidation(itemID: String, organizationID: String, locationID: String, departmentID: String, contactID: String, message: String?) async throws {
         throw VaultError.notSetUp
     }
@@ -173,7 +177,7 @@ public struct SupabaseVaultService: VaultService {
     public func contents() async throws -> VaultContents {
         let base = "*,vault_item_skills(name,status),vault_item_files(*),vault_item_folders(folder_id)"
         do {
-            return try await contents(select: base + ",vault_validation_requests(status,organisation_name,requested_at,response,organization_id)")
+            return try await contents(select: base + ",vault_validation_requests(status,organisation_name,requested_at,response,organization_id,location_id)")
         } catch VaultError.missingColumn {
             // Without the requests the vault still loads; only "In afwachting" and the reason are missing.
         }
@@ -402,35 +406,58 @@ public struct SupabaseVaultService: VaultService {
     // Each of these falls back to the tables of before migration 20261124120000 while its functions are not there:
     // then the app filters and pages itself, and nobody is checked per kind of evidence yet (the server does that).
 
-    public func searchValidationOrganizations(
-        category: VaultCategory, query: String, kind: VaultOrganizationKind?, offset: Int
-    ) async throws -> VaultValidationPage<VaultValidationOrganization> {
+    public func searchValidationPlaces(
+        category: VaultCategory, query: String, kind: VaultOrganizationKind?, organizationID: String?, offset: Int
+    ) async throws -> VaultValidationPage<VaultValidationPlace> {
         do {
-            return try await page(VaultValidationOrganization.self, function: "validation_search_organizations", parameters: [
+            return try await page(VaultValidationPlace.self, function: "validation_search_places", parameters: [
                 "p_category": category.rawValue,
                 "p_query": query,
                 "p_kind": kind?.rawValue ?? NSNull(),
-                "p_limit": VaultValidationPage<VaultValidationOrganization>.size,
+                "p_organization_id": organizationID ?? NSNull(),
+                "p_limit": VaultValidationPage<VaultValidationPlace>.size,
                 "p_offset": offset,
             ])
         } catch VaultError.missingColumn {
-            let found = try await validationOrganizations().filter { organization in
-                (kind == nil || organization.organizationKind == kind) && Self.matches(organization.name, query)
+            let found = try await legacyPlaces().filter { place in
+                (kind == nil || place.organizationKind == kind)
+                    && (organizationID == nil || place.organizationId == organizationID)
+                    && Self.matches("\(place.organizationName) \(place.city)", query)
             }
             return Self.page(of: found, offset: offset)
         }
     }
 
-    public func validationOrganizations(ids: [String], category: VaultCategory) async throws -> [VaultValidationOrganization] {
-        guard !ids.isEmpty else { return [] }
+    public func validationPlaces(locationIDs: [String], category: VaultCategory) async throws -> [VaultValidationPlace] {
+        guard !locationIDs.isEmpty else { return [] }
         do {
-            return try await rpc([VaultValidationOrganization].self, "validation_organizations_by_id", [
+            return try await rpc([VaultValidationPlace].self, "validation_places_by_id", [
                 "p_category": category.rawValue,
-                "p_ids": ids,
+                "p_location_ids": locationIDs,
             ])
         } catch VaultError.missingColumn {
-            return try await validationOrganizations().filter { ids.contains($0.id) }
+            return try await legacyPlaces().filter { locationIDs.contains($0.locationId) }
         }
+    }
+
+    /// Every location of every organisation in the directory, from the tables themselves.
+    private func legacyPlaces() async throws -> [VaultValidationPlace] {
+        let organizations = try await validationOrganizations()
+        let locations = try await directoryRows(
+            VaultValidationLocation.self, table: "organization_locations", select: "id,organization_id,city", filters: [("order", "city.asc")]
+        )
+        let byID = Dictionary(organizations.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return locations
+            .compactMap { location in
+                byID[location.organizationId].map {
+                    VaultValidationPlace(organizationId: $0.id, organizationName: $0.name, kind: $0.kind, locationId: location.id, city: location.city)
+                }
+            }
+            .sorted {
+                $0.organizationName == $1.organizationName
+                    ? $0.city.localizedStandardCompare($1.city) == .orderedAscending
+                    : $0.organizationName.localizedStandardCompare($1.organizationName) == .orderedAscending
+            }
     }
 
     public func searchValidationPeople(
@@ -442,7 +469,7 @@ public struct SupabaseVaultService: VaultService {
                 "p_category": category.rawValue,
                 "p_query": query,
                 "p_location_id": filters.locationID ?? NSNull(),
-                "p_department_id": filters.departmentID ?? NSNull(),
+                "p_department": filters.department ?? NSNull(),
                 "p_function": filters.function ?? NSNull(),
                 "p_limit": VaultValidationPage<VaultValidationPerson>.size,
                 "p_offset": offset,
@@ -451,7 +478,7 @@ public struct SupabaseVaultService: VaultService {
             let found = try await legacyPeople([("organization_departments.organization_locations.organization_id", "eq.\(organizationID)")])
                 .filter { person in
                     (filters.locationID == nil || person.locationId == filters.locationID)
-                        && (filters.departmentID == nil || person.departmentId == filters.departmentID)
+                        && (filters.department == nil || person.departmentName == filters.department)
                         && (filters.function == nil || person.function == filters.function)
                         && Self.matches([person.name, person.function, person.departmentName, person.city].joined(separator: " "), query)
                 }
@@ -476,7 +503,7 @@ public struct SupabaseVaultService: VaultService {
             }
             return options(.location) { ($0.locationId, $0.city, nil) }
                 + options(.department) { ($0.departmentId, $0.departmentName, $0.locationId) }
-                + options(.function) { ($0.function, $0.function, nil) }
+                + options(.function) { ("\($0.function)@\($0.locationId)", $0.function, $0.locationId) }
         }
     }
 
@@ -506,6 +533,17 @@ public struct SupabaseVaultService: VaultService {
                 }
             }
         }
+    }
+
+    public func validationContactPhotos(contactIDs: [String]) async throws -> [String: URL] {
+        struct Answer: Decodable { let photos: [String: String] }
+        let ids = Array(contactIDs.prefix(50))
+        guard !ids.isEmpty else { return [:] }
+        let urlRequest = try await request(
+            functionsURL.appending(path: "vault-review"), method: "POST", json: ["action": "contactPhotos", "contactIds": ids]
+        )
+        guard let answer = try? JSONDecoder().decode(Answer.self, from: try await sendFunction(urlRequest)) else { return [:] }
+        return answer.photos.compactMapValues { URL(string: $0) }.filter { $0.value.scheme == "https" }
     }
 
     /// The persons with department and location embedded, from the tables themselves. `!inner` drops a person whose
@@ -899,6 +937,7 @@ struct ItemRow: Decodable {
         let requested_at: String
         let response: String?
         let organization_id: String?
+        let location_id: String?
     }
 
     struct FileRow: Decodable {
@@ -986,7 +1025,8 @@ struct ItemRow: Decodable {
                     organisationName: row.organisation_name,
                     requestedAt: SupabaseAylaService.date(from: row.requested_at),
                     response: row.response,
-                    organizationID: row.organization_id
+                    organizationID: row.organization_id,
+                    locationID: row.location_id
                 )
             }
             .max { $0.requestedAt < $1.requestedAt }
