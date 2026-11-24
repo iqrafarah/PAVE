@@ -146,6 +146,15 @@ Onder een vacature staan vier acties. Tik je erop, dan komt de vraag als jouw be
 | Uitleg (web) | Alles in PAVE blijft stil staan: geen bewegende overgangen, laders of golven. Geldt alleen voor deze browser. |
 | Uitleg (iOS) | Alles in PAVE blijft stil staan: geen bewegende overgangen, laders of golven. Geldt alleen op dit apparaat. |
 
+## Chatlijst (web en iOS)
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Groep met vastgezette projecten en chats | Vastgezet |
+| Groep met projecten | Projecten |
+| Groep met de andere chats | Recent |
+| Onder een chat die op de iPhone begon | Op iPhone |
+
 ## Wat Ayla zelf doet in de app (iOS)
 
 Ayla zegt in haar eigen woorden wat ze doet. Deze vaste teksten komen van de app zelf.

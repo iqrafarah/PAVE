@@ -1,26 +1,55 @@
 import PAVECore
 import SwiftUI
 
-/// One conversation in the list: only its name, as on the web.
+/// One conversation in the list, as on the web: its name, a chat icon in front under Vastgezet, and "Op iPhone" under
+/// it when it was begun on the iPhone.
 struct AylaChatRow: View {
     let conversation: AylaConversation
     let isCurrent: Bool
+    var showsIcon = false
     let onOpen: () -> Void
 
     var body: some View {
         Button(action: onOpen) {
-            Text(conversation.title)
-                .textStyle(.listTitle)
-                .foregroundStyle(Color.ink)
-                .lineLimit(1)
-                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                .padding(.horizontal, 12)
-                .background {
-                    if isCurrent {
-                        RoundedRectangle(cornerRadius: 12).fill(Color.paveSurfaceTint)
+            HStack(spacing: 12) {
+                if showsIcon {
+                    Image(.iconChat)
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .paveIconFrame(16)
+                        .foregroundStyle(Color.paveAccent)
+                        .accessibilityHidden(true)
+                }
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(conversation.title)
+                        .textStyle(.listTitle)
+                        .foregroundStyle(Color.ink)
+                        .lineLimit(1)
+                    if conversation.startedOn == .phone {
+                        Label {
+                            Text(AylaMessages.startedOnPhone)
+                        } icon: {
+                            Image(.iconDevicePhoneMobile)
+                                .renderingMode(.template)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 12, height: 12)
+                        }
+                        .labelStyle(.titleAndIcon)
+                        .textStyle(.caption)
+                        .foregroundStyle(Color.inkMuted)
                     }
                 }
-                .contentShape(.rect(cornerRadius: 12))
+            }
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .padding(.horizontal, 12)
+            .background {
+                if isCurrent {
+                    RoundedRectangle(cornerRadius: 12).fill(Color.paveSurfaceTint)
+                }
+            }
+            .contentShape(.rect(cornerRadius: 12))
         }
         .buttonStyle(.pave)
         .hoverEffect(.highlight)
