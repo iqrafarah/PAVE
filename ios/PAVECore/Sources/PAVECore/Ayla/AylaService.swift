@@ -8,6 +8,18 @@ public enum AylaStreamEvent: Equatable, Sendable {
     case text(String)
     /// The whole answer, with its cards and suggestions.
     case reply(AylaReply)
+    /// Something that takes a while, before she has more to say.
+    case activity(AylaActivity)
+}
+
+/// What Ayla is busy with while she has nothing to say yet, so you see what is happening.
+public enum AylaActivity: Equatable, Sendable {
+    /// also: a related job she searches beside it.
+    case searchingVacancies(what: String, where: String, also: String? = nil)
+    /// chosen: how many vault items you picked for this conversation, when that is what she compares with.
+    case comparingVacancies(count: Int, withVault: Bool, chosen: Int? = nil)
+    /// She looks at what came of her own actions and goes on (set by the app, not by the server).
+    case continuing
 }
 
 public protocol AylaService: Sendable {
@@ -23,6 +35,10 @@ public protocol AylaService: Sendable {
     func setExpiry(_ expiry: AylaConversation.Expiry, conversationID: String) async throws
     /// Deletes the chats whose time is up, for good. Returns how many went.
     func expireChats() async throws -> Int
+    /// "Bewaarde vacatures" (migration 20261120170000), the newest first; `notSetUp` until the table exists.
+    func savedVacancies() async throws -> [SavedVacancy]
+    func saveVacancy(_ vacancy: Vacancy) async throws -> SavedVacancy
+    func removeSavedVacancy(id vacancyID: String) async throws
     /// "Projecten" (migration 20261118120000): make, change, pin and delete; deleting keeps the chats.
     /// `withLook`: send the icon and colour too, once projects have them (migration 20261119150000).
     func createProject(name: String, instructions: String, icon: VaultFolderIcon?, color: VaultFolderColor?, withLook: Bool) async throws -> AylaProject
@@ -65,6 +81,11 @@ public protocol AylaService: Sendable {
     func speech(for text: String) -> AsyncThrowingStream<Data, any Error>
     /// Wakes Ayla up on the server, so the first spoken answer does not wait for her to start.
     func warmUp() async
+    /// What was said in `audio` (16 kHz mono WAV), heard by the server's speech model; see `AylaListenService`.
+    func transcribe(_ audio: Data, hints: [String]) async throws -> String
+    /// The logo of a company on a vacancy without one, from its own website (the `company-logo` function); nil when
+    /// none was found. Only the name and place go out.
+    func companyLogo(company: String, city: String?) async throws -> URL?
     /// What Ayla remembers about the user, the newest first. `notSetUp` until the tables exist.
     func memories() async throws -> AylaMemories
     /// Saves a note the user kept or wrote.
@@ -121,6 +142,9 @@ extension AylaService {
     public func changeChatPin(from pin: String, to newPin: String) async throws { throw AylaError.notSetUp }
     public func recoverChatPin(_ newPin: String) async throws { throw AylaError.notSetUp }
     public func conversationChanges() -> AsyncStream<Void> { AsyncStream { $0.finish() } }
+    public func savedVacancies() async throws -> [SavedVacancy] { throw AylaError.notSetUp }
+    public func saveVacancy(_ vacancy: Vacancy) async throws -> SavedVacancy { throw AylaError.notSetUp }
+    public func removeSavedVacancy(id vacancyID: String) async throws { throw AylaError.notSetUp }
 
     /// Without a voice, the stream ends at once with `unavailable`, and the app falls back to the device voice.
     public func speech(for text: String) -> AsyncThrowingStream<Data, any Error> {
@@ -128,6 +152,10 @@ extension AylaService {
     }
 
     public func warmUp() async {}
+
+    public func transcribe(_ audio: Data, hints: [String]) async throws -> String { throw AylaError.unavailable }
+
+    public func companyLogo(company: String, city: String?) async throws -> URL? { nil }
 
     public func memories() async throws -> AylaMemories { throw AylaError.notSetUp }
     public func remember(
@@ -234,15 +262,36 @@ public struct SupabaseAylaService: AylaService {
         }
     }
 
-    /// One server-sent event of the Ayla function: `start`, `text`, `reply` or `error`.
+    /// One server-sent event of the Ayla function: `start`, `text`, `status`, `reply` or `error`.
     static func streamEvent(_ name: String, data: Data) -> Result<AylaStreamEvent, AylaError>? {
         struct Start: Decodable { let conversationId: String }
         struct Text: Decodable { let text: String }
+        struct Status: Decodable {
+            let kind: String
+            let what: String?
+            let `where`: String?
+            let count: Int?
+            let withVault: Bool?
+            let also: String?
+            let chosen: Int?
+        }
         switch name {
         case "start":
             return (try? JSONDecoder().decode(Start.self, from: data)).map { .success(.started(conversationID: $0.conversationId)) }
         case "text":
             return (try? JSONDecoder().decode(Text.self, from: data)).map { .success(.text($0.text)) }
+        case "status":
+            guard let status = try? JSONDecoder().decode(Status.self, from: data) else { return nil }
+            switch status.kind {
+            case "vacancySearch":
+                guard let what = status.what, !what.isEmpty else { return nil }
+                return .success(.activity(.searchingVacancies(what: what, where: status.where ?? "", also: status.also.flatMap { $0.isEmpty ? nil : $0 })))
+            case "vacancyMatch":
+                guard let count = status.count, count > 0 else { return nil }
+                return .success(.activity(.comparingVacancies(count: count, withVault: status.withVault ?? false, chosen: status.chosen)))
+            default:
+                return nil
+            }
         case "reply":
             return .some((try? AylaReply.decode(data)).map { .success(.reply($0)) } ?? .failure(.unavailable))
         case "error":
@@ -297,7 +346,7 @@ public struct SupabaseAylaService: AylaService {
     public func warmUp() async {
         guard let token = await accessToken() else { return }
         await withTaskGroup(of: Void.self) { group in
-            for url in [endpoint, voiceEndpoint] {
+            for url in [endpoint, voiceEndpoint, projectURL.appending(path: "functions/v1/ayla-listen")] {
                 var urlRequest = URLRequest(url: url, timeoutInterval: 15)
                 urlRequest.httpMethod = "OPTIONS"
                 urlRequest.setValue(publishableKey, forHTTPHeaderField: "apikey")
@@ -306,6 +355,35 @@ public struct SupabaseAylaService: AylaService {
                 group.addTask { _ = try? await session.data(for: urlRequest) }
             }
         }
+    }
+
+    public func transcribe(_ audio: Data, hints: [String]) async throws -> String {
+        try await SupabaseAylaListenService(projectURL: projectURL, publishableKey: publishableKey, session: session, accessToken: accessToken)
+            .transcribe(audio, hints: hints)
+    }
+
+    public func companyLogo(company: String, city: String?) async throws -> URL? {
+        guard let token = await accessToken() else { throw AylaError.notSignedIn }
+        var urlRequest = URLRequest(url: projectURL.appending(path: "functions/v1/company-logo"), timeoutInterval: 30)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue(publishableKey, forHTTPHeaderField: "apikey")
+        urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        urlRequest.httpBody = try JSONEncoder().encode(LogoQuestion(company: company, city: city))
+        let data = try await perform(urlRequest, accepting: [200])
+        guard let found = try? JSONDecoder().decode(LogoAnswer.self, from: data), let address = found.logoUrl,
+              let url = URL(string: address), url.scheme == "https"
+        else { return nil }
+        return url
+    }
+
+    private struct LogoQuestion: Encodable {
+        let company: String
+        let city: String?
+    }
+
+    private struct LogoAnswer: Decodable {
+        let logoUrl: String?
     }
 
     public func speech(for text: String) -> AsyncThrowingStream<Data, any Error> {
@@ -599,6 +677,31 @@ public struct SupabaseAylaService: AylaService {
 
     /// Supabase answers "done" also when a security rule let nothing through; asking for the changed row back shows
     /// whether something really changed.
+    // MARK: Saved vacancies
+
+    public func savedVacancies() async throws -> [SavedVacancy] {
+        let rows: [SavedVacancyRow] = try await select(
+            "saved_vacancies", query: [("select", "vacancy_id,vacancy,saved_at"), ("order", "saved_at.desc"), ("limit", "100")]
+        )
+        return rows.compactMap(\.saved)
+    }
+
+    public func saveVacancy(_ vacancy: Vacancy) async throws -> SavedVacancy {
+        let vacancyJSON = try JSONSerialization.jsonObject(with: AylaCoding.encoder.encode(vacancy))
+        let body = try JSONSerialization.data(withJSONObject: ["vacancy_id": vacancy.id, "vacancy": vacancyJSON])
+        var urlRequest = try await authorized("saved_vacancies", query: [("select", "vacancy_id,vacancy,saved_at")], method: "POST", body: body, returning: true)
+        // Saved before (on another device): keep the first, as nothing about it changed for the user.
+        urlRequest.setValue("return=representation,resolution=ignore-duplicates", forHTTPHeaderField: "Prefer")
+        let data = try await perform(urlRequest, accepting: [200, 201])
+        let rows = (try? AylaCoding.decoder.decode([SavedVacancyRow].self, from: data)) ?? []
+        return rows.first?.saved ?? SavedVacancy(vacancy: vacancy, savedAt: .now)
+    }
+
+    public func removeSavedVacancy(id vacancyID: String) async throws {
+        let urlRequest = try await authorized("saved_vacancies", query: [("vacancy_id", "eq.\(vacancyID)")], method: "DELETE")
+        _ = try await perform(urlRequest, accepting: [200, 204])
+    }
+
     private func expectRow(from urlRequest: URLRequest) async throws {
         let data = try await perform(urlRequest, accepting: [200])
         guard let rows = try? JSONDecoder().decode([IDRow].self, from: data) else { throw AylaError.unavailable }
@@ -1093,4 +1196,24 @@ private struct MessageRow: Decodable {
 private struct ProfileRow: Decodable {
     let preferred_name: String?
     let full_name: String?
+}
+
+private struct SavedVacancyRow: Decodable {
+    let vacancy_id: String
+    let vacancy: Vacancy?
+    let saved_at: String
+
+    private enum CodingKeys: String, CodingKey { case vacancy_id, vacancy, saved_at }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        vacancy_id = try container.decode(String.self, forKey: .vacancy_id)
+        // A vacancy this version cannot read is skipped, not the whole list.
+        vacancy = try? container.decode(Vacancy.self, forKey: .vacancy)
+        saved_at = try container.decode(String.self, forKey: .saved_at)
+    }
+
+    var saved: SavedVacancy? {
+        vacancy.map { SavedVacancy(vacancy: $0, savedAt: SupabaseAylaService.date(from: saved_at)) }
+    }
 }

@@ -81,7 +81,7 @@ export interface Vacancy {
   salary?: VacancySalary;
   logoUrl?: string;
   url?: string;
-  source: 'example' | 'adzuna';
+  source: 'example' | 'adzuna' | 'jooble' | 'web';
   matches: RequirementLink[];
   skillGap: RequirementLink[];
 }
@@ -179,6 +179,10 @@ export interface Conversation {
   updatedAt: string;
   pinnedAt: string | null;
   archivedAt: string | null;
+  // When the chat was made; the time of "Verval" can run from it. Null on chats kept from before.
+  createdAt: string | null;
+  // Its own "Verval" (ayla_conversations.expiry_days): null follows the account, 0 never expires.
+  expiryDays: number | null;
   startedOn: AylaDevice;
 }
 

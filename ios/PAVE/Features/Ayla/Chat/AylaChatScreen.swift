@@ -59,6 +59,7 @@ struct AylaChatScreen: View {
     /// Where the line under the large orb is, so the field leaves it clear.
     @State private var captionFrame = CGRect.null
     @State private var openVacanciesID: String?
+    @State private var vacancyTab = VacancyList.Tab.found
     @State private var bottomBarHeight: CGFloat = 0
     @State private var scrollPosition = ScrollPosition(edge: .bottom)
     @State private var isAttachMenuOpen = false
@@ -71,6 +72,14 @@ struct AylaChatScreen: View {
     @State private var addingFromReplyID: String?
     @State private var photoItems: [PhotosPickerItem] = []
     @State private var picksVaultItem = false
+    /// What is said once items are picked ("Kies zelf", or other data for the vacancies); nil from the plus button,
+    /// where picking only sets what the conversation is about.
+    @State private var afterPick: ((Int) -> String)?
+    /// What Ayla is doing in the app right now, step by step; empty when she is doing nothing.
+    @State private var actionSteps: [AylaActionStep] = []
+    @State private var actionRun = UUID()
+    /// The steps on show are those of a vacancy search, which the server's status moves along.
+    @State private var showsSearchSteps = false
     @State private var fileProblem: String?
     @FocusState private var isComposerFocused: Bool
     @State private var readAloud = AylaReadAloud()
@@ -113,26 +122,38 @@ struct AylaChatScreen: View {
     @State private var waveFromOrb = false
     /// The vacancy shown under the orb while talking, gone through by turning the head.
     @State private var vacancyIndex = 0
+    /// Vacancies picked to compare, in the order they were picked.
+    @State private var compareIDs: [String] = []
     /// Photos for an item that just went into the vault, after a Ja to Ayla's question for them.
     @State private var photosForItemID: String?
     @State private var photoTargetID: String?
     @State private var itemPhotoItems: [PhotosPickerItem] = []
     @State private var mutedForPhotos = false
+    /// Ayla holds while you pick from the vault by hand: she does not listen until the picker is gone.
+    @State private var heldForPicking = false
+    /// Instellingen came up only to show a change Ayla makes: it goes down again when you have seen it.
+    @State private var settingsOpenedForChange = false
+    @State private var settingsClose: Task<Void, Never>?
     @State private var isAddingItemPhotos = false
     @Environment(PaveCameraControl.self) private var cameraControl: PaveCameraControl?
     @Environment(\.toolbarIsBeside) private var toolbarIsBeside
 
     private var openVacancies: [Vacancy]? {
-        guard let openVacanciesID, let entry = model.entries.first(where: { $0.id == openVacanciesID }) else { return nil }
+        guard let openVacanciesID else { return nil }
+        // Only the kept ones ("open mijn bewaarde vacatures"), without a search in this chat.
+        if openVacanciesID == Self.savedVacanciesID { return [] }
+        guard let entry = model.entries.first(where: { $0.id == openVacanciesID }) else { return nil }
         return Self.vacancies(in: entry)
     }
+
+    private static let savedVacanciesID = "saved-vacancies"
 
     var body: some View {
         GeometryReader { proxy in
             let fullHeight = proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom
-            let sheetHeight = (fullHeight * 0.612).rounded()
-            let expandedHeight = fullHeight - proxy.safeAreaInsets.top - 24
-            let showsSheet = openVacancies != nil
+            // The vacancies sit low over the chat, so Ayla's answer stays readable above them.
+            let sheetHeight = (fullHeight * 0.62).rounded()
+            let isOverVacancies = shelf == .vacancies && vaultDetent != .large
 
             ZStack(alignment: .bottom) {
                 if let voice, isTalking {
@@ -152,7 +173,7 @@ struct AylaChatScreen: View {
 
                 content(
                     height: proxy.size.height,
-                    bottomMargin: showsSheet ? sheetHeight - proxy.safeAreaInsets.bottom : bottomBarHeight + bottomGap + offlineNoticeHeight
+                    bottomMargin: isOverVacancies ? sheetHeight - proxy.safeAreaInsets.bottom : bottomBarHeight + bottomGap + offlineNoticeHeight
                 )
 
                 if isAttachMenuOpen {
@@ -161,21 +182,6 @@ struct AylaChatScreen: View {
                         .ignoresSafeArea()
                         .onTapGesture { isAttachMenuOpen = false }
                         .accessibilityHidden(true)
-                }
-
-                if showsSheet, let vacancies = openVacancies {
-                    AylaBottomSheet(
-                        title: "Vacatures sluiten",
-                        height: sheetHeight,
-                        expandedHeight: expandedHeight,
-                        bottomInset: bottomBarHeight + proxy.safeAreaInsets.bottom + 16,
-                        onClose: closeVacancies
-                    ) {
-                        VacancyList(vacancies: vacancies)
-                            .frame(maxWidth: 600)
-                            .frame(maxWidth: .infinity)
-                    }
-                    .ignoresSafeArea(edges: .bottom)
                 }
 
                 if let waveStartedAt {
@@ -187,10 +193,10 @@ struct AylaChatScreen: View {
                         .transition(.opacity)
                 }
 
-                bottomBar(placeholder: placeholderColor(sheetOpen: showsSheet), isOverPanel: showsSheet)
+                bottomBar(placeholder: placeholderColor)
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { bottomBarHeight = $0 }
                     // Above the bar, so the bar itself never changes height and nothing jumps.
-                    .overlay(alignment: .top) { aboveBottomBar(isOverPanel: showsSheet) }
+                    .overlay(alignment: .top) { aboveBottomBar }
             }
             .overlay { orbLayer }
         }
@@ -254,6 +260,31 @@ struct AylaChatScreen: View {
                         onDelete: { await notifications.delete($0) },
                         onRestore: { await notifications.restore($0) }
                     )
+                } else if shelf == .vacancies {
+                    let shown = model.entries.first { $0.id == openVacanciesID }
+                    AylaVacancyShelf(
+                        vacancies: openVacancies ?? [], model: model, tab: $vacancyTab,
+                        search: shown.flatMap(Self.search(in:)),
+                        usedData: shown?.reply?.usedData ?? [],
+                        onChooseData: vault == nil || !model.isAvailable ? nil : { pickVaultItems(then: AylaMessages.useChosen) },
+                        compareIDs: compareIDs,
+                        onTask: { task, vacancy in
+                            closeShelf()
+                            run(task, on: [vacancy])
+                        },
+                        onToggleCompare: toggleCompare,
+                        onCompare: {
+                            closeShelf()
+                            compareChosen()
+                        },
+                        onClearCompare: { compareIDs = [] }
+                    ) { vacancy in
+                        closeShelf()
+                        askAyla(AylaMessages.vacancyAsk(vacancy))
+                    } onAskGap: { skill, vacancy in
+                        closeShelf()
+                        askAyla(AylaMessages.vacancyGapAsk(skill, for: vacancy))
+                    }
                 } else if shelf == .vault {
                     if let vault {
                         VaultScreen(onShowMenu: nil)
@@ -277,15 +308,32 @@ struct AylaChatScreen: View {
             .environment(pageDriver)
             // Keep talking with Ayla while the page is open: her answer shows on top of the page.
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                AylaShelfComposer(text: $model.draft, place: shelf.title, isAnswering: model.isAnswering) {
-                    showsShelfReply = true
-                    send()
+                // What she is doing floats just above where she lives, as in the chat.
+                if !actionSteps.isEmpty {
+                    AylaActivityPill(steps: actionSteps)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 6)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                // While you talk she stays with you on the page, as the small orb; typing is the text field.
+                if let voice, isTalking {
+                    AylaShelfVoiceBar(
+                        mode: orbMode(voice.state), meter: voice.meter, status: shelfVoiceStatus(voice), isMuted: voice.isMuted,
+                        onTapOrb: voice.tapOrb, onMute: voice.toggleMute, onStop: { stopVoice() }
+                    )
+                } else {
+                    AylaShelfComposer(text: $model.draft, place: shelf.title, isAnswering: model.isAnswering) {
+                        showsShelfReply = true
+                        send()
+                    }
                 }
             }
             .safeAreaInset(edge: .top, spacing: 0) {
                 // While talking the bubble follows "Tekst bij de stem" in Settings: off means her voice and the glow only.
                 if showsShelfReply, !isTalking || showsVoiceText, let reply = shelfReply {
-                    AylaShelfReply(text: reply.text, choices: reply.choices, onChoose: { choose($0) }) {
+                    AylaShelfReply(text: reply.text, thinking: model.activity.map(AylaMessages.activity) ?? AylaMessages.thinking, choices: reply.choices, onChoose: { choose($0) }) {
                         showsShelfReply = false
                     }
                     .transition(.move(edge: .top).combined(with: .opacity))
@@ -296,6 +344,7 @@ struct AylaChatScreen: View {
                     AylaVoiceEdgeGlow(mode: orbMode(voice.state), meter: voice.meter)
                 }
             }
+            .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.35, bounce: 0.1), value: actionSteps.isEmpty)
             .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.4, bounce: 0.15), value: showsShelfReply)
             .animation(.easeOut(duration: 0.2), value: model.phase)
             .presentationDetents([.fraction(0.62), .large], selection: $vaultDetent)
@@ -319,14 +368,32 @@ struct AylaChatScreen: View {
             VaultRequestConfirmationSheet(item: item, documentCount: vault?.documents(of: item).count ?? 0)
                 .paveSheet()
         }
-        .sheet(isPresented: $picksVaultItem) {
+        // Picking by hand takes a moment and may come with talk around you: she waits, and goes on when you are done.
+        .onChange(of: picksVaultItem) { _, isPicking in
+            guard let voice, isTalking else { return }
+            if isPicking, !voice.isMuted {
+                voice.toggleMute()
+                heldForPicking = true
+            } else if !isPicking, heldForPicking {
+                if voice.isMuted { voice.toggleMute() }
+                heldForPicking = false
+            }
+        }
+        .sheet(isPresented: $picksVaultItem, onDismiss: { afterPick = nil }) {
             if let vault {
-                AylaVaultSelectionSheet { items in model.attach(items) }
+                AylaVaultSelectionSheet { items in
+                    model.attach(items)
+                    guard let afterPick, !items.isEmpty else { return }
+                    askAyla(afterPick(items.count))
+                }
                     .environment(vault)
                     .paveSheet(background: .panel)
             }
         }
-        .onAppear { model.appCommand = { runAppCommand($0) } }
+        .onAppear {
+            model.appCommand = { runAppCommand($0) }
+            model.appState = { appStateNow }
+        }
         .task {
             guard let vault else { return }
             model.analyzeEvidence = { uploads in
@@ -347,8 +414,7 @@ struct AylaChatScreen: View {
             // A new answer from Ayla replaces what she said about something she did in the app.
             localReply = nil
             guard !isVoiceActive, let last = model.entries.last, last.role == .ayla, !Self.vacancies(in: last).isEmpty else { return }
-            closeShelf()
-            openVacanciesID = last.id
+            openVacancies(from: last.id)
         }
         .onChange(of: model.conversationID) { old, _ in
             // A new conversation getting its id while Ayla answers is still the same chat: the page stays open.
@@ -368,7 +434,34 @@ struct AylaChatScreen: View {
             }
         }
         .onDisappear { headGestures.stop() }
-        .onChange(of: model.lastAylaEntryID) { vacancyIndex = 0 }
+        // A new search starts at its first vacancy, with nothing picked to compare.
+        .onChange(of: voiceSearchID) {
+            vacancyIndex = 0
+            compareIDs = []
+        }
+        // The card under the orb is what you look at: Ayla gets that vacancy, and loses it when the card goes.
+        .onChange(of: cardVacancy?.id) { _, id in
+            guard shelf == nil else { return }
+            model.showVacancy(cardVacancy)
+            if id == nil { model.hideScreen(.vacancies) }
+        }
+        // What Ayla chose to do in the app with her answer: carried out here, one thing at a time.
+        .task(id: model.actionRequest?.id) {
+            guard let request = model.actionRequest else { return }
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled else { return }
+            await run(request.actions, continues: request.continues)
+        }
+        .onChange(of: model.activity) { _, activity in
+            if let activity { AccessibilityNotification.Announcement(AylaMessages.activity(activity)).post() }
+            if actionSteps.isEmpty || showsSearchSteps { voice?.doingNote = activity.map(AylaMessages.voiceNote) }
+            followSearch(activity)
+        }
+        .onChange(of: model.phase) { _, phase in
+            // The search is over: the steps that are left are ticked off, or go when nothing came of it.
+            guard showsSearchSteps, phase == .idle || phase != .thinking && phase != .writing else { return }
+            finishSearchSteps()
+        }
         // A spoken conversation goes on in the background, with the Lock Screen and the Dynamic Island showing it,
         // so you can keep talking with the phone in your pocket.
         .transform(voiceReactions)
@@ -427,13 +520,20 @@ struct AylaChatScreen: View {
     }
 
     /// The button back to the newest message, and the line that says you are offline.
-    private func aboveBottomBar(isOverPanel: Bool) -> some View {
+    private var aboveBottomBar: some View {
         VStack(spacing: 10) {
-            if !isTalking, !isOverPanel, headAnswer != nil || (asksYesNoByHead && headGestures.isReceiving) {
+            // What she is doing in the app, when no page is open over the chat (there it shows on the page). With the
+            // large orb in view it sits under her caption instead, where the orb does not cover it.
+            if !actionSteps.isEmpty, shelf == nil, !isVoiceStageUp {
+                AylaActivityPill(steps: actionSteps)
+                    .padding(.horizontal, 21)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+            if !isTalking, headAnswer != nil || (asksYesNoByHead && headGestures.isReceiving) {
                 AylaHeadHint(text: headAnswer.map { AylaMessages.yesNoAnswer($0, byHead: answeredByHead) } ?? AylaMessages.headHint, isAnswer: headAnswer != nil)
                     .transition(.scale(scale: 0.8).combined(with: .opacity))
             }
-            if isAwayFromBottom, !isTalking, !isOverPanel, !model.entries.isEmpty {
+            if isAwayFromBottom, !isTalking, !model.entries.isEmpty {
                 ChatScrollDownButton { scrollToBottom() }
                     .transition(.scale(scale: 0.6).combined(with: .opacity))
             }
@@ -532,7 +632,9 @@ struct AylaChatScreen: View {
                         showsText: showsVoiceText,
                         onOrbFrame: { place(.center, at: $0) },
                         onCaptionFrame: { captionFrame = $0 },
-                        card: vacancyCard
+                        deck: vacancyDeck,
+                        practice: practiceBar,
+                        activity: isVoiceStageUp && shelf == nil && !actionSteps.isEmpty ? AylaActivityPill(steps: actionSteps) : nil
                     )
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -720,7 +822,7 @@ struct AylaChatScreen: View {
                         icon: .iconBriefcase,
                         title: vacancies.count == 1 ? "1 vacature gevonden" : "\(vacancies.count) vacatures gevonden"
                     ) {
-                        openVacanciesID = entry.id
+                        openVacancies(from: entry.id)
                     }
                     .padding(.top, 3)
                 }
@@ -837,12 +939,12 @@ struct AylaChatScreen: View {
 
     /// Starting or stopping a spoken conversation does not swap the bars: the text field shrinks into the voice
     /// bar's field (and grows back), and the round buttons slide out of it.
-    private func bottomBar(placeholder: Color, isOverPanel: Bool) -> some View {
+    private func bottomBar(placeholder: Color) -> some View {
         VStack(spacing: 0) {
             if let voice, isTalking {
                 voiceControls(voice)
             } else {
-                textControls(placeholder: placeholder, isOverPanel: isOverPanel)
+                textControls(placeholder: placeholder)
                     // Gone quickly, so it does not linger as a ghost over the field that takes its place.
                     .transition(.opacity.animation(.easeOut(duration: 0.12)))
             }
@@ -917,6 +1019,9 @@ struct AylaChatScreen: View {
                 .frame(maxWidth: .infinity)
                 .contentShape(.rect)
                 .gesture(orbDragGesture, isEnabled: canDragOrb)
+                // Only while the orb is down here: with the orb in the middle this strip lies over what is under it
+                // (the vacancy cards and their buttons), and would take every tap meant for that.
+                .allowsHitTesting(orbMotion.isLow)
                 .padding(.top, 36)
                 .padding(.bottom, 8)
                 .accessibilityHidden(true)
@@ -985,10 +1090,11 @@ struct AylaChatScreen: View {
         if voice.state == .listening, !model.entries.isEmpty, !voice.isMuted {
             return .init(text: "Ayla luistert…", kind: .status)
         }
-        return .init(text: voice.state == .thinking ? "Ayla denkt na…" : voiceHint(voice), kind: .status)
+        return .init(text: voice.state == .thinking ? AylaMessages.thinking : voiceHint(voice), kind: .status)
     }
 
     private func voiceHint(_ voice: AylaVoiceSession) -> String {
+        if heldForPicking { return AylaMessages.voiceHolds }
         if voice.isMuted { return "Je microfoon staat uit. Tik op de microfoon om verder te praten." }
         if voice.state == .starting { return "Microfoon aanzetten…" }
         return "Ik luister. Vraag me bijvoorbeeld welke banen bij je passen of hoe je je cv sterker maakt."
@@ -1010,11 +1116,12 @@ struct AylaChatScreen: View {
     }
 
     @ViewBuilder
-    private func textControls(placeholder: Color, isOverPanel: Bool) -> some View {
+    private func textControls(placeholder: Color) -> some View {
         VStack(spacing: 0) {
             switch model.phase {
             case .thinking:
-                AylaStatusIndicator(state: .thinking, message: "Ayla denkt na…")
+                AylaStatusIndicator(state: .thinking, message: model.activity.map(AylaMessages.activity) ?? AylaMessages.thinking)
+                    .padding(.horizontal, 32)
                     .padding(.bottom, 41)
                     .transition(.opacity)
             case .failed(let message):
@@ -1071,7 +1178,6 @@ struct AylaChatScreen: View {
                     },
                     isListening: dictation.isListening,
                     placeholderColor: placeholder,
-                    isOverPanel: isOverPanel,
                     isFocused: $isComposerFocused,
                     onAdd: toggleAttachMenu,
                     onRemoveAttachment: model.removeAttachment,
@@ -1113,9 +1219,8 @@ struct AylaChatScreen: View {
         }
     }
 
-    private func placeholderColor(sheetOpen: Bool) -> Color {
-        if sheetOpen { return Color.inkMuted.opacity(0.7) }
-        return model.phase == .idle || model.phase == .writing ? Color.inkMuted.opacity(0.41) : Color.white.opacity(0.41)
+    private var placeholderColor: Color {
+        model.phase == .idle || model.phase == .writing ? Color.inkMuted.opacity(0.41) : Color.white.opacity(0.41)
     }
 
     @ViewBuilder
@@ -1150,11 +1255,44 @@ struct AylaChatScreen: View {
     /// Ja to "Wil je iets toevoegen?" opens adding evidence, filled with Ayla's proposal and skills; the answer still goes
     /// to Ayla, as on the web.
     private func choose(_ label: String) {
+        if choosesVaultItems(label) { return }
         if AylaVaultOffer.isYes(label), handleYes(saying: label) { return }
         if model.pendingOffersEvidence, AylaVaultOffer.isYes(label) {
             openProposedEvidence(from: model.lastReply)
         }
         send(label)
+    }
+
+    /// A question the app asks for you after a tap (Vraag Ayla on a vacancy, a skill you miss, what you picked from
+    /// the vault). While you talk with her it goes through the spoken conversation, so she answers out loud;
+    /// otherwise it is sent as if you typed it.
+    private func askAyla(_ text: String) {
+        if let voice, isTalking {
+            voice.send(typed: text, checksYes: false)
+        } else {
+            send(text)
+        }
+    }
+
+    /// "Kies zelf" on Ayla's question about the vault, tapped, typed or said: the picker opens, and what you choose is
+    /// all she uses in this conversation.
+    private func choosesVaultItems(_ label: String) -> Bool {
+        // In your own words too ("laat mezelf kiezen"), not only the label of the button.
+        guard vault != nil, let question = model.pendingQuestion, model.lastReply?.accessRequest != nil,
+              question.choices.contains(where: { $0.id == AylaVaultOffer.chooseChoiceID }), AylaVaultOffer.wantsToChoose(label)
+        else { return false }
+        pickVaultItems(then: AylaMessages.useChosen)
+        return true
+    }
+
+    /// The vault picker over the chat; once you chose, Ayla hears it and goes on with those items only.
+    private func pickVaultItems(then message: @escaping (Int) -> String) {
+        PaveHaptics.selection()
+        isComposerFocused = false
+        closingShelf {
+            afterPick = message
+            picksVaultItem = true
+        }
     }
 
     /// Adding evidence as Ayla proposed it, with the files she said belong to it. A spoken conversation stops: the form
@@ -1346,10 +1484,38 @@ struct AylaChatScreen: View {
 
     // MARK: Vacancies while talking
 
-    /// Vacancies in Ayla's newest answer, gone through one by one under the orb while talking.
+    /// How many messages the cards stay under the orb after a search, so you can ask about them, compare them or
+    /// practise for one; after that the conversation has moved on.
+    private static let voiceVacancyReach = 6
+
+    /// The newest search while talking, as long as the conversation is still about it; not during a practice
+    /// interview, which is about one vacancy only.
+    private var voiceSearch: AylaChatModel.Entry? {
+        guard isTalking, model.practice == nil,
+              let index = model.entries.lastIndex(where: { !Self.vacancies(in: $0).isEmpty }),
+              model.entries.count - index <= Self.voiceVacancyReach
+        else { return nil }
+        return model.entries[index]
+    }
+
+    private var voiceSearchID: String? { voiceSearch?.id }
+
+    /// The vacancies under the orb while talking, gone through one by one.
     private var voiceVacancies: [Vacancy] {
-        guard isTalking, let last = model.entries.last(where: { $0.role == .ayla }) else { return [] }
-        return Self.vacancies(in: last)
+        voiceSearch.map(Self.vacancies(in:)) ?? []
+    }
+
+    /// Names the speech model may hear: what Ayla found and showed. Nothing from the vault, which only goes to the AI
+    /// when you allow it.
+    private var voiceHints: [String] {
+        var names = ["Ayla", "PAVE"]
+        if let first = model.firstName { names.append(first) }
+        for vacancy in latestVacancies {
+            names += [vacancy.company, vacancy.title] + (vacancy.city.map { [$0] } ?? [])
+            names += (vacancy.matches + vacancy.skillGap).map(\.skill)
+        }
+        if let practice = model.practice { names += [practice.company, practice.title] }
+        return names
     }
 
     /// Knopmodus in the chat: Ayla's answer choices, the vacancies under the orb, and your recent chats. A full press
@@ -1420,6 +1586,7 @@ struct AylaChatScreen: View {
     /// A tap on one of those choices while talking: Ja and Nee get the same feedback as a nod; another choice is sent
     /// as if it was said.
     private func chooseWhileTalking(_ choice: AylaChoice) {
+        if choosesVaultItems(choice.label) { return }
         if AylaVaultOffer.isYes(choice.label) || AylaVaultOffer.isNo(choice.label) {
             answerYesNo(AylaVaultOffer.isYes(choice.label), byHead: false)
             return
@@ -1442,19 +1609,66 @@ struct AylaChatScreen: View {
         HeadMode(yesNo: asksYesNoByHead, browse: browsesByHead)
     }
 
-    private var vacancyCard: AylaVoiceVacancyCard? {
+    private var vacancyDeck: AylaVoiceVacancyDeck? {
         let vacancies = voiceVacancies
         guard browsesByHead, !vacancies.isEmpty else { return nil }
-        let index = min(vacancyIndex, vacancies.count - 1)
-        return AylaVoiceVacancyCard(
-            vacancy: vacancies[index],
-            index: index,
-            count: vacancies.count,
+        return AylaVoiceVacancyDeck(
+            vacancies: vacancies,
+            index: $vacancyIndex,
             followsHead: headGestures.isReceiving,
-            onPrevious: { moveVacancy(by: -1) },
-            onNext: { moveVacancy(by: 1) },
-            onChoose: chooseVacancy
+            chosenIDs: compareIDs,
+            isSaved: { model.isSaved($0) },
+            onToggleSave: model.canSaveVacancies ? { vacancy in
+                model.toggleSaved(vacancy)
+                voice?.play(.tick)
+            } : nil,
+            onOpen: { vacancy in
+                guard let index = voiceVacancies.firstIndex(where: { $0.id == vacancy.id }) else { return }
+                _ = openVacancy(at: index)
+            },
+            onTask: { task, vacancy in run(task, on: [vacancy]) },
+            onToggleCompare: toggleCompare,
+            onCompare: compareChosen,
+            onClearCompare: { compareIDs = [] }
         )
+    }
+
+    /// Talking with the orb in the middle of the screen, not small above the voice bar.
+    private var isVoiceStageUp: Bool {
+        isTalking && !orbMotion.isLow
+    }
+
+    private var practiceBar: VacancyPracticeBar? {
+        guard let practice = model.practice else { return nil }
+        return VacancyPracticeBar(vacancy: practice, onStop: stopPractice)
+    }
+
+    /// A button on a vacancy: the question goes in the chat as yours, and Ayla answers it, out loud while talking.
+    private func run(_ task: AylaRequest.VacancyTask, on vacancies: [Vacancy]) {
+        guard let question = model.question(for: task, about: vacancies) else { return }
+        PaveHaptics.tap(.medium)
+        if task == .compare { compareIDs = [] }
+        voice?.play(.tick)
+        askAyla(question)
+    }
+
+    private func toggleCompare(_ vacancy: Vacancy) {
+        if let index = compareIDs.firstIndex(of: vacancy.id) {
+            compareIDs.remove(at: index)
+        } else if compareIDs.count < 3 {
+            compareIDs.append(vacancy.id)
+        }
+    }
+
+    private func compareChosen() {
+        let all = latestVacancies + model.savedVacancies.map(\.vacancy)
+        let chosen = compareIDs.compactMap { id in all.first { $0.id == id } }
+        run(.compare, on: chosen)
+    }
+
+    private func stopPractice() {
+        guard let question = model.stopPracticeQuestion() else { return }
+        askAyla(question)
     }
 
     private func moveVacancy(by step: Int) {
@@ -1528,6 +1742,10 @@ struct AylaChatScreen: View {
         let message = text ?? model.draft
         let words = message.trimmingCharacters(in: .whitespacesAndNewlines)
         if text == nil, !model.isAnswering, AylaVaultOffer.isConfirmation(words), handleYes(saying: words) {
+            model.draft = ""
+            return
+        }
+        if text == nil, !model.isAnswering, choosesVaultItems(words) {
             model.draft = ""
             return
         }
@@ -1648,6 +1866,7 @@ struct AylaChatScreen: View {
         isAttachMenuOpen = false
         let session = voice ?? AylaVoiceSession(model: model)
         session.onYes = { handleYes(saying: $0) }
+        session.hints = { voiceHints }
         voice = session
         stageSlot = .zero
         barSlot = .zero
@@ -1859,21 +2078,111 @@ struct AylaChatScreen: View {
         }
     }
 
-    private func closeVacancies() {
-        openVacanciesID = nil
+    /// The vacancies of one of Ayla's answers, over the chat as the vault is; a new search while they are open just
+    /// shows the new ones.
+    private func openVacancies(from entryID: String) {
+        vacancyTab = .found
+        openVacanciesID = entryID
+        pageDriver.vacancy = nil
+        if shelf != .vacancies { openShelf(.vacancies) }
+        // A question under the vacancies (may she show what fits you?) is answered on top of them.
+        if let entry = model.entries.first(where: { $0.id == entryID }), model.question(for: entry) != nil, entry.id == model.entries.last?.id {
+            showsShelfReply = true
+        }
+    }
+
+    /// The vacancies of Ayla's newest search in this chat.
+    private var latestVacancies: [Vacancy] {
+        model.entries.last { !Self.vacancies(in: $0).isEmpty }.map(Self.vacancies(in:)) ?? []
+    }
+
+    /// What "de tweede" means: the list in the open panel, or else the newest search.
+    private var shownVacancies: [Vacancy] {
+        guard shelf == .vacancies else { return latestVacancies }
+        return VacancyList.shown(vacancyTab, found: openVacancies ?? [], model: model)
+    }
+
+    /// "Open de tweede vacature": the list opens if needed, then that vacancy inside it.
+    private func openVacancy(at place: Int) -> String {
+        let vacancies = shownVacancies
+        guard !vacancies.isEmpty else { return "Er zijn nog geen vacatures in dit gesprek. Vraag me eerst vacatures te zoeken." }
+        let index = place == -1 ? vacancies.count - 1 : place
+        guard vacancies.indices.contains(index) else { return "Zo veel vacatures zijn er niet. Er zijn er \(vacancies.count)." }
+        if shelf != .vacancies, let entry = model.entries.last(where: { !Self.vacancies(in: $0).isEmpty }) {
+            openVacancies(from: entry.id)
+        }
+        let vacancy = vacancies[index]
+        Task {
+            try? await Task.sleep(for: .milliseconds(shelf == .vacancies ? 0 : 500))
+            pageDriver.vacancy = vacancy
+        }
+        return "Ik open \(vacancy.title) bij \(vacancy.company)."
+    }
+
+    /// "Bewaar deze vacature": the one under the orb while talking, the only one, or the one named by its place.
+    private func saveVacancy(at place: Int?) -> String {
+        let vacancies = shownVacancies
+        guard model.canSaveVacancies else { return "Vacatures bewaren kan nog niet. Dit komt beschikbaar zodra PAVE is bijgewerkt." }
+        guard !vacancies.isEmpty else { return "Er zijn nog geen vacatures in dit gesprek. Vraag me eerst vacatures te zoeken." }
+        let index: Int?
+        if let place {
+            index = place == -1 ? vacancies.count - 1 : vacancies.indices.contains(place) ? place : nil
+        } else if let open = pageDriver.vacancy, shelf == .vacancies {
+            index = vacancies.firstIndex { $0.id == open.id }
+            if index == nil {
+                guard !model.isSaved(open) else { return "\(open.title) bij \(open.company) had je al bewaard." }
+                model.toggleSaved(open)
+                return "Ik heb \(open.title) bij \(open.company) bewaard."
+            }
+        } else {
+            index = browsesByHead ? min(vacancyIndex, vacancies.count - 1) : vacancies.count == 1 ? 0 : nil
+        }
+        guard let index else {
+            return place == nil
+                ? "Welke vacature wil je bewaren? Zeg bijvoorbeeld: bewaar de tweede."
+                : "Zo veel vacatures zijn er niet. Er zijn er \(vacancies.count)."
+        }
+        let vacancy = vacancies[index]
+        guard !model.isSaved(vacancy) else { return "\(vacancy.title) bij \(vacancy.company) had je al bewaard." }
+        model.toggleSaved(vacancy)
+        return "Ik heb \(vacancy.title) bij \(vacancy.company) bewaard."
+    }
+
+    /// The kept vacancies, from the panel or when you ask Ayla for them.
+    private func openSavedVacancies() {
+        vacancyTab = .saved
+        // The found ones of this chat stay one tab away.
+        if shelf != .vacancies { openVacanciesID = model.entries.last { !Self.vacancies(in: $0).isEmpty }?.id ?? Self.savedVacanciesID }
+        pageDriver.vacancy = nil
+        if shelf != .vacancies { openShelf(.vacancies) }
     }
 
     private func openShelf(_ next: AylaShelf) {
         PaveHaptics.selection()
         if let shelf { model.hideScreen(shelf.screen) }
-        openVacanciesID = nil
-        vaultDetent = .large
+        if next != .vacancies { openVacanciesID = nil }
+        vaultDetent = next == .vacancies ? .fraction(0.62) : .large
         shelf = next
         model.showScreen(next.screen)
     }
 
     /// A page Ayla opens, from her answer or the button under it: over the chat, like the start chips, so the
     /// conversation stays where it is. A vault item opens inside the vault.
+    /// The page her answer asked for, after her actions. A setting she just changed stays in view a moment first;
+    /// when that page is Instellingen itself, it simply stays open.
+    private func openPageAfterActions() async {
+        guard let navigation = model.takeNavigationAfterActions() else { return }
+        if shelf == .settings, settingsOpenedForChange {
+            if navigation.screen == .settings {
+                settingsOpenedForChange = false
+                settingsClose?.cancel()
+                return
+            }
+            try? await Task.sleep(for: .milliseconds(2400))
+        }
+        openPage(navigation)
+    }
+
     private func openPage(_ navigation: AylaReply.Navigation) {
         guard let place = AylaShelf(navigation.screen) else { return }
         if navigation.screen == .vaultItem, let id = navigation.itemId { vault?.itemToOpen = id }
@@ -1894,6 +2203,29 @@ struct AylaChatScreen: View {
     /// Returns what she says, or nil when the words are not something to do here.
     private func runAppCommand(_ text: String) -> String? {
         guard addEvidence == nil, !isSavingForUser else { return nil }
+        // "Laat mezelf kiezen" to her question about the vault, typed or said: the picker opens, and she says so
+        // instead of taking it for an answer she does not understand.
+        if choosesVaultItems(text) {
+            if !isTalking { AccessibilityNotification.Announcement(AylaMessages.chooseYourself).post() }
+            return AylaMessages.chooseYourself
+        }
+        // Ja to "Zal ik dit gesprek verwijderen?": now she does it, once.
+        if let waiting = model.actionsWaitingForYes, AylaVaultOffer.isYes(text), text.split(separator: " ").count <= 3 {
+            // She only says it is done when it can be done: evidence that is not there, or a chat not in the list yet.
+            let items = (vault?.items ?? []).map { AylaAppCommand.Named(id: $0.id, name: $0.title) }
+            let missing = waiting.actions.lazy.compactMap { action -> String? in
+                switch action.kind {
+                case "deleteEvidence", "allowAyla": AylaAppAction.best(action.target, in: items) == nil ? AylaMessages.actionNoItem(action.target ?? "") : nil
+                case "deleteChat": model.currentConversation == nil ? AylaMessages.actionNoCurrentChat : nil
+                default: nil
+                }
+            }.first
+            let done = missing ?? AylaActionWords.done(waiting.actions)
+            model.confirmActions(replyID: waiting.replyID, saying: text.trimmingCharacters(in: .whitespacesAndNewlines), done: done)
+            if missing == nil { Task { await run(waiting.actions) } }
+            if !isTalking { AccessibilityNotification.Announcement(done).post() }
+            return done
+        }
         let folders = vault?.folders.map { AylaAppCommand.Named(id: $0.id, name: $0.name) } ?? []
         let items = vault?.items.map { AylaAppCommand.Named(id: $0.id, name: $0.title) } ?? []
         guard let command = AylaAppCommand.command(in: text, folders: folders, items: items, inSettings: shelf == .settings) else { return nil }
@@ -1914,11 +2246,303 @@ struct AylaChatScreen: View {
         return said
     }
 
+    /// Searching vacancies as steps she ticks off, like what she does in the app: search, compare, show. The server
+    /// says where she is (`AylaActivity`).
+    private func followSearch(_ activity: AylaActivity?) {
+        switch activity {
+        case .searchingVacancies:
+            actionRun = UUID()
+            showsSearchSteps = true
+            withAnimation(.easeOut(duration: 0.2)) {
+                actionSteps = [
+                    AylaActionStep(id: 0, title: AylaMessages.searchStepFind, state: .running),
+                    AylaActionStep(id: 1, title: AylaMessages.searchStepCompare(withVault: true)),
+                    AylaActionStep(id: 2, title: AylaMessages.searchStepShow),
+                ]
+            }
+        case .comparingVacancies(let count, let withVault, _):
+            guard showsSearchSteps else { return }
+            withAnimation(.easeOut(duration: 0.2)) {
+                actionSteps = [
+                    AylaActionStep(id: 0, title: AylaMessages.searchStepFound(count), state: .done),
+                    AylaActionStep(id: 1, title: AylaMessages.searchStepCompare(withVault: withVault), state: .running),
+                    AylaActionStep(id: 2, title: AylaMessages.searchStepShow),
+                ]
+            }
+        default:
+            break
+        }
+    }
+
+    private func finishSearchSteps() {
+        showsSearchSteps = false
+        let found = model.entries.last.map { !Self.vacancies(in: $0).isEmpty } ?? false
+        guard found else {
+            withAnimation(.easeOut(duration: 0.25)) { actionSteps = [] }
+            return
+        }
+        let token = UUID()
+        actionRun = token
+        withAnimation(.easeOut(duration: 0.2)) {
+            actionSteps = actionSteps.map { AylaActionStep(id: $0.id, title: $0.title, state: .done) }
+        }
+        Task {
+            try? await Task.sleep(for: .seconds(4))
+            guard actionRun == token else { return }
+            withAnimation(.easeOut(duration: 0.25)) { actionSteps = [] }
+        }
+    }
+
+    /// Carries out what Ayla chose to do, one thing after the other, with a line per step so you follow her, also
+    /// when you only talk. What could not be done is said in the chat and to VoiceOver.
+    private func run(_ actions: [AylaAppAction], continues: Bool = false) async {
+        let token = UUID()
+        actionRun = token
+        showsSearchSteps = false
+        withAnimation(.easeOut(duration: 0.2)) {
+            actionSteps = actions.enumerated().map { AylaActionStep(id: $0.offset, title: AylaActionWords.doing($0.element)) }
+        }
+        var said: [String] = []
+        var results: [AylaRequest.ActionResult] = []
+        for (index, action) in actions.enumerated() {
+            if index > 0 { try? await Task.sleep(for: .milliseconds(700)) }
+            guard actionRun == token else { return }
+            actionSteps[index].state = .running
+            // Outside PAVE (Lock Screen, Dynamic Island) only how far she is, never what it is about.
+            voice?.doingNote = AylaMessages.voiceStep(index + 1, of: actions.count)
+            let outcome = await perform(action)
+            guard actionRun == token, actionSteps.indices.contains(index) else { return }
+            switch outcome {
+            case .done:
+                actionSteps[index].state = .done
+                results.append(AylaRequest.ActionResult(action.kind, ok: true))
+            case .said(let words):
+                actionSteps[index].state = .done
+                said.append(words)
+                results.append(AylaRequest.ActionResult(action.kind, ok: true, said: words))
+            case .failed(let words):
+                actionSteps[index].state = .failed
+                said.append(words)
+                results.append(AylaRequest.ActionResult(action.kind, ok: false, said: words))
+                PaveHaptics.tap(.rigid)
+            }
+        }
+        voice?.doingNote = nil
+        await openPageAfterActions()
+        if shelf != nil { showsShelfReply = true }
+        // She asked to hear what came of it, or something did not work: she looks at the result and goes on herself
+        // (another way, the next steps), instead of the app only saying it failed.
+        // Only then: when all went well she has said what she did, and a round of her own would be her talking again
+        // without being asked. A job too big for one go shows by a full list of steps.
+        let hasMore = continues && actions.count >= AylaChatModel.stepsPerRound
+        let goesOn = (hasMore || results.contains { !$0.ok }) && model.canContinue && !actions.contains(where: \.needsConfirmation)
+        if goesOn {
+            try? await Task.sleep(for: .milliseconds(500))
+            guard actionRun == token else { return }
+            let otherwise = said.isEmpty ? nil : said.joined(separator: " ")
+            if let voice, isTalking {
+                model.continueAfter(results, spoken: true, otherwise: otherwise)
+                voice.send(typed: AylaChatModel.followUpText, checksYes: false)
+            } else {
+                model.continueAfter(results, spoken: false, otherwise: otherwise)
+            }
+            try? await Task.sleep(for: .seconds(2.2))
+            guard actionRun == token else { return }
+            withAnimation(.easeOut(duration: 0.25)) { actionSteps = [] }
+            return
+        }
+        if !said.isEmpty {
+            let words = said.joined(separator: " ")
+            model.say(words)
+            AccessibilityNotification.Announcement(words).post()
+        }
+        // The steps stay a moment, so you see they are done, and then make room again.
+        try? await Task.sleep(for: .seconds(said.isEmpty ? 5 : 8))
+        guard actionRun == token else { return }
+        withAnimation(.easeOut(duration: 0.25)) { actionSteps = [] }
+    }
+
+    private enum ActionOutcome {
+        case done
+        /// Done, with something to tell that her own words could not know ("De map bestond al").
+        case said(String)
+        case failed(String)
+    }
+
+    /// What the small orb says next to it on an open page.
+    private func shelfVoiceStatus(_ voice: AylaVoiceSession) -> String {
+        if heldForPicking { return AylaMessages.voiceHolds }
+        if voice.isMuted { return AylaMessages.voiceMuted }
+        switch voice.state {
+        case .starting, .off: return AylaMessages.voiceStarting
+        case .listening: return AylaMessages.voiceListening
+        case .thinking: return model.activity.map(AylaMessages.activity) ?? AylaMessages.thinking
+        case .speaking: return AylaMessages.voiceSpeaking
+        }
+    }
+
+    /// How the app is set right now, for Ayla.
+    private var appStateNow: AylaRequest.AppState {
+        let chat = model.currentConversation
+        return AylaRequest.AppState(
+            theme: profile?.theme.rawValue,
+            textSize: profile?.textSize.rawValue,
+            displayMode: profile?.displayMode.rawValue,
+            vaultLayout: profile?.vaultLayout.rawValue,
+            voiceText: showsVoiceText,
+            animations: !UserDefaults.standard.bool(forKey: PaveAppearance.animationsOffKey),
+            memory: memory.state == .ready ? memory.memories.isEnabled : nil,
+            chatTitle: chat?.title,
+            chatPinned: chat?.isPinned,
+            seeing: seeingNow
+        )
+    }
+
+    /// What is on screen right now, in a few words for Ayla: the page, the tab, the card. No vault content and no
+    /// names from the vault; a vacancy that is open goes along as itself (`showVacancy`).
+    private var seeingNow: String {
+        if picksVaultItem { return "het keuzescherm om items uit de kluis te kiezen" }
+        if addEvidence != nil { return "het formulier om bewijs aan de kluis toe te voegen" }
+        if showsMemory { return "wat Ayla over de gebruiker onthoudt" }
+        switch shelf {
+        case .settings?:
+            return pageDriver.settingsDepth > 0 ? "een pagina van Instellingen\(pageDriver.settingsPage.map { " (\($0.title))" } ?? "")" : "Instellingen"
+        case .vault?:
+            return pageDriver.vaultDepth > 0 ? "de kluis, in een map of bij een bewijsstuk" : "de kluis"
+        case .notifications?: return "de meldingen"
+        case .plan?: return "het plan"
+        case .profile?: return "het profiel"
+        case .vacancies?:
+            if pageDriver.vacancy != nil { return "één vacature, helemaal open" }
+            let shown = VacancyList.shown(vacancyTab, found: openVacancies ?? [], model: model)
+            return "de lijst met vacatures, tabblad \(vacancyTab == .saved ? AylaMessages.vacancySavedTab : AylaMessages.vacancyFound), \(shown.count) in de lijst"
+        case nil:
+            guard isTalking else { return "de chat" }
+            let vacancies = voiceVacancies
+            guard browsesByHead, !vacancies.isEmpty else { return "het gesprek met de bol" }
+            return "het gesprek met de bol, met vacature \(min(vacancyIndex, vacancies.count - 1) + 1) van \(vacancies.count) op de kaart eronder"
+        }
+    }
+
+    /// The vacancy on the card under the orb, so a question about "deze" is about that one.
+    private var cardVacancy: Vacancy? {
+        let vacancies = voiceVacancies
+        guard shelf == nil, browsesByHead, !vacancies.isEmpty else { return nil }
+        return vacancies[min(vacancyIndex, vacancies.count - 1)]
+    }
+
+    /// One action of Ayla's. Returns what there is to say about it: why it could not be done, or what came of it when
+    /// her own words could not know that; nil when it simply happened.
+    private func perform(_ action: AylaAppAction) async -> ActionOutcome {
+        let folders = vault?.folders.map { AylaAppCommand.Named(id: $0.id, name: $0.name) } ?? []
+        if let command = action.command(folders: folders) {
+            if (command == .back || command == .close), shelf == nil { return .done }
+            let said = perform(command)
+            switch command {
+            case .saveVacancy, .openVacancy, .textSizeStep: return .said(said)
+            default: return .done
+            }
+        }
+        func item() -> VaultItem? {
+            let named = (vault?.items ?? []).map { AylaAppCommand.Named(id: $0.id, name: $0.title) }
+            return AylaAppAction.best(action.target, in: named).flatMap { found in vault?.items.first { $0.id == found.id } }
+        }
+        func folder(_ name: String?) -> VaultFolder? {
+            AylaAppAction.best(name, in: folders).flatMap { found in vault?.folders.first { $0.id == found.id } }
+        }
+        /// The open conversation, once the list knows it (a new one takes a moment).
+        func chat() async -> AylaConversation? {
+            for _ in 0..<12 where model.currentConversation == nil { try? await Task.sleep(for: .milliseconds(150)) }
+            return model.currentConversation
+        }
+        switch action.kind {
+        case "openFolder":
+            return .failed(AylaMessages.actionNoFolder(action.target ?? ""))
+        case "openSettingsPage", "setTheme", "setTextSize", "setDisplayMode", "setVaultLayout", "setVoiceText", "setChatsInSearch", "openVacancy", "saveVacancy":
+            return .failed(AylaMessages.actionUnknownValue)
+        case "openMemory":
+            closingShelf { showsMemory = true }
+        case "newChat":
+            closeShelf()
+            model.newConversation()
+        case "openChat":
+            let chats = model.conversationList.conversations.filter { !$0.isArchived && (!$0.isLocked || model.showsLockedChats) }
+            guard let found = AylaAppAction.best(action.target, in: chats.map { AylaAppCommand.Named(id: $0.id, name: $0.title) }),
+                  let chat = chats.first(where: { $0.id == found.id }) else { return .failed(AylaMessages.actionNoChat(action.target ?? "")) }
+            closeShelf()
+            await model.open(chat)
+        case "renameChat":
+            guard let title = action.value, let chat = await chat() else { return .failed(AylaMessages.actionNoCurrentChat) }
+            model.rename(chat, to: title)
+        case "pinChat":
+            guard let isOn = action.isOn else { return .failed(AylaMessages.actionUnknownValue) }
+            guard let chat = await chat() else { return .failed(AylaMessages.actionNoCurrentChat) }
+            if chat.isPinned != isOn { model.togglePin(chat) }
+        case "archiveChat":
+            guard let chat = await chat() else { return .failed(AylaMessages.actionNoCurrentChat) }
+            model.setArchived(true, [chat])
+        case "setChatExpiry":
+            guard let expiry = action.expiry else { return .failed(AylaMessages.actionUnknownValue) }
+            guard let chat = await chat() else { return .failed(AylaMessages.actionNoCurrentChat) }
+            model.setExpiry(expiry, chat)
+        case "deleteChat":
+            guard let chat = await chat() else { return .failed(AylaMessages.actionNoCurrentChat) }
+            model.delete(chat)
+        case "setAnimations":
+            guard let isOn = action.isOn else { return .failed(AylaMessages.actionUnknownValue) }
+            inSettings(.appearance) { UserDefaults.standard.set(!isOn, forKey: PaveAppearance.animationsOffKey) }
+        case "setMemory":
+            guard let isOn = action.isOn else { return .failed(AylaMessages.actionUnknownValue) }
+            inSettings(.ayla) { memory.setEnabled(isOn) }
+        case "forgetAll":
+            memory.forgetAll()
+        case "createFolder":
+            guard let vault, let name = action.value else { return .failed(AylaMessages.actionUnavailable) }
+            let existing = folder(name)
+            let made = existing == nil ? await vault.createFolder(named: name, color: VaultFolderColor.presets[0], icon: VaultFolderIcon.allCases[0]) : existing
+            guard let made else { return .failed(AylaMessages.actionUnavailable) }
+            openPage(AylaReply.Navigation(screen: .vault))
+            pageDriver.vaultFolderID = made.id
+            return existing == nil ? .done : .said(AylaMessages.actionFolderExists(made.name))
+        case "moveToFolder":
+            guard let vault, let item = item() else { return .failed(AylaMessages.actionNoItem(action.target ?? "")) }
+            guard let folder = folder(action.value) else { return .failed(AylaMessages.actionNoFolder(action.value ?? "")) }
+            if !item.folderIDs.contains(folder.id) { await vault.toggle(folder, for: item) }
+            openPage(AylaReply.Navigation(screen: .vault))
+            pageDriver.vaultFolderID = folder.id
+        case "archiveEvidence":
+            guard let vault, let item = item() else { return .failed(AylaMessages.actionNoItem(action.target ?? "")) }
+            guard await vault.setArchived(true, item) else { return .failed(AylaMessages.actionUnavailable) }
+        case "allowAyla":
+            guard let isOn = action.isOn else { return .failed(AylaMessages.actionUnknownValue) }
+            guard let vault, let item = item() else { return .failed(AylaMessages.actionNoItem(action.target ?? "")) }
+            do {
+                try await vault.setAylaAllowed(isOn, itemID: item.id)
+                await vault.load()
+            } catch {
+                return .failed(AylaMessages.actionUnavailable)
+            }
+        case "requestVerification":
+            guard let item = item() else { return .failed(AylaMessages.actionNoItem(action.target ?? "")) }
+            if isTalking { stopVoice() }
+            closingShelf { confirmationItem = item }
+        case "deleteEvidence":
+            guard let vault, let item = item() else { return .failed(AylaMessages.actionNoItem(action.target ?? "")) }
+            await vault.delete(item)
+        case "signOut":
+            try? await Task.sleep(for: .milliseconds(900))
+            appState.signOut()
+        default:
+            return .failed(AylaMessages.actionUnavailable)
+        }
+        return .done
+    }
+
     private func perform(_ command: AylaAppCommand) -> String {
         switch command {
         case .settingsPage(let page):
             let destination = SettingsScreen.SettingsDestination(rawValue: page.rawValue) ?? .appearance
-            inSettings(destination) {}
+            inSettings(destination, staysOpen: true) {}
             return "Ik open \(destination.title)."
         case .theme(let theme):
             inSettings(.appearance) { await profile?.setTheme(theme) }
@@ -1959,7 +2583,25 @@ struct AylaChatScreen: View {
         case .vaultItem(let id):
             openPage(AylaReply.Navigation(screen: .vaultItem, itemId: id))
             return "Ik open \(vault?.items.first { $0.id == id }?.title ?? "het")."
+        case .saveVacancy(let place):
+            return saveVacancy(at: place)
+        case .openSavedVacancies:
+            openSavedVacancies()
+            return "Hier zijn je bewaarde vacatures."
+        case .openVacancies:
+            guard let entry = model.entries.last(where: { !Self.vacancies(in: $0).isEmpty }) else {
+                return "Er zijn nog geen vacatures in dit gesprek. Vraag me eerst vacatures te zoeken."
+            }
+            openVacancies(from: entry.id)
+            return "Hier zijn de vacatures."
+        case .openVacancy(let place):
+            return openVacancy(at: place)
         case .back:
+            if shelf == .vacancies, pageDriver.vacancy != nil {
+                PaveHaptics.selection()
+                pageDriver.vacancy = nil
+                return "Ik ga een stap terug."
+            }
             // Nothing to go back from: the page itself closes.
             let depth = shelf == .settings ? pageDriver.settingsDepth : shelf == .vault ? pageDriver.vaultDepth : 0
             guard depth > 0 else {
@@ -1976,14 +2618,28 @@ struct AylaChatScreen: View {
     }
 
     /// Opens Instellingen on the right page and then makes the change, a moment apart, so you see Ayla do it.
-    private func inSettings(_ page: SettingsScreen.SettingsDestination, change: @escaping () async -> Void) {
+    /// `staysOpen`: you asked to see the page itself. For a change she makes, Instellingen comes up, you see it
+    /// change, and it goes down again by itself, unless it was you who had it open.
+    private func inSettings(_ page: SettingsScreen.SettingsDestination, staysOpen: Bool = false, change: @escaping () async -> Void) {
         let wasOpen = shelf == .settings
+        if !wasOpen { settingsOpenedForChange = !staysOpen } else if staysOpen { settingsOpenedForChange = false }
         openPage(AylaReply.Navigation(screen: .settings))
         pageDriver.settingsPage = page
+        // Going down waits for the last change: a next one in the same breath starts the wait again, and never
+        // stops a change that is still to come.
+        settingsClose?.cancel()
         Task {
             try? await Task.sleep(for: .milliseconds(wasOpen ? 700 : 1300))
             await change()
             PaveHaptics.success()
+            settingsClose?.cancel()
+            settingsClose = Task {
+                // Long enough to see what changed.
+                try? await Task.sleep(for: .milliseconds(1700))
+                guard !Task.isCancelled, settingsOpenedForChange, shelf == .settings else { return }
+                settingsOpenedForChange = false
+                closeShelf()
+            }
         }
     }
 
@@ -2000,6 +2656,7 @@ struct AylaChatScreen: View {
         showsShelfReply = false
         localReply = nil
         guard let shelf else { return }
+        if shelf == .vacancies { model.showVacancy(nil) }
         model.hideScreen(shelf.screen)
         self.shelf = nil
     }
@@ -2049,8 +2706,15 @@ struct AylaChatScreen: View {
 
     private static func vacancies(in entry: AylaChatModel.Entry) -> [Vacancy] {
         (entry.reply?.blocks ?? []).flatMap { block -> [Vacancy] in
-            if case .vacancies(let items) = block { items } else { [] }
+            if case .vacancies(let items, _) = block { items } else { [] }
         }
+    }
+
+    /// What Ayla searched for to find them.
+    private static func search(in entry: AylaChatModel.Entry) -> VacancySearch? {
+        (entry.reply?.blocks ?? []).lazy.compactMap { block -> VacancySearch? in
+            if case .vacancies(_, let search) = block { search } else { nil }
+        }.first
     }
 }
 

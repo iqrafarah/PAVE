@@ -275,8 +275,10 @@ const shelfMask = computed(() => {
   return { maskImage: mask, WebkitMaskImage: mask };
 });
 
-function handleItemAction(item: VaultItem, action: 'edit' | 'confirm' | 'delete') {
+function handleItemAction(item: VaultItem, action: 'edit' | 'confirm' | 'archive' | 'delete') {
   if (action === 'edit') editedId.value = item.id;
+  // Out of the vault, into Instellingen › Archief (as on iOS).
+  else if (action === 'archive') vault.setArchived(item, true);
   else if (action === 'confirm') confirmedId.value = item.id;
   else {
     deletedItem.value = item;

@@ -8,10 +8,11 @@
 
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>
 
-export interface FoundLogo { data: string; mimeType: string; source: string }
+/** `url` is where the image itself is, for a card that loads it instead of keeping it. */
+export interface FoundLogo { data: string; mimeType: string; source: string; url: string }
 
 interface Candidate { url: string; bonus: number }
-interface Measured { data: Uint8Array; mimeType: string; width: number; height: number; bonus: number }
+interface Measured { data: Uint8Array; mimeType: string; width: number; height: number; bonus: number; url?: string }
 
 const PAGE_LIMIT = 1_500_000
 const IMAGE_LIMIT = 600_000
@@ -32,7 +33,7 @@ export async function findLogo(domain: string, fetchImpl: Fetch = fetch, timeout
   const unique = [...new Map(candidates.map((candidate) => [candidate.url, candidate])).values()].slice(0, MAX_CANDIDATES)
   const measured = await Promise.all(unique.map((candidate) => measuredImage(candidate, fetchImpl, timeoutMs)))
   const best = pickBest(measured.filter((image): image is Measured => !!image))
-  return best ? { data: toBase64(best.data), mimeType: best.mimeType, source: domain } : undefined
+  return best ? { data: toBase64(best.data), mimeType: best.mimeType, source: domain, url: best.url ?? '' } : undefined
 }
 
 /** About square and as sharp as possible; a wide banner or a tiny icon only when nothing better is there. */
@@ -136,7 +137,7 @@ async function measuredImage(candidate: Candidate, fetchImpl: Fetch, timeoutMs: 
   if (!response?.ok || !IMAGE_TYPES.includes(mimeType)) return undefined
   const data = await limited(response, IMAGE_LIMIT)
   const size = data && data.length >= 100 ? imageSize(data) : undefined
-  return data && size ? { data, mimeType, ...size, bonus: candidate.bonus } : undefined
+  return data && size ? { data, mimeType, ...size, bonus: candidate.bonus, url: candidate.url } : undefined
 }
 
 function absolute(href: string, pageURL: string): string | undefined {

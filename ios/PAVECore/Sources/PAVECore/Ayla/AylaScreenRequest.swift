@@ -30,6 +30,14 @@ public enum AylaScreenRequest {
         return isOnlyOpening ? screen : nil
     }
 
+    /// The page to open at once while Ayla answers: not when the words also ask her to change or do something
+    /// ("zet donker uit en open je kluis"), because her actions would push the page away again.
+    public static func screenToOpenAtOnce(askedIn text: String) -> AylaScreen? {
+        guard let screen = screen(askedIn: text) else { return nil }
+        let doing = #"\b(zet|zetten|maak|maken|verander|veranderen|wissel|schakel|pas .* aan|verwijder|wis|hernoem|archiveer|bewaar|start|begin|sluit|draai)\b"#
+        return matches(normalized(text), doing) ? nil : screen
+    }
+
     private static let openingWords: Set<String> = [
         "open", "opent", "openen", "toon", "tonen", "bekijk", "bekijken", "ga", "gaan", "naar", "breng", "neem", "mee", "laat",
         "zien", "wil", "wou", "mag", "kan", "kun", "kunt", "ik", "je", "jij", "ayla", "hey", "hé", "hoi", "eens", "even", "ff",

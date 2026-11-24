@@ -8,6 +8,8 @@ interface ChatsState {
   status: ChatsStatus;
   canPin: boolean;
   canArchive: boolean;
+  // False until ayla_conversations.expiry_days exists (migration 20261120120000): no Verval per chat yet.
+  canExpire: boolean;
   hiddenIds: string[];
 }
 
@@ -15,14 +17,20 @@ interface ConversationRow {
   id: string;
   title: string | null;
   updated_at: string;
+  created_at?: string | null;
   pinned_at?: string | null;
   archived_at?: string | null;
+  expiry_days?: number | null;
   started_on: AylaDevice;
 }
 
 const LIST_LIMIT = 50;
 const SEARCH_LIMIT = 30;
-const COLUMNS_WITH_ARCHIVE = 'id,title,updated_at,pinned_at,archived_at,started_on';
+const COLUMNS_WITH_EXPIRY = 'id,title,created_at,updated_at,pinned_at,archived_at,expiry_days,started_on';
+const COLUMNS_WITH_ARCHIVE = 'id,title,created_at,updated_at,pinned_at,archived_at,started_on';
+// Chats whose time is up are deleted on the server when the list loads, at most every ten minutes (as on iOS).
+const EXPIRY_CHECK_MS = 10 * 60 * 1000;
+let lastExpiryCheck = 0;
 const COLUMNS_WITH_PIN = 'id,title,updated_at,pinned_at,started_on';
 const COLUMNS_WITHOUT_PIN = 'id,title,updated_at,started_on';
 const LIKE_SPECIAL_CHARACTERS = /[\\%_]/g;
@@ -34,6 +42,8 @@ function toConversation(row: ConversationRow): Conversation {
     updatedAt: row.updated_at,
     pinnedAt: row.pinned_at ?? null,
     archivedAt: row.archived_at ?? null,
+    createdAt: row.created_at ?? null,
+    expiryDays: row.expiry_days ?? null,
     startedOn: row.started_on,
   };
 }
@@ -52,6 +62,7 @@ export function useAylaChats() {
     status: 'idle',
     canPin: true,
     canArchive: true,
+    canExpire: true,
     hiddenIds: [],
   }));
 
@@ -72,7 +83,7 @@ export function useAylaChats() {
         (conversation) =>
           conversation.archivedAt && !state.value.hiddenIds.includes(conversation.id) && !lock.isLocked(conversation.id),
       )
-      .sort((first, second) => second.updatedAt.localeCompare(first.updatedAt)),
+      .sort((first, second) => (second.archivedAt ?? '').localeCompare(first.archivedAt ?? '')),
   );
 
   function selectConversations(columns: string) {
@@ -95,9 +106,16 @@ export function useAylaChats() {
     }
     if (state.value.status !== 'ready') state.value.status = 'loading';
 
-    let { data, error } = await selectConversations(COLUMNS_WITH_ARCHIVE);
-    // Until the archived_at migration runs, archiving is hidden and the list still loads.
+    await expireChats();
+    let { data, error } = await selectConversations(COLUMNS_WITH_EXPIRY);
+    // Until the expiry_days migration runs there is no Verval per chat; the archive may already be there.
+    state.value.canExpire = true;
     state.value.canArchive = true;
+    if (isMissingColumn(error)) {
+      state.value.canExpire = false;
+      ({ data, error } = await selectConversations(COLUMNS_WITH_ARCHIVE));
+    }
+    // Until the archived_at migration runs, archiving is hidden and the list still loads.
     if (isMissingColumn(error)) {
       state.value.canArchive = false;
       ({ data, error } = await selectConversations(COLUMNS_WITH_PIN));
@@ -112,8 +130,25 @@ export function useAylaChats() {
       return;
     }
     const rows = data as unknown as ConversationRow[];
+    // The archive in full, also chats older than the most recent ones (as on iOS).
+    if (state.value.canArchive) {
+      const archived = await supabase
+        .from('ayla_conversations')
+        .select(state.value.canExpire ? COLUMNS_WITH_EXPIRY : COLUMNS_WITH_ARCHIVE)
+        .not('archived_at', 'is', null)
+        .order('archived_at', { ascending: false });
+      const known = new Set(rows.map((row) => row.id));
+      for (const row of (archived.data ?? []) as unknown as ConversationRow[]) if (!known.has(row.id)) rows.push(row);
+    }
     state.value.conversations = rows.map(toConversation);
     state.value.status = 'ready';
+  }
+
+  /** Deletes the chats of this account whose time is up (ayla_expire_my_chats); missing before its migration. */
+  async function expireChats() {
+    if (Date.now() - lastExpiryCheck < EXPIRY_CHECK_MS) return;
+    lastExpiryCheck = Date.now();
+    await supabase.rpc('ayla_expire_my_chats');
   }
 
   async function subscribe(): Promise<RealtimeChannel | null> {
@@ -164,9 +199,16 @@ export function useAylaChats() {
     return updateConversation(id, { pinnedAt }, { pinned_at: pinnedAt });
   }
 
+  /** An archived chat is no longer pinned, so it comes back as an ordinary chat (as on iOS). */
   function setArchived(id: string, isArchived: boolean) {
     const archivedAt = isArchived ? new Date().toISOString() : null;
-    return updateConversation(id, { archivedAt }, { archived_at: archivedAt });
+    if (!isArchived) return updateConversation(id, { archivedAt }, { archived_at: archivedAt });
+    return updateConversation(id, { archivedAt, pinnedAt: null }, { archived_at: archivedAt, pinned_at: null });
+  }
+
+  /** "Verval" of one chat: null follows the account, 0 never expires, otherwise after that many days. */
+  function setExpiry(id: string, expiryDays: number | null) {
+    return updateConversation(id, { expiryDays }, { expiry_days: expiryDays });
   }
 
   function rename(id: string, title: string) {
@@ -231,6 +273,7 @@ export function useAylaChats() {
     unsubscribe,
     setPinned,
     setArchived,
+    setExpiry,
     rename,
     hide,
     unhide,

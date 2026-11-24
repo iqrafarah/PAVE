@@ -86,7 +86,7 @@ struct VaultLogoAvatar: View {
                 .background(Color.panel, in: .circle)
                 .overlay { Circle().strokeBorder(Color.cardBorder, lineWidth: 1) }
         } else {
-            CompanyMonogram(name: name, size: size)
+            CompanyIconBadge(size: size)
         }
     }
 }

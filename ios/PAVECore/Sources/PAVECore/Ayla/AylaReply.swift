@@ -141,6 +141,10 @@ public struct AylaReply: Codable, Equatable, Sendable {
     public var proposedAction: ProposedAction?
     public var blocks: [AylaBlock]
     public var navigation: Navigation?
+    /// What Ayla does in the app with this answer, in order.
+    public var actions: [AylaAppAction]?
+    /// She is not done yet: the app tells her what came of these actions and she goes on.
+    public var continues: Bool?
     /// Ayla suggests remembering these facts, one per item; they are saved only after the user confirms (`AylaMemory`).
     public var memories: [MemorySuggestion]?
     /// One suggestion, as the first version of the Ayla function sent it. Still read for older messages.
@@ -200,6 +204,8 @@ public struct AylaReply: Codable, Equatable, Sendable {
         proposedAction: ProposedAction? = nil,
         blocks: [AylaBlock] = [],
         navigation: Navigation? = nil,
+        actions: [AylaAppAction]? = nil,
+        continues: Bool? = nil,
         memories: [MemorySuggestion]? = nil,
         memory: MemorySuggestion? = nil,
         usedMemories: [UsedMemory]? = nil,
@@ -214,6 +220,8 @@ public struct AylaReply: Codable, Equatable, Sendable {
         self.proposedAction = proposedAction
         self.blocks = blocks
         self.navigation = navigation
+        self.actions = actions
+        self.continues = continues
         self.memories = memories
         self.memory = memory
         self.usedMemories = usedMemories

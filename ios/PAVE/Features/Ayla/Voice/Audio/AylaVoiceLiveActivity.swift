@@ -9,6 +9,7 @@ final class AylaVoiceLiveActivity {
     typealias Attributes = AylaVoiceActivityAttributes
     private var activityID: String?
     private var status: Attributes.ContentState.Status?
+    private var note: String?
 
     func start(status: Attributes.ContentState.Status) {
         guard activityID == nil, ActivityAuthorizationInfo().areActivitiesEnabled else { return }
@@ -18,11 +19,12 @@ final class AylaVoiceLiveActivity {
         activityID = (try? Activity.request(attributes: Attributes(accentHex: accent), content: content))?.id
     }
 
-    func update(status: Attributes.ContentState.Status) {
-        guard let activityID, status != self.status else { return }
+    func update(status: Attributes.ContentState.Status, note: String? = nil) {
+        guard let activityID, status != self.status || note != self.note else { return }
         self.status = status
+        self.note = note
         Task.detached {
-            let content = ActivityContent(state: Attributes.ContentState(status: status), staleDate: nil)
+            let content = ActivityContent(state: Attributes.ContentState(status: status, note: note), staleDate: nil)
             for activity in Activity<Attributes>.activities where activity.id == activityID {
                 await activity.update(content)
             }
@@ -33,6 +35,7 @@ final class AylaVoiceLiveActivity {
         guard let activityID else { return }
         self.activityID = nil
         status = nil
+        note = nil
         Task.detached {
             for activity in Activity<Attributes>.activities where activity.id == activityID {
                 await activity.end(nil, dismissalPolicy: .immediate)

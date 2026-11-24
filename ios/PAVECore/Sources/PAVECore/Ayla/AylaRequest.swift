@@ -6,11 +6,62 @@ public struct AylaRequest: Codable, Equatable, Sendable {
         public var itemId: String?
         /// Several items chosen from the vault for the whole conversation.
         public var itemIds: [String]?
+        /// The vacancy you have open, so "past deze bij mij?" is about that one.
+        public var vacancy: OpenVacancy?
+        /// Two or three vacancies you picked to compare.
+        public var compare: [OpenVacancy]?
+        /// What you asked for with a button on a vacancy, or the practice interview that is going on.
+        public var task: VacancyTask?
 
-        public init(screen: AylaScreen, itemId: String? = nil, itemIds: [String]? = nil) {
+        public init(
+            screen: AylaScreen,
+            itemId: String? = nil,
+            itemIds: [String]? = nil,
+            vacancy: OpenVacancy? = nil,
+            compare: [OpenVacancy]? = nil,
+            task: VacancyTask? = nil
+        ) {
             self.screen = screen
             self.itemId = itemId
             self.itemIds = itemIds
+            self.vacancy = vacancy
+            self.compare = compare
+            self.task = task
+        }
+    }
+
+    /// The things you can do with a vacancy you picked. `compare` needs `compare`; the others need `vacancy`.
+    public enum VacancyTask: String, Codable, Sendable, CaseIterable {
+        /// Side by side, ending with advice.
+        case compare
+        /// What you still miss, and steps toward the job.
+        case gaps
+        /// What to send along and a first go at the motivation letter.
+        case prepare
+        /// Ayla plays the recruiter, one question at a time.
+        case interview
+    }
+
+    /// A vacancy as its card shows it, within the limits the server accepts.
+    public struct OpenVacancy: Codable, Equatable, Sendable {
+        public var title: String
+        public var company: String
+        public var city: String?
+        public var summary: String?
+        public var matches: [String]
+        public var skillGap: [String]
+
+        public init(_ vacancy: Vacancy) {
+            func cut(_ text: String, _ max: Int) -> String { String(text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(max)) }
+            func skills(_ links: [Vacancy.RequirementLink]) -> [String] {
+                links.map { cut($0.skill, 120) }.filter { !$0.isEmpty }.prefix(8).map(\.self)
+            }
+            title = cut(vacancy.title, 200)
+            company = cut(vacancy.company, 200)
+            city = vacancy.city.map { cut($0, 200) }.flatMap { $0.isEmpty ? nil : $0 }
+            summary = vacancy.summary.map { cut($0, 600) }.flatMap { $0.isEmpty ? nil : $0 }
+            matches = skills(vacancy.matches)
+            skillGap = skills(vacancy.skillGap)
         }
     }
 
@@ -22,6 +73,63 @@ public struct AylaRequest: Codable, Equatable, Sendable {
     public var input: AylaInput
     public var context: Context?
     public var attachments: [AylaAttachment]?
+    /// How the app is set right now, so Ayla can say how something stands and does not do what is already so.
+    public var app: AppState?
+    /// What came of the actions of Ayla's previous answer. The app sends this itself, so she can go on; it is not
+    /// something you said, and no message of yours is stored for it.
+    public var results: [ActionResult]?
+
+    public struct ActionResult: Codable, Equatable, Sendable {
+        public var kind: String
+        public var ok: Bool
+        public var said: String?
+
+        private enum CodingKeys: String, CodingKey {
+            case kind = "do"
+            case ok, said
+        }
+
+        public init(_ kind: String, ok: Bool, said: String? = nil) {
+            self.kind = kind
+            self.ok = ok
+            // The server takes at most 300 characters.
+            self.said = said.map { String($0.prefix(300)) }
+        }
+    }
+
+    /// Settings and the open conversation as the app has them. No vault content, no names of folders or evidence.
+    public struct AppState: Codable, Equatable, Sendable {
+        public var theme: String?
+        public var textSize: String?
+        public var displayMode: String?
+        public var vaultLayout: String?
+        public var voiceText: Bool?
+        public var animations: Bool?
+        public var memory: Bool?
+        public var chatTitle: String?
+        public var chatPinned: Bool?
+        /// What is on screen right now, in a few words, so "deze" and "hier" need no asking back.
+        public var seeing: String?
+
+        public init(
+            theme: String? = nil, textSize: String? = nil, displayMode: String? = nil, vaultLayout: String? = nil,
+            voiceText: Bool? = nil, animations: Bool? = nil, memory: Bool? = nil, chatTitle: String? = nil, chatPinned: Bool? = nil,
+            seeing: String? = nil
+        ) {
+            self.theme = theme
+            self.textSize = textSize
+            self.displayMode = displayMode
+            self.vaultLayout = vaultLayout
+            self.voiceText = voiceText
+            self.animations = animations
+            self.memory = memory
+            // The server takes at most 80 characters.
+            self.chatTitle = chatTitle.map { String($0.prefix(80)) }
+            self.chatPinned = chatPinned
+            // The server takes at most 200 characters.
+            self.seeing = seeing.map { String($0.prefix(200)) }
+        }
+    }
 
     public init(
         conversationId: String? = nil,
@@ -30,7 +138,9 @@ public struct AylaRequest: Codable, Equatable, Sendable {
         input: AylaInput,
         context: Context? = nil,
         attachments: [AylaAttachment] = [],
-        projectId: String? = nil
+        projectId: String? = nil,
+        app: AppState? = nil,
+        results: [ActionResult]? = nil
     ) {
         self.conversationId = conversationId
         self.projectId = conversationId == nil ? projectId : nil
@@ -39,6 +149,8 @@ public struct AylaRequest: Codable, Equatable, Sendable {
         self.input = input
         self.context = context
         self.attachments = attachments.isEmpty ? nil : attachments
+        self.app = app
+        self.results = results?.isEmpty == false ? results.map { Array($0.prefix(8)) } : nil
     }
 }
 

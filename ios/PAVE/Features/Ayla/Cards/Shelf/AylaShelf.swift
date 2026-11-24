@@ -8,6 +8,8 @@ enum AylaShelf: String, Identifiable, CaseIterable {
     case profile
     case settings
     case notifications
+    /// Ayla's vacancies and the ones you kept: only from the chat, never from the menu.
+    case vacancies
 
     var id: Self { self }
 
@@ -18,6 +20,7 @@ enum AylaShelf: String, Identifiable, CaseIterable {
         case .profile: "Profiel"
         case .settings: "Instellingen"
         case .notifications: "Meldingen"
+        case .vacancies: "Vacatures"
         }
     }
 
@@ -31,6 +34,7 @@ enum AylaShelf: String, Identifiable, CaseIterable {
         case .profile: "Vraag Ayla hieronder iets over je profiel."
         case .settings: "Praat hieronder verder met Ayla."
         case .notifications: "Praat hieronder verder met Ayla."
+        case .vacancies: "Vraag Ayla hieronder iets over deze vacatures."
         }
     }
 
@@ -41,6 +45,7 @@ enum AylaShelf: String, Identifiable, CaseIterable {
         case .profile: .profile
         case .settings: .settings
         case .notifications: .notifications
+        case .vacancies: .vacancies
         }
     }
 

@@ -48,14 +48,28 @@ public protocol VaultService: Sendable {
     /// Read-only, MFA-protected directory choices for the verification request form.
     func validationOrganizations() async throws -> [VaultValidationOrganization]
     func validationLocations(organizationID: String) async throws -> [VaultValidationLocation]
-    func validationDepartments(organizationID: String, locationID: String) async throws -> [VaultValidationDepartment]
-    func validationContacts(organizationID: String, locationID: String, departmentID: String?) async throws -> [VaultValidationContact]
-    /// Routes the request by trusted directory IDs. The server resolves recipients; the client never sends reviewer IDs.
+    func validationDepartments(locationID: String) async throws -> [VaultValidationDepartment]
+    func validationContacts(departmentID: String) async throws -> [VaultValidationContact]
+    /// A page of organisations where someone may confirm this kind of evidence; `kind` nil for every kind.
+    func searchValidationOrganizations(
+        category: VaultCategory, query: String, kind: VaultOrganizationKind?, offset: Int
+    ) async throws -> VaultValidationPage<VaultValidationOrganization>
+    /// Organisations known by ID (from the evidence or an earlier request), also when nobody there may confirm it.
+    func validationOrganizations(ids: [String], category: VaultCategory) async throws -> [VaultValidationOrganization]
+    /// A page of the persons of one organisation who may confirm this kind of evidence, searched in the database.
+    func searchValidationPeople(
+        organizationID: String, category: VaultCategory, query: String, filters: VaultValidationFilters, offset: Int
+    ) async throws -> VaultValidationPage<VaultValidationPerson>
+    /// The location, department and function filters that lead to at least one of those persons.
+    func validationFilterOptions(organizationID: String, category: VaultCategory) async throws -> [VaultValidationFilterOption]
+    /// The persons this learner asked before, most recent first, as far as they may still confirm this kind of evidence.
+    func previousValidationPeople(category: VaultCategory) async throws -> [VaultValidationPerson]
+    /// Routes the request by trusted directory IDs. The server finds the account behind the person; the client never sends it.
     func requestValidation(
         itemID: String,
         organizationID: String,
         locationID: String,
-        departmentID: String?,
+        departmentID: String,
         contactID: String,
         message: String?
     ) async throws
@@ -64,9 +78,22 @@ public protocol VaultService: Sendable {
 public extension VaultService {
     func validationOrganizations() async throws -> [VaultValidationOrganization] { throw VaultError.notSetUp }
     func validationLocations(organizationID: String) async throws -> [VaultValidationLocation] { throw VaultError.notSetUp }
-    func validationDepartments(organizationID: String, locationID: String) async throws -> [VaultValidationDepartment] { throw VaultError.notSetUp }
-    func validationContacts(organizationID: String, locationID: String, departmentID: String?) async throws -> [VaultValidationContact] { throw VaultError.notSetUp }
-    func requestValidation(itemID: String, organizationID: String, locationID: String, departmentID: String?, contactID: String, message: String?) async throws {
+    func validationDepartments(locationID: String) async throws -> [VaultValidationDepartment] { throw VaultError.notSetUp }
+    func validationContacts(departmentID: String) async throws -> [VaultValidationContact] { throw VaultError.notSetUp }
+    func searchValidationOrganizations(
+        category: VaultCategory, query: String, kind: VaultOrganizationKind?, offset: Int
+    ) async throws -> VaultValidationPage<VaultValidationOrganization> { throw VaultError.notSetUp }
+    func validationOrganizations(ids: [String], category: VaultCategory) async throws -> [VaultValidationOrganization] {
+        throw VaultError.notSetUp
+    }
+    func searchValidationPeople(
+        organizationID: String, category: VaultCategory, query: String, filters: VaultValidationFilters, offset: Int
+    ) async throws -> VaultValidationPage<VaultValidationPerson> { throw VaultError.notSetUp }
+    func validationFilterOptions(organizationID: String, category: VaultCategory) async throws -> [VaultValidationFilterOption] {
+        throw VaultError.notSetUp
+    }
+    func previousValidationPeople(category: VaultCategory) async throws -> [VaultValidationPerson] { throw VaultError.notSetUp }
+    func requestValidation(itemID: String, organizationID: String, locationID: String, departmentID: String, contactID: String, message: String?) async throws {
         throw VaultError.notSetUp
     }
 
@@ -104,10 +131,11 @@ public enum VaultError: Error, Equatable, Sendable {
     /// The Edge Function behind this is not deployed yet.
     case notSetUp
     case validationOrganisationNotFound
-    case validationNoReviewer
     case validationAlreadyPending
     case validationItemUnavailable
     case validationInvalidChoice
+    /// The person may not confirm this kind of evidence.
+    case validationNotAuthorized
     case unavailable
 
     public init(_ error: any Error) { self = (error as? VaultError) ?? .unavailable }
@@ -145,7 +173,7 @@ public struct SupabaseVaultService: VaultService {
     public func contents() async throws -> VaultContents {
         let base = "*,vault_item_skills(name,status),vault_item_files(*),vault_item_folders(folder_id)"
         do {
-            return try await contents(select: base + ",vault_validation_requests(status,organisation_name,requested_at,response)")
+            return try await contents(select: base + ",vault_validation_requests(status,organisation_name,requested_at,response,organization_id)")
         } catch VaultError.missingColumn {
             // Without the requests the vault still loads; only "In afwachting" and the reason are missing.
         }
@@ -352,30 +380,209 @@ public struct SupabaseVaultService: VaultService {
         )
     }
 
-    public func validationDepartments(organizationID: String, locationID: String) async throws -> [VaultValidationDepartment] {
+    public func validationDepartments(locationID: String) async throws -> [VaultValidationDepartment] {
         try await directoryRows(
             VaultValidationDepartment.self,
             table: "organization_departments",
-            select: "id,organization_id,location_id,name",
-            filters: [
-                ("organization_id", "eq.\(organizationID)"),
-                ("location_id", "eq.\(locationID)"),
-                ("order", "name.asc"),
-            ]
+            select: "id,location_id,name",
+            filters: [("location_id", "eq.\(locationID)"), ("order", "name.asc")]
         )
     }
 
-    /// The persons at this location: in the department, or (a company, or a school location without departments) at the
-    /// location itself.
-    public func validationContacts(organizationID: String, locationID: String, departmentID: String?) async throws -> [VaultValidationContact] {
-        try await directoryRows(VaultValidationContact.self, table: "organization_contacts", filters: [
-            ("select", "id,organization_id,location_id,department_id,name,job_title,is_active"),
-            ("organization_id", "eq.\(organizationID)"),
-            ("location_id", "eq.\(locationID)"),
-            ("department_id", departmentID.map { "eq.\($0)" } ?? "is.null"),
-            ("is_active", "eq.true"),
-            ("order", "name.asc"),
-        ])
+    /// Only the persons with a PAVE account, and never yourself: the database shows no others.
+    public func validationContacts(departmentID: String) async throws -> [VaultValidationContact] {
+        try await directoryRows(
+            VaultValidationContact.self,
+            table: "organization_contacts",
+            select: "id,department_id,name,job_title,is_active",
+            filters: [("department_id", "eq.\(departmentID)"), ("is_active", "eq.true"), ("order", "name.asc")]
+        )
+    }
+
+    // Each of these falls back to the tables of before migration 20261124120000 while its functions are not there:
+    // then the app filters and pages itself, and nobody is checked per kind of evidence yet (the server does that).
+
+    public func searchValidationOrganizations(
+        category: VaultCategory, query: String, kind: VaultOrganizationKind?, offset: Int
+    ) async throws -> VaultValidationPage<VaultValidationOrganization> {
+        do {
+            return try await page(VaultValidationOrganization.self, function: "validation_search_organizations", parameters: [
+                "p_category": category.rawValue,
+                "p_query": query,
+                "p_kind": kind?.rawValue ?? NSNull(),
+                "p_limit": VaultValidationPage<VaultValidationOrganization>.size,
+                "p_offset": offset,
+            ])
+        } catch VaultError.missingColumn {
+            let found = try await validationOrganizations().filter { organization in
+                (kind == nil || organization.organizationKind == kind) && Self.matches(organization.name, query)
+            }
+            return Self.page(of: found, offset: offset)
+        }
+    }
+
+    public func validationOrganizations(ids: [String], category: VaultCategory) async throws -> [VaultValidationOrganization] {
+        guard !ids.isEmpty else { return [] }
+        do {
+            return try await rpc([VaultValidationOrganization].self, "validation_organizations_by_id", [
+                "p_category": category.rawValue,
+                "p_ids": ids,
+            ])
+        } catch VaultError.missingColumn {
+            return try await validationOrganizations().filter { ids.contains($0.id) }
+        }
+    }
+
+    public func searchValidationPeople(
+        organizationID: String, category: VaultCategory, query: String, filters: VaultValidationFilters, offset: Int
+    ) async throws -> VaultValidationPage<VaultValidationPerson> {
+        do {
+            return try await page(VaultValidationPerson.self, function: "validation_search_contacts", parameters: [
+                "p_organization_id": organizationID,
+                "p_category": category.rawValue,
+                "p_query": query,
+                "p_location_id": filters.locationID ?? NSNull(),
+                "p_department_id": filters.departmentID ?? NSNull(),
+                "p_function": filters.function ?? NSNull(),
+                "p_limit": VaultValidationPage<VaultValidationPerson>.size,
+                "p_offset": offset,
+            ])
+        } catch VaultError.missingColumn {
+            let found = try await legacyPeople([("organization_departments.organization_locations.organization_id", "eq.\(organizationID)")])
+                .filter { person in
+                    (filters.locationID == nil || person.locationId == filters.locationID)
+                        && (filters.departmentID == nil || person.departmentId == filters.departmentID)
+                        && (filters.function == nil || person.function == filters.function)
+                        && Self.matches([person.name, person.function, person.departmentName, person.city].joined(separator: " "), query)
+                }
+            return Self.page(of: found, offset: offset)
+        }
+    }
+
+    public func validationFilterOptions(organizationID: String, category: VaultCategory) async throws -> [VaultValidationFilterOption] {
+        do {
+            return try await rpc([VaultValidationFilterOption].self, "validation_contact_filters", [
+                "p_organization_id": organizationID,
+                "p_category": category.rawValue,
+            ])
+        } catch VaultError.missingColumn {
+            let people = try await legacyPeople([("organization_departments.organization_locations.organization_id", "eq.\(organizationID)")])
+            func options(_ filter: VaultValidationFilterOption.Filter, _ key: (VaultValidationPerson) -> (String, String, String?))
+                -> [VaultValidationFilterOption] {
+                Dictionary(grouping: people.map(key), by: \.0).map { value, rows in
+                    VaultValidationFilterOption(filter: filter, value: value, label: rows[0].1, locationId: rows[0].2, people: rows.count)
+                }
+                .sorted { $0.label.localizedStandardCompare($1.label) == .orderedAscending }
+            }
+            return options(.location) { ($0.locationId, $0.city, nil) }
+                + options(.department) { ($0.departmentId, $0.departmentName, $0.locationId) }
+                + options(.function) { ($0.function, $0.function, nil) }
+        }
+    }
+
+    public func previousValidationPeople(category: VaultCategory) async throws -> [VaultValidationPerson] {
+        do {
+            return try await rpc([VaultValidationPerson].self, "validation_previous_contacts", ["p_category": category.rawValue, "p_limit": 5])
+        } catch VaultError.missingColumn {
+            struct Previous: Decodable { let contactId: String }
+            let previous = try await directoryRows(
+                Previous.self,
+                table: "vault_validation_requests",
+                select: "contact_id",
+                filters: [("contact_id", "not.is.null"), ("order", "requested_at.desc"), ("limit", "50")]
+            )
+            var ids = [String]()
+            for row in previous where !ids.contains(row.contactId) { ids.append(row.contactId) }
+            guard !ids.isEmpty else { return [] }
+            let people = try await legacyPeople([("id", "in.(\(ids.joined(separator: ",")))")])
+            let names = Dictionary((try? await validationOrganizations())?.map { ($0.id, $0.name) } ?? [], uniquingKeysWith: { first, _ in first })
+            return ids.prefix(5).compactMap { id in
+                people.first { $0.id == id }.map { person in
+                    VaultValidationPerson(
+                        id: person.id, name: person.name, jobTitle: person.jobTitle, departmentId: person.departmentId,
+                        departmentName: person.departmentName, locationId: person.locationId, city: person.city,
+                        organizationId: person.organizationId, organizationName: names[person.organizationId]
+                    )
+                }
+            }
+        }
+    }
+
+    /// The persons with department and location embedded, from the tables themselves. `!inner` drops a person whose
+    /// department or location cannot be read.
+    private func legacyPeople(_ filters: [(String, String)]) async throws -> [VaultValidationPerson] {
+        struct Row: Decodable {
+            struct Department: Decodable {
+                struct Location: Decodable {
+                    let id: String
+                    let city: String
+                    let organizationId: String
+                }
+                let id: String
+                let name: String
+                let organizationLocations: Location
+            }
+            let id: String
+            let name: String
+            let jobTitle: String?
+            let organizationDepartments: Department
+        }
+        let rows = try await directoryRows(
+            Row.self,
+            table: "organization_contacts",
+            select: "id,name,job_title,organization_departments!inner(id,name,organization_locations!inner(id,city,organization_id))",
+            filters: filters + [("is_active", "eq.true"), ("order", "name.asc")]
+        )
+        return rows.map { row in
+            VaultValidationPerson(
+                id: row.id, name: row.name, jobTitle: row.jobTitle,
+                departmentId: row.organizationDepartments.id, departmentName: row.organizationDepartments.name,
+                locationId: row.organizationDepartments.organizationLocations.id,
+                city: row.organizationDepartments.organizationLocations.city,
+                organizationId: row.organizationDepartments.organizationLocations.organizationId
+            )
+        }
+    }
+
+    /// Every word of the query occurs in the text, ignoring case and accents: the same rule as the database.
+    static func matches(_ text: String, _ query: String) -> Bool {
+        query.split(whereSeparator: \.isWhitespace).allSatisfy {
+            text.range(of: $0, options: [.caseInsensitive, .diacriticInsensitive]) != nil
+        }
+    }
+
+    static func page<Row>(of rows: [Row], offset: Int) -> VaultValidationPage<Row> {
+        let start = min(max(offset, 0), rows.count)
+        let end = min(start + VaultValidationPage<Row>.size, rows.count)
+        return VaultValidationPage(rows: Array(rows[start..<end]), total: rows.count)
+    }
+
+    private func rpc<Result: Decodable>(_ type: Result.Type, _ function: String, _ parameters: [String: Any]) async throws -> Result {
+        try Self.decodeDirectory(Result.self, from: try await rpcData(function, parameters))
+    }
+
+    /// One page of rows; every row carries `total_count`, the number of rows over all pages.
+    private func page<Row: Decodable>(_ type: Row.Type, function: String, parameters: [String: Any]) async throws -> VaultValidationPage<Row> {
+        let data = try await rpcData(function, parameters)
+        let rows = try Self.decodeDirectory([Row].self, from: data)
+        let total = try Self.decodeDirectory([PageTotal].self, from: data).first?.totalCount ?? 0
+        return VaultValidationPage(rows: rows, total: total)
+    }
+
+    private struct PageTotal: Decodable { let totalCount: Int }
+
+    private func rpcData(_ function: String, _ parameters: [String: Any]) async throws -> Data {
+        try await send(try await request(restURL.appending(path: "rpc/\(function)"), method: "POST", json: parameters))
+    }
+
+    private static func decodeDirectory<Result: Decodable>(_ type: Result.Type, from data: Data) throws -> Result {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        do {
+            return try decoder.decode(Result.self, from: data)
+        } catch {
+            throw VaultError.unavailable
+        }
     }
 
     private func directoryRows<Row: Decodable>(
@@ -397,27 +604,11 @@ public struct SupabaseVaultService: VaultService {
         }
     }
 
-    private func directoryRows<Row: Decodable>(
-        _ type: Row.Type,
-        table: String,
-        filters: [(String, String)]
-    ) async throws -> [Row] {
-        let urlRequest = try await request(restURL.appending(path: table), query: filters)
-        let data = try await send(urlRequest)
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        do {
-            return try decoder.decode([Row].self, from: data)
-        } catch {
-            throw VaultError.unavailable
-        }
-    }
-
     public func requestValidation(
         itemID: String,
         organizationID: String,
         locationID: String,
-        departmentID: String?,
+        departmentID: String,
         contactID: String,
         message: String?
     ) async throws {
@@ -426,7 +617,7 @@ public struct SupabaseVaultService: VaultService {
             "itemId": itemID,
             "organizationId": organizationID,
             "locationId": locationID,
-            "departmentId": departmentID.map { $0 as Any } ?? NSNull(),
+            "departmentId": departmentID,
             "contactId": contactID,
             "message": message ?? "",
         ]
@@ -650,10 +841,10 @@ public struct SupabaseVaultService: VaultService {
             let detail = try? JSONDecoder().decode(FunctionError.self, from: data)
             switch detail?.error {
             case .some("organization_not_found"): throw VaultError.validationOrganisationNotFound
-            case .some("no_reviewers"): throw VaultError.validationNoReviewer
             case .some("already_pending"): throw VaultError.validationAlreadyPending
             case .some("item_not_awaiting_verification"): throw VaultError.validationItemUnavailable
             case .some("invalid_choice"): throw VaultError.validationInvalidChoice
+            case .some("not_authorized"): throw VaultError.validationNotAuthorized
             default: throw Self.error(status: status, body: data)
             }
         }
@@ -707,6 +898,7 @@ struct ItemRow: Decodable {
         let organisation_name: String
         let requested_at: String
         let response: String?
+        let organization_id: String?
     }
 
     struct FileRow: Decodable {
@@ -735,6 +927,7 @@ struct ItemRow: Decodable {
     let ayla_allowed_at: String?
     let position: Int?
     let archived_at: String?
+    let organization_id: String?
     let vault_item_skills: [SkillRow]?
     let vault_item_files: [FileRow]?
     let vault_item_folders: [FolderLinkRow]?
@@ -779,6 +972,7 @@ struct ItemRow: Decodable {
             lastRequest: Self.lastRequest(in: vault_validation_requests)
         )
         item.archivedAt = archived_at.map(SupabaseAylaService.date(from:))
+        item.organizationID = organization_id
         return item
     }
 
@@ -791,7 +985,8 @@ struct ItemRow: Decodable {
                     status: status,
                     organisationName: row.organisation_name,
                     requestedAt: SupabaseAylaService.date(from: row.requested_at),
-                    response: row.response
+                    response: row.response,
+                    organizationID: row.organization_id
                 )
             }
             .max { $0.requestedAt < $1.requestedAt }

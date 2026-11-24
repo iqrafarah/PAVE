@@ -21,7 +21,7 @@ struct AylaShelfContent: View {
             .padding(.top, 4)
 
             switch shelf {
-            case .vault, .settings:
+            case .vault, .settings, .vacancies:
                 // These open as themselves over the chat (AylaChatScreen), not as rows here.
                 EmptyView()
             case .notifications:

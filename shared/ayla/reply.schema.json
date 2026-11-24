@@ -22,6 +22,22 @@
         "text": { "type": "string", "minLength": 1 },
         "device": { "$ref": "#/$defs/device" },
         "input": { "enum": ["voice", "text"] },
+        "app": {
+          "type": "object",
+          "description": "How the app is set right now, so Ayla can say how something stands and does not do what is already so. No vault content and no names of folders or evidence.",
+          "additionalProperties": false,
+          "properties": {
+            "theme": { "type": "string", "maxLength": 80 },
+            "textSize": { "type": "string", "maxLength": 80 },
+            "displayMode": { "type": "string", "maxLength": 80 },
+            "vaultLayout": { "type": "string", "maxLength": 80 },
+            "voiceText": { "type": "boolean" },
+            "animations": { "type": "boolean" },
+            "memory": { "type": "boolean" },
+            "chatTitle": { "type": "string", "maxLength": 80 },
+            "chatPinned": { "type": "boolean" }
+          }
+        },
         "context": {
           "type": "object",
           "description": "What the user has open. Only ids: the server reads the item itself, and only with consent.",
@@ -29,7 +45,45 @@
           "additionalProperties": false,
           "properties": {
             "screen": { "$ref": "#/$defs/screen" },
-            "itemId": { "type": "string" }
+            "itemId": { "type": "string" },
+            "itemIds": { "type": "array", "maxItems": 10, "items": { "type": "string" }, "description": "Items the user picked for the conversation: all Ayla then uses of the vault." },
+            "vacancy": {
+              "type": "object",
+              "description": "The vacancy the user has open, as its card shows it, so a question about \"deze\" is about that one.",
+              "required": ["title", "company", "matches", "skillGap"],
+              "additionalProperties": false,
+              "properties": {
+                "title": { "type": "string" },
+                "company": { "type": "string" },
+                "city": { "type": "string" },
+                "summary": { "type": "string" },
+                "matches": { "type": "array", "items": { "type": "string" } },
+                "skillGap": { "type": "array", "items": { "type": "string" } }
+              }
+            },
+            "compare": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 3,
+              "description": "Two or three vacancies the user picked to compare, each as its card shows it (like vacancy). Needed for task compare.",
+              "items": {
+                "type": "object",
+                "required": ["title", "company", "matches", "skillGap"],
+                "additionalProperties": false,
+                "properties": {
+                  "title": { "type": "string" },
+                  "company": { "type": "string" },
+                  "city": { "type": "string" },
+                  "summary": { "type": "string" },
+                  "matches": { "type": "array", "items": { "type": "string" } },
+                  "skillGap": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            },
+            "task": {
+              "enum": ["compare", "gaps", "prepare", "interview"],
+              "description": "A button on a vacancy, or the practice interview that is going on. compare needs compare; gaps, prepare and interview need vacancy. The app sends interview with every question while the practice lasts."
+            }
           }
         },
         "attachments": {
@@ -59,6 +113,27 @@
       "properties": {
         "id": { "type": "string" },
         "label": { "type": "string", "minLength": 1 }
+      }
+    },
+    "action": {
+      "type": "object",
+      "description": "Something Ayla does in the app with her answer (ACTIONS in the Ayla function). The app looks names up itself and says so when it cannot carry it out. With confirm, only after the user says Ja.",
+      "required": ["do"],
+      "additionalProperties": false,
+      "properties": {
+        "do": {
+          "enum": [
+            "openSettingsPage", "openMemory", "openSavedVacancies", "openFolder", "back", "close",
+            "newChat", "openChat", "renameChat", "pinChat", "archiveChat", "setChatExpiry",
+            "setTheme", "setTextSize", "setDisplayMode", "setVaultLayout", "setVoiceText", "setChatsInSearch", "setAnimations", "setMemory",
+            "createFolder", "moveToFolder", "archiveEvidence", "allowAyla", "requestVerification",
+            "openVacancy", "saveVacancy",
+            "deleteChat", "deleteEvidence", "signOut", "forgetAll"
+          ]
+        },
+        "value": { "type": "string" },
+        "target": { "type": "string" },
+        "confirm": { "const": true }
       }
     },
     "requirementLink": {
@@ -96,7 +171,9 @@
         },
         "logoUrl": { "type": "string", "format": "uri" },
         "url": { "type": "string", "format": "uri" },
-        "source": { "enum": ["example", "adzuna"], "description": "\"example\" vacancies are fictional and must be labelled as examples." },
+        "source": { "enum": ["example", "adzuna", "jooble", "web"], "description": "\"example\" vacancies are fictional and must be labelled as examples. \"web\" was found by a web search on a job site." },
+        "summary": { "type": "string", "description": "A short piece of the vacancy text, as the source gives it. Never the whole text." },
+        "postedAt": { "type": "string", "description": "The day the source last saw it (YYYY-MM-DD), when it says so." },
         "matches": { "type": "array", "items": { "$ref": "#/$defs/requirementLink" } },
         "skillGap": { "type": "array", "items": { "$ref": "#/$defs/requirementLink" } }
       }
@@ -128,7 +205,14 @@
         {
           "properties": {
             "type": { "const": "vacancies" },
-            "items": { "type": "array", "items": { "$ref": "#/$defs/vacancy" } }
+            "items": { "type": "array", "items": { "$ref": "#/$defs/vacancy" } },
+            "search": {
+              "type": "object",
+              "description": "What Ayla searched for, so the apps can show it.",
+              "required": ["what", "where"],
+              "additionalProperties": false,
+              "properties": { "what": { "type": "string" }, "where": { "type": "string" }, "also": { "type": "string" } }
+            }
           },
           "required": ["items"],
           "additionalProperties": false
@@ -246,6 +330,13 @@
             "itemId": { "type": "string" }
           }
         },
+        "actions": {
+          "type": "array",
+          "maxItems": 4,
+          "description": "What Ayla does in the app, in order. Only sent to the iPhone app for now.",
+          "items": { "$ref": "#/$defs/action" }
+        },
+        "continues": { "const": true, "description": "She is not done yet: the app sends what came of these actions (results in the request) and she goes on." },
         "memories": {
           "type": "array",
           "description": "Ayla suggests remembering these facts about the user, one per item, and taking away notes they make out of date. The app changes ayla_memories only after the user confirms; nothing is remembered or forgotten by itself.",
