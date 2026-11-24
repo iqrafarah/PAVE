@@ -65,16 +65,17 @@ public struct VaultValidationPage<Row: Sendable>: Sendable {
 /// Optional filters on the persons of one organisation.
 public struct VaultValidationFilters: Equatable, Hashable, Sendable {
     public var locationID: String?
-    public var departmentID: String?
+    /// By name: "ICT" is one choice, also when several locations have an ICT.
+    public var department: String?
     public var function: String?
 
-    public init(locationID: String? = nil, departmentID: String? = nil, function: String? = nil) {
+    public init(locationID: String? = nil, department: String? = nil, function: String? = nil) {
         self.locationID = locationID
-        self.departmentID = departmentID
+        self.department = department
         self.function = function
     }
 
-    public var isEmpty: Bool { locationID == nil && departmentID == nil && function == nil }
+    public var isEmpty: Bool { locationID == nil && department == nil && function == nil }
 }
 
 /// One choice of a filter: a location, a department (of one location) or a function, with how many persons it has.

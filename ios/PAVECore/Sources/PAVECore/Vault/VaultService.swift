@@ -442,7 +442,7 @@ public struct SupabaseVaultService: VaultService {
                 "p_category": category.rawValue,
                 "p_query": query,
                 "p_location_id": filters.locationID ?? NSNull(),
-                "p_department_id": filters.departmentID ?? NSNull(),
+                "p_department": filters.department ?? NSNull(),
                 "p_function": filters.function ?? NSNull(),
                 "p_limit": VaultValidationPage<VaultValidationPerson>.size,
                 "p_offset": offset,
@@ -451,7 +451,7 @@ public struct SupabaseVaultService: VaultService {
             let found = try await legacyPeople([("organization_departments.organization_locations.organization_id", "eq.\(organizationID)")])
                 .filter { person in
                     (filters.locationID == nil || person.locationId == filters.locationID)
-                        && (filters.departmentID == nil || person.departmentId == filters.departmentID)
+                        && (filters.department == nil || person.departmentName == filters.department)
                         && (filters.function == nil || person.function == filters.function)
                         && Self.matches([person.name, person.function, person.departmentName, person.city].joined(separator: " "), query)
                 }

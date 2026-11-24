@@ -266,9 +266,7 @@ struct VaultRequestConfirmationSheet: View {
     @ViewBuilder
     private var filterBar: some View {
         let locations = filterOptions.filter { $0.filter == .location }
-        let departments = filterOptions.filter {
-            $0.filter == .department && (request.filters.locationID == nil || $0.locationId == request.filters.locationID)
-        }
+        let departments = departmentOptions(at: request.filters.locationID)
         let functions = filterOptions.filter { $0.filter == .function }
         if locations.count > 1 || departments.count > 1 || functions.count > 1 {
             ScrollView(.horizontal, showsIndicators: false) {
@@ -276,15 +274,16 @@ struct VaultRequestConfirmationSheet: View {
                     if locations.count > 1 {
                         filterMenu("Vestiging", all: "Alle vestigingen", options: locations, value: request.filters.locationID) { value in
                             request.filters.locationID = value
-                            if value != nil, let department = request.filters.departmentID,
-                               !filterOptions.contains(where: { $0.filter == .department && $0.value == department && $0.locationId == value }) {
-                                request.filters.departmentID = nil
+                            // A department that this location does not have goes; one it has stays.
+                            if value != nil, let department = request.filters.department,
+                               !departmentOptions(at: value).contains(where: { $0.value == department }) {
+                                request.filters.department = nil
                             }
                         }
                     }
                     if departments.count > 1 {
-                        filterMenu("Afdeling", all: "Alle afdelingen", options: departments, value: request.filters.departmentID) {
-                            request.filters.departmentID = $0
+                        filterMenu("Afdeling", all: "Alle afdelingen", options: departments, value: request.filters.department) {
+                            request.filters.department = $0
                         }
                     }
                     if functions.count > 1 {
@@ -296,6 +295,16 @@ struct VaultRequestConfirmationSheet: View {
             }
             .scrollClipDisabled()
         }
+    }
+
+    /// The departments of one location, or of all, each name once: "ICT" in Tilburg and in Eindhoven is one choice.
+    private func departmentOptions(at locationID: String?) -> [VaultValidationFilterOption] {
+        let shown = filterOptions.filter { $0.filter == .department && (locationID == nil || $0.locationId == locationID) }
+        return Dictionary(grouping: shown, by: \.label)
+            .map { name, options in
+                VaultValidationFilterOption(filter: .department, value: name, label: name, people: options.reduce(0) { $0 + $1.people })
+            }
+            .sorted { $0.label.localizedStandardCompare($1.label) == .orderedAscending }
     }
 
     private func filterMenu(
