@@ -2,3 +2,7 @@ project_id = "pave"
 
 [functions.vault-review]
 verify_jwt = true
+
+# Opened by whoever has the code of a share, without an account; the code is the key.
+[functions.share-view]
+verify_jwt = false
