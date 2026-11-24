@@ -124,6 +124,9 @@ struct AylaChatScreen: View {
     @State private var vacancyIndex = 0
     /// Vacancies picked to compare, in the order they were picked.
     @State private var compareIDs: [String] = []
+    /// The answer whose choices are shown: they come a moment after it, once it can be read, instead of the text field
+    /// turning into buttons in the same instant.
+    @State private var shownChoicesID: String?
     /// Photos for an item that just went into the vault, after a Ja to Ayla's question for them.
     @State private var photosForItemID: String?
     @State private var photoTargetID: String?
@@ -414,7 +417,12 @@ struct AylaChatScreen: View {
             // A new answer from Ayla replaces what she said about something she did in the app.
             localReply = nil
             guard !isVoiceActive, let last = model.entries.last, last.role == .ayla, !Self.vacancies(in: last).isEmpty else { return }
-            openVacancies(from: last.id)
+            // First the answer and its card in the chat, then the panel comes up over it.
+            Task {
+                try? await Task.sleep(for: .milliseconds(reduceMotion ? 0 : 700))
+                guard model.entries.last?.id == last.id, !isVoiceActive else { return }
+                openVacancies(from: last.id)
+            }
         }
         .onChange(of: model.conversationID) { old, _ in
             // A new conversation getting its id while Ayla answers is still the same chat: the page stays open.
@@ -434,6 +442,12 @@ struct AylaChatScreen: View {
             }
         }
         .onDisappear { headGestures.stop() }
+        .task(id: model.pendingQuestion == nil ? nil : model.entries.last?.id) {
+            guard let id = model.entries.last?.id, model.pendingQuestion != nil else { return }
+            try? await Task.sleep(for: .milliseconds(reduceMotion ? 0 : 450))
+            guard !Task.isCancelled else { return }
+            withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.4, bounce: 0.12)) { shownChoicesID = id }
+        }
         // A new search starts at its first vacancy, with nothing picked to compare.
         .onChange(of: voiceSearchID) {
             vacancyIndex = 0
@@ -1138,7 +1152,7 @@ struct AylaChatScreen: View {
                     .padding(.leading, 33)
                     .padding(.trailing, 31)
                     .transition(.opacity)
-            } else if let question = model.pendingQuestion, question.choices.count >= 2, !model.pendingQuestionIsOnCard {
+            } else if let question = model.pendingQuestion, question.choices.count >= 2, !model.pendingQuestionIsOnCard, shownChoicesID == model.entries.last?.id {
                 AylaChoiceBar(
                     choices: question.choices.map { AylaChoice(id: $0.id, label: $0.label) },
                     isAboutVault: model.pendingOffersEvidence,
@@ -1151,6 +1165,10 @@ struct AylaChatScreen: View {
                 .padding(.leading, 21)
                 .padding(.trailing, 22)
                 .padding(.bottom, -11)
+                .transition(reduceMotion ? .opacity : .asymmetric(
+                    insertion: .move(edge: .bottom).combined(with: .opacity),
+                    removal: .opacity
+                ))
             } else {
                 if let title = model.contextTitle, !isVoiceActive {
                     AylaContextChip(title: title) { model.clearContext() }
@@ -1226,14 +1244,27 @@ struct AylaChatScreen: View {
     @ViewBuilder
     /// While talking, the orb and its field already show that Ayla is thinking, so the glow at the bottom stays away.
     private var background: some View {
-        switch isVoiceActive ? .idle : model.phase {
-        case .idle, .writing:
-            Color.canvas
-        case .thinking:
-            LinearGradient(stops: [.init(color: .canvas, location: 0.658), .init(color: .paveThinkingGlow, location: 1)], startPoint: .top, endPoint: .bottom)
-        case .failed:
-            LinearGradient(stops: [.init(color: .canvas, location: 0.658), .init(color: .errorGlow, location: 1)], startPoint: .top, endPoint: .bottom)
-        }
+        // The glow rises from the bottom as high as on an iPhone (a third of its screen), on every screen: on the open
+        // Duo or an iPad a share of the height turned half the screen dark.
+        Color.canvas
+            .overlay(alignment: .bottom) {
+                switch isVoiceActive ? .idle : model.phase {
+                case .idle, .writing:
+                    EmptyView()
+                case .thinking:
+                    glow(.paveThinkingGlow)
+                case .failed:
+                    glow(.errorGlow)
+                }
+            }
+    }
+
+    private static let glowHeight: CGFloat = 300
+
+    private func glow(_ color: Color) -> some View {
+        LinearGradient(colors: [.canvas, color], startPoint: .top, endPoint: .bottom)
+            .frame(height: Self.glowHeight)
+            .transition(.opacity)
     }
 
     // MARK: Actions
