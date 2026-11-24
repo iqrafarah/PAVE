@@ -34,7 +34,7 @@ PAVE/
     Plan/         Plannen (nu nog leeg)
     Profile/      Profiel (nu nog leeg: delen bestaat nog niet)
     Settings/     Instellingen: je account en uitloggen
-    Notifications/ Meldingen, filters, rolgebonden overzicht en aanvraagdetail (data-aansluiting volgt)
+    Notifications/ Meldingen: overzicht, banner, lokale meldingen en aanvraagdetail
   Resources/      AppIcon.icon, Assets.xcassets (iconen)
 PAVEWatch/        Apple Watch-app (spraakbot, geen volledige interface)
 PAVEWidgets/      Widgets en knoppen voor het Bedieningspaneel (WidgetKit-extensie)
@@ -203,7 +203,9 @@ De iOS-uitwerking gebruikt de twee mobiele Figma-prototypes als basis: de lijst 
 
 ## Meldingen
 
-`NotificationsScreen` bevat het iOS-overzicht volgens de aangeleverde wireframe: alle/ongelezen, zoeken, typefilter, groepering per dag en een detail voor verificatieaanvragen. Lerende accounts zien gesprekken en geverifieerd of afgewezen bewijs; de adminweergave toont gesprekken en verificatieaanvragen. Een gesprek kan terug naar Ayla navigeren; geverifieerd of afgewezen bewijs opent het eigen item in de kluis.
+`NotificationsScreen` is het iOS-overzicht: geen tabs, filters of kop, alleen de lijst. Bovenaan staat "Actie nodig" met de open verificatieaanvragen (de inbox bevat alleen aanvragen die nog lopen), daaronder de rest per Vandaag, Deze week en Eerder. Een stip markeert ongelezen. Zoeken verschijnt pas bij 8 meldingen of meer. "Alles als gelezen markeren" en "Recent verwijderd" staan in het menu rechtsboven. Lerende accounts zien gesprekken en geverifieerd of afgewezen bewijs; de adminweergave toont gesprekken en verificatieaanvragen. Een gesprek kan terug naar Ayla navigeren; geverifieerd of afgewezen bewijs opent het eigen item in de kluis.
+
+**Nieuwe meldingen zien.** Zonder betaald Apple Developer-account is er geen echte push (APNs). Daarom: (1) terwijl PAVE open is, ververst `MainView` elke 30 seconden, toont een kleine banner (`NotificationBanner`) en een cijfer op de bel; (2) het cijfer staat ook op het app-icoon; (3) is PAVE dicht, dan vraagt `NotificationAlerts` iOS om af en toe een korte achtergrondverversing (`BGAppRefreshTask`, minimaal elke 15 minuten, iOS bepaalt de rest) en toont een lokale melding voor wat nieuw is. Dat laatste kan dus vertraagd zijn. Een melding bevat alleen de titel, nooit bewijs of chattekst. Toestemming vraagt de kaart bovenaan Meldingen of Instellingen › Meldingen, niet bij het opstarten. Tikken op een banner opent Meldingen. `push_devices` (migratie `20261120160000`) is de voorbereiding voor echte push: pas als er een betaald account en een APNs-sleutel zijn, komt er een verzendstap in `vault-review` bij en registreert de app zijn token.
 
 **Beslissing over je aanvraag.** Na goedkeuren of afwijzen krijgt de lerende "Bewijs geverifieerd" of "Bewijs afgewezen", met de titel van het bewijs en de organisatie. Het scherm toont naast de soorten van je rol ook elke soort die echt in je inbox staat: wie zelf beoordelaar is (beheerdersweergave), zag eerder de beslissingen over het eigen bewijs niet. De melding blijft staan, ook als je het bewijs daarna aanpast of opnieuw laat bevestigen.
 

@@ -24,6 +24,8 @@ final class AppState {
     var conversationToOpen: String?
     /// Something asked from outside the app (Siri, a widget, Control Center); done once the app is unlocked.
     var link: PaveLink?
+    /// A melding banner was tapped; PAVE opens on Meldingen once it is unlocked.
+    var opensNotifications = false
     /// The app came back after being away too long: the PIN screen lies over it, so the open chat and what you were
     /// typing stay where they are.
     private(set) var isRelocked = false
@@ -45,6 +47,7 @@ final class AppState {
         self.pinVault = pinVault
         self.biometrics = biometrics
         PaveLinkInbox.receive = { [weak self] link in self?.link = link }
+        NotificationAlerts.onTap = { [weak self] in self?.opensNotifications = true }
     }
 
     /// Signed in on this iPhone, also while the PIN screen is up; the Watch may then ask for the session.
@@ -164,7 +167,9 @@ final class AppState {
         AylaSpotlight.forget(in: defaults)
         AylaDrafts.forget(in: defaults)
         AylaPendingFiles.forget()
+        NotificationAlerts.forgetEverything()
         conversationToOpen = nil
+        opensNotifications = false
         link = nil
         isRelocked = false
         self.phase = phase

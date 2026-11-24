@@ -114,6 +114,33 @@ struct MainView: View {
         .tint(.paveAccent)
         .environment(memory)
         .environment(cameraControl)
+        .environment(\.unreadNotifications, notificationsModel.unreadCount)
+        .overlay(alignment: .top) {
+            if let banner = notificationsModel.banner, destination != .notifications {
+                NotificationBanner(notification: banner) {
+                    notificationsModel.dismissBanner()
+                    open(.notifications)
+                    isMenuOpen = false
+                } onDismiss: {
+                    notificationsModel.dismissBanner()
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.snappy, value: notificationsModel.banner?.id)
+        // New meldingen show up while PAVE is open: a quiet refresh every 30 seconds, and the badge on the icon follows.
+        .task(id: PollingState(isActive: scenePhase == .active, isOpen: appState.isOpen)) {
+            guard scenePhase == .active, appState.isOpen else { return }
+            while !Task.isCancelled {
+                await notificationsModel.refresh()
+                try? await Task.sleep(for: .seconds(30))
+            }
+        }
+        .onChange(of: notificationsModel.unreadCount, initial: true) { _, count in
+            NotificationAlerts.setBadge(count)
+        }
         // Knopmodus: a full press does Ayla's choice, or starts talking. The presses are caught on an empty layer
         // behind the screen that only exists in knopmodus: around the whole screen, even switched off, iOS's catcher
         // took every tap on the toolbar buttons. iOS's own green dot shows the camera is on.
@@ -175,6 +202,7 @@ struct MainView: View {
         .onChange(of: appState.conversationToOpen, initial: true) { handlePending() }
         .onChange(of: appState.link, initial: true) { handlePending() }
         .onChange(of: appState.isRelocked) { handlePending() }
+        .onChange(of: appState.opensNotifications, initial: true) { handlePending() }
         .onChange(of: connection.isOnline) { _, isOnline in
             if isOnline { Task { await model.refreshConversations() } }
         }
@@ -189,6 +217,11 @@ struct MainView: View {
         if let link = appState.link {
             appState.link = nil
             follow(link)
+        }
+        if appState.opensNotifications {
+            appState.opensNotifications = false
+            isMenuOpen = false
+            open(.notifications)
         }
     }
 
@@ -337,6 +370,7 @@ struct MainView: View {
                 loadError: notificationsModel.problem,
                 onRefresh: { await notificationsModel.refresh() },
                 onMarkRead: { await notificationsModel.markRead($0) },
+                onMarkAllRead: { await notificationsModel.markAllRead() },
                 onOpenConversation: openNotificationConversation,
                 onOpenVerifiedEvidence: openNotificationEvidence,
                 onLoadReview: { await notificationsModel.review($0) },
@@ -434,6 +468,11 @@ struct MainView: View {
 }
 
 /// When knopmodus should run: chosen, PAVE in front, and unlocked.
+private struct PollingState: Equatable {
+    let isActive: Bool
+    let isOpen: Bool
+}
+
 private struct CameraControlWanted: Equatable {
     let isEnabled: Bool
     let changed: Int

@@ -1,8 +1,18 @@
 import UIKit
+import UserNotifications
 
 /// The quick actions on the app icon (press and hold PAVE on the Home Screen): "Praat met Ayla" and "Nieuw gesprek".
 /// Their types are the `PaveLink` values, so they go the same way as Siri and the widgets: through the PIN first.
 final class PaveAppDelegate: NSObject, UIApplicationDelegate {
+    private let notificationDelegate = NotificationCenterDelegate()
+
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        UNUserNotificationCenter.current().delegate = notificationDelegate
+        NotificationAlerts.registerBackgroundRefresh()
+        NotificationAlerts.scheduleRefresh()
+        return true
+    }
+
     func application(
         _ application: UIApplication,
         configurationForConnecting connectingSceneSession: UISceneSession,
