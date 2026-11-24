@@ -47,11 +47,16 @@ public struct ApplicationWritingRequest: Encodable, Equatable, Sendable {
     public var text: String?
     public var rewrite: Rewrite?
     public var tone: Tone
+    /// What the user asked her to stress, in their own words.
+    public var focus: String?
 
     /// At most this many pieces of evidence go along.
     public static let maximumItems = 20
 
-    public init(kind: Kind, vacancy: Vacancy, name: String, items: [VaultItem], text: String? = nil, rewrite: Rewrite? = nil, tone: Tone = .personal) {
+    public init(
+        kind: Kind, vacancy: Vacancy, name: String, items: [VaultItem], text: String? = nil, rewrite: Rewrite? = nil, tone: Tone = .personal,
+        focus: String? = nil
+    ) {
         self.kind = kind
         self.vacancy = AylaRequest.OpenVacancy(vacancy)
         self.name = name
@@ -59,6 +64,8 @@ public struct ApplicationWritingRequest: Encodable, Equatable, Sendable {
         self.text = text
         self.rewrite = rewrite
         self.tone = tone
+        let stress = focus?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        self.focus = stress.isEmpty ? nil : String(stress.prefix(200))
     }
 }
 

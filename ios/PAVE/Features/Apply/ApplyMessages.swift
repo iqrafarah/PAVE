@@ -23,7 +23,7 @@ enum ApplyMessages {
     static func page(_ number: Int, of count: Int) -> String { "Pagina \(number) van \(count)" }
     static func pagesNote(_ count: Int, _ document: ApplicationDocumentKind) -> String {
         document == .cv
-            ? "Je cv is \(count) pagina's. Eén pagina leest het prettigst: tik op een blok om het korter te maken of te verbergen."
+            ? "Je cv is \(count) pagina's. Eén pagina leest het prettigst."
             : "Je brief is \(count) pagina's. Een brief past het best op één pagina."
     }
     static let chooseDesign = "Kies een ontwerp"
@@ -33,17 +33,39 @@ enum ApplyMessages {
     static let allDesigns = "Alle"
     static let withPhoto = "Met foto"
     static func useDesign(_ design: ApplicationTemplate) -> String { "Gebruik \(template(design))" }
-    static let howToBegin = "Hoe wil je beginnen?"
-    static func chosenDesign(_ design: ApplicationTemplate) -> String { "Ontwerp \(template(design)). Je cv en brief horen bij elkaar." }
     static let aylaFills = "Ayla vult het in"
-    static func aylaFillsHint(_ count: Int) -> String {
-        count == 0
-            ? "Ayla schrijft je profiel en brief. Ze mag nog geen bewijs uit je kluis bekijken, dus ze schrijft algemeen. Jij past daarna alles aan."
-            : "Ayla schrijft je profiel, wat je bij je werk en projecten deed, en je brief, met het bewijs uit je kluis dat ze mag bekijken (\(count)). Jij past daarna alles aan."
-    }
     static let fillYourself = "Zelf invullen"
-    static let fillYourselfHint = "Je gegevens uit de kluis staan erin. Je profiel en brief schrijf je zelf, met hints waar wat komt."
     static let otherDesign = "Ander ontwerp kiezen"
+
+    // What goes in
+    static let whatGoesIn = "Wat komt erin?"
+    static func whatGoesInHint(_ vacancy: Vacancy) -> String {
+        "Ayla's voorstel voor \(vacancy.title) bij \(vacancy.company). Zet aan of uit wat je wilt laten zien."
+    }
+    static let whatGoesInEditorHint = "Zet aan of uit wat op je cv staat."
+    static let fitsOnOnePage = "Past op 1 pagina"
+    static func pageCount(_ count: Int) -> String { "\(count) pagina's" }
+    static let makeItFit = "Maak passend op 1 pagina"
+    static let alreadyFits = "Je cv past al op 1 pagina."
+    static let backToProposal = "Terug naar Ayla's voorstel"
+    static let aylaMayNotSee = "Ayla mag dit niet bekijken en schrijft er niet over"
+    static let nothingInVault = "Er staat nog niets in je kluis voor dit onderdeel."
+    static func reason(_ reason: ApplicationProposal.Reason) -> String {
+        switch reason {
+        case .fits(let skills): "Past bij \(skills.joined(separator: " en "))"
+        case .current: "Loopt nog"
+        case .recent: "Recent"
+        case .education: "Hoort op elk cv"
+        case .oldAndUnrelated: "Lang geleden en past minder bij deze vacature"
+        case .forOnePage: "Uit, zodat je cv op 1 pagina past"
+        }
+    }
+    static func missing(_ skills: [String]) -> String {
+        "Deze vacature vraagt ook om \(skills.joined(separator: ", ")). Dat staat nog niet in je kluis, dus het komt niet op je cv en Ayla noemt het niet."
+    }
+    static let focus = "Waar wil je de nadruk op leggen?"
+    static let focusHint = "Hoeft niet. Ayla legt hier de nadruk op in je profiel en brief, voor zover je bewijs dat laat zien."
+    static let focusPrompt = "Bijvoorbeeld: samenwerken met klanten"
 
     static func template(_ template: ApplicationTemplate) -> String {
         switch template {

@@ -73,3 +73,14 @@ Deno.test('what was done at a job is only rewritten from its own description', (
   assertEquals(answer.entries, [{ sourceItemID: 'a', text: 'Bouwde mee aan een iOS-app.' }])
   assertEquals(answer.profile, undefined)
 })
+
+Deno.test('what the user wants stressed goes along as a wish, never as a fact', () => {
+  const letter = parseDocumentRequest({ kind: 'letter', vacancy, name: 'Daaf', items, focus: '  Samenwerken met "klanten"  ' })
+  const entries = parseDocumentRequest({ kind: 'entries', vacancy, name: 'Daaf', items, focus: 'Samenwerken' })
+  if (typeof letter === 'string' || typeof entries === 'string') throw new Error('request')
+  const prompt = documentMessages(letter)[1].content
+  assertEquals(prompt.includes(`De gebruiker wil de nadruk leggen op: "Samenwerken met 'klanten'".`), true)
+  assertEquals(prompt.includes('Staat het niet in de bewijsstukken, noem het dan niet'), true)
+  assertEquals(entries.focus, undefined)
+  assertEquals(documentMessages(entries)[1].content.includes('nadruk'), false)
+})

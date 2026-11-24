@@ -12,6 +12,7 @@ struct ApplicationStudioView: View {
 
     @State private var panel = Panel.content
     @State private var showsDesign = false
+    @State private var showsContent = false
     @State private var exported: ExportedFile?
     @State private var isExporting = false
     @Environment(\.paveReduceMotion) private var reduceMotion
@@ -22,6 +23,7 @@ struct ApplicationStudioView: View {
     private static let wideWidth: CGFloat = 720
 
     init(model: ApplicationStudioModel, photo: UIImage?, onClose: @escaping () -> Void) {
+        model.measure = { ApplicationPageMeasure.pages($0, photo: $0.showsPhoto ? photo : nil) }
         _model = State(initialValue: model)
         self.photo = photo
         self.onClose = onClose
@@ -38,7 +40,7 @@ struct ApplicationStudioView: View {
             case .start:
                 VStack(spacing: 0) {
                     stepBar { model.stage = .gallery }
-                    ApplicationStartView(model: model, photo: photo) { model.stage = .gallery }
+                    ApplicationContentView(model: model, photo: photo) { model.stage = .gallery }
                 }
             case .editor:
                 editor
@@ -47,6 +49,7 @@ struct ApplicationStudioView: View {
         .background(Color.canvas)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: model.stage)
         .sheet(item: $exported) { VaultShareSheet(urls: [$0.url]) }
+        .onDisappear { model.settle() }
         .alert(ApplyMessages.aylaWrites, isPresented: Binding(get: { model.problem != nil }, set: { if !$0 { model.problem = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -83,7 +86,12 @@ struct ApplicationStudioView: View {
             .sheet(isPresented: $showsDesign) {
                 designSheet
             }
+            .sheet(isPresented: $showsContent) {
+                ApplicationContentSheet(model: model, pages: model.pages) { showsContent = false }
+            }
             .onChange(of: model.selection) { _, block in
+                // What was typed in the block that closes shows and is kept at once.
+                model.settle()
                 if block != nil, isWide { withAnimation(.snappy(duration: 0.25)) { panel = .content } }
             }
         }
@@ -135,10 +143,25 @@ struct ApplicationStudioView: View {
     }
 
     private var bottomBar: some View {
+        // On a narrow phone the two quiet buttons keep their icon only, so the three fit on one line.
+        ViewThatFits(in: .horizontal) {
+            bottomButtons(showsTitles: true)
+            bottomButtons(showsTitles: false)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 10)
+        .padding(.bottom, 6)
+        .frame(maxWidth: .infinity)
+        .background(Color.canvas)
+    }
+
+    private func bottomButtons(showsTitles: Bool) -> some View {
         HStack(spacing: 10) {
-            pill(.iconPaintBrushOutline, ApplyMessages.design) { showsDesign = true }
+            pill(.iconPaintBrushOutline, ApplyMessages.design, showsTitle: showsTitles) { showsDesign = true }
             if model.document == .letter {
-                pill(.iconPlusCircleOutline, ApplyMessages.paragraph) { model.addParagraph() }
+                pill(.iconPlusCircleOutline, ApplyMessages.paragraph, showsTitle: showsTitles) { model.addParagraph() }
+            } else {
+                pill(.iconListBulletOutline, ApplyMessages.content, showsTitle: showsTitles) { showsContent = true }
             }
             Button {
                 Task { model.document == .cv ? await model.writeProfile() : await model.writeLetter() }
@@ -164,11 +187,7 @@ struct ApplicationStudioView: View {
             .disabled(!model.canWrite || isAylaWriting)
             .accessibilityLabel(model.document == .cv ? ApplyMessages.aylaProfile : ApplyMessages.aylaLetter)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 10)
-        .padding(.bottom, 6)
-        .frame(maxWidth: .infinity)
-        .background(Color.canvas)
+        .fixedSize(horizontal: true, vertical: false)
     }
 
     private var isAylaWriting: Bool { model.document == .cv ? model.writing == .profile : model.isWritingLetter }
@@ -193,6 +212,8 @@ struct ApplicationStudioView: View {
                     ApplicationAylaCard(model: model)
                     if model.document == .letter {
                         PaveSecondaryButton(title: ApplyMessages.addParagraph, icon: .iconPlusCircleOutline) { model.addParagraph() }
+                    } else {
+                        PaveSecondaryButton(title: ApplyMessages.whatGoesIn, icon: .iconListBulletOutline) { showsContent = true }
                     }
                     Text(ApplyMessages.tapToEdit)
                         .textStyle(.caption)
@@ -271,7 +292,7 @@ struct ApplicationStudioView: View {
         .accessibilityLabel(label)
     }
 
-    private func pill(_ icon: ImageResource, _ title: String, action: @escaping () -> Void) -> some View {
+    private func pill(_ icon: ImageResource, _ title: String, showsTitle: Bool = true, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 8) {
                 Image(icon)
@@ -281,21 +302,25 @@ struct ApplicationStudioView: View {
                     .paveIconFrame(16)
                     .foregroundStyle(Color.paveAccent)
                     .accessibilityHidden(true)
-                Text(title)
-                    .textStyle(.chip)
-                    .foregroundStyle(Color.ink)
-                    .lineLimit(1)
+                if showsTitle {
+                    Text(title)
+                        .textStyle(.chip)
+                        .foregroundStyle(Color.ink)
+                        .lineLimit(1)
+                }
             }
             .padding(.horizontal, 14)
-            .frame(minHeight: 44)
+            .frame(minWidth: 44, minHeight: 44)
             .background(Color.panel, in: .capsule)
             .overlay { Capsule().strokeBorder(Color.cardBorder, lineWidth: 1) }
             .contentShape(.capsule)
         }
         .buttonStyle(.pave)
+        .accessibilityLabel(title)
     }
 
     private func export() {
+        model.settle()
         isExporting = true
         defer { isExporting = false }
         do {

@@ -67,7 +67,7 @@ struct ApplicationBlockEditor: View {
         case .skills:
             longField(ApplyMessages.skillsHeading, text: Binding(
                 get: { model.draft.cv.skills.joined(separator: "\n") },
-                set: { text in model.update { $0.cv.skills = text.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } } }
+                set: { text in model.update(typing: true) { $0.cv.skills = text.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } } }
             ), note: ApplyMessages.skillsHint)
         case .salutation:
             field(ApplyMessages.salutation, text: binding(\.letter.salutation))
@@ -75,7 +75,7 @@ struct ApplicationBlockEditor: View {
             if let index = model.paragraphIndex(id) {
                 longField(ApplyMessages.paragraph, text: Binding(
                     get: { model.paragraphIndex(id).map { model.draft.letter.paragraphs[$0].text } ?? "" },
-                    set: { text in model.update { draft in if let i = draft.letter.paragraphs.firstIndex(where: { $0.id == id }) { draft.letter.paragraphs[i].text = text } } }
+                    set: { text in model.update(typing: true) { draft in if let i = draft.letter.paragraphs.firstIndex(where: { $0.id == id }) { draft.letter.paragraphs[i].text = text } } }
                 ))
                 ForEach(model.draft.letter.paragraphs[index].sourceItemIDs, id: \.self) { source in
                     ApplicationSourceRow(item: model.item(source))
@@ -97,11 +97,11 @@ struct ApplicationBlockEditor: View {
     }
 
     private func binding(_ path: WritableKeyPath<ApplicationDraft, String>) -> Binding<String> {
-        Binding(get: { model.draft[keyPath: path] }, set: { value in model.update { $0[keyPath: path] = value } })
+        Binding(get: { model.draft[keyPath: path] }, set: { value in model.update(typing: true) { $0[keyPath: path] = value } })
     }
 
     private func entryBinding(_ id: String, _ path: WritableKeyPath<CVEntry, String>) -> Binding<String> {
-        Binding(get: { model.entry(id)?[keyPath: path] ?? "" }, set: { value in model.updateEntry(id) { $0[keyPath: path] = value } })
+        Binding(get: { model.entry(id)?[keyPath: path] ?? "" }, set: { value in model.updateEntry(id, typing: true) { $0[keyPath: path] = value } })
     }
 
     private func field(_ title: String, text: Binding<String>, prompt: String? = nil, keyboard: UIKeyboardType = .default, content: UITextContentType? = nil) -> some View {

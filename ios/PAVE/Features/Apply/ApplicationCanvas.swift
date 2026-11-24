@@ -18,21 +18,32 @@ struct ApplicationCanvas: View {
             ScrollView {
                 VStack(spacing: 16) {
                     ApplicationPages(
-                        draft: model.draft, document: model.document, photo: photo, interaction: interaction,
-                        shows: .all(gap: gap), cornerRadius: 4 / scale
+                        draft: model.shown, document: model.document, photo: photo, interaction: interaction,
+                        shows: .all(gap: gap), cornerRadius: 4 / scale, shadowRadius: 14 / scale
                     )
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { pagesHeight = $0 }
+                    .onChange(of: pages, initial: true) { _, pages in
+                        if model.document == .cv { model.pages = pages }
+                    }
                     .scaleEffect(scale, anchor: .topLeading)
                     .frame(width: ApplicationPage.size.width * scale, height: pagesHeight * scale, alignment: .topLeading)
-                    .shadow(color: .black.opacity(0.10), radius: 14, y: 6)
                     // One page reads best; said under the pages, where it is in nobody's way.
                     if pages > 1 {
-                        Text(ApplyMessages.pagesNote(pages, model.document))
-                            .textStyle(.caption)
-                            .foregroundStyle(Color.inkMuted)
-                            .multilineTextAlignment(.center)
-                            .frame(maxWidth: 420)
-                            .padding(.horizontal, 24)
+                        VStack(spacing: 2) {
+                            Text(ApplyMessages.pagesNote(pages, model.document))
+                                .textStyle(.caption)
+                                .foregroundStyle(Color.inkMuted)
+                                .multilineTextAlignment(.center)
+                            if model.document == .cv {
+                                Button(ApplyMessages.makeItFit) { model.fitOnOnePage() }
+                                    .textStyle(.link)
+                                    .foregroundStyle(Color.paveAccent)
+                                    .frame(minHeight: 44)
+                                    .buttonStyle(.pave)
+                            }
+                        }
+                        .frame(maxWidth: 420)
+                        .padding(.horizontal, 24)
                     }
                 }
                 .padding(.vertical, 24)

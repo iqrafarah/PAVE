@@ -15,15 +15,17 @@ struct ApplicationTemplateThumbnail: View {
     var body: some View {
         Button(action: action) {
             VStack(spacing: 8) {
-                ApplicationPages(draft: shown, document: .cv, photo: photo)
+                ApplicationPagePreview(draft: shown, document: .cv, photo: photo)
+                    .equatable()
                     .scaleEffect(scale, anchor: .topLeading)
                     .frame(width: Self.width, height: ApplicationPage.size.height * scale, alignment: .topLeading)
                     .clipShape(.rect(cornerRadius: 6))
+                    .drawingGroup()
                     .overlay {
                         RoundedRectangle(cornerRadius: 6)
                             .strokeBorder(isSelected ? Color.paveAccent : Color.cardBorder, lineWidth: isSelected ? 2 : 1)
                     }
-                    .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
+                    .background { RoundedRectangle(cornerRadius: 6).fill(.white).shadow(color: .black.opacity(0.06), radius: 4, y: 2) }
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
                 Text(ApplyMessages.template(template))

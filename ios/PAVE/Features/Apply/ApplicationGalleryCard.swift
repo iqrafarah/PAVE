@@ -15,10 +15,10 @@ struct ApplicationGalleryCard: View {
                 GeometryReader { proxy in
                     let scale = (proxy.size.width - 12) / ApplicationPage.size.width
                     ZStack(alignment: .topLeading) {
-                        page(ApplicationPages(draft: draft, document: .letter), scale: scale)
+                        page(ApplicationPagePreview(draft: draft, document: .letter).equatable(), scale: scale)
                             .offset(x: 12, y: 0)
                             .opacity(0.9)
-                        page(ApplicationPages(draft: draft, document: .cv, photo: photo), scale: scale)
+                        page(ApplicationPagePreview(draft: draft, document: .cv, photo: photo).equatable(), scale: scale)
                             .offset(y: 10)
                     }
                 }
@@ -54,6 +54,8 @@ struct ApplicationGalleryCard: View {
             .scaleEffect(scale, anchor: .topLeading)
             .frame(width: ApplicationPage.size.width * scale, height: ApplicationPage.size.height * scale, alignment: .topLeading)
             .clipShape(.rect(cornerRadius: 4))
-            .shadow(color: .black.opacity(0.10), radius: 6, y: 3)
+            // One flat picture: a small page is hundreds of pieces of text otherwise, and the gallery scrolls.
+            .drawingGroup()
+            .background { RoundedRectangle(cornerRadius: 4).fill(.white).shadow(color: .black.opacity(0.10), radius: 6, y: 3) }
     }
 }

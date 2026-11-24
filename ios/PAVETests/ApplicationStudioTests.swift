@@ -156,6 +156,68 @@ struct ApplicationStudioTests {
         #expect(model.draft.cv.profile == "Ik bouw apps.")
     }
 
+    @Test func whatYouLeaveOutStaysOutAndAylaDoesNotWriteAboutIt() async {
+        let writer = Writer()
+        writer.answer = ApplicationWriting(profile: "Ik bouw apps.", paragraphs: [.init(text: "Brief.")])
+        var items = items()
+        items[1].aylaAllowedAt = .now
+        let model = ApplicationStudioModel(vacancy: vacancy, items: items, name: "Daaf", email: "", service: writer, store: store)
+        model.choose(.plain)
+        #expect(model.isProposal)
+        let bijbaan = model.draft.cv.sections.flatMap(\.entries).first { $0.sourceItemID == "b" }!
+        model.setVisible(bijbaan.id, false)
+        model.setFocus("Samenwerken")
+        #expect(!model.isProposal)
+        await model.begin(withAyla: true)
+        let entries = model.draft.cv.sections.flatMap(\.entries)
+        #expect(entries.first { $0.sourceItemID == "b" }?.isVisible == false)
+        #expect(entries.first { $0.sourceItemID == "a" }?.isVisible == true)
+        #expect(writer.requests.allSatisfy { $0.items.map(\.id) == ["a"] })
+        #expect(writer.requests.first { $0.kind == .letter }?.focus == "Samenwerken")
+        #expect(model.draft.focus == "Samenwerken")
+    }
+
+    @Test func theProposalLeavesOutTheLeastFittingUntilItIsOnePage() {
+        var items = items()
+        items.append(VaultItem(id: "c", category: .projects, title: "Project", organisationName: "Fontys"))
+        let model = ApplicationStudioModel(vacancy: vacancy, items: items, name: "Daaf", email: "", service: nil, store: store)
+        // A page holds two entries here.
+        model.measure = { $0.cv.sections.flatMap(\.entries).filter(\.isVisible).count > 2 ? 2 : 1 }
+        model.choose(.plain)
+        let on = model.draft.cv.sections.flatMap(\.entries).filter(\.isVisible)
+        #expect(on.count == 2)
+        let off = model.draft.cv.sections.flatMap(\.entries).first { !$0.isVisible }!
+        #expect(model.choices[off.id]?.reason == .forOnePage)
+        // Nothing is kept before you begin.
+        #expect(ApplicationStore(folder: URL.temporaryDirectory.appending(path: "nowhere")).load(vacancy.id) == nil)
+        #expect(model.stage == .start)
+    }
+
+    @Test func typingShowsOnThePageAMomentLaterAndIsKeptWhenItSettles() async {
+        let store = store
+        let model = ApplicationStudioModel(vacancy: vacancy, items: items(), name: "Daaf", email: "", service: nil, store: store)
+        await model.begin(withAyla: false)
+        model.update(typing: true) { $0.cv.profile = "Ik" }
+        model.update(typing: true) { $0.cv.profile = "Ik bouw" }
+        #expect(model.draft.cv.profile == "Ik bouw")
+        #expect(model.shown.cv.profile == "")
+        #expect(store.load(vacancy.id)?.cv.profile == "")
+        model.settle()
+        #expect(model.shown.cv.profile == "Ik bouw")
+        #expect(store.load(vacancy.id)?.cv.profile == "Ik bouw")
+        model.update { $0.palette = .rose }
+        #expect(model.shown.palette == .rose)
+    }
+
+    @Test func thePageMeasureCountsThePagesOfThePdf() throws {
+        var draft = ApplicationBuilder.draft(for: vacancy, items: items(), name: "Daaf")
+        #expect(ApplicationPageMeasure.pages(draft, photo: nil) == 1)
+        draft.cv.profile = String(repeating: "Ik bouw apps die mensen echt gebruiken. ", count: 120)
+        let pdf = try #require(PDFDocument(url: try ApplicationPDF.file(for: draft, document: .cv, photo: nil)))
+        #expect(ApplicationPageMeasure.pages(draft, photo: nil) == pdf.pageCount)
+        #expect(pdf.pageCount >= 2)
+    }
+
     @Test func aLongCVBecomesMoreThanOneA4Page() throws {
         var draft = ApplicationBuilder.draft(for: vacancy, items: items(), name: "Daaf")
         draft.cv.profile = String(repeating: "Ik bouw apps die mensen echt gebruiken. ", count: 120)

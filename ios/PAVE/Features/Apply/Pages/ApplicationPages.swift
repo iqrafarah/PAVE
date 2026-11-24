@@ -18,24 +18,42 @@ struct ApplicationPages: View {
     var interaction: ApplicationPageInteraction?
     var shows = Shows.page(0)
     var cornerRadius: CGFloat = 0
+    /// A soft shadow under every page, drawn from the paper only so it costs nothing while the content changes.
+    var shadowRadius: CGFloat = 0
     var count: ApplicationPageCount?
+    var onPageCount: ((Int) -> Void)?
 
     @State private var allHeight = ApplicationPage.size.height
 
     private var size: CGSize { ApplicationPage.size }
+    private var margins: (top: CGFloat, bottom: CGFloat) { ApplicationPage.margins(draft.template, document) }
+    /// The long sheet itself is the first page; another single page is drawn from a copy.
+    private var showsFirst: Bool {
+        if case .page(let index) = shows { return index == 0 }
+        return true
+    }
 
     var body: some View {
-        // Laid out but not drawn: it says where every block is.
+        // The long sheet, held to the first page: it is that page, and it says where every block is.
         sheet
-            .hidden()
-            .frame(width: size.width, height: shows.isOnePage ? size.height : allHeight, alignment: .topLeading)
-            .overlayPreferenceValue(ApplicationPageMarks.self, alignment: .topLeading) { marks in
+            .frame(width: size.width, height: size.height, alignment: .topLeading)
+            .clipShape(.rect(cornerRadius: cornerRadius))
+            .allowsHitTesting(false)
+            .opacity(showsFirst ? 1 : 0)
+            .backgroundPreferenceValue(ApplicationPageMarks.self, alignment: .topLeading) { marks in
                 GeometryReader { proxy in
-                    let flow = ApplicationPageFlow(marks: marks, proxy: proxy, margins: ApplicationPage.margins(draft.template, document))
-                    let _ = count?.pages = flow.layout.pages
-                    pages(flow)
+                    if showsFirst { paper(0, ApplicationPageFlow(marks: marks, proxy: proxy, margins: margins)) }
                 }
             }
+            .overlayPreferenceValue(ApplicationPageMarks.self, alignment: .topLeading) { marks in
+                GeometryReader { proxy in
+                    let flow = ApplicationPageFlow(marks: marks, proxy: proxy, margins: margins)
+                    let _ = count?.pages = flow.layout.pages
+                    pages(flow)
+                        .onChange(of: flow.layout.pages, initial: true) { _, pages in onPageCount?(pages) }
+                }
+            }
+            .frame(width: size.width, height: shows.isAll ? allHeight : size.height, alignment: .topLeading)
             .environment(\.colorScheme, .light)
             .environment(\.applicationIsEditing, interaction != nil)
     }
@@ -56,12 +74,14 @@ struct ApplicationPages: View {
     private func pages(_ flow: ApplicationPageFlow) -> some View {
         switch shows {
         case .page(let index):
-            page(min(index, flow.layout.pages - 1), flow)
+            let index = min(index, flow.layout.pages - 1)
+            if index == 0 { firstPageCover(flow) } else { laterPage(index, flow) }
         case .all(let gap):
             let total = CGFloat(flow.layout.pages) * size.height + CGFloat(flow.layout.pages - 1) * gap
             ZStack(alignment: .topLeading) {
-                ForEach(0..<flow.layout.pages, id: \.self) { index in
-                    page(index, flow)
+                firstPageCover(flow)
+                ForEach(1..<max(1, flow.layout.pages), id: \.self) { index in
+                    laterPage(index, flow)
                         .offset(y: CGFloat(index) * (size.height + gap))
                         .accessibilityElement(children: .contain)
                         .accessibilityLabel(ApplyMessages.page(index + 1, of: flow.layout.pages))
@@ -72,7 +92,8 @@ struct ApplicationPages: View {
         }
     }
 
-    private func page(_ index: Int, _ flow: ApplicationPageFlow) -> some View {
+    /// The paper of a page with the tiles and tinted columns that lie on it, behind the content.
+    private func paper(_ index: Int, _ flow: ApplicationPageFlow) -> some View {
         ZStack(alignment: .topLeading) {
             ApplicationPaper(draft: draft, document: document, page: index)
             let pieces = flow.layout.pieces.filter { $0.page == index }
@@ -83,52 +104,78 @@ struct ApplicationPages: View {
                     .frame(width: piece.frame.width, height: piece.frame.height)
                     .offset(x: piece.frame.minX, y: piece.frame.minY)
             }
-            let slices = flow.layout.slices.filter { $0.page == index }
-            if index == 0 {
-                // Read out and acted on by VoiceOver here, once, for the whole document.
-                sheet
+        }
+        .frame(width: size.width, height: size.height, alignment: .topLeading)
+        .clipShape(.rect(cornerRadius: cornerRadius))
+        .background {
+            if shadowRadius > 0 {
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .fill(.white)
+                    .shadow(color: .black.opacity(0.10), radius: shadowRadius, y: shadowRadius * 0.4)
+            }
+        }
+    }
+
+    /// Over the first page: paper again where a full column went on to the next page, and the places to tap.
+    private func firstPageCover(_ flow: ApplicationPageFlow) -> some View {
+        let moved = flow.layout.slices
+            .filter { $0.page == 0 && $0.to < size.height }
+            .map { CGRect(x: $0.x, y: $0.to, width: $0.width, height: size.height - $0.to) }
+        return ZStack(alignment: .topLeading) {
+            if !moved.isEmpty {
+                paper(0, flow)
                     .mask(alignment: .topLeading) {
-                        ApplicationFirstPageMask(
-                            size: size,
-                            moved: slices.filter { $0.to < size.height }.map { CGRect(x: $0.x, y: $0.to, width: $0.width, height: size.height - $0.to) }
-                        )
-                        .fill(style: FillStyle(eoFill: true))
-                        .frame(width: size.width, height: size.height)
+                        ApplicationMovedColumns(rects: moved).frame(width: size.width, height: size.height)
                     }
                     .allowsHitTesting(false)
-            } else {
-                ForEach(Array(slices.enumerated()), id: \.offset) { _, slice in
-                    sheet
-                        .offset(y: slice.shift)
-                        .mask(alignment: .topLeading) {
-                            Rectangle()
-                                .frame(width: slice.width, height: slice.to - slice.from)
-                                .offset(x: slice.x, y: slice.top)
-                        }
-                        .allowsHitTesting(false)
-                        .accessibilityHidden(true)
-                }
             }
-            if let interaction {
-                let taps = flow.taps.compactMap { tap in flow.layout.place(of: tap.frame).map { (tap.block, $0.page, $0.frame) } }.filter { $0.1 == index }
-                ForEach(Array(taps.enumerated()), id: \.offset) { _, tap in
-                    Color.clear
-                        .frame(width: tap.2.width, height: tap.2.height)
-                        .contentShape(.rect)
-                        .onTapGesture { interaction.onSelect(tap.0) }
-                        .offset(x: tap.2.minX, y: tap.2.minY)
-                        .accessibilityHidden(true)
-                }
+            taps(0, flow)
+        }
+        .frame(width: size.width, height: size.height, alignment: .topLeading)
+    }
+
+    /// A following page: its paper, and per column the part of the long sheet that belongs on it.
+    private func laterPage(_ index: Int, _ flow: ApplicationPageFlow) -> some View {
+        ZStack(alignment: .topLeading) {
+            paper(index, flow)
+            let slices = flow.layout.slices.filter { $0.page == index }
+            ForEach(Array(slices.enumerated()), id: \.offset) { _, slice in
+                // VoiceOver reads and acts on the whole document through the first page, once.
+                sheet
+                    .offset(y: slice.shift)
+                    .mask(alignment: .topLeading) {
+                        Rectangle()
+                            .frame(width: slice.width, height: slice.to - slice.from)
+                            .offset(x: slice.x, y: slice.top)
+                    }
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
             }
+            taps(index, flow)
         }
         .frame(width: size.width, height: size.height, alignment: .topLeading)
         .clipShape(.rect(cornerRadius: cornerRadius))
     }
+
+    @ViewBuilder
+    private func taps(_ index: Int, _ flow: ApplicationPageFlow) -> some View {
+        if let interaction {
+            let taps = flow.taps.compactMap { tap in flow.layout.place(of: tap.frame).map { (tap.block, $0.page, $0.frame) } }.filter { $0.1 == index }
+            ForEach(Array(taps.enumerated()), id: \.offset) { _, tap in
+                Color.clear
+                    .frame(width: tap.2.width, height: tap.2.height)
+                    .contentShape(.rect)
+                    .onTapGesture { interaction.onSelect(tap.0) }
+                    .offset(x: tap.2.minX, y: tap.2.minY)
+                    .accessibilityHidden(true)
+            }
+        }
+    }
 }
 
 private extension ApplicationPages.Shows {
-    var isOnePage: Bool {
-        if case .page = self { return true }
+    var isAll: Bool {
+        if case .all = self { return true }
         return false
     }
 }

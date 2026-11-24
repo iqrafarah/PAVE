@@ -11,11 +11,13 @@ public struct ApplicationDraft: Codable, Equatable, Sendable, Identifiable {
     public var showsPhoto: Bool
     public var cv: CVContent
     public var letter: LetterContent
+    /// What the user wants Ayla to stress in the profile and the letter, in their own words; nil when nothing.
+    public var focus: String?
     public var updatedAt: Date
 
     public init(
         vacancy: Vacancy, template: ApplicationTemplate = .sage, palette: ApplicationPalette? = nil, showsPhoto: Bool = true,
-        cv: CVContent, letter: LetterContent, updatedAt: Date = .now
+        cv: CVContent, letter: LetterContent, focus: String? = nil, updatedAt: Date = .now
     ) {
         self.vacancy = vacancy
         self.template = template
@@ -23,6 +25,7 @@ public struct ApplicationDraft: Codable, Equatable, Sendable, Identifiable {
         self.showsPhoto = showsPhoto
         self.cv = cv
         self.letter = letter
+        self.focus = focus
         self.updatedAt = updatedAt
     }
 }

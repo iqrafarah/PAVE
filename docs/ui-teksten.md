@@ -156,7 +156,7 @@ Besloten op 2026-11-24: de conceptkaart van iOS met de keuzes van web. Ayla bouw
 
 ## Cv en motivatiebrief (iOS, vanuit een vacature)
 
-"Solliciteren" bij een vacature opent eerst een galerij met ontwerpen, al ingevuld met je eigen gegevens. Na je keuze kies je hoe je begint: Ayla vult het in, of je vult het zelf in (de kluis staat er dan al in, je profiel en brief schrijf je zelf met hints). Daarna pas je elk onderdeel aan door erop te tikken. Ayla schrijft alleen met het bewijs dat ze mag bekijken. Cv en brief hebben altijd hetzelfde ontwerp.
+"Solliciteren" bij een vacature opent eerst een galerij met ontwerpen, al ingevuld met je eigen gegevens. Daarna kies je wat erin komt: Ayla's voorstel voor deze vacature staat al aangevinkt, met per bewijsstuk waarom, en mikt op één pagina. Dan kies je hoe je begint: Ayla vult het in, of je vult het zelf in (je profiel en brief schrijf je dan zelf, met hints). Daarna pas je elk onderdeel aan door erop te tikken; via Inhoud kies je opnieuw wat erop staat. Ayla schrijft alleen met het bewijs dat ze mag bekijken. Cv en brief hebben altijd hetzelfde ontwerp.
 
 Het cv volgt wat op een cv gebruikelijk is: elk onderdeel met het nieuwste bovenaan, bij een diploma of certificaat alleen de naam, de school en het jaar, en een beschrijving alleen bij werk en projecten. Past het niet op één A4, dan loopt het door op een volgende pagina; een blok wordt nooit doormidden geknipt.
 
@@ -166,13 +166,17 @@ Het cv volgt wat op een cv gebruikelijk is: elk onderdeel met het nieuwste boven
 | Filters | Alle / Met foto / Zakelijk / Creatief / Minimalistisch / Elegant |
 | Ontwerpen, van eenvoudig naar uitgesproken | Helder / Kader / Lijn / Salie / Nacht / Zuil / Tegel / Koraal / Kring / Schuin |
 | Kleuren | PAVE / Salie / Oceaan / Petrol / Nacht / Koraal / Roos / Lavendel / Zwart-wit |
-| Hoe beginnen | Hoe wil je beginnen? / Ontwerp {ontwerp}. Je cv en brief horen bij elkaar. / Ander ontwerp kiezen |
-| Ayla vult het in | Ayla schrijft je profiel, wat je bij je werk en projecten deed, en je brief, met het bewijs uit je kluis dat ze mag bekijken ({n}). Jij past daarna alles aan. (Zonder bewijs: Ayla schrijft je profiel en brief. Ze mag nog geen bewijs uit je kluis bekijken, dus ze schrijft algemeen. Jij past daarna alles aan.) |
-| Zelf invullen | Je gegevens uit de kluis staan erin. Je profiel en brief schrijf je zelf, met hints waar wat komt. |
+| Wat komt erin | Wat komt erin? / Ayla's voorstel voor {functie} bij {bedrijf}. Zet aan of uit wat je wilt laten zien. / (in de editor) Zet aan of uit wat op je cv staat. |
+| Lengte | Past op 1 pagina / {n} pagina's / Maak passend op 1 pagina / Terug naar Ayla's voorstel |
+| Waarom aan of uit | Past bij {vaardigheid} en {vaardigheid} / Loopt nog / Recent / Hoort op elk cv / Lang geleden en past minder bij deze vacature / Uit, zodat je cv op 1 pagina past |
+| Bij een bewijsstuk | (de status uit de kluis) / Ayla mag dit niet bekijken en schrijft er niet over |
+| Wat de vacature nog vraagt | Deze vacature vraagt ook om {vaardigheden}. Dat staat nog niet in je kluis, dus het komt niet op je cv en Ayla noemt het niet. |
+| Nadruk | Waar wil je de nadruk op leggen? / Hoeft niet. Ayla legt hier de nadruk op in je profiel en brief, voor zover je bewijs dat laat zien. / Bijvoorbeeld: samenwerken met klanten |
+| Hoe beginnen | Zelf invullen / Ayla vult het in / Ayla gebruikt alleen de {n} bewijsstukken die ze mag bekijken. |
 | Hints (alleen tijdens bewerken, niet in de pdf) | Schrijf hier in 2 of 3 zinnen wie je bent en wat je zoekt. / Waarom deze vacature en dit bedrijf? / Wat breng je mee? Noem een voorbeeld uit je kluis. / Sluit af en nodig uit tot een gesprek. / Telefoon / Woonplaats (zolang die leeg zijn) |
-| Meer dan één pagina | Je cv is {n} pagina's. Eén pagina leest het prettigst: tik op een blok om het korter te maken of te verbergen. / Je brief is {n} pagina's. Een brief past het best op één pagina. / Pagina {n} van {totaal} (VoiceOver) |
+| Meer dan één pagina | Je cv is {n} pagina's. Eén pagina leest het prettigst. (met de knop Maak passend op 1 pagina) / Je brief is {n} pagina's. Een brief past het best op één pagina. / Pagina {n} van {totaal} (VoiceOver) |
 | Bovenaan | Cv / Motivatiebrief |
-| Knoppen | Ontwerp / Alinea / Ayla schrijft / Klaar |
+| Knoppen | Ontwerp / Inhoud (cv) / Alinea (brief) / Ayla schrijft / Klaar |
 | Ontwerp | Sjabloon / Kleur / Profielfoto tonen / Onderdelen |
 | Geen profielfoto | Voeg een profielfoto toe bij Instellingen › Account om hem hier te tonen. |
 | Paneel (iPad, Duo open liggend) | Inhoud / Ontwerp / Tik op een onderdeel om het aan te passen. |

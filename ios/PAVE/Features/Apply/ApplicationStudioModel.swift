@@ -9,6 +9,12 @@ final class ApplicationStudioModel: Identifiable {
     var id: String { draft.id }
 
     private(set) var draft: ApplicationDraft
+    /// What the pages show: the draft, a moment behind while typing, so the text field never waits for the page.
+    private(set) var shown: ApplicationDraft
+    /// Why each piece of evidence is on or off in the proposal.
+    private(set) var choices: [String: ApplicationProposal.Choice] = [:]
+    /// The entries are still as proposed; the user has not turned one round.
+    private(set) var isProposal = false
     /// A new application starts in the gallery, then asks how to begin; one made before opens in the editor.
     var stage: Stage
     var document = ApplicationDocumentKind.cv
@@ -26,18 +32,22 @@ final class ApplicationStudioModel: Identifiable {
     let items: [VaultItem]
     private let service: (any AylaService)?
     private let store: ApplicationStore
+    /// How many pages a draft takes in its design; the screen that has the page sets it.
+    var measure: (ApplicationDraft) -> Int = { _ in 1 }
+    /// How long the CV in the editor is now.
+    var pages = 1
+    private var showing: Task<Void, Never>?
+    private var saving: Task<Void, Never>?
 
     init(vacancy: Vacancy, items: [VaultItem], name: String, email: String, service: (any AylaService)?, store: ApplicationStore = ApplicationStore()) {
         self.items = items
         self.service = service
         self.store = store
-        if let saved = store.load(vacancy.id) {
-            draft = saved
-            stage = .editor
-        } else {
-            draft = ApplicationBuilder.draft(for: vacancy, items: items, name: name, email: email)
-            stage = .gallery
-        }
+        let saved = store.load(vacancy.id)
+        let first = saved ?? ApplicationBuilder.draft(for: vacancy, items: items, name: name, email: email)
+        draft = first
+        shown = first
+        stage = saved == nil ? .gallery : .editor
     }
 
     enum Stage { case gallery, start, editor }
@@ -45,7 +55,14 @@ final class ApplicationStudioModel: Identifiable {
     /// A design from the gallery: its own palette, and its photo when it is made for one.
     func choose(_ template: ApplicationTemplate) {
         draft = preview(template)
-        if stage == .editor { update { _ in } } else { stage = .start }
+        shown = draft
+        if stage == .editor {
+            update { _ in }
+        } else {
+            // What fits on one page differs per design, so the proposal is made for the one that was chosen.
+            propose()
+            stage = .start
+        }
     }
 
     /// The design with this template, to show in the gallery before it is chosen.
@@ -66,7 +83,24 @@ final class ApplicationStudioModel: Identifiable {
         )
         fresh.palette = chosen.palette
         fresh.showsPhoto = chosen.showsPhoto
+        fresh.focus = chosen.focus
+        // What was chosen to go in stays chosen: the new draft has new entries for the same evidence.
+        let chosenSources = Dictionary(
+            chosen.cv.sections.flatMap(\.entries).compactMap { entry in entry.sourceItemID.map { ($0, entry.isVisible) } },
+            uniquingKeysWith: { first, _ in first }
+        )
+        var newChoices: [String: ApplicationProposal.Choice] = [:]
+        for section in fresh.cv.sections.indices {
+            for index in fresh.cv.sections[section].entries.indices {
+                let entry = fresh.cv.sections[section].entries[index]
+                guard let source = entry.sourceItemID else { continue }
+                if let isOn = chosenSources[source] { fresh.cv.sections[section].entries[index].isVisible = isOn }
+                if let old = chosen.cv.sections.flatMap(\.entries).first(where: { $0.sourceItemID == source }) { newChoices[entry.id] = choices[old.id] }
+            }
+        }
+        choices = newChoices
         draft = fresh
+        shown = fresh
         store.save(draft)
         stage = .editor
         guard withAyla, service != nil else { return }
@@ -76,8 +110,65 @@ final class ApplicationStudioModel: Identifiable {
         _ = await (profile, entries, letter)
     }
 
-    /// Only evidence Ayla may look at goes to her.
-    var itemsForAyla: [VaultItem] { items.filter { $0.aylaAllowedAt != nil && $0.archivedAt == nil } }
+    /// Only evidence Ayla may look at goes to her, and of that only what is on the CV: what the user left out, she
+    /// does not write about either.
+    var itemsForAyla: [VaultItem] {
+        let hidden = Set(draft.cv.sections.flatMap { section in
+            section.entries.filter { !$0.isVisible || !section.isVisible }.compactMap(\.sourceItemID)
+        })
+        return items.filter { $0.aylaAllowedAt != nil && $0.archivedAt == nil && !hidden.contains($0.id) }
+    }
+
+    // MARK: What goes in
+
+    /// The proposal for this vacancy in the chosen design: what fits is on, what is old and unrelated is off, and
+    /// the least fitting is left out until the CV is one page. `pages` measures a draft.
+    func propose() {
+        var all = draft
+        ApplicationProposal.apply(Dictionary(uniqueKeysWithValues: all.cv.sections.flatMap(\.entries).map { ($0.id, true) }), to: &all)
+        let proposal = ApplicationProposal.fitted(all, items: items, today: VaultDay(.now), pages: measure)
+        choices = proposal.choices
+        isProposal = true
+        set(proposal.draft)
+    }
+
+    /// Leaves out the least fitting of what is on now, until the CV is one page. Returns false when it fitted already.
+    @discardableResult
+    func fitOnOnePage() -> Bool {
+        let off = ApplicationProposal.trimmed(draft, items: items, today: VaultDay(.now), pages: measure)
+        guard !off.isEmpty else { return false }
+        var shorter = draft
+        ApplicationProposal.apply(Dictionary(uniqueKeysWithValues: off.map { ($0, false) }), to: &shorter)
+        for id in off { choices[id] = .init(isOn: false, reason: .forOnePage) }
+        set(shorter)
+        return true
+    }
+
+    func setVisible(_ entryID: String, _ isOn: Bool) {
+        var changed = draft
+        ApplicationProposal.apply([entryID: isOn], to: &changed)
+        isProposal = false
+        set(changed)
+    }
+
+    func setFocus(_ text: String) {
+        let focus = text.isEmpty ? nil : String(text.prefix(200))
+        if stage == .editor {
+            update(typing: true) { $0.focus = focus }
+        } else {
+            draft.focus = focus
+        }
+    }
+
+    /// While choosing, before the editor, nothing is kept yet: a draft only exists once you begin.
+    private func set(_ new: ApplicationDraft) {
+        if stage == .editor {
+            update { $0 = new }
+        } else {
+            draft = new
+            shown = new
+        }
+    }
 
     var canWrite: Bool { service != nil }
 
@@ -87,9 +178,39 @@ final class ApplicationStudioModel: Identifiable {
 
     // MARK: Changing
 
-    func update(_ change: (inout ApplicationDraft) -> Void) {
+    /// `typing`: a change per keystroke. The pages follow a moment later and the file is written once the typing
+    /// stops, so the text field stays quick; anything else shows and is kept at once.
+    func update(typing: Bool = false, _ change: (inout ApplicationDraft) -> Void) {
         change(&draft)
         draft.updatedAt = .now
+        guard typing else {
+            settle()
+            return
+        }
+        if showing == nil {
+            showing = Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(140))
+                guard let self, !Task.isCancelled else { return }
+                self.showing = nil
+                self.shown = self.draft
+            }
+        }
+        saving?.cancel()
+        saving = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(600))
+            guard let self, !Task.isCancelled else { return }
+            self.saving = nil
+            self.store.save(self.draft)
+        }
+    }
+
+    /// Shows and keeps what was typed, now: before a pdf, when a block is closed, when the screen goes away.
+    func settle() {
+        showing?.cancel()
+        showing = nil
+        saving?.cancel()
+        saving = nil
+        if shown != draft { shown = draft }
         store.save(draft)
     }
 
@@ -97,8 +218,8 @@ final class ApplicationStudioModel: Identifiable {
         draft.cv.sections.lazy.flatMap(\.entries).first { $0.id == id }
     }
 
-    func updateEntry(_ id: String, _ change: (inout CVEntry) -> Void) {
-        update { draft in
+    func updateEntry(_ id: String, typing: Bool = false, _ change: (inout CVEntry) -> Void) {
+        update(typing: typing) { draft in
             for s in draft.cv.sections.indices {
                 if let e = draft.cv.sections[s].entries.firstIndex(where: { $0.id == id }) { change(&draft.cv.sections[s].entries[e]) }
             }
@@ -152,7 +273,7 @@ final class ApplicationStudioModel: Identifiable {
         writing = .profile
         defer { writing = nil }
         do {
-            let answer = try await service.writeApplication(.init(kind: .profile, vacancy: draft.vacancy, name: draft.cv.name, items: itemsForAyla))
+            let answer = try await service.writeApplication(.init(kind: .profile, vacancy: draft.vacancy, name: draft.cv.name, items: itemsForAyla, focus: draft.focus))
             guard let profile = answer.profile, !profile.isEmpty else { throw AylaError.unavailable }
             before = (.profile, draft.cv.profile)
             setText(profile, of: .profile)
@@ -194,7 +315,7 @@ final class ApplicationStudioModel: Identifiable {
         isWritingLetter = true
         defer { isWritingLetter = false }
         do {
-            let answer = try await service.writeApplication(.init(kind: .letter, vacancy: draft.vacancy, name: draft.cv.name, items: itemsForAyla))
+            let answer = try await service.writeApplication(.init(kind: .letter, vacancy: draft.vacancy, name: draft.cv.name, items: itemsForAyla, focus: draft.focus))
             guard let paragraphs = answer.paragraphs, !paragraphs.isEmpty else { throw AylaError.unavailable }
             update { draft in
                 if let salutation = answer.salutation { draft.letter.salutation = salutation }
