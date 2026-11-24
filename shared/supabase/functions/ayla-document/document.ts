@@ -83,6 +83,9 @@ export function parseDocumentRequest(body: unknown): DocumentRequest | string {
 const RULES = `
 Je schrijft mee aan een sollicitatie in PAVE, namens de gebruiker, in de ik-vorm.
 - Gebruik alleen wat in de vacature en de bewijsstukken hieronder staat. Verzin geen diploma's, werkervaring, cijfers, jaartallen, namen of vaardigheden, en doe niet alsof iets geverifieerd is.
+- Zeg niets over het bedrijf wat niet in de vacature staat: geen producten, klanten, waarden of werkwijze. Waarom deze vacature aanspreekt, haal je uit wat de vacature vraagt en wat de gebruiker heeft gedaan.
+- De gebruiker solliciteert nog: schrijf nooit alsof hij of zij de functie al heeft ("als junior ontwikkelaar heb ik").
+- Maak niets mooier dan het bewijs zegt: "testte met gebruikers" blijft testen met gebruikers, geen "feedback verwerkt".
 - Schrijf in helder, natuurlijk Nederlands, tenzij gevraagd wordt om Engels.
 - Geen gedachtestreepjes, geen opsommingstekens, geen emoji, geen holle woorden als "gepassioneerd" of "dynamisch".
 - Vul alleen de velden in die bij de opdracht horen; de andere zijn null.
@@ -127,7 +130,7 @@ export function documentMessages(request: DocumentRequest): { role: 'system' | '
       ask = `Schrijf een motivatiebrief. "salutation": een aanhef zoals "Beste team van ${request.vacancy.company},". "paragraphs": 3 of 4 alinea's: waarom deze vacature en dit bedrijf, wat de gebruiker meebrengt met concrete voorbeelden uit de bewijsstukken (zet in "sources" de nummers van de bewijsstukken die een alinea noemt), en een afsluiting die uitnodigt tot een gesprek. Samen hooguit 230 woorden. "closing": "Met vriendelijke groet,". Toon: ${tone}.`
       break
     case 'rewrite':
-      ask = `${REWRITE_ASK[request.rewrite!]} Zet het resultaat in "text".\n\nDe tekst:\n${request.text}`
+      ask = `${REWRITE_ASK[request.rewrite!]} Voeg niets toe wat niet al in de tekst staat, ook niet uit de bewijsstukken. Zet het resultaat in "text".\n\nDe tekst:\n${request.text}`
       break
   }
   return [

@@ -38,3 +38,12 @@ Deno.test('dashes and quotes are cleaned out of what she writes', () => {
   assertEquals(cleanWriting('"Ik bouw apps — graag met Swift."'), 'Ik bouw apps, graag met Swift.')
   assertEquals(cleanWriting('   '), undefined)
 })
+
+Deno.test('she says nothing about the company or the job that is not in the data, and a rewrite adds nothing', () => {
+  const letter = parseDocumentRequest({ kind: 'letter', vacancy, name: 'Daaf', items })
+  const rewrite = parseDocumentRequest({ kind: 'rewrite', vacancy, name: 'Daaf', items, text: 'Ik bouw apps.', rewrite: 'shorter' })
+  if (typeof letter === 'string' || typeof rewrite === 'string') throw new Error('request')
+  assertEquals(documentMessages(letter)[0].content.includes('Zeg niets over het bedrijf wat niet in de vacature staat'), true)
+  assertEquals(documentMessages(letter)[0].content.includes('schrijf nooit alsof hij of zij de functie al heeft'), true)
+  assertEquals(documentMessages(rewrite)[1].content.includes('Voeg niets toe wat niet al in de tekst staat'), true)
+})
