@@ -201,6 +201,13 @@ struct SupabaseNotificationsService: Sendable {
         _ = try await call(components.url!, method: "PATCH", body: ["read_at": ISO8601DateFormatter().string(from: .now)])
     }
 
+    /// Everything unread in the inbox at once; only your own rows are reachable (RLS), so no id list is needed.
+    func markAllRead() async throws {
+        var components = URLComponents(url: projectURL.appending(path: "rest/v1/user_notifications"), resolvingAgainstBaseURL: false)!
+        components.queryItems = [URLQueryItem(name: "read_at", value: "is.null"), URLQueryItem(name: "deleted_at", value: "is.null")]
+        _ = try await call(components.url!, method: "PATCH", body: ["read_at": ISO8601DateFormatter().string(from: .now)])
+    }
+
     /// Deleting is soft: the database sets the time itself, and restoring works for 7 days (`guard_user_notification_update`).
     func setDeleted(notificationID: String, _ isDeleted: Bool) async throws {
         var components = URLComponents(url: projectURL.appending(path: "rest/v1/user_notifications"), resolvingAgainstBaseURL: false)!
@@ -241,8 +248,17 @@ final class NotificationsModel {
     private(set) var audience: NotificationAudience = .learner
     private(set) var notifications: [PaveNotification] = []
     private(set) var problem: String?
+    /// A melding that arrived while the app was open: shown as a small banner until it is dismissed or tapped.
+    private(set) var banner: PaveNotification?
+    /// Ids seen so far; the first load is never "new", so opening the app does not announce your whole inbox.
+    @ObservationIgnored private var knownIDs: Set<String>?
 
     init(service: SupabaseNotificationsService?) { self.service = service }
+
+    /// Not deleted, not read: what the bell and the icon badge show.
+    var unreadCount: Int { notifications.filter { $0.deletedAt == nil && $0.isUnread }.count }
+
+    func dismissBanner() { banner = nil }
 
     func refresh() async {
         guard let service else {
@@ -254,6 +270,7 @@ final class NotificationsModel {
             audience = newAudience
             notifications = rows
             problem = nil
+            announceArrivals(in: rows)
         } catch let error as LocalizedError {
             problem = error.errorDescription ?? "Meldingen konden niet worden geladen. Probeer opnieuw."
         } catch {
@@ -261,7 +278,33 @@ final class NotificationsModel {
         }
     }
 
-    func markRead(_ id: String) async { try? await service?.markRead(notificationID: id) }
+    /// What counts as new: unread, not deleted and not seen on an earlier refresh. While the app is open this becomes an
+    /// in-app banner; the ids are also stored so the background refresh (`NotificationAlerts`) does not announce them again.
+    private func announceArrivals(in rows: [PaveNotification]) {
+        let ids = Set(rows.map(\.id))
+        defer {
+            knownIDs = ids
+            NotificationAlerts.seenIDs = ids
+        }
+        guard let knownIDs else { return }
+        let fresh = rows.filter { !knownIDs.contains($0.id) && $0.isUnread && $0.deletedAt == nil }
+        if let newest = fresh.max(by: { $0.date < $1.date }) {
+            banner = newest
+            PaveHaptics.success()
+        }
+    }
+
+    func markRead(_ id: String) async {
+        if let index = notifications.firstIndex(where: { $0.id == id }) { notifications[index].isUnread = false }
+        if banner?.id == id { banner = nil }
+        try? await service?.markRead(notificationID: id)
+    }
+
+    func markAllRead() async {
+        for index in notifications.indices { notifications[index].isUnread = false }
+        banner = nil
+        try? await service?.markAllRead()
+    }
 
     /// The last save per notification, so a quick "Ongedaan maken" never reaches the server before the delete itself.
     @ObservationIgnored private var changes: [String: Task<Bool, Never>] = [:]

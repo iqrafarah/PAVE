@@ -1,5 +1,6 @@
 import PAVECore
 import SwiftUI
+import UserNotifications
 
 enum NotificationAudience: Equatable, Sendable {
     case learner
@@ -91,6 +92,7 @@ struct NotificationsScreen: View {
     var loadError: String?
     var onRefresh: (() async -> Void)?
     var onMarkRead: ((String) async -> Void)?
+    var onMarkAllRead: (() async -> Void)?
     var onOpenConversation: ((String) -> Void)?
     var onOpenVerifiedEvidence: ((String) -> Void)?
     var onLoadReview: ((String) async -> (payload: NotificationReviewPayload?, error: String?))?
@@ -99,31 +101,17 @@ struct NotificationsScreen: View {
     var onDelete: ((String) async -> Bool)?
     var onRestore: ((String) async -> Bool)?
 
-    @State private var tab: NotificationTab = .all
-    @State private var selectedKinds: Set<PaveNotificationKind> = []
-    @State private var hasKindFilter = false
     @State private var searchText = ""
-    @State private var showsFilters = false
+    @State private var alertStatus: UNAuthorizationStatus?
+    @Environment(\.openURL) private var openURL
     @State private var showsTrash = false
     @State private var openedNotification: PaveNotification?
     @State private var readIDs: Set<String> = []
-    /// The notification just deleted, while "Ongedaan maken" is on screen.
-    @State private var undoID: String?
+    /// The meldingen just deleted (a chat with several is one row), while "Ongedaan maken" is on screen.
+    @State private var undoIDs: [String] = []
 
-    /// What the role normally gets, plus whatever is actually in the inbox: a reviewer who also asks for verification
-    /// still sees the decisions on their own evidence.
-    private var availableKinds: [PaveNotificationKind] {
-        let usual: Set<PaveNotificationKind> = switch audience {
-        case .learner: [.conversation, .verifiedEvidence, .rejectedEvidence]
-        case .administrator: [.conversation, .verificationRequest]
-        }
-        let present = Set(inbox.map(\.kind))
-        return [.verificationRequest, .verifiedEvidence, .rejectedEvidence, .conversation].filter { usual.contains($0) || present.contains($0) }
-    }
-
-    private var activeKinds: Set<PaveNotificationKind> {
-        hasKindFilter ? selectedKinds : Set(availableKinds)
-    }
+    /// Search only earns its place once the list is long enough to need it.
+    private static let searchThreshold = 8
 
     /// Everything not deleted.
     private var inbox: [PaveNotification] {
@@ -139,18 +127,30 @@ struct NotificationsScreen: View {
 
     private var visibleNotifications: [PaveNotification] {
         inbox
-            .filter { availableKinds.contains($0.kind) && activeKinds.contains($0.kind) }
-            .filter { tab == .all || isUnread($0) }
             .filter {
                 searchText.isEmpty || [
                     $0.title, $0.personName, $0.documentName ?? "", $0.documentType ?? ""
                 ].joined(separator: " ").localizedCaseInsensitiveContains(searchText)
             }
             .sorted { $0.date > $1.date }
+            .reduce(into: ([PaveNotification](), Set<String>())) { result, item in
+                // Ayla's meldingen of one chat are one row, the newest on top.
+                if item.kind == .conversation, let chat = item.conversationID {
+                    guard result.1.insert(chat).inserted else { return }
+                }
+                result.0.append(item)
+            }
+            .0
     }
 
-    private var unreadCount: Int {
-        inbox.filter { availableKinds.contains($0.kind) && isUnread($0) }.count
+    private var hasUnread: Bool {
+        inbox.contains { $0.isUnread && !readIDs.contains($0.id) }
+    }
+
+    /// Everything behind one row: all meldingen of the same chat, or just the one.
+    private func ids(of notification: PaveNotification) -> [String] {
+        guard notification.kind == .conversation, let chat = notification.conversationID else { return [notification.id] }
+        return inbox.filter { $0.kind == .conversation && $0.conversationID == chat }.map(\.id)
     }
 
     var body: some View {
@@ -158,65 +158,52 @@ struct NotificationsScreen: View {
             // A List, not a ScrollView, because only a List has swipe actions.
             List {
                 Group {
-                    intro
-                    if let loadError {
-                        Text(loadError)
-                            .textStyle(.caption)
-                            .foregroundStyle(Color.statusRejected)
-                            .padding(12)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color.panel, in: .rect(cornerRadius: 12))
-                    }
-                    tabs
-                    search
-                    if hasKindFilter, !selectedKinds.isEmpty {
-                        activeFilterChips
-                    }
+                if let loadError {
+                    Text(loadError)
+                        .textStyle(.caption)
+                        .foregroundStyle(Color.statusRejected)
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.panel, in: .rect(cornerRadius: 12))
                 }
-                .notificationListRow()
+                if alertStatus == .notDetermined || alertStatus == .denied {
+                    alertsCard
+                }
+                if inbox.count >= Self.searchThreshold || !searchText.isEmpty {
+                    PaveSearchField(text: $searchText, prompt: "Zoek in meldingen")
+                }
+                }
+                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
                 notificationList
-                if !deletedNotifications.isEmpty {
-                    trashLink
-                        .notificationListRow(top: 16, bottom: 32)
-                }
             }
-            .listStyle(.plain)
+            // One grouped list, like Instellingen: a panel per section with dividers, not a card per melding.
+            .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
-            .environment(\.defaultMinListRowHeight, 0)
             .contentMargins(.top, 8, for: .scrollContent)
+            .contentMargins(.horizontal, 8, for: .scrollContent)
             .animation(.snappy, value: visibleNotifications.map(\.id))
             .refreshable { await onRefresh?() }
             .safeAreaInset(edge: .bottom, spacing: 12) {
-                if undoID != nil {
+                if !undoIDs.isEmpty {
                     AylaUndoBar(message: "Melding verwijderd") { undoDelete() }
                         .padding(.horizontal, 16)
                         .frame(maxWidth: 560)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
-            .animation(.snappy, value: undoID)
-            .task(id: undoID) {
-                guard undoID != nil else { return }
+            .animation(.snappy, value: undoIDs)
+            .task(id: undoIDs) {
+                guard !undoIDs.isEmpty else { return }
                 try? await Task.sleep(for: .seconds(5))
                 guard !Task.isCancelled else { return }
-                undoID = nil
+                undoIDs = []
             }
             .background(Color.canvas.ignoresSafeArea())
             .mainScreenToolbar("Meldingen", onShowMenu: onShowMenu)
-            .sheet(isPresented: $showsFilters, onDismiss: {
-                // Nothing ticked means no filter, so the list never ends up empty without a way back.
-                if selectedKinds.isEmpty { hasKindFilter = false }
-            }) {
-                NotificationFilterSheet(
-                    availableKinds: availableKinds,
-                    selectedKinds: $selectedKinds,
-                    hasKindFilter: $hasKindFilter,
-                    resultCount: inbox.filter { availableKinds.contains($0.kind) && activeKinds.contains($0.kind) }.count
-                )
-                // One row per kind: a reviewer who also asks for verification can have all four.
-                .presentationDetents([.height(availableKinds.count > 3 ? 454 : 390)])
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color.panel)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) { moreMenu }
             }
             .navigationDestination(isPresented: Binding(
                 get: { openedNotification != nil },
@@ -240,131 +227,154 @@ struct NotificationsScreen: View {
         }
         .tint(.paveAccent)
         .task { await onRefresh?() }
+        .task { alertStatus = await NotificationAlerts.status() }
     }
 
-    private var intro: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text("Je meldingen")
-                .textStyle(.label)
-                .foregroundStyle(Color.ink)
-                .accessibilityAddTraits(.isHeader)
-            Text("Alles wat jouw aandacht nodig heeft.")
-                .textStyle(.caption)
-                .foregroundStyle(Color.inkMuted)
-        }
-    }
-
-    private var tabs: some View {
-        HStack(spacing: 8) {
-            ForEach(NotificationTab.allCases) { option in
-                Button {
-                    tab = option
-                    PaveHaptics.selection()
-                } label: {
-                    Text(option.title(unreadCount: unreadCount))
-                        .textStyle(.caption)
-                        .foregroundStyle(tab == option ? Color.white : Color.inkMuted)
-                        .padding(.horizontal, 13)
-                        .frame(height: 34)
-                        .background(tab == option ? Color.paveAccentFill : Color.paveSurfaceTint, in: .capsule)
-                }
-                .buttonStyle(.pave)
-            }
-            Spacer(minLength: 0)
-        }
-    }
-
-    private var search: some View {
-        HStack(spacing: 8) {
-            PaveSearchField(text: $searchText, prompt: "Zoek in meldingen")
-            Button { showsFilters = true } label: {
-                Image(.iconFunnelSolid)
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
+    /// Asked here, by choice, and not at launch: the first time iOS shows its question is when you tap "Zet aan".
+    private var alertsCard: some View {
+        let denied = alertStatus == .denied
+        return HStack(spacing: 11) {
+            Image(.iconBellSolid)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(Color.paveAccent)
+                .frame(width: 18, height: 18)
+                .frame(width: 36, height: 36)
+                .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 10))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(denied ? "Meldingen staan uit in iOS" : "Een seintje bij nieuwe meldingen?")
+                    .textStyle(.bodyMedium)
                     .foregroundStyle(Color.ink)
-                    .frame(width: 17, height: 17)
-                    .frame(width: 40, height: 40)
-                    .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 11))
+                Text(denied ? "Zet ze aan in de Instellingen van je iPhone." : "Je ziet het ook als PAVE dicht is. Alleen de titel, nooit je bewijs.")
+                    .textStyle(.caption)
+                    .foregroundStyle(Color.inkMuted)
             }
-            .buttonStyle(.pave)
-            .accessibilityLabel("Meldingen filteren")
-        }
-    }
-
-    private var activeFilterChips: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 7) {
-                ForEach(Array(activeKinds).sorted { $0.rawValue < $1.rawValue }) { kind in
-                    Button {
-                        selectedKinds.remove(kind)
-                        if selectedKinds.isEmpty { hasKindFilter = false }
-                        PaveHaptics.selection()
-                    } label: {
-                        HStack(spacing: 7) {
-                            Text(kind.filterTitle)
-                            Image(.iconXMark)
-                                .resizable()
-                                .frame(width: 10, height: 10)
-                        }
-                        .textStyle(.caption)
-                        .foregroundStyle(Color.paveAccent)
-                        .padding(.horizontal, 10)
-                        .frame(height: 28)
-                        .background(Color.paveSurfaceTint, in: .capsule)
+            Spacer(minLength: 6)
+            Button(denied ? "Instellingen" : "Zet aan") {
+                if denied {
+                    if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                } else {
+                    Task {
+                        _ = await NotificationAlerts.requestPermission()
+                        alertStatus = await NotificationAlerts.status()
                     }
-                    .buttonStyle(.pave)
                 }
             }
+            .textStyle(.caption)
+            .foregroundStyle(Color.paveAccent)
+            .buttonStyle(.pave)
         }
-        .scrollIndicators(.hidden)
+        .padding(10)
+        .background(Color.panel, in: .rect(cornerRadius: 13))
+        .overlay { RoundedRectangle(cornerRadius: 13).strokeBorder(Color.cardBorder) }
+    }
+
+    /// Everything that is not about one melding: read them all, and the bin.
+    private var moreMenu: some View {
+        Menu {
+            Button {
+                markAllRead()
+            } label: {
+                Label("Alles als gelezen markeren", image: .iconMailOpen)
+            }
+            .disabled(!hasUnread)
+            Button { showsTrash = true } label: {
+                Label(
+                    deletedNotifications.isEmpty ? "Recent verwijderd" : "Recent verwijderd (\(deletedNotifications.count))",
+                    image: .iconTrash
+                )
+            }
+        } label: {
+            Image(.iconEllipsis)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 18, height: 18)
+                .foregroundStyle(Color.ink)
+                .frame(minWidth: 44, minHeight: 44)
+        }
+        .accessibilityLabel("Meer")
     }
 
     @ViewBuilder
     private var notificationList: some View {
         if visibleNotifications.isEmpty {
-            let isFiltered = !searchText.isEmpty || hasKindFilter
-            PaveEmptyState(
-                icon: isFiltered ? .iconSearch : .iconMailOpen,
-                title: isFiltered ? "Geen meldingen gevonden" : "Je bent helemaal bij",
-                message: isFiltered ? "Pas je zoekopdracht of filters aan." : "Nieuwe meldingen verschijnen hier."
-            )
-            .padding(.top, 30)
-            .frame(maxWidth: .infinity)
-            .notificationListRow()
+            if searchText.isEmpty {
+                PaveEmptyState(
+                    icon: .iconMailOpen,
+                    title: "Je bent helemaal bij",
+                    message: emptyMessage
+                )
+                .padding(.top, 30)
+                .frame(maxWidth: .infinity)
+                .notificationListRow()
+            } else {
+                PaveEmptyState(
+                    icon: .iconSearch,
+                    title: "Niets gevonden",
+                    message: "Probeer een andere zoekterm."
+                )
+                .padding(.top, 30)
+                .frame(maxWidth: .infinity)
+                .notificationListRow()
+            }
         } else {
             ForEach(groupedNotifications, id: \.title) { section in
-                HStack {
-                    Text(section.title)
-                        .textStyle(.caption)
-                        .foregroundStyle(Color.inkMuted)
-                    Spacer()
-                    Text(section.countLabel)
-                        .textStyle(.caption)
-                        .foregroundStyle(Color.paveAccent)
-                }
-                .accessibilityAddTraits(.isHeader)
-                .notificationListRow(top: 12, bottom: 4)
-                ForEach(section.items) { notification in
-                    row(notification)
+                Section {
+                    ForEach(section.items) { notification in
+                        row(notification)
+                    }
+                } header: {
+                    HStack(spacing: 6) {
+                        Text(section.title)
+                            .textStyle(.caption)
+                            .foregroundStyle(section.needsAction ? Color.paveAccent : Color.inkMuted)
+                        if section.needsAction {
+                            Text("\(section.items.count)")
+                                .textStyle(.caption)
+                                .foregroundStyle(Color.white)
+                                .padding(.horizontal, 7)
+                                .frame(minWidth: 20, minHeight: 20)
+                                .background(Color.paveAccentFill, in: .capsule)
+                        }
+                    }
+                    .textCase(nil)
+                    .accessibilityAddTraits(.isHeader)
                 }
             }
+        }
+    }
+
+    private var emptyMessage: String {
+        switch audience {
+        case .learner: "Zodra een organisatie je bewijs beoordeelt, zie je dat hier."
+        case .administrator: "Nieuwe verificatieaanvragen en beslissingen verschijnen hier."
         }
     }
 
     /// Opens the notification; swipe left or hold it to delete.
     private func row(_ notification: PaveNotification) -> some View {
         Button { open(notification) } label: {
-            NotificationRow(notification: notification, isUnread: isUnread(notification), hint: hint(for: notification))
+            NotificationInboxRow(notification: notification, isUnread: isUnread(notification), count: ids(of: notification).count)
         }
-        .buttonStyle(.pave)
-        .notificationListRow(top: 4, bottom: 4)
+        .buttonStyle(.plain)
+        .listRowBackground(Color.panel)
+        .listRowInsets(EdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14))
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) { delete(notification) } label: {
                 Label("Verwijderen", image: .iconTrash)
             }
             // Red, not the app's green tint.
             .tint(.red)
+        }
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            if isUnread(notification) {
+                Button { markRead(notification) } label: {
+                    Label("Gelezen", image: .iconMailOpen)
+                }
+                .tint(.paveAccent)
+            }
         }
         .contextMenu { menu(for: notification) }
         .accessibilityElement(children: .combine)
@@ -383,48 +393,6 @@ struct NotificationsScreen: View {
         }
     }
 
-    private var trashLink: some View {
-        Button { showsTrash = true } label: {
-            HStack(spacing: 11) {
-                Image(.iconTrash)
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 16, height: 16)
-                    .foregroundStyle(Color.inkMuted)
-                Text("Recent verwijderd")
-                    .textStyle(.bodyMedium)
-                    .foregroundStyle(Color.ink)
-                Spacer(minLength: 6)
-                Text("\(deletedNotifications.count)")
-                    .textStyle(.caption)
-                    .foregroundStyle(Color.inkMuted)
-                Image(.iconChevronRight)
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 12, height: 12)
-                    .foregroundStyle(Color.inkMuted)
-            }
-            .padding(.horizontal, 12)
-            .frame(minHeight: 48)
-            .background(Color.panel, in: .rect(cornerRadius: 12))
-            .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(Color.cardBorder) }
-            .contentShape(.rect(cornerRadius: 12))
-        }
-        .buttonStyle(.pave)
-        .accessibilityLabel("Recent verwijderd, \(deletedNotifications.count)")
-        .accessibilityHint("Verwijderde meldingen kun je \(PaveNotification.restorableDays) dagen terugzetten")
-    }
-
-    private func hint(for notification: PaveNotification) -> String {
-        switch notification.kind {
-        case .conversation: "Bekijk gesprek"
-        case .verifiedEvidence, .rejectedEvidence: "Bekijk bewijs"
-        case .verificationRequest: "Bekijk aanvraag"
-        }
-    }
-
     private func open(_ notification: PaveNotification) {
         markRead(notification)
         switch notification.kind {
@@ -440,151 +408,72 @@ struct NotificationsScreen: View {
 
     private func delete(_ notification: PaveNotification) {
         PaveHaptics.tap(.medium)
-        undoID = notification.id
+        let all = ids(of: notification)
+        undoIDs = all
         Task {
             guard let onDelete else { return }
-            if await !onDelete(notification.id) {
+            for id in all where await !onDelete(id) {
                 PaveHaptics.error()
-                if undoID == notification.id { undoID = nil }
+                undoIDs = undoIDs.filter { $0 != id }
             }
         }
     }
 
     private func undoDelete() {
-        guard let id = undoID else { return }
-        undoID = nil
+        let all = undoIDs
+        undoIDs = []
         PaveHaptics.success()
-        Task { _ = await onRestore?(id) }
+        Task { for id in all { _ = await onRestore?(id) } }
     }
 
+    /// Open verification requests first ("Actie nodig": the inbox only holds requests that are still pending), then
+    /// everything else by when it happened.
     private var groupedNotifications: [NotificationSection] {
         let calendar = Calendar.current
-        let groups = Dictionary(grouping: visibleNotifications) { item -> String in
+        let actionable = visibleNotifications.filter { $0.kind == .verificationRequest }
+        let rest = visibleNotifications.filter { $0.kind != .verificationRequest }
+        let groups = Dictionary(grouping: rest) { item -> String in
             if calendar.isDateInToday(item.date) { return "Vandaag" }
-            if calendar.isDateInYesterday(item.date) { return "Gisteren" }
+            if let week = calendar.date(byAdding: .day, value: -6, to: calendar.startOfDay(for: .now)), item.date >= week {
+                return "Deze week"
+            }
             return "Eerder"
         }
-        return ["Vandaag", "Gisteren", "Eerder"].compactMap { title in
-            guard let items = groups[title], !items.isEmpty else { return nil }
-            return NotificationSection(
-                title: title,
-                items: items,
-                countLabel: title == "Vandaag" ? "\(items.filter(isUnread).count) ongelezen" : ""
-            )
+        var sections: [NotificationSection] = []
+        if !actionable.isEmpty {
+            sections.append(NotificationSection(title: "Actie nodig", items: actionable, needsAction: true))
         }
+        for title in ["Vandaag", "Deze week", "Eerder"] {
+            if let items = groups[title], !items.isEmpty {
+                sections.append(NotificationSection(title: title, items: items, needsAction: false))
+            }
+        }
+        return sections
     }
 
+    /// A chat row is unread while any of its meldingen is.
     private func isUnread(_ notification: PaveNotification) -> Bool {
-        notification.isUnread && !readIDs.contains(notification.id)
+        let all = ids(of: notification)
+        return inbox.contains { all.contains($0.id) && $0.isUnread && !readIDs.contains($0.id) }
     }
 
     private func markRead(_ notification: PaveNotification) {
-        readIDs.insert(notification.id)
-        Task { await onMarkRead?(notification.id) }
+        let all = ids(of: notification)
+        readIDs.formUnion(all)
+        Task { for id in all { await onMarkRead?(id) } }
     }
-}
 
-private enum NotificationTab: String, CaseIterable, Identifiable {
-    case all
-    case unread
-
-    var id: Self { self }
-
-    func title(unreadCount: Int) -> String {
-        switch self {
-        case .all: "Alle meldingen"
-        case .unread: "Ongelezen (\(unreadCount))"
-        }
+    private func markAllRead() {
+        PaveHaptics.selection()
+        readIDs.formUnion(inbox.map(\.id))
+        Task { await onMarkAllRead?() }
     }
 }
 
 private struct NotificationSection {
     let title: String
     let items: [PaveNotification]
-    let countLabel: String
-}
-
-private struct NotificationFilterSheet: View {
-    let availableKinds: [PaveNotificationKind]
-    @Binding var selectedKinds: Set<PaveNotificationKind>
-    @Binding var hasKindFilter: Bool
-    let resultCount: Int
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Capsule().fill(Color.railBorder).frame(width: 38, height: 4).frame(maxWidth: .infinity)
-            Text("Meldingen filteren")
-                .textStyle(.choice)
-                .foregroundStyle(Color.ink)
-            Text("Kies welke meldingen je wilt zien.")
-                .textStyle(.caption)
-                .foregroundStyle(Color.inkMuted)
-                .padding(.top, -13)
-
-            Text("Type melding")
-                .textStyle(.caption)
-                .foregroundStyle(Color.inkMuted)
-
-            VStack(spacing: 8) {
-                ForEach(availableKinds) { kind in
-                    Button {
-                        var selection = hasKindFilter ? selectedKinds : Set(availableKinds)
-                        if selection.contains(kind) {
-                            selection.remove(kind)
-                        } else {
-                            selection.insert(kind)
-                        }
-                        hasKindFilter = true
-                        selectedKinds = selection
-                        PaveHaptics.selection()
-                    } label: {
-                        HStack(spacing: 11) {
-                            Image(kind.icon)
-                                .renderingMode(.template)
-                                .resizable()
-                                .scaledToFit()
-                                .foregroundStyle(Color.ink)
-                                .frame(width: 16, height: 16)
-                                .frame(width: 24, height: 24)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(kind.filterTitle)
-                                    .textStyle(.bodyMedium)
-                                    .foregroundStyle(Color.ink)
-                                Text(kind.description)
-                                    .textStyle(.caption)
-                                    .foregroundStyle(Color.inkMuted)
-                                    .lineLimit(1)
-                            }
-                            Spacer(minLength: 0)
-                            PaveCheckbox(isOn: (hasKindFilter ? selectedKinds : Set(availableKinds)).contains(kind), size: 18)
-                        }
-                        .padding(.horizontal, 12)
-                        .frame(minHeight: 56)
-                        .background(Color.panel, in: .rect(cornerRadius: 12))
-                        .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(Color.cardBorder) }
-                        .contentShape(.rect(cornerRadius: 12))
-                    }
-                    .buttonStyle(.pave)
-                }
-            }
-
-            PavePrimaryButton(title: "Toon \(resultCount) meldingen") { dismiss() }
-            Button("Wis filters") {
-                selectedKinds.removeAll()
-                hasKindFilter = false
-                PaveHaptics.selection()
-            }
-            .textStyle(.caption)
-            .foregroundStyle(Color.paveAccent)
-            .frame(maxWidth: .infinity)
-            .buttonStyle(.pave)
-        }
-        .padding(22)
-        .frame(maxWidth: 560, maxHeight: .infinity, alignment: .top)
-        .background(Color.panel.ignoresSafeArea())
-        .paveSheet()
-    }
+    let needsAction: Bool
 }
 
 private struct VerificationRequestNotificationDetail: View {
