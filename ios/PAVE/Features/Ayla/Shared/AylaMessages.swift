@@ -190,6 +190,13 @@ enum AylaMessages {
     static let vacancyMatchNote = "Ayla vergeleek je kluis met een stukje van de vacaturetekst. Het is een inschatting, geen oordeel."
     static let vacancyFound = "Gevonden"
     static let vacancySavedTab = "Bewaard"
+    static func shareSaid(_ command: AylaShareCommand) -> String {
+        switch command {
+        case .share(let organisation, _, _): "Ik zet het klaar voor \(organisation). Controleer wat erin staat en bevestig het; ik deel niets zelf."
+        case .stop(let organisation): "Ik open het delen met \(organisation). Tik op Intrekken om het te stoppen."
+        case .showShares: "Hier zie je wat je nu deelt, met wie en hoe lang nog."
+        }
+    }
     static let vacancyApplicationsTab = "Sollicitaties"
     static let vacancySavedEmptyTitle = "Nog niets bewaard"
     static let vacancySavedEmpty = "Tik op Bewaren bij een vacature om hem hier terug te vinden, ook op je andere apparaten."

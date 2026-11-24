@@ -116,3 +116,18 @@ struct SharingTests {
         #expect(employer.isExample)
     }
 }
+
+@Suite("Asking Ayla to share")
+struct AylaShareCommandTests {
+    @Test("Sharing, stopping and asking who can see, said in ordinary words")
+    func commands() {
+        #expect(AylaShareCommand.command(in: "Deel mijn cv met Kade Consultancy voor twee weken") == .share(organisation: "Kade Consultancy", duration: .twoWeeks, withApplication: true))
+        #expect(AylaShareCommand.command(in: "Ayla, deel mijn profiel met lumen data") == .share(organisation: "Lumen Data", duration: nil, withApplication: false))
+        #expect(AylaShareCommand.command(in: "deel mijn cv en brief met Hetzner voor een maand") == .share(organisation: "Hetzner", duration: .month, withApplication: true))
+        #expect(AylaShareCommand.command(in: "Stop met delen met Kade") == .stop(organisation: "Kade"))
+        #expect(AylaShareCommand.command(in: "trek mijn gegevens bij kade in") == .stop(organisation: "Kade"))
+        #expect(AylaShareCommand.command(in: "Wie kan mijn gegevens zien?") == .showShares)
+        #expect(AylaShareCommand.command(in: "Wat is delen eigenlijk?") == nil)
+        #expect(AylaShareCommand.command(in: "Hoe deel ik mijn cv het best met een werkgever?") == nil)
+    }
+}

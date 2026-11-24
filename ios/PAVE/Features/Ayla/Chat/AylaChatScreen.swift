@@ -13,6 +13,7 @@ struct AylaChatScreen: View {
     private static let toolbarOffset: CGFloat = 4
 
     @Environment(\.paveReduceMotion) private var reduceMotion
+    @Environment(\.shareFromAyla) private var shareFromAyla
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.hidesScreenButtons) private var hidesScreenButtons
     @Environment(VaultModel.self) private var vault: VaultModel?
@@ -2506,6 +2507,15 @@ struct AylaChatScreen: View {
             if missing == nil { Task { await run(waiting.actions) } }
             if !isTalking { AccessibilityNotification.Announcement(done).post() }
             return done
+        }
+        // Sharing: she opens it filled in, and you check and confirm it with Face ID; she never shares by herself.
+        if let shareCommand = AylaShareCommand.command(in: text), let shareFromAyla {
+            dictation.stop()
+            isComposerFocused = false
+            let said = AylaMessages.shareSaid(shareCommand)
+            shareFromAyla(shareCommand)
+            if !isTalking { AccessibilityNotification.Announcement(said).post() }
+            return said
         }
         let folders = vault?.folders.map { AylaAppCommand.Named(id: $0.id, name: $0.name) } ?? []
         let items = vault?.items.map { AylaAppCommand.Named(id: $0.id, name: $0.title) } ?? []

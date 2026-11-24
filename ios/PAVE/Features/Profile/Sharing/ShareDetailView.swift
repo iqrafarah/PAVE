@@ -39,6 +39,12 @@ struct ShareDetailView: View {
             } message: {
                 Text(SharingMessages.revokeHint)
             }
+            .onAppear {
+                if model.asksToRevoke == share.id {
+                    model.asksToRevoke = nil
+                    confirmsRevoke = true
+                }
+            }
             .sheet(isPresented: $showsPreview) {
                 ShareRecipientPreview(share: share, items: vault.items.filter { share.itemIDs.contains($0.id) })
             }

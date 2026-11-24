@@ -16,6 +16,22 @@ final class SharingModel {
     private(set) var busyShareID: String?
     private(set) var isCreating = false
     var problem: String?
+    /// Siri or Control Center asked to stop sharing; Profiel asks how.
+    var asksToStopAll = false
+    /// Ayla was asked to share or to stop; Profiel opens it.
+    var request: AylaShareCommand?
+    /// A share to ask about taking back, when its detail opens.
+    var asksToRevoke: String?
+
+    func request(_ command: AylaShareCommand) { request = command }
+
+    /// The live share with this organisation or person, for "stop met delen met Kade".
+    func live(named name: String) -> ProfileShare? {
+        let wanted = name.lowercased()
+        return live.first { share in
+            [share.recipientOrganisation, share.recipientName, share.title].compactMap { $0?.lowercased() }.contains { $0.contains(wanted) || wanted.contains($0) }
+        }
+    }
 
     let service: (any ShareService)?
     let webURL: URL?
@@ -90,6 +106,16 @@ final class SharingModel {
             problem = SharingMessages.actionFailed
             return nil
         }
+    }
+
+    /// Pauses or takes back every live share, after Face ID where there is one.
+    func stopAll(revoking: Bool) async {
+        let authenticator = LocalBiometricAuthenticator()
+        if authenticator.kind != nil, !(await authenticator.authenticate(reason: revoking ? SharingMessages.revokeAllReason : SharingMessages.pauseAllReason)) { return }
+        for share in live where revoking || share.state() == .active {
+            if revoking { await revoke(share) } else { await setPaused(true, share) }
+        }
+        ShareWatchBridge.clear()
     }
 
     func setPaused(_ isPaused: Bool, _ share: ProfileShare) async {

@@ -241,8 +241,18 @@ struct MainView: View {
 
     /// Siri, a widget or Control Center: a talk starts in a new chat, as in ChatGPT.
     private func follow(_ link: PaveLink) {
-        startNewConversation()
-        if link == .talk { talk() }
+        switch link {
+        case .shares:
+            isMenuOpen = false
+            open(.profile)
+        case .stopSharing:
+            isMenuOpen = false
+            open(.profile)
+            sharing.asksToStopAll = true
+        case .talk, .newConversation:
+            startNewConversation()
+            if link == .talk { talk() }
+        }
     }
 
     /// Talking starts in the chat that is open.
@@ -340,6 +350,10 @@ struct MainView: View {
                 .environment(profile)
                 .environment(watchConnection)
                 .environment(\.openFromAyla, openFromAyla)
+                .environment(\.shareFromAyla) { command in
+                    sharing.request(command)
+                    open(.profile)
+                }
         case .vault:
             VaultScreen(onShowMenu: onShowMenu)
                 .environment(vault)

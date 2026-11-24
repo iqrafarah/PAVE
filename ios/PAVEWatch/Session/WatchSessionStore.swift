@@ -12,6 +12,8 @@ final class WatchSessionStore: NSObject, WCSessionDelegate {
     private(set) var isSignedOut = false
     /// Signed in on the iPhone, but this Watch is not connected in Instellingen.
     private(set) var needsConnecting = false
+    /// A QR code of a share the iPhone put here; shown until it ends.
+    private(set) var sharedCode: WatchSharedCode? = WatchSharedCode.load()
 
     func start() {
         guard WCSession.isSupported() else {
@@ -75,6 +77,22 @@ final class WatchSessionStore: NSObject, WCSessionDelegate {
                 if self.session == nil { self.isSignedOut = true }
             } else {
                 self.apply(context.value)
+            }
+        }
+    }
+
+    nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
+        let message = Message(value: userInfo)
+        Task { @MainActor in
+            switch WatchSharedCode.update(from: message.value) {
+            case .show(let code):
+                self.sharedCode = code
+                WatchSharedCode.save(code)
+            case .clear:
+                self.sharedCode = nil
+                WatchSharedCode.save(nil)
+            case nil:
+                break
             }
         }
     }

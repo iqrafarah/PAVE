@@ -6,6 +6,7 @@ import SwiftUI
 struct WatchMenuView: View {
     @Bindable var model: WatchAylaModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(WatchSessionStore.self) private var sessions
 
     var body: some View {
         NavigationStack {
@@ -21,6 +22,14 @@ struct WatchMenuView: View {
                     }
                 }
                 .listItemTint(.brandGreen)
+
+                if let code = sessions.sharedCode, code.isValid {
+                    NavigationLink {
+                        WatchSharedCodeView(code: code)
+                    } label: {
+                        Text("QR-code voor \(code.title)")
+                    }
+                }
 
                 NavigationLink {
                     WatchMemoryView(model: model)

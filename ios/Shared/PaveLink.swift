@@ -5,6 +5,10 @@ import Foundation
 nonisolated enum PaveLink: String, CaseIterable, Sendable {
     case talk = "praat-met-ayla"
     case newConversation = "nieuw-gesprek"
+    /// Profiel: what you share now and with whom.
+    case shares = "gedeeld"
+    /// Profiel, asking whether to pause or take back everything you share.
+    case stopSharing = "stop-delen"
 
     static let scheme = "pave"
 

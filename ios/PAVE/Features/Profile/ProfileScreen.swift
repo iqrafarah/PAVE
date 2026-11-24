@@ -38,8 +38,26 @@ struct ProfileScreen: View {
             .navigationDestination(item: $opened) { id in ShareDetailView(model: model, shareID: id) }
         }
         .task { await model.load() }
+        .onChange(of: model.request, initial: true) { _, command in
+            guard let command else { return }
+            model.request = nil
+            switch command {
+            case .share(let organisation, let duration, let withApplication):
+                composing = ShareTemplateChoice(template: .employer, organisation: organisation, duration: duration, withApplication: withApplication)
+            case .stop(let organisation):
+                Task {
+                    if model.shares.isEmpty { await model.load() }
+                    if let share = model.live(named: organisation) {
+                        model.asksToRevoke = share.id
+                        opened = share.id
+                    }
+                }
+            case .showShares:
+                break
+            }
+        }
         .sheet(item: $composing) { choice in
-            ShareComposer(model: model, template: choice.template, recipientOrganisation: choice.organisation) { composing = nil }
+            ShareComposer(model: model, template: choice.template, recipientOrganisation: choice.organisation, duration: choice.duration, withApplication: choice.withApplication) { composing = nil }
         }
         .sheet(isPresented: $showsScanner) {
             ShareScanSheet(model: model) { employer in
@@ -47,6 +65,18 @@ struct ProfileScreen: View {
             }
         }
         .sheet(isPresented: $showsReport) { ShareReportSheet(model: model) }
+        .confirmationDialog(
+            model.live.isEmpty ? SharingMessages.nothingToStop : SharingMessages.stopAllQuestion,
+            isPresented: Binding(get: { model.asksToStopAll && model.state != .loading }, set: { if !$0 { model.asksToStopAll = false } }),
+            titleVisibility: .visible
+        ) {
+            if !model.live.isEmpty {
+                Button(SharingMessages.pauseAll) { Task { await model.stopAll(revoking: false) } }
+                Button(SharingMessages.revokeAll, role: .destructive) { Task { await model.stopAll(revoking: true) } }
+            }
+        } message: {
+            if !model.live.isEmpty { Text(SharingMessages.stopAllHint(model.live.count)) }
+        }
         .sheet(isPresented: $showsPrivacy) { SharePrivacySheet() }
         .alert(SharingMessages.title, isPresented: Binding(get: { model.problem != nil }, set: { if !$0 { model.problem = nil } })) {
             Button("OK", role: .cancel) {}
@@ -178,5 +208,7 @@ struct ProfileScreen: View {
 struct ShareTemplateChoice: Identifiable {
     let template: ShareTemplate
     var organisation: String?
+    var duration: ShareDuration?
+    var withApplication = true
     var id: String { "\(template.rawValue)-\(organisation ?? "")" }
 }

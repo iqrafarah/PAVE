@@ -126,6 +126,15 @@ enum SharingMessages {
     static let resume = "Hervat"
     static let extend = "Verleng"
     static let revoke = "Intrekken"
+    static let stopAllQuestion = "Stoppen met delen?"
+    static func stopAllHint(_ count: Int) -> String {
+        count == 1 ? "Je deelt nu 1 keer iets. Pauzeren kun je terugdraaien, intrekken niet." : "Je deelt nu \(count) keer iets. Pauzeren kun je terugdraaien, intrekken niet."
+    }
+    static let pauseAll = "Alles pauzeren"
+    static let revokeAll = "Alles intrekken"
+    static let pauseAllReason = "Bevestig dat je alles pauzeert wat je deelt"
+    static let revokeAllReason = "Bevestig dat je alles intrekt wat je deelt"
+    static let nothingToStop = "Je deelt nu niets."
     static func revokeQuestion(_ recipient: String) -> String { "Delen met \(recipient) intrekken?" }
     static let revokeHint = "De link werkt dan niet meer, ook niet als je opnieuw deelt. Wat de ontvanger al heeft gedownload, kan PAVE niet terughalen."
     static let preview = "Zo ziet de ontvanger het"

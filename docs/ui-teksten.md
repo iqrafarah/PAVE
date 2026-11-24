@@ -270,3 +270,10 @@ Delen is tijdelijk, per onderdeel te kiezen, te pauzeren en in te trekken (kick-
 | Uitleg | Zo gaan we met je gegevens om: Wat delen betekent / Wat de ontvanger mag / Wat er bewaard blijft / Wie er keek / Ayla en delen zijn twee dingen / Wie PAVE maakt |
 | Scannen | Scan een QR-code / Van een werkgever op een beurs, of een gedeeld profiel. / Voorbeeldwerkgever: verzonnen voor de demo van de banenbeurs. / Deel je profiel met {werkgever} |
 | Website | De webpagina draait nu alleen op deze computer. Zodra de site online staat, werkt de link ook voor anderen. / De webpagina voor ontvangers staat nog niet online, dus de link werkt nog niet buiten PAVE. |
+| Siri en Opdrachten | Wie kan mijn gegevens zien? / Wat deel ik? / Stop met delen (opent PAVE achter je pincode) |
+| Bedieningspaneel | Stop met delen: Open PAVE en pauzeer of trek alles in wat je deelt. |
+| Alles stoppen | Stoppen met delen? / Je deelt nu {n} keer iets. Pauzeren kun je terugdraaien, intrekken niet. / Alles pauzeren / Alles intrekken / Je deelt nu niets. |
+| Ayla | Ik zet het klaar voor {organisatie}. Controleer wat erin staat en bevestig het; ik deel niets zelf. / Ik open het delen met {organisatie}. Tik op Intrekken om het te stoppen. / Hier zie je wat je nu deelt, met wie en hoe lang nog. |
+| Apple Watch | QR-code voor {ontvanger} (in het menu) / Voor {ontvanger}, tot {datum} |
+| Web, gedeeld profiel | Iemand deelt gegevens met je / Via PAVE, tijdelijk en alleen wat diegene heeft gekozen. Je bezoek wordt bijgehouden, zodat diegene ziet dat je hebt gekeken. Je naam invullen hoeft niet. / Je naam / Je organisatie / Bekijk / Je kijkt tijdelijk mee tot en met {datum}. / Je mag het cv en de brief downloaden. Je mag alleen kijken, niet downloaden. / Geverifieerd, Niet geverifieerd / Even niet te zien, Niet meer gedeeld, Niet meer te zien, Deze link bestaat niet |
+| Web, beurs | Banenbeurs / Scan de code van een stand met PAVE: je ziet de werkgever en zijn vacatures, en je kunt je profiel met hem delen. Deze werkgevers zijn verzonnen voor de demo. |

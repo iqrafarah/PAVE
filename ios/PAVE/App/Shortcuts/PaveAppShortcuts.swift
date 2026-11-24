@@ -31,5 +31,23 @@ struct PaveAppShortcuts: AppShortcutsProvider {
             shortTitle: "Nieuw gesprek",
             systemImageName: "bubble.left.fill"
         )
+        AppShortcut(
+            intent: ShowSharesIntent(),
+            phrases: [
+                "Wie kan mijn gegevens zien in \(.applicationName)",
+                "Wat deel ik in \(.applicationName)",
+            ],
+            shortTitle: "Wat deel ik?",
+            systemImageName: "person.2"
+        )
+        AppShortcut(
+            intent: StopSharingIntent(),
+            phrases: [
+                "Stop met delen in \(.applicationName)",
+                "Trek mijn gegevens in met \(.applicationName)",
+            ],
+            shortTitle: "Stop met delen",
+            systemImageName: "hand.raised"
+        )
     }
 }

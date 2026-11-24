@@ -10,6 +10,7 @@ struct ShareComposer: View {
     let template: ShareTemplate
     var recipientOrganisation: String?
     var vacancyID: String?
+    var withApplication = true
     let onDone: () -> Void
 
     @Environment(VaultModel.self) private var vault
@@ -31,13 +32,17 @@ struct ShareComposer: View {
     @State private var confirmsDiscard = false
     @State private var didStart = false
 
-    init(model: SharingModel, template: ShareTemplate, recipientOrganisation: String? = nil, vacancyID: String? = nil, onDone: @escaping () -> Void) {
+    init(
+        model: SharingModel, template: ShareTemplate, recipientOrganisation: String? = nil, vacancyID: String? = nil,
+        duration: ShareDuration? = nil, withApplication: Bool = true, onDone: @escaping () -> Void
+    ) {
         self.model = model
         self.template = template
         self.recipientOrganisation = recipientOrganisation
         self.vacancyID = vacancyID
+        self.withApplication = withApplication
         self.onDone = onDone
-        _duration = State(initialValue: template.duration)
+        _duration = State(initialValue: duration ?? template.duration)
     }
 
     private var application: ApplicationDraft? { model.applications.first { $0.vacancy.id == applicationID } }
@@ -283,7 +288,11 @@ struct ShareComposer: View {
         didStart = true
         chosen = Set(vault.items.filter { template.categories.contains($0.category) && $0.status != .rejected }.map(\.id))
         if let vacancyID, model.applications.contains(where: { $0.vacancy.id == vacancyID }) { applicationID = vacancyID }
-        if let app = application ?? (template == .employer ? model.applications.first : nil) {
+        // Asked for a company by name: its own application, if there is one.
+        if applicationID == nil, let recipientOrganisation {
+            applicationID = model.applications.first { $0.vacancy.company.localizedCaseInsensitiveContains(recipientOrganisation) || recipientOrganisation.localizedCaseInsensitiveContains($0.vacancy.company) }?.vacancy.id
+        }
+        if let app = application ?? (template == .employer && withApplication ? model.applications.first : nil) {
             applicationID = app.vacancy.id
             headline = app.cv.headline
             organisation = recipientOrganisation ?? app.vacancy.company
