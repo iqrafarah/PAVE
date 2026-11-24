@@ -8,6 +8,8 @@ struct VacancyActions: View {
     let isChosen: Bool
     /// False when three others are picked already.
     var canChoose = true
+    /// Comparing works in the chat; the vacancies page leaves it out.
+    var showsCompare = true
     let onTask: (AylaRequest.VacancyTask) -> Void
     let onToggleCompare: () -> Void
 
@@ -19,7 +21,7 @@ struct VacancyActions: View {
             }
             GridRow {
                 action(.iconChatBubbleLeftEllipsisOutline, AylaMessages.vacancyActionPractice) { onTask(.interview) }
-                compare
+                if showsCompare { compare } else { Color.clear.frame(height: 1) }
             }
         }
     }

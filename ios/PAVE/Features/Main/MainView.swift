@@ -312,6 +312,11 @@ struct MainView: View {
                     model.ask(about: item)
                     open(.ayla)
                 }
+        case .vacancies:
+            VacanciesScreen(model: model, onShowMenu: onShowMenu) { request in
+                model.request(request)
+                open(.ayla)
+            }
         case .plan:
             PlanScreen(onShowMenu: onShowMenu)
         case .profile:

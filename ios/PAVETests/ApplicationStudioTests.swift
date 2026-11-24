@@ -386,6 +386,44 @@ struct ApplicationStudioTests {
         #expect(list.map(\.vacancy.id) == ["soon", "later", "none"])
     }
 
+    @Test func aClosingDateInTheVacancyIsOfferedUntilADeadlineIsSet() async {
+        var withDate = vacancy
+        withDate.summary = "Leuk team. Reageren kan tot en met 12 december 2099."
+        let model = ApplicationStudioModel(vacancy: withDate, items: items(), name: "Daaf", email: "", service: nil, store: store)
+        await model.begin(withAyla: false)
+        let found = try? #require(model.suggestedDeadline)
+        #expect(found?.quote == "Reageren kan tot en met 12 december 2099")
+        model.setDeadline(found?.date)
+        #expect(model.suggestedDeadline == nil)
+        #expect(model.tracking.deadline == found?.date)
+    }
+
+    @Test func theStartOfAylaShowsTheConceptWhoseDeadlineIsClosest() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        func draft(_ id: String, _ status: ApplicationStatus, days: Double?) -> ApplicationDraft {
+            var draft = ApplicationBuilder.draft(for: Vacancy(id: id, title: id, company: "x", source: .adzuna), items: [], name: "Daaf")
+            draft.tracking = ApplicationTracking(status: status, deadline: days.map { now.addingTimeInterval($0 * 86_400) })
+            return draft
+        }
+        let list = [
+            draft("far", .concept, days: 10), draft("sent", .sent, days: 1), draft("near", .concept, days: 2),
+            draft("past", .concept, days: -2), draft("none", .concept, days: nil), draft("soon", .concept, days: 1),
+        ]
+        #expect(AylaChatScreen.nearDeadline(in: list, now: now)?.vacancy.id == "soon")
+        #expect(AylaChatScreen.nearDeadline(in: [list[0], list[3]], now: now) == nil)
+    }
+
+    @Test func theVacanciesPageAsksTheChatToDoTheRest() {
+        let model = AylaChatModel(service: nil, drafts: .standard, pendingFiles: .standard)
+        model.request(.application(vacancy))
+        let first = model.vacancyRequest
+        #expect(first?.request == .application(vacancy))
+        model.request(.application(vacancy))
+        // The same request again is a new one, so the chat does it again.
+        #expect(model.vacancyRequest?.id != first?.id)
+        #expect(model.latestVacancySearch.vacancies.isEmpty)
+    }
+
     @Test func theOverviewSaysWhatTheCVStillMissing() async {
         let withGap = Vacancy(id: "v2", title: "Dev", company: "Appwerk", source: .adzuna, matches: [.init(skill: "Swift", requirement: "r")], skillGap: [.init(skill: "CI/CD", requirement: "r")])
         let model = ApplicationStudioModel(vacancy: withGap, items: items(), name: "Daaf", email: "", service: nil, store: store)

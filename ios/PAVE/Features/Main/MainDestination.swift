@@ -3,13 +3,14 @@
 enum MainDestination: String, CaseIterable, Identifiable {
     case ayla
     case vault
+    case vacancies
     case plan
     case profile
     case settings
     case notifications
 
     /// At the top of the menu. Settings open from your account, notifications from the bell.
-    static let main: [MainDestination] = [.ayla, .vault, .plan, .profile]
+    static let main: [MainDestination] = [.ayla, .vault, .vacancies, .plan, .profile]
 
     var id: String { rawValue }
 
@@ -17,6 +18,7 @@ enum MainDestination: String, CaseIterable, Identifiable {
         switch self {
         case .ayla: "Ayla"
         case .vault: "Kluis"
+        case .vacancies: "Vacatures"
         case .plan: "Plan"
         case .profile: "Profiel"
         case .settings: "Instellingen"
@@ -28,6 +30,7 @@ enum MainDestination: String, CaseIterable, Identifiable {
         switch self {
         case .ayla: .aylaLetter
         case .vault: .image(.iconFolder)
+        case .vacancies: .image(.iconBriefcaseSolid)
         case .plan: .image(.iconMap)
         case .profile: .image(.iconPerson)
         case .settings: .image(.iconSettings)

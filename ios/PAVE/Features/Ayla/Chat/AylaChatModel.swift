@@ -52,6 +52,39 @@ final class AylaChatModel {
         let navigation: AylaReply.Navigation
     }
     private(set) var screenRequest: ScreenRequest?
+
+    /// What the vacancies page asks of the chat: Ayla's help with a vacancy, or the application for it.
+    enum VacancyRequest: Equatable {
+        case task(AylaRequest.VacancyTask, Vacancy)
+        case ask(Vacancy)
+        case askGap(String, Vacancy)
+        case application(Vacancy)
+        case search
+    }
+
+    struct PendingVacancyRequest: Equatable {
+        let id = UUID()
+        let request: VacancyRequest
+    }
+
+    /// Picked up by the chat once it is on screen.
+    var vacancyRequest: PendingVacancyRequest?
+
+    func request(_ request: VacancyRequest) {
+        vacancyRequest = PendingVacancyRequest(request: request)
+    }
+
+    /// Ayla's newest search in this chat: what she found, what she searched for and which data she used.
+    var latestVacancySearch: (vacancies: [Vacancy], search: VacancySearch?, usedData: [AylaVaultCategory]) {
+        for entry in entries.reversed() {
+            for block in entry.reply?.blocks ?? [] {
+                if case .vacancies(let items, let search) = block, !items.isEmpty {
+                    return (items, search, entry.reply?.usedData ?? [])
+                }
+            }
+        }
+        return ([], nil, [])
+    }
     private var opensPageAlready = false
 
     /// "Nieuwe chat in project": the next question starts the conversation inside this project.

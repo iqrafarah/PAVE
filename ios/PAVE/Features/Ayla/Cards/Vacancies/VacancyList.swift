@@ -13,6 +13,8 @@ struct VacancyList: View {
     var search: VacancySearch?
     var usedData: [AylaVaultCategory] = []
     var onChooseData: (() -> Void)?
+    /// What the empty "Gevonden" says; in the chat it points at the text field below.
+    var foundEmptyMessage = AylaMessages.vacancyFoundEmpty
     /// Opens the overview of an application that was made before.
     var onOpenApplication: ((Vacancy) -> Void)?
     let onOpen: (Vacancy) -> Void
@@ -32,8 +34,9 @@ struct VacancyList: View {
 
     var body: some View {
         LazyVStack(spacing: 14) {
-            if model.canSaveVacancies {
-                VacancyTabs(tab: $tab, found: vacancies.count, saved: model.savedVacancies.count, applications: applications.count)
+            // Without an account to keep vacancies in, the applications on this device still have their tab.
+            if model.canSaveVacancies || !applications.isEmpty {
+                VacancyTabs(tab: $tab, found: vacancies.count, saved: model.savedVacancies.count, applications: applications.count, showsSaved: model.canSaveVacancies)
                     .padding(.bottom, 4)
             }
             if let problem = model.vacancyProblem {
@@ -49,7 +52,7 @@ struct VacancyList: View {
                 PaveEmptyState(
                     icon: .iconBriefcase,
                     title: tab == .saved ? AylaMessages.vacancySavedEmptyTitle : AylaMessages.vacancyFoundEmptyTitle,
-                    message: tab == .saved ? AylaMessages.vacancySavedEmpty : AylaMessages.vacancyFoundEmpty
+                    message: tab == .saved ? AylaMessages.vacancySavedEmpty : foundEmptyMessage
                 )
                 .padding(.vertical, 16)
             }

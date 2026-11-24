@@ -7,6 +7,7 @@ struct ApplicationHubStatus: View {
 
     @Environment(\.paveReduceMotion) private var reduceMotion
     @State private var remindersDenied = false
+    @State private var showsCalendar = false
 
     private var deadline: Binding<Date> {
         Binding(get: { model.tracking.deadline ?? .now }, set: { model.setDeadline($0) })
@@ -59,6 +60,36 @@ struct ApplicationHubStatus: View {
                 }
             }
             .frame(minHeight: 44)
+            if let found = model.suggestedDeadline {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(ApplyMessages.foundDeadline)
+                        .textStyle(.caption)
+                        .foregroundStyle(Color.inkMuted)
+                    Text("“\(found.quote)”")
+                        .textStyle(.bodyMedium)
+                        .foregroundStyle(Color.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button(ApplyMessages.useDeadline(found.date)) { model.setDeadline(found.date) }
+                        .textStyle(.link)
+                        .foregroundStyle(Color.paveAccent)
+                        .frame(minHeight: 44)
+                        .buttonStyle(.pave)
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 12))
+            }
+            if let date = model.tracking.deadline {
+                Button(ApplyMessages.addToCalendar) { showsCalendar = true }
+                    .textStyle(.link)
+                    .foregroundStyle(Color.paveAccent)
+                    .frame(minHeight: 44)
+                    .buttonStyle(.pave)
+                    .sheet(isPresented: $showsCalendar) {
+                        ApplicationCalendarEditor(vacancy: model.draft.vacancy, deadline: date) { showsCalendar = false }
+                            .ignoresSafeArea()
+                    }
+            }
             if let date = model.tracking.deadline, model.tracking.status == .concept {
                 let distance = ApplicationDeadline.of(date, now: .now)
                 Text(ApplyMessages.deadlineDistance(distance))

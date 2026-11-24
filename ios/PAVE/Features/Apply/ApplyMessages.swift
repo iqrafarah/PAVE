@@ -95,6 +95,22 @@ enum ApplyMessages {
             : "Je sollicitatie voor \(job) staat nog op concept."
     }
 
+    static func deadlineCard(_ distance: ApplicationDeadline) -> String {
+        switch distance {
+        case .today: "Je deadline is vandaag"
+        case .upcoming(let days): days == 1 ? "Je deadline is morgen" : "Je deadline is over \(days) dagen"
+        case .overdue: "Je deadline is verlopen"
+        }
+    }
+    static let openApplicationHint = "Opent je sollicitatie"
+    static let foundDeadline = "In de vacature staat een sluitingsdatum"
+    static func useDeadline(_ date: Date) -> String {
+        "Gebruik \(date.formatted(.dateTime.day().month(.wide).locale(Locale(identifier: "nl_NL")))) als deadline"
+    }
+    static let addToCalendar = "Zet in je agenda"
+    static func calendarTitle(_ vacancy: Vacancy) -> String { "Deadline sollicitatie \(vacancy.title) bij \(vacancy.company)" }
+    static let calendarNotes = "Bijgehouden in PAVE."
+
     // The applications
     static let applicationsEmptyTitle = "Nog geen sollicitaties"
     static let applicationsEmpty = "Tik bij een vacature op Solliciteren om een cv en brief te maken. Hier houd je bij hoe het ermee staat."

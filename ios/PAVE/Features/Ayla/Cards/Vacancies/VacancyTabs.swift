@@ -6,6 +6,7 @@ struct VacancyTabs: View {
     let found: Int
     let saved: Int
     var applications = 0
+    var showsSaved = true
 
     @Namespace private var track
     @Environment(\.paveReduceMotion) private var reduceMotion
@@ -13,7 +14,7 @@ struct VacancyTabs: View {
     var body: some View {
         HStack(spacing: 4) {
             button(.found, AylaMessages.vacancyFound, found)
-            button(.saved, AylaMessages.vacancySavedTab, saved)
+            if showsSaved { button(.saved, AylaMessages.vacancySavedTab, saved) }
             button(.applications, AylaMessages.vacancyApplicationsTab, applications)
         }
         .padding(4)

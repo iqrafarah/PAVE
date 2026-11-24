@@ -45,6 +45,10 @@ Stand van 2026-11-24. Een vergelijking van de code van `web/` en `ios/` liet zie
 - **Weergave**: dezelfde volgorde als iOS: Themakleur, Licht of donker, Weergave kluis, Tekstgrootte, Animaties uitzetten.
 - **Sessie elders beëindigd** (wachtwoord op een ander apparaat veranderd): iOS heeft hier een eigen scherm (`SessionEndedView`); web lijkt dat niet te hebben. Controleren.
 
+### 6. Vacatures en sollicitaties (nieuw op iOS, 2026-11-24)
+- **Menu Vacatures**, onder Kluis: Gevonden (Ayla's laatste zoekopdracht), Bewaard en Sollicitaties. iOS: `ios/PAVE/Features/Vacancies/VacanciesScreen.swift`.
+- **Cv en motivatiebrief** per vacature met galerij, "Wat komt erin?", dekking per eis, Ayla die doorvraagt en een vinkje bij geverifieerd bewijs; **Mijn sollicitatie** met status, deadline, herinneringen en geschiedenis. Alles staat nog alleen op het toestel; zie [`voorstel-concepten-in-account.md`](voorstel-concepten-in-account.md) voor bewaren in het account. iOS: `ios/PAVE/Features/Apply/`.
+
 ## Alleen op iOS, met opzet
 
 Face ID en de pincode van de app, Camera Control, Apple Watch, Dynamic Island, Spotlight, de documentscanner, knikken met AirPods, de vacaturekaarten tijdens praten, de indeling voor iPhone Duo en trillingen. Die hoeven niet op web.

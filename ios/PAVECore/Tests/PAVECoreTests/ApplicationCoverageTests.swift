@@ -147,3 +147,32 @@ struct ApplicationReminderTests {
         #expect(!tracking.remindsMe)
     }
 }
+
+@Suite("The closing date in a vacancy text")
+struct VacancyDeadlineFinderTests {
+    private var calendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Europe/Amsterdam")!
+        return calendar
+    }
+    private var now: Date { calendar.date(from: DateComponents(year: 2026, month: 11, day: 24, hour: 12))! }
+    private func day(_ year: Int, _ month: Int, _ day: Int) -> Date { calendar.date(from: DateComponents(year: year, month: month, day: day))! }
+
+    @Test("Written and numeric dates after a word that makes them a closing date")
+    func finds() {
+        let written = VacancyDeadlineFinder.find(in: "Wij bieden een fijn team. Reageren kan tot en met 12 december 2026. Wij zien je graag.", now: now, calendar: calendar)
+        #expect(written?.date == day(2026, 12, 12))
+        #expect(written?.quote == "Reageren kan tot en met 12 december 2026")
+        #expect(VacancyDeadlineFinder.find(in: "Sluitingsdatum: 05-01-2027", now: now, calendar: calendar)?.date == day(2027, 1, 5))
+        // No year: the first time that day comes.
+        #expect(VacancyDeadlineFinder.find(in: "Solliciteer vóór 3 jan.", now: now, calendar: calendar)?.date == day(2027, 1, 3))
+    }
+
+    @Test("A date that is no closing date, one in the past, or none at all gives nothing")
+    func quiet() {
+        #expect(VacancyDeadlineFinder.find(in: "Start op 1 februari 2027 in Eindhoven.", now: now, calendar: calendar) == nil)
+        #expect(VacancyDeadlineFinder.find(in: "Reageren vóór 1 november 2026.", now: now, calendar: calendar) == nil)
+        #expect(VacancyDeadlineFinder.find(in: "Je werkt 32 uur per week.", now: now, calendar: calendar) == nil)
+        #expect(VacancyDeadlineFinder.find(in: "Deadline 31-02-2027", now: now, calendar: calendar) == nil)
+    }
+}

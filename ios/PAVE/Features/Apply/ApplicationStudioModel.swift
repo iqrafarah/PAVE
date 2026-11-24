@@ -140,6 +140,12 @@ final class ApplicationStudioModel: Identifiable {
 
     var tracking: ApplicationTracking { draft.progress }
 
+    /// A closing date read from the vacancy text, offered while no deadline is set.
+    var suggestedDeadline: VacancyDeadlineFinder.Found? {
+        guard tracking.deadline == nil, let text = draft.vacancy.summary else { return nil }
+        return VacancyDeadlineFinder.find(in: text, now: .now)
+    }
+
     /// What the vacancy asks for that the CV does not show yet.
     var openRequirements: [ApplicationCoverage.Requirement] { requirements.filter { !$0.isCovered } }
 

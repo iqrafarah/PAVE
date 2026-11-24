@@ -116,6 +116,8 @@ struct AylaChatScreen: View {
     @State private var confirmationItem: VaultItem?
     /// Making a CV and a letter for a vacancy ("Solliciteren").
     @State private var application: ApplicationStudioModel?
+    /// An application that is still a concept with its deadline within three days.
+    @State private var nearDeadline: ApplicationDraft?
     /// Ja and Nee by nodding or shaking the head with AirPods on, and what the last nod or shake answered.
     @State private var headGestures = AylaHeadGestures()
     @State private var headAnswer: Bool?
@@ -157,6 +159,20 @@ struct AylaChatScreen: View {
     }
 
     private static let savedVacanciesID = "saved-vacancies"
+
+    /// The concept whose deadline comes first, when that is today or within three days.
+    static func nearDeadline(in applications: [ApplicationDraft], now: Date = .now) -> ApplicationDraft? {
+        applications
+            .filter { draft in
+                guard draft.progress.status == .concept, let deadline = draft.progress.deadline else { return false }
+                return switch ApplicationDeadline.of(deadline, now: now) {
+                case .today: true
+                case .upcoming(let days): days <= 3
+                case .overdue: false
+                }
+            }
+            .min { ($0.progress.deadline ?? .distantFuture) < ($1.progress.deadline ?? .distantFuture) }
+    }
 
     /// The vacancies over the chat; kept out of `body`, which is as large as the compiler will take.
     private var vacancyShelf: some View {
@@ -706,6 +722,24 @@ struct AylaChatScreen: View {
                 .accessibilityHidden(orbMotion.isLow)
             }
         }
+        // Asked from the vacancies page: done here, once the chat is on screen.
+        .task(id: model.vacancyRequest?.id) {
+            guard let pending = model.vacancyRequest else { return }
+            model.vacancyRequest = nil
+            try? await Task.sleep(for: .milliseconds(250))
+            switch pending.request {
+            case .task(let task, let vacancy): run(task, on: [vacancy])
+            case .ask(let vacancy): askAyla(AylaMessages.vacancyAsk(vacancy))
+            case .askGap(let skill, let vacancy): askAyla(AylaMessages.vacancyGapAsk(skill, for: vacancy))
+            case .application(let vacancy): openApplication(for: vacancy)
+            case .search: askAyla(AylaMessages.vacancySearchAsk)
+            }
+        }
+        // A deadline that is close shows on the empty chat; looked at again when an application closes.
+        .task(id: application == nil) {
+            guard application == nil else { return }
+            nearDeadline = Self.nearDeadline(in: ApplicationStore().all())
+        }
     }
 
     @ViewBuilder
@@ -724,7 +758,10 @@ struct AylaChatScreen: View {
             .transition(.opacity)
         } else if model.entries.isEmpty, !model.isLoadingConversation {
             ScrollView {
-                AylaWelcome(firstName: model.firstName, isAvailable: model.isAvailable, isTyping: model.isGreetingReady, onStarter: openShelf)
+                AylaWelcome(
+                    firstName: model.firstName, isAvailable: model.isAvailable, isTyping: model.isGreetingReady, onStarter: openShelf,
+                    deadline: nearDeadline, onOpenDeadline: { if let nearDeadline { openApplication(for: nearDeadline.vacancy) } }
+                )
                     .padding(.top, (height * 0.174).rounded())
                     .frame(maxWidth: .infinity)
                     // The orb falls apart right here during the outro; the welcome returns once its blocks are back in the button.
