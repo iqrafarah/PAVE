@@ -40,8 +40,27 @@ enum PaveNotificationKind: String, CaseIterable, Hashable, Identifiable, Sendabl
     var icon: ImageResource {
         switch self {
         case .conversation: .iconChat
-        case .verifiedEvidence, .verificationRequest: .iconCheckBadgeSolid
+        case .verifiedEvidence: .iconCheckBadgeSolid
         case .rejectedEvidence: .iconExclamationCircle
+        case .verificationRequest: .iconDocumentTextSolid
+        }
+    }
+
+    /// The icon's colour: red for rejected, amber for a request waiting on you, otherwise the app's green.
+    var tint: Color {
+        switch self {
+        case .rejectedEvidence: .statusRejected
+        case .verificationRequest: .statusPending
+        case .conversation, .verifiedEvidence: .paveAccent
+        }
+    }
+
+    /// The tile behind the icon, in the same family as `tint`.
+    var surface: Color {
+        switch self {
+        case .rejectedEvidence: .statusRejectedSurface
+        case .verificationRequest: .statusPendingSurface
+        case .conversation, .verifiedEvidence: .paveSurfaceTint
         }
     }
 }
@@ -66,6 +85,18 @@ struct PaveNotification: Identifiable, Hashable, Sendable {
 }
 
 extension PaveNotification {
+    /// Who or what it is about, for the line under the title in the list and the banner.
+    var detail: String {
+        switch kind {
+        case .verifiedEvidence, .rejectedEvidence:
+            [documentName, personName].compactMap { $0 }.joined(separator: " · ")
+        case .verificationRequest:
+            [learnerName ?? personName, documentName].compactMap { $0 }.joined(separator: " · ")
+        case .conversation:
+            personName
+        }
+    }
+
     /// How long a deleted notification can be brought back; the server purges it after that (`vault-review`, pg_cron).
     static let restorableDays = 7
 
@@ -810,7 +841,69 @@ private struct NotificationMessageDetail: View {
     }
 }
 
+#Preview("Meldingen · veel (lerende)") {
+    NotificationsScreen(onShowMenu: {}, audience: .learner, notifications: PaveNotification.previewManyLearner)
+}
+
+#Preview("Meldingen · veel (admin)") {
+    NotificationsScreen(onShowMenu: {}, audience: .administrator, notifications: PaveNotification.previewManyAdmin)
+}
+
 private extension PaveNotification {
+    /// `hours` ago, so the rows land in Vandaag, Deze week and Eerder.
+    static func sample(
+        _ id: String, _ kind: PaveNotificationKind, _ title: String, _ person: String, hours: Double,
+        unread: Bool = true, deleted: Bool = false, chat: String? = nil,
+        learner: String? = nil, document: String? = nil, type: String? = nil
+    ) -> PaveNotification {
+        .init(
+            id: id, kind: kind, title: title, personName: person, date: .now.addingTimeInterval(-hours * 3600),
+            isUnread: unread, deletedAt: deleted ? .now.addingTimeInterval(-3600) : nil, conversationID: chat,
+            vaultItemID: kind == .conversation ? nil : "preview-item",
+            learnerName: learner, learnerOrganization: learner == nil ? nil : "Middelbaar College",
+            documentName: document, documentType: type, documentFileName: document == nil ? nil : "\(document!).pdf"
+        )
+    }
+
+    /// A chat with several meldingen, which the inbox shows as one row with a count.
+    static func chat(_ chat: String, _ title: String, count: Int, hours: Double, unread: Bool = true) -> [PaveNotification] {
+        (0..<count).map { sample("\(chat)-\($0)", .conversation, title, "Ayla", hours: hours + Double($0), unread: unread, chat: chat) }
+    }
+
+    static var previewManyLearner: [PaveNotification] {
+        [
+            sample("v1", .verifiedEvidence, "Bewijs geverifieerd", "Fontys Hogescholen", hours: 0.2),
+            sample("r1", .rejectedEvidence, "Bewijs afgewezen", "Middelbaar College", hours: 1.5),
+            sample("v2", .verifiedEvidence, "Bewijs geverifieerd", "Albeda", hours: 5, unread: false),
+            sample("v3", .verifiedEvidence, "Bewijs geverifieerd", "Hogeschool Rotterdam", hours: 30),
+            sample("r2", .rejectedEvidence, "Bewijs afgewezen", "Fontys Hogescholen", hours: 52, unread: false),
+            sample("v4", .verifiedEvidence, "Bewijs geverifieerd", "Middelbaar College", hours: 200, unread: false),
+            sample("r3", .rejectedEvidence, "Bewijs afgewezen", "Albeda", hours: 400, unread: false),
+            sample("gone1", .verifiedEvidence, "Bewijs geverifieerd", "Fontys Hogescholen", hours: 90, deleted: true),
+        ]
+        + chat("c1", "Ik doe een cursus over design", count: 3, hours: 0.5)
+        + chat("c2", "Kun je een item toevoegen in mijn kluis", count: 14, hours: 26)
+        + chat("c3", "Bekijk deze bestanden", count: 5, hours: 75, unread: false)
+        + chat("c4", "Sollicitatie bij Coolblue voorbereiden", count: 1, hours: 300, unread: false)
+    }
+
+    static var previewManyAdmin: [PaveNotification] {
+        [
+            sample("q1", .verificationRequest, "Verificatie aanvraag", "Gianna Beenen", hours: 0.3,
+                   learner: "Gianna Beenen", document: "Toets Nederlands grammatica", type: "Toetsen Middelbaar"),
+            sample("q2", .verificationRequest, "Verificatie aanvraag", "Ravi Sharma", hours: 4,
+                   learner: "Ravi Sharma", document: "Hbo-ICT propedeuse", type: "Diploma"),
+            sample("q3", .verificationRequest, "Verificatie aanvraag", "Noor El Amrani", hours: 48, unread: false,
+                   learner: "Noor El Amrani", document: "Stage bij Rabobank", type: "Stage"),
+            sample("v1", .verifiedEvidence, "Bewijs geverifieerd", "Fontys Hogescholen", hours: 6),
+            sample("r1", .rejectedEvidence, "Bewijs afgewezen", "Albeda", hours: 100, unread: false),
+            sample("gone1", .conversation, "Oud gesprek", "Ayla", hours: 90, deleted: true, chat: "old"),
+        ]
+        + chat("c1", "Gesprek voor stage", count: 4, hours: 2)
+        + chat("c2", "Feedback op portfolio", count: 2, hours: 28, unread: false)
+        + chat("c3", "Vragen over verificatie", count: 1, hours: 250, unread: false)
+    }
+
     static var previewLearner: [PaveNotification] {
         [
             .init(id: "verified-1", kind: .verifiedEvidence, title: "Bewijs geverifieerd", personName: "Middelbaar College", date: .now.addingTimeInterval(-3600), vaultItemID: "preview-item"),

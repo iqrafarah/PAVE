@@ -14,10 +14,10 @@ struct NotificationInboxRow: View {
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
-                .foregroundStyle(Color.paveAccent)
+                .foregroundStyle(notification.kind.tint)
                 .frame(width: 18, height: 18)
                 .frame(width: 36, height: 36)
-                .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 10))
+                .background(notification.kind.surface, in: .rect(cornerRadius: 10))
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(notification.title)
@@ -44,14 +44,9 @@ struct NotificationInboxRow: View {
     }
 
     private var subtitle: String {
-        switch notification.kind {
-        case .verifiedEvidence, .rejectedEvidence:
-            [notification.documentName, notification.personName].compactMap { $0 }.joined(separator: " · ")
-        case .verificationRequest:
-            [notification.learnerName, notification.documentName].compactMap { $0 }.joined(separator: " · ")
-        case .conversation:
-            count > 1 ? "\(notification.personName) · \(count) berichten" : notification.personName
-        }
+        notification.kind == .conversation && count > 1
+            ? "\(notification.personName) · \(count) berichten"
+            : notification.detail
     }
 
     /// The time today, "gisteren", the weekday this week, otherwise the date.
