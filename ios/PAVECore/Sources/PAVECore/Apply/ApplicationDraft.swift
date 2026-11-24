@@ -15,7 +15,12 @@ public struct ApplicationDraft: Codable, Equatable, Sendable, Identifiable {
     public var focus: String?
     /// A tick on the CV at evidence that is verified; on unless the user turned it off.
     public var showsVerified: Bool?
+    /// Status, deadline and note of the application; nil until the user sets one.
+    public var tracking: ApplicationTracking?
     public var updatedAt: Date
+
+    /// The tracking, or a new one.
+    public var progress: ApplicationTracking { tracking ?? ApplicationTracking() }
 
     /// Whether verified evidence is marked on the CV.
     public var marksVerified: Bool { showsVerified ?? true }

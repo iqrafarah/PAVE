@@ -1,3 +1,4 @@
+import Foundation
 import PAVECore
 
 /// The words of making a CV and a letter for a vacancy. Kept in docs/ui-teksten.md under "Cv en motivatiebrief".
@@ -36,6 +37,35 @@ enum ApplyMessages {
     static let aylaFills = "Ayla vult het in"
     static let fillYourself = "Zelf invullen"
     static let otherDesign = "Ander ontwerp kiezen"
+
+    // My application
+    static let hubTitle = "Mijn sollicitatie"
+    static func status(_ status: ApplicationStatus) -> String {
+        switch status {
+        case .concept: "Concept"
+        case .sent: "Verstuurd"
+        case .interview: "Gesprek"
+        case .offer: "Aanbod"
+        case .rejected: "Afgewezen"
+        }
+    }
+    static let statusLabel = "Status"
+    static let statusHint = "Dit houd je zelf bij. PAVE stuurt niets naar het bedrijf."
+    static let deadline = "Deadline"
+    static let setDeadline = "Deadline instellen"
+    static let note = "Notitie"
+    static let notePrompt = "Bijvoorbeeld: contactpersoon of wat je nog wilt doen"
+    static let yourDocuments = "Je cv en brief"
+    static func lastChanged(_ date: Date) -> String {
+        "Laatst gewijzigd op \(date.formatted(.dateTime.day().month(.wide).year().locale(Locale(identifier: "nl_NL"))))"
+    }
+    static let nextSteps = "Volgende stappen"
+    static func stillMissing(_ count: Int) -> String { count == 1 ? "1 eis staat nog niet op je cv" : "\(count) eisen staan nog niet op je cv" }
+    static let whatCanIDo = "Wat kan ik doen?"
+    static let allCovered = "Alles wat de vacature vraagt staat op je cv."
+    static let practice = "Oefen het gesprek"
+    static let editCV = "Cv bewerken"
+    static let editLetter = "Brief bewerken"
 
     // What goes in
     static let whatGoesIn = "Wat komt erin?"

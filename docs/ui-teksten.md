@@ -166,6 +166,8 @@ Het cv volgt wat op een cv gebruikelijk is: elk onderdeel met het nieuwste boven
 | Filters | Alle / Met foto / Zakelijk / Creatief / Minimalistisch / Elegant |
 | Ontwerpen, van eenvoudig naar uitgesproken | Helder / Kader / Lijn / Salie / Nacht / Zuil / Tegel / Koraal / Kring / Schuin |
 | Kleuren | PAVE / Salie / Oceaan / Petrol / Nacht / Koraal / Roos / Lavendel / Zwart-wit |
+| Mijn sollicitatie (opent als je al een cv voor de vacature hebt) | Mijn sollicitatie / {functie} · {bedrijf} / Status: Concept, Verstuurd, Gesprek, Aanbod, Afgewezen / Dit houd je zelf bij. PAVE stuurt niets naar het bedrijf. / Deadline / Notitie / Bijvoorbeeld: contactpersoon of wat je nog wilt doen / Je cv en brief / Cv bewerken / Brief bewerken / Laatst gewijzigd op {datum} |
+| Volgende stappen | Volgende stappen / {n} eis(en) staan nog niet op je cv / Wat kan ik doen? / Oefen het gesprek / Alles wat de vacature vraagt staat op je cv. |
 | Wat komt erin | Wat komt erin? / Ayla's voorstel voor {functie} bij {bedrijf}. Zet aan of uit wat je wilt laten zien. / (in de editor) Zet aan of uit wat op je cv staat. |
 | Lengte | Past op 1 pagina / {n} pagina's / Maak passend op 1 pagina / Terug naar Ayla's voorstel |
 | Waarom aan of uit | Past bij {vaardigheid} en {vaardigheid} / Loopt nog / Recent / Hoort op elk cv / Lang geleden en past minder bij deze vacature / Uit, zodat je cv op 1 pagina past |

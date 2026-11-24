@@ -87,7 +87,7 @@ struct ApplicationStudioTests {
         let again = ApplicationStudioModel(vacancy: vacancy, items: [], name: "Iemand anders", email: "", service: nil, store: shared)
         #expect(again.draft.template == .night)
         #expect(again.draft.cv.name == "Daaf")
-        #expect(again.stage == .editor)
+        #expect(again.stage == .hub)
     }
 
     @Test func aDesignFromTheGalleryBringsItsOwnColoursAndPhoto() {
@@ -310,6 +310,35 @@ struct ApplicationStudioTests {
         model.updateEntry(entry.id, typing: true) { $0.title = "Senior stage" }
         #expect(model.entry(entry.id)?.isVerified == false)
         model.settle()
+    }
+
+    @Test func anApplicationKeepsItsStatusDeadlineAndNoteAndOpensOnItsOverview() async {
+        let store = store
+        let model = ApplicationStudioModel(vacancy: vacancy, items: items(), name: "Daaf", email: "", service: nil, store: store)
+        await model.begin(withAyla: false)
+        #expect(model.tracking.status == .concept)
+        model.setStatus(.sent)
+        model.setDeadline(Date(timeIntervalSince1970: 1_800_000_000))
+        model.setNote("Bellen op dinsdag")
+        model.settle()
+        let again = ApplicationStudioModel(vacancy: vacancy, items: items(), name: "Daaf", email: "", service: nil, store: store)
+        #expect(again.stage == .hub)
+        #expect(again.tracking.status == .sent)
+        #expect(again.tracking.changedAt != nil)
+        #expect(again.tracking.deadline == Date(timeIntervalSince1970: 1_800_000_000))
+        #expect(again.tracking.note == "Bellen op dinsdag")
+        again.setDeadline(nil)
+        #expect(again.tracking.deadline == nil)
+        again.edit(.letter)
+        #expect(again.stage == .editor)
+        #expect(again.document == .letter)
+    }
+
+    @Test func theOverviewSaysWhatTheCVStillMissing() async {
+        let withGap = Vacancy(id: "v2", title: "Dev", company: "Appwerk", source: .adzuna, matches: [.init(skill: "Swift", requirement: "r")], skillGap: [.init(skill: "CI/CD", requirement: "r")])
+        let model = ApplicationStudioModel(vacancy: withGap, items: items(), name: "Daaf", email: "", service: nil, store: store)
+        await model.begin(withAyla: false)
+        #expect(model.openRequirements.map(\.skill) == ["CI/CD"])
     }
 
     @Test func aLongCVBecomesMoreThanOneA4Page() throws {

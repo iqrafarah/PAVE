@@ -503,7 +503,15 @@ struct AylaChatScreen: View {
         }
         .sheet(item: $selectingText) { ChatTextSelection(text: $0.text) }
         .fullScreenCover(item: $application) { studio in
-            ApplicationStudioView(model: studio, photo: profile?.avatar) { application = nil }
+            ApplicationStudioView(
+                model: studio, photo: profile?.avatar,
+                onClose: { application = nil },
+                onTask: { task in
+                    let vacancy = studio.draft.vacancy
+                    application = nil
+                    run(task, on: [vacancy])
+                }
+            )
         }
         // Handoff to your other devices, with only a general title: the chat's own title stays private.
         .userActivity(AylaHandoff.activityType, isActive: model.conversationID != nil && !isVoiceActive) { activity in

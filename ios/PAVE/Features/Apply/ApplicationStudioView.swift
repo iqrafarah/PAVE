@@ -9,6 +9,8 @@ struct ApplicationStudioView: View {
     @State private var model: ApplicationStudioModel
     let photo: UIImage?
     let onClose: () -> Void
+    /// Ayla's help with this vacancy from the overview: what you miss, practising the interview.
+    var onTask: (AylaRequest.VacancyTask) -> Void = { _ in }
 
     @State private var panel = Panel.content
     @State private var showsDesign = false
@@ -23,7 +25,8 @@ struct ApplicationStudioView: View {
     /// Wide enough for the panel next to the page.
     private static let wideWidth: CGFloat = 720
 
-    init(model: ApplicationStudioModel, photo: UIImage?, onClose: @escaping () -> Void) {
+    init(model: ApplicationStudioModel, photo: UIImage?, onClose: @escaping () -> Void, onTask: @escaping (AylaRequest.VacancyTask) -> Void = { _ in }) {
+        self.onTask = onTask
         model.measure = { ApplicationPageMeasure.pages($0, photo: $0.showsPhoto ? photo : nil) }
         _model = State(initialValue: model)
         self.photo = photo
@@ -42,6 +45,11 @@ struct ApplicationStudioView: View {
                 VStack(spacing: 0) {
                     stepBar { model.stage = .gallery }
                     ApplicationContentView(model: model, photo: photo) { model.stage = .gallery }
+                }
+            case .hub:
+                VStack(spacing: 0) {
+                    stepBar(back: nil)
+                    ApplicationHubView(model: model, photo: photo, onTask: onTask)
                 }
             case .editor:
                 editor

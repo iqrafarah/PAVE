@@ -63,3 +63,19 @@ struct ApplicationCoverageTests {
         #expect(back.marksVerified)
     }
 }
+
+@Suite("Keeping track of an application")
+struct ApplicationTrackingTests {
+    @Test("A draft kept before tracking existed opens as a concept, and tracking survives being stored")
+    func trackingIsStoredAndOptional() throws {
+        let vacancy = Vacancy(id: "v", title: "Dev", company: "Appwerk", source: .adzuna)
+        var draft = ApplicationBuilder.draft(for: vacancy, items: [], name: "Daaf")
+        #expect(draft.progress == ApplicationTracking())
+        draft.tracking = ApplicationTracking(status: .interview, deadline: Date(timeIntervalSince1970: 1_800_000_000), note: "Bellen op dinsdag")
+        let back = try JSONDecoder().decode(ApplicationDraft.self, from: JSONEncoder().encode(draft))
+        #expect(back.progress.status == .interview)
+        #expect(back.progress.note == "Bellen op dinsdag")
+        let unknown = try JSONDecoder().decode(ApplicationStatus.self, from: Data("\"onbekend\"".utf8))
+        #expect(unknown == .concept)
+    }
+}

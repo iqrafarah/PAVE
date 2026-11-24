@@ -15,7 +15,7 @@ final class ApplicationStudioModel: Identifiable {
     private(set) var choices: [String: ApplicationProposal.Choice] = [:]
     /// The entries are still as proposed; the user has not turned one round.
     private(set) var isProposal = false
-    /// A new application starts in the gallery, then asks how to begin; one made before opens in the editor.
+    /// A new application starts in the gallery, then asks what goes in; one made before opens on its overview.
     var stage: Stage
     var document = ApplicationDocumentKind.cv
     var selection: ApplicationBlock?
@@ -54,10 +54,11 @@ final class ApplicationStudioModel: Identifiable {
         ApplicationVerification.mark(&first, items: items)
         draft = first
         shown = first
-        stage = saved == nil ? .gallery : .editor
+        stage = saved == nil ? .gallery : .hub
     }
 
-    enum Stage { case gallery, start, editor }
+    /// `hub`: an application that was made before opens on its overview.
+    enum Stage { case gallery, start, hub, editor }
 
     /// A design from the gallery: its own palette, and its photo when it is made for one.
     func choose(_ template: ApplicationTemplate) {
@@ -129,6 +130,46 @@ final class ApplicationStudioModel: Identifiable {
             section.entries.filter { !$0.isVisible || !section.isVisible }.compactMap(\.sourceItemID)
         })
         return items.filter { $0.aylaAllowedAt != nil && $0.archivedAt == nil && !hidden.contains($0.id) }
+    }
+
+    // MARK: Keeping track
+
+    var tracking: ApplicationTracking { draft.progress }
+
+    /// What the vacancy asks for that the CV does not show yet.
+    var openRequirements: [ApplicationCoverage.Requirement] { requirements.filter { !$0.isCovered } }
+
+    func setStatus(_ status: ApplicationStatus) {
+        update { draft in
+            var tracking = draft.progress
+            guard tracking.status != status else { return }
+            tracking.status = status
+            tracking.changedAt = .now
+            draft.tracking = tracking
+        }
+    }
+
+    func setDeadline(_ date: Date?) {
+        update { draft in
+            var tracking = draft.progress
+            tracking.deadline = date
+            draft.tracking = tracking
+        }
+    }
+
+    func setNote(_ note: String) {
+        update(typing: true) { draft in
+            var tracking = draft.progress
+            tracking.note = String(note.prefix(1000))
+            draft.tracking = tracking
+        }
+    }
+
+    /// From the overview into the CV or the letter.
+    func edit(_ document: ApplicationDocumentKind) {
+        selection = nil
+        self.document = document
+        stage = .editor
     }
 
     // MARK: What goes in
