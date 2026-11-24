@@ -26,6 +26,20 @@ enum ApplicationPage {
         }
     }
 
+    /// Where the line that explains the tick starts, at the foot of the last page: under the main column.
+    static func noteLeading(_ template: ApplicationTemplate) -> CGFloat {
+        switch template {
+        case .plain: 52
+        case .frame: 60
+        case .line: 48
+        case .sage: CVSageLayout.sideWidth + 34
+        case .night: CVNightLayout.sideWidth + 32
+        case .block: 28
+        case .halo: 56
+        case .column, .coral, .tilt: 44
+        }
+    }
+
     static let ink = Color(red: 0.12, green: 0.13, blue: 0.13)
     static let muted = Color(red: 0.40, green: 0.42, blue: 0.42)
     static let paper = Color.white

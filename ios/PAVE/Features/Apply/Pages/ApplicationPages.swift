@@ -56,6 +56,17 @@ struct ApplicationPages: View {
             .frame(width: size.width, height: shows.isAll ? allHeight : size.height, alignment: .topLeading)
             .environment(\.colorScheme, .light)
             .environment(\.applicationIsEditing, interaction != nil)
+            .environment(\.applicationMarksVerified, draft.marksVerified)
+    }
+
+    /// At the foot of the last page of a CV with a tick on it: what the tick means.
+    @ViewBuilder
+    private func verifiedNote(_ index: Int, _ flow: ApplicationPageFlow) -> some View {
+        if document == .cv, index == flow.layout.pages - 1, ApplicationVerification.showsTick(draft) {
+            CVVerifiedNote(theme: ApplicationTheme(draft))
+                .offset(x: ApplicationPage.noteLeading(draft.template), y: size.height - min(margins.bottom, 40) + 8)
+                .allowsHitTesting(false)
+        }
     }
 
     /// The whole document as one long sheet, as tall as its content.
@@ -129,6 +140,7 @@ struct ApplicationPages: View {
                     }
                     .allowsHitTesting(false)
             }
+            verifiedNote(0, flow)
             taps(0, flow)
         }
         .frame(width: size.width, height: size.height, alignment: .topLeading)
@@ -151,6 +163,7 @@ struct ApplicationPages: View {
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
             }
+            verifiedNote(index, flow)
             taps(index, flow)
         }
         .frame(width: size.width, height: size.height, alignment: .topLeading)

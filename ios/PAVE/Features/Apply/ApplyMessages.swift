@@ -60,9 +60,28 @@ enum ApplyMessages {
         case .forOnePage: "Uit, zodat je cv op 1 pagina past"
         }
     }
-    static func missing(_ skills: [String]) -> String {
-        "Deze vacature vraagt ook om \(skills.joined(separator: ", ")). Dat staat nog niet in je kluis, dus het komt niet op je cv en Ayla noemt het niet."
+    static let verified = "geverifieerd"
+    static let verifiedNote = "In PAVE geverifieerd door de organisatie zelf."
+    static let showVerified = "Vinkje bij geverifieerd bewijs"
+    static let showVerifiedHint = "Op je cv staat een vinkje bij bewijs dat door de organisatie is geverifieerd. Pas je de titel, organisatie of periode aan, dan vervalt het vinkje."
+    static let nothingVerified = "Er staat nog geen geverifieerd bewijs op je cv."
+
+    // What the vacancy asks for
+    static let asked = "Wat de vacature vraagt"
+    static func askedSummary(covered: Int, of count: Int, available: Int) -> String {
+        let base = "\(covered) van de \(count) staan op je cv"
+        return available == 0 ? base : "\(base), \(available) kun je aanzetten"
     }
+    static func coverage(_ state: ApplicationCoverage.State) -> String {
+        switch state {
+        case .shown(let titles):
+            titles.count > 1 ? "Staat op je cv bij \(titles[0]) en \(titles.count - 1) andere" : "Staat op je cv bij \(titles.first ?? "")"
+        case .named: "Staat bij je vaardigheden, zonder bewijs erachter"
+        case .available: "Staat in je kluis, maar niet op je cv"
+        case .missing: "Staat nog niet in je kluis"
+        }
+    }
+    static let turnOn = "Zet aan"
     static let focus = "Waar wil je de nadruk op leggen?"
     static let focusHint = "Hoeft niet. Ayla legt hier de nadruk op in je profiel en brief, voor zover je bewijs dat laat zien."
     static let focusPrompt = "Bijvoorbeeld: samenwerken met klanten"
@@ -158,6 +177,23 @@ enum ApplyMessages {
     static let aylaProfile = "Laat Ayla je profiel schrijven"
     static let aylaLetter = "Laat Ayla de brief schrijven"
     static let aylaWriting = "Ayla schrijft…"
+    // Ayla asks on
+    static func aylaAsks(_ count: Int) -> String { count == 1 ? "Ayla heeft 1 vraag" : "Ayla heeft \(count) vragen" }
+    static let questionsTitle = "Vragen van Ayla"
+    static let questionsHint = "Je antwoord komt in dat onderdeel van je cv. Ayla gebruikt alleen wat je hier schrijft en wat ze al mocht bekijken."
+    static func questionAbout(_ title: String) -> String { "Bij \(title)" }
+    static let answerPrompt = "Je antwoord, in één zin"
+    static let workIn = "Verwerk in je cv"
+    static let skip = "Sla over"
+    static let workedIn = "Verwerkt in je cv"
+    static let keepInVault = "Bewaar ook in je kluis"
+    static let keptInVault = "Bewaard in je kluis"
+    static let keepHint = "Je antwoord komt bij de beschrijving van dit bewijsstuk."
+    static let keepVerifiedHint = "Dit bewijsstuk is geverifieerd. Als je het aanvult, moet het opnieuw geverifieerd worden en vervalt het vinkje op je cv."
+    static let keepFailed = "Het bewaren in je kluis lukte niet. Probeer het zo opnieuw."
+    static let noQuestions = "Ayla heeft nu geen vragen."
+    static let askOn = "Laat Ayla doorvragen"
+    static let asking = "Ayla leest je cv…"
     static let aylaFailed = "Ayla kon nu niet schrijven. Probeer het zo opnieuw."
     static func aylaUses(_ count: Int) -> String {
         count == 0

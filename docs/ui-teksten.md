@@ -170,14 +170,18 @@ Het cv volgt wat op een cv gebruikelijk is: elk onderdeel met het nieuwste boven
 | Lengte | Past op 1 pagina / {n} pagina's / Maak passend op 1 pagina / Terug naar Ayla's voorstel |
 | Waarom aan of uit | Past bij {vaardigheid} en {vaardigheid} / Loopt nog / Recent / Hoort op elk cv / Lang geleden en past minder bij deze vacature / Uit, zodat je cv op 1 pagina past |
 | Bij een bewijsstuk | (de status uit de kluis) / Ayla mag dit niet bekijken en schrijft er niet over |
-| Wat de vacature nog vraagt | Deze vacature vraagt ook om {vaardigheden}. Dat staat nog niet in je kluis, dus het komt niet op je cv en Ayla noemt het niet. |
+| Wat de vacature vraagt (ingeklapt, tik om te openen) | Wat de vacature vraagt / {n} van de {m} staan op je cv / {n} van de {m} staan op je cv, {k} kun je aanzetten |
+| Per eis | Staat op je cv bij {titel} / Staat op je cv bij {titel} en {n} andere / Staat bij je vaardigheden, zonder bewijs erachter / Staat in je kluis, maar niet op je cv (met de knop Zet aan) / Staat nog niet in je kluis |
 | Nadruk | Waar wil je de nadruk op leggen? / Hoeft niet. Ayla legt hier de nadruk op in je profiel en brief, voor zover je bewijs dat laat zien. / Bijvoorbeeld: samenwerken met klanten |
 | Hoe beginnen | Zelf invullen / Ayla vult het in / Ayla gebruikt alleen de {n} bewijsstukken die ze mag bekijken. |
 | Hints (alleen tijdens bewerken, niet in de pdf) | Schrijf hier in 2 of 3 zinnen wie je bent en wat je zoekt. / Waarom deze vacature en dit bedrijf? / Wat breng je mee? Noem een voorbeeld uit je kluis. / Sluit af en nodig uit tot een gesprek. / Telefoon / Woonplaats (zolang die leeg zijn) |
 | Meer dan één pagina | Je cv is {n} pagina's. Eén pagina leest het prettigst. (met de knop Maak passend op 1 pagina) / Je brief is {n} pagina's. Een brief past het best op één pagina. / Pagina {n} van {totaal} (VoiceOver) |
 | Bovenaan | Cv / Motivatiebrief |
 | Knoppen | Ontwerp / Inhoud (cv) / Alinea (brief) / Ayla schrijft / Klaar |
-| Ontwerp | Sjabloon / Kleur / Profielfoto tonen / Onderdelen |
+| Ontwerp | Sjabloon / Kleur / Profielfoto tonen / Vinkje bij geverifieerd bewijs / Onderdelen |
+| Geverifieerd op het cv | (onderaan de laatste pagina) In PAVE geverifieerd door de organisatie zelf. / Op je cv staat een vinkje bij bewijs dat door de organisatie is geverifieerd. Pas je de titel, organisatie of periode aan, dan vervalt het vinkje. / Er staat nog geen geverifieerd bewijs op je cv. |
+| Ayla vraagt door | Ayla heeft 1 vraag / Ayla heeft {n} vragen / Vragen van Ayla / Je antwoord komt in dat onderdeel van je cv. Ayla gebruikt alleen wat je hier schrijft en wat ze al mocht bekijken. / Bij {titel} / Je antwoord, in één zin / Verwerk in je cv / Sla over / Verwerkt in je cv / Ongedaan maken / Ayla heeft nu geen vragen. / Laat Ayla doorvragen / Ayla leest je cv… |
+| Antwoord in de kluis | Bewaar ook in je kluis / Bewaard in je kluis / Je antwoord komt bij de beschrijving van dit bewijsstuk. / Dit bewijsstuk is geverifieerd. Als je het aanvult, moet het opnieuw geverifieerd worden en vervalt het vinkje op je cv. / Het bewaren in je kluis lukte niet. Probeer het zo opnieuw. |
 | Geen profielfoto | Voeg een profielfoto toe bij Instellingen › Account om hem hier te tonen. |
 | Paneel (iPad, Duo open liggend) | Inhoud / Ontwerp / Tik op een onderdeel om het aan te passen. |
 | Kopjes op het cv | Profiel / Werkervaring / Opleiding / Certificaten / Projecten / Vaardigheden / Contact |

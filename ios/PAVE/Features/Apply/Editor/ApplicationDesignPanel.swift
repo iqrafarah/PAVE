@@ -55,6 +55,16 @@ struct ApplicationDesignPanel: View {
                 }
             }
             if model.document == .cv {
+                VStack(alignment: .leading, spacing: 6) {
+                    Toggle(ApplyMessages.showVerified, isOn: Binding(get: { model.draft.marksVerified }, set: { value in model.update { $0.showsVerified = value } }))
+                        .textStyle(.bodyMedium)
+                        .foregroundStyle(Color.ink)
+                        .tint(.paveAccentFill)
+                    Text(model.draft.cv.sections.contains { $0.entries.contains(where: \.isVerified) } ? ApplyMessages.showVerifiedHint : ApplyMessages.nothingVerified)
+                        .textStyle(.caption)
+                        .foregroundStyle(Color.inkMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 section(ApplyMessages.sections) {
                     VStack(spacing: 0) {
                         ForEach(Array(model.draft.cv.sections.enumerated()), id: \.element.id) { index, item in

@@ -8,6 +8,10 @@ public struct ApplicationWritingRequest: Encodable, Equatable, Sendable {
         case profile
         /// What was done at each job and project, in the words of a CV.
         case entries
+        /// Questions to the user where the CV is thin.
+        case questions
+        /// One answer of the user, worked into one entry.
+        case answer
         case letter, rewrite
     }
 
@@ -49,13 +53,16 @@ public struct ApplicationWritingRequest: Encodable, Equatable, Sendable {
     public var tone: Tone
     /// What the user asked her to stress, in their own words.
     public var focus: String?
+    /// For `.answer`: her question about the one piece of evidence that goes along, and what the user said.
+    public var question: String?
+    public var answer: String?
 
     /// At most this many pieces of evidence go along.
     public static let maximumItems = 20
 
     public init(
         kind: Kind, vacancy: Vacancy, name: String, items: [VaultItem], text: String? = nil, rewrite: Rewrite? = nil, tone: Tone = .personal,
-        focus: String? = nil
+        focus: String? = nil, question: String? = nil, answer: String? = nil
     ) {
         self.kind = kind
         self.vacancy = AylaRequest.OpenVacancy(vacancy)
@@ -64,6 +71,8 @@ public struct ApplicationWritingRequest: Encodable, Equatable, Sendable {
         self.text = text
         self.rewrite = rewrite
         self.tone = tone
+        self.question = question
+        self.answer = answer.map { String($0.prefix(400)) }
         let stress = focus?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         self.focus = stress.isEmpty ? nil : String(stress.prefix(200))
     }
@@ -95,18 +104,21 @@ public struct ApplicationWriting: Decodable, Equatable, Sendable {
     public var profile: String?
     public var headline: String?
     public var entries: [Entry]?
+    /// Her questions, each about one piece of evidence.
+    public var questions: [Entry]?
     public var salutation: String?
     public var paragraphs: [Paragraph]?
     public var closing: String?
     public var text: String?
 
     public init(
-        profile: String? = nil, headline: String? = nil, entries: [Entry]? = nil,
+        profile: String? = nil, headline: String? = nil, entries: [Entry]? = nil, questions: [Entry]? = nil,
         salutation: String? = nil, paragraphs: [Paragraph]? = nil, closing: String? = nil, text: String? = nil
     ) {
         self.profile = profile
         self.headline = headline
         self.entries = entries
+        self.questions = questions
         self.salutation = salutation
         self.paragraphs = paragraphs
         self.closing = closing

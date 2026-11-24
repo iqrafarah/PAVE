@@ -13,6 +13,7 @@ struct ApplicationStudioView: View {
     @State private var panel = Panel.content
     @State private var showsDesign = false
     @State private var showsContent = false
+    @State private var showsQuestions = false
     @State private var exported: ExportedFile?
     @State private var isExporting = false
     @Environment(\.paveReduceMotion) private var reduceMotion
@@ -76,6 +77,15 @@ struct ApplicationStudioView: View {
                     }
                 } else {
                     ApplicationCanvas(model: model, photo: photo)
+                        // Over the page, so nothing moves when her questions arrive.
+                        .overlay(alignment: .bottom) {
+                            if model.openQuestions > 0, model.selection == nil {
+                                ApplicationQuestionsPill(count: model.openQuestions) { showsQuestions = true }
+                                    .padding(.bottom, 10)
+                                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                            }
+                        }
+                        .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.35, bounce: 0.15), value: model.openQuestions)
                     bottomBar
                 }
             }
@@ -87,7 +97,14 @@ struct ApplicationStudioView: View {
                 designSheet
             }
             .sheet(isPresented: $showsContent) {
-                ApplicationContentSheet(model: model, pages: model.pages) { showsContent = false }
+                ApplicationContentSheet(model: model, pages: model.pages, onAskOn: {
+                    showsContent = false
+                    showsQuestions = true
+                    Task { await model.askQuestions() }
+                }) { showsContent = false }
+            }
+            .sheet(isPresented: $showsQuestions) {
+                ApplicationQuestionsSheet(model: model) { showsQuestions = false }
             }
             .onChange(of: model.selection) { _, block in
                 // What was typed in the block that closes shows and is kept at once.
@@ -214,6 +231,11 @@ struct ApplicationStudioView: View {
                         PaveSecondaryButton(title: ApplyMessages.addParagraph, icon: .iconPlusCircleOutline) { model.addParagraph() }
                     } else {
                         PaveSecondaryButton(title: ApplyMessages.whatGoesIn, icon: .iconListBulletOutline) { showsContent = true }
+                        PaveSecondaryButton(title: model.openQuestions > 0 ? ApplyMessages.aylaAsks(model.openQuestions) : ApplyMessages.askOn) {
+                            showsQuestions = true
+                            if model.openQuestions == 0 { Task { await model.askQuestions() } }
+                        }
+                        .disabled(!model.canWrite && model.questions.isEmpty)
                     }
                     Text(ApplyMessages.tapToEdit)
                         .textStyle(.caption)

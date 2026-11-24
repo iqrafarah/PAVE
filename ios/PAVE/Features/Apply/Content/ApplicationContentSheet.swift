@@ -5,6 +5,8 @@ import SwiftUI
 struct ApplicationContentSheet: View {
     let model: ApplicationStudioModel
     let pages: Int
+    /// Ayla looks where the CV is thin and asks; nil where she cannot.
+    var onAskOn: (() -> Void)?
     let onDone: () -> Void
 
     var body: some View {
@@ -15,12 +17,16 @@ struct ApplicationContentSheet: View {
                         .textStyle(.bodyMedium)
                         .foregroundStyle(Color.inkMuted)
                     ApplicationPageCounter(pages: pages) { model.fitOnOnePage() }
+                    ApplicationCoverageCard(model: model)
                     ApplicationContentList(model: model)
                     Button(ApplyMessages.backToProposal) { model.propose() }
                         .textStyle(.link)
                         .foregroundStyle(Color.paveAccent)
                         .frame(minHeight: 44)
                         .buttonStyle(.pave)
+                    if let onAskOn, model.canWrite {
+                        PaveSecondaryButton(title: ApplyMessages.askOn, action: onAskOn)
+                    }
                 }
                 .padding(20)
                 .frame(maxWidth: .infinity, alignment: .leading)

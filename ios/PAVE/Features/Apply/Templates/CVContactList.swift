@@ -47,4 +47,6 @@ struct CVContactList: View {
 extension EnvironmentValues {
     /// The page is in the editor: empty parts show what goes there. Off for the gallery and the pdf.
     @Entry var applicationIsEditing = false
+    /// Verified evidence gets its tick on the CV; the user can turn that off.
+    @Entry var applicationMarksVerified = true
 }

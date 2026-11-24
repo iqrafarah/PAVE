@@ -19,6 +19,8 @@ struct CVEntryView: View {
     let theme: ApplicationTheme
     var isLast = false
 
+    @Environment(\.applicationMarksVerified) private var marksVerified
+
     var body: some View {
         switch style {
         case .dateRight:
@@ -76,10 +78,24 @@ struct CVEntryView: View {
     }
 
     private var title: some View {
-        Text(entry.title)
-            .font(theme.body(10, .semibold))
-            .foregroundStyle(theme.ink)
-            .fixedSize(horizontal: false, vertical: true)
+        HStack(alignment: .firstTextBaseline, spacing: 3) {
+            Text(entry.title)
+                .font(theme.body(10, .semibold))
+                .foregroundStyle(theme.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            // Verified evidence: a small tick after the title, explained at the foot of the page.
+            if entry.isVerified, marksVerified {
+                Image(.iconCheckBadgeOutline)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 9.5, height: 9.5)
+                    .foregroundStyle(theme.accent)
+                    .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1.5 }
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(entry.isVerified && marksVerified ? "\(entry.title), \(ApplyMessages.verified)" : entry.title)
     }
 
     @ViewBuilder

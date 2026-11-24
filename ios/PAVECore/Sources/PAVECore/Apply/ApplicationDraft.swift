@@ -13,7 +13,12 @@ public struct ApplicationDraft: Codable, Equatable, Sendable, Identifiable {
     public var letter: LetterContent
     /// What the user wants Ayla to stress in the profile and the letter, in their own words; nil when nothing.
     public var focus: String?
+    /// A tick on the CV at evidence that is verified; on unless the user turned it off.
+    public var showsVerified: Bool?
     public var updatedAt: Date
+
+    /// Whether verified evidence is marked on the CV.
+    public var marksVerified: Bool { showsVerified ?? true }
 
     public init(
         vacancy: Vacancy, template: ApplicationTemplate = .sage, palette: ApplicationPalette? = nil, showsPhoto: Bool = true,
@@ -208,6 +213,13 @@ public struct CVEntry: Codable, Equatable, Sendable, Identifiable {
     public var isVisible: Bool
     /// The piece of evidence it came from; nil when typed by hand.
     public var sourceItemID: String?
+    /// The evidence is verified and the entry still says what the evidence says. Worked out again from the vault
+    /// every time the draft is opened or changed (`ApplicationVerification`), never taken on trust from the file.
+    public var isVerified = false
+
+    private enum CodingKeys: String, CodingKey {
+        case id, title, organisation, period, description, isVisible, sourceItemID
+    }
 
     public init(id: String = UUID().uuidString, title: String, organisation: String = "", period: String = "", description: String = "", isVisible: Bool = true, sourceItemID: String? = nil) {
         self.id = id

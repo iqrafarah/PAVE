@@ -11,19 +11,12 @@ struct ApplicationContentView: View {
     @State private var pages = 1
     @State private var isBeginning = false
 
-    private var missing: [String] { Array(model.draft.vacancy.skillGap.map(\.skill).prefix(3)) }
-
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 header
+                ApplicationCoverageCard(model: model)
                 ApplicationContentList(model: model)
-                if !missing.isEmpty {
-                    Text(ApplyMessages.missing(missing))
-                        .textStyle(.caption)
-                        .foregroundStyle(Color.inkMuted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
                 ApplicationFocusField(model: model)
             }
             .padding(.horizontal, 20)

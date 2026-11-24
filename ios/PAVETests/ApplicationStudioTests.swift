@@ -11,10 +11,12 @@ struct ApplicationStudioTests {
         var requests: [ApplicationWritingRequest] = []
         /// An older server does not know a kind yet.
         var unknownKinds: Set<ApplicationWritingRequest.Kind> = []
+        /// What she answers to one kind, when that differs from the rest.
+        var answers: [ApplicationWritingRequest.Kind: ApplicationWriting] = [:]
         func writeApplication(_ request: ApplicationWritingRequest) async throws -> ApplicationWriting {
             requests.append(request)
             if unknownKinds.contains(request.kind) { throw AylaError.unavailable }
-            return answer
+            return answers[request.kind] ?? answer
         }
         func send(_ request: AylaRequest) async throws -> AylaReply { throw AylaError.unavailable }
         func conversations(limit: Int) async throws -> AylaConversationList { AylaConversationList() }
@@ -193,6 +195,21 @@ struct ApplicationStudioTests {
         #expect(model.stage == .start)
     }
 
+    @Test func aProposalForOnePageStaysOnePageOnceAylaHasWritten() async {
+        let writer = Writer()
+        writer.answer = ApplicationWriting(profile: "Ik bouw apps.", paragraphs: [.init(text: "Brief.")])
+        var items = items()
+        items[1].aylaAllowedAt = .now
+        let model = ApplicationStudioModel(vacancy: vacancy, items: items, name: "Daaf", email: "", service: writer, store: store)
+        // Both fit until the profile is there; the page is measured with room for it.
+        model.measure = { $0.cv.sections.flatMap(\.entries).filter(\.isVisible).count > ($0.cv.profile.isEmpty ? 2 : 1) ? 2 : 1 }
+        model.choose(.plain)
+        #expect(model.draft.cv.sections.flatMap(\.entries).filter(\.isVisible).count == 1)
+        await model.begin(withAyla: true)
+        #expect(model.draft.cv.sections.flatMap(\.entries).filter(\.isVisible).count == 1)
+        #expect(model.isProposal)
+    }
+
     @Test func typingShowsOnThePageAMomentLaterAndIsKeptWhenItSettles() async {
         let store = store
         let model = ApplicationStudioModel(vacancy: vacancy, items: items(), name: "Daaf", email: "", service: nil, store: store)
@@ -216,6 +233,83 @@ struct ApplicationStudioTests {
         let pdf = try #require(PDFDocument(url: try ApplicationPDF.file(for: draft, document: .cv, photo: nil)))
         #expect(ApplicationPageMeasure.pages(draft, photo: nil) == pdf.pageCount)
         #expect(pdf.pageCount >= 2)
+    }
+
+    @Test func aylaAsksOnAndAnAnswerGoesIntoThatEntryOnly() async {
+        let writer = Writer()
+        writer.answer = ApplicationWriting(profile: "Ik bouw apps.", paragraphs: [.init(text: "Brief.")])
+        writer.answers[.questions] = ApplicationWriting(questions: [
+            .init(sourceItemID: "a", text: "Met hoeveel mensen werkte je samen?"),
+            .init(sourceItemID: "b", text: "Over iets wat ze niet mag zien."),
+        ])
+        writer.answers[.answer] = ApplicationWriting(text: "Bouwde met vijf collega's een iOS-app.")
+        var items = items()
+        items[0].description = "Je bouwde mee aan een iOS-app."
+        let model = ApplicationStudioModel(vacancy: vacancy, items: items, name: "Daaf", email: "", service: writer, store: store)
+        await model.begin(withAyla: true)
+        #expect(model.questions.map(\.text) == ["Met hoeveel mensen werkte je samen?"])
+        #expect(writer.requests.first { $0.kind == .questions }?.items.map(\.id) == ["a"])
+        let question = model.questions[0]
+        // Without an answer nothing is asked of her.
+        await model.answer(question.id)
+        #expect(!writer.requests.contains { $0.kind == .answer })
+        model.setAnswer(question.id, "Met vijf collega's")
+        await model.answer(question.id)
+        let request = writer.requests.first { $0.kind == .answer }
+        #expect(request?.items.map(\.id) == ["a"])
+        #expect(request?.answer == "Met vijf collega's")
+        #expect(request?.question == "Met hoeveel mensen werkte je samen?")
+        #expect(model.entry(question.entryID)?.description == "Bouwde met vijf collega's een iOS-app.")
+        #expect(model.openQuestions == 0)
+        model.undoAnswer(question.id)
+        #expect(model.entry(question.entryID)?.description == "Je bouwde mee aan een iOS-app.")
+        #expect(model.openQuestions == 1)
+        model.skip(question.id)
+        #expect(model.openQuestions == 0)
+    }
+
+    @Test func anAnswerGoesToTheVaultOnlyWhenAskedAndTheTickFollowsTheVault() async {
+        let writer = Writer()
+        writer.answers[.questions] = ApplicationWriting(questions: [.init(sourceItemID: "a", text: "Wat was je rol?")])
+        writer.answers[.answer] = ApplicationWriting(text: "Leidde het team.")
+        var items = items()
+        items[0].description = "Je bouwde mee."
+        items[0].status = .verified
+        let model = ApplicationStudioModel(vacancy: vacancy, items: items, name: "Daaf", email: "", service: writer, store: store)
+        var kept: [(String, String)] = []
+        model.keepInVault = { itemID, sentence in
+            kept.append((itemID, sentence))
+            // Changing verified evidence sets it back to be verified again.
+            var changed = items
+            changed[0].status = .toVerify
+            return changed
+        }
+        await model.begin(withAyla: false)
+        #expect(model.entry(model.draft.cv.sections[0].entries[0].id)?.isVerified == true)
+        await model.askQuestions()
+        let question = model.questions[0]
+        model.setAnswer(question.id, "Ik leidde het team")
+        await model.answer(question.id)
+        #expect(kept.isEmpty)
+        #expect(model.entry(question.entryID)?.isVerified == true)
+        await model.keep(question.id)
+        #expect(kept.map(\.1) == ["Ik leidde het team"])
+        #expect(model.questions[0].isKept)
+        #expect(model.entry(question.entryID)?.isVerified == false)
+    }
+
+    @Test func changingWhatWasVerifiedTakesTheTickOffTheCV() async {
+        var items = items()
+        items[0].status = .verified
+        let model = ApplicationStudioModel(vacancy: vacancy, items: items, name: "Daaf", email: "", service: nil, store: store)
+        await model.begin(withAyla: false)
+        let entry = model.draft.cv.sections.flatMap(\.entries).first { $0.sourceItemID == "a" }!
+        #expect(entry.isVerified)
+        model.updateEntry(entry.id, typing: true) { $0.description = "Bouwde een app." }
+        #expect(model.entry(entry.id)?.isVerified == true)
+        model.updateEntry(entry.id, typing: true) { $0.title = "Senior stage" }
+        #expect(model.entry(entry.id)?.isVerified == false)
+        model.settle()
     }
 
     @Test func aLongCVBecomesMoreThanOneA4Page() throws {

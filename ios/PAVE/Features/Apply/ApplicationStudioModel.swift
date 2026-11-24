@@ -29,7 +29,12 @@ final class ApplicationStudioModel: Identifiable {
     private(set) var before: (block: ApplicationBlock, text: String)?
 
     /// The evidence behind the CV, for its status and for Ayla.
-    let items: [VaultItem]
+    private(set) var items: [VaultItem]
+    /// What Ayla asks where the CV is thin, with what the user answered.
+    private(set) var questions: [ApplicationQuestion] = []
+    private(set) var isAsking = false
+    /// Adds a sentence to a piece of evidence in the vault and gives the vault back as it is then; nil when it failed.
+    var keepInVault: ((_ itemID: String, _ sentence: String) async -> [VaultItem]?)?
     private let service: (any AylaService)?
     private let store: ApplicationStore
     /// How many pages a draft takes in its design; the screen that has the page sets it.
@@ -44,7 +49,9 @@ final class ApplicationStudioModel: Identifiable {
         self.service = service
         self.store = store
         let saved = store.load(vacancy.id)
-        let first = saved ?? ApplicationBuilder.draft(for: vacancy, items: items, name: name, email: email)
+        var first = saved ?? ApplicationBuilder.draft(for: vacancy, items: items, name: name, email: email)
+        // Which entries carry the tick of verified evidence comes from the vault as it is now, not from the file.
+        ApplicationVerification.mark(&first, items: items)
         draft = first
         shown = first
         stage = saved == nil ? .gallery : .editor
@@ -99,6 +106,7 @@ final class ApplicationStudioModel: Identifiable {
             }
         }
         choices = newChoices
+        ApplicationVerification.mark(&fresh, items: items)
         draft = fresh
         shown = fresh
         store.save(draft)
@@ -108,6 +116,10 @@ final class ApplicationStudioModel: Identifiable {
         async let entries: Void = writeEntries()
         async let letter: Void = writeLetter()
         _ = await (profile, entries, letter)
+        // Her texts are longer or shorter than what was measured: a proposal that was for one page stays one page.
+        if isProposal { fitOnOnePage() }
+        // Once the CV stands: what only you can add.
+        await askQuestions()
     }
 
     /// Only evidence Ayla may look at goes to her, and of that only what is on the CV: what the user left out, she
@@ -126,7 +138,7 @@ final class ApplicationStudioModel: Identifiable {
     func propose() {
         var all = draft
         ApplicationProposal.apply(Dictionary(uniqueKeysWithValues: all.cv.sections.flatMap(\.entries).map { ($0.id, true) }), to: &all)
-        let proposal = ApplicationProposal.fitted(all, items: items, today: VaultDay(.now), pages: measure)
+        let proposal = ApplicationProposal.fitted(all, items: items, today: VaultDay(.now), pages: measureWithProfile)
         choices = proposal.choices
         isProposal = true
         set(proposal.draft)
@@ -135,13 +147,21 @@ final class ApplicationStudioModel: Identifiable {
     /// Leaves out the least fitting of what is on now, until the CV is one page. Returns false when it fitted already.
     @discardableResult
     func fitOnOnePage() -> Bool {
-        let off = ApplicationProposal.trimmed(draft, items: items, today: VaultDay(.now), pages: measure)
+        let off = ApplicationProposal.trimmed(draft, items: items, today: VaultDay(.now), pages: measureWithProfile)
         guard !off.isEmpty else { return false }
         var shorter = draft
         ApplicationProposal.apply(Dictionary(uniqueKeysWithValues: off.map { ($0, false) }), to: &shorter)
         for id in off { choices[id] = .init(isOn: false, reason: .forOnePage) }
         set(shorter)
         return true
+    }
+
+    /// Before the profile is written the page is measured with room for one, or the CV would fit only until it is.
+    private func measureWithProfile(_ draft: ApplicationDraft) -> Int {
+        guard draft.cv.profile.isEmpty else { return measure(draft) }
+        var filled = draft
+        filled.cv.profile = String(repeating: "Ruimte voor je profiel. ", count: 14)
+        return measure(filled)
     }
 
     func setVisible(_ entryID: String, _ isOn: Bool) {
@@ -166,9 +186,13 @@ final class ApplicationStudioModel: Identifiable {
             update { $0 = new }
         } else {
             draft = new
-            shown = new
+            ApplicationVerification.mark(&draft, items: items)
+            shown = draft
         }
     }
+
+    /// What the vacancy asks for, set against the CV as it is now.
+    var requirements: [ApplicationCoverage.Requirement] { ApplicationCoverage.requirements(of: draft, items: items) }
 
     var canWrite: Bool { service != nil }
 
@@ -183,6 +207,8 @@ final class ApplicationStudioModel: Identifiable {
     func update(typing: Bool = false, _ change: (inout ApplicationDraft) -> Void) {
         change(&draft)
         draft.updatedAt = .now
+        // An entry that no longer says what was verified loses its tick at once.
+        ApplicationVerification.mark(&draft, items: items)
         guard typing else {
             settle()
             return
@@ -341,6 +367,91 @@ final class ApplicationStudioModel: Identifiable {
         } catch {
             problem = ApplyMessages.aylaFailed
         }
+    }
+
+    // MARK: Ayla asks on
+
+    var openQuestions: Int { questions.count { $0.state == .open } }
+
+    /// The visible work and projects that came from evidence Ayla may see.
+    private var entriesAylaKnows: [(entry: CVEntry, item: VaultItem)] {
+        let allowed = itemsForAyla
+        return draft.cv.sections
+            .filter { [.experience, .projects].contains($0.kind) && $0.isVisible }
+            .flatMap(\.entries)
+            .filter(\.isVisible)
+            .compactMap { entry in allowed.first { $0.id == entry.sourceItemID }.map { (entry, $0) } }
+    }
+
+    /// Asks Ayla where the CV misses something only the user can tell. Quiet when she has nothing or cannot now.
+    func askQuestions() async {
+        guard let service, !isAsking else { return }
+        let known = entriesAylaKnows
+        guard !known.isEmpty else { return }
+        isAsking = true
+        defer { isAsking = false }
+        guard let answer = try? await service.writeApplication(.init(kind: .questions, vacancy: draft.vacancy, name: draft.cv.name, items: known.map(\.item))) else { return }
+        questions = (answer.questions ?? []).compactMap { question in
+            known.first { $0.item.id == question.sourceItemID }.map {
+                ApplicationQuestion(entryID: $0.entry.id, sourceItemID: question.sourceItemID, title: $0.entry.title, text: question.text)
+            }
+        }
+    }
+
+    func setAnswer(_ id: String, _ text: String) {
+        guard let index = questions.firstIndex(where: { $0.id == id }) else { return }
+        questions[index].answer = String(text.prefix(400))
+    }
+
+    /// Works the answer into the entry it is about: Ayla writes that entry again with what was said.
+    func answer(_ id: String) async {
+        guard let service, let index = questions.firstIndex(where: { $0.id == id }), questions[index].state == .open else { return }
+        let question = questions[index]
+        let said = question.answer.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !said.isEmpty, let entry = entry(question.entryID), let item = itemsForAyla.first(where: { $0.id == question.sourceItemID }) else { return }
+        questions[index].state = .working
+        do {
+            let written = try await service.writeApplication(.init(
+                kind: .answer, vacancy: draft.vacancy, name: draft.cv.name, items: [item], text: entry.description, question: question.text, answer: said
+            ))
+            guard let text = written.text, !text.isEmpty else { throw AylaError.unavailable }
+            updateEntry(question.entryID) { $0.description = text }
+            if let now = questions.firstIndex(where: { $0.id == id }) { questions[now].state = .done(before: entry.description) }
+        } catch {
+            if let now = questions.firstIndex(where: { $0.id == id }) { questions[now].state = .open }
+            problem = ApplyMessages.aylaFailed
+        }
+    }
+
+    func skip(_ id: String) {
+        guard let index = questions.firstIndex(where: { $0.id == id }) else { return }
+        questions[index].state = .skipped
+    }
+
+    func undoAnswer(_ id: String) {
+        guard let index = questions.firstIndex(where: { $0.id == id }), case .done(let before) = questions[index].state else { return }
+        updateEntry(questions[index].entryID) { $0.description = before }
+        questions[index].state = .open
+    }
+
+    /// Adds what the user answered to the evidence in the vault too, in their own words. Only on their say-so:
+    /// evidence that was verified has to be verified again after it.
+    func keep(_ id: String) async {
+        guard let keepInVault, let index = questions.firstIndex(where: { $0.id == id }), !questions[index].isKept else { return }
+        let said = questions[index].answer.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !said.isEmpty else { return }
+        questions[index].isKeeping = true
+        let kept = await keepInVault(questions[index].sourceItemID, said)
+        guard let now = questions.firstIndex(where: { $0.id == id }) else { return }
+        questions[now].isKeeping = false
+        guard let kept else {
+            problem = ApplyMessages.keepFailed
+            return
+        }
+        questions[now].isKept = true
+        // The vault changed, so what is verified is looked at again.
+        items = kept
+        update { _ in }
     }
 
     func undoAyla() {

@@ -1739,7 +1739,16 @@ struct AylaChatScreen: View {
         let name = [person?.fullName, person?.preferredName, model.firstName].compactMap { $0 }.first { !$0.isEmpty } ?? ""
         Task {
             if vault.state != .ready { await vault.load() }
-            application = ApplicationStudioModel(vacancy: vacancy, items: vault.items, name: name, email: person?.email ?? "", service: model.service)
+            let studio = ApplicationStudioModel(vacancy: vacancy, items: vault.items, name: name, email: person?.email ?? "", service: model.service)
+            // What you tell Ayla about a job can go to that piece of evidence too, when you say so.
+            studio.keepInVault = { itemID, sentence in
+                guard let item = vault.items.first(where: { $0.id == itemID }) else { return nil }
+                var draft = VaultItemDraft(item: item)
+                draft.description = [draft.description, sentence].filter { !$0.isEmpty }.joined(separator: " ")
+                guard draft.problem == nil, await vault.save(draft, itemID: itemID) else { return nil }
+                return vault.items
+            }
+            application = studio
         }
     }
 
