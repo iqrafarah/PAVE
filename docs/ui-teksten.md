@@ -244,3 +244,29 @@ Ayla zegt in haar eigen woorden wat ze doet. Deze vaste teksten komen van de app
 | Stappen (voorbeelden) | Donker aanzetten / Map {naam} openen / Chat {titel} noemen / Chat vastzetten / Map {naam} maken / {bewijs} in de map {naam} zetten |
 | Kleine bol op een pagina | Ayla luistert… / Ayla denkt na… / Ayla praat / Je microfoon staat uit |
 | Stappen bij vacatures zoeken | Vacatures zoeken / {n} vacatures gevonden / Vergelijken met je kluis / Vacatures bekijken / Lijst openen |
+
+## Profiel en delen (iOS)
+
+Delen is tijdelijk, per onderdeel te kiezen, te pauzeren en in te trekken (kick-off p. 10, 36; schetsboek p. 4–5). De ontvanger opent een link of QR-code op de website, zonder account. Toestemming voor Ayla en delen met anderen blijven twee aparte dingen.
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Pagina | Profiel / Jij bepaalt wat je deelt, met wie en hoe lang. Je kunt het altijd pauzeren of intrekken. |
+| Secties | Nu gedeeld / Iets delen / Meer / Eerder gedeeld |
+| Leeg | Je deelt nu niets / Kies hieronder voor wie je iets wilt delen. Jij kiest per onderdeel wat erin staat. |
+| Voor wie | Werkgever: Cv, brief en wat je hebt gedaan, voor een sollicitatie. / Onderwijs: Diploma's, certificaten en projecten, voor een opleiding. / Gemeente: Wat je hebt behaald en gewerkt, voor de gemeente. / Banenbeurs: Een korte kaart om te laten scannen op een beurs. |
+| Rij | {ontvanger} ({organisatie}) / Nog {n} dagen, Nog {n} uur, Gepauzeerd, Verlopen, Ingetrokken / Nog niet bekeken, {n} keer bekeken |
+| Stappen | Wat deel je? / Met wie en waarvoor? / Hoe lang? / Controleer en deel / Volgende / Terug / Annuleer / Weggooien / Wil je stoppen met delen? Er is nog niets gedeeld. |
+| Wat | Over jou: Naam, E-mail, Regel onder je naam / Cv en brief: Geen sollicitatie, Uit Mijn sollicitatie, zoals je ze hebt gemaakt. / Niet nodig voor deze ontvanger |
+| Met wie | Naam van de ontvanger / Organisatie / Naam van wat je deelt / Waarvoor / Bezoekers van mijn stand (beurs) |
+| Hoe lang | 1 dag / 1 week / 2 weken / 1 maand / 3 maanden / Mag downloaden / Zet je dit aan, dan kan de ontvanger je cv en brief als pdf bewaren. Bewaren kun je daarna niet meer terugdraaien. Staat het uit, dan kan de ontvanger alleen kijken; helemaal tegenhouden dat iemand een schermafbeelding maakt, kan geen enkele app. |
+| Controleren | {ontvanger} van {organisatie} kan {wat} zien tot en met {datum}, en mag ze alleen bekijken / mag ze bekijken en downloaden. Je ziet wanneer iemand kijkt, en je kunt het altijd intrekken. / Deel met Face ID / Bevestig dat je deelt met {ontvanger} |
+| Gedeeld | Gedeeld / Laat {ontvanger} de QR-code scannen of stuur de link. / Kopieer link / Stuur link / Toon op Apple Watch / Staat op je Apple Watch |
+| Beheren | Pauzeer / Hervat / Verleng (+ 1 dag, 1 week, 2 weken, 1 maand) / Intrekken / Delen met {ontvanger} intrekken? / De link werkt dan niet meer, ook niet als je opnieuw deelt. Wat de ontvanger al heeft gedownload, kan PAVE niet terughalen. |
+| Logboek | Wie keek er / Nog niemand heeft gekeken. / Bekeken door {naam}, Gedownload door {naam} / Een naam die de bezoeker zelf heeft ingevuld, niet gecontroleerd. |
+| Voorstellen | Je sollicitatie is afgewezen. Toegang intrekken? / Je sollicitatie is afgerond. Toegang intrekken? / De deadline is voorbij en je sollicitatie is niet verstuurd. Toegang intrekken? / Verloopt binnen een dag. Verlengen? |
+| Meldingen | {ontvanger} bekeek je gegevens / {ontvanger} downloadde je gegevens / Delen met {ontvanger} stopt morgen / knoppen Intrekken, Verleng met een week |
+| Delen-rapport | Wie wat de afgelopen 30 dagen heeft bekeken. / Actief, Bekeken, Gedownload / Meest bekeken |
+| Uitleg | Zo gaan we met je gegevens om: Wat delen betekent / Wat de ontvanger mag / Wat er bewaard blijft / Wie er keek / Ayla en delen zijn twee dingen / Wie PAVE maakt |
+| Scannen | Scan een QR-code / Van een werkgever op een beurs, of een gedeeld profiel. / Voorbeeldwerkgever: verzonnen voor de demo van de banenbeurs. / Deel je profiel met {werkgever} |
+| Website | De webpagina draait nu alleen op deze computer. Zodra de site online staat, werkt de link ook voor anderen. / De webpagina voor ontvangers staat nog niet online, dus de link werkt nog niet buiten PAVE. |

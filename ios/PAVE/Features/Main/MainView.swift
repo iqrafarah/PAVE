@@ -20,6 +20,7 @@ struct MainView: View {
     @Environment(\.dynamicTypeSize) private var deviceTextSize
     @State private var watchConnection = WatchConnectionModel()
     @State private var notificationsModel: NotificationsModel
+    @State private var sharing: SharingModel
     @State private var destination = MainDestination.ayla
     /// Demo: the Camera Control button steers PAVE while "knopmodus" is on.
     @State private var cameraControl = PaveCameraControl()
@@ -41,7 +42,8 @@ struct MainView: View {
     private static let sidebarWidth: CGFloat = 800
     private static let sidebarSize: CGFloat = 320
 
-    init(service: (any AylaService)?, vaultService: (any VaultService)?, devicesService: (any DevicesService)? = nil, profileService: (any ProfileService)? = nil, notificationsService: SupabaseNotificationsService? = nil) {
+    init(service: (any AylaService)?, vaultService: (any VaultService)?, devicesService: (any DevicesService)? = nil, profileService: (any ProfileService)? = nil, notificationsService: SupabaseNotificationsService? = nil, shareService: (any ShareService)? = nil) {
+        _sharing = State(initialValue: SharingModel(service: shareService, webURL: ShareServiceFactory.webURL()))
         _model = State(initialValue: AylaChatModel(service: service, drafts: .standard, pendingFiles: .standard))
         _memory = State(initialValue: AylaMemoryModel(service: service))
         _vault = State(initialValue: VaultModel(service: vaultService))
@@ -353,7 +355,10 @@ struct MainView: View {
         case .plan:
             PlanScreen(onShowMenu: onShowMenu)
         case .profile:
-            ProfileScreen(onShowMenu: onShowMenu)
+            ProfileScreen(model: sharing, onShowMenu: onShowMenu)
+                .environment(vault)
+                .environment(profile)
+                .environment(model)
         case .settings:
             SettingsScreen(name: model.firstName, onShowMenu: onShowMenu, onSignOut: appState.signOut)
                 .environment(model)

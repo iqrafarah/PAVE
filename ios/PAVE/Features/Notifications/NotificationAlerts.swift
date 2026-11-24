@@ -121,6 +121,9 @@ final class NotificationCenterDelegate: NSObject, UNUserNotificationCenterDelega
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        // Shares and applications have their own notifications; the rest are meldingen.
+        if await ShareAlerts.handle(response) { return }
+        if response.notification.request.identifier.hasPrefix("application.") { return }
         await MainActor.run { NotificationAlerts.onTap?() }
     }
 }
