@@ -112,9 +112,11 @@ enum AylaMessages {
     static func vacancyFitCount(_ fits: Int, of total: Int) -> String {
         total == 1 ? (fits == 1 ? "De vaardigheid die Ayla vond past" : "De vaardigheid die Ayla vond mis je nog") : "\(fits) van \(total) vaardigheden passen"
     }
-    static func actionsSummary(done: Int, failed: Int) -> String {
+    /// "Licht aanzetten lukte niet": with one step that failed, which one, so you know what to try again.
+    static func actionsSummary(done: Int, failed: Int, failedStep: String? = nil) -> String {
         let did = done == 1 ? "1 ding gedaan" : "\(done) dingen gedaan"
         guard failed > 0 else { return did }
+        if failed == 1, let failedStep { return done == 0 ? "\(failedStep) lukte niet" : "\(did), \(failedStep.lowercasedFirst) lukte niet" }
         return done == 0 ? (failed == 1 ? "Dat lukte niet" : "\(failed) dingen lukten niet") : "\(did), \(failed) niet gelukt"
     }
     /// "Geplaatst op 20 november", from the day the source gives ("2026-11-20"); nil when that is not a day.
@@ -354,4 +356,9 @@ enum AylaMessages {
     static let accountPinNotReady = "Dit komt beschikbaar zodra PAVE is bijgewerkt."
     static let accountPinVerifyAgain = "Bevestig opnieuw met je authenticator-app en probeer het nog een keer."
     static let tooManyFiles = "Je kunt \(AylaAttachment.maxCount) bestanden tegelijk toevoegen."
+}
+
+private extension String {
+    /// "Licht aanzetten" in the middle of a sentence: "licht aanzetten".
+    var lowercasedFirst: String { prefix(1).lowercased() + dropFirst() }
 }

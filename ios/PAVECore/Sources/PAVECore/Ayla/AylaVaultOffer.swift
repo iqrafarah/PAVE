@@ -200,7 +200,9 @@ public enum AylaVaultOffer {
     private static func isVaultQuestion(_ reply: AylaReply, asked: String) -> Bool {
         if reply.question != nil || reply.accessRequest != nil { return false }
         if reply.navigation?.screen == .addEvidence { return true }
-        let question = asked.lowercased()
-        return question.contains("kluis") && question.contains(addWords)
+        // Per part of the sentence: "zet donker uit en open je kluis" is two things, neither of which adds to the vault.
+        return asked.lowercased().split(separator: #/[.?!,;]|\ben\b|\bmaar\b/#).contains { part in
+            part.contains("kluis") && part.contains(addWords) && !part.contains(#/\b(open|toon|bekijk|ga naar)\b/#)
+        }
     }
 }

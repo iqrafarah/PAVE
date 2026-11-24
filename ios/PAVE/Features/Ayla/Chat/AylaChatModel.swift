@@ -334,12 +334,15 @@ final class AylaChatModel {
         lastQuestion = text
         lastFiles = files
         openProject = nil
-        // "Open instellingen": the page opens at once, while Ayla answers, as on the web.
-        if let navigation = AylaScreenRequest.screen(askedIn: text).map({ AylaReply.Navigation(screen: $0) }) ?? offered {
+        // "Open instellingen": the page opens at once, while Ayla answers, as on the web. Not when she is also asked to
+        // change something ("zet donker uit en open je kluis"): then it opens once she has done that.
+        if let navigation = AylaScreenRequest.screenToOpenAtOnce(askedIn: text).map({ AylaReply.Navigation(screen: $0) }) ?? offered {
             opensPageAlready = true
+            openedAtOnce = navigation
             screenRequest = ScreenRequest(id: UUID().uuidString, navigation: navigation)
         } else {
             opensPageAlready = false
+            openedAtOnce = nil
         }
         lastUploads = uploads
         sentUploads += files.compactMap { uploads[$0.name] }.filter { upload in !sentUploads.contains(upload) }
@@ -448,9 +451,29 @@ final class AylaChatModel {
     /// What she points to herself; a page asked for in so many words is already open. One item from the vault still
     /// opens: only her answer knows which.
     private func openPage(after reply: AylaReply, asked: String) {
+        let hasActions = reply.actions.map { !$0.isEmpty && !$0.contains(where: \.needsConfirmation) } ?? false
+        // A page that opened at once and her actions push away (a setting opens Instellingen for a moment) comes back.
+        if hasActions, let openedAtOnce { navigationAfterActions = openedAtOnce }
         guard let navigation = AylaScreenRequest.screenToOpen(after: reply, asked: asked) else { return }
         if opensPageAlready, navigation.itemId == nil { return }
+        // Her actions come first: the page opens once they are done, so it is what stays in view.
+        if hasActions {
+            navigationAfterActions = navigation
+            return
+        }
         screenRequest = ScreenRequest(id: reply.id, navigation: navigation)
+    }
+
+    /// The page that opened while she answered, to bring back after her actions.
+    @ObservationIgnored private var openedAtOnce: AylaReply.Navigation?
+
+    /// The page her answer opens, waiting for her actions in that answer to be done.
+    @ObservationIgnored private var navigationAfterActions: AylaReply.Navigation?
+
+    /// Her actions are done: the page to open now, once.
+    func takeNavigationAfterActions() -> AylaReply.Navigation? {
+        defer { navigationAfterActions = nil }
+        return navigationAfterActions
     }
 
     // MARK: What Ayla does in the app herself

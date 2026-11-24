@@ -35,6 +35,8 @@ struct AylaVoiceStage: View {
     var deck: AylaVoiceVacancyDeck?
     /// A practice interview is going on: which one, with a way to stop.
     var practice: VacancyPracticeBar?
+    /// What she is doing in the app, under her caption, where the orb does not cover it.
+    var activity: AylaActivityPill?
 
     @Environment(\.paveReduceMotion) private var reduceMotion
 
@@ -49,6 +51,12 @@ struct AylaVoiceStage: View {
             if showsText {
                 captionText
                     .padding(.horizontal, 32)
+            }
+            if let activity {
+                activity
+                    .frame(maxWidth: 360)
+                    .padding(.horizontal, 32)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
             if let practice {
                 practice

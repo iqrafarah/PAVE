@@ -330,6 +330,33 @@ struct AylaChatModelTests {
         await waitUntilIdle(model)
     }
 
+    @Test func aPageAskedWithAChangeOpensAfterHerActions() async throws {
+        let ayla = FakeAyla()
+        ayla.replies = [.success(AylaReply(
+            id: "r1", conversationId: "conv", text: "Ik zet licht aan en open je kluis.",
+            navigation: .init(screen: .vault), actions: [AylaAppAction("setDisplayMode", value: "light")]
+        ))]
+        let model = AylaChatModel(service: ayla)
+
+        model.send("Zet donkermodus uit en open je kluis")
+        #expect(model.screenRequest == nil)
+        await waitUntilIdle(model)
+        #expect(model.screenRequest == nil)
+        #expect(model.actionRequest?.actions.first?.kind == "setDisplayMode")
+        #expect(model.takeNavigationAfterActions()?.screen == .vault)
+        #expect(model.takeNavigationAfterActions() == nil)
+    }
+
+    @Test func aPageThatOpenedAtOnceComesBackAfterHerActions() async {
+        let ayla = FakeAyla()
+        ayla.replies = [.success(AylaReply(id: "r1", conversationId: "conv", text: "Ik open je map Stage.", actions: [AylaAppAction("openFolder", target: "Stage")]))]
+        let model = AylaChatModel(service: ayla)
+        model.send("Open je kluis en help me met mijn stage")
+        #expect(model.screenRequest?.navigation.screen == .vault)
+        await waitUntilIdle(model)
+        #expect(model.takeNavigationAfterActions()?.screen == .vault)
+    }
+
     @Test func aPageTheBrainDoesNotKnowIsNotSentAsThePlace() async {
         let ayla = FakeAyla()
         ayla.replies = [.success(AylaReply(id: "r", conversationId: "conv", text: "Je hebt geen meldingen."))]

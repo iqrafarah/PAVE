@@ -522,8 +522,9 @@ struct AylaChatScreen: View {
     /// The button back to the newest message, and the line that says you are offline.
     private var aboveBottomBar: some View {
         VStack(spacing: 10) {
-            // What she is doing in the app, when no page is open over the chat (there it shows on the page).
-            if !actionSteps.isEmpty, shelf == nil {
+            // What she is doing in the app, when no page is open over the chat (there it shows on the page). With the
+            // large orb in view it sits under her caption instead, where the orb does not cover it.
+            if !actionSteps.isEmpty, shelf == nil, !isVoiceStageUp {
                 AylaActivityPill(steps: actionSteps)
                     .padding(.horizontal, 21)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -632,7 +633,8 @@ struct AylaChatScreen: View {
                         onOrbFrame: { place(.center, at: $0) },
                         onCaptionFrame: { captionFrame = $0 },
                         deck: vacancyDeck,
-                        practice: practiceBar
+                        practice: practiceBar,
+                        activity: isVoiceStageUp && shelf == nil && !actionSteps.isEmpty ? AylaActivityPill(steps: actionSteps) : nil
                     )
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1631,6 +1633,11 @@ struct AylaChatScreen: View {
         )
     }
 
+    /// Talking with the orb in the middle of the screen, not small above the voice bar.
+    private var isVoiceStageUp: Bool {
+        isTalking && !orbMotion.isLow
+    }
+
     private var practiceBar: VacancyPracticeBar? {
         guard let practice = model.practice else { return nil }
         return VacancyPracticeBar(vacancy: practice, onStop: stopPractice)
@@ -2161,6 +2168,21 @@ struct AylaChatScreen: View {
 
     /// A page Ayla opens, from her answer or the button under it: over the chat, like the start chips, so the
     /// conversation stays where it is. A vault item opens inside the vault.
+    /// The page her answer asked for, after her actions. A setting she just changed stays in view a moment first;
+    /// when that page is Instellingen itself, it simply stays open.
+    private func openPageAfterActions() async {
+        guard let navigation = model.takeNavigationAfterActions() else { return }
+        if shelf == .settings, settingsOpenedForChange {
+            if navigation.screen == .settings {
+                settingsOpenedForChange = false
+                settingsClose?.cancel()
+                return
+            }
+            try? await Task.sleep(for: .milliseconds(2400))
+        }
+        openPage(navigation)
+    }
+
     private func openPage(_ navigation: AylaReply.Navigation) {
         guard let place = AylaShelf(navigation.screen) else { return }
         if navigation.screen == .vaultItem, let id = navigation.itemId { vault?.itemToOpen = id }
@@ -2306,6 +2328,7 @@ struct AylaChatScreen: View {
             }
         }
         voice?.doingNote = nil
+        await openPageAfterActions()
         if shelf != nil { showsShelfReply = true }
         // She asked to hear what came of it, or something did not work: she looks at the result and goes on herself
         // (another way, the next steps), instead of the app only saying it failed.

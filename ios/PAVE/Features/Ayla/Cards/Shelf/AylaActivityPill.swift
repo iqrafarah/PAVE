@@ -21,7 +21,7 @@ struct AylaActivityPill: View {
 
     private var title: String {
         if let step = steps.first(where: { $0.state == .running }) ?? steps.first(where: { $0.state == .waiting }) { return step.title }
-        return AylaMessages.actionsSummary(done: finished - failed, failed: failed)
+        return AylaMessages.actionsSummary(done: finished - failed, failed: failed, failedStep: steps.first { $0.state == .failed }?.title)
     }
 
     var body: some View {

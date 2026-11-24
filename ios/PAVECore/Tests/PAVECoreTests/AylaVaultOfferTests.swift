@@ -127,6 +127,15 @@ struct AylaVaultOfferTests {
 struct AylaScreenRequestTests {
     @Test func aShortRequestOpensThatPage() {
         #expect(AylaScreenRequest.screen(askedIn: "Open mijn kluis") == .vault)
+        #expect(AylaScreenRequest.screenToOpenAtOnce(askedIn: "Open mijn kluis") == .vault)
+        let opens = AylaReply(id: "r", conversationId: "c", text: "Ik zet licht aan en open je kluis.", navigation: .init(screen: .vault))
+        #expect(!AylaVaultOffer.offersToAddEvidence(opens, asked: "Zet donkermodus uit en open je kluis"))
+        #expect(AylaScreenRequest.screenToOpen(after: opens, asked: "Zet donkermodus uit en open je kluis")?.screen == .vault)
+        let adds = AylaReply(id: "r", conversationId: "c", text: "Dat is je stage bij Pixelwerk.")
+        #expect(AylaVaultOffer.offersToAddEvidence(adds, asked: "Zet mijn stage in mijn kluis"))
+        #expect(AylaScreenRequest.screenToOpenAtOnce(askedIn: "Open instellingen en help me kiezen") == .settings)
+        #expect(AylaScreenRequest.screenToOpenAtOnce(askedIn: "Zet donkermodus uit en open je kluis") == nil)
+        #expect(AylaScreenRequest.screenToOpenAtOnce(askedIn: "Open je kluis en verander het thema naar blauw") == nil)
         #expect(AylaScreenRequest.screen(askedIn: "ga naar mijn plan") == .plans)
         #expect(AylaScreenRequest.screen(askedIn: "Breng me naar mijn profiel") == .profile)
     }
