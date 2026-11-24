@@ -593,10 +593,20 @@ final class AylaChatModel {
     /// item starts clean.
     /// `deliver` sends the notice another way, such as out loud in a spoken conversation.
     func markAdded(replyID: String, itemID: String? = nil, title: String, uploads: [VaultUpload], saying words: String? = nil, deliver: ((String) -> Void)? = nil) {
+        noteAdded(replyID: replyID, itemID: itemID, uploads: uploads)
+        tellAdded(title: title, saying: words, deliver: deliver)
+    }
+
+    /// The card shows it is in the vault and its files no longer go along; Ayla does not hear it yet.
+    func noteAdded(replyID: String, itemID: String?, uploads: [VaultUpload]) {
         addedReplies.insert(replyID)
         addedItemIDs[replyID] = itemID
         if let itemID { lastAddedItemID = itemID }
         sentUploads.removeAll { upload in uploads.contains(upload) }
+    }
+
+    /// Ayla hears it is in the vault, and goes on from there.
+    func tellAdded(title: String, saying words: String? = nil, deliver: ((String) -> Void)? = nil) {
         let name = title.trimmingCharacters(in: .whitespacesAndNewlines)
         let notice = AylaMessages.addedToVault(name.isEmpty ? nil : name)
         let message = words.map { "\($0)\n\(notice)" } ?? notice

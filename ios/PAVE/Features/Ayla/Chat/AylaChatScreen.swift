@@ -129,6 +129,11 @@ struct AylaChatScreen: View {
     @State private var shownChoicesID: String?
     /// Photos for an item that just went into the vault, after a Ja to Ayla's question for them.
     @State private var photosForItemID: String?
+    /// Evidence that went in from the chat without a logo or cover: choosing them comes first, as on the web, and Ayla
+    /// hears it is in the vault once that is done.
+    @State private var lookStep: LookStep?
+    @State private var logoSource: VaultFileSource?
+    @State private var coverSource: VaultFileSource?
     @State private var photoTargetID: String?
     @State private var itemPhotoItems: [PhotosPickerItem] = []
     @State private var mutedForPhotos = false
@@ -799,9 +804,11 @@ struct AylaChatScreen: View {
                             PaveHaptics.selection()
                             if excludedFiles[reply.id, default: []].remove(file.checksum) == nil { excludedFiles[reply.id, default: []].insert(file.checksum) }
                         },
-                        onRequestConfirmation: model.addedItemIDs[reply.id].flatMap { id in vault?.items.first { $0.id == id } }.map { saved in { confirmationItem = saved } }
+                        onRequestConfirmation: model.addedItemIDs[reply.id].flatMap { id in vault?.items.first { $0.id == id } }.map { saved in { confirmationItem = saved } },
+                        onFillMyself: { fillMyself(from: reply) }
                     ) {
-                        openProposedEvidence(from: reply)
+                        // As "Ayla vult het in" on the web: it goes in at once; with something missing the form opens.
+                        addEvidenceForUser(from: reply, saying: nil)
                     }
                     .padding(.top, 3)
                 }
@@ -1152,6 +1159,21 @@ struct AylaChatScreen: View {
                     .padding(.leading, 33)
                     .padding(.trailing, 31)
                     .transition(.opacity)
+            } else if let lookStep {
+                VStack(spacing: 8) {
+                    Text(lookStep.problem ?? AylaMessages.lookMissing(logo: lookStep.needsLogo, cover: lookStep.needsCover))
+                        .textStyle(.caption)
+                        .foregroundStyle(lookStep.problem == nil ? Color.inkMuted : Color.statusRejected)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 33)
+                    AylaChoiceBar(choices: lookChoices, onChoose: chooseLook)
+                        .padding(.leading, 21)
+                        .padding(.trailing, 22)
+                }
+                .padding(.bottom, -11)
+                .vaultFilePicker(source: $logoSource, role: .logo) { lookPicked($0, role: .logo) }
+                .vaultFilePicker(source: $coverSource, role: .cover) { lookPicked($0, role: .cover) }
+                .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
             } else if let question = model.pendingQuestion, question.choices.count >= 2, !model.pendingQuestionIsOnCard, shownChoicesID == model.entries.last?.id {
                 AylaChoiceBar(
                     choices: question.choices.map { AylaChoice(id: $0.id, label: $0.label) },
@@ -1724,7 +1746,7 @@ struct AylaChatScreen: View {
 
     /// A yes in words to "Zal ik het in je kluis zetten?": Ayla puts it in the vault, without the form. When something
     /// required is missing, or the save fails, the form opens instead, so nothing is saved halfway out of sight.
-    private func addEvidenceForUser(from reply: AylaReply, saying words: String) {
+    private func addEvidenceForUser(from reply: AylaReply, saying words: String?) {
         guard let vault, !isSavingForUser else { return }
         isSavingForUser = true
         let analysis = model.analysis(for: reply)
@@ -1737,6 +1759,13 @@ struct AylaChatScreen: View {
             let flow = VaultAddEvidenceModel.proposed(by: reply, vault: vault, documents: documents, analysis: excluded.isEmpty ? analysis : nil)
             if flow.aylaFill != .reading, flow.aylaProposals.count <= 1, await flow.saveFromChat() {
                 let talking = isTalking ? voice : nil
+                // Without a logo or cover the bar asks for them first, as on the web; not while talking hands-free.
+                if talking == nil, let id = flow.savedItemID, let step = await lookStep(for: id, reply: reply, title: flow.draft.title, uploads: flow.documents, words: words) {
+                    model.noteAdded(replyID: reply.id, itemID: id, uploads: flow.documents)
+                    startWave()
+                    withAnimation(.spring(duration: 0.4, bounce: 0.12)) { lookStep = step }
+                    return
+                }
                 model.markAdded(
                     replyID: reply.id, itemID: flow.savedItemID, title: flow.draft.title, uploads: flow.documents, saying: words,
                     deliver: talking.map { voice in { voice.send(typed: $0, checksYes: false) } }
@@ -1748,6 +1777,87 @@ struct AylaChatScreen: View {
                 addingFromReplyID = reply.id
                 addEvidence = flow
             }
+        }
+    }
+
+    // MARK: Logo and cover after adding from the chat
+
+    struct LookStep: Equatable {
+        let itemID: String
+        let title: String
+        let words: String?
+        var needsLogo: Bool
+        var needsCover: Bool
+        var problem: String?
+    }
+
+    /// What the new item still lacks of its look; nil when it has a logo and a cover.
+    private func lookStep(for itemID: String, reply: AylaReply, title: String, uploads: [VaultUpload], words: String?) async -> LookStep? {
+        guard let vault else { return nil }
+        if !vault.items.contains(where: { $0.id == itemID }) { await vault.load() }
+        guard let item = vault.items.first(where: { $0.id == itemID }) else { return nil }
+        let needsLogo = vault.logo(of: item) == nil
+        let needsCover = vault.cover(of: item) == nil
+        guard needsLogo || needsCover else { return nil }
+        return LookStep(itemID: itemID, title: title, words: words, needsLogo: needsLogo, needsCover: needsCover)
+    }
+
+    private var lookChoices: [AylaChoice] {
+        guard let lookStep else { return [] }
+        return (lookStep.needsLogo ? [AylaChoice(id: "logo", label: AylaMessages.lookLogo)] : [])
+            + (lookStep.needsCover ? [AylaChoice(id: "cover", label: AylaMessages.lookCover)] : [])
+            + [AylaChoice(id: "done", label: AylaMessages.lookDone)]
+    }
+
+    private func chooseLook(_ choice: AylaChoice) {
+        switch choice.id {
+        case "logo": logoSource = .photos
+        case "cover": coverSource = .photos
+        default: finishLook()
+        }
+    }
+
+    /// A picked logo or cover goes onto the item; once both are there, the step is done by itself.
+    private func lookPicked(_ result: Result<VaultUpload, VaultUpload.Problem>, role: VaultFileRole) {
+        guard let step = lookStep, let vault, case .success(let upload) = result else {
+            if case .failure = result { lookStep?.problem = AylaMessages.lookFailed }
+            return
+        }
+        Task {
+            do {
+                try await vault.attach(upload, to: step.itemID)
+                PaveHaptics.success()
+                withAnimation(.snappy(duration: 0.25)) {
+                    if role == .logo { lookStep?.needsLogo = false } else { lookStep?.needsCover = false }
+                    lookStep?.problem = nil
+                }
+                if lookStep?.needsLogo == false, lookStep?.needsCover == false { finishLook() }
+            } catch {
+                lookStep?.problem = AylaMessages.lookFailed
+            }
+        }
+    }
+
+    /// The look step is done: only now does Ayla hear it is in the vault, and she asks what is next.
+    private func finishLook() {
+        guard let step = lookStep else { return }
+        withAnimation(.easeOut(duration: 0.2)) { lookStep = nil }
+        model.tellAdded(title: step.title, saying: step.words)
+    }
+
+    /// "Zelf invullen" on the card, as on the web: the form, empty, with the chat's files.
+    private func fillMyself(from reply: AylaReply) {
+        guard let vault else { return }
+        let analysis = model.analysis(for: reply)
+        let excluded = excludedFiles[reply.id] ?? []
+        let documents = (analysis?.uploads ?? model.uploads(for: reply.proposedAction?.vaultItem)).filter { !excluded.contains($0.checksum) }
+        let category = reply.proposedAction?.vaultItem?.category.category ?? .projects
+        PaveHaptics.tap(.light)
+        if isTalking { stopVoice() }
+        addingFromReplyID = reply.id
+        Task {
+            if vault.state != .ready { await vault.load() }
+            addEvidence = .filledByYou(vault: vault, category: category, documents: documents)
         }
     }
 

@@ -138,6 +138,22 @@ Onder een vacature staan vier acties. Tik je erop, dan komt de vraag als jouw be
 | Tijdens het oefenen | Oefengesprek · {bedrijf} / Stoppen |
 | Jouw bericht bij Stoppen | Ik wil stoppen met oefenen. |
 
+## Bewijs toevoegen vanuit de chat (web en iOS)
+
+Besloten op 2026-11-24: de conceptkaart van iOS met de keuzes van web. Ayla bouwt het bewijs op in een kaart; daaronder kies je hoe het de kluis in gaat. Zonder logo of omslag vraagt PAVE daarna eerst die, en pas als dat klaar is hoort Ayla dat het in de kluis staat.
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Knoppen onder de kaart | Zet in de kluis / Zelf invullen |
+| Zet in de kluis | Gaat er meteen in met wat Ayla invulde (op web: "Ayla vult het in"); mist er iets, dan opent het formulier |
+| Zelf invullen | Het formulier, leeg, met de bestanden uit de chat |
+| Geen logo en geen omslag | Ayla vond geen logo of omslag. Wil je er zelf een kiezen? |
+| Geen logo | Ayla vond geen logo. Wil je er zelf een kiezen? |
+| Geen omslag | Nog geen omslag. Wil je er een kiezen? |
+| Knoppen daarbij | Logo kiezen / Omslag kiezen / Klaar |
+| Afbeelding lukt niet | Die afbeelding kon niet bij je bewijs worden gezet. Kies een JPG of PNG. |
+| Wat Ayla daarna hoort | Toegevoegd aan mijn kluis: {titel}. |
+
 ## Animaties uitzetten (web en iOS, Instellingen › Weergave)
 
 | Onderdeel | Tekst |

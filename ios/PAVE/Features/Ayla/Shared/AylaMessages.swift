@@ -84,6 +84,16 @@ enum AylaMessages {
     static let conceptReady = "Bewijs"
     static let conceptHint = "Vertel verder en Ayla vult het aan."
     static let conceptAdd = "Zet in de kluis"
+    static let conceptFillMyself = "Zelf invullen"
+    /// After it went in without a logo or cover, the same words as on the web.
+    static func lookMissing(logo: Bool, cover: Bool) -> String {
+        if logo, cover { return "Ayla vond geen logo of omslag. Wil je er zelf een kiezen?" }
+        return logo ? "Ayla vond geen logo. Wil je er zelf een kiezen?" : "Nog geen omslag. Wil je er een kiezen?"
+    }
+    static let lookLogo = "Logo kiezen"
+    static let lookCover = "Omslag kiezen"
+    static let lookDone = "Klaar"
+    static let lookFailed = "Die afbeelding kon niet bij je bewijs worden gezet. Kies een JPG of PNG."
     static let headHint = "Knik ja of schud nee"
     static let siriGoOn = "Zeg \"Praat met Ayla in PAVE\" om verder te gaan."
     static let siriSignInFirst = "Log eerst in bij PAVE, dan kan Ayla je vragen beantwoorden."

@@ -489,6 +489,18 @@ struct AylaChatModelTests {
         #expect(ayla.requests.last?.text == "Toegevoegd aan mijn kluis: PSM I.")
     }
 
+    @Test func anItemCanBeMarkedAddedBeforeAylaHearsIt() async {
+        let ayla = FakeAyla()
+        ayla.replies = [.success(AylaReply(id: "r1", conversationId: "c", text: "Mooi!"))]
+        let model = AylaChatModel(service: ayla)
+        model.noteAdded(replyID: "r0", itemID: "item", uploads: [])
+        #expect(model.addedReplies.contains("r0"))
+        #expect(ayla.requests.isEmpty)
+        model.tellAdded(title: "Eindstage")
+        await waitUntilIdle(model)
+        #expect(ayla.requests.last?.text == "Toegevoegd aan mijn kluis: Eindstage.")
+    }
+
     @Test func theOfferOnACardHidesJaAndNee() async {
         let ayla = FakeAyla()
         let question = AylaReply.Question(text: "Zet ik dit zo in je kluis?", choices: [.init(id: "y", label: "Ja"), .init(id: "n", label: "Nee")])
