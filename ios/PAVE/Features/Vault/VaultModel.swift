@@ -389,6 +389,37 @@ final class VaultModel {
         return try await service.validationContacts(departmentID: departmentID)
     }
 
+    func searchValidationOrganizations(
+        category: VaultCategory, query: String, kind: VaultOrganizationKind?, offset: Int
+    ) async throws -> VaultValidationPage<VaultValidationOrganization> {
+        guard let service else { throw VaultError.notSetUp }
+        return try await service.searchValidationOrganizations(category: category, query: query, kind: kind, offset: offset)
+    }
+
+    func validationOrganizations(ids: [String], category: VaultCategory) async throws -> [VaultValidationOrganization] {
+        guard let service else { throw VaultError.notSetUp }
+        return try await service.validationOrganizations(ids: ids, category: category)
+    }
+
+    func searchValidationPeople(
+        organizationID: String, category: VaultCategory, query: String, filters: VaultValidationFilters, offset: Int
+    ) async throws -> VaultValidationPage<VaultValidationPerson> {
+        guard let service else { throw VaultError.notSetUp }
+        return try await service.searchValidationPeople(
+            organizationID: organizationID, category: category, query: query, filters: filters, offset: offset
+        )
+    }
+
+    func validationFilterOptions(organizationID: String, category: VaultCategory) async throws -> [VaultValidationFilterOption] {
+        guard let service else { throw VaultError.notSetUp }
+        return try await service.validationFilterOptions(organizationID: organizationID, category: category)
+    }
+
+    func previousValidationPeople(category: VaultCategory) async throws -> [VaultValidationPerson] {
+        guard let service else { throw VaultError.notSetUp }
+        return try await service.previousValidationPeople(category: category)
+    }
+
     func requestValidation(
         for item: VaultItem,
         organizationID: String,
