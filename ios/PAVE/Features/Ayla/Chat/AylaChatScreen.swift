@@ -114,6 +114,8 @@ struct AylaChatScreen: View {
     @State private var waveStartedAt: Date?
     @State private var isSavingForUser = false
     @State private var confirmationItem: VaultItem?
+    /// Making a CV and a letter for a vacancy ("Solliciteren").
+    @State private var application: ApplicationStudioModel?
     /// Ja and Nee by nodding or shaking the head with AirPods on, and what the last nod or shake answered.
     @State private var headGestures = AylaHeadGestures()
     @State private var headAnswer: Bool?
@@ -490,6 +492,9 @@ struct AylaChatScreen: View {
             readAloud.stop()
         }
         .sheet(item: $selectingText) { ChatTextSelection(text: $0.text) }
+        .fullScreenCover(item: $application) { studio in
+            ApplicationStudioView(model: studio, photo: profile?.avatar) { application = nil }
+        }
         // Handoff to your other devices, with only a general title: the chat's own title stays private.
         .userActivity(AylaHandoff.activityType, isActive: model.conversationID != nil && !isVoiceActive) { activity in
             guard let id = model.conversationID else { return }
@@ -1700,11 +1705,28 @@ struct AylaChatScreen: View {
 
     /// A button on a vacancy: the question goes in the chat as yours, and Ayla answers it, out loud while talking.
     private func run(_ task: AylaRequest.VacancyTask, on vacancies: [Vacancy]) {
+        // "Solliciteren" opens the CV and the letter for this vacancy; without the vault Ayla helps in the chat instead.
+        if task == .prepare, let vacancy = vacancies.first, vault != nil {
+            openApplication(for: vacancy)
+            return
+        }
         guard let question = model.question(for: task, about: vacancies) else { return }
         PaveHaptics.tap(.medium)
         if task == .compare { compareIDs = [] }
         voice?.play(.tick)
         askAyla(question)
+    }
+
+    private func openApplication(for vacancy: Vacancy) {
+        guard let vault else { return }
+        PaveHaptics.tap(.medium)
+        if isTalking { stopVoice() }
+        let person = profile?.profile
+        let name = [person?.fullName, person?.preferredName, model.firstName].compactMap { $0 }.first { !$0.isEmpty } ?? ""
+        Task {
+            if vault.state != .ready { await vault.load() }
+            application = ApplicationStudioModel(vacancy: vacancy, items: vault.items, name: name, email: person?.email ?? "", service: model.service)
+        }
     }
 
     private func toggleCompare(_ vacancy: Vacancy) {

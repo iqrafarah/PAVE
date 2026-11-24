@@ -86,6 +86,8 @@ public protocol AylaService: Sendable {
     /// The logo of a company on a vacancy without one, from its own website (the `company-logo` function); nil when
     /// none was found. Only the name and place go out.
     func companyLogo(company: String, city: String?) async throws -> URL?
+    /// Ayla writes along with a CV or a letter (the `ayla-document` function).
+    func writeApplication(_ request: ApplicationWritingRequest) async throws -> ApplicationWriting
     /// What Ayla remembers about the user, the newest first. `notSetUp` until the tables exist.
     func memories() async throws -> AylaMemories
     /// Saves a note the user kept or wrote.
@@ -156,6 +158,8 @@ extension AylaService {
     public func transcribe(_ audio: Data, hints: [String]) async throws -> String { throw AylaError.unavailable }
 
     public func companyLogo(company: String, city: String?) async throws -> URL? { nil }
+
+    public func writeApplication(_ request: ApplicationWritingRequest) async throws -> ApplicationWriting { throw AylaError.unavailable }
 
     public func memories() async throws -> AylaMemories { throw AylaError.notSetUp }
     public func remember(
@@ -375,6 +379,19 @@ public struct SupabaseAylaService: AylaService {
               let url = URL(string: address), url.scheme == "https"
         else { return nil }
         return url
+    }
+
+    public func writeApplication(_ request: ApplicationWritingRequest) async throws -> ApplicationWriting {
+        guard let token = await accessToken() else { throw AylaError.notSignedIn }
+        var urlRequest = URLRequest(url: projectURL.appending(path: "functions/v1/ayla-document"), timeoutInterval: 60)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue(publishableKey, forHTTPHeaderField: "apikey")
+        urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        urlRequest.httpBody = try JSONEncoder().encode(request)
+        let data = try await perform(urlRequest, accepting: [200])
+        guard let writing = try? JSONDecoder().decode(ApplicationWriting.self, from: data) else { throw AylaError.unavailable }
+        return writing
     }
 
     private struct LogoQuestion: Encodable {

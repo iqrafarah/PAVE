@@ -154,6 +154,28 @@ Besloten op 2026-11-24: de conceptkaart van iOS met de keuzes van web. Ayla bouw
 | Afbeelding lukt niet | Die afbeelding kon niet bij je bewijs worden gezet. Kies een JPG of PNG. |
 | Wat Ayla daarna hoort | Toegevoegd aan mijn kluis: {titel}. |
 
+## Cv en motivatiebrief (iOS, vanuit een vacature)
+
+"Solliciteren" bij een vacature opent een scherm met je cv en motivatiebrief voor die vacature. PAVE vult ze eerst zelf uit je kluis (zonder AI); Ayla schrijft mee met alleen het bewijs dat ze mag bekijken. Je past elk onderdeel aan door erop te tikken.
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Bovenaan | Cv / Motivatiebrief |
+| Knoppen | Ontwerp / Alinea / Ayla schrijft / Klaar |
+| Sjablonen | Rustig / Modern / Opvallend / Compact |
+| Ontwerp | Sjabloon / Kleur / Profielfoto tonen / Onderdelen |
+| Geen profielfoto | Voeg een profielfoto toe bij Instellingen › Account om hem hier te tonen. |
+| Paneel (iPad, Duo open liggend) | Inhoud / Ontwerp / Tik op een onderdeel om het aan te passen. |
+| Kopjes op het cv | Profiel / Werkervaring / Opleiding / Certificaten / Projecten / Vaardigheden / Contact |
+| Ayla | Ayla schrijft mee / Laat Ayla je profiel schrijven / Laat Ayla de brief schrijven / Ayla schrijft… |
+| Wat Ayla gebruikt | Ayla gebruikt alleen de {n} bewijsstukken die ze mag bekijken. |
+| Ayla mag niets zien | Ayla mag nog geen bewijs uit je kluis bekijken, dus ze schrijft algemeen. Zet bij een bewijsstuk "Ayla mag dit bekijken en gebruiken" aan. |
+| Herschrijven | Korter / Sterker voor deze vacature / In het Engels / Formeler / Persoonlijker / Ongedaan maken |
+| Waar een regel vandaan komt | Uit je kluis: {titel} (met de status) / Zelf toegevoegd |
+| Alinea weghalen | Alinea verwijderen / Deze alinea verwijderen? / Annuleer |
+| Fouten | Ayla kon nu niet schrijven. Probeer het zo opnieuw. / De pdf kon niet worden gemaakt. Probeer het opnieuw. |
+| Pdf | Cv {naam} {bedrijf}.pdf / Motivatiebrief {naam} {bedrijf}.pdf |
+
 ## Animaties uitzetten (web en iOS, Instellingen › Weergave)
 
 | Onderdeel | Tekst |
