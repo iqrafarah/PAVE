@@ -13,6 +13,7 @@ struct ApplicationHubView: View {
             VStack(alignment: .leading, spacing: 20) {
                 header
                 ApplicationHubStatus(model: model)
+                if model.tracking.history.count > 0 { history }
                 documents
                 nextSteps
             }
@@ -36,6 +37,33 @@ struct ApplicationHubView: View {
                 .textStyle(.bodyMedium)
                 .foregroundStyle(Color.inkMuted)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var history: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(ApplyMessages.history)
+                .textStyle(.label)
+                .foregroundStyle(Color.inkMuted)
+                .accessibilityAddTraits(.isHeader)
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(Array(model.tracking.history.reversed().enumerated()), id: \.offset) { index, change in
+                    HStack(spacing: 10) {
+                        Circle()
+                            .fill(index == 0 ? Color.paveAccent : Color.inkMuted.opacity(0.5))
+                            .frame(width: 8, height: 8)
+                            .accessibilityHidden(true)
+                        Text(ApplyMessages.historyLine(change))
+                            .textStyle(.bodyMedium)
+                            .foregroundStyle(index == 0 ? Color.ink : Color.inkMuted)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.panel, in: .rect(cornerRadius: 18))
+            .overlay { RoundedRectangle(cornerRadius: 18).strokeBorder(Color.cardBorder, lineWidth: 1) }
         }
     }
 

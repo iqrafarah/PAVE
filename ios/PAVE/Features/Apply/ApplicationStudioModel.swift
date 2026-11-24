@@ -34,6 +34,10 @@ final class ApplicationStudioModel: Identifiable {
     private(set) var questions: [ApplicationQuestion] = []
     private(set) var isAsking = false
     /// Adds a sentence to a piece of evidence in the vault and gives the vault back as it is then; nil when it failed.
+    /// Plans the notifications of all applications again; set where notifications exist.
+    var syncReminders: ([ApplicationDraft]) -> Void = { _ in }
+    /// Asks the user for permission to notify; true when it may.
+    var requestReminderAccess: () async -> Bool = { true }
     var keepInVault: ((_ itemID: String, _ sentence: String) async -> [VaultItem]?)?
     private let service: (any AylaService)?
     private let store: ApplicationStore
@@ -142,11 +146,20 @@ final class ApplicationStudioModel: Identifiable {
     func setStatus(_ status: ApplicationStatus) {
         update { draft in
             var tracking = draft.progress
-            guard tracking.status != status else { return }
-            tracking.status = status
-            tracking.changedAt = .now
+            tracking.set(status)
             draft.tracking = tracking
         }
+    }
+
+    /// Turns reminders on (after the user allowed notifications) or off. False when they may not be sent.
+    func setReminders(_ isOn: Bool) async -> Bool {
+        if isOn, !(await requestReminderAccess()) { return false }
+        update { draft in
+            var tracking = draft.progress
+            tracking.remindsMe = isOn
+            draft.tracking = tracking
+        }
+        return true
     }
 
     func setDeadline(_ date: Date?) {
@@ -246,12 +259,17 @@ final class ApplicationStudioModel: Identifiable {
     /// `typing`: a change per keystroke. The pages follow a moment later and the file is written once the typing
     /// stops, so the text field stays quick; anything else shows and is kept at once.
     func update(typing: Bool = false, _ change: (inout ApplicationDraft) -> Void) {
+        let before = draft.progress
         change(&draft)
         draft.updatedAt = .now
         // An entry that no longer says what was verified loses its tick at once.
         ApplicationVerification.mark(&draft, items: items)
         guard typing else {
             settle()
+            let now = draft.progress
+            if (before.status, before.deadline, before.changedAt, before.remindsMe) != (now.status, now.deadline, now.changedAt, now.remindsMe) {
+                syncReminders(store.all())
+            }
             return
         }
         if showing == nil {

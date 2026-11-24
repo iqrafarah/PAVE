@@ -5,6 +5,7 @@ struct VacancyTabs: View {
     @Binding var tab: VacancyList.Tab
     let found: Int
     let saved: Int
+    var applications = 0
 
     @Namespace private var track
     @Environment(\.paveReduceMotion) private var reduceMotion
@@ -13,6 +14,7 @@ struct VacancyTabs: View {
         HStack(spacing: 4) {
             button(.found, AylaMessages.vacancyFound, found)
             button(.saved, AylaMessages.vacancySavedTab, saved)
+            button(.applications, AylaMessages.vacancyApplicationsTab, applications)
         }
         .padding(4)
         .background(Color.paveSurfaceTint, in: .capsule)

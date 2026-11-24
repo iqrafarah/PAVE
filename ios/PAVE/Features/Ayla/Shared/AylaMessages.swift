@@ -190,6 +190,7 @@ enum AylaMessages {
     static let vacancyMatchNote = "Ayla vergeleek je kluis met een stukje van de vacaturetekst. Het is een inschatting, geen oordeel."
     static let vacancyFound = "Gevonden"
     static let vacancySavedTab = "Bewaard"
+    static let vacancyApplicationsTab = "Sollicitaties"
     static let vacancySavedEmptyTitle = "Nog niets bewaard"
     static let vacancySavedEmpty = "Tik op Bewaren bij een vacature om hem hier terug te vinden, ook op je andere apparaten."
     static let vacancyFoundEmptyTitle = "Nog geen vacatures"

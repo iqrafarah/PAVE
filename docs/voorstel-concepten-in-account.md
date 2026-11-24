@@ -10,7 +10,7 @@ Eén concept per vacature, als JSON:
 - de vacature (id, titel, bedrijf), ontwerp, kleurenpalet, foto aan of uit;
 - het cv (naam, regel onder de naam, contact, profiel, onderdelen met regels, vaardigheden). Elke regel verwijst met `sourceItemID` naar een bewijsstuk in de kluis; de tekst op het cv staat er los van;
 - de brief (aanhef, alinea's met `sourceItemIDs`, afsluiting, ondertekening);
-- wat de gebruiker wil benadrukken, en status, deadline en notitie van de sollicitatie (door de gebruiker bijgehouden; PAVE stuurt niets naar het bedrijf).
+- wat de gebruiker wil benadrukken, en status (met de geschiedenis van wijzigingen), deadline, notitie en of er herinneringen aan staan (door de gebruiker bijgehouden; PAVE stuurt niets naar het bedrijf). De herinneringen zelf zijn lokale meldingen en blijven op het toestel.
 
 De profielfoto staat er niet in: die komt uit het profiel. Of een regel geverifieerd is, wordt elke keer uit de kluis berekend en niet opgeslagen.
 

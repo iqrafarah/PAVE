@@ -79,3 +79,71 @@ struct ApplicationTrackingTests {
         #expect(unknown == .concept)
     }
 }
+
+@Suite("Deadlines and reminders of applications")
+struct ApplicationReminderTests {
+    private var calendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Europe/Amsterdam")!
+        return calendar
+    }
+    private func date(_ day: Int, _ hour: Int = 12, month: Int = 11) -> Date {
+        calendar.date(from: DateComponents(year: 2026, month: month, day: day, hour: hour))!
+    }
+    private func draft(_ id: String, _ tracking: ApplicationTracking) -> ApplicationDraft {
+        var draft = ApplicationBuilder.draft(for: Vacancy(id: id, title: "Dev", company: "Appwerk", source: .adzuna), items: [], name: "Daaf")
+        draft.tracking = tracking
+        return draft
+    }
+
+    @Test("A deadline is overdue, today or so many days away")
+    func deadlineDistance() {
+        let now = date(24, 15)
+        #expect(ApplicationDeadline.of(date(21, 9), now: now, calendar: calendar) == .overdue(days: 3))
+        #expect(ApplicationDeadline.of(date(24, 23), now: now, calendar: calendar) == .today)
+        #expect(ApplicationDeadline.of(date(27, 1), now: now, calendar: calendar) == .upcoming(days: 3))
+    }
+
+    @Test("A concept with a deadline reminds the day before and on the day; sent reminds a week later")
+    func plan() {
+        let now = date(24, 8)
+        let concept = draft("a", ApplicationTracking(deadline: date(30, 17), remindsMe: true))
+        let sent = draft("b", ApplicationTracking(status: .sent, changedAt: date(20, 14), history: [], remindsMe: true))
+        let found = ApplicationReminders.plan([concept, sent], now: now, calendar: calendar)
+        #expect(found.map(\.id) == ["application.b.followUp", "application.a.deadlineTomorrow", "application.a.deadlineToday"])
+        #expect(found[0].date == date(27, 10))
+        #expect(found[1].date == date(29, 9))
+        #expect(found[2].date == date(30, 9))
+    }
+
+    @Test("Nothing without the user's say-so, nothing in the past and nothing for what is done")
+    func quiet() {
+        let now = date(24, 8)
+        let off = draft("a", ApplicationTracking(deadline: date(30), remindsMe: false))
+        let past = draft("b", ApplicationTracking(deadline: date(24, 17), remindsMe: true))
+        let done = draft("c", ApplicationTracking(status: .interview, deadline: date(30), changedAt: date(1), remindsMe: true))
+        let found = ApplicationReminders.plan([off, past, done], now: now, calendar: calendar)
+        // The day before is past; the day itself is still ahead.
+        #expect(found.map(\.id) == ["application.b.deadlineToday"])
+    }
+
+    @Test("Setting a status keeps when, and the same status again changes nothing")
+    func history() {
+        var tracking = ApplicationTracking()
+        tracking.set(.sent, at: date(20))
+        tracking.set(.sent, at: date(21))
+        tracking.set(.interview, at: date(25))
+        #expect(tracking.history.map(\.status) == [.sent, .interview])
+        #expect(tracking.changedAt == date(25))
+    }
+
+    @Test("Tracking kept by the first version, without history or reminders, still opens")
+    func olderTracking() throws {
+        let old = Data(#"{"status":"sent","note":"Bellen"}"#.utf8)
+        let tracking = try JSONDecoder().decode(ApplicationTracking.self, from: old)
+        #expect(tracking.status == .sent)
+        #expect(tracking.note == "Bellen")
+        #expect(tracking.history.isEmpty)
+        #expect(!tracking.remindsMe)
+    }
+}

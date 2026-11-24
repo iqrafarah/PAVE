@@ -6,6 +6,7 @@ struct ApplicationHubStatus: View {
     let model: ApplicationStudioModel
 
     @Environment(\.paveReduceMotion) private var reduceMotion
+    @State private var remindersDenied = false
 
     private var deadline: Binding<Date> {
         Binding(get: { model.tracking.deadline ?? .now }, set: { model.setDeadline($0) })
@@ -58,6 +59,26 @@ struct ApplicationHubStatus: View {
                 }
             }
             .frame(minHeight: 44)
+            if let date = model.tracking.deadline, model.tracking.status == .concept {
+                let distance = ApplicationDeadline.of(date, now: .now)
+                Text(ApplyMessages.deadlineDistance(distance))
+                    .textStyle(.caption)
+                    .foregroundStyle(distance.isUrgent ? Color.critical : Color.inkMuted)
+                    .accessibilityLabel(ApplyMessages.deadlineDistance(distance))
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle(ApplyMessages.remindMe, isOn: Binding(get: { model.tracking.remindsMe }, set: { isOn in
+                    Task { remindersDenied = !(await model.setReminders(isOn)) }
+                }))
+                .textStyle(.bodyMedium)
+                .foregroundStyle(Color.ink)
+                .tint(.paveAccentFill)
+                .frame(minHeight: 44)
+                Text(remindersDenied ? ApplyMessages.remindDenied : ApplyMessages.remindHint)
+                    .textStyle(.caption)
+                    .foregroundStyle(remindersDenied ? Color.critical : Color.inkMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             VaultFormField(title: ApplyMessages.note, isRequired: false, minHeight: 80) {
                 TextField("", text: Binding(get: { model.tracking.note }, set: { model.setNote($0) }), prompt: Text(ApplyMessages.notePrompt).foregroundStyle(Color.inkMuted), axis: .vertical)
                     .lineLimit(2...6)
@@ -69,5 +90,15 @@ struct ApplicationHubStatus: View {
         .padding(16)
         .background(Color.panel, in: .rect(cornerRadius: 18))
         .overlay { RoundedRectangle(cornerRadius: 18).strokeBorder(Color.cardBorder, lineWidth: 1) }
+    }
+}
+
+extension ApplicationDeadline {
+    /// Overdue, today or tomorrow: worth a second look.
+    var isUrgent: Bool {
+        switch self {
+        case .overdue, .today: true
+        case .upcoming(let days): days <= 1
+        }
     }
 }

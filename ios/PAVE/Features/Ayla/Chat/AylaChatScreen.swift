@@ -158,6 +158,40 @@ struct AylaChatScreen: View {
 
     private static let savedVacanciesID = "saved-vacancies"
 
+    /// The vacancies over the chat; kept out of `body`, which is as large as the compiler will take.
+    private var vacancyShelf: some View {
+        let shown = model.entries.first { $0.id == openVacanciesID }
+        return AylaVacancyShelf(
+            vacancies: openVacancies ?? [], model: model, tab: $vacancyTab,
+            search: shown.flatMap(Self.search(in:)),
+            usedData: shown?.reply?.usedData ?? [],
+            onChooseData: vault == nil || !model.isAvailable ? nil : { pickVaultItems(then: AylaMessages.useChosen) },
+            compareIDs: compareIDs,
+            onTask: { task, vacancy in
+                closeShelf()
+                run(task, on: [vacancy])
+            },
+            onToggleCompare: toggleCompare,
+            onCompare: {
+                closeShelf()
+                compareChosen()
+            },
+            onClearCompare: { compareIDs = [] },
+            onOpenApplication: { vacancy in
+                closeShelf()
+                openApplication(for: vacancy)
+            },
+            onAsk: { vacancy in
+                closeShelf()
+                askAyla(AylaMessages.vacancyAsk(vacancy))
+            },
+            onAskGap: { skill, vacancy in
+                closeShelf()
+                askAyla(AylaMessages.vacancyGapAsk(skill, for: vacancy))
+            }
+        )
+    }
+
     var body: some View {
         GeometryReader { proxy in
             let fullHeight = proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom
@@ -285,30 +319,7 @@ struct AylaChatScreen: View {
                         onRestore: { await notifications.restore($0) }
                     )
                 } else if shelf == .vacancies {
-                    let shown = model.entries.first { $0.id == openVacanciesID }
-                    AylaVacancyShelf(
-                        vacancies: openVacancies ?? [], model: model, tab: $vacancyTab,
-                        search: shown.flatMap(Self.search(in:)),
-                        usedData: shown?.reply?.usedData ?? [],
-                        onChooseData: vault == nil || !model.isAvailable ? nil : { pickVaultItems(then: AylaMessages.useChosen) },
-                        compareIDs: compareIDs,
-                        onTask: { task, vacancy in
-                            closeShelf()
-                            run(task, on: [vacancy])
-                        },
-                        onToggleCompare: toggleCompare,
-                        onCompare: {
-                            closeShelf()
-                            compareChosen()
-                        },
-                        onClearCompare: { compareIDs = [] }
-                    ) { vacancy in
-                        closeShelf()
-                        askAyla(AylaMessages.vacancyAsk(vacancy))
-                    } onAskGap: { skill, vacancy in
-                        closeShelf()
-                        askAyla(AylaMessages.vacancyGapAsk(skill, for: vacancy))
-                    }
+                    vacancyShelf
                 } else if shelf == .vault {
                     if let vault {
                         VaultScreen(onShowMenu: nil)
@@ -1756,6 +1767,8 @@ struct AylaChatScreen: View {
                 guard draft.problem == nil, await vault.save(draft, itemID: itemID) else { return nil }
                 return vault.items
             }
+            studio.syncReminders = { ApplicationReminderScheduler.sync($0) }
+            studio.requestReminderAccess = ApplicationReminderScheduler.requestAccess
             application = studio
         }
     }
@@ -2646,7 +2659,7 @@ struct AylaChatScreen: View {
         case .vacancies?:
             if pageDriver.vacancy != nil { return "één vacature, helemaal open" }
             let shown = VacancyList.shown(vacancyTab, found: openVacancies ?? [], model: model)
-            return "de lijst met vacatures, tabblad \(vacancyTab == .saved ? AylaMessages.vacancySavedTab : AylaMessages.vacancyFound), \(shown.count) in de lijst"
+            return "de lijst met vacatures, tabblad \(vacancyTab == .saved ? AylaMessages.vacancySavedTab : vacancyTab == .applications ? AylaMessages.vacancyApplicationsTab : AylaMessages.vacancyFound), \(shown.count) in de lijst"
         case nil:
             guard isTalking else { return "de chat" }
             let vacancies = voiceVacancies

@@ -67,6 +67,42 @@ enum ApplyMessages {
     static let editCV = "Cv bewerken"
     static let editLetter = "Brief bewerken"
 
+    static let history = "Geschiedenis"
+    static func historyLine(_ change: ApplicationTracking.Change) -> String {
+        "\(status(change.status)) · \(change.date.formatted(.dateTime.day().month(.wide).year().locale(Locale(identifier: "nl_NL"))))"
+    }
+    static let remindMe = "Herinner me"
+    static let remindHint = "Je krijgt een melding de dag voor je deadline en een week nadat je Verstuurd zet. De meldingen blijven op dit toestel."
+    static let remindDenied = "Meldingen staan uit voor PAVE. Zet ze aan in de Instellingen van je iPhone om herinneringen te krijgen."
+    static func deadlineDistance(_ distance: ApplicationDeadline) -> String {
+        switch distance {
+        case .overdue(let days): days == 1 ? "Verlopen, 1 dag geleden" : "Verlopen, \(days) dagen geleden"
+        case .today: "Vandaag"
+        case .upcoming(let days): days == 1 ? "Morgen" : "Over \(days) dagen"
+        }
+    }
+    static func reminderTitle(_ kind: ApplicationReminder.Kind) -> String {
+        switch kind {
+        case .deadlineTomorrow: "Morgen is de deadline"
+        case .deadlineToday: "Vandaag is de deadline"
+        case .followUp: "Al iets gehoord?"
+        }
+    }
+    static func reminderBody(_ reminder: ApplicationReminder) -> String {
+        let job = "\(reminder.vacancyTitle) bij \(reminder.company)"
+        return reminder.kind == .followUp
+            ? "Je solliciteerde een week geleden op \(job). Zet de status bij als er nieuws is."
+            : "Je sollicitatie voor \(job) staat nog op concept."
+    }
+
+    // The applications
+    static let applicationsEmptyTitle = "Nog geen sollicitaties"
+    static let applicationsEmpty = "Tik bij een vacature op Solliciteren om een cv en brief te maken. Hier houd je bij hoe het ermee staat."
+    static func statusCount(_ status: ApplicationStatus, _ count: Int) -> String { "\(Self.status(status)) · \(count)" }
+    static func changedOn(_ date: Date) -> String {
+        "Gewijzigd op \(date.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "nl_NL"))))"
+    }
+
     // What goes in
     static let whatGoesIn = "Wat komt erin?"
     static func whatGoesInHint(_ vacancy: Vacancy) -> String {

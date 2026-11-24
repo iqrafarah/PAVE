@@ -21,6 +21,15 @@ struct ApplicationStore {
         try? data.write(to: file(draft.id), options: [.atomic, .completeFileProtection])
     }
 
+    /// Every application kept on this device, the one changed last first.
+    func all() -> [ApplicationDraft] {
+        let files = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
+        return files
+            .filter { $0.pathExtension == "json" }
+            .compactMap { try? JSONDecoder().decode(ApplicationDraft.self, from: Data(contentsOf: $0)) }
+            .sorted { $0.updatedAt > $1.updatedAt }
+    }
+
     private func file(_ vacancyID: String) -> URL {
         let safe = vacancyID.map { $0.isLetter || $0.isNumber || $0 == "_" || $0 == "-" ? $0 : "_" }
         return folder.appending(path: String(safe) + ".json")

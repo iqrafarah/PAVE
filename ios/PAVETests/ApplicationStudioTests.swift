@@ -334,6 +334,58 @@ struct ApplicationStudioTests {
         #expect(again.document == .letter)
     }
 
+    @Test func remindersNeedPermissionAndArePlannedAgainWhenTheTrackingChanges() async {
+        let store = store
+        let model = ApplicationStudioModel(vacancy: vacancy, items: items(), name: "Daaf", email: "", service: nil, store: store)
+        await model.begin(withAyla: false)
+        var synced: [[String]] = []
+        model.syncReminders = { synced.append($0.filter { $0.progress.remindsMe }.map(\.vacancy.id)) }
+        model.requestReminderAccess = { false }
+        let allowed = await model.setReminders(true)
+        #expect(!allowed)
+        #expect(!model.tracking.remindsMe)
+        #expect(synced.isEmpty)
+        model.requestReminderAccess = { true }
+        #expect(await model.setReminders(true))
+        #expect(model.tracking.remindsMe)
+        #expect(synced.last == ["v"])
+        model.setStatus(.sent)
+        model.setStatus(.sent)
+        #expect(model.tracking.history.map(\.status) == [.sent])
+        #expect(synced.count == 2)
+        // Typing a note plans nothing again.
+        model.setNote("Bellen")
+        #expect(synced.count == 2)
+        #expect(await model.setReminders(false))
+        #expect(synced.last == [])
+    }
+
+    @Test func theStoreListsEveryApplicationTheOneChangedLastFirst() async {
+        let store = store
+        let other = Vacancy(id: "w", title: "Andere", company: "Bedrijf", source: .adzuna)
+        let first = ApplicationStudioModel(vacancy: vacancy, items: items(), name: "Daaf", email: "", service: nil, store: store)
+        await first.begin(withAyla: false)
+        let second = ApplicationStudioModel(vacancy: other, items: items(), name: "Daaf", email: "", service: nil, store: store)
+        await second.begin(withAyla: false)
+        second.setStatus(.interview)
+        #expect(store.all().map(\.vacancy.id) == ["w", "v"])
+        #expect(store.all().first?.progress.status == .interview)
+    }
+
+    @Test func theOverviewPutsTheNearestDeadlineFirst() {
+        func draft(_ id: String, deadline: Date?, changed: Double) -> ApplicationDraft {
+            var draft = ApplicationBuilder.draft(for: Vacancy(id: id, title: id, company: "x", source: .adzuna), items: [], name: "Daaf")
+            draft.tracking = ApplicationTracking(deadline: deadline)
+            draft.updatedAt = Date(timeIntervalSince1970: changed)
+            return draft
+        }
+        let soon = draft("soon", deadline: Date(timeIntervalSince1970: 100), changed: 1)
+        let later = draft("later", deadline: Date(timeIntervalSince1970: 200), changed: 5)
+        let none = draft("none", deadline: nil, changed: 9)
+        let list = [none, later, soon].sorted(by: ApplicationsList.isBefore)
+        #expect(list.map(\.vacancy.id) == ["soon", "later", "none"])
+    }
+
     @Test func theOverviewSaysWhatTheCVStillMissing() async {
         let withGap = Vacancy(id: "v2", title: "Dev", company: "Appwerk", source: .adzuna, matches: [.init(skill: "Swift", requirement: "r")], skillGap: [.init(skill: "CI/CD", requirement: "r")])
         let model = ApplicationStudioModel(vacancy: withGap, items: items(), name: "Daaf", email: "", service: nil, store: store)
