@@ -1,19 +1,13 @@
 import SwiftUI
 
-/// What Ayla is doing in the app, in one line: her blocks, the step she is on and how far she is. A tap opens the
-/// steps, so the detail is there when you want it and out of the way when you do not. It floats just above where she
-/// lives (the text field or the small orb), in the chat and on an open page alike.
+/// What Ayla is doing in the app, in one line: her blocks, the step she is on and how far she is. It starts closed;
+/// a tap opens the steps, so the detail is there when you want it and out of the way when you do not. It floats just
+/// above where she lives (the text field or the small orb), in the chat and on an open page alike.
 struct AylaActivityPill: View {
     let steps: [AylaActionStep]
 
-    /// Open from the start when there is more than one step: you watch her tick them off. One step is one line.
-    @State private var isOpen: Bool
+    @State private var isOpen = false
     @Environment(\.paveReduceMotion) private var reduceMotion
-
-    init(steps: [AylaActionStep]) {
-        self.steps = steps
-        _isOpen = State(initialValue: steps.count > 1)
-    }
 
     private var finished: Int { steps.count { $0.state == .done || $0.state == .failed } }
     private var failed: Int { steps.count { $0.state == .failed } }
@@ -81,6 +75,9 @@ struct AylaActivityPill: View {
         // Tinted with the page's own white, so what is under the glass never runs through the step.
         .glassEffect(.regular.tint(Color.panel.opacity(0.78)), in: .rect(cornerRadius: 22))
         .frame(maxWidth: 420)
+        // Its own height, whatever room it is given: over the text field that room is the height of the field, and
+        // the open steps then ran out of their glass, over the conversation.
+        .fixedSize(horizontal: false, vertical: true)
         .animation(.easeOut(duration: 0.2), value: steps)
         .accessibilityElement(children: isOpen ? .contain : .ignore)
         .accessibilityLabel("\(AylaMessages.actionsBusy): \(title)")

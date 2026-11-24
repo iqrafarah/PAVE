@@ -186,6 +186,19 @@ struct AylaChatScreen: View {
                     bottomMargin: isOverVacancies ? sheetHeight - proxy.safeAreaInsets.bottom : bottomBarHeight + bottomGap + offlineNoticeHeight
                 )
 
+                // Her answer while a page sits low over the chat: at the very top of the screen, over her name where
+                // the bar holds nothing else (the outer display of iPhone Duo keeps its buttons along the side), and
+                // right under the bar where the menu and chats buttons are in it.
+                if shelf != nil, replyFloatsOverChat {
+                    shelfReplyBubble(
+                        topPadding: toolbarIsBeside ? Self.windowTopInset + 16 : 6,
+                        lineLimit: fullHeight - sheetHeight - (toolbarIsBeside ? Self.windowTopInset : proxy.safeAreaInsets.top) < 250 ? 4 : 6
+                    )
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    .ignoresSafeArea(.container, edges: toolbarIsBeside ? .top : [])
+                    .zIndex(2)
+                }
+
                 if isAttachMenuOpen {
                     Color.clear
                         .contentShape(.rect)
@@ -218,6 +231,7 @@ struct AylaChatScreen: View {
         .animation(.easeOut(duration: 0.4), value: isOutroRunning)
         .sensoryFeedback(trigger: dictation.isListening) { _, isListening in isListening ? .start : .stop }
         .animation(.spring(duration: 0.4), value: openVacanciesID)
+        .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.4, bounce: 0.15), value: showsShelfReply)
         .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.4), value: shelf)
         .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.35, bounce: 0.18), value: isAttachMenuOpen)
         .toolbar { toolbar }
@@ -340,14 +354,10 @@ struct AylaChatScreen: View {
                     }
                 }
             }
-            .safeAreaInset(edge: .top, spacing: 0) {
-                // While talking the bubble follows "Tekst bij de stem" in Settings: off means her voice and the glow only.
-                if showsShelfReply, !isTalking || showsVoiceText, let reply = shelfReply {
-                    AylaShelfReply(text: reply.text, thinking: model.activity.map(AylaMessages.activity) ?? AylaMessages.thinking, choices: reply.choices, onChoose: { choose($0) }) {
-                        showsShelfReply = false
-                    }
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                }
+            // Over the top of a page that fills the screen, not in it: nothing on the page moves when she speaks. A
+            // page that sits low shows her answer above it instead, at the top of the chat.
+            .overlay(alignment: .top) {
+                if !replyFloatsOverChat { shelfReplyBubble(topPadding: 26, lineLimit: 6) }
             }
             .overlay {
                 if let voice, isTalking {
@@ -613,6 +623,8 @@ struct AylaChatScreen: View {
         ToolbarItem(placement: .principal) {
             PaveTitle("Ayla")
                 .offset(y: Self.toolbarOffset)
+                .opacity(replyCoversTitle ? 0 : 1)
+                .animation(.easeOut(duration: 0.2), value: replyCoversTitle)
         }
         // With the menu on screen (iPad, open iPhone Duo) the chat button sits at the top left, next to the menu,
         // instead of on the right where the open iPhone Duo puts it right against the status bar.
@@ -645,6 +657,8 @@ struct AylaChatScreen: View {
                 // As in ChatGPT: gone at once when the orb jumps up, and only back once it has landed below.
                 .opacity(showsConversation ? 1 : 0)
                 .animation(showsConversation ? .easeOut(duration: 0.3) : .easeOut(duration: 0.08), value: showsConversation)
+                .opacity(replyIsOverChat ? 0 : 1)
+                .animation(.easeOut(duration: 0.2), value: replyIsOverChat)
                 .allowsHitTesting(!isTalking || orbMotion.isLow)
 
             if let voice, isTalking {
@@ -2353,6 +2367,41 @@ struct AylaChatScreen: View {
         if navigation.screen == .vaultItem, let id = navigation.itemId { vault?.itemToOpen = id }
         if shelf == place { return }
         openShelf(place)
+    }
+
+    /// A page that sits low over the chat on a phone leaves the top of the chat free: her answer goes there. A page
+    /// that fills the screen, or a sheet in the middle of a wide screen, carries it on its own top edge.
+    private var replyFloatsOverChat: Bool { sizeClass == .compact && vaultDetent != .large }
+
+    /// Her answer shows at the top of the chat. The conversation under it says the same, so it steps back until the
+    /// answer is tapped away.
+    private var replyIsOverChat: Bool {
+        shelf != nil && replyFloatsOverChat && showsShelfReply && (!isTalking || showsVoiceText) && shelfReply != nil
+    }
+
+    /// Her answer lies over her name in the bar, so the name steps aside while it shows.
+    private var replyCoversTitle: Bool { replyIsOverChat && toolbarIsBeside }
+
+    /// The room the status bar takes at the top of the screen, without the navigation bar.
+    private static var windowTopInset: CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.keyWindow }
+            .first?.safeAreaInsets.top ?? 0
+    }
+
+    /// Ayla's answer while a page is open, floating over what is under it.
+    @ViewBuilder
+    private func shelfReplyBubble(topPadding: CGFloat, lineLimit: Int) -> some View {
+        // While talking the bubble follows "Tekst bij de stem" in Settings: off means her voice and the glow only.
+        if showsShelfReply, !isTalking || showsVoiceText, let reply = shelfReply {
+            AylaShelfReply(
+                text: reply.text, thinking: model.activity.map(AylaMessages.activity) ?? AylaMessages.thinking, choices: reply.choices,
+                topPadding: topPadding, lineLimit: lineLimit, onChoose: { choose($0) }
+            ) {
+                showsShelfReply = false
+            }
+            .transition(.move(edge: .top).combined(with: .opacity))
+        }
     }
 
     /// What the card on top of an open page says: nothing yet while Ayla thinks, then her answer as it comes in.
