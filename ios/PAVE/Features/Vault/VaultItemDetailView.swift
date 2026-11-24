@@ -53,14 +53,7 @@ struct VaultItemDetailView: View {
                         documentCount: model.documents(of: item).count,
                         onShowMenu: onShowMenu,
                         onSend: { request in
-                            await model.requestValidation(
-                                for: item,
-                                organizationID: request.organization!.id,
-                                locationID: request.location!.id,
-                                departmentID: request.department!.id,
-                                contactID: request.contact!.id,
-                                message: request.message
-                            )
+                            await model.requestValidation(for: item, request)
                         }
                     ).paveSheet()
                 }
