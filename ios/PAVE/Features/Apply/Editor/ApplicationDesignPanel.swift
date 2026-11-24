@@ -1,13 +1,10 @@
 import PAVECore
 import SwiftUI
 
-/// How it looks: the template, the colour, the photo, and which parts of the CV show in which order.
+/// How it looks: the design, its colours, the photo, and which parts of the CV show in which order.
 struct ApplicationDesignPanel: View {
     let model: ApplicationStudioModel
     let photo: UIImage?
-
-    /// The PAVE theme colours, in their shade that reads well on white paper.
-    private static let colors: [PaveThemeColor] = PaveThemeColor.allCases.filter { $0 != .custom }
 
     @Environment(\.paveReduceMotion) private var reduceMotion
 
@@ -18,7 +15,7 @@ struct ApplicationDesignPanel: View {
                     HStack(alignment: .top, spacing: 14) {
                         ForEach(ApplicationTemplate.allCases) { template in
                             ApplicationTemplateThumbnail(draft: model.draft, template: template, photo: photo, isSelected: model.draft.template == template) {
-                                withAnimation(reduceMotion ? nil : .snappy(duration: 0.3)) { model.update { $0.template = template } }
+                                withAnimation(reduceMotion ? nil : .snappy(duration: 0.3)) { model.choose(template) }
                             }
                         }
                     }
@@ -27,26 +24,23 @@ struct ApplicationDesignPanel: View {
                 .scrollIndicators(.hidden)
             }
             section(ApplyMessages.color) {
-                HStack(spacing: 12) {
-                    ForEach(Self.colors, id: \.self) { theme in
-                        let color = theme.accent
-                        let isOn = model.draft.accent == color
-                        Button {
-                            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { model.update { $0.accent = color } }
-                        } label: {
-                            Circle()
-                                .fill(Color(uiColor: UIColor(hex: color)))
-                                .frame(width: 30, height: 30)
-                                .overlay { Circle().strokeBorder(Color.panel, lineWidth: isOn ? 3 : 0) }
-                                .overlay { Circle().strokeBorder(Color(uiColor: UIColor(hex: color)), lineWidth: isOn ? 2 : 0).padding(-3) }
-                                .frame(width: 44, height: 44)
-                                .contentShape(.circle)
+                ScrollView(.horizontal) {
+                    HStack(spacing: 8) {
+                        ForEach(ApplicationPalette.allCases, id: \.self) { palette in
+                            let isOn = model.draft.palette == palette
+                            Button {
+                                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { model.update { $0.palette = palette } }
+                            } label: {
+                                swatch(palette, isOn: isOn)
+                            }
+                            .buttonStyle(.pave)
+                            .accessibilityLabel(ApplyMessages.palette(palette))
+                            .accessibilityAddTraits(isOn ? .isSelected : [])
                         }
-                        .buttonStyle(.pave)
-                        .accessibilityLabel(SettingsMessages.title(theme))
-                        .accessibilityAddTraits(isOn ? .isSelected : [])
                     }
+                    .padding(.vertical, 2)
                 }
+                .scrollIndicators(.hidden)
             }
             VStack(alignment: .leading, spacing: 6) {
                 Toggle(ApplyMessages.photo, isOn: Binding(get: { model.draft.showsPhoto && photo != nil }, set: { value in model.update { $0.showsPhoto = value } }))
@@ -87,6 +81,22 @@ struct ApplicationDesignPanel: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// A palette as Canva shows one: its dark, its colour and its soft tint side by side.
+    private func swatch(_ palette: ApplicationPalette, isOn: Bool) -> some View {
+        HStack(spacing: 0) {
+            ApplicationTheme.color(palette.dark)
+            ApplicationTheme.color(palette.accent)
+            ApplicationTheme.color(palette.tint)
+        }
+        .frame(width: 54, height: 30)
+        .clipShape(.rect(cornerRadius: 8))
+        .overlay { RoundedRectangle(cornerRadius: 8).strokeBorder(Color.cardBorder, lineWidth: 1) }
+        .padding(3)
+        .overlay { RoundedRectangle(cornerRadius: 11).strokeBorder(isOn ? Color.paveAccent : Color.clear, lineWidth: 2) }
+        .frame(minWidth: 60, minHeight: 44)
+        .contentShape(.rect)
     }
 
     private func move(_ index: Int, by step: Int) -> some View {

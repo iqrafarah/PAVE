@@ -77,10 +77,45 @@ struct ApplicationStudioTests {
     @Test func aDraftComesBackForTheSameVacancy() {
         let shared = store
         let first = ApplicationStudioModel(vacancy: vacancy, items: items(), name: "Daaf", email: "", service: nil, store: shared)
-        first.update { $0.template = .bold }
+        #expect(first.stage == .gallery)
+        first.update { $0.template = .night }
         let again = ApplicationStudioModel(vacancy: vacancy, items: [], name: "Iemand anders", email: "", service: nil, store: shared)
-        #expect(again.draft.template == .bold)
+        #expect(again.draft.template == .night)
         #expect(again.draft.cv.name == "Daaf")
+        #expect(again.stage == .editor)
+    }
+
+    @Test func aDesignFromTheGalleryBringsItsOwnColoursAndPhoto() {
+        let model = ApplicationStudioModel(vacancy: vacancy, items: items(), name: "Daaf", email: "", service: nil, store: store)
+        model.choose(.frame)
+        #expect(model.stage == .start)
+        #expect(model.draft.template == .frame)
+        #expect(model.draft.palette == ApplicationTemplate.frame.palette)
+        #expect(!model.draft.showsPhoto)
+    }
+
+    @Test func fillingItYourselfStartsWithTheVaultAndEmptyTexts() async {
+        let model = ApplicationStudioModel(vacancy: vacancy, items: items(), name: "Daaf", email: "", service: Writer(), store: store)
+        model.choose(.coral)
+        model.update { $0.palette = .lavender }
+        await model.begin(withAyla: false)
+        #expect(model.stage == .editor)
+        #expect(model.draft.template == .coral)
+        #expect(model.draft.palette == .lavender)
+        #expect(model.draft.cv.profile.isEmpty)
+        #expect(!model.draft.cv.visibleSections.isEmpty)
+        #expect(model.draft.letter.paragraphs.allSatisfy { $0.text.isEmpty })
+    }
+
+    @Test func aylaFillsTheProfileAndTheLetterAtOnce() async {
+        let writer = Writer()
+        writer.answer = ApplicationWriting(profile: "Ik bouw apps.", salutation: "Beste team van Appwerk,", paragraphs: [.init(text: "Bij Pixelwerk werkte ik met Swift.", sourceItemIDs: ["a"])], closing: "Met vriendelijke groet,")
+        let model = ApplicationStudioModel(vacancy: vacancy, items: items(), name: "Daaf", email: "", service: writer, store: store)
+        model.choose(.sage)
+        await model.begin(withAyla: true)
+        #expect(model.stage == .editor)
+        #expect(model.draft.cv.profile == "Ik bouw apps.")
+        #expect(model.draft.letter.paragraphs.map(\.text) == ["Bij Pixelwerk werkte ik met Swift."])
     }
 
     @Test func aLongCVBecomesMoreThanOneA4Page() throws {

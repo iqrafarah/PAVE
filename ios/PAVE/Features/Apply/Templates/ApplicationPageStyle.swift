@@ -12,15 +12,51 @@ enum ApplicationPage {
     }
 
     static let ink = Color(red: 0.12, green: 0.13, blue: 0.13)
-    static let muted = Color(red: 0.38, green: 0.40, blue: 0.40)
+    static let muted = Color(red: 0.40, green: 0.42, blue: 0.42)
     static let paper = Color.white
+}
 
-    static func accent(_ draft: ApplicationDraft) -> Color {
-        Color(
-            red: Double((draft.accent >> 16) & 0xFF) / 255,
-            green: Double((draft.accent >> 8) & 0xFF) / 255,
-            blue: Double(draft.accent & 0xFF) / 255
-        )
+/// The look of one design: its typefaces and the colours of its palette. Serif for the elegant ones, rounded for the
+/// playful one, monospace for dates on the timeline, Inter (PAVE's own) for the rest.
+struct ApplicationTheme {
+    let template: ApplicationTemplate
+    let palette: ApplicationPalette
+
+    init(_ draft: ApplicationDraft) {
+        template = draft.template
+        palette = draft.palette
+    }
+
+    var accent: Color { Self.color(palette.accent) }
+    var tint: Color { Self.color(palette.tint) }
+    var dark: Color { Self.color(palette.dark) }
+    var ink: Color { ApplicationPage.ink }
+    var muted: Color { ApplicationPage.muted }
+
+    /// The name and big titles.
+    func display(_ size: CGFloat, _ weight: Font.Weight = .bold) -> Font {
+        switch template {
+        case .sage, .frame: .system(size: size, weight: weight, design: .serif)
+        case .coral: .system(size: size, weight: weight, design: .rounded)
+        default: ApplicationPage.font(size, weight)
+        }
+    }
+
+    /// The titles of the parts.
+    func heading(_ size: CGFloat, _ weight: Font.Weight = .semibold) -> Font {
+        switch template {
+        case .sage: .system(size: size, weight: weight, design: .serif)
+        case .coral: .system(size: size, weight: weight, design: .rounded)
+        default: ApplicationPage.font(size, weight)
+        }
+    }
+
+    func body(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font { ApplicationPage.font(size, weight) }
+
+    func mono(_ size: CGFloat, _ weight: Font.Weight = .medium) -> Font { .system(size: size, weight: weight, design: .monospaced) }
+
+    static func color(_ hex: UInt32) -> Color {
+        Color(red: Double((hex >> 16) & 0xFF) / 255, green: Double((hex >> 8) & 0xFF) / 255, blue: Double(hex & 0xFF) / 255)
     }
 }
 

@@ -28,6 +28,33 @@ struct ApplicationStudioView: View {
     }
 
     var body: some View {
+        Group {
+            switch model.stage {
+            case .gallery:
+                VStack(spacing: 0) {
+                    stepBar(back: nil)
+                    ApplicationGalleryView(model: model, photo: photo)
+                }
+            case .start:
+                VStack(spacing: 0) {
+                    stepBar { model.stage = .gallery }
+                    ApplicationStartView(model: model, photo: photo) { model.stage = .gallery }
+                }
+            case .editor:
+                editor
+            }
+        }
+        .background(Color.canvas)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: model.stage)
+        .sheet(item: $exported) { VaultShareSheet(urls: [$0.url]) }
+        .alert(ApplyMessages.aylaWrites, isPresented: Binding(get: { model.problem != nil }, set: { if !$0 { model.problem = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(model.problem ?? "")
+        }
+    }
+
+    private var editor: some View {
         GeometryReader { proxy in
             let isWide = proxy.size.width >= Self.wideWidth
             VStack(spacing: 0) {
@@ -60,15 +87,32 @@ struct ApplicationStudioView: View {
                 if block != nil, isWide { withAnimation(.snappy(duration: 0.25)) { panel = .content } }
             }
         }
-        .sheet(item: $exported) { VaultShareSheet(urls: [$0.url]) }
-        .alert(ApplyMessages.aylaWrites, isPresented: Binding(get: { model.problem != nil }, set: { if !$0 { model.problem = nil } })) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(model.problem ?? "")
-        }
     }
 
     // MARK: Bars
+
+    /// Above the gallery and the start: close, or back to the gallery, and for which vacancy.
+    private func stepBar(back: (() -> Void)?) -> some View {
+        HStack(spacing: 12) {
+            if let back {
+                roundButton(.iconArrowLeft, label: ApplyMessages.otherDesign, action: back)
+            } else {
+                roundButton(.iconXMark, label: ApplyMessages.close, action: onClose)
+            }
+            Text(ApplyMessages.title(model.draft.vacancy))
+                .textStyle(.label)
+                .foregroundStyle(Color.inkMuted)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity)
+            if back != nil {
+                roundButton(.iconXMark, label: ApplyMessages.close, action: onClose)
+            } else {
+                Color.clear.frame(width: 44, height: 44)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+    }
 
     private var topBar: some View {
         HStack(spacing: 12) {

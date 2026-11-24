@@ -19,12 +19,61 @@ enum ApplyMessages {
     static let sections = "Onderdelen"
     static let tapToEdit = "Tik op een onderdeel om het aan te passen."
 
+    // Choosing a design
+    static let chooseDesign = "Kies een ontwerp"
+    static func chooseDesignHint(_ vacancy: Vacancy) -> String {
+        "Voor \(vacancy.title) bij \(vacancy.company). Al ingevuld met jouw gegevens; wisselen kan later altijd."
+    }
+    static let allDesigns = "Alle"
+    static let withPhoto = "Met foto"
+    static func useDesign(_ design: ApplicationTemplate) -> String { "Gebruik \(template(design))" }
+    static let howToBegin = "Hoe wil je beginnen?"
+    static func chosenDesign(_ design: ApplicationTemplate) -> String { "Ontwerp \(template(design)). Je cv en brief horen bij elkaar." }
+    static let aylaFills = "Ayla vult het in"
+    static func aylaFillsHint(_ count: Int) -> String {
+        count == 0
+            ? "Ayla schrijft je profiel en brief. Ze mag nog geen bewijs uit je kluis bekijken, dus ze schrijft algemeen. Jij past daarna alles aan."
+            : "Ayla schrijft je profiel en brief met het bewijs uit je kluis dat ze mag bekijken (\(count)). Jij past daarna alles aan."
+    }
+    static let fillYourself = "Zelf invullen"
+    static let fillYourselfHint = "Je gegevens uit de kluis staan erin. Je profiel en brief schrijf je zelf, met hints waar wat komt."
+    static let otherDesign = "Ander ontwerp kiezen"
+
     static func template(_ template: ApplicationTemplate) -> String {
         switch template {
-        case .calm: "Rustig"
-        case .modern: "Modern"
-        case .bold: "Opvallend"
-        case .compact: "Compact"
+        case .sage: "Salie"
+        case .night: "Nacht"
+        case .frame: "Kader"
+        case .coral: "Koraal"
+        case .column: "Zuil"
+        case .line: "Lijn"
+        case .plain: "Helder"
+        case .block: "Tegel"
+        case .halo: "Kring"
+        case .tilt: "Schuin"
+        }
+    }
+
+    static func style(_ style: ApplicationTemplate.Style) -> String {
+        switch style {
+        case .business: "Zakelijk"
+        case .creative: "Creatief"
+        case .minimal: "Minimalistisch"
+        case .elegant: "Elegant"
+        }
+    }
+
+    static func palette(_ palette: ApplicationPalette) -> String {
+        switch palette {
+        case .pave: "PAVE"
+        case .sage: "Salie"
+        case .ocean: "Oceaan"
+        case .teal: "Petrol"
+        case .rose: "Roos"
+        case .night: "Nacht"
+        case .coral: "Koraal"
+        case .lavender: "Lavendel"
+        case .mono: "Zwart-wit"
         }
     }
 
@@ -38,6 +87,14 @@ enum ApplyMessages {
     }
 
     static let profileHeading = "Profiel"
+    static let profileHint = "Schrijf hier in 2 of 3 zinnen wie je bent en wat je zoekt."
+    static func paragraphHint(_ index: Int) -> String {
+        switch index {
+        case 0: "Waarom deze vacature en dit bedrijf?"
+        case 1: "Wat breng je mee? Noem een voorbeeld uit je kluis."
+        default: "Sluit af en nodig uit tot een gesprek."
+        }
+    }
     static let skillsHeading = "Vaardigheden"
     static let contactHeading = "Contact"
 

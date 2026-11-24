@@ -41,6 +41,8 @@ struct ApplicationTemplateThumbnail: View {
     private var shown: ApplicationDraft {
         var copy = draft
         copy.template = template
+        copy.palette = template.palette
+        copy.showsPhoto = template.hasPhoto
         return copy
     }
 }

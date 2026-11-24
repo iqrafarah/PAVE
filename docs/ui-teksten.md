@@ -156,13 +156,20 @@ Besloten op 2026-11-24: de conceptkaart van iOS met de keuzes van web. Ayla bouw
 
 ## Cv en motivatiebrief (iOS, vanuit een vacature)
 
-"Solliciteren" bij een vacature opent een scherm met je cv en motivatiebrief voor die vacature. PAVE vult ze eerst zelf uit je kluis (zonder AI); Ayla schrijft mee met alleen het bewijs dat ze mag bekijken. Je past elk onderdeel aan door erop te tikken.
+"Solliciteren" bij een vacature opent eerst een galerij met ontwerpen, al ingevuld met je eigen gegevens. Na je keuze kies je hoe je begint: Ayla vult het in, of je vult het zelf in (de kluis staat er dan al in, je profiel en brief schrijf je zelf met hints). Daarna pas je elk onderdeel aan door erop te tikken. Ayla schrijft alleen met het bewijs dat ze mag bekijken. Cv en brief hebben altijd hetzelfde ontwerp.
 
 | Onderdeel | Tekst |
 | --- | --- |
+| Galerij | Kies een ontwerp / Voor {functie} bij {bedrijf}. Al ingevuld met jouw gegevens; wisselen kan later altijd. / Gebruik {ontwerp} |
+| Filters | Alle / Met foto / Zakelijk / Creatief / Minimalistisch / Elegant |
+| Ontwerpen, van eenvoudig naar uitgesproken | Helder / Kader / Lijn / Salie / Nacht / Zuil / Tegel / Koraal / Kring / Schuin |
+| Kleuren | PAVE / Salie / Oceaan / Petrol / Nacht / Koraal / Roos / Lavendel / Zwart-wit |
+| Hoe beginnen | Hoe wil je beginnen? / Ontwerp {ontwerp}. Je cv en brief horen bij elkaar. / Ander ontwerp kiezen |
+| Ayla vult het in | Ayla schrijft je profiel en brief met het bewijs uit je kluis dat ze mag bekijken ({n}). Jij past daarna alles aan. (Zonder bewijs: Ayla schrijft je profiel en brief. Ze mag nog geen bewijs uit je kluis bekijken, dus ze schrijft algemeen. Jij past daarna alles aan.) |
+| Zelf invullen | Je gegevens uit de kluis staan erin. Je profiel en brief schrijf je zelf, met hints waar wat komt. |
+| Hints (alleen tijdens bewerken, niet in de pdf) | Schrijf hier in 2 of 3 zinnen wie je bent en wat je zoekt. / Waarom deze vacature en dit bedrijf? / Wat breng je mee? Noem een voorbeeld uit je kluis. / Sluit af en nodig uit tot een gesprek. |
 | Bovenaan | Cv / Motivatiebrief |
 | Knoppen | Ontwerp / Alinea / Ayla schrijft / Klaar |
-| Sjablonen | Rustig / Modern / Opvallend / Compact |
 | Ontwerp | Sjabloon / Kleur / Profielfoto tonen / Onderdelen |
 | Geen profielfoto | Voeg een profielfoto toe bij Instellingen › Account om hem hier te tonen. |
 | Paneel (iPad, Duo open liggend) | Inhoud / Ontwerp / Tik op een onderdeel om het aan te passen. |

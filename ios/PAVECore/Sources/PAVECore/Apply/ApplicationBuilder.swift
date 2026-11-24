@@ -6,7 +6,11 @@ public enum ApplicationBuilder {
     /// At most this many skills on the CV, the ones the vacancy asks for first.
     public static let maximumSkills = 12
 
-    public static func draft(for vacancy: Vacancy, items: [VaultItem], name: String, email: String = "") -> ApplicationDraft {
+    /// `writesItself`: the texts stay empty for the user to write, with hints in the editor; the data from the vault
+    /// is there either way.
+    public static func draft(
+        for vacancy: Vacancy, items: [VaultItem], name: String, email: String = "", template: ApplicationTemplate = .sage, writesItself: Bool = false
+    ) -> ApplicationDraft {
         let relevant = items.filter { $0.archivedAt == nil && $0.status != .rejected }
         let wanted = Set((vacancy.matches + vacancy.skillGap).map { $0.skill.lowercased() })
         func score(_ item: VaultItem) -> Int { item.skills.filter { wanted.contains($0.lowercased()) }.count }
@@ -30,7 +34,15 @@ public enum ApplicationBuilder {
             sections: sections,
             skills: skills(from: relevant, wanted: wanted)
         )
-        return ApplicationDraft(vacancy: vacancy, cv: cv, letter: letter(for: vacancy, items: relevant, wanted: wanted, name: name))
+        let letter = writesItself
+            ? LetterContent(
+                salutation: "Beste team van \(vacancy.company),",
+                paragraphs: (0..<3).map { _ in LetterParagraph(text: "") },
+                closing: "Met vriendelijke groet,",
+                signature: name
+            )
+            : letter(for: vacancy, items: relevant, wanted: wanted, name: name)
+        return ApplicationDraft(vacancy: vacancy, template: template, showsPhoto: template.hasPhoto, cv: cv, letter: letter)
     }
 
     /// The skills of the evidence, those the vacancy asks for first, each once.

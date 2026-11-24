@@ -44,6 +44,27 @@ struct ApplicationBuilderTests {
         #expect(letter.signature == "Daaf")
     }
 
+    @Test func writingItYourselfKeepsTheVaultButLeavesTheTexts() {
+        let items = [item("b", .internships, "Eindstage front-end", skills: ["Swift"])]
+        let draft = ApplicationBuilder.draft(for: vacancy, items: items, name: "Daaf", template: .frame, writesItself: true)
+        #expect(draft.cv.visibleSections.count == 1)
+        #expect(draft.cv.profile.isEmpty)
+        #expect(draft.letter.paragraphs.count == 3)
+        #expect(draft.letter.paragraphs.allSatisfy { $0.text.isEmpty })
+        #expect(draft.template == .frame)
+        #expect(draft.palette == .mono)
+        #expect(!draft.showsPhoto)
+    }
+
+    @Test func anUnknownTemplateFromAnOlderVersionFallsBack() throws {
+        let json = Data(#"["calm","pink"]"#.utf8)
+        let decoded = try JSONDecoder().decode([String].self, from: json)
+        let template = try JSONDecoder().decode(ApplicationTemplate.self, from: Data("\"\(decoded[0])\"".utf8))
+        let palette = try JSONDecoder().decode(ApplicationPalette.self, from: Data("\"\(decoded[1])\"".utf8))
+        #expect(template == .sage)
+        #expect(palette == .pave)
+    }
+
     @Test func aDraftSurvivesBeingStored() throws {
         let draft = ApplicationBuilder.draft(for: vacancy, items: [item("b", .internships, "Stage")], name: "Daaf")
         let data = try JSONEncoder().encode(draft)

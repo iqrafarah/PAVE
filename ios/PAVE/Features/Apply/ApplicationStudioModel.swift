@@ -9,6 +9,8 @@ final class ApplicationStudioModel: Identifiable {
     var id: String { draft.id }
 
     private(set) var draft: ApplicationDraft
+    /// A new application starts in the gallery, then asks how to begin; one made before opens in the editor.
+    var stage: Stage
     var document = ApplicationDocumentKind.cv
     var selection: ApplicationBlock?
     /// Ayla is writing this block, or the whole letter.
@@ -27,7 +29,48 @@ final class ApplicationStudioModel: Identifiable {
         self.items = items
         self.service = service
         self.store = store
-        draft = store.load(vacancy.id) ?? ApplicationBuilder.draft(for: vacancy, items: items, name: name, email: email)
+        if let saved = store.load(vacancy.id) {
+            draft = saved
+            stage = .editor
+        } else {
+            draft = ApplicationBuilder.draft(for: vacancy, items: items, name: name, email: email)
+            stage = .gallery
+        }
+    }
+
+    enum Stage { case gallery, start, editor }
+
+    /// A design from the gallery: its own palette, and its photo when it is made for one.
+    func choose(_ template: ApplicationTemplate) {
+        draft = preview(template)
+        if stage == .editor { update { _ in } } else { stage = .start }
+    }
+
+    /// The design with this template, to show in the gallery before it is chosen.
+    func preview(_ template: ApplicationTemplate) -> ApplicationDraft {
+        var copy = draft
+        copy.template = template
+        copy.palette = template.palette
+        copy.showsPhoto = template.hasPhoto
+        return copy
+    }
+
+    /// "Ayla vult het in" writes the profile and the letter at once; "Zelf invullen" leaves them to the user, with
+    /// hints. The data from the vault is in both.
+    func begin(withAyla: Bool) async {
+        let chosen = draft
+        var fresh = ApplicationBuilder.draft(
+            for: chosen.vacancy, items: items, name: chosen.cv.name, email: chosen.cv.email, template: chosen.template, writesItself: !withAyla
+        )
+        fresh.palette = chosen.palette
+        fresh.showsPhoto = chosen.showsPhoto
+        draft = fresh
+        store.save(draft)
+        stage = .editor
+        guard withAyla, service != nil else { return }
+        async let profile: Void = writeProfile()
+        async let letter: Void = writeLetter()
+        _ = await (profile, letter)
     }
 
     /// Only evidence Ayla may look at goes to her.
