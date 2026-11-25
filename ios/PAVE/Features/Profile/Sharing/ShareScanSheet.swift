@@ -8,15 +8,17 @@ struct ShareScanSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
-    /// The employer whose code was just recognised.
-    @State private var slug: String?
+    /// What was just recognised: an employer, one vacancy on a poster, or an employer's inbox.
+    @State private var scanned: ShareLinks.Scanned?
     @State private var problem: String?
 
     var body: some View {
         NavigationStack {
             Group {
-                if let slug {
-                    FairEmployerLoader(slug: slug, model: model) { employer in
+                if case .inbox(let slug, let key) = scanned {
+                    EmployerInboxView(slug: slug, key: key)
+                } else if let (slug, vacancyID) = employerOfScan {
+                    FairEmployerLoader(slug: slug, vacancyID: vacancyID, model: model) { employer in
                         onShareBack(employer)
                         dismiss()
                     }
@@ -36,13 +38,13 @@ struct ShareScanSheet: View {
                 }
             }
             .background(Color.canvas)
-            .navigationTitle(slug == nil ? SharingMessages.scan : "")
+            .navigationTitle(scanned == nil ? SharingMessages.scan : "")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    if slug != nil {
+                    if scanned != nil {
                         PaveBackButton(label: SharingMessages.scanAgain) {
-                            slug = nil
+                            scanned = nil
                             problem = nil
                         }
                     } else {
@@ -53,11 +55,19 @@ struct ShareScanSheet: View {
         }
     }
 
+    private var employerOfScan: (String, String?)? {
+        switch scanned {
+        case .employer(let slug): (slug, nil)
+        case .vacancy(let slug, let id): (slug, id)
+        default: nil
+        }
+    }
+
     private func open(_ found: ShareLinks.Scanned) async {
         switch found {
-        case .employer(let found):
-            guard slug == nil else { return }
-            slug = found
+        case .employer, .vacancy, .inbox:
+            guard scanned == nil else { return }
+            scanned = found
         case .share(let code):
             // Someone else's profile opens on its web page, as for anyone without PAVE.
             if let base = model.webURL {

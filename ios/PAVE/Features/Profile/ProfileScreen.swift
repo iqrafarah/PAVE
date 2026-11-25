@@ -25,6 +25,13 @@ struct ProfileScreen: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
+                    if let invited = model.fairApplications?.first(where: \.awaitsAnswer) {
+                        NavigationLink { FairDayView(model: model) } label: {
+                            ShareLinkRow.label(icon: .iconCalendarDaysSolid, title: SharingMessages.fairInvitedTitle, detail: SharingMessages.fairInvitedBody(invited))
+                                .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 14))
+                        }
+                        .buttonStyle(.pave)
+                    }
                     ShareProfileCard {
                         // A fair profile, when there is one, is what you show at a stand.
                         if let fair = model.profiles?.first(where: { $0.template == .fair }) {
@@ -131,6 +138,11 @@ struct ProfileScreen: View {
         if let profiles = model.profiles { saved(profiles) }
         templates
         SharePanel(title: "Meer") {
+            NavigationLink { FairDayView(model: model) } label: {
+                ShareLinkRow.label(icon: .iconQrCodeSolid, title: SharingMessages.fairDay, detail: SharingMessages.fairDayHint)
+            }
+            .buttonStyle(.pave)
+            ShareRowDivider()
             ShareLinkRow(icon: .iconCamera, title: SharingMessages.scan, detail: SharingMessages.scanHint) { showsScanner = true }
             ShareRowDivider()
             ShareLinkRow(icon: .iconClockSolid, title: SharingMessages.report, detail: SharingMessages.reportHint) { showsReport = true }

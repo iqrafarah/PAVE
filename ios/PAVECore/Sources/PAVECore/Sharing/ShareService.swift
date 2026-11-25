@@ -22,9 +22,17 @@ public protocol ShareService: Sendable {
     /// Makes it when it has no id yet, otherwise changes it; returns it as kept.
     func save(_ profile: SavedProfile) async throws -> SavedProfile
     func delete(profileID: String) async throws
+    /// Leaves a card with one vacancy of a fair employer. `notSetUp` until migration 20261125180000 has run.
+    func apply(_ card: FairApplicationCard, employer: String, vacancy: Vacancy) async throws -> FairApplication
+    /// Your applications at the fair, newest first, with what the employer did.
+    func fairApplications() async throws -> [FairApplication]
+    func answer(_ applicationID: String, accepted: Bool) async throws
 }
 
 extension ShareService {
+    public func apply(_ card: FairApplicationCard, employer: String, vacancy: Vacancy) async throws -> FairApplication { throw ShareError.notSetUp }
+    public func fairApplications() async throws -> [FairApplication] { throw ShareError.notSetUp }
+    public func answer(_ applicationID: String, accepted: Bool) async throws { throw ShareError.notSetUp }
     public func savedProfiles() async throws -> [SavedProfile] { throw ShareError.notSetUp }
     public func save(_ profile: SavedProfile) async throws -> SavedProfile { throw ShareError.notSetUp }
     public func delete(profileID: String) async throws { throw ShareError.notSetUp }
@@ -114,6 +122,58 @@ public final class SupabaseShareService: ShareService, @unchecked Sendable {
         let data = try await send(try await request(restURL.appending(path: "fair_employers"), query: [("select", "*"), ("slug", "eq.\(slug)")]))
         guard let employer = try? JSONDecoder().decode([FairEmployer].self, from: data).first else { throw ShareError.unavailable }
         return employer
+    }
+
+    // MARK: The fair
+
+    public func apply(_ card: FairApplicationCard, employer: String, vacancy: Vacancy) async throws -> FairApplication {
+        let row: [String: Any] = [
+            "employer_slug": employer,
+            "vacancy_id": vacancy.id,
+            "vacancy_title": vacancy.title,
+            "card": try JSONSerialization.jsonObject(with: JSONEncoder().encode(card)),
+        ]
+        var urlRequest = try await request(restURL.appending(path: "fair_applications"), query: [("select", "*")], method: "POST", json: row)
+        // Applying again for the same vacancy replaces the card.
+        urlRequest.setValue("return=representation,resolution=merge-duplicates", forHTTPHeaderField: "Prefer")
+        urlRequest.url = URL(string: urlRequest.url!.absoluteString + "&on_conflict=user_id,employer_slug,vacancy_id")
+        let data = try await send(urlRequest, accepting: [200, 201])
+        guard let kept = try? Self.decoder.decode([FairApplicationRow].self, from: data).first?.application else { throw ShareError.unavailable }
+        return kept
+    }
+
+    public func fairApplications() async throws -> [FairApplication] {
+        let data = try await send(try await request(restURL.appending(path: "fair_applications"), query: [("select", "*"), ("order", "created_at.desc"), ("limit", "100")]))
+        guard let rows = try? Self.decoder.decode([FairApplicationRow].self, from: data) else { throw ShareError.unavailable }
+        return rows.compactMap(\.application)
+    }
+
+    public func answer(_ applicationID: String, accepted: Bool) async throws {
+        _ = try await send(
+            try await request(restURL.appending(path: "fair_applications"), query: [("id", "eq.\(applicationID)")], method: "PATCH", json: ["answer": accepted ? "accepted" : "declined"]),
+            accepting: [200, 204]
+        )
+    }
+
+    struct FairApplicationRow: Decodable {
+        let id: String
+        let employer_slug: String
+        let vacancy_id: String
+        let vacancy_title: String
+        let card: FairApplicationCard
+        let status: String
+        let invited_for: Date?
+        let invitation_message: String?
+        let answer: String?
+        let created_at: Date
+
+        var application: FairApplication? {
+            guard let status = FairApplication.Status(rawValue: status) else { return nil }
+            return FairApplication(
+                id: id, employerSlug: employer_slug, vacancyID: vacancy_id, vacancyTitle: vacancy_title, card: card, status: status,
+                invitedFor: invited_for, invitationMessage: invitation_message, answer: answer.flatMap(FairApplication.Answer.init(rawValue:)), createdAt: created_at
+            )
+        }
     }
 
     // MARK: Saved profiles

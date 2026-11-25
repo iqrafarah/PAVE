@@ -5,7 +5,13 @@ import SwiftUI
 /// your profile back with them.
 struct FairEmployerView: View {
     let employer: FairEmployer
+    let model: SharingModel
+    /// Opened from a poster for this vacancy: the quick application opens at once.
+    var applyingTo: String?
     let onShareBack: () -> Void
+
+    @State private var applying: Vacancy?
+    @State private var didOpen = false
 
     @Environment(AylaChatModel.self) private var chat
     @Environment(\.vacancyRequest) private var vacancyRequest
@@ -51,7 +57,10 @@ struct FairEmployerView: View {
                                     VacancySaveButton(isSaved: chat.isSaved(vacancy)) { chat.toggleSaved(vacancy) }
                                 }
                             }
-                            .padding(14)
+                            .padding([.horizontal, .top], 14)
+                            PaveSecondaryButton(title: SharingMessages.quickApply) { applying = vacancy }
+                                .padding([.horizontal, .bottom], 14)
+                                .padding(.top, 10)
                             if index < employer.vacancies.count - 1 { ShareRowDivider(inset: 14) }
                         }
                     }
@@ -59,6 +68,15 @@ struct FairEmployerView: View {
                 PavePrimaryButton(title: "Deel je profiel met \(employer.name)", action: onShareBack)
             }
             .padding(20)
+        }
+        .sheet(item: $applying) { vacancy in
+            QuickApplySheet(model: model, employer: employer, vacancy: vacancy) { applying = nil }
+        }
+        .task {
+            guard !didOpen, let applyingTo, let vacancy = employer.vacancies.first(where: { $0.id == applyingTo }) else { return }
+            didOpen = true
+            try? await Task.sleep(for: .milliseconds(350))
+            applying = vacancy
         }
     }
 }

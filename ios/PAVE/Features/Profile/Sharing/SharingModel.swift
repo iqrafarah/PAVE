@@ -14,6 +14,8 @@ final class SharingModel {
     private(set) var applications: [ApplicationDraft] = []
     /// Saved profiles; nil until loaded or while the table is not there yet.
     private(set) var profiles: [SavedProfile]?
+    /// Applications left at the fair; nil until loaded or while the table is not there yet.
+    private(set) var fairApplications: [FairApplication]?
     /// A share being made or changed, so its button waits.
     private(set) var busyShareID: String?
     private(set) var isCreating = false
@@ -75,6 +77,7 @@ final class SharingModel {
         applications = ApplicationStore().all()
         guard let service else { return }
         profiles = try? await service.savedProfiles()
+        await loadFairApplications()
         if shares.isEmpty { state = .loading }
         do {
             shares = try await service.shares()
@@ -143,6 +146,39 @@ final class SharingModel {
         await change(share) { service in
             try await service.extend(shareID: share.id, until: until)
             return { $0.expiresAt = until }
+        }
+    }
+
+    /// Reads your fair applications again; a new invitation is announced once.
+    func loadFairApplications() async {
+        guard let service, let found = try? await service.fairApplications() else { return }
+        fairApplications = found
+        FairAlerts.announce(found)
+    }
+
+    /// Leaves your card with a vacancy; nil when it could not.
+    func apply(_ card: FairApplicationCard, employer: FairEmployer, vacancy: Vacancy) async -> FairApplication? {
+        guard let service else { return nil }
+        do {
+            let kept = try await service.apply(card, employer: employer.slug, vacancy: vacancy)
+            var list = fairApplications ?? []
+            list.removeAll { $0.id == kept.id }
+            list.insert(kept, at: 0)
+            fairApplications = list
+            return kept
+        } catch {
+            problem = SharingMessages.applyFailed
+            return nil
+        }
+    }
+
+    func answer(_ application: FairApplication, accepted: Bool) async {
+        guard let service else { return }
+        do {
+            try await service.answer(application.id, accepted: accepted)
+            await loadFairApplications()
+        } catch {
+            problem = SharingMessages.loadFailed
         }
     }
 

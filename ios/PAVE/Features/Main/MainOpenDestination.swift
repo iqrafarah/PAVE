@@ -12,5 +12,13 @@ extension EnvironmentValues {
 /// An employer to open from a link, by the slug in its code.
 struct FairEmployerSlug: Identifiable, Equatable {
     let slug: String
+    var vacancyID: String?
+    var id: String { slug + (vacancyID ?? "") }
+}
+
+/// An employer's inbox of the demo, by its slug and secret key.
+struct EmployerInboxKey: Identifiable, Equatable {
+    let slug: String
+    let key: String
     var id: String { slug }
 }

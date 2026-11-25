@@ -25,8 +25,8 @@ struct MainView: View {
     @State private var aylaShare: ShareTemplateChoice?
     /// An employer opened from the iPhone's camera, over whatever screen is open.
     @State private var fairEmployer: FairEmployerSlug?
-    /// Chosen on that card: the composer opens once the card has gone.
-    @State private var sharesBackWith: FairEmployer?
+    /// The employer's inbox of the demo, opened from its key's code.
+    @State private var employerInbox: EmployerInboxKey?
     /// Applications whose demo invitation has arrived, for Meldingen and the bell; read again when you move around.
     @State private var invitations: [ApplicationDraft] = []
     @State private var destination = MainDestination.ayla
@@ -61,89 +61,7 @@ struct MainView: View {
     }
 
     var body: some View {
-        GeometryReader { proxy in
-            // One layout for every shape of screen, with the screen always in the same place in it: folding, turning
-            // or resizing only moves it, so what is open on it (a sheet, a half-filled form) stays open.
-            let fold = proxy.foldSplit().flatMap { $0.axis == .sideBySide ? $0 : nil }
-            let docksSidebar = fold == nil && hasSidebar && !isSidebarHidden
-            let usesDrawer = fold == nil && !hasSidebar
-            ZStack(alignment: .topLeading) {
-                screen(onShowMenu: menuAction(fold: fold))
-                    .sheet(isPresented: $showsSearch) { searchScreen }
-                    .frame(width: fold?.second.width, height: fold?.second.height)
-                    .offset(x: fold?.second.minX ?? 0, y: fold?.second.minY ?? 0)
-                    .padding(.leading, docksSidebar ? Self.sidebarSize : 0)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .overlay {
-                        // On the outer display of iPhone Duo the open menu draws its own close button in the menu
-                        // button's place; the real one hides meanwhile, so no second glass circle shows underneath.
-                        if usesDrawer {
-                            MainMenuDrawer(
-                                isPresented: $isMenuOpen,
-                                selection: destination,
-                                name: model.firstName,
-                                menuButtonFrame: menuButtonFrame,
-                                onSelect: open,
-                                onNewConversation: startNewConversation,
-                                onShowChats: openChats,
-                                onSignOut: appState.signOut,
-                                onSearch: { showsSearch = true }
-                            )
-                        }
-                    }
-                if let fold {
-                    sidebar(width: fold.first.width, canHide: false)
-                        .frame(width: fold.first.width, height: fold.first.height)
-                        .offset(x: fold.first.minX, y: fold.first.minY)
-                } else if docksSidebar {
-                    sidebar(width: Self.sidebarSize, canHide: true)
-                        .transition(.move(edge: .leading))
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .background(Color.canvas.ignoresSafeArea())
-            .onChange(of: fold != nil, initial: true) { _, folded in
-                isFolded = folded
-                if folded { isMenuOpen = false }
-            }
-        }
-        // Your look from Instellingen: the photo in the menu, the text size, and the name Ayla uses.
-        .environment(profile)
-        // Sharing from the studio and from Ayla, next to the Profiel page.
-        .environment(sharing)
-        .environment(\.openDestination) { destination in open(destination) }
-        .environment(\.vacancyRequest) { request in
-            fairEmployer = nil
-            model.request(request)
-            open(.ayla)
-        }
-        .sheet(item: $fairEmployer, onDismiss: {
-            guard let employer = sharesBackWith else { return }
-            sharesBackWith = nil
-            sharing.reloadApplications()
-            aylaShare = ShareTemplateChoice(template: .fair, organisation: employer.name, withApplication: false)
-        }) { opened in
-            NavigationStack {
-                FairEmployerLoader(slug: opened.slug, model: sharing) { employer in
-                    sharesBackWith = employer
-                    fairEmployer = nil
-                }
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button(ApplyMessages.close) { fairEmployer = nil }
-                    }
-                }
-            }
-            .environment(vault)
-            .environment(model)
-        }
-        .sheet(item: $aylaShare) { choice in
-            ShareComposer(
-                model: sharing, template: choice.template, recipientOrganisation: choice.organisation, duration: choice.duration,
-                withApplication: choice.withApplication, doneTitle: SharingMessages.backToAyla
-            ) { aylaShare = nil }
-            .environment(vault)
-        }
+        layout
         .dynamicTypeSize(deviceTextSize.shifted(by: profile.textSize))
         .task { await profile.load() }
         .onChange(of: profile.profile.displayName) { _, name in
@@ -247,11 +165,84 @@ struct MainView: View {
         // the PIN screen.
         .onChange(of: appState.conversationToOpen, initial: true) { handlePending() }
         .onChange(of: appState.link, initial: true) { handlePending() }
-        .onChange(of: appState.employerToOpen, initial: true) { handlePending() }
+        .onChange(of: appState.fairToOpen, initial: true) { handlePending() }
         .onChange(of: appState.isRelocked) { handlePending() }
         .onChange(of: appState.opensNotifications, initial: true) { handlePending() }
         .onChange(of: connection.isOnline) { _, isOnline in
             if isOnline { Task { await model.refreshConversations() } }
+        }
+    }
+
+    /// The screens and the menu for every shape of screen, with what opens over them.
+    private var layout: some View {
+        GeometryReader { proxy in
+            // One layout for every shape of screen, with the screen always in the same place in it: folding, turning
+            // or resizing only moves it, so what is open on it (a sheet, a half-filled form) stays open.
+            let fold = proxy.foldSplit().flatMap { $0.axis == .sideBySide ? $0 : nil }
+            let docksSidebar = fold == nil && hasSidebar && !isSidebarHidden
+            let usesDrawer = fold == nil && !hasSidebar
+            ZStack(alignment: .topLeading) {
+                screen(onShowMenu: menuAction(fold: fold))
+                    .sheet(isPresented: $showsSearch) { searchScreen }
+                    .frame(width: fold?.second.width, height: fold?.second.height)
+                    .offset(x: fold?.second.minX ?? 0, y: fold?.second.minY ?? 0)
+                    .padding(.leading, docksSidebar ? Self.sidebarSize : 0)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .overlay {
+                        // On the outer display of iPhone Duo the open menu draws its own close button in the menu
+                        // button's place; the real one hides meanwhile, so no second glass circle shows underneath.
+                        if usesDrawer {
+                            MainMenuDrawer(
+                                isPresented: $isMenuOpen,
+                                selection: destination,
+                                name: model.firstName,
+                                menuButtonFrame: menuButtonFrame,
+                                onSelect: open,
+                                onNewConversation: startNewConversation,
+                                onShowChats: openChats,
+                                onSignOut: appState.signOut,
+                                onSearch: { showsSearch = true }
+                            )
+                        }
+                    }
+                if let fold {
+                    sidebar(width: fold.first.width, canHide: false)
+                        .frame(width: fold.first.width, height: fold.first.height)
+                        .offset(x: fold.first.minX, y: fold.first.minY)
+                } else if docksSidebar {
+                    sidebar(width: Self.sidebarSize, canHide: true)
+                        .transition(.move(edge: .leading))
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(Color.canvas.ignoresSafeArea())
+            .onChange(of: fold != nil, initial: true) { _, folded in
+                isFolded = folded
+                if folded { isMenuOpen = false }
+            }
+        }
+        // Your look from Instellingen: the photo in the menu, the text size, and the name Ayla uses.
+        .environment(profile)
+        // Sharing from the studio and from Ayla, next to the Profiel page.
+        .environment(sharing)
+        .environment(\.openDestination, openDestinationAction)
+        .environment(\.vacancyRequest, vacancyRequestAction)
+        .modifier(MainFairSheets(
+            sharing: sharing, vault: vault, model: model,
+            fairEmployer: $fairEmployer, employerInbox: $employerInbox, aylaShare: $aylaShare
+        ))
+    }
+
+    private var openDestinationAction: (MainDestination) -> Void {
+        { destination in open(destination) }
+    }
+
+    /// A vacancy task from outside the chat (the fair): close what is over it and let Ayla take it.
+    private var vacancyRequestAction: (AylaChatModel.VacancyRequest) -> Void {
+        { request in
+            fairEmployer = nil
+            model.request(request)
+            open(.ayla)
         }
     }
 
@@ -265,10 +256,15 @@ struct MainView: View {
             appState.link = nil
             follow(link)
         }
-        if let slug = appState.employerToOpen {
-            appState.employerToOpen = nil
+        if let fair = appState.fairToOpen {
+            appState.fairToOpen = nil
             isMenuOpen = false
-            fairEmployer = FairEmployerSlug(slug: slug)
+            switch fair {
+            case .employer(let slug): fairEmployer = FairEmployerSlug(slug: slug)
+            case .vacancy(let slug, let id): fairEmployer = FairEmployerSlug(slug: slug, vacancyID: id)
+            case .inbox(let slug, let key): employerInbox = EmployerInboxKey(slug: slug, key: key)
+            case .share: break
+            }
         }
         if appState.opensNotifications {
             appState.opensNotifications = false

@@ -93,9 +93,10 @@ struct RootView: View {
             appState.conversationToOpen = AylaHandoff.conversationID(in: activity)
         }
         .onOpenURL { url in
-            if case .employer(let slug) = ShareLinks.scanned(url.absoluteString) {
-                appState.employerToOpen = slug
-            } else {
+            switch ShareLinks.scanned(url.absoluteString) {
+            case .employer?, .vacancy?, .inbox?:
+                appState.fairToOpen = ShareLinks.scanned(url.absoluteString)
+            default:
                 appState.link = PaveLink(url: url)
             }
         }

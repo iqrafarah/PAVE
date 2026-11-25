@@ -76,6 +76,84 @@ enum SharingMessages {
     static let manage = "Beheren"
     static let fairOpenVacancy = "Bekijk de vacature"
     static let fairFound = "Gevonden"
+    static let fairDay = "Mijn beursdag"
+    static let fairDayHint = "Wat je vandaag scande en waar je solliciteerde"
+    static let dayInvitations = "Uitnodigingen"
+    static let dayLeft = "Hier liet je je kaartje achter"
+    static let dayNext = "Nog te doen"
+    static func dayNotApplied(_ name: String, stand: String?) -> String { "Je scande \(name)\(stand.map { " (\($0))" } ?? ""), maar solliciteerde nog niet" }
+    static let dayEmpty = "Nog niets vandaag"
+    static let dayEmptyHint = "Scan een stand of een poster met je camera of in PAVE. Alles van vandaag komt hier."
+    static func dayInvitedFor(_ vacancy: String) -> String { "Gesprek: \(vacancy)" }
+    static let dayAccept = "Ik kom"
+    static let dayDecline = "Kan niet"
+    static let dayAccepted = "Je hebt gezegd dat je komt."
+    static let dayDeclined = "Je hebt laten weten dat je niet kunt."
+    static let dayPractise = "Oefen met Ayla"
+    static func dayStatus(_ application: FairApplication) -> String {
+        switch (application.status, application.answer) {
+        case (.invited, .accepted?): "Je komt"
+        case (.invited, .declined?): "Afgezegd"
+        case (.invited, nil): "Uitgenodigd"
+        case (.declined, _): "Niet gekozen"
+        default: "Achtergelaten"
+        }
+    }
+    static let inboxTitle = "Werkgever-modus · demo"
+    static let inboxHint = "Zo ziet de werkgever wie er bij de stand solliciteerde. In de demo speelt een medespeler de recruiter."
+    static let inboxEmpty = "Nog niemand"
+    static let inboxEmptyHint = "Laat iemand de poster of de stand scannen en snel solliciteren."
+    static let inboxWrongKey = "Deze werkgeverssleutel klopt niet."
+    static let inboxInvite = "Uitnodigen voor een gesprek"
+    static func inboxInvited(_ date: Date?) -> String { "Uitgenodigd" + (date.map { " voor \(ApplyMessages.slot($0))" } ?? "") + ", wacht op antwoord" }
+    static func inboxAccepted(_ date: Date?) -> String { "Komt" + (date.map { " op \(ApplyMessages.slot($0))" } ?? "") }
+    static let inboxDeclined = "Kan niet op dat moment"
+    static func inviteTitle(_ name: String) -> String { "\(name) uitnodigen" }
+    static let inviteWhen = "Wanneer"
+    static let inviteMessage = "Bericht"
+    static let inviteMessagePrompt = "Bijvoorbeeld: meld je bij de servicebalie"
+    static let inviteSend = "Verstuur"
+    static let inviteFailed = "De uitnodiging kon niet worden verstuurd. Probeer het opnieuw."
+    static let quickApply = "Snel solliciteren"
+    static let quickApplyHeadline = "School of opleiding"
+    static let quickApplyHeadlinePrompt = "Bijvoorbeeld: havo 4, Lorentz Casimir Lyceum"
+    static let quickApplyWhy = "Waarom deze bijbaan"
+    static let quickApplyWhyPrompt = "Twee of drie zinnen, in je eigen woorden"
+    static let quickApplyAylaWrites = "Ayla schrijft mee"
+    static let quickApplyWriting = "Ayla schrijft…"
+    static let quickApplyFocus = "Dit is een korte reactie op een bijbaan, geen cv: twee korte zinnen in de ik-vorm over waarom ik deze bijbaan wil en wat ik meebreng."
+    static let quickApplyPitch = "Vertel het liever? (niet verplicht)"
+    static let quickApplyPitchStart = "Spreek je pitch in"
+    static let quickApplyPitchStop = "Stop"
+    static let quickApplyPitchHint = "Vertel in een halve minuut wie je bent. Het wordt tekst die je kunt aanpassen; de opname zelf wordt niet bewaard."
+    static func quickApplyHonest(_ employer: String) -> String {
+        "Je kaartje blijft in PAVE. \(employer) doet niet echt mee: in de demo bekijkt een medespeler het als werkgever."
+    }
+    static func quickApplySend(_ employer: String) -> String { "Laat achter bij \(employer)" }
+    static let quickApplySentTitle = "Achtergelaten"
+    static func quickApplySentText(_ employer: String, vacancy: String) -> String {
+        "Je kaartje voor \(vacancy) staat klaar bij \(employer). Je krijgt een melding als je wordt uitgenodigd; alles staat in Mijn beursdag."
+    }
+    static let availability = "Wanneer kun je werken"
+    static let maxHours = "Hoeveel uur per week, hoogstens"
+    static func hours(_ value: Int) -> String { "\(value) uur" }
+    static func day(_ day: Availability.Day) -> String {
+        switch day {
+        case .maandag: "ma"
+        case .dinsdag: "di"
+        case .woensdag: "wo"
+        case .donderdag: "do"
+        case .vrijdag: "vr"
+        case .zaterdag: "za"
+        case .zondag: "zo"
+        }
+    }
+    static let applyFailed = "Je sollicitatie kon niet worden achtergelaten. Probeer het opnieuw."
+    static let fairInvitedTitle = "Je bent uitgenodigd"
+    static func fairInvitedBody(_ application: FairApplication) -> String {
+        let when = application.invitedFor.map { " op \(ApplyMessages.slot($0))" } ?? ""
+        return "Voor een gesprek over \(application.vacancyTitle)\(when)."
+    }
     static let fairLoading = "Even laden…"
     static func fairFoundAnnouncement(_ name: String) -> String { "Gevonden: \(name)" }
     static let fairNotFound = "Niet gevonden"

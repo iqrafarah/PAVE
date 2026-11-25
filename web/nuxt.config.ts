@@ -36,7 +36,7 @@ export default defineNuxtConfig({
       login: '/login',
       callback: '/confirm',
       // A shared profile, an employer at a fair and the fair itself open without an account.
-      exclude: ['/register', '/forgot-password', '/password-updated', '/gedeeld/*', '/werkgever/*', '/beurs'],
+      exclude: ['/register', '/forgot-password', '/password-updated', '/gedeeld/*', '/werkgever/*', '/inbox/*', '/beurs'],
     },
   },
 });

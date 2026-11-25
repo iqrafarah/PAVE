@@ -5,6 +5,8 @@ import SwiftUI
 /// Used by the scanner in Profiel and when the iPhone's own camera opens PAVE.
 struct FairEmployerLoader: View {
     let slug: String
+    /// From a poster: the one vacancy to apply for straight away.
+    var vacancyID: String?
     let model: SharingModel
     let onShareBack: (FairEmployer) -> Void
 
@@ -16,7 +18,7 @@ struct FairEmployerLoader: View {
     var body: some View {
         Group {
             if let employer, isShown {
-                FairEmployerView(employer: employer) { onShareBack(employer) }
+                FairEmployerView(employer: employer, model: model, applyingTo: vacancyID) { onShareBack(employer) }
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
             } else if let problem {
                 PaveEmptyState(icon: .iconBriefcase, title: SharingMessages.fairNotFound, message: problem)
@@ -35,6 +37,7 @@ struct FairEmployerLoader: View {
             }
             do {
                 employer = try await service.employer(slug: slug)
+                if let employer { FairDay.record(.scanned(employer: employer.name, slug: employer.slug, stand: employer.stand)) }
                 // A moment to see what was found.
                 try? await Task.sleep(for: .milliseconds(reduceMotion ? 300 : 1100))
                 isShown = true

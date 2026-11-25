@@ -34,6 +34,16 @@ struct SharingModelTests {
         func extend(shareID: String, until: Date) async throws { calls.append("extend") }
         func revoke(_ share: ProfileShare) async throws { calls.append("revoke") }
         func employer(slug: String) async throws -> FairEmployer { FairEmployer(slug: slug, name: "Kade", about: "Advies") }
+        var applied: [FairApplication] = []
+        func apply(_ card: FairApplicationCard, employer: String, vacancy: Vacancy) async throws -> FairApplication {
+            let application = FairApplication(id: "f\(applied.count)", employerSlug: employer, vacancyID: vacancy.id, vacancyTitle: vacancy.title, card: card)
+            applied.insert(application, at: 0)
+            return application
+        }
+        func fairApplications() async throws -> [FairApplication] { applied }
+        func answer(_ applicationID: String, accepted: Bool) async throws {
+            if let index = applied.firstIndex(where: { $0.id == applicationID }) { applied[index].answer = accepted ? .accepted : .declined }
+        }
     }
 
     private var application: ApplicationDraft {
@@ -104,5 +114,20 @@ struct SharingModelTests {
         await model.load()
         #expect(model.shares(forVacancy: "v").map(\.title) == ["Sollicitatie"])
         #expect(model.shares(forVacancy: "w").isEmpty)
+    }
+
+    @Test func leavingACardAndAnsweringAnInvitation() async throws {
+        let service = FakeShares()
+        let model = SharingModel(service: service, webURL: nil)
+        let employer = FairEmployer(slug: "jumbo", name: "Jumbo", about: "Supermarkt")
+        let vacancy = Vacancy(id: "fair-jumbo-planning", title: "Bijbaan", company: "Jumbo", source: .web)
+        let card = FairApplicationCard(name: "Sam", why: "Ik werk graag met mensen.", availability: Availability(days: [.zaterdag], maxHours: 12))
+        let kept = try #require(await model.apply(card, employer: employer, vacancy: vacancy))
+        #expect(model.fairApplications?.first?.id == kept.id)
+        service.applied[0].status = .invited
+        await model.loadFairApplications()
+        #expect(model.fairApplications?.first?.awaitsAnswer == true)
+        await model.answer(try #require(model.fairApplications?.first), accepted: true)
+        #expect(model.fairApplications?.first?.answer == .accepted)
     }
 }
