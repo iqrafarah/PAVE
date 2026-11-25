@@ -100,7 +100,7 @@ enum SharingMessages {
     }
     static let profileSaveFailed = "Het profiel kon niet worden bewaard. Probeer het opnieuw."
     static let you = "Jij"
-    static let quickShare = "Snel delen op een beurs"
+    static let quickShare = "Snel delen"
     static func evidenceCount(_ count: Int, verified: Int) -> String {
         let items = count == 1 ? "1 bewijsstuk" : "\(count) bewijsstukken"
         return verified == 0 ? items : "\(items) · \(verified) geverifieerd"

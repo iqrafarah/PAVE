@@ -30,8 +30,10 @@ Nederland, en antwoord alleen met JSON in deze vorm:
 - "size": alleen als de bron het zegt, zoals "ongeveer 200 medewerkers", anders null.
 - "locations": plaatsen in Nederland waar het bedrijf zit, hoogstens drie.
 - "website": het domein van de eigen website, zoals "voorbeeld.nl", of null.
-- "facts": hoogstens drie dingen die ertoe doen voor een sollicitant, zoals een traineeship, opleidingsbudget,
-  thuiswerken of de cao. "label" is twee of drie woorden, "text" één korte zin.
+- "facts": hoogstens drie dingen over wérken bij het bedrijf die ertoe doen voor een sollicitant, zoals een
+  traineeship, begeleiding van starters, opleidingsbudget, thuiswerken, werktijden of de cao. Nooit wat het bedrijf
+  aan klanten verkoopt of levert; dat hoort in "about". Vind je zulke feiten niet, geef dan een lege lijst.
+  "label" is twee of drie woorden, "text" één korte zin.
 
 Gebruik alleen wat in de zoekresultaten staat. Geen meningen, beoordelingen, salarissen of geruchten. Weet je iets niet
 zeker, laat het dan weg. Vind je het bedrijf niet, antwoord dan {"about":null}.
