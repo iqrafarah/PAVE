@@ -13,9 +13,13 @@ enum ShareWatchBridge {
     }
 
     @discardableResult
-    static func show(url: URL, title: String, until: Date) -> Bool {
+    /// `name` and `headline` make it your card on the wrist, as on the front of the card in Profiel.
+    static func show(url: URL, title: String, until: Date, name: String? = nil, headline: String? = nil) -> Bool {
         guard isAvailable, let png = ShareQRCode.png(for: url.absoluteString) else { return false }
-        WCSession.default.transferUserInfo([key: ["png": png, "title": title, "until": until.timeIntervalSince1970]])
+        var value: [String: Any] = ["png": png, "title": title, "until": until.timeIntervalSince1970]
+        if let name, !name.isEmpty { value["name"] = name }
+        if let headline, !headline.isEmpty { value["headline"] = headline }
+        WCSession.default.transferUserInfo([key: value])
         return true
     }
 

@@ -28,6 +28,7 @@ enum ApplicationWidgetSnapshot {
 
     static func update(drafts: [ApplicationDraft]) {
         self.drafts = drafts
+        WatchNextStepBridge.update(drafts: drafts)
         publish()
     }
 

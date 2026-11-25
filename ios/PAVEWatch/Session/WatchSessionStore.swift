@@ -14,6 +14,8 @@ final class WatchSessionStore: NSObject, WCSessionDelegate {
     private(set) var needsConnecting = false
     /// A QR code of a share the iPhone put here; shown until it ends.
     private(set) var sharedCode: WatchSharedCode? = WatchSharedCode.load()
+    /// The next step with your applications, from the iPhone.
+    private(set) var nextStep: NextStep? = WatchNextStep.load()
 
     func start() {
         guard WCSession.isSupported() else {
@@ -91,6 +93,16 @@ final class WatchSessionStore: NSObject, WCSessionDelegate {
             case .clear:
                 self.sharedCode = nil
                 WatchSharedCode.save(nil)
+            case nil:
+                break
+            }
+            switch WatchNextStep.update(from: message.value) {
+            case .show(let step):
+                self.nextStep = step
+                WatchNextStep.save(step)
+            case .clear:
+                self.nextStep = nil
+                WatchNextStep.save(nil)
             case nil:
                 break
             }

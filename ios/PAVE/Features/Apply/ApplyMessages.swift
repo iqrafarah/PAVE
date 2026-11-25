@@ -68,7 +68,32 @@ enum ApplyMessages {
     static let editCV = "Cv bewerken"
     static let editLetter = "Brief bewerken"
 
-    static let history = "Geschiedenis"
+    static let timeline = "Tijdlijn"
+    static let timelineAhead = "Komt eraan"
+    static func timelineAll(_ count: Int) -> String { "Toon alles (\(count))" }
+    static func timelineLine(_ kind: ApplicationTimelineEvent.Kind) -> String {
+        switch kind {
+        case .status(let status): "Op \(Self.status(status)) gezet"
+        case .shared(let recipient): "Gedeeld met \(recipient)"
+        case .looked(let name, let downloaded):
+            downloaded ? "\(name ?? "Iemand") heeft je cv of brief gedownload" : "\(name ?? "Iemand") heeft je sollicitatie bekeken"
+        case .stoppedSharing(let recipient): "Delen met \(recipient) gestopt"
+        case .invited: "Uitnodiging voor een kennismaking (demo)"
+        case .talk: "Kennismakingsgesprek"
+        case .deadline: "Deadline om te versturen"
+        }
+    }
+    static func timelineDate(_ date: Date, isAhead: Bool) -> String {
+        let dutch = Locale(identifier: "nl_NL")
+        let calendar = Calendar.current
+        let time = date.formatted(.dateTime.hour().minute().locale(dutch))
+        if calendar.isDateInToday(date) { return "Vandaag \(time)" }
+        if calendar.isDateInYesterday(date) { return "Gisteren \(time)" }
+        if calendar.isDateInTomorrow(date) { return "Morgen \(time)" }
+        return isAhead
+            ? date.formatted(.dateTime.weekday(.wide).day().month(.abbreviated).hour().minute().locale(dutch))
+            : date.formatted(.dateTime.day().month(.abbreviated).locale(dutch))
+    }
 
     // Going back, stopping and sharing
     static let backToApplication = "Terug naar je sollicitatie"
@@ -126,9 +151,6 @@ enum ApplyMessages {
     }
     static let markSent = "Op Verstuurd zetten"
     static let notNow = "Niet nu"
-    static func historyLine(_ change: ApplicationTracking.Change) -> String {
-        "\(status(change.status)) · \(change.date.formatted(.dateTime.day().month(.wide).year().locale(Locale(identifier: "nl_NL"))))"
-    }
     static let remindMe = "Herinner me"
     static let remindHint = "Je krijgt een melding de dag voor je deadline en een week nadat je Verstuurd zet. De meldingen blijven op dit toestel."
     static let remindDenied = "Meldingen staan uit voor PAVE. Zet ze aan in de Instellingen van je iPhone om herinneringen te krijgen."

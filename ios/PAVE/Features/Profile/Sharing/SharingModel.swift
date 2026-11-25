@@ -174,6 +174,7 @@ final class SharingModel {
         guard let service, let found = try? await service.fairApplications() else { return }
         fairApplications = found
         FairAlerts.announce(found)
+        WatchNextStepBridge.update(fair: found)
     }
 
     /// Leaves your card with a vacancy; nil when it could not.

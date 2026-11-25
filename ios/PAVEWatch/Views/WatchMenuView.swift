@@ -23,11 +23,25 @@ struct WatchMenuView: View {
                 }
                 .listItemTint(.brandGreen)
 
+                if let step = sessions.nextStep, step.date > .now {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Volgende stap")
+                            .font(.caption2)
+                            .foregroundStyle(Color.brandGreen)
+                        Text(WatchNextStep.title(step))
+                            .font(.headline)
+                        Text(WatchNextStep.when(step))
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+
                 if let code = sessions.sharedCode, code.isValid {
                     NavigationLink {
                         WatchSharedCodeView(code: code)
                     } label: {
-                        Text("QR-code voor \(code.title)")
+                        Text(code.name == nil ? "QR-code voor \(code.title)" : "Je kaartje")
                     }
                 }
 

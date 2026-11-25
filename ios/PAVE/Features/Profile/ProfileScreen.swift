@@ -35,7 +35,7 @@ struct ProfileScreen: View {
                             }
                             .buttonStyle(.pave)
                         }
-                        ShareProfileCard { showsQuickShare = true }
+                        ShareProfileCard(model: model) { showsQuickShare = true }
                         Text(SharingMessages.intro)
                             .textStyle(.caption)
                             .foregroundStyle(Color.inkMuted)
@@ -157,8 +157,7 @@ struct ProfileScreen: View {
     /// Your profiles, sharing something new, and the rest.
     @ViewBuilder
     private var making: some View {
-        if let profiles = model.profiles { saved(profiles) }
-        templates
+        sharingList(model.profiles ?? [])
         SharePanel(title: SharingMessages.more) {
             NavigationLink { FairDayView(model: model) } label: {
                 ShareLinkRow.label(icon: .iconQrcode, title: SharingMessages.fairDay, detail: SharingMessages.fairDayHint)
@@ -214,8 +213,12 @@ struct ProfileScreen: View {
     }
 
     /// Your saved profiles, to share in two taps, and a new one.
-    private func saved(_ profiles: [SavedProfile]) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+    /// One list for everyone you share with: your own profiles first, then the kinds of recipient you have none for
+    /// yet. Every row works the same: tap it to change or make the profile, Delen to share it.
+    private func sharingList(_ profiles: [SavedProfile]) -> some View {
+        let open = ShareTemplate.allCases.filter { kind in !profiles.contains { $0.template == kind } }
+        let canShare = model.service != nil && model.state != .notSetUp
+        return VStack(alignment: .leading, spacing: 6) {
             SharePanel(title: SharingMessages.profiles) {
                 ForEach(profiles) { profile in
                     SavedProfileRow(profile: profile) { editing = profile } onShare: {
@@ -223,8 +226,22 @@ struct ProfileScreen: View {
                     }
                     ShareRowDivider()
                 }
-                Button {
-                    editing = SavedProfile.starter(for: .employer, items: vault.items)
+                ForEach(open, id: \.self) { kind in
+                    SavedProfileRow(template: kind) {
+                        editing = SavedProfile.starter(for: kind, items: vault.items)
+                    } onShare: {
+                        composing = ShareTemplateChoice(template: kind)
+                    }
+                    ShareRowDivider()
+                }
+                Menu {
+                    ForEach(ShareTemplate.allCases, id: \.self) { kind in
+                        Button {
+                            editing = SavedProfile.starter(for: kind, items: vault.items)
+                        } label: {
+                            Label(SharingMessages.template(kind), image: ShareTemplateIcon.image(kind))
+                        }
+                    }
                 } label: {
                     HStack(spacing: 14) {
                         ShareRowIcon(icon: .iconPlus)
@@ -235,37 +252,13 @@ struct ProfileScreen: View {
                     .padding(.horizontal, 14)
                     .contentShape(.rect)
                 }
-                .buttonStyle(.pave)
             }
-            if profiles.isEmpty {
-                Text(SharingMessages.profilesHint)
-                    .textStyle(.caption)
-                    .foregroundStyle(Color.inkMuted)
-                    .padding(.horizontal, 8)
-            }
-        }
-    }
-
-    private var templates: some View {
-        SharePanel(title: SharingMessages.newShare) {
-            ForEach(Array(ShareTemplate.allCases.enumerated()), id: \.element) { index, template in
-                Button { composing = ShareTemplateChoice(template: template) } label: {
-                    HStack(spacing: 14) {
-                        ShareTemplateIcon(template: template)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(SharingMessages.template(template)).textStyle(.bodyMedium).foregroundStyle(Color.ink)
-                            Text(SharingMessages.templateHint(template)).textStyle(.caption).foregroundStyle(Color.inkMuted).multilineTextAlignment(.leading)
-                        }
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, 14)
-                    .contentShape(.rect)
-                }
-                .buttonStyle(.pave)
-                .disabled(model.service == nil || model.state == .notSetUp)
-                if index < ShareTemplate.allCases.count - 1 { ShareRowDivider() }
-            }
+            .disabled(!canShare)
+            Text(SharingMessages.profilesHint)
+                .textStyle(.caption)
+                .foregroundStyle(Color.inkMuted)
+                .padding(.horizontal, 8)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

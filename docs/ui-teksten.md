@@ -321,6 +321,16 @@ Delen is tijdelijk, per onderdeel te kiezen, te pauzeren en in te trekken (kick-
 | Leeg | Er is nog niets om te delen. Voeg eerst bewijs toe aan je kluis. |
 | Chats selecteren | Tik op de chats die je wilt vastzetten of verwijderen. |
 
+### Je kaart, je profielen en de tijdlijn (iOS)
+
+| Waar | Tekst |
+|---|---|
+| Kaart (voorkant) | PAVE / {n} van {totaal} geverifieerd / naam / Student {opleiding} / geverifieerd bewijs als vinkjes / Nog geen geverifieerd bewijs. Vraag het aan bij een bewijsstuk in je kluis. / Tik om om te draaien |
+| Kaart (achterkant) | QR-code van Snel delen, Nog niet bekeken / Bekeken door …, Stopt vanzelf op … / Er is nu geen QR-code. Maak er een met Snel delen; die staat dan hier. / Maak QR-code |
+| Je profielen | Je eigen profielen, daarna Werkgever, Onderwijs, Gemeente en Banenbeurs als je daar nog geen profiel voor hebt / Delen / Nieuw profiel / Tik op een rij om het profiel samen te stellen of aan te passen. Met Delen kies je daarna met wie en hoe lang. |
+| Tijdlijn | Tijdlijn / Komt eraan / Op {status} gezet / Gedeeld met {ontvanger} / {naam} heeft je sollicitatie bekeken / {naam} heeft je cv of brief gedownload / Delen met {ontvanger} gestopt / Uitnodiging voor een kennismaking (demo) / Kennismakingsgesprek / Deadline om te versturen / Vandaag, Gisteren, Morgen {tijd} / Toon alles ({n}) |
+| Watch | Volgende stap / Gesprek bij {bedrijf} / Uitnodiging van {bedrijf} / Deadline {bedrijf} / {dag} {tijd} · antwoord op je iPhone / Je kaartje / Tot {moment} |
+
 ## Terug en sluiten (iOS)
 
 Een flow met stappen heeft linksboven een pijl terug naar de vorige stap, en op de eerste stap Annuleer. Een blad dat je in één keer invult, heeft rechtsboven een kruisje. Met iets ingevuld vraagt PAVE eerst of je wilt stoppen, ook als je het blad naar beneden veegt.
