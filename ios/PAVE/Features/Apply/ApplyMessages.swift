@@ -72,6 +72,15 @@ enum ApplyMessages {
 
     // Going back, stopping and sharing
     static let backToApplication = "Terug naar je sollicitatie"
+    static let steps = ["Ontwerp", "Inhoud", "Schrijven"]
+    static let saved = "Bewaard op dit toestel"
+    static func sharedLooks(_ count: Int) -> String {
+        switch count {
+        case 0: "Gedeeld, nog niet bekeken"
+        case 1: "Gedeeld, 1 keer bekeken"
+        default: "Gedeeld, \(count) keer bekeken"
+        }
+    }
     static func backToApplicationAt(_ company: String) -> String { "Terug naar je sollicitatie bij \(company)" }
     static let stopQuestion = "Stoppen met deze sollicitatie?"
     static let stopHint = "Je gekozen ontwerp en inhoud worden niet bewaard."

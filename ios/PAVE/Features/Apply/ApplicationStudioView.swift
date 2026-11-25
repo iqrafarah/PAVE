@@ -52,11 +52,13 @@ struct ApplicationStudioView: View {
             case .gallery:
                 VStack(spacing: 0) {
                     stepBar(back: nil)
+                    steps(current: 0)
                     ApplicationGalleryView(model: model, photo: photo)
                 }
             case .start:
                 VStack(spacing: 0) {
                     stepBar { model.stage = .gallery }
+                    steps(current: 1)
                     ApplicationContentView(model: model, photo: photo) { model.stage = .gallery }
                 }
             case .hub:
@@ -134,9 +136,11 @@ struct ApplicationStudioView: View {
                         .background(Color.canvas)
                         Rectangle().fill(Color.cardBorder).frame(width: 1)
                         ApplicationCanvas(model: model, photo: photo)
+                            .overlay(alignment: .top) { ApplicationSavedNote(savedAt: model.savedAt) }
                     }
                 } else {
                     ApplicationCanvas(model: model, photo: photo)
+                        .overlay(alignment: .top) { ApplicationSavedNote(savedAt: model.savedAt) }
                         // Over the page, so nothing moves when her questions arrive.
                         .overlay(alignment: .bottom) {
                             if model.openQuestions > 0, model.selection == nil {
@@ -361,6 +365,13 @@ struct ApplicationStudioView: View {
         }
         .presentationDetents([.medium, .large])
         .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+    }
+
+    /// Where a new application is: the same steps as adding evidence to the vault.
+    private func steps(current: Int) -> some View {
+        PaveStepper(steps: ApplyMessages.steps, current: current)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 8)
     }
 
     // MARK: Leaving and sharing

@@ -20,6 +20,8 @@ final class ApplicationStudioModel: Identifiable {
     /// Made before, or begun now: kept on this device. What is chosen in the gallery and the content step before that
     /// is not kept, so closing there leaves nothing behind.
     private(set) var isKept: Bool
+    /// When the draft was last written to this device, for the "Bewaard" note in the editor.
+    private(set) var savedAt: Date?
     var document = ApplicationDocumentKind.cv
     var selection: ApplicationBlock?
     /// Ayla is writing this block, or the whole letter.
@@ -307,7 +309,10 @@ final class ApplicationStudioModel: Identifiable {
             try? await Task.sleep(for: .milliseconds(600))
             guard let self, !Task.isCancelled else { return }
             self.saving = nil
-            if self.isKept { self.store.save(self.draft) }
+            if self.isKept {
+                self.store.save(self.draft)
+                self.savedAt = .now
+            }
         }
     }
 
@@ -318,7 +323,10 @@ final class ApplicationStudioModel: Identifiable {
         saving?.cancel()
         saving = nil
         if shown != draft { shown = draft }
-        if isKept { store.save(draft) }
+        if isKept {
+            store.save(draft)
+            if stage == .editor { savedAt = .now }
+        }
     }
 
     func entry(_ id: String) -> CVEntry? {

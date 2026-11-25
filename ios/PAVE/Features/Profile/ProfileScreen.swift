@@ -23,9 +23,11 @@ struct ProfileScreen: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
+                    ShareProfileCard { composing = ShareTemplateChoice(template: .fair) }
                     Text(SharingMessages.intro)
-                        .textStyle(.bodyMedium)
+                        .textStyle(.caption)
                         .foregroundStyle(Color.inkMuted)
+                        .padding(.horizontal, 8)
                         .fixedSize(horizontal: false, vertical: true)
                     content
                 }

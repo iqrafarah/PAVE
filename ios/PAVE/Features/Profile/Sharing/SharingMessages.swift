@@ -74,6 +74,12 @@ enum SharingMessages {
     static let back = "Terug"
     static let backToAyla = "Terug naar Ayla"
     static let manage = "Beheren"
+    static let you = "Jij"
+    static let quickShare = "Snel delen op een beurs"
+    static func evidenceCount(_ count: Int, verified: Int) -> String {
+        let items = count == 1 ? "1 bewijsstuk" : "\(count) bewijsstukken"
+        return verified == 0 ? items : "\(items) · \(verified) geverifieerd"
+    }
     static let scanAgain = "Opnieuw scannen"
     static let showShare = "Bekijk wat je deelt"
     static let cancel = "Annuleer"

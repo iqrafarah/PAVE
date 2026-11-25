@@ -199,6 +199,28 @@ enum AylaMessages {
     }
     static let vacancyApplicationsTab = "Sollicitaties"
     static let vacancySavedEmptyTitle = "Nog niets bewaard"
+    // Filtering and ordering vacancies
+    static let vacancyOrderAsFound = "Zoals gevonden"
+    static let vacancyOrderBestMatch = "Beste match eerst"
+    static let vacancyFilter = "Filter"
+    static func vacancyFilterCount(_ count: Int) -> String { "Filter (\(count))" }
+    static func vacancyShown(_ shown: Int, of total: Int) -> String { shown == total ? (total == 1 ? "1 vacature" : "\(total) vacatures") : "\(shown) van \(total) vacatures" }
+    static let vacancyFilterPlace = "Plaats"
+    static let vacancyFilterHours = "Uren"
+    static let vacancyFilterEmployer = "Werkgever"
+    static let vacancyFilterAll = "Alle"
+    static let vacancyFullTime = "Fulltime"
+    static let vacancyPartTime = "Part-time"
+    static let vacancyEmployerDirect = "Direct bij het bedrijf"
+    static let vacancyEmployerAgency = "Uitzendbureau of bemiddelaar"
+    static let vacancyEmployerHint = "Herkend aan de naam van het bedrijf; dat kan een keer mis zijn."
+    static let vacancyFilterClear = "Wis filters"
+    static func vacancyFilterShow(_ count: Int) -> String { count == 1 ? "Toon 1 vacature" : "Toon \(count) vacatures" }
+    static let vacancyFilterNone = "Geen vacature past bij deze filters."
+    static let vacancyFilterNoneHint = "Zet een filter weer op Alle om meer te zien."
+    static func vacancyMatch(_ percent: Int) -> String { "\(percent)% match" }
+    static let vacancyMatchHint = "Een inschatting uit een stukje van de vacaturetekst"
+
     static let vacancySavedEmpty = "Tik op Bewaren bij een vacature om hem hier terug te vinden, ook op je andere apparaten."
     static let vacancySearchAsk = "Zoek vacatures die bij me passen"
     static let vacancySearchWithAyla = "Zoek met Ayla"

@@ -21,8 +21,12 @@ struct VacancyList: View {
     let onAsk: (Vacancy) -> Void
 
     @State private var applications: [ApplicationDraft] = []
+    @State private var filter = VacancyFilter()
+    @State private var showsFilters = false
 
-    var shown: [Vacancy] { Self.shown(tab, found: vacancies, model: model) }
+    /// The tab's vacancies before the filter.
+    private var all: [Vacancy] { Self.shown(tab, found: vacancies, model: model) }
+    var shown: [Vacancy] { filter.apply(to: all) }
 
     static func shown(_ tab: Tab, found: [Vacancy], model: AylaChatModel) -> [Vacancy] {
         switch tab {
@@ -46,8 +50,18 @@ struct VacancyList: View {
             if tab == .found, !vacancies.isEmpty {
                 VacancySearchSummary(search: search, usedData: usedData, chosenCount: model.chosenItemCount, onChooseData: onChooseData)
             }
+            if tab != .applications, all.count > 1 {
+                VacancyFilterBar(filter: $filter, shown: shown.count, total: all.count) { showsFilters = true }
+            }
             if tab == .applications {
                 ApplicationsList(applications: applications) { onOpenApplication?($0) }
+            } else if shown.isEmpty, !all.isEmpty {
+                VStack(spacing: 12) {
+                    PaveEmptyState(icon: .iconBriefcase, title: AylaMessages.vacancyFilterNone, message: AylaMessages.vacancyFilterNoneHint)
+                    PaveSecondaryButton(title: AylaMessages.vacancyFilterClear) { filter = VacancyFilter(order: filter.order) }
+                        .frame(maxWidth: 260)
+                }
+                .padding(.vertical, 16)
             } else if shown.isEmpty {
                 PaveEmptyState(
                     icon: .iconBriefcase,
@@ -76,6 +90,8 @@ struct VacancyList: View {
             }
         }
         .animation(.snappy(duration: 0.25), value: tab)
+        .animation(.snappy(duration: 0.25), value: filter)
+        .sheet(isPresented: $showsFilters) { VacancyFilterSheet(filter: $filter, vacancies: all) }
         .task { await model.loadSavedVacancies() }
         // The applications live on this device and change while the studio is open over the panel.
         .task(id: tab) { applications = ApplicationStore().all() }

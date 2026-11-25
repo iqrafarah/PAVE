@@ -15,11 +15,16 @@ struct ApplicationHubView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                header
-                ApplicationHubStatus(model: model)
-                if model.tracking.history.count > 0 { history }
+                // What you come back for first: where it stands, your CV and letter, sharing; then keeping track.
+                Text(ApplyMessages.hubTitle)
+                    .textStyle(.emptyTitle)
+                    .foregroundStyle(Color.ink)
+                    .accessibilityAddTraits(.isHeader)
+                ApplicationSummaryCard(draft: model.shown, shares: shares ?? [])
                 documents
                 if let onShare { sharing(onShare) }
+                ApplicationHubStatus(model: model)
+                if model.tracking.history.count > 0 { history }
                 nextSteps
             }
             .padding(.horizontal, 20)
@@ -30,19 +35,6 @@ struct ApplicationHubView: View {
         }
         .scrollIndicators(.hidden)
         .scrollDismissesKeyboard(.interactively)
-    }
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(ApplyMessages.hubTitle)
-                .textStyle(.emptyTitle)
-                .foregroundStyle(Color.ink)
-                .accessibilityAddTraits(.isHeader)
-            Text("\(model.draft.vacancy.title) · \(model.draft.vacancy.company)")
-                .textStyle(.bodyMedium)
-                .foregroundStyle(Color.inkMuted)
-                .fixedSize(horizontal: false, vertical: true)
-        }
     }
 
     private var history: some View {

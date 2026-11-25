@@ -293,3 +293,14 @@ Een flow met stappen heeft linksboven een pijl terug naar de vorige stap, en op 
 | Bevestiging aanvragen | Annuleer / na versturen: Bekijk in meldingen / Sluiten |
 | Meldingen, beoordelen | Je hebt het bewijs geverifieerd. / Je hebt de aanvraag afgewezen. |
 | Delen, overzicht en beheren | Nog niet ingevuld bij Instellingen › Account (als je naam ontbreekt) / Regel onder je naam, bijvoorbeeld: student HBO-ICT / Wat de ontvanger mag / Controleer en deel: Wat, Met wie, Waarvoor, Tot en met, Mag (Alleen bekijken / Bekijken en downloaden) / Je ziet wanneer iemand kijkt, en je kunt het altijd pauzeren of intrekken. / Beheren: Pauzeer of Hervat, Verleng, Zo ziet de ontvanger het, Intrekken / {n} keer bekeken · laatst {tijd} |
+
+## Overzicht en filters (iOS)
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Nieuwe sollicitatie, stappen | Ontwerp / Inhoud / Schrijven |
+| Editor | Bewaard op dit toestel (kort na elke wijziging) |
+| Mijn sollicitatie, kaart bovenaan | {functie} / {bedrijf} · {plaats} / status: Concept, Verstuurd, Gesprek, Aanbod, Afgewezen / Over {n} dagen, Morgen, Vandaag, Verlopen / Gedeeld, nog niet bekeken / Gedeeld, {n} keer bekeken |
+| Profiel, kaart bovenaan | {naam} of Jij / Student {diploma} / {n} bewijsstukken · {n} geverifieerd / Snel delen op een beurs |
+| Vacatures, filteren | {n} vacatures / {n} van {totaal} vacatures / Zoals gevonden / Beste match eerst / Filter, Filter ({n}) / Plaats, Uren, Werkgever / Alle, Fulltime, Part-time / Direct bij het bedrijf, Uitzendbureau of bemiddelaar / Herkend aan de naam van het bedrijf; dat kan een keer mis zijn. / Wis filters / Toon {n} vacatures / Geen vacature past bij deze filters. / Zet een filter weer op Alle om meer te zien. |
+| Vacaturekaart | {n}% match (VoiceOver: Een inschatting uit een stukje van de vacaturetekst) |
