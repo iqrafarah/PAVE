@@ -294,16 +294,18 @@ struct EmailThreadScreen: View {
         }
         .onAppear { email.openThreadID = threadID }
         .onDisappear { if email.openThreadID == threadID { email.openThreadID = nil } }
+        // On the conversation, not on the bar: laid out inside the safe area the bar below leaves, its bottom edge is the
+        // top of the reply bar, so the button sits just above the field.
+        .overlay(alignment: .bottom) {
+            if isAwayFromBottom {
+                ChatScrollDownButton { scrollToBottom(animated: true) }
+                    .padding(.bottom, 10)
+                    .transition(.scale(scale: 0.6).combined(with: .opacity))
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: isAwayFromBottom)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             composer(thread)
-                .overlay(alignment: .top) {
-                    if isAwayFromBottom {
-                        ChatScrollDownButton { scrollToBottom(animated: true) }
-                            .alignmentGuide(.top) { $0[.bottom] + 10 }
-                            .transition(.scale(scale: 0.6).combined(with: .opacity))
-                    }
-                }
-                .animation(.easeOut(duration: 0.2), value: isAwayFromBottom)
         }
     }
 
