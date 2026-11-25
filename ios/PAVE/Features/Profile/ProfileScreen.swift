@@ -16,6 +16,7 @@ struct ProfileScreen: View {
     /// Chosen after scanning an employer: the composer opens once the scanner has gone.
     @State private var sharesBack: FairEmployer?
     @State private var showsReport = false
+    @State private var showsQuickShare = false
     @State private var showsPrivacy = false
     @State private var showsEarlier = false
     @State private var editing: SavedProfile?
@@ -34,14 +35,7 @@ struct ProfileScreen: View {
                             }
                             .buttonStyle(.pave)
                         }
-                        ShareProfileCard {
-                            // A fair profile, when there is one, is what you show at a stand.
-                            if let fair = model.profiles?.first(where: { $0.template == .fair }) {
-                                composing = ShareTemplateChoice(template: .fair, withApplication: false, profile: fair)
-                            } else {
-                                composing = ShareTemplateChoice(template: .fair)
-                            }
-                        }
+                        ShareProfileCard { showsQuickShare = true }
                         Text(SharingMessages.intro)
                             .textStyle(.caption)
                             .foregroundStyle(Color.inkMuted)
@@ -132,6 +126,7 @@ struct ProfileScreen: View {
             if !model.live.isEmpty { Text(SharingMessages.stopAllHint(model.live.count)) }
         }
         .sheet(isPresented: $showsPrivacy) { SharePrivacySheet() }
+        .sheet(isPresented: $showsQuickShare) { QuickShareSheet(model: model) { showsQuickShare = false } }
         .alert(SharingMessages.title, isPresented: Binding(get: { model.problem != nil }, set: { if !$0 { model.problem = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {

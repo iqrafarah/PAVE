@@ -208,6 +208,28 @@ enum SharingMessages {
     static let profileSaveFailed = "Het profiel kon niet worden bewaard. Probeer het opnieuw."
     static let you = "Jij"
     static let quickShare = "Snel delen"
+    static let quickShareIntro = "Laat iemand een QR-code scannen of stuur een link. Het werkt meteen en stopt vanzelf."
+    static let quickShareWhat = "Wat deel je?"
+    static let quickShareWhole = "Je profiel"
+    static func quickShareWholeDetail(_ count: Int) -> String { count == 1 ? "1 bewijsstuk, kort" : "\(count) bewijsstukken, kort" }
+    static let quickShareWho = "Met wie? (mag leeg)"
+    static let quickShareWhoPrompt = "Bijvoorbeeld: Sanne van Jumbo"
+    static let quickShareHowLong = "Hoe lang?"
+    static let quickShareMake = "Maak QR-code"
+    static let quickShareRecipient = "Snel gedeeld"
+    static func quickShareTitle(_ what: String) -> String { "\(what), snel gedeeld" }
+    static let quickShareSeesLink = "Bekijk wat zij zien"
+    static let quickShareWaiting = "Nog niet bekeken"
+    static func quickShareLooked(_ date: Date, by name: String?) -> String {
+        let time = date.formatted(.dateTime.hour().minute().locale(Locale(identifier: "nl_NL")))
+        return name.map { "Bekeken door \($0) om \(time)" } ?? "Bekeken om \(time)"
+    }
+    static func quickShareEnds(_ date: Date) -> String {
+        "Stopt vanzelf op \(date.formatted(.dateTime.weekday(.wide).day().month(.wide).hour().minute().locale(Locale(identifier: "nl_NL"))))"
+    }
+    static let quickShareStop = "Stop met delen"
+    static let quickShareStopped = "Gestopt. De link en de QR-code werken niet meer."
+    static let quickShareEmpty = "Er is nog niets om te delen. Voeg eerst bewijs toe aan je kluis."
     static func evidenceCount(_ count: Int, verified: Int) -> String {
         let items = count == 1 ? "1 bewijsstuk" : "\(count) bewijsstukken"
         return verified == 0 ? items : "\(items) · \(verified) geverifieerd"

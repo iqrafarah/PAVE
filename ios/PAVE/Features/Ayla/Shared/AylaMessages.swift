@@ -153,6 +153,7 @@ enum AylaMessages {
         default: nil
         }
     }
+    static let selectChatsHint = "Tik op de chats die je wilt vastzetten of verwijderen."
     static let vacancyNoMatch = "Ayla heeft deze vacature nog niet met je kluis vergeleken. Vraag het haar hieronder."
     static let vacancyAskButton = "Vraag Ayla"
     static let vacancyActionGaps = "Wat mis ik?"

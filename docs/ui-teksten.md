@@ -310,6 +310,17 @@ Delen is tijdelijk, per onderdeel te kiezen, te pauzeren en in te trekken (kick-
 | Uitnodiging (melding) | Je bent uitgenodigd: {bedrijf} wil je spreken over {functie} op {moment}. |
 | Scannen | Dit is geen code van PAVE. Scan de QR-code op de stand of de poster. / Dit gedeelde profiel kan hier niet worden geopend. Open de link in je browser. / Scannen lukt hier niet. Geef PAVE toegang tot je camera bij Instellingen, of gebruik de Camera-app. |
 
+### Snel delen (iOS, Profiel)
+
+| Waar | Tekst |
+|---|---|
+| Scherm | Snel delen / Laat iemand een QR-code scannen of stuur een link. Het werkt meteen en stopt vanzelf. |
+| Keuzes | Wat deel je? / Je profiel ({n} bewijsstukken, kort) of een van je profielen / Met wie? (mag leeg) (Bijvoorbeeld: Sanne van Jumbo) / E-mail / Hoe lang? 1 dag, 1 week, 1 maand / Bekijk wat zij zien |
+| Knop | Maak QR-code (met Face ID) |
+| Daarna | Nog niet bekeken / Bekeken door {naam} om {tijd} / Stopt vanzelf op {moment} / Stop met delen / Gestopt. De link en de QR-code werken niet meer. |
+| Leeg | Er is nog niets om te delen. Voeg eerst bewijs toe aan je kluis. |
+| Chats selecteren | Tik op de chats die je wilt vastzetten of verwijderen. |
+
 ## Terug en sluiten (iOS)
 
 Een flow met stappen heeft linksboven een pijl terug naar de vorige stap, en op de eerste stap Annuleer. Een blad dat je in één keer invult, heeft rechtsboven een kruisje. Met iets ingevuld vraagt PAVE eerst of je wilt stoppen, ook als je het blad naar beneden veegt.

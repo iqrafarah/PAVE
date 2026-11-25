@@ -23,7 +23,7 @@ struct NotificationInboxRow: View {
                 Text(notification.title)
                     .textStyle(isUnread ? .listTitle : .bodyMedium)
                     .foregroundStyle(Color.ink)
-                    .lineLimit(1)
+                    .lineLimit(2)
                 Text(subtitle)
                     .textStyle(.caption)
                     .foregroundStyle(Color.inkMuted)

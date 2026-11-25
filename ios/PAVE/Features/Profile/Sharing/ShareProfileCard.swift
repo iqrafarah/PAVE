@@ -1,8 +1,8 @@
 import PAVECore
 import SwiftUI
 
-/// The top of Profiel: who you are as others will see you, how much of your evidence is verified, and a quick way to
-/// let someone scan you at a fair.
+/// The top of Profiel: who you are as others will see you, how much of your evidence is verified, and Snel delen: a QR
+/// code or link in one step, for anyone.
 struct ShareProfileCard: View {
     let onQuickShare: () -> Void
 

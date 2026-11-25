@@ -238,7 +238,6 @@ struct NotificationsScreen: View {
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
             .contentMargins(.top, 8, for: .scrollContent)
-            .contentMargins(.horizontal, 8, for: .scrollContent)
             .animation(.snappy, value: visibleNotifications.map(\.id))
             .refreshable { await onRefresh?() }
             .safeAreaInset(edge: .bottom, spacing: 12) {
