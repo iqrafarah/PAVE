@@ -57,7 +57,10 @@ public enum ApplicationBuilder {
 
     /// A plain letter with only what the vault says; Ayla makes it personal later.
     static func letter(for vacancy: Vacancy, items: [VaultItem], wanted: Set<String>, name: String) -> LetterContent {
-        var paragraphs = [LetterParagraph(text: "Met veel interesse las ik de vacature \(vacancy.title) bij \(vacancy.company). Graag stel ik mij voor.")]
+        let opening = vacancy.isOpenApplication
+            ? "Graag stel ik mij voor bij \(vacancy.company). Ik ben benieuwd of er bij jullie een plek is waar ik kan bijdragen."
+            : "Met veel interesse las ik de vacature \(vacancy.title) bij \(vacancy.company). Graag stel ik mij voor."
+        var paragraphs = [LetterParagraph(text: opening)]
         let best = items
             .filter { [.workExperience, .internships, .projects].contains($0.category) }
             .sorted { $0.skills.filter { wanted.contains($0.lowercased()) }.count > $1.skills.filter { wanted.contains($0.lowercased()) }.count }
@@ -66,7 +69,7 @@ public enum ApplicationBuilder {
             let place = item.organisationName.map { " bij \($0)" } ?? ""
             let skills = item.skills.prefix(3).joined(separator: ", ")
             let what = skills.isEmpty ? "" : " Ik werkte daar met \(skills)."
-            paragraphs.append(LetterParagraph(text: "\(item.title)\(place): hier deed ik ervaring op die past bij deze functie.\(what)", sourceItemIDs: [item.id]))
+            paragraphs.append(LetterParagraph(text: "\(item.title)\(place): hier deed ik ervaring op die \(vacancy.isOpenApplication ? "ik graag bij jullie inzet" : "past bij deze functie").\(what)", sourceItemIDs: [item.id]))
         }
         paragraphs.append(LetterParagraph(text: "Ik vertel graag in een gesprek meer over wat ik kan betekenen voor \(vacancy.company)."))
         return LetterContent(salutation: "Beste team van \(vacancy.company),", paragraphs: paragraphs, closing: "Met vriendelijke groet,", signature: name)

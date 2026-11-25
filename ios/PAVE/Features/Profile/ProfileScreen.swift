@@ -55,11 +55,18 @@ struct ProfileScreen: View {
             }
             .scrollIndicators(.hidden)
             .background(Color.canvas.ignoresSafeArea())
-            .refreshable { await model.load() }
+            .refreshable {
+                await vault.load()
+                await model.load()
+            }
             .mainScreenToolbar(SharingMessages.title, onShowMenu: onShowMenu)
             .navigationDestination(item: $opened) { id in ShareDetailView(model: model, shareID: id) }
         }
-        .task { await model.load() }
+        .task {
+            // Sharing chooses from the vault, which may not have been opened yet.
+            if vault.state != .ready { await vault.load() }
+            await model.load()
+        }
         .onChange(of: model.request, initial: true) { _, command in
             guard let command else { return }
             model.request = nil

@@ -174,7 +174,28 @@ enum ApplyMessages {
 
     // The applications
     static let applicationsEmptyTitle = "Nog geen sollicitaties"
-    static let applicationsEmpty = "Tik bij een vacature op Solliciteren om een cv en brief te maken. Hier houd je bij hoe het ermee staat."
+    static let applicationsEmpty = "Tik bij een vacature op Solliciteren, of maak er zelf een. Hier houd je bij hoe het ermee staat."
+    static func letterSubject(_ vacancy: Vacancy) -> String {
+        vacancy.isOpenApplication ? "Betreft: open sollicitatie" : "Betreft: sollicitatie \(vacancy.title)"
+    }
+
+    // Your own application
+    static let newApplication = "Nieuwe sollicitatie"
+    static let newApplicationIntro = "Voor een vacature die je zelf vond, of een open sollicitatie bij een bedrijf. Daarna kies je een ontwerp voor je cv en brief."
+    static let ownCompany = "Bedrijf"
+    static let ownCompanyPrompt = "Bijvoorbeeld Albert Heijn"
+    static let ownCompanyMissing = "Vul het bedrijf in."
+    static let ownTitle = "Functie"
+    static let ownTitlePrompt = "Leeg laten voor een open sollicitatie"
+    static let ownCity = "Plaats"
+    static let ownCityPrompt = "Bijvoorbeeld Eindhoven"
+    static let ownLink = "Link naar de vacature"
+    static let ownLinkPrompt = "Bijvoorbeeld werkenbij.ah.nl/…"
+    static let ownLinkBad = "Dit lijkt geen link. Controleer hem of laat het veld leeg."
+    static let ownText = "Tekst van de vacature"
+    static let ownTextPrompt = "Plak hier de vacature, dan kan Ayla je brief erop afstemmen"
+    static let ownTextNote = "Alleen voor jouw cv en brief. PAVE stuurt niets naar het bedrijf."
+    static let ownStart = "Maak cv en brief"
     static func statusCount(_ status: ApplicationStatus, _ count: Int) -> String { "\(Self.status(status)) · \(count)" }
     static func changedOn(_ date: Date) -> String {
         "Gewijzigd op \(date.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "nl_NL"))))"

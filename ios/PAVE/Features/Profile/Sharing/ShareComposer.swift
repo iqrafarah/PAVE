@@ -41,6 +41,9 @@ struct ShareComposer: View {
     @State private var created: ProfileShare?
     @State private var confirmsDiscard = false
     @State private var didStart = false
+    @State private var makesApplication = false
+    @State private var newVacancy: Vacancy?
+    @Environment(\.vacancyRequest) private var vacancyRequest
 
     init(
         model: SharingModel, template: ShareTemplate, recipientOrganisation: String? = nil, vacancyID: String? = nil,
@@ -113,7 +116,10 @@ struct ShareComposer: View {
         }
         .presentationDetents([.large])
         .sheetDismissGuard(isBlocked: created == nil) { confirmsDiscard = true }
-        .task { start() }
+        .task {
+            if vault.state != .ready { await vault.load() }
+            start()
+        }
     }
 
     private var steps: some View {
@@ -182,16 +188,7 @@ struct ShareComposer: View {
         }
         if template.offersApplication, !model.applications.isEmpty {
             SharePanel(title: SharingMessages.application) {
-                Picker(SharingMessages.application, selection: $applicationID) {
-                    Text(SharingMessages.noApplication).tag(String?.none)
-                    ForEach(model.applications) { draft in
-                        Text("\(draft.vacancy.title) · \(draft.vacancy.company)").tag(Optional(draft.vacancy.id))
-                    }
-                }
-                .tint(Color.paveAccent)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                applicationMenu
                 if application != nil {
                     ShareRowDivider(inset: 14)
                     Toggle(ApplyMessages.cv, isOn: $includesCV).tint(.paveAccentFill).textStyle(.bodyMedium).padding(14)
@@ -201,7 +198,77 @@ struct ShareComposer: View {
             }
             Text(SharingMessages.applicationHint).textStyle(.caption).foregroundStyle(Color.inkMuted).padding(.top, -12)
         }
+        if template.offersApplication, model.applications.isEmpty, vacancyRequest != nil {
+            SharePanel(title: SharingMessages.application) {
+                Button { makesApplication = true } label: {
+                    HStack(spacing: 12) {
+                        Text(ApplyMessages.newApplication)
+                            .textStyle(.bodyMedium)
+                            .foregroundStyle(Color.paveAccent)
+                        Spacer(minLength: 0)
+                        Image(.iconPlus)
+                            .renderingMode(.template)
+                            .resizable()
+                            .scaledToFit()
+                            .paveIconFrame(15)
+                            .foregroundStyle(Color.paveAccent)
+                            .accessibilityHidden(true)
+                    }
+                    .padding(14)
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.pave)
+            }
+            Text(SharingMessages.applicationNoneHint).textStyle(.caption).foregroundStyle(Color.inkMuted).fixedSize(horizontal: false, vertical: true).padding(.top, -12)
+        }
         ShareComposerItems(items: vault.items, template: template, chosen: $chosen)
+            .sheet(isPresented: $makesApplication, onDismiss: {
+                guard let vacancy = newVacancy else { return }
+                newVacancy = nil
+                onDone()
+                vacancyRequest?(.application(vacancy))
+            }) {
+                ApplicationNewSheet { newVacancy = $0 }
+            }
+    }
+
+    /// Which application goes along: the job and the company each on their own line, so a long name never gets cut.
+    private var applicationMenu: some View {
+        Menu {
+            Picker(SharingMessages.application, selection: $applicationID) {
+                Text(SharingMessages.noApplication).tag(String?.none)
+                ForEach(model.applications) { draft in
+                    Button {} label: {
+                        Text(draft.vacancy.title)
+                        Text(draft.vacancy.company)
+                    }
+                    .tag(Optional(draft.vacancy.id))
+                }
+            }
+        } label: {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(application?.vacancy.title ?? SharingMessages.noApplication)
+                        .textStyle(.bodyMedium)
+                        .foregroundStyle(Color.ink)
+                    if let company = application?.vacancy.company {
+                        Text(company)
+                            .textStyle(.caption)
+                            .foregroundStyle(Color.inkMuted)
+                    }
+                }
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color.paveAccent)
+                    .accessibilityHidden(true)
+            }
+            .padding(14)
+            .contentShape(.rect)
+        }
+        .accessibilityLabel(SharingMessages.application)
+        .accessibilityValue(application.map { "\($0.vacancy.title), \($0.vacancy.company)" } ?? SharingMessages.noApplication)
     }
 
     @ViewBuilder

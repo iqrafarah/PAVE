@@ -85,8 +85,17 @@ struct SavedProfileEditor: View {
             .scrollDismissesKeyboard(.interactively)
             .background(Color.canvas)
             .safeAreaInset(edge: .bottom) {
-                PavePrimaryButton(title: SharingMessages.saveProfile, loadingTitle: SharingMessages.saving, isLoading: isSaving) { save() }
-                    .disabled(kept.problem != nil || isSaving)
+                VStack(spacing: 8) {
+                    if let problem = kept.problem {
+                        Text(SharingMessages.profileProblem(problem))
+                            .textStyle(.caption)
+                            .foregroundStyle(Color.inkMuted)
+                            .transition(.opacity)
+                    }
+                    PavePrimaryButton(title: SharingMessages.saveProfile, loadingTitle: SharingMessages.saving, isLoading: isSaving) { save() }
+                        .disabled(kept.problem != nil || isSaving)
+                }
+                .animation(.easeOut(duration: 0.2), value: kept.problem)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 12)
                     .background(Color.canvas)

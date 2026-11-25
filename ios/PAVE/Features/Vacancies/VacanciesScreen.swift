@@ -11,6 +11,7 @@ struct VacanciesScreen: View {
     @State private var tab = VacancyList.Tab.found
     @State private var opened: Vacancy?
     @State private var application: ApplicationStudioModel?
+    @State private var reload = 0
     @Environment(VaultModel.self) private var vault: VaultModel?
     @Environment(ProfileModel.self) private var profile: ProfileModel?
 
@@ -27,6 +28,7 @@ struct VacanciesScreen: View {
                         vacancies: latest.vacancies, model: model, tab: $tab, search: latest.search, usedData: latest.usedData,
                         foundEmptyMessage: AylaMessages.vacancyFoundEmptyOnPage,
                         onOpenApplication: openApplication,
+                        reload: reload,
                         onOpen: { opened = $0 },
                         onAsk: { onRequest(.ask($0)) }
                     )
@@ -58,7 +60,7 @@ struct VacanciesScreen: View {
                 )
             }
         }
-        .fullScreenCover(item: $application) { studio in
+        .fullScreenCover(item: $application, onDismiss: { reload += 1 }) { studio in
             ApplicationStudioView(
                 model: studio, photo: profile?.avatar,
                 onClose: { application = nil },

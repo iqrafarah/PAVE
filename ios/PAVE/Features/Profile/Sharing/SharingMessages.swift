@@ -173,6 +173,15 @@ enum SharingMessages {
     static let profileName = "Naam van het profiel"
     static let profileFor = "Voor wie"
     static let profileItems = "Wat erin staat"
+    static let vaultEmptyTitle = "Je kluis is nog leeg"
+    static let vaultEmpty = "Voeg eerst bewijs toe, zoals een diploma, stage of project. Daarna kies je hier wat je deelt."
+    static let toVault = "Naar je kluis"
+    static func profileProblem(_ problem: SavedProfile.Problem) -> String {
+        switch problem {
+        case .noName: "Geef je profiel een naam."
+        case .nothingChosen: "Kies minstens één bewijsstuk."
+        }
+    }
     static let shareProfile = "Delen"
     static let saveProfile = "Bewaar profiel"
     static let deleteProfile = "Verwijder profiel"
@@ -202,6 +211,7 @@ enum SharingMessages {
     static let application = "Cv en brief"
     static let noApplication = "Geen sollicitatie"
     static let applicationHint = "Uit Mijn sollicitatie, zoals je ze hebt gemaakt."
+    static let applicationNoneHint = "Je hebt nog geen cv of brief. Maak een sollicitatie, dan deel je hem daarna vanuit Mijn sollicitatie."
     static let notNeeded = "Niet nodig voor deze ontvanger"
     static let fromVault = "Uit je kluis"
     static let recipientName = "Naam van de ontvanger"

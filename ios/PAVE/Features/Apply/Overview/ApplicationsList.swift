@@ -6,6 +6,8 @@ import SwiftUI
 struct ApplicationsList: View {
     let applications: [ApplicationDraft]
     let onOpen: (Vacancy) -> Void
+    /// Starts an application for a vacancy from elsewhere or an open one; nil where that cannot open the studio.
+    var onNew: (() -> Void)?
 
     private var groups: [(status: ApplicationStatus, drafts: [ApplicationDraft])] {
         ApplicationStatus.allCases.compactMap { status in
@@ -26,10 +28,17 @@ struct ApplicationsList: View {
 
     var body: some View {
         if applications.isEmpty {
-            PaveEmptyState(icon: .iconBriefcase, title: ApplyMessages.applicationsEmptyTitle, message: ApplyMessages.applicationsEmpty)
-                .padding(.vertical, 16)
+            VStack(spacing: 16) {
+                PaveEmptyState(icon: .iconBriefcase, title: ApplyMessages.applicationsEmptyTitle, message: ApplyMessages.applicationsEmpty)
+                if let onNew {
+                    PaveSecondaryButton(title: ApplyMessages.newApplication, action: onNew)
+                        .frame(maxWidth: 260)
+                }
+            }
+            .padding(.vertical, 16)
         } else {
             VStack(alignment: .leading, spacing: 20) {
+                if let onNew { newButton(onNew) }
                 ForEach(groups, id: \.status) { group in
                     VStack(alignment: .leading, spacing: 10) {
                         Text(ApplyMessages.statusCount(group.status, group.drafts.count))
@@ -43,5 +52,30 @@ struct ApplicationsList: View {
                 }
             }
         }
+    }
+
+    private func newButton(_ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(.iconPlus)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .paveIconFrame(16)
+                    .foregroundStyle(Color.paveAccent)
+                    .paveIconFrame(44)
+                    .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 12))
+                    .accessibilityHidden(true)
+                Text(ApplyMessages.newApplication)
+                    .textStyle(.bodyMedium)
+                    .foregroundStyle(Color.ink)
+                Spacer(minLength: 0)
+            }
+            .padding(16)
+            .background(Color.panel, in: .rect(cornerRadius: 16))
+            .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder, lineWidth: 1) }
+            .contentShape(.rect(cornerRadius: 16))
+        }
+        .buttonStyle(.pave)
     }
 }

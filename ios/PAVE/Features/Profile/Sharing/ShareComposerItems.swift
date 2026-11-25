@@ -9,6 +9,9 @@ struct ShareComposerItems: View {
     /// For a saved profile: chosen evidence can be shown briefly. Nil in the composer.
     var brief: Binding<Set<String>>?
 
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.openDestination) private var openDestination
+
     private var groups: [(category: VaultCategory, items: [VaultItem])] {
         VaultCategory.allCases.compactMap { category in
             let inIt = items.filter { $0.category == category && $0.status != .rejected }
@@ -17,6 +20,20 @@ struct ShareComposerItems: View {
     }
 
     var body: some View {
+        if groups.isEmpty {
+            VStack(spacing: 16) {
+                PaveEmptyState(icon: .iconFolder, title: SharingMessages.vaultEmptyTitle, message: SharingMessages.vaultEmpty)
+                if let openDestination {
+                    PaveSecondaryButton(title: SharingMessages.toVault) {
+                        dismiss()
+                        openDestination(.vault)
+                    }
+                    .frame(maxWidth: 260)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+        }
         ForEach(groups, id: \.category) { group in
             SharePanel(title: group.category.title) {
                 ForEach(Array(group.items.enumerated()), id: \.element.id) { index, item in

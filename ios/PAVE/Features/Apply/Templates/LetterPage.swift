@@ -36,7 +36,7 @@ struct LetterPage: View {
                         .foregroundStyle(theme.muted)
                 }
                 .foregroundStyle(theme.ink)
-                Text("Betreft: sollicitatie \(draft.vacancy.title)")
+                Text(ApplyMessages.letterSubject(draft.vacancy))
                     .font(theme.heading(11, .semibold))
                     .foregroundStyle(draft.template == .frame ? theme.ink : theme.accent)
                     .padding(.top, 8)

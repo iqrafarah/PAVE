@@ -17,12 +17,16 @@ struct VacancyList: View {
     var foundEmptyMessage = AylaMessages.vacancyFoundEmpty
     /// Opens the overview of an application that was made before.
     var onOpenApplication: ((Vacancy) -> Void)?
+    /// Changes when an application may have changed elsewhere, such as in the studio over this list.
+    var reload = 0
     let onOpen: (Vacancy) -> Void
     let onAsk: (Vacancy) -> Void
 
     @State private var applications: [ApplicationDraft] = []
     @State private var filter = VacancyFilter()
     @State private var showsFilters = false
+    @State private var makesApplication = false
+    @State private var newVacancy: Vacancy?
 
     /// The tab's vacancies before the filter.
     private var all: [Vacancy] { Self.shown(tab, found: vacancies, model: model) }
@@ -39,7 +43,7 @@ struct VacancyList: View {
     var body: some View {
         LazyVStack(spacing: 14) {
             // Without an account to keep vacancies in, the applications on this device still have their tab.
-            if model.canSaveVacancies || !applications.isEmpty {
+            if model.canSaveVacancies || !applications.isEmpty || onOpenApplication != nil {
                 VacancyTabs(tab: $tab, found: vacancies.count, saved: model.savedVacancies.count, applications: applications.count, showsSaved: model.canSaveVacancies)
                     .padding(.bottom, 4)
             }
@@ -54,7 +58,7 @@ struct VacancyList: View {
                 VacancyFilterBar(filter: $filter, shown: shown.count, total: all.count) { showsFilters = true }
             }
             if tab == .applications {
-                ApplicationsList(applications: applications) { onOpenApplication?($0) }
+                ApplicationsList(applications: applications, onOpen: { onOpenApplication?($0) }, onNew: onOpenApplication == nil ? nil : { makesApplication = true })
             } else if shown.isEmpty, !all.isEmpty {
                 VStack(spacing: 12) {
                     PaveEmptyState(icon: .iconBriefcase, title: AylaMessages.vacancyFilterNone, message: AylaMessages.vacancyFilterNoneHint)
@@ -92,8 +96,16 @@ struct VacancyList: View {
         .animation(.snappy(duration: 0.25), value: tab)
         .animation(.snappy(duration: 0.25), value: filter)
         .sheet(isPresented: $showsFilters) { VacancyFilterSheet(filter: $filter, vacancies: all) }
+        // The studio opens once this sheet is gone, so the two are never on screen together.
+        .sheet(isPresented: $makesApplication, onDismiss: {
+            guard let vacancy = newVacancy else { return }
+            newVacancy = nil
+            onOpenApplication?(vacancy)
+        }) {
+            ApplicationNewSheet { newVacancy = $0 }
+        }
         .task { await model.loadSavedVacancies() }
         // The applications live on this device and change while the studio is open over the panel.
-        .task(id: tab) { applications = ApplicationStore().all() }
+        .task(id: "\(tab)-\(reload)") { applications = ApplicationStore().all() }
     }
 }
