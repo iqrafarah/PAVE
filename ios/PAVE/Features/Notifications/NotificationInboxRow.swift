@@ -9,15 +9,98 @@ struct NotificationInboxRow: View {
     var count = 1
 
     var body: some View {
+        if notification.kind == .email {
+            emailRow
+        } else {
+            meldingRow
+        }
+    }
+
+    /// E-mail reads as in Messages: who, then the subject, then the start of the last message, and the time.
+    private var emailRow: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(notification.kind.icon)
-                .renderingMode(.template)
-                .resizable()
-                .scaledToFit()
-                .foregroundStyle(notification.kind.tint)
-                .frame(width: 18, height: 18)
-                .frame(width: 36, height: 36)
-                .background(notification.kind.surface, in: .rect(cornerRadius: 10))
+            // A fixed column, so one photo and a group's two line up the same.
+            Group {
+                if notification.emailPeople.isEmpty {
+                    // Locked: no photo either, it would give away who it is.
+                    Image(.iconLockClosedSolid)
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 18, height: 18)
+                        .foregroundStyle(Color.paveAccent)
+                        .frame(width: 44, height: 44)
+                        .background(Color.paveSurfaceTint, in: .circle)
+                } else {
+                    EmailAvatarStack(people: notification.emailPeople, size: 44)
+                }
+            }
+                .frame(width: 58, alignment: .center)
+                .overlay(alignment: .leading) {
+                    if isUnread {
+                        Circle().fill(Color.paveAccent).frame(width: 9, height: 9).offset(x: -10)
+                    }
+                }
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(notification.personName)
+                        .textStyle(isUnread ? .listTitle : .bodyMedium)
+                        .foregroundStyle(Color.ink)
+                        .lineLimit(1)
+                    if notification.emailIsLocked {
+                        Image(.iconLockClosedSolid)
+                            .renderingMode(.template)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 11, height: 11)
+                            .foregroundStyle(Color.inkMuted)
+                            .accessibilityLabel("Vergrendeld")
+                    }
+                    if notification.emailIsMuted {
+                        Image(systemName: "bell.slash.fill")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Color.inkMuted)
+                            .accessibilityLabel("Gedempt")
+                    }
+                    Spacer(minLength: 4)
+                    Text(Self.when(notification.date))
+                        .textStyle(.caption)
+                        .foregroundStyle(isUnread ? Color.paveAccent : Color.inkMuted)
+                }
+                if !notification.title.isEmpty {
+                    Text(notification.title)
+                        .textStyle(.caption)
+                        .foregroundStyle(Color.ink)
+                        .lineLimit(1)
+                }
+                if let preview = notification.emailPreview {
+                    Text(preview)
+                        .textStyle(.caption)
+                        .foregroundStyle(Color.inkMuted)
+                        .lineLimit(2)
+                }
+            }
+        }
+        .padding(.leading, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(.rect)
+    }
+
+    private var meldingRow: some View {
+        HStack(alignment: .top, spacing: 12) {
+            if notification.kind == .email, !notification.emailPeople.isEmpty {
+                // E-mail is from a person: their photo, as in a chat list.
+                EmailAvatarStack(people: notification.emailPeople, size: 36)
+            } else {
+                Image(notification.kind.icon)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .foregroundStyle(notification.kind.tint)
+                    .frame(width: 18, height: 18)
+                    .frame(width: 36, height: 36)
+                    .background(notification.kind.surface, in: .rect(cornerRadius: 10))
+            }
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(notification.title)

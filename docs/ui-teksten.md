@@ -80,6 +80,80 @@
 | Verwijderen mislukt | De melding kon niet worden verwijderd. Probeer het opnieuw. |
 | Terugzetten mislukt | De melding kon niet worden teruggezet. Probeer het opnieuw. |
 
+## E-mail in Meldingen (iOS)
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Kaart in Meldingen | Je e-mail ook hier? — Koppel iCloud Mail en beantwoord e-mails als een chat. · Koppel |
+| Menu (⋯) | E-mailaccount koppelen / E-mailaccounts |
+| Soort melding | E-mail |
+| Scherm | E-mail |
+| Kopjes | E-mailaccount koppelen / Gekoppeld |
+| iCloud | iCloud Mail — Je @icloud.com-adres, ook in Mail op je Mac |
+| Uitleg | Je e-mails verschijnen bij je meldingen. Je kunt ze daar lezen en beantwoorden. |
+| Privacy | PAVE haalt je e-mail live op bij je provider en bewaart die niet op een server. Je inloggegevens staan alleen in de sleutelhanger van deze iPhone en blijven daar tot je ontkoppelt. |
+| iCloud koppelen, titel | iCloud Mail koppelen |
+| iCloud koppelen, kopje | Je iCloud-e-mailadres en een app-specifiek wachtwoord |
+| iCloud koppelen, uitleg | Je doet dit maar één keer: PAVE onthoudt het veilig op deze iPhone. Gebruik niet je gewone Apple-wachtwoord. Maak in je browser bij account.apple.com › Inloggen en beveiliging › App-specifieke wachtwoorden een nieuw wachtwoord voor PAVE en plak het hier. · Ga naar account.apple.com |
+| Knoppen | Annuleren / Koppelen / Bezig… / Ontkoppelen |
+| Ontkoppelen, vraag | {adres} ontkoppelen? |
+| Ontkoppelen, uitleg | PAVE vergeet je wachtwoord. Je e-mails blijven gewoon in je mailbox. Trek het app-specifieke wachtwoord ook in bij account.apple.com als je het niet meer gebruikt. |
+| Filter, kopje | Welke e-mails zie je? |
+| Filter | Je ziet alleen gesprekken met mensen die je eerder mailde of die in je contacten staan. Nieuwsbrieven en automatische berichten komen er niet in. |
+| Contacten | Gebruik ook je contacten / Mensen uit je contacten komen er ook in / PAVE mag niet in je contacten kijken. Je kunt dat aanzetten in de Instellingen van je iPhone. |
+| Vraag van iOS (contacten) | PAVE kijkt welke e-mails van mensen uit je contacten komen, zodat alleen die bij je meldingen staan. Je contacten blijven op je iPhone. |
+| Menu ⋯ in Meldingen | Nieuw bericht — Alles als gelezen markeren · Recent verwijderd — E-mailaccounts |
+| Tabbladen in Meldingen | Alles · Gesprekken (e-mail) · Bewijs |
+| Banner bij nieuwe e-mail | {foto} {naam} · nu / {begin van het bericht} |
+| Leeg, Gesprekken | Geen gesprekken — E-mails van mensen die je kent staan hier. Begin een gesprek via ⋯ › Nieuw bericht. (zonder account: Koppel je e-mail via ⋯ om je gesprekken hier te zien.) |
+| Leeg, Bewijs | Niets over je bewijs |
+| E-mailrij | {naam} · {tijd} / {onderwerp} / {laatste bericht} (eigen bericht: Jij: …, alleen een bestand: Bijlage / {n} bijlagen) |
+| Nieuw bericht | Nieuw bericht · Aan (naam@voorbeeld.nl) · Kies uit Contacten · Onderwerp · Je bericht · Bijlage toevoegen · Annuleren / Verstuur / Bezig… |
+| Nieuw bericht, onder Aan | Je verstuurt vanaf {adres}. |
+| Gesprek, tijd tussen berichten | Vandaag 21:59 / Gisteren 14:02 / di 14:02 / 24 nov. 14:02 |
+| Onder je laatste bericht | Verstuurd |
+| Antwoordveld | Bericht |
+| Plusknop (bijlage) | Foto's / Bestand / Uit kluis halen |
+| Uit kluis halen | Uit kluis halen · Voeg toe ({aantal}) · {soort} · {n} bestand(en) |
+| Kluis zonder bestanden | Geen bestanden in je kluis — Voeg eerst bewijs met een document toe aan je kluis. |
+| Kluisbestand ophalen mislukt | {bestand} kon niet uit je kluis worden gehaald. Probeer het opnieuw. |
+| Info (tik op de naam) | Info · Foto's · Bestanden · Gesprekken |
+| Info, groep | {n} mensen · Mensen |
+| Vastzetten (vegen naar rechts, vasthouden) | Vastzetten / Losmaken |
+| Gesprek verwijderen (vegen naar links, vasthouden) | Verwijderen · balk: Gesprek verwijderd · Ongedaan maken |
+| Bericht vasthouden | Antwoord / Allen antwoorden / Doorsturen / Kopiëren / Bekijk opgemaakt / Verwijderen |
+| Bijlage vasthouden | Openen / Bewaar in kluis / Doorsturen / Verwijderen |
+| Kluisknop naast een bijlage | {bestand} bewaren in je kluis (opent Bewijs toevoegen met het bestand erin) |
+| Aan wie je antwoordt (alleen na Antwoord of Allen antwoorden) | Aan: iedereen / Aan: {naam} · Aan iedereen / Alleen aan {naam} · Terug naar antwoorden aan iedereen |
+| Menu ⋯ in een gesprek | Laat Ayla samenvatten / Laat Ayla een antwoord voorstellen · Gesprek doorsturen / Dempen / Dempen opheffen / Vergrendelen / Ontgrendelen |
+| Gedempt | Gedempt · Je krijgt geen banner voor dit gesprek. |
+| Vergrendeld gesprek (rij, banner) | Vergrendeld gesprek · E-mail |
+| Vergrendeld, pincode | Typ je pincode om dit gesprek te openen. · eerste keer: Kies 4 cijfers. Daarmee open je je vergrendelde chats en e-mails. |
+| Vergrendelen, titel | Gesprek vergrendelen |
+| Doorsturen | Doorsturen · Doorgestuurd bericht / Doorgestuurd gesprek · {n} berichten · {naam of Jij} · {n} bijlage(n) · Je bericht (mag leeg) · Bijlagen ophalen… |
+| Doorsturen, bijlagen mislukt | De bijlagen konden niet worden opgehaald. Je kunt het bericht zonder ze doorsturen. |
+| Doorgestuurde tekst | ---------- Doorgestuurd bericht ---------- / Van: / Datum: / Onderwerp: / Aan: / Cc: |
+| Opgemaakt bekijken | Bekijk opgemaakt · Klaar |
+| Afbeeldingen in opgemaakte mail | Afbeeldingen staan uit, zodat de afzender niet ziet dat je de mail opent. · Laden |
+| ✨ in het antwoordveld (leeg veld) | Vraag Ayla · Stel een antwoord voor / Vat samen · tijdens schrijven: Ayla schrijft een antwoord… |
+| ✨ in het antwoordveld (met tekst) | Beter formuleren met Ayla — Ayla maakt van je tekst een net antwoord op deze mail |
+| Ayla, toestemming (eenmalig) | De mail aan Ayla laten zien? — Hiervoor gaat de tekst van dit gesprek naar Ayla, met de namen en adressen erin. Ze gebruikt hem alleen hiervoor; er komt geen chat van bij je chats. Ayla kan fouten maken, dus lees na wat ze schrijft. · Vraag Ayla / Annuleren |
+| Samenvatting | Samenvatting van Ayla · {tekst} · Ayla kan fouten maken. · Samenvatting sluiten |
+| Ayla niet beschikbaar | Ayla kon nu niet helpen. Probeer het opnieuw. |
+| Terugzetten mislukt (e-mail) | Terugzetten lukte niet — Dit gesprek staat niet meer in de prullenmand van iCloud. Het is definitief verwijderd en kan niet meer terug. |
+| Melding op het toestel (nieuwe e-mail) | {naam} / {onderwerp} · vergrendeld: Nieuwe e-mail / In een vergrendeld gesprek |
+| Bericht verwijderen, vraag | Dit bericht verwijderen? — Het gaat naar de prullenmand van je iCloud-mailbox. Daar kun je het in Mail nog terugzetten. · Verwijderen / Annuleren |
+| Info, leeg | Nog geen foto's gedeeld. / Nog geen bestanden gedeeld. |
+| Geen onderwerp | (niets: de onderwerpregel valt weg; bij Info staat dan het begin van het laatste bericht) |
+| Gesprek weg | Gesprek niet gevonden — Het staat niet meer in je mailbox. |
+| Hotmail- of Outlook-adres | Dit is een Hotmail- of Outlook-adres. PAVE werkt alleen met iCloud Mail: een @icloud.com-, @me.com- of @mac.com-adres. |
+| iCloud met ander adres | iCloud Mail werkt alleen met een @icloud.com-, @me.com- of @mac.com-adres. Je gewone Apple-inlogadres werkt hier niet als het van een andere provider is. |
+| Verkeerd wachtwoord | Het e-mailadres of het app-specifieke wachtwoord klopt niet. |
+| Toegang verlopen | Je toegang tot je e-mail is verlopen. Koppel je account opnieuw. |
+| Geen verbinding | Je e-mail kon niet worden opgehaald. Controleer je internetverbinding en probeer opnieuw. |
+| Te grote bijlage | {bestand} is te groot om te versturen. Kies een kleiner bestand. |
+| Versturen mislukt | Je antwoord kon niet worden verstuurd. Probeer opnieuw. |
+
 ## Vacatures in de Ayla-chat (iOS)
 
 Vacatures staan niet in het menu. Je zoekt ze in de chat met Ayla; ze openen in een paneel over de chat, net als de kluis.

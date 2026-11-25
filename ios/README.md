@@ -35,6 +35,7 @@ PAVE/
     Profile/      Profiel (nu nog leeg: delen bestaat nog niet)
     Settings/     Instellingen: je account en uitloggen
     Notifications/ Meldingen: overzicht, banner, lokale meldingen en aanvraagdetail
+      Email/      E-mail in Meldingen: iCloud Mail (IMAP/SMTP), live opgehaald; gesprek als chat
   Resources/      AppIcon.icon, Assets.xcassets (iconen)
 PAVEWatch/        Apple Watch-app (spraakbot, geen volledige interface)
 PAVEWidgets/      Widgets en knoppen voor het Bedieningspaneel (WidgetKit-extensie)

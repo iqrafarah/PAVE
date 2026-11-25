@@ -20,6 +20,8 @@ struct MainView: View {
     @Environment(\.dynamicTypeSize) private var deviceTextSize
     @State private var watchConnection = WatchConnectionModel()
     @State private var notificationsModel: NotificationsModel
+    /// iCloud Mail, read live on this iPhone; its conversations show up in Meldingen.
+    @State private var emailModel = EmailModel()
     @State private var destination = MainDestination.ayla
     /// Demo: the Camera Control button steers PAVE while "knopmodus" is on.
     @State private var cameraControl = PaveCameraControl()
@@ -33,6 +35,9 @@ struct MainView: View {
     /// When "Zoeken in chats" was asked for, so the search field of the chats takes the keyboard.
     @State private var chatSearchRequestedAt: Date?
     @State private var showsSearch = false
+    /// `visibleBanner` as it is on screen, changed with an explicit animation: the models set their banner from a
+    /// background refresh, where an implicit animation on the overlay did not catch the card appearing.
+    @State private var shownBanner: PaveNotification?
     private let connection = PaveConnection.shared
 
     /// Wide enough to show the chats next to the conversation.
@@ -48,6 +53,57 @@ struct MainView: View {
         _devices = State(initialValue: SignedInDevicesModel(service: devicesService))
         _profile = State(initialValue: ProfileModel(service: profileService))
         _notificationsModel = State(initialValue: NotificationsModel(service: notificationsService))
+    }
+
+    /// Meldingen and e-mail conversations you have not read: the bell and the app icon.
+    private var unreadCount: Int { notificationsModel.unreadCount + emailModel.unreadCount }
+
+    private var currentBanner: PaveNotification? { notificationsModel.banner ?? emailModel.banner }
+
+    /// The banner that may show here: in Meldingen the list shows what is new; inside an e-mail conversation, mail for
+    /// another one still gets its banner, as in Messages.
+    private var visibleBanner: PaveNotification? {
+        guard let banner = currentBanner else { return nil }
+        return destination != .notifications || (banner.kind == .email && emailModel.openThreadID != nil) ? banner : nil
+    }
+
+    @ViewBuilder
+    private var bannerView: some View {
+        if let banner = shownBanner {
+            NotificationBanner(notification: banner) {
+                // A message opens its conversation, not just the list.
+                emailModel.threadToOpen = banner.emailThreadID
+                dismissBanners()
+                open(.notifications)
+                isMenuOpen = false
+            } onDismiss: {
+                dismissBanners()
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            // The overlay sits outside the screen's environment: without these the photo falls back to initials.
+            .environment(profile)
+            .environment(emailModel)
+            // Its own identity per melding, so a new one replacing the last also comes out of the island.
+            .id(banner.id)
+            .transition(.fromIsland)
+        }
+    }
+
+    private func dismissBanners() {
+        notificationsModel.dismissBanner()
+        emailModel.dismissBanner()
+    }
+
+    /// Meldingen every 30 seconds; mail every two minutes, often enough to feel live without asking the provider all the time.
+    private func pollMeldingen() async {
+        var round = 0
+        while !Task.isCancelled {
+            await notificationsModel.refresh()
+            if round % 4 == 0 { await emailModel.refresh() }
+            round += 1
+            try? await Task.sleep(for: .seconds(30))
+        }
     }
 
     var body: some View {
@@ -103,6 +159,7 @@ struct MainView: View {
         .task { await profile.load() }
         .onChange(of: profile.profile.displayName) { _, name in
             if let name { model.nameChanged(name) }
+            emailModel.senderName = name
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .environment(\.reportMenuButtonFrame) { menuButtonFrame = $0 }
@@ -114,31 +171,24 @@ struct MainView: View {
         .tint(.paveAccent)
         .environment(memory)
         .environment(cameraControl)
-        .environment(\.unreadNotifications, notificationsModel.unreadCount)
-        .overlay(alignment: .top) {
-            if let banner = notificationsModel.banner, destination != .notifications {
-                NotificationBanner(notification: banner) {
-                    notificationsModel.dismissBanner()
-                    open(.notifications)
-                    isMenuOpen = false
-                } onDismiss: {
-                    notificationsModel.dismissBanner()
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .transition(.move(edge: .top).combined(with: .opacity))
-            }
+        .environment(\.unreadNotifications, unreadCount)
+        .environment(emailModel)
+        // A container that is always there, so the card's insertion and removal have something to animate in.
+        .overlay(alignment: .top) { ZStack(alignment: .top) { bannerView } }
+        .onChange(of: visibleBanner?.id, initial: true) {
+            withAnimation(.island) { shownBanner = visibleBanner }
         }
-        .animation(.snappy, value: notificationsModel.banner?.id)
         // New meldingen show up while PAVE is open: a quiet refresh every 30 seconds, and the badge on the icon follows.
         .task(id: PollingState(isActive: scenePhase == .active, isOpen: appState.isOpen)) {
             guard scenePhase == .active, appState.isOpen else { return }
-            while !Task.isCancelled {
-                await notificationsModel.refresh()
-                try? await Task.sleep(for: .seconds(30))
-            }
+            await pollMeldingen()
         }
-        .onChange(of: notificationsModel.unreadCount, initial: true) { _, count in
+        // New mail the moment iCloud has it, not only at the two-minute look.
+        .task(id: PollingState(isActive: scenePhase == .active, isOpen: appState.isOpen)) {
+            guard scenePhase == .active, appState.isOpen else { return }
+            await emailModel.watchForNewMail()
+        }
+        .onChange(of: unreadCount, initial: true) { _, count in
             NotificationAlerts.setBadge(count)
         }
         // Knopmodus: a full press does Ayla's choice, or starts talking. The presses are caught on an empty layer
@@ -189,6 +239,10 @@ struct MainView: View {
             if phase == .background {
                 model.commitPendingDeletion()
                 memory.commitPendingForget()
+                // Locked e-mail conversations need the PIN again, as locked chats do.
+                emailModel.showsLocked = false
+                // Ask iOS again for a look in the background, for new meldingen and mail.
+                NotificationAlerts.scheduleRefresh()
             }
         }
         .onChange(of: model.conversationList, initial: true) { _, list in
@@ -220,6 +274,10 @@ struct MainView: View {
         }
         if appState.opensNotifications {
             appState.opensNotifications = false
+            if let threadID = appState.emailThreadToOpen {
+                appState.emailThreadToOpen = nil
+                emailModel.threadToOpen = threadID
+            }
             isMenuOpen = false
             open(.notifications)
         }
@@ -366,18 +424,37 @@ struct MainView: View {
             NotificationsScreen(
                 onShowMenu: onShowMenu,
                 audience: notificationsModel.audience,
-                notifications: notificationsModel.notifications,
+                notifications: notificationsModel.notifications + emailModel.notifications + emailModel.deletedNotifications,
                 loadError: notificationsModel.problem,
-                onRefresh: { await notificationsModel.refresh() },
-                onMarkRead: { await notificationsModel.markRead($0) },
-                onMarkAllRead: { await notificationsModel.markAllRead() },
+                onRefresh: {
+                    async let meldingen: Void = notificationsModel.refresh()
+                    async let mail: Void = emailModel.refresh()
+                    _ = await (meldingen, mail)
+                },
+                onMarkRead: { id in
+                    if let thread = EmailModel.threadID(fromNotification: id) {
+                        await emailModel.markRead(thread)
+                    } else {
+                        await notificationsModel.markRead(id)
+                    }
+                },
+                onMarkAllRead: {
+                    await notificationsModel.markAllRead()
+                    await emailModel.markAllRead()
+                },
                 onOpenConversation: openNotificationConversation,
                 onOpenVerifiedEvidence: openNotificationEvidence,
                 onLoadReview: { await notificationsModel.review($0) },
                 onResolveRequest: { await notificationsModel.resolve($0, action: $1, response: $2) },
                 onDelete: { await notificationsModel.delete($0) },
-                onRestore: { await notificationsModel.restore($0) }
+                onRestore: { id in
+                    if let thread = EmailModel.threadID(fromNotification: id) { return await emailModel.restore(thread) }
+                    return await notificationsModel.restore(id)
+                }
             )
+            .environment(vault)
+            // The PIN for locked e-mail, and Ayla's help with a mail.
+            .environment(model)
         }
     }
 
