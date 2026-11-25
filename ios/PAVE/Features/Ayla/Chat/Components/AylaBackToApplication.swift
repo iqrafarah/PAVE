@@ -10,7 +10,7 @@ struct AylaBackToApplication: View {
         HStack(spacing: 4) {
             Button(action: onOpen) {
                 HStack(spacing: 8) {
-                    Image(.iconArrowLeft)
+                    Image(.iconArrowLeftSolid)
                         .renderingMode(.template)
                         .resizable()
                         .scaledToFit()

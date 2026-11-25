@@ -82,7 +82,7 @@ struct VacancyDetail: View {
                         Link(destination: url) {
                             HStack(spacing: 8) {
                                 Text(AylaMessages.vacancyOpen)
-                                Image(.iconArrowUpRightOutline)
+                                Image(.iconArrowUpRightSolid)
                                     .renderingMode(.template)
                                     .resizable()
                                     .scaledToFit()

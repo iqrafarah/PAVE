@@ -180,7 +180,7 @@ struct ApplicationStudioView: View {
     private func stepBar(back: (() -> Void)?) -> some View {
         HStack(spacing: 12) {
             if let back {
-                roundButton(.iconArrowLeft, label: ApplyMessages.otherDesign, action: back)
+                roundButton(.iconArrowLeftSolid, label: ApplyMessages.otherDesign, action: back)
             } else {
                 roundButton(.iconXMark, label: ApplyMessages.close, action: close)
             }
@@ -201,7 +201,7 @@ struct ApplicationStudioView: View {
 
     private var topBar: some View {
         HStack(spacing: 10) {
-            roundButton(.iconArrowLeft, label: ApplyMessages.backToApplication) { model.showOverview() }
+            roundButton(.iconArrowLeftSolid, label: ApplyMessages.backToApplication) { model.showOverview() }
             Spacer(minLength: 0)
             Picker(ApplyMessages.title(model.draft.vacancy), selection: Binding(get: { model.document }, set: { value in
                 model.selection = nil
@@ -228,7 +228,7 @@ struct ApplicationStudioView: View {
                 .buttonStyle(.pave)
                 .accessibilityLabel(ApplyMessages.shareWith(model.draft.vacancy.company))
             }
-            roundButton(.iconArrowUpTrayOutline, label: model.document == .cv ? ApplyMessages.exportCV : ApplyMessages.exportLetter, isBusy: isExporting, action: export)
+            roundButton(.iconArrowUpTraySolid, label: model.document == .cv ? ApplyMessages.exportCV : ApplyMessages.exportLetter, isBusy: isExporting, action: export)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -249,11 +249,11 @@ struct ApplicationStudioView: View {
 
     private func bottomButtons(showsTitles: Bool) -> some View {
         HStack(spacing: 10) {
-            pill(.iconPaintBrushOutline, ApplyMessages.design, showsTitle: showsTitles) { showsDesign = true }
+            pill(.iconPaintBrushSolid, ApplyMessages.design, showsTitle: showsTitles) { showsDesign = true }
             if model.document == .letter {
-                pill(.iconPlusCircleOutline, ApplyMessages.paragraph, showsTitle: showsTitles) { model.addParagraph() }
+                pill(.iconPlusCircleSolid, ApplyMessages.paragraph, showsTitle: showsTitles) { model.addParagraph() }
             } else {
-                pill(.iconListBulletOutline, ApplyMessages.content, showsTitle: showsTitles) { showsContent = true }
+                pill(.iconListBulletSolid, ApplyMessages.content, showsTitle: showsTitles) { showsContent = true }
             }
             Button {
                 Task { model.document == .cv ? await model.writeProfile() : await model.writeLetter() }
@@ -303,9 +303,9 @@ struct ApplicationStudioView: View {
                 } else {
                     ApplicationAylaCard(model: model)
                     if model.document == .letter {
-                        PaveSecondaryButton(title: ApplyMessages.addParagraph, icon: .iconPlusCircleOutline) { model.addParagraph() }
+                        PaveSecondaryButton(title: ApplyMessages.addParagraph, icon: .iconPlusCircleSolid) { model.addParagraph() }
                     } else {
-                        PaveSecondaryButton(title: ApplyMessages.whatGoesIn, icon: .iconListBulletOutline) { showsContent = true }
+                        PaveSecondaryButton(title: ApplyMessages.whatGoesIn, icon: .iconListBulletSolid) { showsContent = true }
                         PaveSecondaryButton(title: model.openQuestions > 0 ? ApplyMessages.aylaAsks(model.openQuestions) : ApplyMessages.askOn) {
                             showsQuestions = true
                             if model.openQuestions == 0 { Task { await model.askQuestions() } }

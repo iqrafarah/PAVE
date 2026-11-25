@@ -51,6 +51,12 @@ enum SharingMessages {
         }
     }
 
+    /// How often it was looked at, and when last: "2 keer bekeken · laatst 9:49".
+    static func looksLine(_ share: ProfileShare) -> String {
+        guard let last = share.looks.first?.date else { return looks(0) }
+        return "\(looks(share.looks.count)) · laatst \(NotificationInboxRow.when(last))"
+    }
+
     static func looks(_ count: Int) -> String {
         switch count {
         case 0: "Nog niet bekeken"
@@ -67,6 +73,7 @@ enum SharingMessages {
     static let next = "Volgende"
     static let back = "Terug"
     static let backToAyla = "Terug naar Ayla"
+    static let manage = "Beheren"
     static let scanAgain = "Opnieuw scannen"
     static let showShare = "Bekijk wat je deelt"
     static let cancel = "Annuleer"
@@ -100,6 +107,33 @@ enum SharingMessages {
     }
     static let allowsDownload = "Mag downloaden"
     static let downloadHint = "Zet je dit aan, dan kan de ontvanger je cv en brief als pdf bewaren. Bewaren kun je daarna niet meer terugdraaien. Staat het uit, dan kan de ontvanger alleen kijken; helemaal tegenhouden dat iemand een schermafbeelding maakt, kan geen enkele app."
+
+    static let nameMissing = "Nog niet ingevuld bij Instellingen › Account"
+    static let headlinePrompt = "Bijvoorbeeld: student HBO-ICT"
+    static let recipientMay = "Wat de ontvanger mag"
+    static let checkWhat = "Wat"
+    static let checkWho = "Met wie"
+    static let checkPurpose = "Waarvoor"
+    static let checkUntil = "Tot en met"
+    static let checkRights = "Mag"
+    static let checkFooter = "Je ziet wanneer iemand kijkt, en je kunt het altijd pauzeren of intrekken."
+    static func checkWhatValue(_ draft: ShareDraft, items: Int) -> String {
+        var parts: [String] = []
+        if items > 0 { parts.append(items == 1 ? "1 bewijsstuk" : "\(items) bewijsstukken") }
+        if draft.content.cv != nil { parts.append("je cv") }
+        if draft.content.letter != nil { parts.append("je brief") }
+        let text = parts.isEmpty ? "je gegevens" : parts.joined(separator: ", ").replacingLast(", ", with: " en ")
+        return text.prefix(1).uppercased() + text.dropFirst()
+    }
+    static func checkWhoValue(_ draft: ShareDraft) -> String {
+        [draft.recipientName, draft.recipientOrganisation == draft.recipientName ? "" : draft.recipientOrganisation]
+            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            .joined(separator: ", ")
+    }
+    static func checkUntilValue(_ date: Date) -> String {
+        date.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(Locale(identifier: "nl_NL")))
+    }
+    static func checkRightsValue(_ allowsDownload: Bool) -> String { allowsDownload ? "Bekijken en downloaden" : "Alleen bekijken" }
 
     static func summary(_ draft: ShareDraft, items: Int, until: Date) -> String {
         var parts: [String] = []

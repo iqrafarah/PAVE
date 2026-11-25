@@ -36,7 +36,7 @@ struct FairEmployerView: View {
                                 }
                             }
                             .padding(14)
-                            if index < employer.vacancies.count - 1 { Divider().padding(.leading, 14) }
+                            if index < employer.vacancies.count - 1 { ShareRowDivider(inset: 14) }
                         }
                     }
                 }

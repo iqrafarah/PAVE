@@ -41,7 +41,7 @@ struct ShareRecipientPreview: View {
                                 }
                                 .padding(14)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                if index < items.count - 1 { Divider().padding(.leading, 14) }
+                                if index < items.count - 1 { ShareRowDivider(inset: 14) }
                             }
                         }
                     }

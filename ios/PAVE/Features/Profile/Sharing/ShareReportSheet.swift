@@ -30,7 +30,7 @@ struct ShareReportSheet: View {
                                         Spacer()
                                     }
                                     .padding(.horizontal, 14).padding(.vertical, 10)
-                                    if index < report.byShare.count - 1 { Divider().padding(.leading, 62) }
+                                    if index < report.byShare.count - 1 { ShareRowDivider() }
                                 }
                             }
                         }

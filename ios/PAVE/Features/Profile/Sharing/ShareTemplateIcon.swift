@@ -1,7 +1,8 @@
 import PAVECore
 import SwiftUI
 
-/// The icon of who a share is for, in a tinted square as in Meldingen.
+/// The icon of who a share is for: white on a tile of the accent colour, as the rows of Instellingen. Grey once the
+/// share has ended.
 struct ShareTemplateIcon: View {
     let template: ShareTemplate
     var isMuted = false
@@ -16,14 +17,6 @@ struct ShareTemplateIcon: View {
     }
 
     var body: some View {
-        Image(Self.image(template))
-            .renderingMode(.template)
-            .resizable()
-            .scaledToFit()
-            .foregroundStyle(isMuted ? Color.inkMuted : Color.paveAccent)
-            .frame(width: 18, height: 18)
-            .frame(width: 36, height: 36)
-            .background(isMuted ? Color.tileFill : Color.paveSurfaceTint, in: .rect(cornerRadius: 10))
-            .accessibilityHidden(true)
+        ShareRowIcon(icon: Self.image(template), isMuted: isMuted)
     }
 }

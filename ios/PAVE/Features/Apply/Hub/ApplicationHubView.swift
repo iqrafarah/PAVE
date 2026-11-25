@@ -67,8 +67,8 @@ struct ApplicationHubView: View {
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.panel, in: .rect(cornerRadius: 18))
-            .overlay { RoundedRectangle(cornerRadius: 18).strokeBorder(Color.cardBorder, lineWidth: 1) }
+            .background(Color.panel, in: .rect(cornerRadius: 16))
+            .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder, lineWidth: 1) }
         }
     }
 
@@ -124,28 +124,28 @@ struct ApplicationHubView: View {
                 .textStyle(.label)
                 .foregroundStyle(Color.inkMuted)
                 .accessibilityAddTraits(.isHeader)
-            VStack(alignment: .leading, spacing: 12) {
-                if made.isEmpty {
-                    Text(ApplyMessages.shareHint(company))
-                        .textStyle(.bodyMedium)
-                        .foregroundStyle(Color.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-                } else {
-                    ForEach(made) { share in
-                        Button { onOpenShare(share.id) } label: { ShareRow(share: share) }
-                            .buttonStyle(.pave)
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(made.enumerated()), id: \.element.id) { index, share in
+                    Button { onOpenShare(share.id) } label: { ShareRow(share: share) }
+                        .buttonStyle(.pave)
+                    ShareRowDivider(inset: index < made.count - 1 ? 60 : 0)
+                }
+                VStack(alignment: .leading, spacing: 12) {
+                    if made.isEmpty {
+                        Text(ApplyMessages.shareHint(company))
+                            .textStyle(.bodyMedium)
+                            .foregroundStyle(Color.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                        PavePrimaryButton(title: ApplyMessages.shareWith(company), action: onShare)
+                    } else {
+                        PaveSecondaryButton(title: ApplyMessages.shareAgain, action: onShare)
                     }
                 }
-                if made.isEmpty {
-                    PavePrimaryButton(title: ApplyMessages.shareWith(company), action: onShare)
-                } else {
-                    PaveSecondaryButton(title: ApplyMessages.shareAgain, action: onShare)
-                }
+                .padding(16)
             }
-            .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.panel, in: .rect(cornerRadius: 18))
-            .overlay { RoundedRectangle(cornerRadius: 18).strokeBorder(Color.cardBorder, lineWidth: 1) }
+            .background(Color.panel, in: .rect(cornerRadius: 16))
+            .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder, lineWidth: 1) }
         }
     }
 
@@ -170,17 +170,17 @@ struct ApplicationHubView: View {
                         .foregroundStyle(Color.inkMuted)
                         .fixedSize(horizontal: false, vertical: true)
                     if model.canWrite {
-                        PaveSecondaryButton(title: ApplyMessages.whatCanIDo, icon: .iconPlusCircleOutline) { onTask(.gaps) }
+                        PaveSecondaryButton(title: ApplyMessages.whatCanIDo, icon: .iconPlusCircleSolid) { onTask(.gaps) }
                     }
                 }
                 if model.canWrite {
-                    PaveSecondaryButton(title: ApplyMessages.practice, icon: .iconChatBubbleLeftEllipsisOutline) { onTask(.interview) }
+                    PaveSecondaryButton(title: ApplyMessages.practice, icon: .iconChatBubbleLeftEllipsisSolid) { onTask(.interview) }
                 }
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.panel, in: .rect(cornerRadius: 18))
-            .overlay { RoundedRectangle(cornerRadius: 18).strokeBorder(Color.cardBorder, lineWidth: 1) }
+            .background(Color.panel, in: .rect(cornerRadius: 16))
+            .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder, lineWidth: 1) }
         }
     }
 }

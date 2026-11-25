@@ -116,9 +116,9 @@ struct ProfileScreen: View {
         templates
         SharePanel(title: "Meer") {
             ShareLinkRow(icon: .iconCamera, title: SharingMessages.scan, detail: SharingMessages.scanHint) { showsScanner = true }
-            Divider().padding(.leading, 62)
+            ShareRowDivider()
             ShareLinkRow(icon: .iconClockSolid, title: SharingMessages.report, detail: SharingMessages.reportHint) { showsReport = true }
-            Divider().padding(.leading, 62)
+            ShareRowDivider()
             ShareLinkRow(icon: .iconShieldCheckSolid, title: SharingMessages.howItWorks) { showsPrivacy = true }
         }
         if !model.ended.isEmpty { earlier }
@@ -158,7 +158,7 @@ struct ProfileScreen: View {
                 ForEach(Array(model.live.enumerated()), id: \.element.id) { index, share in
                     Button { opened = share.id } label: { ShareRow(share: share) }
                         .buttonStyle(.pave)
-                    if index < model.live.count - 1 { Divider().padding(.leading, 62) }
+                    if index < model.live.count - 1 { ShareRowDivider() }
                 }
             }
         }
@@ -168,7 +168,7 @@ struct ProfileScreen: View {
         SharePanel(title: SharingMessages.newShare) {
             ForEach(Array(ShareTemplate.allCases.enumerated()), id: \.element) { index, template in
                 Button { composing = ShareTemplateChoice(template: template) } label: {
-                    HStack(alignment: .top, spacing: 12) {
+                    HStack(spacing: 14) {
                         ShareTemplateIcon(template: template)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(SharingMessages.template(template)).textStyle(.bodyMedium).foregroundStyle(Color.ink)
@@ -182,7 +182,7 @@ struct ProfileScreen: View {
                 }
                 .buttonStyle(.pave)
                 .disabled(model.service == nil || model.state == .notSetUp)
-                if index < ShareTemplate.allCases.count - 1 { Divider().padding(.leading, 62) }
+                if index < ShareTemplate.allCases.count - 1 { ShareRowDivider() }
             }
         }
     }
@@ -193,7 +193,7 @@ struct ProfileScreen: View {
                 withAnimation(.snappy(duration: 0.25)) { showsEarlier.toggle() }
             } label: {
                 HStack {
-                    Text("\(SharingMessages.earlier.uppercased()) · \(model.ended.count)").textStyle(.eyebrow).foregroundStyle(Color.inkMuted)
+                    Text("\(SharingMessages.earlier) · \(model.ended.count)").textStyle(.bodyMedium).foregroundStyle(Color.inkMuted)
                     Spacer()
                     Image(.iconChevronDown).renderingMode(.template).resizable().scaledToFit().frame(height: 6)
                         .rotationEffect(.degrees(showsEarlier ? 180 : 0)).foregroundStyle(Color.inkMuted)
@@ -207,11 +207,10 @@ struct ProfileScreen: View {
                 VStack(spacing: 0) {
                     ForEach(Array(model.ended.enumerated()), id: \.element.id) { index, share in
                         Button { opened = share.id } label: { ShareRow(share: share) }.buttonStyle(.pave)
-                        if index < model.ended.count - 1 { Divider().padding(.leading, 62) }
+                        if index < model.ended.count - 1 { ShareRowDivider() }
                     }
                 }
-                .background(Color.panel, in: .rect(cornerRadius: 16))
-                .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder) }
+                .background(Color.panel, in: .rect(cornerRadius: 14))
             }
         }
     }

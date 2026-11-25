@@ -9,16 +9,8 @@ struct ShareLinkRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 12) {
-                Image(icon)
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .foregroundStyle(Color.paveAccent)
-                    .frame(width: 18, height: 18)
-                    .frame(width: 36, height: 36)
-                    .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 10))
-                    .accessibilityHidden(true)
+            HStack(spacing: 14) {
+                ShareRowIcon(icon: icon)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .textStyle(.bodyMedium)

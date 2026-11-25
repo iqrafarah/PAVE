@@ -7,7 +7,7 @@ struct PaveBackButton: View {
 
     var body: some View {
         Button(action: action) {
-            Image(.iconArrowLeft)
+            Image(.iconArrowLeftSolid)
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()

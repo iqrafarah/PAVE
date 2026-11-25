@@ -1,43 +1,52 @@
 import PAVECore
 import SwiftUI
 
-/// One share in the list: who it is for, what, how long still, and how often it was looked at.
+/// One share in a list: who it is for, what it is, how long it still runs, and whether it was looked at.
 struct ShareRow: View {
     let share: ProfileShare
 
     private var isLive: Bool { share.isLive() }
-    private var lastLook: Date? { share.looks.first?.date }
+
+    /// The organisation and what was shared, without repeating the recipient's name.
+    private var subtitle: String {
+        let organisation = share.recipientOrganisation.flatMap { $0.isEmpty || $0 == share.recipientName ? nil : $0 }
+        return [organisation, share.title].compactMap { $0 }.joined(separator: " · ")
+    }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(spacing: 14) {
             ShareTemplateIcon(template: share.template, isMuted: !isLive)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(share.recipient)
-                    .textStyle(.bodyMedium)
-                    .foregroundStyle(isLive ? Color.ink : Color.inkMuted)
-                    .lineLimit(1)
-                Text(share.title)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(share.recipientName)
+                        .textStyle(.bodyMedium)
+                        .foregroundStyle(isLive ? Color.ink : Color.inkMuted)
+                        .lineLimit(1)
+                    Spacer(minLength: 4)
+                    Text(SharingMessages.remaining(share))
+                        .textStyle(.caption)
+                        .foregroundStyle(share.state() == .paused ? Color.warning : Color.inkMuted)
+                        .lineLimit(1)
+                        .layoutPriority(1)
+                }
+                Text(subtitle)
                     .textStyle(.caption)
                     .foregroundStyle(Color.inkMuted)
                     .lineLimit(1)
                 if isLive {
-                    Text(SharingMessages.looks(share.looks.count))
+                    Text(SharingMessages.looksLine(share))
                         .textStyle(.caption)
                         .foregroundStyle(share.looks.isEmpty ? Color.inkMuted : Color.paveAccent)
+                        .lineLimit(1)
                 }
             }
-            Spacer(minLength: 8)
-            VStack(alignment: .trailing, spacing: 6) {
-                Text(SharingMessages.remaining(share))
-                    .textStyle(.caption)
-                    .foregroundStyle(share.state() == .paused ? Color.warning : Color.inkMuted)
-                    .lineLimit(1)
-                if let lastLook, isLive {
-                    Text(NotificationInboxRow.when(lastLook))
-                        .textStyle(.caption)
-                        .foregroundStyle(Color.inkMuted)
-                }
-            }
+            Image(.iconChevronRightSolid)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 10, height: 10)
+                .foregroundStyle(Color.inkMuted)
+                .accessibilityHidden(true)
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 14)

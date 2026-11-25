@@ -292,3 +292,4 @@ Een flow met stappen heeft linksboven een pijl terug naar de vorige stap, en op 
 | Bewijs toevoegen | Stoppen (kruisje rechtsboven) / na Toevoegen: Afronden opent het nieuwe bewijs, Bevestiging aanvragen opent meteen de aanvraag |
 | Bevestiging aanvragen | Annuleer / na versturen: Bekijk in meldingen / Sluiten |
 | Meldingen, beoordelen | Je hebt het bewijs geverifieerd. / Je hebt de aanvraag afgewezen. |
+| Delen, overzicht en beheren | Nog niet ingevuld bij Instellingen › Account (als je naam ontbreekt) / Regel onder je naam, bijvoorbeeld: student HBO-ICT / Wat de ontvanger mag / Controleer en deel: Wat, Met wie, Waarvoor, Tot en met, Mag (Alleen bekijken / Bekijken en downloaden) / Je ziet wanneer iemand kijkt, en je kunt het altijd pauzeren of intrekken. / Beheren: Pauzeer of Hervat, Verleng, Zo ziet de ontvanger het, Intrekken / {n} keer bekeken · laatst {tijd} |

@@ -19,7 +19,7 @@ struct ShareComposerItems: View {
             SharePanel(title: group.category.title) {
                 ForEach(Array(group.items.enumerated()), id: \.element.id) { index, item in
                     row(item, isNeeded: template.categories.contains(item.category))
-                    if index < group.items.count - 1 { Divider().padding(.leading, 46) }
+                    if index < group.items.count - 1 { ShareRowDivider(inset: 46) }
                 }
             }
         }

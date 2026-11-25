@@ -15,16 +15,8 @@ struct ShareLooksList: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 ForEach(Array(looks.prefix(50).enumerated()), id: \.element.id) { index, look in
-                    HStack(spacing: 12) {
-                        Image(look.action == .download ? .iconFolderArrowDownSolid : .iconCheckBadgeSolid)
-                            .renderingMode(.template)
-                            .resizable()
-                            .scaledToFit()
-                            .foregroundStyle(Color.paveAccent)
-                            .frame(width: 16, height: 16)
-                            .frame(width: 32, height: 32)
-                            .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 9))
-                            .accessibilityHidden(true)
+                    HStack(spacing: 14) {
+                        ShareRowIcon(icon: look.action == .download ? .iconFolderArrowDownSolid : .iconEyeSolid)
                         Text(SharingMessages.look(look))
                             .textStyle(.bodyMedium)
                             .foregroundStyle(Color.ink)
@@ -36,7 +28,7 @@ struct ShareLooksList: View {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                     .accessibilityElement(children: .combine)
-                    if index < min(looks.count, 50) - 1 { Divider().padding(.leading, 58) }
+                    if index < min(looks.count, 50) - 1 { ShareRowDivider() }
                 }
             }
         }

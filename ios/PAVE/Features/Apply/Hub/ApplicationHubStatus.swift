@@ -19,8 +19,8 @@ struct ApplicationHubStatus: View {
                 Text(ApplyMessages.statusLabel)
                     .textStyle(.label)
                     .foregroundStyle(Color.ink)
-                ScrollView(.horizontal) {
-                    HStack(spacing: 8) {
+                // All five in view, on a second line where the screen is narrow.
+                FlowLayout(spacing: 8) {
                         ForEach(ApplicationStatus.allCases, id: \.self) { status in
                             let isOn = model.tracking.status == status
                             Button(ApplyMessages.status(status)) {
@@ -38,9 +38,7 @@ struct ApplicationHubStatus: View {
                             .buttonStyle(.pave)
                             .accessibilityAddTraits(isOn ? .isSelected : [])
                         }
-                    }
                 }
-                .scrollIndicators(.hidden)
                 Text(ApplyMessages.statusHint)
                     .textStyle(.caption)
                     .foregroundStyle(Color.inkMuted)
@@ -119,8 +117,8 @@ struct ApplicationHubStatus: View {
             }
         }
         .padding(16)
-        .background(Color.panel, in: .rect(cornerRadius: 18))
-        .overlay { RoundedRectangle(cornerRadius: 18).strokeBorder(Color.cardBorder, lineWidth: 1) }
+        .background(Color.panel, in: .rect(cornerRadius: 16))
+        .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder, lineWidth: 1) }
     }
 }
 

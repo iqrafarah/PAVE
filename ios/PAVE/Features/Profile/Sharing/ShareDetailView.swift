@@ -21,11 +21,6 @@ struct ShareDetailView: View {
                         actions(share)
                     }
                     ShareLooksList(looks: share.looks)
-                    if share.isLive() {
-                        ShareLinkRow(icon: .iconUserSolid, title: SharingMessages.preview) { showsPreview = true }
-                            .background(Color.panel, in: .rect(cornerRadius: 16))
-                            .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder) }
-                    }
                 }
                 .padding(20)
                 .frame(maxWidth: 640)
@@ -56,36 +51,37 @@ struct ShareDetailView: View {
             ShareTemplateIcon(template: share.template, isMuted: !share.isLive())
             VStack(alignment: .leading, spacing: 3) {
                 Text(share.title).textStyle(.calloutTitle).foregroundStyle(Color.ink)
-                Text(share.recipient).textStyle(.bodyMedium).foregroundStyle(Color.inkMuted)
+                Text(share.recipient).textStyle(.bodyMedium).foregroundStyle(Color.inkMuted).fixedSize(horizontal: false, vertical: true)
                 Text(SharingMessages.remaining(share)).textStyle(.caption).foregroundStyle(share.state() == .paused ? Color.warning : Color.paveAccent)
-                if let purpose = share.purpose { Text(purpose).textStyle(.caption).foregroundStyle(Color.inkMuted) }
+                if let purpose = share.purpose, purpose != share.title { Text(purpose).textStyle(.caption).foregroundStyle(Color.inkMuted) }
             }
         }
     }
 
+    /// What you can do with it, as rows in one group: pause or resume, extend, see what they see, take back.
     private func actions(_ share: ProfileShare) -> some View {
-        HStack(spacing: 10) {
-            PaveSecondaryButton(title: share.state() == .paused ? SharingMessages.resume : SharingMessages.pause) {
-                Task { await model.setPaused(share.state() != .paused, share) }
+        SharePanel(title: SharingMessages.manage) {
+            Button { Task { await model.setPaused(share.state() != .paused, share) } } label: {
+                ShareActionRow(
+                    icon: share.state() == .paused ? .iconPlaySolid : .iconPauseSolid,
+                    title: share.state() == .paused ? SharingMessages.resume : SharingMessages.pause
+                )
             }
+            .buttonStyle(.pave)
+            ShareRowDivider()
             Menu {
                 ForEach([ShareDuration.day, .week, .twoWeeks, .month], id: \.self) { duration in
                     Button("+ \(SharingMessages.duration(duration))") { Task { await model.extend(share, by: duration) } }
                 }
             } label: {
-                Text(SharingMessages.extend)
-                    .textStyle(.button)
-                    .foregroundStyle(Color.paveAccent)
-                    .frame(maxWidth: .infinity, minHeight: 50)
-                    .background(Color.panel, in: .capsule)
-                    .overlay { Capsule().strokeBorder(Color.paveAccent, lineWidth: 1.5) }
+                ShareActionRow(icon: .iconClockSolid, title: SharingMessages.extend)
             }
+            ShareRowDivider()
+            Button { showsPreview = true } label: { ShareActionRow(icon: .iconUserSolid, title: SharingMessages.preview) }
+                .buttonStyle(.pave)
+            ShareRowDivider()
             Button(role: .destructive) { confirmsRevoke = true } label: {
-                Text(SharingMessages.revoke)
-                    .textStyle(.button)
-                    .foregroundStyle(Color.critical)
-                    .frame(maxWidth: .infinity, minHeight: 50)
-                    .background(Color.criticalSurface, in: .capsule)
+                ShareActionRow(icon: .iconTrashSolid, title: SharingMessages.revoke, isDestructive: true)
             }
             .buttonStyle(.pave)
         }

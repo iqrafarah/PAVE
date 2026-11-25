@@ -15,7 +15,7 @@ struct ApplicationContentList: View {
                         .accessibilityAddTraits(.isHeader)
                     VStack(spacing: 0) {
                         ForEach(Array(section.entries.enumerated()), id: \.element.id) { index, entry in
-                            ApplicationContentRow(entry: entry, item: model.item(entry.sourceItemID), choice: model.choices[entry.id]) { isOn in
+                            ApplicationContentRow(entry: entry, item: model.item(entry.sourceItemID), choice: model.choices[entry.id], marksHidden: model.items.contains { $0.aylaAllowedAt != nil }) { isOn in
                                 model.setVisible(entry.id, isOn)
                             }
                             if index < section.entries.count - 1 {

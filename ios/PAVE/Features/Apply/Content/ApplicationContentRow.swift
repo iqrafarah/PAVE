@@ -6,6 +6,8 @@ struct ApplicationContentRow: View {
     let entry: CVEntry
     let item: VaultItem?
     let choice: ApplicationProposal.Choice?
+    /// Per row only when Ayla may see some evidence; when she may see none, one note below says so for all.
+    var marksHidden = true
     let onToggle: (Bool) -> Void
 
     private var detail: String {
@@ -51,7 +53,7 @@ struct ApplicationContentRow: View {
                             .multilineTextAlignment(.leading)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                    if let item, item.aylaAllowedAt == nil, entry.isVisible {
+                    if marksHidden, let item, item.aylaAllowedAt == nil, entry.isVisible {
                         Text(ApplyMessages.aylaMayNotSee)
                             .textStyle(.caption)
                             .foregroundStyle(Color.inkMuted)

@@ -14,14 +14,30 @@ struct VacancyActions: View {
     let onToggleCompare: () -> Void
 
     var body: some View {
+        if showsCompare { grid } else { page }
+    }
+
+    /// On the vacancy's own page: applying first and full width, the two other tasks under it.
+    private var page: some View {
+        VStack(spacing: 8) {
+            Button { onTask(.prepare) } label: { label(.iconDocumentTextSolid, AylaMessages.vacancyActionPrepare, isOn: true) }
+                .buttonStyle(.pave)
+            HStack(spacing: 8) {
+                action(.iconPlusCircleSolid, AylaMessages.vacancyActionGaps) { onTask(.gaps) }
+                action(.iconChatBubbleLeftEllipsisSolid, AylaMessages.vacancyActionPractice) { onTask(.interview) }
+            }
+        }
+    }
+
+    private var grid: some View {
         Grid(horizontalSpacing: 8, verticalSpacing: 8) {
             GridRow {
-                action(.iconPlusCircleOutline, AylaMessages.vacancyActionGaps) { onTask(.gaps) }
-                action(.iconDocumentTextOutline, AylaMessages.vacancyActionPrepare) { onTask(.prepare) }
+                action(.iconPlusCircleSolid, AylaMessages.vacancyActionGaps) { onTask(.gaps) }
+                action(.iconDocumentTextSolid, AylaMessages.vacancyActionPrepare) { onTask(.prepare) }
             }
             GridRow {
-                action(.iconChatBubbleLeftEllipsisOutline, AylaMessages.vacancyActionPractice) { onTask(.interview) }
-                if showsCompare { compare } else { Color.clear.frame(height: 1) }
+                action(.iconChatBubbleLeftEllipsisSolid, AylaMessages.vacancyActionPractice) { onTask(.interview) }
+                compare
             }
         }
     }
@@ -29,7 +45,7 @@ struct VacancyActions: View {
     private var compare: some View {
         Button(action: onToggleCompare) {
             label(
-                isChosen ? .iconCheckCircleOutline : .iconArrowsRightLeftOutline,
+                isChosen ? .iconCheckCircleSolid : .iconArrowsRightLeftSolid,
                 isChosen ? AylaMessages.vacancyActionCompareChosen : AylaMessages.vacancyActionCompare,
                 isOn: isChosen
             )

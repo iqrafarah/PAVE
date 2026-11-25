@@ -150,10 +150,13 @@ struct ShareComposer: View {
             HStack {
                 Text(SharingMessages.name).textStyle(.bodyMedium).foregroundStyle(Color.ink)
                 Spacer()
-                Text(name).textStyle(.bodyMedium).foregroundStyle(Color.inkMuted)
+                Text(name.isEmpty ? SharingMessages.nameMissing : name)
+                    .textStyle(name.isEmpty ? .caption : .bodyMedium)
+                    .foregroundStyle(Color.inkMuted)
+                    .multilineTextAlignment(.trailing)
             }
             .padding(14)
-            Divider().padding(.leading, 14)
+            ShareRowDivider(inset: 14)
             Toggle(isOn: $includesEmail) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(SharingMessages.email).textStyle(.bodyMedium).foregroundStyle(Color.ink)
@@ -162,10 +165,14 @@ struct ShareComposer: View {
             }
             .tint(.paveAccentFill)
             .padding(14)
-            Divider().padding(.leading, 14)
-            TextField(SharingMessages.headline, text: $headline, prompt: Text(SharingMessages.headline).foregroundStyle(Color.inkMuted))
-                .textStyle(.input)
-                .padding(14)
+            ShareRowDivider(inset: 14)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(SharingMessages.headline).textStyle(.caption).foregroundStyle(Color.inkMuted)
+                TextField(SharingMessages.headline, text: $headline, prompt: Text(SharingMessages.headlinePrompt).foregroundStyle(Color.inkMuted))
+                    .textStyle(.bodyMedium)
+                    .foregroundStyle(Color.ink)
+            }
+            .padding(14)
         }
         if template.offersApplication, !model.applications.isEmpty {
             SharePanel(title: SharingMessages.application) {
@@ -180,9 +187,9 @@ struct ShareComposer: View {
                 .padding(.vertical, 6)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 if application != nil {
-                    Divider().padding(.leading, 14)
+                    ShareRowDivider(inset: 14)
                     Toggle(ApplyMessages.cv, isOn: $includesCV).tint(.paveAccentFill).textStyle(.bodyMedium).padding(14)
-                    Divider().padding(.leading, 14)
+                    ShareRowDivider(inset: 14)
                     Toggle(ApplyMessages.letter, isOn: $includesLetter).tint(.paveAccentFill).textStyle(.bodyMedium).padding(14)
                 }
             }
@@ -220,7 +227,7 @@ struct ShareComposer: View {
                 .accessibilityAddTraits(isOn ? .isSelected : [])
             }
         }
-        SharePanel(title: SharingMessages.allowsDownload) {
+        SharePanel(title: SharingMessages.recipientMay) {
             Toggle(SharingMessages.allowsDownload, isOn: $allowsDownload).tint(.paveAccentFill).textStyle(.bodyMedium).padding(14)
         }
         Text(SharingMessages.downloadHint).textStyle(.caption).foregroundStyle(Color.inkMuted).fixedSize(horizontal: false, vertical: true)
@@ -229,19 +236,44 @@ struct ShareComposer: View {
     @ViewBuilder
     private var check: some View {
         let draft = draft
-        Text(SharingMessages.summary(draft, items: draft.itemIDs.count, until: draft.duration.end(from: .now)))
-            .textStyle(.bodyMedium)
-            .foregroundStyle(Color.ink)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 16))
+        // What will happen, line by line, as a receipt to check before Face ID.
+        SharePanel(title: SharingMessages.template(template)) {
+            checkRow(SharingMessages.checkWhat, SharingMessages.checkWhatValue(draft, items: draft.itemIDs.count))
+            ShareRowDivider(inset: 14)
+            checkRow(SharingMessages.checkWho, SharingMessages.checkWhoValue(draft))
+            if !draft.purpose.isEmpty {
+                ShareRowDivider(inset: 14)
+                checkRow(SharingMessages.checkPurpose, draft.purpose)
+            }
+            ShareRowDivider(inset: 14)
+            checkRow(SharingMessages.checkUntil, SharingMessages.checkUntilValue(draft.duration.end(from: .now)))
+            ShareRowDivider(inset: 14)
+            checkRow(SharingMessages.checkRights, SharingMessages.checkRightsValue(draft.allowsDownload))
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(SharingMessages.summary(draft, items: draft.itemIDs.count, until: draft.duration.end(from: .now)))
+        Text(SharingMessages.checkFooter).textStyle(.caption).foregroundStyle(Color.inkMuted).fixedSize(horizontal: false, vertical: true)
         if model.webURL == nil {
             PaveNotice(message: SharingMessages.noWebsite)
         } else if model.webURL?.host() == "localhost" {
             PaveNotice(message: SharingMessages.localOnly)
         }
         Text(SharingMessages.privacyText[4].1).textStyle(.caption).foregroundStyle(Color.inkMuted).fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func checkRow(_ title: String, _ value: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(title)
+                .textStyle(.bodyMedium)
+                .foregroundStyle(Color.inkMuted)
+                .frame(width: 96, alignment: .leading)
+            Text(value)
+                .textStyle(.bodyMedium)
+                .foregroundStyle(Color.ink)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(14)
     }
 
     private func field(_ title: String, text: Binding<String>, prompt: String) -> some View {
