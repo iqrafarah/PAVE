@@ -181,6 +181,15 @@ enum ApplyMessages {
 
     // Your own application
     static let newApplication = "Nieuwe sollicitatie"
+    static let somethingWrong = "Dat lukte niet"
+    static let shareApplication = "Deel je sollicitatie"
+    static let theVacancy = "De vacature"
+    static let showMore = "Lees meer"
+    static let showLess = "Minder"
+    static let deleteApplication = "Verwijder sollicitatie"
+    static func deleteApplicationQuestion(_ company: String) -> String { "Sollicitatie bij \(company) verwijderen?" }
+    static let deleteApplicationHint = "Je cv, brief en wat je bijhield gaan weg van deze iPhone. Wat je al deelde, beheer je bij Profiel."
+    static let openFailed = "Je kluis kon niet worden geladen, dus je cv zou leeg blijven. Probeer het zo opnieuw."
     static let newApplicationIntro = "Voor een vacature die je zelf vond, of een open sollicitatie bij een bedrijf. Daarna kies je een ontwerp voor je cv en brief."
     static let ownCompany = "Bedrijf"
     static let ownCompanyPrompt = "Bijvoorbeeld Albert Heijn"
@@ -356,6 +365,7 @@ enum ApplyMessages {
     static let keepVerifiedHint = "Dit bewijsstuk is geverifieerd. Als je het aanvult, moet het opnieuw geverifieerd worden en vervalt het vinkje op je cv."
     static let keepFailed = "Het bewaren in je kluis lukte niet. Probeer het zo opnieuw."
     static let noQuestions = "Ayla heeft nu geen vragen."
+    static let aylaUnavailable = "Ayla is nu niet bereikbaar. Je kunt alles zelf invullen."
     static let askOn = "Laat Ayla doorvragen"
     static let asking = "Ayla leest je cv…"
     static let aylaFailed = "Ayla kon nu niet schrijven. Probeer het zo opnieuw."

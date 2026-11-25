@@ -11,7 +11,7 @@ struct ApplicationQuestionsSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text(shown.isEmpty && !model.isAsking ? ApplyMessages.noQuestions : ApplyMessages.questionsHint)
+                    Text(shown.isEmpty && !model.isAsking ? model.questionsProblem ?? ApplyMessages.noQuestions : ApplyMessages.questionsHint)
                         .textStyle(.bodyMedium)
                         .foregroundStyle(Color.inkMuted)
                         .fixedSize(horizontal: false, vertical: true)

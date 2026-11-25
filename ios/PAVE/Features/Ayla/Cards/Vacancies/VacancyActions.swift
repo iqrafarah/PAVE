@@ -10,6 +10,8 @@ struct VacancyActions: View {
     var canChoose = true
     /// Comparing works in the chat; the vacancies page leaves it out.
     var showsCompare = true
+    /// Without Ayla only applying is left: the studio also works without her.
+    var usesAyla = true
     let onTask: (AylaRequest.VacancyTask) -> Void
     let onToggleCompare: () -> Void
 
@@ -22,9 +24,11 @@ struct VacancyActions: View {
         VStack(spacing: 8) {
             Button { onTask(.prepare) } label: { label(.iconDocumentTextSolid, AylaMessages.vacancyActionPrepare, isOn: true) }
                 .buttonStyle(.pave)
-            HStack(spacing: 8) {
-                action(.iconPlus, AylaMessages.vacancyActionGaps) { onTask(.gaps) }
-                action(.iconChatBubbleLeftEllipsisSolid, AylaMessages.vacancyActionPractice) { onTask(.interview) }
+            if usesAyla {
+                HStack(spacing: 8) {
+                    action(.iconPlus, AylaMessages.vacancyActionGaps) { onTask(.gaps) }
+                    action(.iconChatBubbleLeftEllipsisSolid, AylaMessages.vacancyActionPractice) { onTask(.interview) }
+                }
             }
         }
     }

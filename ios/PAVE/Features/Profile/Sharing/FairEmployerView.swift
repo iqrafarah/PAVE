@@ -28,7 +28,7 @@ struct FairEmployerView: View {
                 }
                 Text(employer.about).textStyle(.bodyMedium).foregroundStyle(Color.ink).fixedSize(horizontal: false, vertical: true)
                 if !employer.vacancies.isEmpty {
-                    SharePanel(title: "Vacatures") {
+                    SharePanel(title: SharingMessages.fairVacancies) {
                         ForEach(Array(employer.vacancies.enumerated()), id: \.element.id) { index, vacancy in
                             HStack(alignment: .top, spacing: 12) {
                                 NavigationLink {
@@ -65,7 +65,7 @@ struct FairEmployerView: View {
                         }
                     }
                 }
-                PavePrimaryButton(title: "Deel je profiel met \(employer.name)", action: onShareBack)
+                PavePrimaryButton(title: SharingMessages.fairShareBack, action: onShareBack)
             }
             .padding(20)
         }

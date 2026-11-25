@@ -9,12 +9,28 @@ struct VacancyFilterBar: View {
     let onShowFilters: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
-            Text(AylaMessages.vacancyShown(shown, of: total))
-                .textStyle(.caption)
-                .foregroundStyle(Color.inkMuted)
-                .monospacedDigit()
-            Spacer(minLength: 4)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                count.fixedSize()
+                Spacer(minLength: 4)
+                chips
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                count
+                HStack(spacing: 8) { chips }
+            }
+        }
+    }
+
+    private var count: some View {
+        Text(AylaMessages.vacancyShown(shown, of: total))
+            .textStyle(.caption)
+            .foregroundStyle(Color.inkMuted)
+            .monospacedDigit()
+    }
+
+    @ViewBuilder
+    private var chips: some View {
             Menu {
                 Picker(AylaMessages.vacancyOrderAsFound, selection: $filter.order) {
                     Text(AylaMessages.vacancyOrderAsFound).tag(VacancyFilter.Order.asFound)
@@ -27,7 +43,6 @@ struct VacancyFilterBar: View {
                 chip(icon: .iconFunnelSolid, title: filter.activeCount == 0 ? AylaMessages.vacancyFilter : AylaMessages.vacancyFilterCount(filter.activeCount), isOn: filter.activeCount > 0)
             }
             .buttonStyle(.pave)
-        }
     }
 
     private func chip(icon: ImageResource, title: String, isOn: Bool, rotatesIcon: Bool = false) -> some View {

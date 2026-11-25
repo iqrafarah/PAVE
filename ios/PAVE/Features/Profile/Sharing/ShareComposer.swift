@@ -116,6 +116,8 @@ struct ShareComposer: View {
         }
         .presentationDetents([.large])
         .sheetDismissGuard(isBlocked: created == nil) { confirmsDiscard = true }
+        .onAppear { model.problem = nil }
+        .onDisappear { model.problem = nil }
         .task {
             if vault.state != .ready { await vault.load() }
             start()
@@ -259,8 +261,11 @@ struct ShareComposer: View {
                 }
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 13, weight: .semibold))
+                Image(.iconChevronDown)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .paveIconFrame(12)
                     .foregroundStyle(Color.paveAccent)
                     .accessibilityHidden(true)
             }
@@ -273,9 +278,9 @@ struct ShareComposer: View {
 
     @ViewBuilder
     private var who: some View {
-        field(SharingMessages.recipientName, text: $recipientName, prompt: SharingMessages.recipientNamePrompt)
+        field(SharingMessages.recipientName, text: $recipientName, prompt: SharingMessages.recipientNamePrompt, isRequired: true)
         field(SharingMessages.recipientOrganisation, text: $organisation, prompt: SharingMessages.recipientOrganisationPrompt)
-        field(SharingMessages.shareTitle, text: $title, prompt: SharingMessages.purposePrompt)
+        field(SharingMessages.shareTitle, text: $title, prompt: SharingMessages.shareTitlePrompt, isRequired: true)
         field(SharingMessages.purpose, text: $purpose, prompt: SharingMessages.purposePrompt)
     }
 
@@ -349,8 +354,8 @@ struct ShareComposer: View {
         .padding(14)
     }
 
-    private func field(_ title: String, text: Binding<String>, prompt: String) -> some View {
-        VaultFormField(title: title, isRequired: false) {
+    private func field(_ title: String, text: Binding<String>, prompt: String, isRequired: Bool = false) -> some View {
+        VaultFormField(title: title, isRequired: isRequired) {
             TextField("", text: text, prompt: Text(prompt).foregroundStyle(Color.inkMuted))
                 .textStyle(.input)
                 .foregroundStyle(Color.ink)
@@ -360,7 +365,8 @@ struct ShareComposer: View {
     // MARK: Moving on
 
     private var bottomBar: some View {
-        HStack(spacing: 12) {
+        VStack(spacing: 8) {
+            ShareBottomNote(error: model.problem, reason: step == .check ? nil : whyNot)
             if step == .check {
                 PavePrimaryButton(title: confirmTitle, loadingTitle: SharingMessages.sharing, isLoading: model.isCreating) { confirm() }
                     .disabled(draft.problem != nil || model.isCreating)
@@ -385,6 +391,16 @@ struct ShareComposer: View {
         }
     }
 
+    /// What is still missing before Volgende works, so a grey button is never a puzzle.
+    private var whyNot: String? {
+        guard !canGoOn else { return nil }
+        switch step {
+        case .what: return SharingMessages.chooseSomething
+        case .who: return SharingMessages.fillWho
+        default: return nil
+        }
+    }
+
     private var confirmTitle: String {
         LocalBiometricAuthenticator().kind.map { SharingMessages.confirmWith($0.name) } ?? SharingMessages.confirm
     }
@@ -392,6 +408,7 @@ struct ShareComposer: View {
     /// Face ID where there is one; without it, the tap on the button itself is the confirmation.
     private func confirm() {
         let draft = draft
+        model.problem = nil
         Task {
             let authenticator = LocalBiometricAuthenticator()
             if authenticator.kind != nil, !(await authenticator.authenticate(reason: SharingMessages.biometricReason(draft.recipientName))) { return }

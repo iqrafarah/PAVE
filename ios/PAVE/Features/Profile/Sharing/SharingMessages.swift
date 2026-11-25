@@ -129,7 +129,11 @@ enum SharingMessages {
     static func quickApplyHonest(_ employer: String) -> String {
         "Je kaartje blijft in PAVE. \(employer) doet niet echt mee: in de demo bekijkt een medespeler het als werkgever."
     }
-    static func quickApplySend(_ employer: String) -> String { "Laat achter bij \(employer)" }
+    static let quickApplySend = "Laat je kaartje achter"
+    static let quickApplyNeedsName = "Vul je naam in."
+    static let quickApplyNeedsWhy = "Schrijf kort waarom je hier wilt werken, of spreek het in."
+    static let fairVacancies = "Vacatures"
+    static let fairShareBack = "Deel je profiel"
     static let quickApplySentTitle = "Achtergelaten"
     static func quickApplySentText(_ employer: String, vacancy: String) -> String {
         "Je kaartje voor \(vacancy) staat klaar bij \(employer). Je krijgt een melding als je wordt uitgenodigd; alles staat in Mijn beursdag."
@@ -150,9 +154,10 @@ enum SharingMessages {
     }
     static let applyFailed = "Je sollicitatie kon niet worden achtergelaten. Probeer het opnieuw."
     static let fairInvitedTitle = "Je bent uitgenodigd"
-    static func fairInvitedBody(_ application: FairApplication) -> String {
+    static func fairInvitedBody(_ application: FairApplication, employer: String?) -> String {
         let when = application.invitedFor.map { " op \(ApplyMessages.slot($0))" } ?? ""
-        return "Voor een gesprek over \(application.vacancyTitle)\(when)."
+        guard let employer else { return "Voor een gesprek over \(application.vacancyTitle)\(when)." }
+        return "\(employer) wil je spreken over \(application.vacancyTitle)\(when)."
     }
     static let fairLoading = "Even laden…"
     static func fairFoundAnnouncement(_ name: String) -> String { "Gevonden: \(name)" }
@@ -176,6 +181,14 @@ enum SharingMessages {
     static let vaultEmptyTitle = "Je kluis is nog leeg"
     static let vaultEmpty = "Voeg eerst bewijs toe, zoals een diploma, stage of project. Daarna kies je hier wat je deelt."
     static let toVault = "Naar je kluis"
+    static let more = "Meer"
+    static let tryAgain = "Opnieuw proberen"
+    static let scanUnknown = "Dit is geen code van PAVE. Scan de QR-code op de stand of de poster."
+    static let scanNoWeb = "Dit gedeelde profiel kan hier niet worden geopend. Open de link in je browser."
+    static let scanUnavailable = "Scannen lukt hier niet. Geef PAVE toegang tot je camera bij Instellingen, of gebruik de Camera-app."
+    static let documentsFailed = "Gedeeld, maar je cv of brief kon niet mee. Deel opnieuw vanuit Mijn sollicitatie als je ze erbij wilt."
+    static let chooseSomething = "Kies minstens één bewijsstuk, of je cv of brief."
+    static let fillWho = "Vul de naam van de ontvanger en de naam van wat je deelt in."
     static func profileProblem(_ problem: SavedProfile.Problem) -> String {
         switch problem {
         case .noName: "Geef je profiel een naam."
@@ -221,6 +234,7 @@ enum SharingMessages {
     static let shareTitle = "Naam van wat je deelt"
     static let purpose = "Waarvoor"
     static let purposePrompt = "Bijvoorbeeld: sollicitatie Junior IT-consultant"
+    static let shareTitlePrompt = "Bijvoorbeeld: mijn cv voor Kade"
     static let fairRecipient = "Bezoekers van mijn stand"
     static func duration(_ duration: ShareDuration) -> String {
         switch duration {

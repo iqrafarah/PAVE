@@ -24,8 +24,11 @@ struct ShareScanSheet: View {
                     }
                 } else if ShareScanner.isAvailable {
                     ZStack(alignment: .bottom) {
-                        ShareScanner { found in Task { await open(found) } }
-                            .ignoresSafeArea()
+                        ShareScanner(onFound: { found in Task { await open(found) } }, onUnknown: {
+                            PaveHaptics.error()
+                            withAnimation(.easeOut(duration: 0.2)) { problem = SharingMessages.scanUnknown }
+                        })
+                        .ignoresSafeArea()
                         Text(problem ?? SharingMessages.scanHint)
                             .textStyle(.bodyMedium)
                             .foregroundStyle(Color.ink)
@@ -34,7 +37,7 @@ struct ShareScanSheet: View {
                             .padding(20)
                     }
                 } else {
-                    PaveEmptyState(icon: .iconCamera, title: SharingMessages.scan, message: "Deze iPhone kan hier geen QR-codes scannen. Gebruik de Camera-app.")
+                    PaveEmptyState(icon: .iconCamera, title: SharingMessages.scan, message: SharingMessages.scanUnavailable)
                 }
             }
             .background(Color.canvas)
@@ -73,6 +76,8 @@ struct ShareScanSheet: View {
             if let base = model.webURL {
                 openURL(ShareLinks.share(code, base: base))
                 dismiss()
+            } else {
+                problem = SharingMessages.scanNoWeb
             }
         }
     }

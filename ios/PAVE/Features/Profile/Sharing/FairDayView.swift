@@ -9,13 +9,16 @@ struct FairDayView: View {
     @Environment(\.vacancyRequest) private var vacancyRequest
     @State private var entries: [FairDay.Entry] = []
     @State private var calendarFor: FairApplication?
+    @State private var sharesBackWith: String?
+    @State private var showsShareBack = false
 
     private var applications: [FairApplication] { model.fairApplications ?? [] }
     private var invitations: [FairApplication] { applications.filter { $0.status == .invited } }
-    private var scannedNotApplied: [(name: String, stand: String?)] {
-        entries.compactMap { entry -> (String, String?)? in
-            guard case .scanned(let name, let slug, let stand) = entry.event, !applications.contains(where: { $0.employerSlug == slug }) else { return nil }
-            return (name, stand)
+    private var scannedNotApplied: [(name: String, slug: String, stand: String?)] {
+        var seen = Set<String>()
+        return entries.compactMap { entry -> (String, String, String?)? in
+            guard case .scanned(let name, let slug, let stand) = entry.event, !applications.contains(where: { $0.employerSlug == slug }), seen.insert(slug).inserted else { return nil }
+            return (name, slug, stand)
         }
     }
 
@@ -27,7 +30,7 @@ struct FairDayView: View {
                 if !invitations.isEmpty {
                     SharePanel(title: SharingMessages.dayInvitations) {
                         ForEach(invitations) { application in
-                            FairInvitationRow(application: application) { accepted in
+                            FairInvitationRow(application: application, employer: employerName(application)) { accepted in
                                 Task { await model.answer(application, accepted: accepted) }
                             } onCalendar: {
                                 calendarFor = application
@@ -41,31 +44,45 @@ struct FairDayView: View {
                 if !applications.isEmpty {
                     SharePanel(title: SharingMessages.dayLeft) {
                         ForEach(applications) { application in
-                            HStack(spacing: 14) {
-                                ShareRowIcon(icon: .iconBriefcaseSolid)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(application.vacancyTitle).textStyle(.bodyMedium).foregroundStyle(Color.ink).lineLimit(1)
-                                    Text(employerName(application)).textStyle(.caption).foregroundStyle(Color.inkMuted)
+                            NavigationLink { employerCard(application.employerSlug) } label: {
+                                HStack(spacing: 14) {
+                                    ShareRowIcon(icon: .iconBriefcaseSolid)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(application.vacancyTitle).textStyle(.bodyMedium).foregroundStyle(Color.ink).lineLimit(2)
+                                        Text(employerName(application)).textStyle(.caption).foregroundStyle(Color.inkMuted)
+                                        Text(SharingMessages.dayStatus(application)).textStyle(.caption).foregroundStyle(application.awaitsAnswer ? Color.paveAccent : Color.inkMuted)
+                                    }
+                                    .multilineTextAlignment(.leading)
+                                    Spacer(minLength: 8)
+                                    chevron
                                 }
-                                Spacer(minLength: 8)
-                                Text(SharingMessages.dayStatus(application)).textStyle(.caption).foregroundStyle(application.awaitsAnswer ? Color.paveAccent : Color.inkMuted)
+                                .padding(.vertical, 10)
+                                .padding(.horizontal, 14)
+                                .contentShape(.rect)
                             }
-                            .padding(.vertical, 10)
-                            .padding(.horizontal, 14)
+                            .buttonStyle(.pave)
                             ShareRowDivider()
                         }
                     }
                 }
                 if !scannedNotApplied.isEmpty {
                     SharePanel(title: SharingMessages.dayNext) {
-                        ForEach(scannedNotApplied, id: \.name) { stand in
-                            HStack(spacing: 14) {
-                                ShareRowIcon(icon: .iconQrcode, isMuted: true)
-                                Text(SharingMessages.dayNotApplied(stand.name, stand: stand.stand)).textStyle(.bodyMedium).foregroundStyle(Color.ink)
-                                Spacer(minLength: 0)
+                        ForEach(scannedNotApplied, id: \.slug) { stand in
+                            NavigationLink { employerCard(stand.slug) } label: {
+                                HStack(spacing: 14) {
+                                    ShareRowIcon(icon: .iconQrcode, isMuted: true)
+                                    Text(SharingMessages.dayNotApplied(stand.name, stand: stand.stand))
+                                        .textStyle(.bodyMedium)
+                                        .foregroundStyle(Color.ink)
+                                        .multilineTextAlignment(.leading)
+                                    Spacer(minLength: 8)
+                                    chevron
+                                }
+                                .padding(.vertical, 10)
+                                .padding(.horizontal, 14)
+                                .contentShape(.rect)
                             }
-                            .padding(.vertical, 10)
-                            .padding(.horizontal, 14)
+                            .buttonStyle(.pave)
                         }
                     }
                 }
@@ -89,11 +106,32 @@ struct FairDayView: View {
                 try? await Task.sleep(for: .seconds(10))
             }
         }
+        .sheet(isPresented: $showsShareBack) {
+            ShareComposer(model: model, template: .fair, recipientOrganisation: sharesBackWith, withApplication: false) { showsShareBack = false }
+        }
         .sheet(item: $calendarFor) { application in
             if let moment = application.invitedFor {
                 ApplicationCalendarEditor(vacancy: vacancy(of: application), deadline: moment, isTalk: true) { calendarFor = nil }
                     .ignoresSafeArea()
             }
+        }
+    }
+
+    private var chevron: some View {
+        Image(.iconChevronRightSolid)
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .frame(width: 10, height: 10)
+            .foregroundStyle(Color.inkMuted)
+            .accessibilityHidden(true)
+    }
+
+    /// The stand again, to apply after all or share your profile with them.
+    private func employerCard(_ slug: String) -> some View {
+        FairEmployerLoader(slug: slug, model: model) { employer in
+            sharesBackWith = employer.name
+            showsShareBack = true
         }
     }
 

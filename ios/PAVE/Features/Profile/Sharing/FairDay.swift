@@ -25,6 +25,14 @@ enum FairDay {
     }
 
     /// Today's entries, oldest first.
+    /// The name of a stand you scanned, by its slug.
+    static func employerName(slug: String) -> String? {
+        all().lazy.compactMap { entry -> String? in
+            if case .scanned(let name, let found, _) = entry.event, found == slug { return name }
+            return nil
+        }.first
+    }
+
     static func all(now: Date = .now) -> [Entry] {
         guard let data = UserDefaults.standard.data(forKey: key), let entries = try? JSONDecoder().decode([Entry].self, from: data) else { return [] }
         return entries.filter { Calendar.current.isDate($0.date, inSameDayAs: now) }

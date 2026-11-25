@@ -71,6 +71,8 @@ final class AylaChatModel {
 
     /// Picked up by the chat once it is on screen.
     var vacancyRequest: PendingVacancyRequest?
+    /// Vacatures should open on the applications tab, as from the widget or a reminder.
+    var opensApplications = false
 
     func request(_ request: VacancyRequest) {
         vacancyRequest = PendingVacancyRequest(request: request)

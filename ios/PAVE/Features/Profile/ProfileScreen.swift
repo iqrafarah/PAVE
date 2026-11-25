@@ -27,7 +27,7 @@ struct ProfileScreen: View {
                 VStack(alignment: .leading, spacing: 22) {
                     if let invited = model.fairApplications?.first(where: \.awaitsAnswer) {
                         NavigationLink { FairDayView(model: model) } label: {
-                            ShareLinkRow.label(icon: .iconCalendarDaysSolid, title: SharingMessages.fairInvitedTitle, detail: SharingMessages.fairInvitedBody(invited))
+                            ShareLinkRow.label(icon: .iconCalendarDaysSolid, title: SharingMessages.fairInvitedTitle, detail: SharingMessages.fairInvitedBody(invited, employer: FairDay.employerName(slug: invited.employerSlug)))
                                 .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 14))
                         }
                         .buttonStyle(.pave)
@@ -61,6 +61,12 @@ struct ProfileScreen: View {
             }
             .mainScreenToolbar(SharingMessages.title, onShowMenu: onShowMenu)
             .navigationDestination(item: $opened) { id in ShareDetailView(model: model, shareID: id) }
+            .navigationDestination(isPresented: Bindable(model).showsFairDay) { FairDayView(model: model) }
+            .onChange(of: model.shareToOpen, initial: true) { _, id in
+                guard let id else { return }
+                model.shareToOpen = nil
+                opened = id
+            }
         }
         .task {
             // Sharing chooses from the vault, which may not have been opened yet.
@@ -136,6 +142,8 @@ struct ProfileScreen: View {
             PaveNotice(message: SharingMessages.notSetUp)
         case .failed:
             PaveNotice(message: SharingMessages.loadFailed, tone: .critical)
+            PaveSecondaryButton(title: SharingMessages.tryAgain) { Task { await model.load() } }
+                .frame(maxWidth: 260)
         case .loading where model.shares.isEmpty:
             ProgressView().frame(maxWidth: .infinity).padding(.vertical, 40)
         default:
@@ -144,7 +152,7 @@ struct ProfileScreen: View {
         }
         if let profiles = model.profiles { saved(profiles) }
         templates
-        SharePanel(title: "Meer") {
+        SharePanel(title: SharingMessages.more) {
             NavigationLink { FairDayView(model: model) } label: {
                 ShareLinkRow.label(icon: .iconQrcode, title: SharingMessages.fairDay, detail: SharingMessages.fairDayHint)
             }

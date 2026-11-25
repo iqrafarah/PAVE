@@ -21,6 +21,10 @@ struct ApplicationStore {
         try? data.write(to: file(draft.id), options: [.atomic, .completeFileProtection])
     }
 
+    func delete(_ vacancyID: String) {
+        try? FileManager.default.removeItem(at: file(vacancyID))
+    }
+
     /// Every application kept on this device, the one changed last first.
     func all() -> [ApplicationDraft] {
         let files = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []

@@ -16,6 +16,7 @@ struct QuickApplySheet: View {
     @AppStorage("fair.availability") private var storedAvailability = ""
     @State private var card = FairApplicationCard(name: "")
     @State private var isWriting = false
+    @State private var aylaFailed = false
     @State private var isSending = false
     @State private var sent: FairApplication?
     @State private var dictation = SpeechDictation()
@@ -120,11 +121,24 @@ struct QuickApplySheet: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .safeAreaInset(edge: .bottom) {
-            PavePrimaryButton(title: SharingMessages.quickApplySend(employer.name), loadingTitle: SharingMessages.sharing, isLoading: isSending) { send() }
-                .disabled(card.problem != nil || isSending)
+            VStack(spacing: 8) {
+                ShareBottomNote(error: model.problem ?? (aylaFailed ? ApplyMessages.aylaFailed : nil), reason: reason)
+                PavePrimaryButton(title: SharingMessages.quickApplySend, loadingTitle: SharingMessages.sharing, isLoading: isSending) { send() }
+                    .disabled(card.problem != nil || isSending)
+            }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
                 .background(Color.canvas)
+        }
+        .interactiveDismissDisabled(sent == nil && (!card.why.isEmpty || !card.pitch.isEmpty))
+        .onDisappear { model.problem = nil }
+    }
+
+    private var reason: String? {
+        switch card.problem {
+        case .noName: SharingMessages.quickApplyNeedsName
+        case .noWhy: SharingMessages.quickApplyNeedsWhy
+        case nil: nil
         }
     }
 
@@ -148,12 +162,17 @@ struct QuickApplySheet: View {
     private func writeWhy() async {
         guard let service = chat.service else { return }
         isWriting = true
+        aylaFailed = false
         defer { isWriting = false }
         let request = ApplicationWritingRequest(
             kind: .profile, vacancy: vacancy, name: card.name, items: vault.items.filter { $0.aylaAllowedAt != nil },
             focus: SharingMessages.quickApplyFocus
         )
-        if let written = try? await service.writeApplication(request).profile, !written.isEmpty { card.why = written }
+        if let written = try? await service.writeApplication(request).profile, !written.isEmpty {
+            card.why = written
+        } else {
+            aylaFailed = true
+        }
     }
 
     private func togglePitch() async {
@@ -168,6 +187,7 @@ struct QuickApplySheet: View {
         dictation.stop()
         if let data = try? JSONEncoder().encode(card.availability) { storedAvailability = String(decoding: data, as: UTF8.self) }
         isSending = true
+        model.problem = nil
         Task {
             let authenticator = LocalBiometricAuthenticator()
             if authenticator.kind != nil, !(await authenticator.authenticate(reason: SharingMessages.biometricReason(employer.name))) {

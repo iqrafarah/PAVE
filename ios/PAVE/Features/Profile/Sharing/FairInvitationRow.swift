@@ -5,6 +5,7 @@ import SwiftUI
 /// practising with Ayla.
 struct FairInvitationRow: View {
     let application: FairApplication
+    let employer: String
     let onAnswer: (Bool) -> Void
     let onCalendar: () -> Void
     let onPractise: () -> Void
@@ -15,6 +16,7 @@ struct FairInvitationRow: View {
                 ShareRowIcon(icon: .iconCalendarDaysSolid)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(SharingMessages.dayInvitedFor(application.vacancyTitle)).textStyle(.listTitle).foregroundStyle(Color.ink)
+                    Text(employer).textStyle(.caption).foregroundStyle(Color.inkMuted)
                     if let moment = application.invitedFor {
                         Text(ApplyMessages.slot(moment)).textStyle(.bodyMedium).foregroundStyle(Color.paveAccent)
                     }
@@ -34,7 +36,7 @@ struct FairInvitationRow: View {
                 }
             case .accepted:
                 Text(SharingMessages.dayAccepted).textStyle(.chip).foregroundStyle(Color.paveAccent)
-                HStack(spacing: 10) {
+                VStack(spacing: 10) {
                     PaveSecondaryButton(title: ApplyMessages.talkToCalendar, icon: .iconCalendarDaysSolid, action: onCalendar)
                     PaveSecondaryButton(title: SharingMessages.dayPractise, icon: .iconChatBubbleLeftEllipsisSolid, action: onPractise)
                 }

@@ -176,7 +176,7 @@ Het cv volgt wat op een cv gebruikelijk is: elk onderdeel met het nieuwste boven
 | Menu Vacatures (iOS, onder Kluis) | Vacatures / Wat Ayla laatst vond, wat je bewaarde en je sollicitaties. / Vraag Ayla om vacatures te zoeken die bij je passen. Wat ze vindt, staat daarna ook hier. / Zoek met Ayla |
 | Deadline uit de vacature | In de vacature staat een sluitingsdatum / “{zin uit de vacature}” / Gebruik {datum} als deadline / Zet in je agenda (agenda-item: Deadline sollicitatie {functie} bij {bedrijf}, notitie: Bijgehouden in PAVE.) |
 | Op Ayla's start | Je deadline is vandaag / Je deadline is morgen / Je deadline is over {n} dagen, met {functie} bij {bedrijf} |
-| Tabblad Sollicitaties (in het vacaturepaneel, naast Gevonden en Bewaard) | Sollicitaties / Concept · {n}, Verstuurd · {n}, Gesprek · {n}, Aanbod · {n}, Afgewezen · {n} / Gewijzigd op {datum} / Nog geen sollicitaties / Tik bij een vacature op Solliciteren om een cv en brief te maken. Hier houd je bij hoe het ermee staat. |
+| Tabblad Sollicitaties (in het vacaturepaneel, naast Gevonden en Bewaard) | Sollicitaties / Concept · {n}, Verstuurd · {n}, Gesprek · {n}, Aanbod · {n}, Afgewezen · {n} / Gewijzigd op {datum} / Nog geen sollicitaties / Tik bij een vacature op Solliciteren, of maak er zelf een. Hier houd je bij hoe het ermee staat. / Nieuwe sollicitatie / (lang indrukken) Verwijder sollicitatie / Sollicitatie bij {bedrijf} verwijderen? / Je cv, brief en wat je bijhield gaan weg van deze iPhone. Wat je al deelde, beheer je bij Profiel. |
 | Volgende stappen | Volgende stappen / {n} eis(en) staan nog niet op je cv / Wat kan ik doen? / Oefen het gesprek / Alles wat de vacature vraagt staat op je cv. |
 | Wat komt erin | Wat komt erin? / Ayla's voorstel voor {functie} bij {bedrijf}. Zet aan of uit wat je wilt laten zien. / (in de editor) Zet aan of uit wat op je cv staat. |
 | Lengte | Past op 1 pagina / {n} pagina's / Maak passend op 1 pagina / Terug naar Ayla's voorstel |
@@ -205,6 +205,19 @@ Het cv volgt wat op een cv gebruikelijk is: elk onderdeel met het nieuwste boven
 | Alinea weghalen | Alinea verwijderen / Deze alinea verwijderen? / Annuleer |
 | Fouten | Ayla kon nu niet schrijven. Probeer het zo opnieuw. / De pdf kon niet worden gemaakt. Probeer het opnieuw. |
 | Pdf | Cv {naam} {bedrijf}.pdf / Motivatiebrief {naam} {bedrijf}.pdf |
+
+## Zelf een sollicitatie maken (iOS)
+
+| Waar | Tekst |
+|---|---|
+| Scherm | Nieuwe sollicitatie / Voor een vacature die je zelf vond, of een open sollicitatie bij een bedrijf. Daarna kies je een ontwerp voor je cv en brief. |
+| Velden | Bedrijf * (Bijvoorbeeld Albert Heijn) / Functie (Leeg laten voor een open sollicitatie) / Plaats (Bijvoorbeeld Eindhoven) / Link naar de vacature (Bijvoorbeeld werkenbij.ah.nl/…) / Tekst van de vacature (Plak hier de vacature, dan kan Ayla je brief erop afstemmen) |
+| Onder de tekst | Alleen voor jouw cv en brief. PAVE stuurt niets naar het bedrijf. |
+| Fouten | Vul het bedrijf in. / Dit lijkt geen link. Controleer hem of laat het veld leeg. |
+| Knop | Maak cv en brief |
+| Open sollicitatie | Titel: Open sollicitatie / Brief: Betreft: open sollicitatie / Graag stel ik mij voor bij {bedrijf}. Ik ben benieuwd of er bij jullie een plek is waar ik kan bijdragen. |
+| Mijn sollicitatie | De vacature / Lees meer / Minder / Bekijk de vacature / Deel je sollicitatie |
+| Fouten | Dat lukte niet (titel) / Je kluis kon niet worden geladen, dus je cv zou leeg blijven. Probeer het zo opnieuw. / Ayla is nu niet bereikbaar. Je kunt alles zelf invullen. |
 
 ## Animaties uitzetten (web en iOS, Instellingen › Weergave)
 
@@ -281,6 +294,21 @@ Delen is tijdelijk, per onderdeel te kiezen, te pauzeren en in te trekken (kick-
 | Web, gedeeld profiel | Iemand deelt gegevens met je / Via PAVE, tijdelijk en alleen wat diegene heeft gekozen. Je bezoek wordt bijgehouden, zodat diegene ziet dat je hebt gekeken. Je naam invullen hoeft niet. / Je naam / Je organisatie / Bekijk / Je kijkt tijdelijk mee tot en met {datum}. / Je mag het cv en de brief downloaden. Je mag alleen kijken, niet downloaden. / Geverifieerd, Niet geverifieerd / Even niet te zien, Niet meer gedeeld, Niet meer te zien, Deze link bestaat niet |
 | Web, beurs | Banenbeurs / Scan de code van een stand met PAVE: je ziet de werkgever en zijn vacatures, en je kunt je profiel met hem delen. Deze werkgevers zijn verzonnen voor de demo. |
 | Na het delen | Bekijk wat je deelt (vanuit Profiel, opent het nieuwe deel) / Terug naar Ayla (als Ayla het delen klaarzette) / Opnieuw scannen (na het scannen van een werkgever) |
+
+### Uitleg bij een grijze knop en fouten (iOS, delen)
+
+| Waar | Tekst |
+|---|---|
+| Lege kluis | Je kluis is nog leeg / Voeg eerst bewijs toe, zoals een diploma, stage of project. Daarna kies je hier wat je deelt. / Naar je kluis |
+| Profiel bewaren | Geef je profiel een naam. / Kies minstens één bewijsstuk. |
+| Delen, stap Wat | Kies minstens één bewijsstuk, of je cv of brief. |
+| Delen, stap Met wie | Vul de naam van de ontvanger en de naam van wat je deelt in. / Naam van wat je deelt (Bijvoorbeeld: mijn cv voor Kade) |
+| Geen cv of brief | Je hebt nog geen cv of brief. Maak een sollicitatie, dan deel je hem daarna vanuit Mijn sollicitatie. / Nieuwe sollicitatie |
+| Pdf mislukt | Gedeeld, maar je cv of brief kon niet mee. Deel opnieuw vanuit Mijn sollicitatie als je ze erbij wilt. |
+| Snel solliciteren | Laat je kaartje achter / Vul je naam in. / Schrijf kort waarom je hier wilt werken, of spreek het in. |
+| Beurs | Vacatures / Deel je profiel / Opnieuw proberen / Meer |
+| Uitnodiging (melding) | Je bent uitgenodigd: {bedrijf} wil je spreken over {functie} op {moment}. |
+| Scannen | Dit is geen code van PAVE. Scan de QR-code op de stand of de poster. / Dit gedeelde profiel kan hier niet worden geopend. Open de link in je browser. / Scannen lukt hier niet. Geef PAVE toegang tot je camera bij Instellingen, of gebruik de Camera-app. |
 
 ## Terug en sluiten (iOS)
 

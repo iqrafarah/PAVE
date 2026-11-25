@@ -22,6 +22,10 @@ final class SharingModel {
     var problem: String?
     /// Siri or Control Center asked to stop sharing; Profiel asks how.
     var asksToStopAll = false
+    /// A share notification was tapped: Profiel opens on that share's page.
+    var shareToOpen: String?
+    /// Opened from an invitation at the fair: Profiel goes on to Mijn beursdag.
+    var showsFairDay = false
     /// Ayla was asked to share or to stop; Profiel opens it.
     var request: AylaShareCommand?
     /// A share to ask about taking back, when its detail opens.
@@ -47,6 +51,10 @@ final class SharingModel {
         // Intrekken and Verlengen right from a notification, also when Profiel is not open.
         ShareAlerts.onRevoke = { [weak self] id in await self?.act(on: id) { await $0.revoke($1) } }
         ShareAlerts.onExtend = { [weak self] id in await self?.act(on: id) { await $0.extend($1, by: .week) } }
+        ShareAlerts.onOpen = { [weak self] id in
+            self?.shareToOpen = id
+            PaveLinkInbox.send(.shares)
+        }
     }
 
     private func act(on id: String, _ work: (SharingModel, ProfileShare) async -> Void) async {
@@ -99,20 +107,25 @@ final class SharingModel {
         defer { isCreating = false }
         do {
             var share = try await service.create(draft, now: .now)
-            if let application, draft.content.cv != nil || draft.content.letter != nil {
-                var documents: [String: String] = [:]
-                if draft.content.cv != nil, let url = try? ApplicationPDF.file(for: application, document: .cv, photo: application.showsPhoto ? photo : nil),
-                   let data = try? Data(contentsOf: url) {
-                    documents["cv"] = try await service.upload(pdf: data, kind: "cv", shareID: share.id)
+            // The link exists from here on: a pdf that does not make it never hides it, or a retry would make a second one.
+            do {
+                if let application, draft.content.cv != nil || draft.content.letter != nil {
+                    var documents: [String: String] = [:]
+                    if draft.content.cv != nil, let url = try? ApplicationPDF.file(for: application, document: .cv, photo: application.showsPhoto ? photo : nil),
+                       let data = try? Data(contentsOf: url) {
+                        documents["cv"] = try await service.upload(pdf: data, kind: "cv", shareID: share.id)
+                    }
+                    if draft.content.letter != nil, let url = try? ApplicationPDF.file(for: application, document: .letter, photo: nil),
+                       let data = try? Data(contentsOf: url) {
+                        documents["letter"] = try await service.upload(pdf: data, kind: "letter", shareID: share.id)
+                    }
+                    if !documents.isEmpty {
+                        try await service.setDocuments(documents, of: share)
+                        share.content.documents = documents
+                    }
                 }
-                if draft.content.letter != nil, let url = try? ApplicationPDF.file(for: application, document: .letter, photo: nil),
-                   let data = try? Data(contentsOf: url) {
-                    documents["letter"] = try await service.upload(pdf: data, kind: "letter", shareID: share.id)
-                }
-                if !documents.isEmpty {
-                    try await service.setDocuments(documents, of: share)
-                    share.content.documents = documents
-                }
+            } catch {
+                problem = SharingMessages.documentsFailed
             }
             shares.insert(share, at: 0)
             ShareAlerts.update(with: shares)
@@ -198,13 +211,17 @@ final class SharingModel {
         }
     }
 
-    func delete(_ profile: SavedProfile) async {
-        guard let service else { return }
+    /// False when it could not be deleted; the profile stays.
+    @discardableResult
+    func delete(_ profile: SavedProfile) async -> Bool {
+        guard let service else { return false }
         do {
             try await service.delete(profileID: profile.id)
             profiles?.removeAll { $0.id == profile.id }
+            return true
         } catch {
             problem = SharingMessages.loadFailed
+            return false
         }
     }
 

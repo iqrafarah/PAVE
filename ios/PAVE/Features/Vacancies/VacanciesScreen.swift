@@ -12,6 +12,8 @@ struct VacanciesScreen: View {
     @State private var opened: Vacancy?
     @State private var application: ApplicationStudioModel?
     @State private var reload = 0
+    @State private var isOpening = false
+    @State private var openFailed = false
     @Environment(VaultModel.self) private var vault: VaultModel?
     @Environment(ProfileModel.self) private var profile: ProfileModel?
 
@@ -54,11 +56,32 @@ struct VacanciesScreen: View {
                     onToggleSave: model.canSaveVacancies ? { model.toggleSaved(vacancy) } : nil,
                     onAsk: model.isAvailable ? { onRequest(.ask(vacancy)) } : nil,
                     onAskGap: model.isAvailable ? { onRequest(.askGap($0, vacancy)) } : nil,
-                    actions: model.isAvailable
-                        ? VacancyActions(isChosen: false, showsCompare: false, onTask: { onRequest(.task($0, vacancy)) }, onToggleCompare: {})
-                        : nil
+                    actions: VacancyActions(
+                        isChosen: false, showsCompare: false, usesAyla: model.isAvailable,
+                        // Applying stays on this page, so closing the studio comes back to the vacancy.
+                        onTask: { $0 == .prepare ? openApplication(vacancy) : onRequest(.task($0, vacancy)) },
+                        onToggleCompare: {}
+                    )
                 )
             }
+        }
+        .overlay {
+            if isOpening {
+                ProgressView()
+                    .controlSize(.large)
+                    .padding(24)
+                    .background(.regularMaterial, in: .rect(cornerRadius: 16))
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: isOpening)
+        .alert(ApplyMessages.openFailed, isPresented: $openFailed) {
+            Button("OK", role: .cancel) {}
+        }
+        .onChange(of: model.opensApplications, initial: true) { _, opens in
+            guard opens else { return }
+            model.opensApplications = false
+            tab = .applications
         }
         .fullScreenCover(item: $application, onDismiss: { reload += 1 }) { studio in
             ApplicationStudioView(
@@ -76,9 +99,14 @@ struct VacanciesScreen: View {
     /// The studio opens over this page, so closing it comes back here and not to the chat.
     private func openApplication(_ vacancy: Vacancy) {
         guard let vault else { return onRequest(.application(vacancy)) }
+        guard !isOpening else { return }
+        isOpening = true
         PaveHaptics.tap(.medium)
         Task {
-            application = await ApplicationStudioModel.open(for: vacancy, vault: vault, profile: profile, firstName: model.firstName, service: model.service)
+            defer { isOpening = false }
+            let studio = await ApplicationStudioModel.open(for: vacancy, vault: vault, profile: profile, firstName: model.firstName, service: model.service)
+            // Without the vault the CV would be empty; better to say so than to open it.
+            if case .failed = vault.state { openFailed = true } else { application = studio }
         }
     }
 }

@@ -17,22 +17,17 @@ struct ShareRow: View {
         HStack(spacing: 14) {
             ShareTemplateIcon(template: share.template, isMuted: !isLive)
             VStack(alignment: .leading, spacing: 2) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(share.recipientName)
-                        .textStyle(.bodyMedium)
-                        .foregroundStyle(isLive ? Color.ink : Color.inkMuted)
-                        .lineLimit(1)
-                    Spacer(minLength: 4)
-                    Text(SharingMessages.remaining(share))
-                        .textStyle(.caption)
-                        .foregroundStyle(share.state() == .paused ? Color.warning : Color.inkMuted)
-                        .lineLimit(1)
-                        .layoutPriority(1)
-                }
+                Text(share.recipientName)
+                    .textStyle(.bodyMedium)
+                    .foregroundStyle(isLive ? Color.ink : Color.inkMuted)
+                    .lineLimit(2)
                 Text(subtitle)
                     .textStyle(.caption)
                     .foregroundStyle(Color.inkMuted)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                Text(SharingMessages.remaining(share))
+                    .textStyle(.caption)
+                    .foregroundStyle(share.state() == .paused ? Color.warning : Color.inkMuted)
                 if isLive {
                     Text(SharingMessages.looksLine(share))
                         .textStyle(.caption)

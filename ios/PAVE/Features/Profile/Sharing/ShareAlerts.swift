@@ -17,6 +17,8 @@ enum ShareAlerts {
     /// Set at launch: what an action in a notification does, with the share's id.
     static var onRevoke: ((String) async -> Void)?
     static var onExtend: ((String) async -> Void)?
+    /// A tap on the notification itself: that share's page in Profiel.
+    static var onOpen: ((String) -> Void)?
 
     static func registerCategories() {
         let revoke = UNNotificationAction(identifier: revokeAction, title: SharingMessages.revoke, options: [.destructive, .authenticationRequired])
@@ -78,7 +80,7 @@ enum ShareAlerts {
         switch response.actionIdentifier {
         case revokeAction: await onRevoke?(shareID)
         case extendAction: await onExtend?(shareID)
-        default: break
+        default: await MainActor.run { onOpen?(shareID) }
         }
         return true
     }

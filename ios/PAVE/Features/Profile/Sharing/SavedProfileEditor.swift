@@ -14,11 +14,13 @@ struct SavedProfileEditor: View {
     @State private var isSaving = false
     @State private var confirmsDelete = false
     private let isNew: Bool
+    private let original: SavedProfile
 
     init(model: SharingModel, profile: SavedProfile, onDone: @escaping () -> Void) {
         self.model = model
         self.onDone = onDone
         isNew = profile.id.isEmpty
+        original = profile
         _profile = State(initialValue: profile)
         _chosen = State(initialValue: Set(profile.itemIDs))
         _brief = State(initialValue: profile.briefIDs)
@@ -86,16 +88,10 @@ struct SavedProfileEditor: View {
             .background(Color.canvas)
             .safeAreaInset(edge: .bottom) {
                 VStack(spacing: 8) {
-                    if let problem = kept.problem {
-                        Text(SharingMessages.profileProblem(problem))
-                            .textStyle(.caption)
-                            .foregroundStyle(Color.inkMuted)
-                            .transition(.opacity)
-                    }
+                    ShareBottomNote(error: model.problem, reason: kept.problem.map(SharingMessages.profileProblem))
                     PavePrimaryButton(title: SharingMessages.saveProfile, loadingTitle: SharingMessages.saving, isLoading: isSaving) { save() }
                         .disabled(kept.problem != nil || isSaving)
                 }
-                .animation(.easeOut(duration: 0.2), value: kept.problem)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 12)
                     .background(Color.canvas)
@@ -123,14 +119,15 @@ struct SavedProfileEditor: View {
             .confirmationDialog(SharingMessages.deleteProfileQuestion(profile.name), isPresented: $confirmsDelete, titleVisibility: .visible) {
                 Button(SharingMessages.deleteProfile, role: .destructive) {
                     Task {
-                        await model.delete(profile)
-                        onDone()
+                        if await model.delete(profile) { onDone() }
                     }
                 }
             } message: {
                 Text(SharingMessages.deleteProfileHint)
             }
         }
+        .interactiveDismissDisabled(profile != original || chosen != Set(original.itemIDs) || brief != original.briefIDs)
+        .onDisappear { model.problem = nil }
     }
 
     private func templateChip(_ template: ShareTemplate) -> some View {
@@ -162,6 +159,7 @@ struct SavedProfileEditor: View {
 
     private func save() {
         isSaving = true
+        model.problem = nil
         Task {
             let ok = await model.save(kept)
             isSaving = false

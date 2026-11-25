@@ -38,6 +38,8 @@ final class ApplicationStudioModel: Identifiable {
     /// What Ayla asks where the CV is thin, with what the user answered.
     private(set) var questions: [ApplicationQuestion] = []
     private(set) var isAsking = false
+    /// Why Ayla asked nothing the last time, when it was not because she had no questions.
+    private(set) var questionsProblem: String?
     /// Adds a sentence to a piece of evidence in the vault and gives the vault back as it is then; nil when it failed.
     /// Plans the notifications of all applications again; set where notifications exist.
     var syncReminders: ([ApplicationDraft]) -> Void = { _ in }
@@ -515,12 +517,23 @@ final class ApplicationStudioModel: Identifiable {
 
     /// Asks Ayla where the CV misses something only the user can tell. Quiet when she has nothing or cannot now.
     func askQuestions() async {
-        guard let service, !isAsking else { return }
+        guard !isAsking else { return }
+        guard let service else {
+            questionsProblem = ApplyMessages.aylaUnavailable
+            return
+        }
         let known = entriesAylaKnows
-        guard !known.isEmpty else { return }
+        guard !known.isEmpty else {
+            questionsProblem = ApplyMessages.aylaUses(0)
+            return
+        }
         isAsking = true
+        questionsProblem = nil
         defer { isAsking = false }
-        guard let answer = try? await service.writeApplication(.init(kind: .questions, vacancy: draft.vacancy, name: draft.cv.name, items: known.map(\.item))) else { return }
+        guard let answer = try? await service.writeApplication(.init(kind: .questions, vacancy: draft.vacancy, name: draft.cv.name, items: known.map(\.item))) else {
+            questionsProblem = ApplyMessages.aylaFailed
+            return
+        }
         questions = (answer.questions ?? []).compactMap { question in
             known.first { $0.item.id == question.sourceItemID }.map {
                 ApplicationQuestion(entryID: $0.entry.id, sourceItemID: question.sourceItemID, title: $0.entry.title, text: question.text)

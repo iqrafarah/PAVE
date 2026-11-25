@@ -113,7 +113,7 @@ struct ApplicationStudioView: View {
         }
         .task { shares?.reloadApplications() }
         .onDisappear { model.settle() }
-        .alert(ApplyMessages.aylaWrites, isPresented: Binding(get: { model.problem != nil }, set: { if !$0 { model.problem = nil } })) {
+        .alert(ApplyMessages.somethingWrong, isPresented: Binding(get: { model.problem != nil }, set: { if !$0 { model.problem = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(model.problem ?? "")
@@ -191,7 +191,9 @@ struct ApplicationStudioView: View {
             Text(ApplyMessages.title(model.draft.vacancy))
                 .textStyle(.label)
                 .foregroundStyle(Color.inkMuted)
-                .lineLimit(1)
+                .lineLimit(2)
+                .minimumScaleFactor(0.85)
+                .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
             if back != nil {
                 roundButton(.iconXMark, label: ApplyMessages.close, action: close)

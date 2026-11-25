@@ -29,7 +29,8 @@ struct ShareProfileCard: View {
                     Text(name.isEmpty ? SharingMessages.you : name)
                         .textStyle(.emptyTitle)
                         .foregroundStyle(Color.ink)
-                        .lineLimit(1)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.85)
                     if let headline {
                         Text(headline)
                             .textStyle(.bodyMedium)

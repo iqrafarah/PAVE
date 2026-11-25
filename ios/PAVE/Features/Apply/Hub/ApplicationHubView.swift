@@ -12,6 +12,7 @@ struct ApplicationHubView: View {
     var onOpenShare: (String) -> Void = { _ in }
     /// Changes when the invitation arrives while this is open, so it shows without leaving.
     @State private var tick = 0
+    @State private var showsWholeVacancy = false
     let onTask: (AylaRequest.VacancyTask) -> Void
 
     var body: some View {
@@ -23,6 +24,8 @@ struct ApplicationHubView: View {
                     .foregroundStyle(Color.ink)
                     .accessibilityAddTraits(.isHeader)
                 ApplicationSummaryCard(draft: model.shown, shares: shares ?? [])
+                // Read here so the card comes in when it arrives, without rebuilding the page or losing the scroll.
+                let _ = tick
                 if let invitation = model.invitation {
                     ApplicationInvitationCard(model: model, invitation: invitation) { onTask(.interview) }
                 }
@@ -30,6 +33,7 @@ struct ApplicationHubView: View {
                 if let onShare { sharing(onShare) }
                 ApplicationHubStatus(model: model)
                 if model.tracking.history.count > 0 { history }
+                if hasVacancyText { vacancyText }
                 employer
                 nextSteps
             }
@@ -41,7 +45,7 @@ struct ApplicationHubView: View {
         }
         .scrollIndicators(.hidden)
         .scrollDismissesKeyboard(.interactively)
-        .id(tick)
+        .animation(.spring(duration: 0.45, bounce: 0.15), value: tick)
         .task(id: model.tracking.invitation?.arrivesAt) {
             guard let arrives = model.tracking.invitation?.arrivesAt, arrives > .now else { return }
             try? await Task.sleep(for: .seconds(arrives.timeIntervalSinceNow + 1))
@@ -142,13 +146,65 @@ struct ApplicationHubView: View {
                             .textStyle(.bodyMedium)
                             .foregroundStyle(Color.ink)
                             .fixedSize(horizontal: false, vertical: true)
-                        PavePrimaryButton(title: ApplyMessages.shareWith(company), action: onShare)
+                        PavePrimaryButton(title: ApplyMessages.shareApplication, action: onShare)
                     } else {
                         PaveSecondaryButton(title: ApplyMessages.shareAgain, action: onShare)
                     }
                 }
                 .padding(16)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.panel, in: .rect(cornerRadius: 16))
+            .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder, lineWidth: 1) }
+        }
+    }
+
+    private var hasVacancyText: Bool {
+        model.draft.vacancy.url != nil || !(model.draft.vacancy.summary ?? "").isEmpty
+    }
+
+    /// What the vacancy asked, to read again before a talk: the piece PAVE has, and the whole one at the employer.
+    private var vacancyText: some View {
+        let vacancy = model.draft.vacancy
+        return VStack(alignment: .leading, spacing: 10) {
+            Text(ApplyMessages.theVacancy)
+                .textStyle(.label)
+                .foregroundStyle(Color.inkMuted)
+                .accessibilityAddTraits(.isHeader)
+            VStack(alignment: .leading, spacing: 12) {
+                if let summary = vacancy.summary, !summary.isEmpty {
+                    Text(summary)
+                        .textStyle(.bodyMedium)
+                        .foregroundStyle(Color.ink)
+                        .lineLimit(showsWholeVacancy ? nil : 5)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if summary.count > 260 {
+                        Button(showsWholeVacancy ? ApplyMessages.showLess : ApplyMessages.showMore) {
+                            withAnimation(.snappy(duration: 0.25)) { showsWholeVacancy.toggle() }
+                        }
+                        .textStyle(.chip)
+                        .foregroundStyle(Color.paveAccent)
+                        .buttonStyle(.pave)
+                    }
+                }
+                if let url = vacancy.url {
+                    Link(destination: url) {
+                        HStack(spacing: 8) {
+                            Text(AylaMessages.vacancyOpen)
+                            Image(.iconArrowRight)
+                                .renderingMode(.template)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 15, height: 15)
+                                .accessibilityHidden(true)
+                        }
+                        .textStyle(.chip)
+                        .foregroundStyle(Color.paveAccent)
+                    }
+                    .buttonStyle(.pave)
+                }
+            }
+            .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.panel, in: .rect(cornerRadius: 16))
             .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder, lineWidth: 1) }

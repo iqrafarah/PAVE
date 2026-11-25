@@ -11,6 +11,8 @@ nonisolated enum PaveLink: String, CaseIterable, Sendable {
     case stopSharing = "stop-delen"
     /// Vacatures: your applications, from the widget.
     case applications = "sollicitaties"
+    /// Profiel › Mijn beursdag, from an invitation at the fair.
+    case fairDay = "beursdag"
 
     static let scheme = "pave"
 

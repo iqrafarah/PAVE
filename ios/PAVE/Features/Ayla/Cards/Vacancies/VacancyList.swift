@@ -58,7 +58,7 @@ struct VacancyList: View {
                 VacancyFilterBar(filter: $filter, shown: shown.count, total: all.count) { showsFilters = true }
             }
             if tab == .applications {
-                ApplicationsList(applications: applications, onOpen: { onOpenApplication?($0) }, onNew: onOpenApplication == nil ? nil : { makesApplication = true })
+                ApplicationsList(applications: applications, onOpen: { onOpenApplication?($0) }, onNew: onOpenApplication == nil ? nil : { makesApplication = true }, onDelete: delete)
             } else if shown.isEmpty, !all.isEmpty {
                 VStack(spacing: 12) {
                     PaveEmptyState(icon: .iconBriefcase, title: AylaMessages.vacancyFilterNone, message: AylaMessages.vacancyFilterNoneHint)
@@ -107,5 +107,15 @@ struct VacancyList: View {
         .task { await model.loadSavedVacancies() }
         // The applications live on this device and change while the studio is open over the panel.
         .task(id: "\(tab)-\(reload)") { applications = ApplicationStore().all() }
+    }
+
+    private func delete(_ draft: ApplicationDraft) {
+        let store = ApplicationStore()
+        store.delete(draft.id)
+        let left = store.all()
+        ApplicationReminderScheduler.sync(left)
+        ApplicationWidgetSnapshot.update(drafts: left)
+        PaveHaptics.success()
+        withAnimation(.snappy(duration: 0.25)) { applications = left }
     }
 }

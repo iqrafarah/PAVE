@@ -297,7 +297,12 @@ struct MainView: View {
             sharing.asksToStopAll = true
         case .applications:
             isMenuOpen = false
+            model.opensApplications = true
             open(.vacancies)
+        case .fairDay:
+            isMenuOpen = false
+            open(.profile)
+            sharing.showsFairDay = true
         case .talk, .newConversation:
             startNewConversation()
             if link == .talk { talk() }

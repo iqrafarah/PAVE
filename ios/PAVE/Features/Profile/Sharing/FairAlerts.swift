@@ -22,7 +22,7 @@ enum FairAlerts {
             for application in fresh {
                 let content = UNMutableNotificationContent()
                 content.title = SharingMessages.fairInvitedTitle
-                content.body = SharingMessages.fairInvitedBody(application)
+                content.body = SharingMessages.fairInvitedBody(application, employer: FairDay.employerName(slug: application.employerSlug))
                 content.sound = .default
                 content.threadIdentifier = "fair"
                 try? await center.add(UNNotificationRequest(identifier: "share.fair.\(application.id)", content: content, trigger: nil))

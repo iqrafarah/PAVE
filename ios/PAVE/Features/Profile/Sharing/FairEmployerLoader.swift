@@ -13,6 +13,7 @@ struct FairEmployerLoader: View {
     @State private var employer: FairEmployer?
     @State private var isShown = false
     @State private var problem: String?
+    @State private var attempt = 0
     @Environment(\.paveReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -21,7 +22,11 @@ struct FairEmployerLoader: View {
                 FairEmployerView(employer: employer, model: model, applyingTo: vacancyID) { onShareBack(employer) }
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
             } else if let problem {
-                PaveEmptyState(icon: .iconBriefcase, title: SharingMessages.fairNotFound, message: problem)
+                VStack(spacing: 16) {
+                    PaveEmptyState(icon: .iconBriefcase, title: SharingMessages.fairNotFound, message: problem)
+                    PaveSecondaryButton(title: SharingMessages.tryAgain) { attempt += 1 }
+                        .frame(maxWidth: 260)
+                }
             } else {
                 FairFoundView(name: employer?.name, stand: employer?.stand)
                     .transition(.opacity)
@@ -30,7 +35,8 @@ struct FairEmployerLoader: View {
         .animation(reduceMotion ? nil : .spring(duration: 0.5, bounce: 0.15), value: isShown)
         .navigationTitle(isShown ? employer?.name ?? "" : "")
         .navigationBarTitleDisplayMode(.inline)
-        .task(id: slug) {
+        .task(id: "\(slug)-\(attempt)") {
+            problem = nil
             guard let service = model.service else {
                 problem = SharingMessages.fairNoService
                 return

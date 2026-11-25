@@ -70,7 +70,7 @@ struct ApplicationContentView: View {
                 HStack(spacing: 10) { choices }
                 VStack(spacing: 10) { choices }
             }
-            Text(ApplyMessages.aylaUses(model.itemsForAyla.count))
+            Text(model.canWrite ? ApplyMessages.aylaUses(model.itemsForAyla.count) : ApplyMessages.aylaUnavailable)
                 .textStyle(.caption)
                 .foregroundStyle(Color.inkMuted)
                 .multilineTextAlignment(.center)
