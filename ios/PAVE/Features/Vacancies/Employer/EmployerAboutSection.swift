@@ -65,7 +65,7 @@ struct EmployerAboutSection: View {
 
     private func lookUpButton(_ title: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            PaveSecondaryButton(title: title, icon: .iconMagnifyingGlassSolid) { Task { await model.lookUp() } }
+            PaveSecondaryButton(title: title, icon: .iconSearch) { Task { await model.lookUp() } }
             Text(EmployerMessages.lookUpHint)
                 .textStyle(.caption)
                 .foregroundStyle(Color.inkMuted)

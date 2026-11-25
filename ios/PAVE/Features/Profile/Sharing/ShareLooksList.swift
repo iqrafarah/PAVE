@@ -16,7 +16,7 @@ struct ShareLooksList: View {
             } else {
                 ForEach(Array(looks.prefix(50).enumerated()), id: \.element.id) { index, look in
                     HStack(spacing: 14) {
-                        ShareRowIcon(icon: look.action == .download ? .iconFolderArrowDownSolid : .iconEyeSolid)
+                        ShareRowIcon(icon: look.action == .download ? .iconFolderArrowDownSolid : .iconEye)
                         Text(SharingMessages.look(look))
                             .textStyle(.bodyMedium)
                             .foregroundStyle(Color.ink)

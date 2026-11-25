@@ -184,7 +184,7 @@ struct ApplicationStudioView: View {
     private func stepBar(back: (() -> Void)?) -> some View {
         HStack(spacing: 12) {
             if let back {
-                roundButton(.iconArrowLeftSolid, label: ApplyMessages.otherDesign, action: back)
+                roundBackButton(label: ApplyMessages.otherDesign, action: back)
             } else {
                 roundButton(.iconXMark, label: ApplyMessages.close, action: close)
             }
@@ -205,7 +205,7 @@ struct ApplicationStudioView: View {
 
     private var topBar: some View {
         HStack(spacing: 10) {
-            roundButton(.iconArrowLeftSolid, label: ApplyMessages.backToApplication) { model.showOverview() }
+            roundBackButton(label: ApplyMessages.backToApplication) { model.showOverview() }
             Spacer(minLength: 0)
             Picker(ApplyMessages.title(model.draft.vacancy), selection: Binding(get: { model.document }, set: { value in
                 model.selection = nil
@@ -255,7 +255,7 @@ struct ApplicationStudioView: View {
         HStack(spacing: 10) {
             pill(.iconPaintBrushSolid, ApplyMessages.design, showsTitle: showsTitles) { showsDesign = true }
             if model.document == .letter {
-                pill(.iconPlusCircleSolid, ApplyMessages.paragraph, showsTitle: showsTitles) { model.addParagraph() }
+                pill(.iconPlus, ApplyMessages.paragraph, showsTitle: showsTitles) { model.addParagraph() }
             } else {
                 pill(.iconListBulletSolid, ApplyMessages.content, showsTitle: showsTitles) { showsContent = true }
             }
@@ -307,7 +307,7 @@ struct ApplicationStudioView: View {
                 } else {
                     ApplicationAylaCard(model: model)
                     if model.document == .letter {
-                        PaveSecondaryButton(title: ApplyMessages.addParagraph, icon: .iconPlusCircleSolid) { model.addParagraph() }
+                        PaveSecondaryButton(title: ApplyMessages.addParagraph, icon: .iconPlus) { model.addParagraph() }
                     } else {
                         PaveSecondaryButton(title: ApplyMessages.whatGoesIn, icon: .iconListBulletSolid) { showsContent = true }
                         PaveSecondaryButton(title: model.openQuestions > 0 ? ApplyMessages.aylaAsks(model.openQuestions) : ApplyMessages.askOn) {
@@ -400,6 +400,19 @@ struct ApplicationStudioView: View {
     private struct OpenedShare: Identifiable { let id: String }
 
     // MARK: Parts
+
+    /// Back, with the same chevron as the system's back button.
+    private func roundBackButton(label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            PaveBackChevron()
+                .frame(width: 44, height: 44)
+                .background(Color.panel, in: .circle)
+                .overlay { Circle().strokeBorder(Color.cardBorder, lineWidth: 1) }
+                .contentShape(.circle)
+        }
+        .buttonStyle(.pave)
+        .accessibilityLabel(label)
+    }
 
     private func roundButton(_ icon: ImageResource, label: String, isBusy: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {

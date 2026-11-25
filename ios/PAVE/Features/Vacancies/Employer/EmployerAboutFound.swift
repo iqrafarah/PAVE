@@ -25,7 +25,7 @@ struct EmployerAboutFound: View {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(about.facts, id: \.label) { fact in
                         HStack(alignment: .firstTextBaseline, spacing: 10) {
-                            Image(.iconCheckCircleSolid)
+                            Image(.iconCheckBadgeSolid)
                                 .renderingMode(.template)
                                 .resizable()
                                 .scaledToFit()
@@ -48,7 +48,7 @@ struct EmployerAboutFound: View {
                 Link(destination: website) {
                     HStack(spacing: 6) {
                         Text(about.website ?? "")
-                        Image(.iconArrowUpRightSolid).renderingMode(.template).resizable().scaledToFit().frame(width: 12, height: 12).accessibilityHidden(true)
+                        Image(.iconArrowRight).renderingMode(.template).resizable().scaledToFit().frame(width: 12, height: 12).accessibilityHidden(true)
                     }
                     .textStyle(.link)
                     .foregroundStyle(Color.paveAccent)

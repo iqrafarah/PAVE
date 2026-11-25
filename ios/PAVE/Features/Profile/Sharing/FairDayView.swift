@@ -60,7 +60,7 @@ struct FairDayView: View {
                     SharePanel(title: SharingMessages.dayNext) {
                         ForEach(scannedNotApplied, id: \.name) { stand in
                             HStack(spacing: 14) {
-                                ShareRowIcon(icon: .iconQrCodeSolid, isMuted: true)
+                                ShareRowIcon(icon: .iconQrcode, isMuted: true)
                                 Text(SharingMessages.dayNotApplied(stand.name, stand: stand.stand)).textStyle(.bodyMedium).foregroundStyle(Color.ink)
                                 Spacer(minLength: 0)
                             }
@@ -70,7 +70,7 @@ struct FairDayView: View {
                     }
                 }
                 if applications.isEmpty, entries.isEmpty {
-                    PaveEmptyState(icon: .iconQrCodeSolid, title: SharingMessages.dayEmpty, message: SharingMessages.dayEmptyHint)
+                    PaveEmptyState(icon: .iconQrcode, title: SharingMessages.dayEmpty, message: SharingMessages.dayEmptyHint)
                 }
             }
             .padding(20)

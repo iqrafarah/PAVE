@@ -24,7 +24,7 @@ struct VacancyFilterBar: View {
                 chip(icon: .iconArrowsRightLeftSolid, title: filter.order == .bestMatch ? AylaMessages.vacancyOrderBestMatch : AylaMessages.vacancyOrderAsFound, isOn: filter.order == .bestMatch, rotatesIcon: true)
             }
             Button(action: onShowFilters) {
-                chip(icon: .iconAdjustmentsHorizontalSolid, title: filter.activeCount == 0 ? AylaMessages.vacancyFilter : AylaMessages.vacancyFilterCount(filter.activeCount), isOn: filter.activeCount > 0)
+                chip(icon: .iconFunnelSolid, title: filter.activeCount == 0 ? AylaMessages.vacancyFilter : AylaMessages.vacancyFilterCount(filter.activeCount), isOn: filter.activeCount > 0)
             }
             .buttonStyle(.pave)
         }

@@ -11,7 +11,7 @@ struct ApplicationSavedNote: View {
         Group {
             if isShown {
                 HStack(spacing: 6) {
-                    Image(.iconCheckCircleSolid)
+                    Image(.iconCheckBadgeSolid)
                         .renderingMode(.template)
                         .resizable()
                         .scaledToFit()

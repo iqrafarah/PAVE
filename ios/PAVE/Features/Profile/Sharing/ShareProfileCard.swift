@@ -45,7 +45,7 @@ struct ShareProfileCard: View {
             .accessibilityElement(children: .combine)
             Button(action: onQuickShare) {
                 HStack(spacing: 8) {
-                    Image(.iconQrCodeSolid)
+                    Image(.iconQrcode)
                         .renderingMode(.template)
                         .resizable()
                         .scaledToFit()

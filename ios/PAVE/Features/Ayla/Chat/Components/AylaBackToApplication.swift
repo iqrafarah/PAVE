@@ -10,12 +10,7 @@ struct AylaBackToApplication: View {
         HStack(spacing: 4) {
             Button(action: onOpen) {
                 HStack(spacing: 8) {
-                    Image(.iconArrowLeftSolid)
-                        .renderingMode(.template)
-                        .resizable()
-                        .scaledToFit()
-                        .paveIconFrame(14)
-                        .accessibilityHidden(true)
+                    PaveBackChevron(size: 14)
                     Text(ApplyMessages.backToApplicationAt(company))
                         .textStyle(.chip)
                         .lineLimit(1)

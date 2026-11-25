@@ -23,7 +23,7 @@ struct VacancyActions: View {
             Button { onTask(.prepare) } label: { label(.iconDocumentTextSolid, AylaMessages.vacancyActionPrepare, isOn: true) }
                 .buttonStyle(.pave)
             HStack(spacing: 8) {
-                action(.iconPlusCircleSolid, AylaMessages.vacancyActionGaps) { onTask(.gaps) }
+                action(.iconPlus, AylaMessages.vacancyActionGaps) { onTask(.gaps) }
                 action(.iconChatBubbleLeftEllipsisSolid, AylaMessages.vacancyActionPractice) { onTask(.interview) }
             }
         }
@@ -32,7 +32,7 @@ struct VacancyActions: View {
     private var grid: some View {
         Grid(horizontalSpacing: 8, verticalSpacing: 8) {
             GridRow {
-                action(.iconPlusCircleSolid, AylaMessages.vacancyActionGaps) { onTask(.gaps) }
+                action(.iconPlus, AylaMessages.vacancyActionGaps) { onTask(.gaps) }
                 action(.iconDocumentTextSolid, AylaMessages.vacancyActionPrepare) { onTask(.prepare) }
             }
             GridRow {
@@ -45,7 +45,7 @@ struct VacancyActions: View {
     private var compare: some View {
         Button(action: onToggleCompare) {
             label(
-                isChosen ? .iconCheckCircleSolid : .iconArrowsRightLeftSolid,
+                isChosen ? .iconCheckBadgeSolid : .iconArrowsRightLeftSolid,
                 isChosen ? AylaMessages.vacancyActionCompareChosen : AylaMessages.vacancyActionCompare,
                 isOn: isChosen
             )

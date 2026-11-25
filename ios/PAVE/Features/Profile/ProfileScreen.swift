@@ -139,7 +139,7 @@ struct ProfileScreen: View {
         templates
         SharePanel(title: "Meer") {
             NavigationLink { FairDayView(model: model) } label: {
-                ShareLinkRow.label(icon: .iconQrCodeSolid, title: SharingMessages.fairDay, detail: SharingMessages.fairDayHint)
+                ShareLinkRow.label(icon: .iconQrcode, title: SharingMessages.fairDay, detail: SharingMessages.fairDayHint)
             }
             .buttonStyle(.pave)
             ShareRowDivider()
@@ -206,7 +206,7 @@ struct ProfileScreen: View {
                     editing = SavedProfile.starter(for: .employer, items: vault.items)
                 } label: {
                     HStack(spacing: 14) {
-                        ShareRowIcon(icon: .iconPlusCircleSolid)
+                        ShareRowIcon(icon: .iconPlus)
                         Text(SharingMessages.newProfile).textStyle(.bodyMedium).foregroundStyle(Color.paveAccent)
                         Spacer(minLength: 0)
                     }

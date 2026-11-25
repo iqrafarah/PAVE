@@ -190,7 +190,7 @@ struct ApplicationHubView: View {
                         .foregroundStyle(Color.inkMuted)
                         .fixedSize(horizontal: false, vertical: true)
                     if model.canWrite {
-                        PaveSecondaryButton(title: ApplyMessages.whatCanIDo, icon: .iconPlusCircleSolid) { onTask(.gaps) }
+                        PaveSecondaryButton(title: ApplyMessages.whatCanIDo, icon: .iconPlus) { onTask(.gaps) }
                     }
                 }
                 if model.canWrite {
