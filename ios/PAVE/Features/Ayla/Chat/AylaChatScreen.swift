@@ -117,6 +117,8 @@ struct AylaChatScreen: View {
     @State private var confirmationItem: VaultItem?
     /// Making a CV and a letter for a vacancy ("Solliciteren").
     @State private var application: ApplicationStudioModel?
+    /// The application a task came from, offered at the top until the user goes back or moves on.
+    @State private var backToApplication: Vacancy?
     /// An application that is still a concept with its deadline within three days.
     @State private var nearDeadline: ApplicationDraft?
     /// Ja and Nee by nodding or shaking the head with AirPods on, and what the last nod or shake answered.
@@ -530,6 +532,23 @@ struct AylaChatScreen: View {
             readAloud.stop()
         }
         .sheet(item: $selectingText) { ChatTextSelection(text: $0.text) }
+        // After a task from an application (practising, what is missing): one tap back to it.
+        .overlay(alignment: .top) {
+            if let vacancy = backToApplication, application == nil {
+                AylaBackToApplication(company: vacancy.company) {
+                    backToApplication = nil
+                    openApplication(for: vacancy)
+                } onDismiss: {
+                    backToApplication = nil
+                }
+                .padding(.top, 8)
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(reduceMotion ? nil : .snappy(duration: 0.25), value: backToApplication)
+        .onChange(of: model.conversationID) { old, new in
+            if old != nil, old != new { backToApplication = nil }
+        }
         .fullScreenCover(item: $application) { studio in
             ApplicationStudioView(
                 model: studio, photo: profile?.avatar,
@@ -538,6 +557,7 @@ struct AylaChatScreen: View {
                     let vacancy = studio.draft.vacancy
                     application = nil
                     run(task, on: [vacancy])
+                    backToApplication = vacancy
                 }
             )
         }
@@ -730,6 +750,9 @@ struct AylaChatScreen: View {
             try? await Task.sleep(for: .milliseconds(250))
             switch pending.request {
             case .task(let task, let vacancy): run(task, on: [vacancy])
+            case .applicationTask(let task, let vacancy):
+                run(task, on: [vacancy])
+                backToApplication = vacancy
             case .ask(let vacancy): askAyla(AylaMessages.vacancyAsk(vacancy))
             case .askGap(let skill, let vacancy): askAyla(AylaMessages.vacancyGapAsk(skill, for: vacancy))
             case .application(let vacancy): openApplication(for: vacancy)
@@ -1792,22 +1815,8 @@ struct AylaChatScreen: View {
         guard let vault else { return }
         PaveHaptics.tap(.medium)
         if isTalking { stopVoice() }
-        let person = profile?.profile
-        let name = [person?.fullName, person?.preferredName, model.firstName].compactMap { $0 }.first { !$0.isEmpty } ?? ""
         Task {
-            if vault.state != .ready { await vault.load() }
-            let studio = ApplicationStudioModel(vacancy: vacancy, items: vault.items, name: name, email: person?.email ?? "", service: model.service)
-            // What you tell Ayla about a job can go to that piece of evidence too, when you say so.
-            studio.keepInVault = { itemID, sentence in
-                guard let item = vault.items.first(where: { $0.id == itemID }) else { return nil }
-                var draft = VaultItemDraft(item: item)
-                draft.description = [draft.description, sentence].filter { !$0.isEmpty }.joined(separator: " ")
-                guard draft.problem == nil, await vault.save(draft, itemID: itemID) else { return nil }
-                return vault.items
-            }
-            studio.syncReminders = { ApplicationReminderScheduler.sync($0) }
-            studio.requestReminderAccess = ApplicationReminderScheduler.requestAccess
-            application = studio
+            application = await ApplicationStudioModel.open(for: vacancy, vault: vault, profile: profile, firstName: model.firstName, service: model.service)
         }
     }
 

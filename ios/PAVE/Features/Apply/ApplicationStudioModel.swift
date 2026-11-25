@@ -17,6 +17,9 @@ final class ApplicationStudioModel: Identifiable {
     private(set) var isProposal = false
     /// A new application starts in the gallery, then asks what goes in; one made before opens on its overview.
     var stage: Stage
+    /// Made before, or begun now: kept on this device. What is chosen in the gallery and the content step before that
+    /// is not kept, so closing there leaves nothing behind.
+    private(set) var isKept: Bool
     var document = ApplicationDocumentKind.cv
     var selection: ApplicationBlock?
     /// Ayla is writing this block, or the whole letter.
@@ -59,6 +62,7 @@ final class ApplicationStudioModel: Identifiable {
         draft = first
         shown = first
         stage = saved == nil ? .gallery : .hub
+        isKept = saved != nil
     }
 
     /// `hub`: an application that was made before opens on its overview.
@@ -114,6 +118,7 @@ final class ApplicationStudioModel: Identifiable {
         ApplicationVerification.mark(&fresh, items: items)
         draft = fresh
         shown = fresh
+        isKept = true
         store.save(draft)
         stage = .editor
         guard withAyla, service != nil else { return }
@@ -182,6 +187,17 @@ final class ApplicationStudioModel: Identifiable {
             tracking.note = String(note.prefix(1000))
             draft.tracking = tracking
         }
+    }
+
+    /// The letter has text of its own: written by Ayla, by hand, or the plain one from the vault. "Zelf invullen" leaves
+    /// it empty until the user writes.
+    var hasLetter: Bool { draft.letter.paragraphs.contains { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } }
+
+    /// From the editor back to the overview of the application.
+    func showOverview() {
+        settle()
+        selection = nil
+        stage = .hub
     }
 
     /// From the overview into the CV or the letter.
@@ -291,7 +307,7 @@ final class ApplicationStudioModel: Identifiable {
             try? await Task.sleep(for: .milliseconds(600))
             guard let self, !Task.isCancelled else { return }
             self.saving = nil
-            self.store.save(self.draft)
+            if self.isKept { self.store.save(self.draft) }
         }
     }
 
@@ -302,7 +318,7 @@ final class ApplicationStudioModel: Identifiable {
         saving?.cancel()
         saving = nil
         if shown != draft { shown = draft }
-        store.save(draft)
+        if isKept { store.save(draft) }
     }
 
     func entry(_ id: String) -> CVEntry? {

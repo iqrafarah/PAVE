@@ -11,6 +11,10 @@ struct ProfileScreen: View {
     @State private var composing: ShareTemplateChoice?
     @State private var opened: String?
     @State private var showsScanner = false
+    /// Just shared: its page opens once the composer has gone.
+    @State private var justShared: String?
+    /// Chosen after scanning an employer: the composer opens once the scanner has gone.
+    @State private var sharesBack: FairEmployer?
     @State private var showsReport = false
     @State private var showsPrivacy = false
     @State private var showsEarlier = false
@@ -56,13 +60,22 @@ struct ProfileScreen: View {
                 break
             }
         }
-        .sheet(item: $composing) { choice in
-            ShareComposer(model: model, template: choice.template, recipientOrganisation: choice.organisation, duration: choice.duration, withApplication: choice.withApplication) { composing = nil }
+        .sheet(item: $composing, onDismiss: {
+            guard let id = justShared else { return }
+            justShared = nil
+            opened = id
+        }) { choice in
+            ShareComposer(
+                model: model, template: choice.template, recipientOrganisation: choice.organisation, duration: choice.duration,
+                withApplication: choice.withApplication, doneTitle: SharingMessages.showShare, onShared: { justShared = $0.id }
+            ) { composing = nil }
         }
-        .sheet(isPresented: $showsScanner) {
-            ShareScanSheet(model: model) { employer in
-                composing = ShareTemplateChoice(template: .fair, organisation: employer.name)
-            }
+        .sheet(isPresented: $showsScanner, onDismiss: {
+            guard let employer = sharesBack else { return }
+            sharesBack = nil
+            composing = ShareTemplateChoice(template: .fair, organisation: employer.name)
+        }) {
+            ShareScanSheet(model: model) { sharesBack = $0 }
         }
         .sheet(isPresented: $showsReport) { ShareReportSheet(model: model) }
         .confirmationDialog(

@@ -140,6 +140,8 @@ struct NotificationsScreen: View {
     @State private var readIDs: Set<String> = []
     /// The meldingen just deleted (a chat with several is one row), while "Ongedaan maken" is on screen.
     @State private var undoIDs: [String] = []
+    /// What was just done with a verification request, shown for a moment after coming back to the list.
+    @State private var resolved: String?
 
     /// Search only earns its place once the list is long enough to need it.
     private static let searchThreshold = 8
@@ -222,9 +224,21 @@ struct NotificationsScreen: View {
                         .padding(.horizontal, 16)
                         .frame(maxWidth: 560)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
+                } else if let resolved {
+                    NotificationResolvedBar(message: resolved)
+                        .padding(.horizontal, 16)
+                        .frame(maxWidth: 560)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
             .animation(.snappy, value: undoIDs)
+            .animation(.snappy, value: resolved)
+            .task(id: resolved) {
+                guard resolved != nil else { return }
+                try? await Task.sleep(for: .seconds(4))
+                guard !Task.isCancelled else { return }
+                resolved = nil
+            }
             .task(id: undoIDs) {
                 guard !undoIDs.isEmpty else { return }
                 try? await Task.sleep(for: .seconds(5))
@@ -245,7 +259,15 @@ struct NotificationsScreen: View {
                         VerificationRequestNotificationDetail(
                             notification: notification,
                             onLoadReview: onLoadReview,
-                            onResolve: onResolveRequest
+                            onResolve: onResolveRequest.map { resolve in
+                                { id, status, reason in
+                                    let error = await resolve(id, status, reason)
+                                    if error == nil {
+                                        resolved = status == "verified" ? NotificationResolvedBar.verified : NotificationResolvedBar.rejected
+                                    }
+                                    return error
+                                }
+                            }
                         )
                     } else {
                         NotificationMessageDetail(notification: notification)
@@ -525,13 +547,6 @@ private struct VerificationRequestNotificationDetail: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                Button { dismiss() } label: {
-                    Label("Terug naar meldingen", image: .iconArrowLeft)
-                        .textStyle(.caption)
-                        .foregroundStyle(Color.paveAccent)
-                }
-                .buttonStyle(.pave)
-
                 Text("Verificatie aanvraag")
                     .textStyle(.calloutTitle)
                     .foregroundStyle(Color.ink)
@@ -624,8 +639,7 @@ private struct VerificationRequestNotificationDetail: View {
             .frame(maxWidth: .infinity)
         }
         .background(Color.canvas.ignoresSafeArea())
-        .navigationBarBackButtonHidden()
-        .toolbar(.hidden, for: .navigationBar)
+        .navigationBarTitleDisplayMode(.inline)
         .task(id: requestID) { await loadReview() }
         .sheet(isPresented: $writesRejection, onDismiss: {
             // Back to the notifications once the sheet is gone, not while it is still closing.

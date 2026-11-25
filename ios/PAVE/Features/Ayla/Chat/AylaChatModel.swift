@@ -56,6 +56,8 @@ final class AylaChatModel {
     /// What the vacancies page asks of the chat: Ayla's help with a vacancy, or the application for it.
     enum VacancyRequest: Equatable {
         case task(AylaRequest.VacancyTask, Vacancy)
+        /// A task asked from an application, which the chat offers to go back to.
+        case applicationTask(AylaRequest.VacancyTask, Vacancy)
         case ask(Vacancy)
         case askGap(String, Vacancy)
         case application(Vacancy)

@@ -5,6 +5,7 @@ import SwiftUI
 struct ShareCreatedView: View {
     let model: SharingModel
     let share: ProfileShare
+    var doneTitle = ApplyMessages.done
     let onDone: () -> Void
 
     var body: some View {
@@ -26,7 +27,7 @@ struct ShareCreatedView: View {
                     .foregroundStyle(Color.inkMuted)
                     .multilineTextAlignment(.center)
                 ShareCodeCard(model: model, share: share)
-                PavePrimaryButton(title: ApplyMessages.done, action: onDone)
+                PavePrimaryButton(title: doneTitle, action: onDone)
             }
             .padding(24)
             .frame(maxWidth: 520)

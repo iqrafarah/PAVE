@@ -92,4 +92,17 @@ struct SharingModelTests {
         await model.load()
         #expect(model.state == .unavailable)
     }
+
+    @Test func anApplicationShowsWhatWasSharedForIt() async throws {
+        let service = FakeShares()
+        let model = SharingModel(service: service, webURL: nil)
+        let profile = ShareProfile(name: "Ravi")
+        let first = ShareDraft(title: "Sollicitatie", recipientName: "Sanne", template: .employer, content: ShareContent(profile: profile, cv: application.cv, vacancyID: "v"))
+        let other = ShareDraft(title: "Beurs", recipientName: "Stand 4", template: .fair, itemIDs: ["x"], content: ShareContent(profile: profile))
+        _ = await model.create(first, application: application, photo: nil)
+        _ = await model.create(other, application: nil, photo: nil)
+        await model.load()
+        #expect(model.shares(forVacancy: "v").map(\.title) == ["Sollicitatie"])
+        #expect(model.shares(forVacancy: "w").isEmpty)
+    }
 }

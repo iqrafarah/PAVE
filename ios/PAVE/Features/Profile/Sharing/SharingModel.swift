@@ -60,6 +60,15 @@ final class SharingModel {
 
     func link(for share: ProfileShare) -> URL? { webURL.map { ShareLinks.share(share.code, base: $0) } }
 
+    /// The applications as they are on the device now, for a composer opened from the studio.
+    func reloadApplications() { applications = ApplicationStore().all() }
+
+    /// What was shared for this application, newest first. A share that was taken back keeps nothing, not even which
+    /// application it was for, so it drops out here.
+    func shares(forVacancy vacancyID: String) -> [ProfileShare] {
+        shares.filter { $0.content.vacancyID == vacancyID }.sorted { $0.createdAt > $1.createdAt }
+    }
+
     func load() async {
         applications = ApplicationStore().all()
         guard let service else { return }

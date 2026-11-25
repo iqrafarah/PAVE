@@ -6,6 +6,7 @@ enum ApplyMessages {
     static func title(_ vacancy: Vacancy) -> String { "Solliciteren bij \(vacancy.company)" }
     static let cv = "Cv"
     static let letter = "Motivatiebrief"
+    static let letterShort = "Brief"
     static let close = "Sluiten"
     static let export = "Exporteren"
     static let exportCV = "Cv als pdf"
@@ -68,6 +69,27 @@ enum ApplyMessages {
     static let editLetter = "Brief bewerken"
 
     static let history = "Geschiedenis"
+
+    // Going back, stopping and sharing
+    static let backToApplication = "Terug naar je sollicitatie"
+    static func backToApplicationAt(_ company: String) -> String { "Terug naar je sollicitatie bij \(company)" }
+    static let stopQuestion = "Stoppen met deze sollicitatie?"
+    static let stopHint = "Je gekozen ontwerp en inhoud worden niet bewaard."
+    static let stop = "Stoppen"
+    static let goOn = "Doorgaan"
+    static let share = "Delen"
+    static func shareWith(_ company: String) -> String { "Deel met \(company)" }
+    static func shareTitle(_ company: String) -> String { "Delen met \(company)" }
+    static func shareHint(_ company: String) -> String {
+        "Je kiest zelf wat \(company) ziet en hoe lang. Je kunt het altijd pauzeren of intrekken."
+    }
+    static let shareAgain = "Nog een keer delen"
+    static let markSentQuestion = "Zet je sollicitatie op Verstuurd?"
+    static func markSentHint(_ company: String) -> String {
+        "Je hebt gedeeld met \(company). Dit houd je zelf bij; PAVE stuurt niets naar het bedrijf."
+    }
+    static let markSent = "Op Verstuurd zetten"
+    static let notNow = "Niet nu"
     static func historyLine(_ change: ApplicationTracking.Change) -> String {
         "\(status(change.status)) · \(change.date.formatted(.dateTime.day().month(.wide).year().locale(Locale(identifier: "nl_NL"))))"
     }

@@ -21,6 +21,8 @@ struct MainView: View {
     @State private var watchConnection = WatchConnectionModel()
     @State private var notificationsModel: NotificationsModel
     @State private var sharing: SharingModel
+    /// Ayla was asked to share: the composer opens over the chat, so you are back with her once it is done.
+    @State private var aylaShare: ShareTemplateChoice?
     @State private var destination = MainDestination.ayla
     /// Demo: the Camera Control button steers PAVE while "knopmodus" is on.
     @State private var cameraControl = PaveCameraControl()
@@ -101,6 +103,16 @@ struct MainView: View {
         }
         // Your look from Instellingen: the photo in the menu, the text size, and the name Ayla uses.
         .environment(profile)
+        // Sharing from the studio and from Ayla, next to the Profiel page.
+        .environment(sharing)
+        .environment(\.openDestination) { destination in open(destination) }
+        .sheet(item: $aylaShare) { choice in
+            ShareComposer(
+                model: sharing, template: choice.template, recipientOrganisation: choice.organisation, duration: choice.duration,
+                withApplication: choice.withApplication, doneTitle: SharingMessages.backToAyla
+            ) { aylaShare = nil }
+            .environment(vault)
+        }
         .dynamicTypeSize(deviceTextSize.shifted(by: profile.textSize))
         .task { await profile.load() }
         .onChange(of: profile.profile.displayName) { _, name in
@@ -351,8 +363,13 @@ struct MainView: View {
                 .environment(watchConnection)
                 .environment(\.openFromAyla, openFromAyla)
                 .environment(\.shareFromAyla) { command in
-                    sharing.request(command)
-                    open(.profile)
+                    if case .share(let organisation, let duration, let withApplication) = command {
+                        sharing.reloadApplications()
+                        aylaShare = ShareTemplateChoice(template: .employer, organisation: organisation, duration: duration, withApplication: withApplication)
+                    } else {
+                        sharing.request(command)
+                        open(.profile)
+                    }
                 }
         case .vault:
             VaultScreen(onShowMenu: onShowMenu)
@@ -366,6 +383,7 @@ struct MainView: View {
                 model.request(request)
                 open(.ayla)
             }
+            .environment(vault)
         case .plan:
             PlanScreen(onShowMenu: onShowMenu)
         case .profile:

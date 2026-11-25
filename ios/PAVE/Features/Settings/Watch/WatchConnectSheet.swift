@@ -38,6 +38,18 @@ struct WatchConnectSheet: View {
     }
 
     var body: some View {
+        content
+            // A way out at every stage except while it is connecting; once connected, Klaar closes it.
+            .overlay(alignment: .topTrailing) {
+                if stage != .connecting, stage != .connected {
+                    PaveCloseButton { dismiss() }
+                        .padding(.top, 8)
+                        .padding(.trailing, 12)
+                }
+            }
+    }
+
+    private var content: some View {
         VStack(spacing: 0) {
             Spacer(minLength: 8)
             scene

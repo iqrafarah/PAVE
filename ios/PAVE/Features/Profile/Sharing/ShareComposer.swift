@@ -11,6 +11,12 @@ struct ShareComposer: View {
     var recipientOrganisation: String?
     var vacancyID: String?
     var withApplication = true
+    /// Which of the application's documents start on: from the studio only what was made.
+    var startsWith: Set<ApplicationDocumentKind> = [.cv, .letter]
+    /// The words of the last button, for where it goes back to.
+    var doneTitle = ApplyMessages.done
+    /// Called once it is shared, before the user closes it.
+    var onShared: (ProfileShare) -> Void = { _ in }
     let onDone: () -> Void
 
     @Environment(VaultModel.self) private var vault
@@ -34,8 +40,12 @@ struct ShareComposer: View {
 
     init(
         model: SharingModel, template: ShareTemplate, recipientOrganisation: String? = nil, vacancyID: String? = nil,
-        duration: ShareDuration? = nil, withApplication: Bool = true, onDone: @escaping () -> Void
+        duration: ShareDuration? = nil, withApplication: Bool = true, startsWith: Set<ApplicationDocumentKind> = [.cv, .letter],
+        doneTitle: String = ApplyMessages.done, onShared: @escaping (ProfileShare) -> Void = { _ in }, onDone: @escaping () -> Void
     ) {
+        self.startsWith = startsWith
+        self.doneTitle = doneTitle
+        self.onShared = onShared
         self.model = model
         self.template = template
         self.recipientOrganisation = recipientOrganisation
@@ -72,7 +82,7 @@ struct ShareComposer: View {
         NavigationStack {
             Group {
                 if let created {
-                    ShareCreatedView(model: model, share: created, onDone: onDone)
+                    ShareCreatedView(model: model, share: created, doneTitle: doneTitle, onDone: onDone)
                 } else {
                     steps
                 }
@@ -83,7 +93,11 @@ struct ShareComposer: View {
             .toolbar {
                 if created == nil {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button(SharingMessages.cancel) { confirmsDiscard = true }
+                        if step == .what {
+                            Button(SharingMessages.cancel) { confirmsDiscard = true }
+                        } else {
+                            PaveBackButton { step = Step(rawValue: step.rawValue - 1) ?? .what }
+                        }
                     }
                 }
             }
@@ -92,7 +106,7 @@ struct ShareComposer: View {
             }
         }
         .presentationDetents([.large])
-        .interactiveDismissDisabled(created == nil)
+        .sheetDismissGuard(isBlocked: created == nil) { confirmsDiscard = true }
         .task { start() }
     }
 
@@ -242,9 +256,6 @@ struct ShareComposer: View {
 
     private var bottomBar: some View {
         HStack(spacing: 12) {
-            if step != .what {
-                PaveSecondaryButton(title: SharingMessages.back) { step = Step(rawValue: step.rawValue - 1) ?? .what }
-            }
             if step == .check {
                 PavePrimaryButton(title: confirmTitle, loadingTitle: SharingMessages.sharing, isLoading: model.isCreating) { confirm() }
                     .disabled(draft.problem != nil || model.isCreating)
@@ -280,6 +291,7 @@ struct ShareComposer: View {
             let authenticator = LocalBiometricAuthenticator()
             if authenticator.kind != nil, !(await authenticator.authenticate(reason: SharingMessages.biometricReason(draft.recipientName))) { return }
             created = await model.create(draft, application: application, photo: profile.avatar)
+            if let created { onShared(created) }
         }
     }
 
@@ -294,6 +306,8 @@ struct ShareComposer: View {
         }
         if let app = application ?? (template == .employer && withApplication ? model.applications.first : nil) {
             applicationID = app.vacancy.id
+            includesCV = startsWith.contains(.cv)
+            includesLetter = startsWith.contains(.letter)
             headline = app.cv.headline
             organisation = recipientOrganisation ?? app.vacancy.company
             title = "Sollicitatie \(app.vacancy.title)"

@@ -79,11 +79,12 @@ struct ApplicationStudioTests {
         #expect(model.problem == ApplyMessages.aylaFailed)
     }
 
-    @Test func aDraftComesBackForTheSameVacancy() {
+    @Test func aDraftComesBackForTheSameVacancy() async {
         let shared = store
         let first = ApplicationStudioModel(vacancy: vacancy, items: items(), name: "Daaf", email: "", service: nil, store: shared)
         #expect(first.stage == .gallery)
-        first.update { $0.template = .night }
+        first.choose(.night)
+        await first.begin(withAyla: false)
         let again = ApplicationStudioModel(vacancy: vacancy, items: [], name: "Iemand anders", email: "", service: nil, store: shared)
         #expect(again.draft.template == .night)
         #expect(again.draft.cv.name == "Daaf")
@@ -448,5 +449,35 @@ struct ApplicationStudioTests {
         let pdf = try #require(PDFDocument(url: try ApplicationPDF.file(for: draft, document: .letter, photo: nil)))
         #expect(pdf.pageCount == 1)
         #expect((pdf.string ?? "").contains("Appwerk"))
+    }
+
+    @Test func closingBeforeBeginningKeepsNothing() async {
+        let folder = store
+        let model = ApplicationStudioModel(vacancy: vacancy, items: items(), name: "Daaf", email: "", service: nil, store: folder)
+        model.choose(.sage)
+        model.update { $0.cv.profile = "Nog niet begonnen." }
+        model.settle()
+        #expect(!model.isKept)
+        #expect(folder.load(vacancy.id) == nil)
+        await model.begin(withAyla: false)
+        #expect(model.isKept)
+        #expect(folder.load(vacancy.id) != nil)
+    }
+
+    @Test func theEditorGoesBackToTheOverview() async {
+        let model = ApplicationStudioModel(vacancy: vacancy, items: items(), name: "Daaf", email: "", service: nil, store: store)
+        await model.begin(withAyla: false)
+        model.selection = .profile
+        model.showOverview()
+        #expect(model.stage == .hub)
+        #expect(model.selection == nil)
+    }
+
+    @Test func aLetterWrittenYourselfStartsEmpty() async {
+        let model = ApplicationStudioModel(vacancy: vacancy, items: items(), name: "Daaf", email: "", service: nil, store: store)
+        await model.begin(withAyla: false)
+        #expect(!model.hasLetter)
+        model.update { $0.letter.paragraphs = [LetterParagraph(text: "Graag solliciteer ik.")] }
+        #expect(model.hasLetter)
     }
 }

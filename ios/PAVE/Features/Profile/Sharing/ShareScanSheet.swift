@@ -17,8 +17,8 @@ struct ShareScanSheet: View {
             Group {
                 if let employer {
                     FairEmployerView(employer: employer) {
-                        dismiss()
                         onShareBack(employer)
+                        dismiss()
                     }
                 } else if ShareScanner.isAvailable {
                     ZStack(alignment: .bottom) {
@@ -38,7 +38,18 @@ struct ShareScanSheet: View {
             .background(Color.canvas)
             .navigationTitle(employer?.name ?? SharingMessages.scan)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(SharingMessages.cancel) { dismiss() } } }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    if employer != nil {
+                        PaveBackButton(label: SharingMessages.scanAgain) {
+                            employer = nil
+                            problem = nil
+                        }
+                    } else {
+                        Button(SharingMessages.cancel) { dismiss() }
+                    }
+                }
+            }
         }
     }
 

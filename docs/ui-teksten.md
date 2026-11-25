@@ -168,6 +168,9 @@ Het cv volgt wat op een cv gebruikelijk is: elk onderdeel met het nieuwste boven
 | Kleuren | PAVE / Salie / Oceaan / Petrol / Nacht / Koraal / Roos / Lavendel / Zwart-wit |
 | Mijn sollicitatie (opent als je al een cv voor de vacature hebt) | Mijn sollicitatie / {functie} · {bedrijf} / Status: Concept, Verstuurd, Gesprek, Aanbod, Afgewezen / Dit houd je zelf bij. PAVE stuurt niets naar het bedrijf. / Deadline / Notitie / Bijvoorbeeld: contactpersoon of wat je nog wilt doen / Je cv en brief / Cv bewerken / Brief bewerken / Laatst gewijzigd op {datum} |
 | Herinneringen en geschiedenis (in Mijn sollicitatie) | Herinner me / Je krijgt een melding de dag voor je deadline en een week nadat je Verstuurd zet. De meldingen blijven op dit toestel. / Meldingen staan uit voor PAVE. Zet ze aan in de Instellingen van je iPhone om herinneringen te krijgen. / Geschiedenis / {status} · {datum} |
+| Delen vanuit cv en brief (knop Delen in de editor, blok in Mijn sollicitatie) | Delen / Delen met {bedrijf} / Je kiest zelf wat {bedrijf} ziet en hoe lang. Je kunt het altijd pauzeren of intrekken. / Deel met {bedrijf} / Nog een keer delen / Terug naar je sollicitatie (na het delen) / Zet je sollicitatie op Verstuurd? / Je hebt gedeeld met {bedrijf}. Dit houd je zelf bij; PAVE stuurt niets naar het bedrijf. / Op Verstuurd zetten / Niet nu. Vanuit de editor staat alleen het document aan dat je bekijkt; vanuit Mijn sollicitatie de brief alleen als die tekst heeft. |
+| Terug en stoppen in de studio | Pijl terug: Terug naar je sollicitatie / Brief (in de schakelaar Cv – Brief) / Stoppen met deze sollicitatie? / Je gekozen ontwerp en inhoud worden niet bewaard. / Stoppen / Doorgaan |
+| Na een taak voor je sollicitatie (in de Ayla-chat) | Terug naar je sollicitatie bij {bedrijf} |
 | Deadline | Vandaag / Morgen / Over {n} dagen / Verlopen, {n} dag(en) geleden |
 | Meldingen | Morgen is de deadline / Vandaag is de deadline: Je sollicitatie voor {functie} bij {bedrijf} staat nog op concept. / Al iets gehoord?: Je solliciteerde een week geleden op {functie} bij {bedrijf}. Zet de status bij als er nieuws is. |
 | Menu Vacatures (iOS, onder Kluis) | Vacatures / Wat Ayla laatst vond, wat je bewaarde en je sollicitaties. / Vraag Ayla om vacatures te zoeken die bij je passen. Wat ze vindt, staat daarna ook hier. / Zoek met Ayla |
@@ -277,3 +280,15 @@ Delen is tijdelijk, per onderdeel te kiezen, te pauzeren en in te trekken (kick-
 | Apple Watch | QR-code voor {ontvanger} (in het menu) / Voor {ontvanger}, tot {datum} |
 | Web, gedeeld profiel | Iemand deelt gegevens met je / Via PAVE, tijdelijk en alleen wat diegene heeft gekozen. Je bezoek wordt bijgehouden, zodat diegene ziet dat je hebt gekeken. Je naam invullen hoeft niet. / Je naam / Je organisatie / Bekijk / Je kijkt tijdelijk mee tot en met {datum}. / Je mag het cv en de brief downloaden. Je mag alleen kijken, niet downloaden. / Geverifieerd, Niet geverifieerd / Even niet te zien, Niet meer gedeeld, Niet meer te zien, Deze link bestaat niet |
 | Web, beurs | Banenbeurs / Scan de code van een stand met PAVE: je ziet de werkgever en zijn vacatures, en je kunt je profiel met hem delen. Deze werkgevers zijn verzonnen voor de demo. |
+| Na het delen | Bekijk wat je deelt (vanuit Profiel, opent het nieuwe deel) / Terug naar Ayla (als Ayla het delen klaarzette) / Opnieuw scannen (na het scannen van een werkgever) |
+
+## Terug en sluiten (iOS)
+
+Een flow met stappen heeft linksboven een pijl terug naar de vorige stap, en op de eerste stap Annuleer. Een blad dat je in één keer invult, heeft rechtsboven een kruisje. Met iets ingevuld vraagt PAVE eerst of je wilt stoppen, ook als je het blad naar beneden veegt.
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Algemeen | Terug (pijl, voor VoiceOver) / Sluiten (kruisje) / Annuleer |
+| Bewijs toevoegen | Stoppen (kruisje rechtsboven) / na Toevoegen: Afronden opent het nieuwe bewijs, Bevestiging aanvragen opent meteen de aanvraag |
+| Bevestiging aanvragen | Annuleer / na versturen: Bekijk in meldingen / Sluiten |
+| Meldingen, beoordelen | Je hebt het bewijs geverifieerd. / Je hebt de aanvraag afgewezen. |

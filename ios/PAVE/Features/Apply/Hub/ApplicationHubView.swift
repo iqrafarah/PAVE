@@ -6,6 +6,10 @@ import SwiftUI
 struct ApplicationHubView: View {
     let model: ApplicationStudioModel
     let photo: UIImage?
+    /// What was shared for this application; nil where sharing is not available.
+    var shares: [ProfileShare]?
+    var onShare: (() -> Void)?
+    var onOpenShare: (String) -> Void = { _ in }
     let onTask: (AylaRequest.VacancyTask) -> Void
 
     var body: some View {
@@ -15,6 +19,7 @@ struct ApplicationHubView: View {
                 ApplicationHubStatus(model: model)
                 if model.tracking.history.count > 0 { history }
                 documents
+                if let onShare { sharing(onShare) }
                 nextSteps
             }
             .padding(.horizontal, 20)
@@ -109,6 +114,39 @@ struct ApplicationHubView: View {
         }
         .buttonStyle(.pave)
         .accessibilityLabel(title)
+    }
+
+    private func sharing(_ onShare: @escaping () -> Void) -> some View {
+        let company = model.draft.vacancy.company
+        let made = shares ?? []
+        return VStack(alignment: .leading, spacing: 10) {
+            Text(ApplyMessages.shareTitle(company))
+                .textStyle(.label)
+                .foregroundStyle(Color.inkMuted)
+                .accessibilityAddTraits(.isHeader)
+            VStack(alignment: .leading, spacing: 12) {
+                if made.isEmpty {
+                    Text(ApplyMessages.shareHint(company))
+                        .textStyle(.bodyMedium)
+                        .foregroundStyle(Color.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    ForEach(made) { share in
+                        Button { onOpenShare(share.id) } label: { ShareRow(share: share) }
+                            .buttonStyle(.pave)
+                    }
+                }
+                if made.isEmpty {
+                    PavePrimaryButton(title: ApplyMessages.shareWith(company), action: onShare)
+                } else {
+                    PaveSecondaryButton(title: ApplyMessages.shareAgain, action: onShare)
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.panel, in: .rect(cornerRadius: 18))
+            .overlay { RoundedRectangle(cornerRadius: 18).strokeBorder(Color.cardBorder, lineWidth: 1) }
+        }
     }
 
     private var nextSteps: some View {

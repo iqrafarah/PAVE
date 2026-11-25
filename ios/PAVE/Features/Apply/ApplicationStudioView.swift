@@ -18,7 +18,20 @@ struct ApplicationStudioView: View {
     @State private var showsQuestions = false
     @State private var exported: ExportedFile?
     @State private var isExporting = false
+    @State private var sharing: ShareRequest?
+    @State private var sharedNow: ProfileShare?
+    @State private var asksSent = false
+    @State private var openedShare: String?
+    @State private var confirmsStop = false
     @Environment(\.paveReduceMotion) private var reduceMotion
+    /// Where shares are made; absent in previews.
+    @Environment(SharingModel.self) private var shares: SharingModel?
+
+    /// Sharing from the studio, with the documents that start on.
+    private struct ShareRequest: Identifiable {
+        let id = UUID()
+        let documents: Set<ApplicationDocumentKind>
+    }
 
     private enum Panel: String, CaseIterable { case content, design }
 
@@ -49,7 +62,12 @@ struct ApplicationStudioView: View {
             case .hub:
                 VStack(spacing: 0) {
                     stepBar(back: nil)
-                    ApplicationHubView(model: model, photo: photo, onTask: onTask)
+                    ApplicationHubView(
+                        model: model, photo: photo, shares: shares.map { $0.shares(forVacancy: model.draft.vacancy.id) },
+                        onShare: shares == nil ? nil : { share(model.hasLetter ? [.cv, .letter] : [.cv]) },
+                        onOpenShare: { openedShare = $0 },
+                        onTask: onTask
+                    )
                 }
             case .editor:
                 editor
@@ -58,6 +76,40 @@ struct ApplicationStudioView: View {
         .background(Color.canvas)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: model.stage)
         .sheet(item: $exported) { VaultShareSheet(urls: [$0.url]) }
+        .sheet(item: $sharing, onDismiss: sharingClosed) { request in
+            if let shares {
+                ShareComposer(
+                    model: shares, template: .employer, recipientOrganisation: model.draft.vacancy.company, vacancyID: model.draft.vacancy.id,
+                    startsWith: request.documents, doneTitle: ApplyMessages.backToApplication,
+                    onShared: { sharedNow = $0 }
+                ) { sharing = nil }
+            }
+        }
+        .sheet(item: Binding(get: { openedShare.map(OpenedShare.init) }, set: { openedShare = $0?.id })) { opened in
+            if let shares {
+                NavigationStack {
+                    ShareDetailView(model: shares, shareID: opened.id)
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button(ApplyMessages.done) { openedShare = nil }
+                            }
+                        }
+                }
+            }
+        }
+        .confirmationDialog(ApplyMessages.markSentQuestion, isPresented: $asksSent, titleVisibility: .visible) {
+            Button(ApplyMessages.markSent) { model.setStatus(.sent) }
+            Button(ApplyMessages.notNow, role: .cancel) {}
+        } message: {
+            Text(ApplyMessages.markSentHint(model.draft.vacancy.company))
+        }
+        .confirmationDialog(ApplyMessages.stopQuestion, isPresented: $confirmsStop, titleVisibility: .visible) {
+            Button(ApplyMessages.stop, role: .destructive, action: onClose)
+            Button(ApplyMessages.goOn, role: .cancel) {}
+        } message: {
+            Text(ApplyMessages.stopHint)
+        }
+        .task { shares?.reloadApplications() }
         .onDisappear { model.settle() }
         .alert(ApplyMessages.aylaWrites, isPresented: Binding(get: { model.problem != nil }, set: { if !$0 { model.problem = nil } })) {
             Button("OK", role: .cancel) {}
@@ -130,7 +182,7 @@ struct ApplicationStudioView: View {
             if let back {
                 roundButton(.iconArrowLeft, label: ApplyMessages.otherDesign, action: back)
             } else {
-                roundButton(.iconXMark, label: ApplyMessages.close, action: onClose)
+                roundButton(.iconXMark, label: ApplyMessages.close, action: close)
             }
             Text(ApplyMessages.title(model.draft.vacancy))
                 .textStyle(.label)
@@ -138,7 +190,7 @@ struct ApplicationStudioView: View {
                 .lineLimit(1)
                 .frame(maxWidth: .infinity)
             if back != nil {
-                roundButton(.iconXMark, label: ApplyMessages.close, action: onClose)
+                roundButton(.iconXMark, label: ApplyMessages.close, action: close)
             } else {
                 Color.clear.frame(width: 44, height: 44)
             }
@@ -148,19 +200,34 @@ struct ApplicationStudioView: View {
     }
 
     private var topBar: some View {
-        HStack(spacing: 12) {
-            roundButton(.iconXMark, label: ApplyMessages.close, action: onClose)
+        HStack(spacing: 10) {
+            roundButton(.iconArrowLeft, label: ApplyMessages.backToApplication) { model.showOverview() }
             Spacer(minLength: 0)
             Picker(ApplyMessages.title(model.draft.vacancy), selection: Binding(get: { model.document }, set: { value in
                 model.selection = nil
                 model.document = value
             })) {
                 Text(ApplyMessages.cv).tag(ApplicationDocumentKind.cv)
-                Text(ApplyMessages.letter).tag(ApplicationDocumentKind.letter)
+                Text(ApplyMessages.letterShort).tag(ApplicationDocumentKind.letter)
             }
             .pickerStyle(.segmented)
             .frame(maxWidth: 300)
             Spacer(minLength: 0)
+            if shares != nil {
+                Button { share([model.document]) } label: {
+                    Text(ApplyMessages.share)
+                        .textStyle(.chip)
+                        .foregroundStyle(Color.ink)
+                        .lineLimit(1)
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 44)
+                        .background(Color.panel, in: .capsule)
+                        .overlay { Capsule().strokeBorder(Color.cardBorder, lineWidth: 1) }
+                        .contentShape(.capsule)
+                }
+                .buttonStyle(.pave)
+                .accessibilityLabel(ApplyMessages.shareWith(model.draft.vacancy.company))
+            }
             roundButton(.iconArrowUpTrayOutline, label: model.document == .cv ? ApplyMessages.exportCV : ApplyMessages.exportLetter, isBusy: isExporting, action: export)
         }
         .padding(.horizontal, 16)
@@ -295,6 +362,31 @@ struct ApplicationStudioView: View {
         .presentationDetents([.medium, .large])
         .presentationBackgroundInteraction(.enabled(upThrough: .medium))
     }
+
+    // MARK: Leaving and sharing
+
+    /// A new application asks first: what was chosen in the gallery and the content step is not kept.
+    private func close() {
+        if model.isKept { onClose() } else { confirmsStop = true }
+    }
+
+    /// The composer with this vacancy and company filled in; what was typed is kept first, so the share has it.
+    private func share(_ documents: Set<ApplicationDocumentKind>) {
+        model.settle()
+        shares?.reloadApplications()
+        sharedNow = nil
+        sharing = ShareRequest(documents: documents)
+    }
+
+    /// Back from sharing: on the overview, where the share now shows, and asked whether it went out.
+    private func sharingClosed() {
+        guard sharedNow != nil else { return }
+        sharedNow = nil
+        model.showOverview()
+        if model.tracking.status == .concept { asksSent = true }
+    }
+
+    private struct OpenedShare: Identifiable { let id: String }
 
     // MARK: Parts
 
