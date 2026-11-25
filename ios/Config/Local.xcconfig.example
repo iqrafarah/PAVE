@@ -9,4 +9,4 @@ SUPABASE_URL = https:/$()/your-project.supabase.co
 SUPABASE_PUBLISHABLE_KEY = sb_publishable_...
 
 // The website (web/) where a shared profile opens for its recipient. Leave empty while it is not online.
-PAVE_WEB_URL = https:/$()/your-site.example
+PAVE_WEB_URL = https:/$()/pave.iqrafarah.nl
