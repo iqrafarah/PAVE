@@ -618,7 +618,7 @@ private struct VerificationRequestNotificationDetail: View {
                                     Image(.iconDocumentText).frame(width: 18, height: 18)
                                     Text(file.name).lineLimit(1)
                                     Spacer()
-                                    Image(.iconEye).frame(width: 17, height: 17)
+                                    Image(.iconEyeSolid).renderingMode(.template).resizable().scaledToFit().frame(width: 17, height: 17)
                                 }
                                 .textStyle(.caption)
                                 .foregroundStyle(Color.ink)
