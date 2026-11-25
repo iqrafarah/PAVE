@@ -16,12 +16,18 @@ public enum ShareLinks {
         base.appending(path: "werkgever").appending(path: slug)
     }
 
-    /// What a scanned QR code points to, when it is one of PAVE's; any host, so a test site works too.
+    /// An employer's card in the app itself: the iPhone's camera offers "Open in PAVE" for this code.
+    public static func employerInApp(_ slug: String) -> URL {
+        URL(string: "pave://werkgever/\(slug)")!
+    }
+
+    /// What a scanned QR code points to, when it is one of PAVE's: a web address on any host, so a test site works
+    /// too, or the app's own `pave://werkgever/{slug}`.
     public static func scanned(_ text: String) -> Scanned? {
-        guard let url = URL(string: text.trimmingCharacters(in: .whitespacesAndNewlines)), let scheme = url.scheme?.lowercased(),
-              scheme == "https" || scheme == "http" else { return nil }
-        let parts = url.pathComponents.filter { $0 != "/" }
-        guard parts.count >= 2 else { return nil }
+        guard let url = URL(string: text.trimmingCharacters(in: .whitespacesAndNewlines)), let scheme = url.scheme?.lowercased() else { return nil }
+        var parts = url.pathComponents.filter { $0 != "/" }
+        if scheme == "pave", let host = url.host() { parts.insert(host, at: 0) }
+        guard scheme == "https" || scheme == "http" || scheme == "pave", parts.count >= 2 else { return nil }
         let (kind, value) = (parts[parts.count - 2].lowercased(), parts[parts.count - 1].lowercased())
         if kind == "gedeeld", value.range(of: "^[0-9a-f]{32}$", options: .regularExpression) != nil { return .share(code: value) }
         if kind == "werkgever", value.range(of: "^[a-z0-9-]{2,40}$", options: .regularExpression) != nil { return .employer(slug: value) }

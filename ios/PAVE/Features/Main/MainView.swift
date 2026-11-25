@@ -23,6 +23,10 @@ struct MainView: View {
     @State private var sharing: SharingModel
     /// Ayla was asked to share: the composer opens over the chat, so you are back with her once it is done.
     @State private var aylaShare: ShareTemplateChoice?
+    /// An employer opened from the iPhone's camera, over whatever screen is open.
+    @State private var fairEmployer: FairEmployerSlug?
+    /// Chosen on that card: the composer opens once the card has gone.
+    @State private var sharesBackWith: FairEmployer?
     /// Applications whose demo invitation has arrived, for Meldingen and the bell; read again when you move around.
     @State private var invitations: [ApplicationDraft] = []
     @State private var destination = MainDestination.ayla
@@ -108,6 +112,31 @@ struct MainView: View {
         // Sharing from the studio and from Ayla, next to the Profiel page.
         .environment(sharing)
         .environment(\.openDestination) { destination in open(destination) }
+        .environment(\.vacancyRequest) { request in
+            fairEmployer = nil
+            model.request(request)
+            open(.ayla)
+        }
+        .sheet(item: $fairEmployer, onDismiss: {
+            guard let employer = sharesBackWith else { return }
+            sharesBackWith = nil
+            sharing.reloadApplications()
+            aylaShare = ShareTemplateChoice(template: .fair, organisation: employer.name, withApplication: false)
+        }) { opened in
+            NavigationStack {
+                FairEmployerLoader(slug: opened.slug, model: sharing) { employer in
+                    sharesBackWith = employer
+                    fairEmployer = nil
+                }
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button(ApplyMessages.close) { fairEmployer = nil }
+                    }
+                }
+            }
+            .environment(vault)
+            .environment(model)
+        }
         .sheet(item: $aylaShare) { choice in
             ShareComposer(
                 model: sharing, template: choice.template, recipientOrganisation: choice.organisation, duration: choice.duration,
@@ -218,6 +247,7 @@ struct MainView: View {
         // the PIN screen.
         .onChange(of: appState.conversationToOpen, initial: true) { handlePending() }
         .onChange(of: appState.link, initial: true) { handlePending() }
+        .onChange(of: appState.employerToOpen, initial: true) { handlePending() }
         .onChange(of: appState.isRelocked) { handlePending() }
         .onChange(of: appState.opensNotifications, initial: true) { handlePending() }
         .onChange(of: connection.isOnline) { _, isOnline in
@@ -234,6 +264,11 @@ struct MainView: View {
         if let link = appState.link {
             appState.link = nil
             follow(link)
+        }
+        if let slug = appState.employerToOpen {
+            appState.employerToOpen = nil
+            isMenuOpen = false
+            fairEmployer = FairEmployerSlug(slug: slug)
         }
         if appState.opensNotifications {
             appState.opensNotifications = false

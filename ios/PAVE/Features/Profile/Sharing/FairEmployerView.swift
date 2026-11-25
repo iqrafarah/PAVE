@@ -8,6 +8,10 @@ struct FairEmployerView: View {
     let onShareBack: () -> Void
 
     @Environment(AylaChatModel.self) private var chat
+    @Environment(\.vacancyRequest) private var vacancyRequest
+
+    /// Ayla takes it from here in the chat: apply, what you miss, practise, ask.
+    private var ask: ((AylaChatModel.VacancyRequest) -> Void)? { chat.isAvailable ? vacancyRequest : nil }
 
     var body: some View {
         ScrollView {
@@ -26,7 +30,11 @@ struct FairEmployerView: View {
                                     VacancyDetail(
                                         vacancy: vacancy, isSaved: chat.isSaved(vacancy),
                                         onToggleSave: chat.canSaveVacancies ? { chat.toggleSaved(vacancy) } : nil,
-                                        onAsk: nil, onAskGap: nil
+                                        onAsk: ask.map { ask in { ask(.ask(vacancy)) } },
+                                        onAskGap: ask.map { ask in { ask(.askGap($0, vacancy)) } },
+                                        actions: ask.map { ask in
+                                            VacancyActions(isChosen: false, showsCompare: false, onTask: { ask(.task($0, vacancy)) }, onToggleCompare: {})
+                                        }
                                     )
                                 } label: {
                                     VStack(alignment: .leading, spacing: 3) {

@@ -93,7 +93,11 @@ struct RootView: View {
             appState.conversationToOpen = AylaHandoff.conversationID(in: activity)
         }
         .onOpenURL { url in
-            appState.link = PaveLink(url: url)
+            if case .employer(let slug) = ShareLinks.scanned(url.absoluteString) {
+                appState.employerToOpen = slug
+            } else {
+                appState.link = PaveLink(url: url)
+            }
         }
         .paveAnimationsSwitch()
     }

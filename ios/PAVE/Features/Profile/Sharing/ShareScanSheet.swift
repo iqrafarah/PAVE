@@ -8,15 +8,15 @@ struct ShareScanSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
-    @State private var employer: FairEmployer?
+    /// The employer whose code was just recognised.
+    @State private var slug: String?
     @State private var problem: String?
-    @State private var isLoading = false
 
     var body: some View {
         NavigationStack {
             Group {
-                if let employer {
-                    FairEmployerView(employer: employer) {
+                if let slug {
+                    FairEmployerLoader(slug: slug, model: model) { employer in
                         onShareBack(employer)
                         dismiss()
                     }
@@ -24,7 +24,7 @@ struct ShareScanSheet: View {
                     ZStack(alignment: .bottom) {
                         ShareScanner { found in Task { await open(found) } }
                             .ignoresSafeArea()
-                        Text(problem ?? (isLoading ? "Even kijken…" : SharingMessages.scanHint))
+                        Text(problem ?? SharingMessages.scanHint)
                             .textStyle(.bodyMedium)
                             .foregroundStyle(Color.ink)
                             .padding(14)
@@ -36,13 +36,13 @@ struct ShareScanSheet: View {
                 }
             }
             .background(Color.canvas)
-            .navigationTitle(employer?.name ?? SharingMessages.scan)
+            .navigationTitle(slug == nil ? SharingMessages.scan : "")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    if employer != nil {
+                    if slug != nil {
                         PaveBackButton(label: SharingMessages.scanAgain) {
-                            employer = nil
+                            slug = nil
                             problem = nil
                         }
                     } else {
@@ -55,15 +55,9 @@ struct ShareScanSheet: View {
 
     private func open(_ found: ShareLinks.Scanned) async {
         switch found {
-        case .employer(let slug):
-            guard let service = model.service else { return }
-            isLoading = true
-            defer { isLoading = false }
-            do {
-                employer = try await service.employer(slug: slug)
-            } catch {
-                problem = "Deze werkgever kon niet worden geladen. Probeer het opnieuw."
-            }
+        case .employer(let found):
+            guard slug == nil else { return }
+            slug = found
         case .share(let code):
             // Someone else's profile opens on its web page, as for anyone without PAVE.
             if let base = model.webURL {

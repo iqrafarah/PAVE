@@ -80,6 +80,12 @@ enum SharingMessages {
         return "Echte vacatures van \(name), opgehaald\(day). \(name) doet niet mee aan PAVE en ziet niets van wat je hier doet."
     }
     static let fairOpenVacancy = "Bekijk de vacature"
+    static let fairFound = "Gevonden"
+    static let fairLoading = "Even laden…"
+    static func fairFoundAnnouncement(_ name: String) -> String { "Gevonden: \(name)" }
+    static let fairNotFound = "Niet gevonden"
+    static let fairLoadFailed = "Deze werkgever kon niet worden geladen. Probeer het opnieuw."
+    static let fairNoService = "De beurs werkt alleen met een echt account, niet in de demo."
     static let saving = "Bewaren…"
     static let detailTitle = "Hoeveel laat je zien"
     static let detailFull = "Uitgebreid"

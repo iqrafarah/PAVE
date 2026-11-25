@@ -24,6 +24,8 @@ final class AppState {
     var conversationToOpen: String?
     /// Something asked from outside the app (Siri, a widget, Control Center); done once the app is unlocked.
     var link: PaveLink?
+    /// An employer's code scanned with the iPhone's own camera ("Open in PAVE"); opens once the app is unlocked.
+    var employerToOpen: String?
     /// A melding banner was tapped; PAVE opens on Meldingen once it is unlocked.
     var opensNotifications = false
     /// The app came back after being away too long: the PIN screen lies over it, so the open chat and what you were
