@@ -16,7 +16,6 @@ struct FairEmployerView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                PaveNotice(message: employer.isExample ? SharingMessages.fairExample : SharingMessages.fairReal(employer.name, addedAt: employer.addedAt))
                 VStack(alignment: .leading, spacing: 4) {
                     Text(employer.name).textStyle(.emptyTitle).foregroundStyle(Color.ink)
                     Text([employer.city, employer.stand].compactMap { $0 }.joined(separator: " · ")).textStyle(.caption).foregroundStyle(Color.inkMuted)

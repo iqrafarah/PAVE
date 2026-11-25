@@ -74,11 +74,6 @@ enum SharingMessages {
     static let back = "Terug"
     static let backToAyla = "Terug naar Ayla"
     static let manage = "Beheren"
-    static let fairExample = "Voorbeeldwerkgever: verzonnen voor de demo van de banenbeurs."
-    static func fairReal(_ name: String, addedAt: Date?) -> String {
-        let day = addedAt.map { " op \($0.formatted(.dateTime.day().month(.wide).year().locale(Locale(identifier: "nl_NL"))))" } ?? ""
-        return "Echte vacatures van \(name), opgehaald\(day). \(name) doet niet mee aan PAVE en ziet niets van wat je hier doet."
-    }
     static let fairOpenVacancy = "Bekijk de vacature"
     static let fairFound = "Gevonden"
     static let fairLoading = "Even laden…"
