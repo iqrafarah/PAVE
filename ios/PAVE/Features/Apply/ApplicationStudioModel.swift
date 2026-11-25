@@ -45,6 +45,8 @@ final class ApplicationStudioModel: Identifiable {
     var requestReminderAccess: () async -> Bool = { true }
     var keepInVault: ((_ itemID: String, _ sentence: String) async -> [VaultItem]?)?
     private let service: (any AylaService)?
+    /// For looking up the company on Mijn sollicitatie.
+    var lookupService: (any AylaService)? { service }
     private let store: ApplicationStore
     /// How many pages a draft takes in its design; the screen that has the page sets it.
     var measure: (ApplicationDraft) -> Int = { _ in 1 }

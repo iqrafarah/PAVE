@@ -25,6 +25,7 @@ struct ApplicationHubView: View {
                 if let onShare { sharing(onShare) }
                 ApplicationHubStatus(model: model)
                 if model.tracking.history.count > 0 { history }
+                employer
                 nextSteps
             }
             .padding(.horizontal, 20)
@@ -138,6 +139,20 @@ struct ApplicationHubView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.panel, in: .rect(cornerRadius: 16))
             .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder, lineWidth: 1) }
+        }
+    }
+
+    private var employer: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(EmployerMessages.title(model.draft.vacancy.company))
+                .textStyle(.label)
+                .foregroundStyle(Color.inkMuted)
+                .accessibilityAddTraits(.isHeader)
+            EmployerAboutSection(vacancy: model.draft.vacancy, service: model.lookupService)
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.panel, in: .rect(cornerRadius: 16))
+                .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder, lineWidth: 1) }
         }
     }
 

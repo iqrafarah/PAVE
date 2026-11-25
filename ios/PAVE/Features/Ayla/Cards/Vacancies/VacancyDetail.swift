@@ -15,6 +15,9 @@ struct VacancyDetail: View {
     var actions: VacancyActions?
     var compareBar: VacancyCompareBar?
 
+    /// Where Ayla is, for looking up the company; absent in previews.
+    @Environment(AylaChatModel.self) private var chat: AylaChatModel?
+
     private var hasFit: Bool { !vacancy.matches.isEmpty || !vacancy.skillGap.isEmpty }
 
     var body: some View {
@@ -75,6 +78,10 @@ struct VacancyDetail: View {
                                 Capsule().fill(Color.paveAccent.opacity(0.45)).frame(width: 3)
                             }
                     }
+                }
+
+                section(EmployerMessages.title(vacancy.company)) {
+                    EmployerAboutSection(vacancy: vacancy, service: chat?.service)
                 }
 
                 VStack(spacing: 12) {
