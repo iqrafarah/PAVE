@@ -26,6 +26,8 @@ final class AppState {
     var link: PaveLink?
     /// A melding banner was tapped; PAVE opens on Meldingen once it is unlocked.
     var opensNotifications = false
+    /// The banner was for new mail: this conversation opens in Meldingen.
+    var emailThreadToOpen: String?
     /// The app came back after being away too long: the PIN screen lies over it, so the open chat and what you were
     /// typing stay where they are.
     private(set) var isRelocked = false
@@ -47,7 +49,10 @@ final class AppState {
         self.pinVault = pinVault
         self.biometrics = biometrics
         PaveLinkInbox.receive = { [weak self] link in self?.link = link }
-        NotificationAlerts.onTap = { [weak self] in self?.opensNotifications = true }
+        NotificationAlerts.onTap = { [weak self] threadID in
+            self?.emailThreadToOpen = threadID
+            self?.opensNotifications = true
+        }
     }
 
     /// Signed in on this iPhone, also while the PIN screen is up; the Watch may then ask for the session.
@@ -168,8 +173,10 @@ final class AppState {
         AylaDrafts.forget(in: defaults)
         AylaPendingFiles.forget()
         NotificationAlerts.forgetEverything()
+        // The iCloud Mail connection stays until you disconnect it yourself (Meldingen › E-mailaccounts).
         conversationToOpen = nil
         opensNotifications = false
+        emailThreadToOpen = nil
         link = nil
         isRelocked = false
         self.phase = phase

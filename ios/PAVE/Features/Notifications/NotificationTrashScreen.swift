@@ -6,6 +6,9 @@ struct NotificationTrashScreen: View {
     let notifications: [PaveNotification]
     var onRestore: ((String) async -> Bool)?
 
+    @Environment(EmailModel.self) private var email: EmailModel?
+    @State private var failure: String?
+
     var body: some View {
         List {
             Text("Verwijderde meldingen blijven \(PaveNotification.restorableDays) dagen staan. Daarna zijn ze definitief weg.")
@@ -31,6 +34,11 @@ struct NotificationTrashScreen: View {
         .background(Color.canvas.ignoresSafeArea())
         .navigationTitle("Recent verwijderd")
         .navigationBarTitleDisplayMode(.inline)
+        .alert("Terugzetten lukte niet", isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(failure ?? "")
+        }
     }
 
     private func row(_ notification: PaveNotification) -> some View {
@@ -49,7 +57,7 @@ struct NotificationTrashScreen: View {
 
     private func restoreButton(_ notification: PaveNotification) -> some View {
         Button { restore(notification) } label: {
-            Label("Terugzetten", image: .iconArrowPath)
+            Label("Terugzetten", tinted: .iconArrowPath)
         }
         .tint(.paveAccent)
     }
@@ -60,6 +68,9 @@ struct NotificationTrashScreen: View {
                 PaveHaptics.success()
             } else {
                 PaveHaptics.error()
+                failure = notification.kind == .email
+                    ? email?.restoreProblem ?? "Het gesprek kon niet worden teruggezet. Probeer het opnieuw."
+                    : "De melding kon niet worden teruggezet. Probeer het opnieuw."
             }
         }
     }
