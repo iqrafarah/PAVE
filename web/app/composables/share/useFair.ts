@@ -1,10 +1,12 @@
-// The employers of the job fair demo: fictional, readable without an account (table fair_employers).
+// The employers of the job fair demo, readable without an account (table fair_employers): fictional ones, and real
+// ones with real vacancies read on the day they were added (created_at).
 
 export interface FairVacancy {
   id: string;
   title: string;
   summary?: string;
   city?: string;
+  url?: string;
 }
 
 export interface FairEmployer {
@@ -15,11 +17,12 @@ export interface FairEmployer {
   stand?: string;
   vacancies: FairVacancy[];
   is_example: boolean;
+  created_at?: string;
 }
 
 export async function loadFairEmployers(slug?: string): Promise<FairEmployer[]> {
   const supabase = useSupabaseClient();
-  let query = supabase.from('fair_employers').select('slug,name,city,about,stand,vacancies,is_example').order('name');
+  let query = supabase.from('fair_employers').select('slug,name,city,about,stand,vacancies,is_example,created_at').order('name');
   if (slug) query = query.eq('slug', slug);
   const { data, error } = await query;
   if (error) throw error;

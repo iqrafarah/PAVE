@@ -29,3 +29,13 @@ struct SavedProfileTests {
         #expect(back.brief == ["b"])
     }
 }
+
+struct FairEmployerTests {
+    @Test func aRealEmployerCarriesTheDayItsVacanciesWereRead() throws {
+        let json = #"[{"slug":"ogd","name":"OGD ict-diensten","about":"ICT","is_example":false,"created_at":"2026-11-25T11:40:12.123+00:00","vacancies":[{"id":"v","title":"Traineeship IT","company":"OGD","source":"web","url":"https://werkenbij.ogd.nl/vacatures/traineeship-it","matches":[],"skillGap":[]}]}]"#
+        let employer = try #require(try JSONDecoder().decode([FairEmployer].self, from: Data(json.utf8)).first)
+        #expect(!employer.isExample)
+        #expect(employer.addedAt != nil)
+        #expect(employer.vacancies.first?.url?.host() == "werkenbij.ogd.nl")
+    }
+}

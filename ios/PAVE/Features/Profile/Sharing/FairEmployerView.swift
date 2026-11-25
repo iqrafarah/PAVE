@@ -12,9 +12,7 @@ struct FairEmployerView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                if employer.isExample {
-                    PaveNotice(message: "Voorbeeldwerkgever: verzonnen voor de demo van de banenbeurs.")
-                }
+                PaveNotice(message: employer.isExample ? SharingMessages.fairExample : SharingMessages.fairReal(employer.name, addedAt: employer.addedAt))
                 VStack(alignment: .leading, spacing: 4) {
                     Text(employer.name).textStyle(.emptyTitle).foregroundStyle(Color.ink)
                     Text([employer.city, employer.stand].compactMap { $0 }.joined(separator: " · ")).textStyle(.caption).foregroundStyle(Color.inkMuted)
@@ -24,13 +22,24 @@ struct FairEmployerView: View {
                     SharePanel(title: "Vacatures") {
                         ForEach(Array(employer.vacancies.enumerated()), id: \.element.id) { index, vacancy in
                             HStack(alignment: .top, spacing: 12) {
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(vacancy.title).textStyle(.bodyMedium).foregroundStyle(Color.ink)
-                                    if let summary = vacancy.summary {
-                                        Text(summary).textStyle(.caption).foregroundStyle(Color.inkMuted).fixedSize(horizontal: false, vertical: true)
+                                NavigationLink {
+                                    VacancyDetail(
+                                        vacancy: vacancy, isSaved: chat.isSaved(vacancy),
+                                        onToggleSave: chat.canSaveVacancies ? { chat.toggleSaved(vacancy) } : nil,
+                                        onAsk: nil, onAskGap: nil
+                                    )
+                                } label: {
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(vacancy.title).textStyle(.bodyMedium).foregroundStyle(Color.ink).multilineTextAlignment(.leading)
+                                        if let summary = vacancy.summary {
+                                            Text(summary).textStyle(.caption).foregroundStyle(Color.inkMuted).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                                        }
+                                        Text(SharingMessages.fairOpenVacancy).textStyle(.caption).foregroundStyle(Color.paveAccent)
                                     }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .contentShape(.rect)
                                 }
-                                Spacer(minLength: 8)
+                                .buttonStyle(.pave)
                                 if chat.canSaveVacancies {
                                     VacancySaveButton(isSaved: chat.isSaved(vacancy)) { chat.toggleSaved(vacancy) }
                                 }
