@@ -35,7 +35,7 @@ struct ProfileScreen: View {
                             }
                             .buttonStyle(.pave)
                         }
-                        ShareProfileCard(model: model) { showsQuickShare = true }
+                        ShareProfileCard { showsQuickShare = true }
                         Text(SharingMessages.intro)
                             .textStyle(.caption)
                             .foregroundStyle(Color.inkMuted)

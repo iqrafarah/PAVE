@@ -26,8 +26,12 @@ struct SavedProfileRow: View {
         self.onShare = onShare
     }
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
-        HStack(spacing: 14) {
+        // With large text the button goes under the words, so the name and what it holds stay readable.
+        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10)) : AnyLayout(HStackLayout(spacing: 14))
+        layout {
             Button(action: onEdit) {
                 HStack(spacing: 14) {
                     ShareTemplateIcon(template: template)
@@ -35,11 +39,11 @@ struct SavedProfileRow: View {
                         Text(title)
                             .textStyle(.bodyMedium)
                             .foregroundStyle(Color.ink)
-                            .lineLimit(2)
+                            .lineLimit(typeSize.isAccessibilitySize ? nil : 2)
                         Text(detail)
                             .textStyle(.caption)
                             .foregroundStyle(Color.inkMuted)
-                            .lineLimit(2)
+                            .lineLimit(typeSize.isAccessibilitySize ? nil : 2)
                     }
                     .multilineTextAlignment(.leading)
                     Spacer(minLength: 0)

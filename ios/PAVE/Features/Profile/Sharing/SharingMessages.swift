@@ -207,12 +207,6 @@ enum SharingMessages {
     static let profileSaveFailed = "Het profiel kon niet worden bewaard. Probeer het opnieuw."
     static let you = "Jij"
     static let quickShare = "Snel delen"
-    static func passVerified(_ count: Int, of total: Int) -> String { "\(count) van \(total) geverifieerd" }
-    static let passNoneVerified = "Nog geen geverifieerd bewijs. Vraag het aan bij een bewijsstuk in je kluis."
-    static let passTurn = "Tik om om te draaien"
-    static let passNoCode = "Er is nu geen QR-code. Maak er een met Snel delen; die staat dan hier."
-    static func passFrontLabel(_ name: String) -> String { "Je kaart, \(name.isEmpty ? "jij" : name)" }
-    static let passBackLabel = "Achterkant van je kaart, met je QR-code"
     static let quickShareIntro = "Laat iemand een QR-code scannen of stuur een link. Het werkt meteen en stopt vanzelf."
     static let quickShareWhat = "Wat deel je?"
     static let quickShareWhole = "Je profiel"

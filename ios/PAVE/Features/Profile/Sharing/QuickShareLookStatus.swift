@@ -11,7 +11,7 @@ struct QuickShareLookStatus: View {
     private var latest: ShareLook? { share.looks.max { $0.date < $1.date } }
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
             Circle()
                 .fill(latest == nil ? Color.inkMuted : Color.paveAccent)
                 .frame(width: 8, height: 8)
@@ -24,8 +24,10 @@ struct QuickShareLookStatus: View {
                 .contentTransition(.opacity)
         }
         .padding(.horizontal, 16)
+        .padding(.vertical, 8)
         .frame(minHeight: 40)
-        .background(latest == nil ? Color.panel : Color.paveSurfaceTint, in: .capsule)
+        // As round as a pill on one line, a calm card when a long name takes more.
+        .background(latest == nil ? Color.panel : Color.paveSurfaceTint, in: .rect(cornerRadius: 20))
         .animation(.spring(duration: 0.4, bounce: 0.2), value: share.looks.count)
         .sensoryFeedback(.success, trigger: share.looks.count)
         .accessibilityElement(children: .combine)

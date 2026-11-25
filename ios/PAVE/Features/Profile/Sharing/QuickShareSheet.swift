@@ -10,9 +10,6 @@ struct QuickShareSheet: View {
     @Environment(VaultModel.self) private var vault
     @Environment(ProfileModel.self) private var profile
     @AppStorage("quickShare.profileID") private var chosenID = ""
-    /// The quick share made last; the card in Profiel shows its code on the back.
-    static let lastShareKey = "quickShare.lastShareID"
-    @AppStorage(Self.lastShareKey) private var lastShareID = ""
     @State private var recipient = ""
     @State private var duration = ShareDuration.day
     @State private var includesEmail = false
@@ -200,7 +197,6 @@ struct QuickShareSheet: View {
             if authenticator.kind != nil, !(await authenticator.authenticate(reason: SharingMessages.biometricReason(draft.recipientName))) { return }
             if let share = await model.create(draft, application: nil, photo: nil) {
                 withAnimation(.spring(duration: 0.45, bounce: 0.15)) { created = share }
-                lastShareID = share.id
                 // Your card goes to the wrist too, to be scanned without taking out the phone.
                 if let url = model.link(for: share) {
                     ShareWatchBridge.show(url: url, title: share.recipientName, until: share.expiresAt, name: name, headline: headline)
