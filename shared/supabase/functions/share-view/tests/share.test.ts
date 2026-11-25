@@ -1,5 +1,5 @@
 import { assertEquals } from 'jsr:@std/assert@1'
-import { chosenItems, documentPaths, fileItemIDs, parseViewRequest, sharedFiles, shareState, shareView, verifications, type FileRow, type ItemRow, type ShareRow, type VerificationRow } from '../share.ts'
+import { chosenItems, documentPaths, fileItemIDs, parseViewRequest, photoPath, sharedFiles, shareState, shareView, verifications, type FileRow, type ItemRow, type ShareRow, type VerificationRow } from '../share.ts'
 
 const owner = '11111111-1111-1111-1111-111111111111'
 const share: ShareRow = {
@@ -116,4 +116,13 @@ Deno.test('the latest verified decision per item, of the owner, shows only on ev
   assertEquals(items.find((i) => i.id === 'i1')?.verification?.by, 'Fontys Hogescholen')
   assertEquals(items.find((i) => i.id === 'i1')?.files.length, 1)
   assertEquals(items.find((i) => i.id === 'i2')?.verification, undefined)
+})
+
+Deno.test('the photo shows only when the owner chose it, and only from their own folder', () => {
+  const withPhoto: ShareRow = { ...share, content: { ...share.content, profile: { name: 'Ravi', showsPhoto: true } } }
+  assertEquals(photoPath(withPhoto, `${owner}/abc.jpg`), `${owner}/abc.jpg`)
+  assertEquals(photoPath(withPhoto, 'someone-else/abc.jpg'), undefined)
+  assertEquals(photoPath(withPhoto, `${owner}/../x.jpg`), undefined)
+  assertEquals(photoPath(share, `${owner}/abc.jpg`), undefined)
+  assertEquals(photoPath(withPhoto, null), undefined)
 })

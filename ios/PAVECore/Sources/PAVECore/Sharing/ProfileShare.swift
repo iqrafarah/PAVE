@@ -58,8 +58,14 @@ public struct ShareProfile: Codable, Equatable, Sendable {
     public var phone: String?
     public var city: String?
     public var summary: String?
+    /// The profile photo goes along: share-view signs a short-lived link to it.
+    public var showsPhoto: Bool?
 
-    public init(name: String, headline: String? = nil, email: String? = nil, phone: String? = nil, city: String? = nil, summary: String? = nil) {
+    public init(
+        name: String, headline: String? = nil, email: String? = nil, phone: String? = nil, city: String? = nil, summary: String? = nil,
+        showsPhoto: Bool? = nil
+    ) {
+        self.showsPhoto = showsPhoto
         self.name = name
         self.headline = headline
         self.email = email

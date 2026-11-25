@@ -160,6 +160,14 @@ export function chosenItems(
     }))
 }
 
+/** The owner's profile photo, when the share says to show it and the path is the owner's own. */
+export function photoPath(share: ShareRow, avatarPath: string | null | undefined): string | undefined {
+  const profile = (share.content.profile ?? {}) as Record<string, unknown>
+  if (profile.showsPhoto !== true || !avatarPath) return undefined
+  if (!avatarPath.startsWith(`${share.user_id}/`) || avatarPath.includes('..')) return undefined
+  return avatarPath
+}
+
 /** The kept files of a share, only under its own folder. */
 export function documentPaths(share: ShareRow): { kind: 'cv' | 'letter'; path: string }[] {
   const documents = (share.content.documents ?? {}) as Record<string, unknown>
@@ -172,7 +180,7 @@ export function documentPaths(share: ShareRow): { kind: 'cv' | 'letter'; path: s
 /** What the page receives for an active share. */
 export function shareView(
   share: ShareRow, items: ItemRow[], documents: { kind: string; url: string }[],
-  files: Map<string, FileView[]> = new Map(), verified: Map<string, { by: string; on: string }> = new Map(),
+  files: Map<string, FileView[]> = new Map(), verified: Map<string, { by: string; on: string }> = new Map(), photoUrl?: string,
 ) {
   const content = share.content
   const profile = (content.profile ?? {}) as Record<string, unknown>
@@ -190,6 +198,7 @@ export function shareView(
       phone: text(profile.phone, 40) || undefined,
       city: text(profile.city, 80) || undefined,
       summary: text(profile.summary, 1200) || undefined,
+      photo: photoUrl,
     },
     items: chosenItems(share, items, files, verified),
     cv: typeof content.cv === 'object' && content.cv ? content.cv : undefined,

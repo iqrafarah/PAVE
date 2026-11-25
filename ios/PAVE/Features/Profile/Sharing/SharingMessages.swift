@@ -240,7 +240,31 @@ enum SharingMessages {
         "Stopt vanzelf op \(date.formatted(.dateTime.weekday(.wide).day().month(.wide).hour().minute().locale(Locale(identifier: "nl_NL"))))"
     }
     static let quickShareStop = "Stop met delen"
-    static let quickShareStopped = "Gestopt. De link en de QR-code werken niet meer."
+    static func quickShareGoes(_ items: Int, files: Int) -> String {
+        let evidence = items == 1 ? "1 bewijsstuk" : "\(items) bewijsstukken"
+        return files == 0 ? "Je deelt \(evidence)." : "Je deelt \(evidence), \(files) met bestand."
+    }
+    static let quickShareAdjust = "Pas aan"
+    static let quickShareAdjustTitle = "Wat deel je?"
+    static let quickShareAdjustHint = "Zet aan wat ze mogen zien. Met bestand kunnen ze het bewijs zelf openen, zoals je cijferlijst of diploma."
+    static func recipientVerified(_ count: Int) -> String { "\(count) geverifieerd" }
+    static func recipientItems(_ count: Int) -> String { count == 1 ? "1 bewijsstuk" : "\(count) bewijsstukken" }
+    static func recipientFor(_ share: ProfileShare) -> String {
+        "Gedeeld met \(share.recipient) · \(remaining(share).lowercased()) · \(share.allowsDownload ? "mag downloaden" : "alleen bekijken")"
+    }
+    static let recipientHasFile = "Bestand"
+    static let photo = "Je profielfoto"
+    static let recipientFiles = "Bestanden"
+    static let recipientOpen = "Open"
+    static let recipientPdf = "pdf"
+    static let recipientNoFile = "Hier gaat geen bestand mee. Vraag het aan degene die dit deelde als je meer wilt zien."
+    static func recipientVerifiedBy(_ organisation: String?) -> String {
+        organisation.map { "Geverifieerd door \($0)" } ?? "Geverifieerd door de organisatie zelf"
+    }
+    static let recipientFooter = "Geverifieerd betekent: bevestigd door de organisatie zelf, in PAVE. Niet geverifieerd is zelf toegevoegd. Bestanden open je alleen zolang er gedeeld wordt."
+    static let quickShareStoppedTitle = "Gestopt met delen"
+    static let quickShareAgain = "Opnieuw delen"
+    static let quickShareStopped = "De link en de QR-code werken niet meer. Wie ze nu opent, ziet niets van je."
     static let quickShareEmpty = "Er is nog niets om te delen. Voeg eerst bewijs toe aan je kluis."
     static func evidenceCount(_ count: Int, verified: Int) -> String {
         let items = count == 1 ? "1 bewijsstuk" : "\(count) bewijsstukken"

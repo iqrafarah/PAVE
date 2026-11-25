@@ -204,6 +204,7 @@ enum ApplyMessages {
     // Your own application
     static let newApplication = "Nieuwe sollicitatie"
     static let somethingWrong = "Dat lukte niet"
+    static let backToApplications = "Terug naar Sollicitaties"
     static let sourceAll = "Alles"
     static func source(_ source: ApplicationSource) -> String {
         switch source {

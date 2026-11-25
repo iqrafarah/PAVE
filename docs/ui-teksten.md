@@ -338,6 +338,15 @@ Delen is tijdelijk, per onderdeel te kiezen, te pauzeren en in te trekken (kick-
 | Ontvanger (web /gedeeld) | Geverifieerd door {organisatie} op {datum} / Bekijk {bestandsnaam} / Een bestand bekijken werkt een paar minuten; laad de pagina opnieuw als de link verlopen is. |
 | Sollicitaties | Alles / Ayla / Zelf / Beurs (filter en label) / Achtergelaten, Uitgenodigd, Je komt, Afgezegd, Niet gekozen (beurs) |
 
+### Wat de ontvanger ziet, en aanpassen bij Snel delen (iOS en web)
+
+| Waar | Tekst |
+|---|---|
+| Snel delen | Je deelt {n} bewijsstukken, {m} met bestand. Pas aan / Wat deel je? (Zet aan wat ze mogen zien. Met bestand kunnen ze het bewijs zelf openen, zoals je cijferlijst of diploma.) / Je profielfoto |
+| Gestopt | Gestopt met delen / De link en de QR-code werken niet meer. Wie ze nu opent, ziet niets van je. / Klaar / Opnieuw delen |
+| Ontvanger | {n} geverifieerd / {n} bewijsstukken / {n} bestanden om te openen / Gedeeld met {ontvanger} · nog {tijd} · alleen bekijken / Bestand / Bestanden / Open / Geverifieerd door {organisatie} / Hier gaat geen bestand mee. Vraag het aan degene die dit deelde als je meer wilt zien. |
+| Sollicitatie openen | Terug naar Sollicitaties (pijl terug in plaats van een kruisje, binnen de app naast het menu) |
+
 ## Terug en sluiten (iOS)
 
 Een flow met stappen heeft linksboven een pijl terug naar de vorige stap, en op de eerste stap Annuleer. Een blad dat je in één keer invult, heeft rechtsboven een kruisje. Met iets ingevuld vraagt PAVE eerst of je wilt stoppen, ook als je het blad naar beneden veegt.

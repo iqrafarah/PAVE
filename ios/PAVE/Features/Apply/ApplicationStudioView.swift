@@ -9,6 +9,8 @@ struct ApplicationStudioView: View {
     @State private var model: ApplicationStudioModel
     let photo: UIImage?
     let onClose: () -> Void
+    /// Opened as a page in the app (Vacatures), not over it: the way out is back, not a cross.
+    var isPushed = false
     /// Ayla's help with this vacancy from the overview: what you miss, practising the interview.
     var onTask: (AylaRequest.VacancyTask) -> Void = { _ in }
 
@@ -42,8 +44,12 @@ struct ApplicationStudioView: View {
     /// Wide enough for the panel next to the page.
     private static let wideWidth: CGFloat = 720
 
-    init(model: ApplicationStudioModel, photo: UIImage?, onClose: @escaping () -> Void, onTask: @escaping (AylaRequest.VacancyTask) -> Void = { _ in }) {
+    init(
+        model: ApplicationStudioModel, photo: UIImage?, isPushed: Bool = false, onClose: @escaping () -> Void,
+        onTask: @escaping (AylaRequest.VacancyTask) -> Void = { _ in }
+    ) {
         self.onTask = onTask
+        self.isPushed = isPushed
         model.measure = { ApplicationPageMeasure.pages($0, photo: $0.showsPhoto ? photo : nil) }
         _model = State(initialValue: model)
         self.photo = photo
@@ -200,6 +206,8 @@ struct ApplicationStudioView: View {
         HStack(spacing: 12) {
             if let back {
                 roundBackButton(label: ApplyMessages.otherDesign, action: back)
+            } else if isPushed {
+                roundBackButton(label: ApplyMessages.backToApplications, action: close)
             } else {
                 roundButton(.iconXMark, label: ApplyMessages.close, action: close)
             }
@@ -210,7 +218,7 @@ struct ApplicationStudioView: View {
                 .minimumScaleFactor(0.85)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
-            if back != nil {
+            if back != nil, !isPushed {
                 roundButton(.iconXMark, label: ApplyMessages.close, action: close)
             } else {
                 Color.clear.frame(width: 44, height: 44)

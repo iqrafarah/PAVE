@@ -33,7 +33,7 @@ export interface SharedView {
   recipient?: { name: string; organisation?: string };
   expiresAt?: string;
   allowsDownload?: boolean;
-  profile?: { name: string; headline?: string; email?: string; phone?: string; city?: string; summary?: string };
+  profile?: { name: string; headline?: string; email?: string; phone?: string; city?: string; summary?: string; photo?: string };
   items?: SharedItem[];
   letter?: SharedLetter;
   documents?: { kind: 'cv' | 'letter'; url: string }[];

@@ -29,6 +29,7 @@ struct ShareComposer: View {
     @State private var includesCV = true
     @State private var includesLetter = true
     @State private var includesEmail = true
+    @State private var includesPhoto = true
     /// Evidence shown briefly, from a saved profile.
     @State private var brief: Set<String> = []
     /// Evidence whose files go along: verified evidence by default.
@@ -80,7 +81,8 @@ struct ShareComposer: View {
                 name: name,
                 headline: headline.isEmpty ? nil : headline,
                 email: includesEmail ? profile.profile.email : nil,
-                summary: (app.map(\.cv.profile) ?? savedProfile?.summary).flatMap { $0.isEmpty ? nil : $0 }
+                summary: (app.map(\.cv.profile) ?? savedProfile?.summary).flatMap { $0.isEmpty ? nil : $0 },
+                showsPhoto: includesPhoto && profile.avatar != nil ? true : nil
             ),
             cv: app != nil && includesCV ? app?.cv : nil,
             letter: app != nil && includesLetter ? app?.letter : nil,
@@ -187,6 +189,10 @@ struct ShareComposer: View {
             }
             .tint(.paveAccentFill)
             .padding(14)
+            if profile.avatar != nil {
+                ShareRowDivider(inset: 14)
+                Toggle(SharingMessages.photo, isOn: $includesPhoto).tint(.paveAccentFill).textStyle(.bodyMedium).padding(14)
+            }
             ShareRowDivider(inset: 14)
             VStack(alignment: .leading, spacing: 4) {
                 Text(SharingMessages.headline).textStyle(.caption).foregroundStyle(Color.inkMuted)

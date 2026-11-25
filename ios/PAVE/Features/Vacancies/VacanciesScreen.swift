@@ -49,6 +49,22 @@ struct VacanciesScreen: View {
             .scrollIndicators(.hidden)
             .background(Color.canvas.ignoresSafeArea())
             .mainScreenToolbar(MainDestination.vacancies.title, onShowMenu: onShowMenu)
+            // An application opens as a page here, next to the menu on a wide screen, with back instead of a cross.
+            .navigationDestination(isPresented: Binding(get: { application != nil }, set: { if !$0 { application = nil } })) {
+                if let studio = application {
+                    ApplicationStudioView(
+                        model: studio, photo: profile?.avatar, isPushed: true,
+                        onClose: { application = nil },
+                        onTask: { task in
+                            let vacancy = studio.draft.vacancy
+                            application = nil
+                            onRequest(.applicationTask(task, vacancy))
+                        }
+                    )
+                    .toolbar(.hidden, for: .navigationBar)
+                    .navigationBarBackButtonHidden()
+                }
+            }
             .navigationDestination(item: $opened) { vacancy in
                 VacancyDetail(
                     vacancy: vacancy,
@@ -83,16 +99,8 @@ struct VacanciesScreen: View {
             model.opensApplications = false
             tab = .applications
         }
-        .fullScreenCover(item: $application, onDismiss: { reload += 1 }) { studio in
-            ApplicationStudioView(
-                model: studio, photo: profile?.avatar,
-                onClose: { application = nil },
-                onTask: { task in
-                    let vacancy = studio.draft.vacancy
-                    application = nil
-                    onRequest(.applicationTask(task, vacancy))
-                }
-            )
+        .onChange(of: application == nil) { _, isClosed in
+            if isClosed { reload += 1 }
         }
     }
 

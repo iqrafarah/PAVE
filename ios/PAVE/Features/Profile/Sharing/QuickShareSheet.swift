@@ -33,10 +33,15 @@ struct QuickShareSheet: View {
     @State private var recipient = ""
     @State private var duration = ShareDuration.day
     @State private var includesEmail = false
+    @State private var includesPhoto = true
     @State private var created: ProfileShare?
     @State private var isStopped = false
     @State private var showsPreview = false
     @State private var showsAllApplications = false
+    /// What you changed by hand under "Pas aan"; nil follows the choice above.
+    @State private var customItems: Set<String>?
+    @State private var customFiles: Set<String>?
+    @State private var adjusts = false
 
     /// The chosen application first, then the newest; three until you ask for all.
     private var shownApplications: [ApplicationDraft] {
@@ -76,6 +81,7 @@ struct QuickShareSheet: View {
     /// The evidence that goes along: of your profile all of it briefly, of a selection what you put in, of an application
     /// what its CV is built from, so a tick on the CV can be opened.
     private var itemIDs: [String] {
+        if let customItems { return vault.items.map(\.id).filter(customItems.contains) }
         if let application {
             let behindCV = Set(application.cv.sections.filter(\.isVisible).flatMap(\.entries).filter(\.isVisible).compactMap(\.sourceItemID))
             return shareable.map(\.id).filter(behindCV.contains)
@@ -88,12 +94,13 @@ struct QuickShareSheet: View {
         let ids = itemIDs
         let brief = application == nil ? (chosenProfile?.brief ?? ids) : []
         // Verified evidence takes its file along, unless the selection says otherwise.
-        let fileIDs = chosenProfile.map { Set($0.files) } ?? ShareFiles.byDefault(vault.items)
+        let fileIDs = customFiles ?? chosenProfile.map { Set($0.files) } ?? ShareFiles.byDefault(vault.items)
         let files = vault.items.filter { ids.contains($0.id) && fileIDs.contains($0.id) && ShareFiles.hasDocument($0) }.map(\.id)
         let content = ShareContent(
             profile: ShareProfile(
                 name: name, headline: headline, email: includesEmail ? profile.profile.email : nil,
-                summary: application.map(\.cv.profile)?.nilIfEmpty ?? chosenProfile?.summary.nilIfEmpty
+                summary: application.map(\.cv.profile)?.nilIfEmpty ?? chosenProfile?.summary.nilIfEmpty,
+                showsPhoto: includesPhoto && profile.avatar != nil ? true : nil
             ),
             cv: application != nil && includesCV ? application?.cv : nil,
             letter: application != nil && includesLetter ? application?.letter : nil,
@@ -182,6 +189,7 @@ struct QuickShareSheet: View {
                         }
                     }
                 }
+                adjustLine
                 if application != nil {
                     SharePanel(title: SharingMessages.application) {
                         Toggle(ApplyMessages.cv, isOn: $includesCV).tint(.paveAccentFill).textStyle(.bodyMedium).padding(14)
@@ -200,6 +208,13 @@ struct QuickShareSheet: View {
                         .tint(.paveAccentFill)
                         .textStyle(.bodyMedium)
                         .padding(14)
+                    if profile.avatar != nil {
+                        ShareRowDivider(inset: 14)
+                        Toggle(SharingMessages.photo, isOn: $includesPhoto)
+                            .tint(.paveAccentFill)
+                            .textStyle(.bodyMedium)
+                            .padding(14)
+                    }
                 }
                 VStack(alignment: .leading, spacing: 8) {
                     Text(SharingMessages.quickShareHowLong)
@@ -252,6 +267,8 @@ struct QuickShareSheet: View {
         return Button {
             PaveHaptics.selection()
             choice = id
+            customItems = nil
+            customFiles = nil
             if !id.hasPrefix("app:"), !id.hasPrefix("kind:") { lastChoice = id }
         } label: {
             HStack(spacing: 14) {
@@ -270,6 +287,58 @@ struct QuickShareSheet: View {
         }
         .buttonStyle(.pave)
         .accessibilityAddTraits(isOn ? .isSelected : [])
+    }
+
+    /// What goes along now, and a way to change it piece by piece.
+    private var adjustLine: some View {
+        let draft = draft
+        let files = draft.content.files?.count ?? 0
+        return Button {
+            customItems = customItems ?? Set(draft.itemIDs)
+            customFiles = customFiles ?? Set(draft.content.files ?? [])
+            adjusts = true
+        } label: {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(SharingMessages.quickShareGoes(draft.itemIDs.count, files: files))
+                    .foregroundStyle(Color.inkMuted)
+                Text(SharingMessages.quickShareAdjust)
+                    .foregroundStyle(Color.paveAccent)
+                Spacer(minLength: 0)
+            }
+            .textStyle(.caption)
+            .multilineTextAlignment(.leading)
+            .padding(.horizontal, 8)
+            .frame(minHeight: 44)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.pave)
+        .padding(.top, -12)
+        .sheet(isPresented: $adjusts) {
+            NavigationStack {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        Text(SharingMessages.quickShareAdjustHint)
+                            .textStyle(.bodyMedium)
+                            .foregroundStyle(Color.inkMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                        ShareComposerItems(
+                            items: vault.items, template: draft.template,
+                            chosen: Binding(get: { customItems ?? [] }, set: { customItems = $0 }),
+                            files: Binding(get: { customFiles ?? [] }, set: { customFiles = $0 })
+                        )
+                    }
+                    .padding(20)
+                    .frame(maxWidth: 640)
+                    .frame(maxWidth: .infinity)
+                }
+                .background(Color.canvas)
+                .navigationTitle(SharingMessages.quickShareAdjustTitle)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) { Button(ApplyMessages.done) { adjusts = false } }
+                }
+            }
+        }
     }
 
     /// Where it starts: what was asked for, or for Snel delen the choice of last time, if it still exists.
@@ -333,11 +402,45 @@ struct QuickShareSheet: View {
 
     // MARK: Shown
 
+    /// After Stop met delen: plainly done, with a way to share again and a way out.
+    private var stopped: some View {
+        VStack(spacing: 16) {
+            Image(.iconCheckBadgeSolid)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .paveIconFrame(30)
+                .foregroundStyle(Color.paveAccent)
+                .paveIconFrame(72)
+                .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 22))
+                .accessibilityHidden(true)
+            Text(SharingMessages.quickShareStoppedTitle)
+                .textStyle(.emptyTitle)
+                .foregroundStyle(Color.ink)
+            Text(SharingMessages.quickShareStopped)
+                .textStyle(.bodyMedium)
+                .foregroundStyle(Color.inkMuted)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            PavePrimaryButton(title: ApplyMessages.done, action: onDone)
+                .padding(.top, 8)
+            PaveSecondaryButton(title: SharingMessages.quickShareAgain) {
+                withAnimation(.snappy(duration: 0.25)) {
+                    created = nil
+                    isStopped = false
+                }
+            }
+        }
+        .frame(maxWidth: 360)
+        .padding(.top, 60)
+        .transition(.opacity)
+    }
+
     private func shown(_ share: ProfileShare) -> some View {
         ScrollView {
             VStack(spacing: 18) {
                 if isStopped {
-                    PaveNotice(message: SharingMessages.quickShareStopped)
+                    stopped
                 } else {
                     ShareCodeCard(model: model, share: share)
                     QuickShareLookStatus(share: share)

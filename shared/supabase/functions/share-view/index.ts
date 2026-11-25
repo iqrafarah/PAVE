@@ -3,7 +3,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { CORS, json } from '../_shared/http.ts'
 import {
-  documentPaths, fileItemIDs, parseViewRequest, sharedFiles, shareState, shareView, verifications,
+  documentPaths, fileItemIDs, parseViewRequest, photoPath, sharedFiles, shareState, shareView, verifications,
   type FileRow, type FileView, type ItemRow, type ShareRow, type VerificationRow,
 } from './share.ts'
 
@@ -72,6 +72,15 @@ Deno.serve(async (req) => {
     }
   }
 
+  // The profile photo, only when the owner chose to show it.
+  let photoUrl: string | undefined
+  const { data: owner } = await admin.from('profiles').select('avatar_path').eq('id', share.user_id).maybeSingle<{ avatar_path: string | null }>()
+  const photo = photoPath(share, owner?.avatar_path)
+  if (photo) {
+    const { data: link } = await admin.storage.from('pave-avatars').createSignedUrl(photo, SECONDS_A_FILE_LINK_WORKS)
+    photoUrl = link?.signedUrl ?? undefined
+  }
+
   const documents: { kind: string; url: string }[] = []
   for (const doc of documentPaths(share)) {
     const name = `${doc.kind === 'cv' ? 'Cv' : 'Motivatiebrief'}.pdf`
@@ -89,5 +98,5 @@ Deno.serve(async (req) => {
   })
   if (logError) console.error('share-view: writing down the look failed', logError.message)
 
-  return json(shareView(share, items, documents, files, verified))
+  return json(shareView(share, items, documents, files, verified, photoUrl))
 })
