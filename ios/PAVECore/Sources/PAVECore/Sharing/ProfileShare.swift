@@ -78,13 +78,16 @@ public struct ShareContent: Codable, Equatable, Sendable {
     public var documents: [String: String]?
     /// The application it is part of, so it can be taken back when that ends.
     public var vacancyID: String?
+    /// Evidence shown briefly on the recipient's page: no description and no skills.
+    public var brief: [String]?
 
-    public init(profile: ShareProfile, cv: CVContent? = nil, letter: LetterContent? = nil, documents: [String: String]? = nil, vacancyID: String? = nil) {
+    public init(profile: ShareProfile, cv: CVContent? = nil, letter: LetterContent? = nil, documents: [String: String]? = nil, vacancyID: String? = nil, brief: [String]? = nil) {
         self.profile = profile
         self.cv = cv
         self.letter = letter
         self.documents = documents
         self.vacancyID = vacancyID
+        self.brief = brief
     }
 
     public init(from decoder: any Decoder) throws {
@@ -95,6 +98,7 @@ public struct ShareContent: Codable, Equatable, Sendable {
         letter = try? values.decodeIfPresent(LetterContent.self, forKey: .letter)
         documents = try? values.decodeIfPresent([String: String].self, forKey: .documents)
         vacancyID = try? values.decodeIfPresent(String.self, forKey: .vacancyID)
+        brief = try? values.decodeIfPresent([String].self, forKey: .brief)
     }
 }
 

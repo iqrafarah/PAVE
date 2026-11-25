@@ -6,6 +6,8 @@ struct ShareComposerItems: View {
     let items: [VaultItem]
     let template: ShareTemplate
     @Binding var chosen: Set<String>
+    /// For a saved profile: chosen evidence can be shown briefly. Nil in the composer.
+    var brief: Binding<Set<String>>?
 
     private var groups: [(category: VaultCategory, items: [VaultItem])] {
         VaultCategory.allCases.compactMap { category in
@@ -61,6 +63,16 @@ struct ShareComposerItems: View {
         .buttonStyle(.pave)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isOn ? .isSelected : [])
+        .overlay(alignment: .bottomTrailing) {
+            if let brief, isOn {
+                ShareDetailPicker(isBrief: Binding(
+                    get: { brief.wrappedValue.contains(item.id) },
+                    set: { if $0 { brief.wrappedValue.insert(item.id) } else { brief.wrappedValue.remove(item.id) } }
+                ))
+                .padding(.trailing, 14)
+                .padding(.bottom, 12)
+            }
+        }
     }
 }
 

@@ -480,4 +480,23 @@ struct ApplicationStudioTests {
         model.update { $0.letter.paragraphs = [LetterParagraph(text: "Graag solliciteer ik.")] }
         #expect(model.hasLetter)
     }
+
+    @Test func sendingBringsTheDemoInvitationAndChoosingPlansTheTalk() async throws {
+        let model = ApplicationStudioModel(vacancy: vacancy, items: items(), name: "Daaf", email: "", service: nil, store: store)
+        await model.begin(withAyla: false)
+        model.setStatus(.sent)
+        let planned = try #require(model.tracking.invitation)
+        #expect(model.invitation == nil)
+        #expect(planned.arrivesAt > .now)
+        model.update { draft in
+            var tracking = draft.progress
+            tracking.invitation?.arrivesAt = .now.addingTimeInterval(-1)
+            draft.tracking = tracking
+        }
+        let arrived = try #require(model.invitation)
+        model.choose(arrived.slots[0])
+        #expect(model.tracking.status == .interview)
+        model.setPrep(.practise, done: true)
+        #expect(model.tracking.invitation?.done == [.practise])
+    }
 }

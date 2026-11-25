@@ -74,6 +74,33 @@ enum ApplyMessages {
     static let backToApplication = "Terug naar je sollicitatie"
     static let steps = ["Ontwerp", "Inhoud", "Schrijven"]
     static let saved = "Bewaard op dit toestel"
+
+    // The demo invitation after applying
+    static let demo = "Demo"
+    static let fromEmployers = "Van werkgevers · demo"
+    static let invitationTitle = "Uitnodiging kennismaking"
+    static func invitationText(_ vacancy: Vacancy) -> String {
+        "\(vacancy.company) wil je graag spreken over \(vacancy.title). Kies een moment dat je uitkomt."
+    }
+    static let invitationDemoNote = "Dit bericht is nagespeeld voor de demo; er is geen echte werkgever bij betrokken."
+    static func slot(_ date: Date) -> String {
+        date.formatted(.dateTime.weekday(.wide).day().month(.wide).hour().minute().locale(Locale(identifier: "nl_NL")))
+    }
+    static func talkPlanned(_ date: Date) -> String { "Je gesprek is op \(slot(date))" }
+    static let talkToCalendar = "Zet in je agenda"
+    static func talkCalendarTitle(_ vacancy: Vacancy) -> String { "Kennismaking \(vacancy.company)" }
+    static let talkCalendarNotes = "Kennismakingsgesprek, gepland in PAVE (demo). Neem je cv mee."
+    static let prepTitle = "Voorbereiden"
+    static func prep(_ step: ApplicationInvitation.PrepStep, _ vacancy: Vacancy) -> String {
+        switch step {
+        case .rereadVacancy: "Lees de vacature nog eens door"
+        case .readAboutCompany: "Lees wat er over \(vacancy.company) bekend is"
+        case .practise: "Oefen het gesprek met Ayla"
+        case .questions: "Bedenk twee vragen voor hen"
+        case .route: "Plan je reis of test je videoverbinding"
+        }
+    }
+    static func prepCount(_ done: Int, of total: Int) -> String { "\(done) van \(total) gedaan" }
     static func sharedLooks(_ count: Int) -> String {
         switch count {
         case 0: "Gedeeld, nog niet bekeken"
@@ -117,13 +144,16 @@ enum ApplyMessages {
         case .deadlineTomorrow: "Morgen is de deadline"
         case .deadlineToday: "Vandaag is de deadline"
         case .followUp: "Al iets gehoord?"
+        case .invitation: "Uitnodiging voor een kennismaking"
         }
     }
     static func reminderBody(_ reminder: ApplicationReminder) -> String {
         let job = "\(reminder.vacancyTitle) bij \(reminder.company)"
-        return reminder.kind == .followUp
-            ? "Je solliciteerde een week geleden op \(job). Zet de status bij als er nieuws is."
-            : "Je sollicitatie voor \(job) staat nog op concept."
+        switch reminder.kind {
+        case .followUp: return "Je solliciteerde een week geleden op \(job). Zet de status bij als er nieuws is."
+        case .invitation: return "\(reminder.company) wil je spreken over \(reminder.vacancyTitle). Dit is een demo in PAVE."
+        default: return "Je sollicitatie voor \(job) staat nog op concept."
+        }
     }
 
     static func deadlineCard(_ distance: ApplicationDeadline) -> String {

@@ -10,6 +10,8 @@ struct ApplicationHubView: View {
     var shares: [ProfileShare]?
     var onShare: (() -> Void)?
     var onOpenShare: (String) -> Void = { _ in }
+    /// Changes when the invitation arrives while this is open, so it shows without leaving.
+    @State private var tick = 0
     let onTask: (AylaRequest.VacancyTask) -> Void
 
     var body: some View {
@@ -21,6 +23,9 @@ struct ApplicationHubView: View {
                     .foregroundStyle(Color.ink)
                     .accessibilityAddTraits(.isHeader)
                 ApplicationSummaryCard(draft: model.shown, shares: shares ?? [])
+                if let invitation = model.invitation {
+                    ApplicationInvitationCard(model: model, invitation: invitation) { onTask(.interview) }
+                }
                 documents
                 if let onShare { sharing(onShare) }
                 ApplicationHubStatus(model: model)
@@ -36,6 +41,14 @@ struct ApplicationHubView: View {
         }
         .scrollIndicators(.hidden)
         .scrollDismissesKeyboard(.interactively)
+        .id(tick)
+        .task(id: model.tracking.invitation?.arrivesAt) {
+            guard let arrives = model.tracking.invitation?.arrivesAt, arrives > .now else { return }
+            try? await Task.sleep(for: .seconds(arrives.timeIntervalSinceNow + 1))
+            guard !Task.isCancelled else { return }
+            PaveHaptics.success()
+            tick += 1
+        }
     }
 
     private var history: some View {

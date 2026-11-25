@@ -31,6 +31,8 @@ public struct ApplicationTracking: Codable, Equatable, Sendable {
     public var history: [Change] = []
     /// A notification the day before the deadline and a week after "Verstuurd". Off until the user turns it on.
     public var remindsMe = false
+    /// The demo's invitation for a first talk, planned when it is first sent.
+    public var invitation: ApplicationInvitation?
 
     public init(status: ApplicationStatus = .concept, deadline: Date? = nil, note: String = "", changedAt: Date? = nil, history: [Change] = [], remindsMe: Bool = false) {
         self.status = status
@@ -50,6 +52,7 @@ public struct ApplicationTracking: Codable, Equatable, Sendable {
         changedAt = try values.decodeIfPresent(Date.self, forKey: .changedAt)
         history = try values.decodeIfPresent([Change].self, forKey: .history) ?? []
         remindsMe = try values.decodeIfPresent(Bool.self, forKey: .remindsMe) ?? false
+        invitation = try values.decodeIfPresent(ApplicationInvitation.self, forKey: .invitation)
     }
 
     /// Sets the status and keeps when; the same status again changes nothing.

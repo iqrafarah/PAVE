@@ -18,12 +18,21 @@ struct ProfileScreen: View {
     @State private var showsReport = false
     @State private var showsPrivacy = false
     @State private var showsEarlier = false
+    @State private var editing: SavedProfile?
+    @Environment(VaultModel.self) private var vault
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    ShareProfileCard { composing = ShareTemplateChoice(template: .fair) }
+                    ShareProfileCard {
+                        // A fair profile, when there is one, is what you show at a stand.
+                        if let fair = model.profiles?.first(where: { $0.template == .fair }) {
+                            composing = ShareTemplateChoice(template: .fair, withApplication: false, profile: fair)
+                        } else {
+                            composing = ShareTemplateChoice(template: .fair)
+                        }
+                    }
                     Text(SharingMessages.intro)
                         .textStyle(.caption)
                         .foregroundStyle(Color.inkMuted)
@@ -69,7 +78,8 @@ struct ProfileScreen: View {
         }) { choice in
             ShareComposer(
                 model: model, template: choice.template, recipientOrganisation: choice.organisation, duration: choice.duration,
-                withApplication: choice.withApplication, doneTitle: SharingMessages.showShare, onShared: { justShared = $0.id }
+                withApplication: choice.withApplication, doneTitle: SharingMessages.showShare, onShared: { justShared = $0.id },
+                savedProfile: choice.profile
             ) { composing = nil }
         }
         .sheet(isPresented: $showsScanner, onDismiss: {
@@ -80,6 +90,9 @@ struct ProfileScreen: View {
             ShareScanSheet(model: model) { sharesBack = $0 }
         }
         .sheet(isPresented: $showsReport) { ShareReportSheet(model: model) }
+        .sheet(item: $editing) { profile in
+            SavedProfileEditor(model: model, profile: profile) { editing = nil }
+        }
         .confirmationDialog(
             model.live.isEmpty ? SharingMessages.nothingToStop : SharingMessages.stopAllQuestion,
             isPresented: Binding(get: { model.asksToStopAll && model.state != .loading }, set: { if !$0 { model.asksToStopAll = false } }),
@@ -115,6 +128,7 @@ struct ProfileScreen: View {
             suggestions
             live
         }
+        if let profiles = model.profiles { saved(profiles) }
         templates
         SharePanel(title: "Meer") {
             ShareLinkRow(icon: .iconCamera, title: SharingMessages.scan, detail: SharingMessages.scanHint) { showsScanner = true }
@@ -162,6 +176,39 @@ struct ProfileScreen: View {
                         .buttonStyle(.pave)
                     if index < model.live.count - 1 { ShareRowDivider() }
                 }
+            }
+        }
+    }
+
+    /// Your saved profiles, to share in two taps, and a new one.
+    private func saved(_ profiles: [SavedProfile]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            SharePanel(title: SharingMessages.profiles) {
+                ForEach(profiles) { profile in
+                    SavedProfileRow(profile: profile) { editing = profile } onShare: {
+                        composing = ShareTemplateChoice(template: profile.template, withApplication: false, profile: profile)
+                    }
+                    ShareRowDivider()
+                }
+                Button {
+                    editing = SavedProfile.starter(for: .employer, items: vault.items)
+                } label: {
+                    HStack(spacing: 14) {
+                        ShareRowIcon(icon: .iconPlusCircleSolid)
+                        Text(SharingMessages.newProfile).textStyle(.bodyMedium).foregroundStyle(Color.paveAccent)
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 14)
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.pave)
+            }
+            if profiles.isEmpty {
+                Text(SharingMessages.profilesHint)
+                    .textStyle(.caption)
+                    .foregroundStyle(Color.inkMuted)
+                    .padding(.horizontal, 8)
             }
         }
     }
@@ -224,5 +271,6 @@ struct ShareTemplateChoice: Identifiable {
     var organisation: String?
     var duration: ShareDuration?
     var withApplication = true
-    var id: String { "\(template.rawValue)-\(organisation ?? "")" }
+    var profile: SavedProfile?
+    var id: String { "\(template.rawValue)-\(organisation ?? "")-\(profile?.id ?? "")" }
 }

@@ -23,6 +23,8 @@ struct MainView: View {
     @State private var sharing: SharingModel
     /// Ayla was asked to share: the composer opens over the chat, so you are back with her once it is done.
     @State private var aylaShare: ShareTemplateChoice?
+    /// Applications whose demo invitation has arrived, for Meldingen and the bell; read again when you move around.
+    @State private var invitations: [ApplicationDraft] = []
     @State private var destination = MainDestination.ayla
     /// Demo: the Camera Control button steers PAVE while "knopmodus" is on.
     @State private var cameraControl = PaveCameraControl()
@@ -128,7 +130,8 @@ struct MainView: View {
         .tint(.paveAccent)
         .environment(memory)
         .environment(cameraControl)
-        .environment(\.unreadNotifications, notificationsModel.unreadCount)
+        .environment(\.unreadNotifications, notificationsModel.unreadCount + invitations.filter { $0.progress.invitation?.isRead == false }.count)
+        .task(id: destination) { invitations = Self.arrivedInvitations() }
         .overlay(alignment: .top) {
             if let banner = notificationsModel.banner, destination != .notifications {
                 NotificationBanner(notification: banner) {
@@ -261,6 +264,9 @@ struct MainView: View {
             isMenuOpen = false
             open(.profile)
             sharing.asksToStopAll = true
+        case .applications:
+            isMenuOpen = false
+            open(.vacancies)
         case .talk, .newConversation:
             startNewConversation()
             if link == .talk { talk() }
@@ -418,7 +424,12 @@ struct MainView: View {
                 onLoadReview: { await notificationsModel.review($0) },
                 onResolveRequest: { await notificationsModel.resolve($0, action: $1, response: $2) },
                 onDelete: { await notificationsModel.delete($0) },
-                onRestore: { await notificationsModel.restore($0) }
+                onRestore: { await notificationsModel.restore($0) },
+                invitations: invitations,
+                onOpenApplication: { vacancy in
+                    model.request(.application(vacancy))
+                    open(.ayla)
+                }
             )
         }
     }
@@ -439,6 +450,13 @@ struct MainView: View {
         withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.4, bounce: 0.1)) {
             isSidebarHidden = isHidden
         }
+    }
+
+    /// Applications whose demo invitation has arrived, newest first.
+    static func arrivedInvitations(now: Date = .now) -> [ApplicationDraft] {
+        ApplicationStore().all()
+            .filter { $0.progress.invitation?.hasArrived(now: now) == true }
+            .sorted { ($0.progress.invitation?.arrivesAt ?? .distantPast) > ($1.progress.invitation?.arrivesAt ?? .distantPast) }
     }
 
     private func open(_ destination: MainDestination) {

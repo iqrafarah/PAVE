@@ -16,7 +16,7 @@ public enum ApplicationDeadline: Equatable, Sendable {
 /// One notification to plan.
 public struct ApplicationReminder: Equatable, Sendable, Identifiable {
     public enum Kind: String, Sendable {
-        case deadlineTomorrow, deadlineToday, followUp
+        case deadlineTomorrow, deadlineToday, followUp, invitation
     }
 
     public var id: String { "application.\(vacancyID).\(kind.rawValue)" }
@@ -39,6 +39,12 @@ public enum ApplicationReminders {
         func add(_ draft: ApplicationDraft, _ kind: ApplicationReminder.Kind, day: Date, hour: Int) {
             guard let date = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: day), date > now else { return }
             found.append(ApplicationReminder(vacancyID: draft.vacancy.id, kind: kind, date: date, vacancyTitle: draft.vacancy.title, company: draft.vacancy.company))
+        }
+        // The demo's invitation is a message, not a reminder: it is announced also when reminders are off.
+        for draft in drafts {
+            if let invitation = draft.progress.invitation, invitation.chosen == nil, invitation.arrivesAt > now {
+                found.append(ApplicationReminder(vacancyID: draft.vacancy.id, kind: .invitation, date: invitation.arrivesAt, vacancyTitle: draft.vacancy.title, company: draft.vacancy.company))
+            }
         }
         for draft in drafts where draft.progress.remindsMe {
             let tracking = draft.progress

@@ -12,6 +12,8 @@ final class SharingModel {
     private(set) var state = State.loading
     private(set) var shares: [ProfileShare] = []
     private(set) var applications: [ApplicationDraft] = []
+    /// Saved profiles; nil until loaded or while the table is not there yet.
+    private(set) var profiles: [SavedProfile]?
     /// A share being made or changed, so its button waits.
     private(set) var busyShareID: String?
     private(set) var isCreating = false
@@ -72,11 +74,13 @@ final class SharingModel {
     func load() async {
         applications = ApplicationStore().all()
         guard let service else { return }
+        profiles = try? await service.savedProfiles()
         if shares.isEmpty { state = .loading }
         do {
             shares = try await service.shares()
             state = .ready
             ShareAlerts.update(with: shares)
+            ApplicationWidgetSnapshot.update(shares: shares)
         } catch ShareError.notSetUp {
             state = .notSetUp
         } catch {
@@ -139,6 +143,32 @@ final class SharingModel {
         await change(share) { service in
             try await service.extend(shareID: share.id, until: until)
             return { $0.expiresAt = until }
+        }
+    }
+
+    /// Keeps a new or changed profile; false when it could not be kept.
+    func save(_ profile: SavedProfile) async -> Bool {
+        guard let service else { return false }
+        do {
+            let kept = try await service.save(profile)
+            var list = profiles ?? []
+            list.removeAll { $0.id == kept.id }
+            list.insert(kept, at: 0)
+            profiles = list
+            return true
+        } catch {
+            problem = SharingMessages.profileSaveFailed
+            return false
+        }
+    }
+
+    func delete(_ profile: SavedProfile) async {
+        guard let service else { return }
+        do {
+            try await service.delete(profileID: profile.id)
+            profiles?.removeAll { $0.id == profile.id }
+        } catch {
+            problem = SharingMessages.loadFailed
         }
     }
 

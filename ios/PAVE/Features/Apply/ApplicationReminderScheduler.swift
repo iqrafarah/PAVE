@@ -13,6 +13,7 @@ enum ApplicationReminderScheduler {
     }
 
     static func sync(_ drafts: [ApplicationDraft], now: Date = .now) {
+        ApplicationWidgetSnapshot.update(drafts: drafts)
         Task {
             let center = UNUserNotificationCenter.current()
             let planned = await center.pendingNotificationRequests().map(\.identifier).filter { $0.hasPrefix(prefix) }

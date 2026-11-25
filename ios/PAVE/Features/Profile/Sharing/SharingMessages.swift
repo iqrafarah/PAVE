@@ -74,6 +74,31 @@ enum SharingMessages {
     static let back = "Terug"
     static let backToAyla = "Terug naar Ayla"
     static let manage = "Beheren"
+    static let saving = "Bewaren…"
+    static let detailTitle = "Hoeveel laat je zien"
+    static let detailFull = "Uitgebreid"
+    static let detailBrief = "Kort"
+    static let detailFullHint = "Met beschrijving en vaardigheden"
+    static let detailBriefHint = "Alleen titel, organisatie, periode en status"
+    static let detailExplained = "Kort: alleen titel, organisatie, periode en status. Uitgebreid: ook de beschrijving en vaardigheden. Bestanden uit je kluis deel je niet."
+    static let profiles = "Je profielen"
+    static let profilesHint = "Stel een profiel één keer samen, en deel het daarna in twee tikken."
+    static let newProfile = "Nieuw profiel"
+    static let editProfile = "Profiel aanpassen"
+    static let profileName = "Naam van het profiel"
+    static let profileFor = "Voor wie"
+    static let profileItems = "Wat erin staat"
+    static let shareProfile = "Delen"
+    static let saveProfile = "Bewaar profiel"
+    static let deleteProfile = "Verwijder profiel"
+    static func deleteProfileQuestion(_ name: String) -> String { "\(name) verwijderen?" }
+    static let deleteProfileHint = "Wat je met dit profiel al deelde, blijft gedeeld tot je het intrekt."
+    static func profileSummary(_ profile: SavedProfile) -> String {
+        let count = profile.itemIDs.count
+        let items = count == 1 ? "1 onderdeel" : "\(count) onderdelen"
+        return profile.brief.isEmpty ? items : "\(items) · \(profile.brief.count) kort"
+    }
+    static let profileSaveFailed = "Het profiel kon niet worden bewaard. Probeer het opnieuw."
     static let you = "Jij"
     static let quickShare = "Snel delen op een beurs"
     static func evidenceCount(_ count: Int, verified: Int) -> String {

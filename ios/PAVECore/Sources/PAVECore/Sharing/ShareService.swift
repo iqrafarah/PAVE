@@ -17,6 +17,17 @@ public protocol ShareService: Sendable {
     /// For good: the database wipes what was kept with it; the files go too.
     func revoke(_ share: ProfileShare) async throws
     func employer(slug: String) async throws -> FairEmployer
+    /// Your saved profiles, last changed first. `notSetUp` until migration 20261125160000 has run.
+    func savedProfiles() async throws -> [SavedProfile]
+    /// Makes it when it has no id yet, otherwise changes it; returns it as kept.
+    func save(_ profile: SavedProfile) async throws -> SavedProfile
+    func delete(profileID: String) async throws
+}
+
+extension ShareService {
+    public func savedProfiles() async throws -> [SavedProfile] { throw ShareError.notSetUp }
+    public func save(_ profile: SavedProfile) async throws -> SavedProfile { throw ShareError.notSetUp }
+    public func delete(profileID: String) async throws { throw ShareError.notSetUp }
 }
 
 public final class SupabaseShareService: ShareService, @unchecked Sendable {
@@ -103,6 +114,57 @@ public final class SupabaseShareService: ShareService, @unchecked Sendable {
         let data = try await send(try await request(restURL.appending(path: "fair_employers"), query: [("select", "*"), ("slug", "eq.\(slug)")]))
         guard let employer = try? JSONDecoder().decode([FairEmployer].self, from: data).first else { throw ShareError.unavailable }
         return employer
+    }
+
+    // MARK: Saved profiles
+
+    public func savedProfiles() async throws -> [SavedProfile] {
+        let data = try await send(try await request(restURL.appending(path: "share_profiles"), query: [("select", "*"), ("order", "updated_at.desc"), ("limit", "50")]))
+        guard let rows = try? Self.decoder.decode([ProfileRow].self, from: data) else { throw ShareError.unavailable }
+        return rows.compactMap(\.profile)
+    }
+
+    public func save(_ profile: SavedProfile) async throws -> SavedProfile {
+        let row: [String: Any] = [
+            "name": profile.name.trimmingCharacters(in: .whitespaces),
+            "template": profile.template.rawValue,
+            "item_ids": profile.itemIDs,
+            "brief_ids": profile.brief,
+            "headline": profile.headline.trimmingCharacters(in: .whitespaces).isEmpty ? NSNull() : profile.headline.trimmingCharacters(in: .whitespaces),
+            "includes_email": profile.includesEmail,
+        ]
+        let isNew = profile.id.isEmpty
+        var urlRequest = try await request(
+            restURL.appending(path: "share_profiles"), query: isNew ? [("select", "*")] : [("select", "*"), ("id", "eq.\(profile.id)")],
+            method: isNew ? "POST" : "PATCH", json: row
+        )
+        urlRequest.setValue("return=representation", forHTTPHeaderField: "Prefer")
+        let data = try await send(urlRequest, accepting: isNew ? [201] : [200])
+        guard let kept = try? Self.decoder.decode([ProfileRow].self, from: data).first?.profile else { throw ShareError.unavailable }
+        return kept
+    }
+
+    public func delete(profileID: String) async throws {
+        _ = try await send(try await request(restURL.appending(path: "share_profiles"), query: [("id", "eq.\(profileID)")], method: "DELETE"), accepting: [200, 204])
+    }
+
+    struct ProfileRow: Decodable {
+        let id: String
+        let name: String
+        let template: String
+        let item_ids: [String]
+        let brief_ids: [String]?
+        let headline: String?
+        let includes_email: Bool?
+        let updated_at: Date
+
+        var profile: SavedProfile? {
+            guard let template = ShareTemplate(rawValue: template) else { return nil }
+            return SavedProfile(
+                id: id, name: name, template: template, itemIDs: item_ids, briefIDs: Set(brief_ids ?? []), headline: headline ?? "",
+                includesEmail: includes_email ?? true, updatedAt: updated_at
+            )
+        }
     }
 
     // MARK: Plumbing

@@ -17,6 +17,8 @@ struct ShareComposer: View {
     var doneTitle = ApplyMessages.done
     /// Called once it is shared, before the user closes it.
     var onShared: (ProfileShare) -> Void = { _ in }
+    /// Shared from a saved profile: its evidence, headline and e-mail are filled in, and it starts at "Met wie".
+    var savedProfile: SavedProfile?
     let onDone: () -> Void
 
     @Environment(VaultModel.self) private var vault
@@ -27,6 +29,8 @@ struct ShareComposer: View {
     @State private var includesCV = true
     @State private var includesLetter = true
     @State private var includesEmail = true
+    /// Evidence shown briefly, from a saved profile.
+    @State private var brief: Set<String> = []
     @State private var headline = ""
     @State private var recipientName = ""
     @State private var organisation = ""
@@ -41,8 +45,9 @@ struct ShareComposer: View {
     init(
         model: SharingModel, template: ShareTemplate, recipientOrganisation: String? = nil, vacancyID: String? = nil,
         duration: ShareDuration? = nil, withApplication: Bool = true, startsWith: Set<ApplicationDocumentKind> = [.cv, .letter],
-        doneTitle: String = ApplyMessages.done, onShared: @escaping (ProfileShare) -> Void = { _ in }, onDone: @escaping () -> Void
+        doneTitle: String = ApplyMessages.done, onShared: @escaping (ProfileShare) -> Void = { _ in }, savedProfile: SavedProfile? = nil, onDone: @escaping () -> Void
     ) {
+        self.savedProfile = savedProfile
         self.startsWith = startsWith
         self.doneTitle = doneTitle
         self.onShared = onShared
@@ -69,7 +74,8 @@ struct ShareComposer: View {
             ),
             cv: app != nil && includesCV ? app?.cv : nil,
             letter: app != nil && includesLetter ? app?.letter : nil,
-            vacancyID: app?.vacancy.id
+            vacancyID: app?.vacancy.id,
+            brief: brief.intersection(chosen).isEmpty ? nil : Array(brief.intersection(chosen))
         )
         let ids = vault.items.filter { chosen.contains($0.id) }.map(\.id)
         return ShareDraft(
@@ -331,6 +337,13 @@ struct ShareComposer: View {
         guard !didStart else { return }
         didStart = true
         chosen = Set(vault.items.filter { template.categories.contains($0.category) && $0.status != .rejected }.map(\.id))
+        if let savedProfile {
+            chosen = Set(savedProfile.itemIDs).intersection(vault.items.map(\.id))
+            brief = savedProfile.briefIDs
+            includesEmail = savedProfile.includesEmail
+            if !savedProfile.headline.isEmpty { headline = savedProfile.headline }
+            step = .who
+        }
         if let vacancyID, model.applications.contains(where: { $0.vacancy.id == vacancyID }) { applicationID = vacancyID }
         // Asked for a company by name: its own application, if there is one.
         if applicationID == nil, let recipientOrganisation {

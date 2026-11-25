@@ -159,9 +159,48 @@ final class ApplicationStudioModel: Identifiable {
     var openRequirements: [ApplicationCoverage.Requirement] { requirements.filter { !$0.isCovered } }
 
     func setStatus(_ status: ApplicationStatus) {
+        let firstSend = status == .sent && tracking.invitation == nil
         update { draft in
             var tracking = draft.progress
-            tracking.set(status)
+            if status == .sent { tracking.send() } else { tracking.set(status) }
+            draft.tracking = tracking
+        }
+        // The demo invitation arrives as a notification: ask now, when it is about to matter.
+        if firstSend {
+            Task {
+                _ = await requestReminderAccess()
+                syncReminders(store.all())
+            }
+        }
+    }
+
+    /// The invitation, once it has arrived.
+    var invitation: ApplicationInvitation? {
+        guard let invitation = tracking.invitation, invitation.hasArrived() else { return nil }
+        return invitation
+    }
+
+    func readInvitation() {
+        guard let invitation, !invitation.isRead else { return }
+        update { draft in
+            var tracking = draft.progress
+            tracking.invitation?.isRead = true
+            draft.tracking = tracking
+        }
+    }
+
+    func choose(_ slot: Date) {
+        update { draft in
+            var tracking = draft.progress
+            tracking.choose(slot)
+            draft.tracking = tracking
+        }
+    }
+
+    func setPrep(_ step: ApplicationInvitation.PrepStep, done: Bool) {
+        update { draft in
+            var tracking = draft.progress
+            if done { tracking.invitation?.done.insert(step) } else { tracking.invitation?.done.remove(step) }
             draft.tracking = tracking
         }
     }

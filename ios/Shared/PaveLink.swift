@@ -9,6 +9,8 @@ nonisolated enum PaveLink: String, CaseIterable, Sendable {
     case shares = "gedeeld"
     /// Profiel, asking whether to pause or take back everything you share.
     case stopSharing = "stop-delen"
+    /// Vacatures: your applications, from the widget.
+    case applications = "sollicitaties"
 
     static let scheme = "pave"
 

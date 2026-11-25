@@ -83,13 +83,18 @@ export function itemView(item: ItemRow) {
   }
 }
 
-/** Only the evidence the share names, of its owner, not archived and not rejected; in the order the owner chose. */
+/**
+ * Only the evidence the share names, of its owner, not archived and not rejected; in the order the owner chose. What the
+ * owner shared briefly ("kort", listed in `content.brief`) shows without its description and skills.
+ */
 export function chosenItems(share: ShareRow, items: ItemRow[]) {
   const byId = new Map(items.map((item) => [item.id, item]))
+  const brief = new Set(Array.isArray(share.content.brief) ? (share.content.brief as unknown[]).filter((id) => typeof id === 'string') : [])
   return share.item_ids
     .map((id) => byId.get(id))
     .filter((item): item is ItemRow => !!item && item.user_id === share.user_id && !item.archived_at && item.verification_status !== 'rejected')
     .map(itemView)
+    .map((view) => brief.has(view.id) ? { ...view, description: undefined, skills: [] } : view)
 }
 
 /** The kept files of a share, only under its own folder. */

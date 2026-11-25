@@ -131,6 +131,9 @@ struct NotificationsScreen: View {
     /// Both report whether the server saved it; the model puts the notification back if not.
     var onDelete: ((String) async -> Bool)?
     var onRestore: ((String) async -> Bool)?
+    /// Applications with the demo's invitation from the company, kept on this device; they open Mijn sollicitatie.
+    var invitations: [ApplicationDraft] = []
+    var onOpenApplication: ((Vacancy) -> Void)?
 
     @State private var searchText = ""
     @State private var alertStatus: UNAuthorizationStatus?
@@ -209,6 +212,26 @@ struct NotificationsScreen: View {
                 .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
+                if !invitations.isEmpty, searchText.isEmpty {
+                    Section {
+                        ForEach(invitations) { draft in
+                            if let invitation = draft.progress.invitation {
+                                Button { onOpenApplication?(draft.vacancy) } label: {
+                                    NotificationInvitationRow(draft: draft, invitation: invitation)
+                                }
+                                .buttonStyle(.plain)
+                                .listRowBackground(Color.panel)
+                                .listRowInsets(EdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14))
+                            }
+                        }
+                    } header: {
+                        Text(ApplyMessages.fromEmployers)
+                            .textStyle(.caption)
+                            .foregroundStyle(Color.paveAccent)
+                            .textCase(nil)
+                            .accessibilityAddTraits(.isHeader)
+                    }
+                }
                 notificationList
             }
             // One grouped list, like Instellingen: a panel per section with dividers, not a card per melding.

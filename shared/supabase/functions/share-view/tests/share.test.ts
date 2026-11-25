@@ -77,3 +77,14 @@ Deno.test('the profile carries only its known fields', () => {
   assertEquals(view.allowsDownload, false)
   assertEquals(view.recipient, { name: 'Sanne de Vries', organisation: 'Kade Consultancy' })
 })
+
+Deno.test('what was shared briefly shows without its description and skills', () => {
+  const brief: ShareRow = { ...share, content: { ...share.content, brief: ['i1', 42] } }
+  const shown = chosenItems(brief, [item('i1', { description: 'Lang verhaal' }), item('i2', { description: 'Ook lang' })])
+  const byId = Object.fromEntries(shown.map((i) => [i.id, i]))
+  assertEquals(byId.i1.description, undefined)
+  assertEquals(byId.i1.skills, [])
+  assertEquals(byId.i1.title, 'Titel i1')
+  assertEquals(byId.i2.description, 'Ook lang')
+  assertEquals(byId.i2.skills, ['Swift'])
+})
