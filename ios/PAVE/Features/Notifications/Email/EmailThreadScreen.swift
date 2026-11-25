@@ -535,7 +535,8 @@ struct EmailThreadScreen: View {
         defer { openingAttachmentID = nil }
         do {
             let data = try await email.attachmentData(attachment, of: message)
-            let upload = VaultUpload(data: data, fileName: attachment.name, mimeType: attachment.mimeType.lowercased())
+            let file = EmailVaultFile.prepare(data: data, name: attachment.name, mimeType: attachment.mimeType)
+            let upload = VaultUpload(data: file.data, fileName: file.name, mimeType: file.mimeType)
             if let problem = upload.problem {
                 sendError = VaultMessages.upload(problem)
                 PaveHaptics.error()
@@ -589,6 +590,44 @@ nonisolated struct EmailReplyTarget: Equatable, Sendable {
         return thread.messages.reversed().filter { message in
             !message.isFromMe && seen.insert(message.from.address.lowercased()).inserted
         }
+    }
+}
+
+/// A file from a mail as the vault takes it. Mail programs label photos loosely ("image/jpg", "application/octet-stream"
+/// with a .jpg name), and some send GIF, WebP or TIFF: those become a JPEG, so every photo can be evidence.
+nonisolated enum EmailVaultFile {
+    /// The type the vault knows this file as, from its label or else its name; nil when the vault cannot take it.
+    static func vaultType(mimeType: String, name: String) -> String? {
+        let type = mimeType.lowercased().split(separator: ";").first.map { $0.trimmingCharacters(in: .whitespaces) } ?? ""
+        switch type {
+        case "image/jpg", "image/pjpeg": return "image/jpeg"
+        case "image/heif", "image/heic-sequence", "image/heif-sequence": return "image/heic"
+        default: break
+        }
+        if VaultUpload.allowedTypes.contains(type) { return type }
+        if type.hasPrefix("image/") { return "image/jpeg" }
+        // A vague label: the extension says what it is.
+        guard let byName = UTType(filenameExtension: (name as NSString).pathExtension)?.preferredMIMEType?.lowercased() else { return nil }
+        if byName == mimeType.lowercased() { return nil }
+        return vaultType(mimeType: byName, name: "")
+    }
+
+    static func canSave(mimeType: String, name: String) -> Bool {
+        vaultType(mimeType: mimeType, name: name) != nil
+    }
+
+    /// The bytes, name and type to put in the vault; a photo the vault does not take as it is becomes a JPEG.
+    static func prepare(data: Data, name: String, mimeType: String) -> (data: Data, name: String, mimeType: String) {
+        guard let type = vaultType(mimeType: mimeType, name: name) else { return (data, name, mimeType.lowercased()) }
+        let original = mimeType.lowercased().split(separator: ";").first.map(String.init) ?? ""
+        let byName = UTType(filenameExtension: (name as NSString).pathExtension)?.preferredMIMEType?.lowercased()
+        let isAlready = type == original || (type == "image/jpeg" && original == "image/jpg") || type == byName
+            || (type == "image/heic" && original.hasPrefix("image/hei"))
+        guard type == "image/jpeg", !isAlready else { return (data, name, type) }
+        // GIF, WebP, TIFF, BMP: redrawn as a JPEG with the same name and a .jpg extension.
+        guard let image = UIImage(data: data), let jpeg = image.jpegData(compressionQuality: 0.9) else { return (data, name, type) }
+        let base = (name as NSString).deletingPathExtension
+        return (jpeg, "\(base.isEmpty ? "Foto" : base).jpg", "image/jpeg")
     }
 }
 

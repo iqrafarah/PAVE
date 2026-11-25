@@ -762,3 +762,19 @@ private final class FakeMailbox: EmailMailbox {
     func trash(_ messages: [EmailMessage]) async throws { trashed += messages.map(\.id) }
     func restore(_ messages: [EmailTrashedMessage]) async throws { restored += messages }
 }
+
+@Suite("Bijlage als bewijs")
+struct EmailVaultFileTests {
+    @Test func loosePhotoLabelsCount() {
+        #expect(EmailVaultFile.vaultType(mimeType: "image/jpg", name: "a.jpg") == "image/jpeg")
+        #expect(EmailVaultFile.vaultType(mimeType: "image/heif", name: "a.heif") == "image/heic")
+        #expect(EmailVaultFile.vaultType(mimeType: "application/octet-stream", name: "IMG_1.JPG") == "image/jpeg")
+        #expect(EmailVaultFile.vaultType(mimeType: "image/webp", name: "a.webp") == "image/jpeg")
+        #expect(EmailVaultFile.vaultType(mimeType: "image/png; name=a.png", name: "a.png") == "image/png")
+    }
+
+    @Test func otherFilesStayOut() {
+        #expect(EmailVaultFile.vaultType(mimeType: "application/zip", name: "a.zip") == nil)
+        #expect(EmailVaultFile.vaultType(mimeType: "application/octet-stream", name: "a.bin") == nil)
+    }
+}

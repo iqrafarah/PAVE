@@ -66,7 +66,7 @@ struct EmailMessageRow: View {
     /// "Allen antwoorden": to everyone on it; nil when there is only one person.
     var onReplyAll: (() -> Void)?
     var onForward: (() -> Void)?
-    /// "Bewaar in kluis" beside a file someone sent you.
+    /// "Bewaar in kluis" when you hold a photo or file.
     var onSaveToVault: ((EmailAttachment) -> Void)?
     /// "Bekijk opgemaakt", for a mail with a table, a list or pictures.
     var onShowFormatted: (() -> Void)?
@@ -98,25 +98,17 @@ struct EmailMessageRow: View {
                 }
                 // As in Messages: what you attached first, the text last, with the tail.
                 VStack(alignment: mine ? .trailing : .leading, spacing: 3) {
-                    ForEach(photos) { photo in
-                        HStack(spacing: 8) {
-                            Button { onOpenAttachment(photo) } label: { EmailPhotoBubble(attachment: photo) }
-                                .buttonStyle(.pave)
-                                .accessibilityLabel("Foto \(photo.name)")
-                                .contextMenu { attachmentMenu(photo) }
-                            vaultButton(photo)
-                        }
+                    // Photos sent together as one block, as in Messages; holding one offers "Bewaar in kluis".
+                    if !photos.isEmpty {
+                        EmailPhotoGrid(photos: photos, onOpen: onOpenAttachment) { photo in attachmentMenu(photo) }
                     }
                     ForEach(files) { file in
-                        HStack(spacing: 8) {
-                            Button { onOpenAttachment(file) } label: {
-                                EmailFileBubble(attachment: file, mine: mine, isLoading: openingAttachmentID == file.id)
-                            }
-                            .buttonStyle(.pave)
-                            .accessibilityHint("Opent de bijlage")
-                            .contextMenu { attachmentMenu(file) }
-                            vaultButton(file)
+                        Button { onOpenAttachment(file) } label: {
+                            EmailFileBubble(attachment: file, mine: mine, isLoading: openingAttachmentID == file.id)
                         }
+                        .buttonStyle(.pave)
+                        .accessibilityHint("Opent de bijlage")
+                        .contextMenu { attachmentMenu(file) }
                     }
                     if isLoading {
                         EmailLoadingBubble(mine: mine)
@@ -206,28 +198,10 @@ struct EmailMessageRow: View {
         }
     }
 
-    /// Files you received that the vault takes: a PDF, a Word file, a photo or text.
+    /// Files the vault takes: a PDF, a Word file, a photo or text; also what you sent yourself, such as your own
+    /// certificate you mailed to someone.
     private func canSave(_ attachment: EmailAttachment) -> Bool {
-        !mine && onSaveToVault != nil && VaultUpload.allowedTypes.contains(attachment.mimeType.lowercased())
-    }
-
-    @ViewBuilder
-    private func vaultButton(_ attachment: EmailAttachment) -> some View {
-        if canSave(attachment), let onSaveToVault {
-            Button { onSaveToVault(attachment) } label: {
-                Image(.iconFolderArrowDownSolid)
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 16, height: 16)
-                    .foregroundStyle(Color.paveAccent)
-                    .frame(width: 36, height: 36)
-                    .background(Color.panel, in: .circle)
-                    .overlay { Circle().strokeBorder(Color.cardBorder) }
-            }
-            .buttonStyle(.pave)
-            .accessibilityLabel("\(attachment.name) bewaren in je kluis")
-        }
+        onSaveToVault != nil && EmailVaultFile.canSave(mimeType: attachment.mimeType, name: attachment.name)
     }
 
     @ViewBuilder
@@ -286,19 +260,23 @@ struct EmailPhotoBubble: View {
 
     @State private var image: UIImage?
 
+    /// The photo's own shape within `maxSize`, so a portrait photo gets no empty space beside it.
+    private var size: CGSize {
+        guard let image, image.size.width > 0, image.size.height > 0 else { return CGSize(width: 180, height: 140) }
+        let scale = min(maxSize.width / image.size.width, maxSize.height / image.size.height)
+        return CGSize(width: image.size.width * scale, height: image.size.height * scale)
+    }
+
     var body: some View {
         Group {
             if let image {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: maxSize.width, maxHeight: maxSize.height)
+                Image(uiImage: image).resizable().scaledToFill()
             } else {
-                Color.bubbleUser.frame(width: 180, height: 140)
+                Color.bubbleUser
             }
         }
+        .frame(width: size.width, height: size.height)
         .clipShape(.rect(cornerRadius: 18, style: .continuous))
-        .overlay { RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.cardBorder) }
         .task(id: attachment.id) { image = await EmailPhotoBubble.thumbnail(attachment.data, size: maxSize) }
     }
 
@@ -307,6 +285,92 @@ struct EmailPhotoBubble: View {
         guard let data, let image = UIImage(data: data) else { return nil }
         let scale = min(1, max(size.width / image.size.width, size.height / image.size.height) * 2)
         return await image.byPreparingThumbnail(ofSize: CGSize(width: image.size.width * scale, height: image.size.height * scale)) ?? image
+    }
+}
+
+/// Photos sent together, as Messages shows them: one on its own in its own shape; two side by side; three as one wide
+/// above two; more two per row. Tap one to open it, hold it for "Bewaar in kluis" and the rest.
+struct EmailPhotoGrid<Menu: View>: View {
+    let photos: [EmailAttachment]
+    let onOpen: (EmailAttachment) -> Void
+    @ViewBuilder let menu: (EmailAttachment) -> Menu
+
+    private static var width: CGFloat { 236 }
+    private static var gap: CGFloat { 2 }
+    private var half: CGFloat { (Self.width - Self.gap) / 2 }
+
+    var body: some View {
+        Group {
+            switch photos.count {
+            case 1:
+                Button { onOpen(photos[0]) } label: { EmailPhotoBubble(attachment: photos[0]) }
+                    .buttonStyle(.pave)
+                    .accessibilityLabel("Foto \(photos[0].name)")
+                    .contextMenu { menu(photos[0]) }
+            case 2:
+                HStack(spacing: Self.gap) {
+                    tile(photos[0], width: half, height: 170)
+                    tile(photos[1], width: half, height: 170)
+                }
+            case 3:
+                VStack(spacing: Self.gap) {
+                    tile(photos[0], width: Self.width, height: 150)
+                    HStack(spacing: Self.gap) {
+                        tile(photos[1], width: half, height: half)
+                        tile(photos[2], width: half, height: half)
+                    }
+                }
+            default:
+                // Two per row; an odd last one takes the whole width, so every photo shows.
+                VStack(spacing: Self.gap) {
+                    ForEach(Array(stride(from: 0, to: photos.count, by: 2)), id: \.self) { start in
+                        if start + 1 < photos.count {
+                            HStack(spacing: Self.gap) {
+                                tile(photos[start], width: half, height: half)
+                                tile(photos[start + 1], width: half, height: half)
+                            }
+                        } else {
+                            tile(photos[start], width: Self.width, height: 150)
+                        }
+                    }
+                }
+            }
+        }
+        // One rounded block; the photos inside it only have a thin gap between them.
+        .clipShape(.rect(cornerRadius: 18, style: .continuous))
+        .accessibilityElement(children: photos.count == 1 ? .combine : .contain)
+        .accessibilityLabel(photos.count == 1 ? "" : "\(photos.count) foto's")
+    }
+
+    private func tile(_ photo: EmailAttachment, width: CGFloat, height: CGFloat) -> some View {
+        Button { onOpen(photo) } label: {
+            EmailPhotoTile(attachment: photo, size: CGSize(width: width, height: height))
+        }
+        .buttonStyle(.pave)
+        .accessibilityLabel("Foto \(photo.name)")
+        .contextMenu { menu(photo) }
+    }
+}
+
+/// One photo filling its place in the grid, cropped to it.
+private struct EmailPhotoTile: View {
+    let attachment: EmailAttachment
+    let size: CGSize
+
+    @State private var image: UIImage?
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(uiImage: image).resizable().scaledToFill()
+            } else {
+                Color.bubbleUser
+            }
+        }
+        .frame(width: size.width, height: size.height)
+        .clipped()
+        .contentShape(.rect)
+        .task(id: attachment.id) { image = await EmailPhotoBubble.thumbnail(attachment.data, size: size) }
     }
 }
 

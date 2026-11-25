@@ -529,7 +529,25 @@ final class EmailModel {
 
     func attachmentData(_ attachment: EmailAttachment, of message: EmailMessage) async throws -> Data {
         guard let mailbox = mailboxes[message.provider] else { throw EmailError.expired }
+        if attachment.data == nil, message.id.hasPrefix("local:"), let (original, file) = source(of: attachment, besides: message) {
+            // Something you forwarded: the same file is in the mail you got it in, so it comes from there, also when
+            // the copy in Verzonden never got saved.
+            if let data = try? await mailboxes[original.provider]?.attachmentData(file, of: original) { return data }
+        }
         return try await mailbox.attachmentData(attachment, of: message)
+    }
+
+    /// A message in the mailbox (not one only on this iPhone) with a file of the same name and size.
+    private func source(of attachment: EmailAttachment, besides message: EmailMessage) -> (EmailMessage, EmailAttachment)? {
+        for thread in threads {
+            for candidate in thread.messages where candidate.id != message.id && !candidate.id.hasPrefix("local:") {
+                let full = loaded[candidate.id] ?? candidate
+                if let file = full.attachments.first(where: { $0.name == attachment.name && $0.size == attachment.size }) {
+                    return (full, file)
+                }
+            }
+        }
+        return nil
     }
 
     // MARK: Replying
