@@ -74,15 +74,18 @@ struct VacancyList: View {
                 )
                 .padding(.vertical, 16)
             }
-            ForEach(Array(shown.enumerated()), id: \.element.id) { index, vacancy in
-                VacancyCard(
-                    vacancy: vacancy,
-                    tint: VacancyCard.tints[index % VacancyCard.tints.count],
-                    isSaved: model.isSaved(vacancy),
-                    onOpen: { onOpen(vacancy) },
-                    onToggleSave: model.canSaveVacancies ? { model.toggleSaved(vacancy) } : nil,
-                    onAsk: model.isAvailable ? { onAsk(vacancy) } : nil
-                )
+            // One column on a phone and in the chat's panel, two or three on an open Duo or an iPad.
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 320), spacing: 14, alignment: .top)], spacing: 14) {
+                ForEach(Array(shown.enumerated()), id: \.element.id) { index, vacancy in
+                    VacancyCard(
+                        vacancy: vacancy,
+                        tint: VacancyCard.tints[index % VacancyCard.tints.count],
+                        isSaved: model.isSaved(vacancy),
+                        onOpen: { onOpen(vacancy) },
+                        onToggleSave: model.canSaveVacancies ? { model.toggleSaved(vacancy) } : nil,
+                        onAsk: model.isAvailable ? { onAsk(vacancy) } : nil
+                    )
+                }
             }
             let sources = shown.map(\.source).reduce(into: [Vacancy.Source]()) { if !$0.contains($1) { $0.append($1) } }.compactMap(AylaMessages.vacancySource)
             if !sources.isEmpty {

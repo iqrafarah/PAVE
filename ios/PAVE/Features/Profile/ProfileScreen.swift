@@ -24,33 +24,39 @@ struct ProfileScreen: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    if let invited = model.fairApplications?.first(where: \.awaitsAnswer) {
-                        NavigationLink { FairDayView(model: model) } label: {
-                            ShareLinkRow.label(icon: .iconCalendarDaysSolid, title: SharingMessages.fairInvitedTitle, detail: SharingMessages.fairInvitedBody(invited, employer: FairDay.employerName(slug: invited.employerSlug)))
-                                .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 14))
+                // What you share now on the left; making and keeping profiles on the right where there is room.
+                PaveColumns(minColumnWidth: 330, spacing: 22) {
+                    VStack(alignment: .leading, spacing: 22) {
+                        if let invited = model.fairApplications?.first(where: \.awaitsAnswer) {
+                            NavigationLink { FairDayView(model: model) } label: {
+                                ShareLinkRow.label(icon: .iconCalendarDaysSolid, title: SharingMessages.fairInvitedTitle, detail: SharingMessages.fairInvitedBody(invited, employer: FairDay.employerName(slug: invited.employerSlug)))
+                                    .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 14))
+                            }
+                            .buttonStyle(.pave)
                         }
-                        .buttonStyle(.pave)
-                    }
-                    ShareProfileCard {
-                        // A fair profile, when there is one, is what you show at a stand.
-                        if let fair = model.profiles?.first(where: { $0.template == .fair }) {
-                            composing = ShareTemplateChoice(template: .fair, withApplication: false, profile: fair)
-                        } else {
-                            composing = ShareTemplateChoice(template: .fair)
+                        ShareProfileCard {
+                            // A fair profile, when there is one, is what you show at a stand.
+                            if let fair = model.profiles?.first(where: { $0.template == .fair }) {
+                                composing = ShareTemplateChoice(template: .fair, withApplication: false, profile: fair)
+                            } else {
+                                composing = ShareTemplateChoice(template: .fair)
+                            }
                         }
+                        Text(SharingMessages.intro)
+                            .textStyle(.caption)
+                            .foregroundStyle(Color.inkMuted)
+                            .padding(.horizontal, 8)
+                            .fixedSize(horizontal: false, vertical: true)
+                        content
                     }
-                    Text(SharingMessages.intro)
-                        .textStyle(.caption)
-                        .foregroundStyle(Color.inkMuted)
-                        .padding(.horizontal, 8)
-                        .fixedSize(horizontal: false, vertical: true)
-                    content
+                    VStack(alignment: .leading, spacing: 22) {
+                        making
+                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
                 .padding(.bottom, 32)
-                .frame(maxWidth: 640)
+                .frame(maxWidth: 1080)
                 .frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
@@ -150,6 +156,12 @@ struct ProfileScreen: View {
             suggestions
             live
         }
+        if !model.ended.isEmpty { earlier }
+    }
+
+    /// Your profiles, sharing something new, and the rest.
+    @ViewBuilder
+    private var making: some View {
         if let profiles = model.profiles { saved(profiles) }
         templates
         SharePanel(title: SharingMessages.more) {
@@ -164,7 +176,6 @@ struct ProfileScreen: View {
             ShareRowDivider()
             ShareLinkRow(icon: .iconShieldCheckSolid, title: SharingMessages.howItWorks) { showsPrivacy = true }
         }
-        if !model.ended.isEmpty { earlier }
     }
 
     @ViewBuilder

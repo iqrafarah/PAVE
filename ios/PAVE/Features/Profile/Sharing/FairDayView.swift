@@ -27,62 +27,69 @@ struct FairDayView: View {
             VStack(alignment: .leading, spacing: 20) {
                 Text(Date.now.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(Locale(identifier: "nl_NL"))))
                     .textStyle(.bodyMedium).foregroundStyle(Color.inkMuted)
-                if !invitations.isEmpty {
-                    SharePanel(title: SharingMessages.dayInvitations) {
-                        ForEach(invitations) { application in
-                            FairInvitationRow(application: application, employer: employerName(application)) { accepted in
-                                Task { await model.answer(application, accepted: accepted) }
-                            } onCalendar: {
-                                calendarFor = application
-                            } onPractise: {
-                                vacancyRequest?(.task(.interview, vacancy(of: application)))
-                            }
-                            ShareRowDivider(inset: 14)
-                        }
-                    }
-                }
-                if !applications.isEmpty {
-                    SharePanel(title: SharingMessages.dayLeft) {
-                        ForEach(applications) { application in
-                            NavigationLink { employerCard(application.employerSlug) } label: {
-                                HStack(spacing: 14) {
-                                    ShareRowIcon(icon: .iconBriefcaseSolid)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(application.vacancyTitle).textStyle(.bodyMedium).foregroundStyle(Color.ink).lineLimit(2)
-                                        Text(employerName(application)).textStyle(.caption).foregroundStyle(Color.inkMuted)
-                                        Text(SharingMessages.dayStatus(application)).textStyle(.caption).foregroundStyle(application.awaitsAnswer ? Color.paveAccent : Color.inkMuted)
+                // Answer first; where you left your card and what is left to do next to it on a wide screen.
+                PaveColumns {
+                    VStack(alignment: .leading, spacing: 20) {
+                        if !invitations.isEmpty {
+                            SharePanel(title: SharingMessages.dayInvitations) {
+                                ForEach(invitations) { application in
+                                    FairInvitationRow(application: application, employer: employerName(application)) { accepted in
+                                        Task { await model.answer(application, accepted: accepted) }
+                                    } onCalendar: {
+                                        calendarFor = application
+                                    } onPractise: {
+                                        vacancyRequest?(.task(.interview, vacancy(of: application)))
                                     }
-                                    .multilineTextAlignment(.leading)
-                                    Spacer(minLength: 8)
-                                    chevron
+                                    ShareRowDivider(inset: 14)
                                 }
-                                .padding(.vertical, 10)
-                                .padding(.horizontal, 14)
-                                .contentShape(.rect)
                             }
-                            .buttonStyle(.pave)
-                            ShareRowDivider()
                         }
                     }
-                }
-                if !scannedNotApplied.isEmpty {
-                    SharePanel(title: SharingMessages.dayNext) {
-                        ForEach(scannedNotApplied, id: \.slug) { stand in
-                            NavigationLink { employerCard(stand.slug) } label: {
-                                HStack(spacing: 14) {
-                                    ShareRowIcon(icon: .iconQrcode, isMuted: true)
-                                    Text(SharingMessages.dayNotApplied(stand.name, stand: stand.stand))
-                                        .textStyle(.bodyMedium)
-                                        .foregroundStyle(Color.ink)
-                                        .multilineTextAlignment(.leading)
-                                    Spacer(minLength: 8)
-                                    chevron
+                    VStack(alignment: .leading, spacing: 20) {
+                        if !applications.isEmpty {
+                            SharePanel(title: SharingMessages.dayLeft) {
+                                ForEach(applications) { application in
+                                    NavigationLink { employerCard(application.employerSlug) } label: {
+                                        HStack(spacing: 14) {
+                                            ShareRowIcon(icon: .iconBriefcaseSolid)
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(application.vacancyTitle).textStyle(.bodyMedium).foregroundStyle(Color.ink).lineLimit(2)
+                                                Text(employerName(application)).textStyle(.caption).foregroundStyle(Color.inkMuted)
+                                                Text(SharingMessages.dayStatus(application)).textStyle(.caption).foregroundStyle(application.awaitsAnswer ? Color.paveAccent : Color.inkMuted)
+                                            }
+                                            .multilineTextAlignment(.leading)
+                                            Spacer(minLength: 8)
+                                            chevron
+                                        }
+                                        .padding(.vertical, 10)
+                                        .padding(.horizontal, 14)
+                                        .contentShape(.rect)
+                                    }
+                                    .buttonStyle(.pave)
+                                    ShareRowDivider()
                                 }
-                                .padding(.vertical, 10)
-                                .padding(.horizontal, 14)
-                                .contentShape(.rect)
                             }
-                            .buttonStyle(.pave)
+                        }
+                        if !scannedNotApplied.isEmpty {
+                            SharePanel(title: SharingMessages.dayNext) {
+                                ForEach(scannedNotApplied, id: \.slug) { stand in
+                                    NavigationLink { employerCard(stand.slug) } label: {
+                                        HStack(spacing: 14) {
+                                            ShareRowIcon(icon: .iconQrcode, isMuted: true)
+                                            Text(SharingMessages.dayNotApplied(stand.name, stand: stand.stand))
+                                                .textStyle(.bodyMedium)
+                                                .foregroundStyle(Color.ink)
+                                                .multilineTextAlignment(.leading)
+                                            Spacer(minLength: 8)
+                                            chevron
+                                        }
+                                        .padding(.vertical, 10)
+                                        .padding(.horizontal, 14)
+                                        .contentShape(.rect)
+                                    }
+                                    .buttonStyle(.pave)
+                                }
+                            }
                         }
                     }
                 }
@@ -91,7 +98,7 @@ struct FairDayView: View {
                 }
             }
             .padding(20)
-            .frame(maxWidth: 640)
+            .frame(maxWidth: 1080)
             .frame(maxWidth: .infinity)
         }
         .background(Color.canvas)

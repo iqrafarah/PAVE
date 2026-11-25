@@ -68,6 +68,8 @@ struct FairEmployerView: View {
                 PavePrimaryButton(title: SharingMessages.fairShareBack, action: onShareBack)
             }
             .padding(20)
+            .frame(maxWidth: 680)
+            .frame(maxWidth: .infinity)
         }
         .sheet(item: $applying) { vacancy in
             QuickApplySheet(model: model, employer: employer, vacancy: vacancy) { applying = nil }

@@ -26,6 +26,7 @@ enum ShareAlerts {
         let mine: Set<UNNotificationCategory> = [
             UNNotificationCategory(identifier: lookCategory, actions: [revoke], intentIdentifiers: []),
             UNNotificationCategory(identifier: endingCategory, actions: [extend, revoke], intentIdentifiers: []),
+            FairAlerts.category,
         ]
         Task {
             let center = UNUserNotificationCenter.current()

@@ -62,16 +62,18 @@ struct ApplicationsList: View {
                             .textStyle(.label)
                             .foregroundStyle(Color.inkMuted)
                             .accessibilityAddTraits(.isHeader)
-                        ForEach(group.drafts) { draft in
-                            ApplicationRow(draft: draft) { onOpen(draft.vacancy) }
-                                .accessibilityActions {
-                                    if onDelete != nil { Button(ApplyMessages.deleteApplication) { deleting = draft } }
-                                }
-                                .contextMenu {
-                                    if onDelete != nil {
-                                        Button(role: .destructive) { deleting = draft } label: { Label(ApplyMessages.deleteApplication, image: .iconTrash) }
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 320), spacing: 10, alignment: .top)], spacing: 10) {
+                            ForEach(group.drafts) { draft in
+                                ApplicationRow(draft: draft) { onOpen(draft.vacancy) }
+                                    .accessibilityActions {
+                                        if onDelete != nil { Button(ApplyMessages.deleteApplication) { deleting = draft } }
                                     }
-                                }
+                                    .contextMenu {
+                                        if onDelete != nil {
+                                            Button(role: .destructive) { deleting = draft } label: { Label(ApplyMessages.deleteApplication, image: .iconTrash) }
+                                        }
+                                    }
+                            }
                         }
                     }
                 }

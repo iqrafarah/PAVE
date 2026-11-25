@@ -18,29 +18,36 @@ struct ApplicationHubView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                // What you come back for first: where it stands, your CV and letter, sharing; then keeping track.
                 Text(ApplyMessages.hubTitle)
                     .textStyle(.emptyTitle)
                     .foregroundStyle(Color.ink)
                     .accessibilityAddTraits(.isHeader)
-                ApplicationSummaryCard(draft: model.shown, shares: shares ?? [])
-                // Read here so the card comes in when it arrives, without rebuilding the page or losing the scroll.
-                let _ = tick
-                if let invitation = model.invitation {
-                    ApplicationInvitationCard(model: model, invitation: invitation) { onTask(.interview) }
+                // What you come back for first: where it stands, your CV and letter, sharing; next to it on a wide
+                // screen (under it on a phone) keeping track, the vacancy and the employer.
+                PaveColumns {
+                    VStack(alignment: .leading, spacing: 20) {
+                        ApplicationSummaryCard(draft: model.shown, shares: shares ?? [])
+                        // Read here so the card comes in when it arrives, without rebuilding the page or losing the scroll.
+                        let _ = tick
+                        if let invitation = model.invitation {
+                            ApplicationInvitationCard(model: model, invitation: invitation) { onTask(.interview) }
+                        }
+                        documents
+                        if let onShare { sharing(onShare) }
+                    }
+                    VStack(alignment: .leading, spacing: 20) {
+                        ApplicationHubStatus(model: model)
+                        if model.tracking.history.count > 0 { history }
+                        if hasVacancyText { vacancyText }
+                        employer
+                        nextSteps
+                    }
                 }
-                documents
-                if let onShare { sharing(onShare) }
-                ApplicationHubStatus(model: model)
-                if model.tracking.history.count > 0 { history }
-                if hasVacancyText { vacancyText }
-                employer
-                nextSteps
             }
             .padding(.horizontal, 20)
             .padding(.top, 8)
             .padding(.bottom, 32)
-            .frame(maxWidth: 640)
+            .frame(maxWidth: 1080)
             .frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden)

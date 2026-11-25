@@ -51,6 +51,13 @@ final class SharingModel {
         // Intrekken and Verlengen right from a notification, also when Profiel is not open.
         ShareAlerts.onRevoke = { [weak self] id in await self?.act(on: id) { await $0.revoke($1) } }
         ShareAlerts.onExtend = { [weak self] id in await self?.act(on: id) { await $0.extend($1, by: .week) } }
+        FairAlerts.onAnswer = { [weak self] id, accepted in
+            guard let self else { return false }
+            if fairApplications?.contains(where: { $0.id == id }) != true { await loadFairApplications() }
+            guard let application = fairApplications?.first(where: { $0.id == id }) else { return false }
+            await answer(application, accepted: accepted)
+            return problem == nil
+        }
         ShareAlerts.onOpen = { [weak self] id in
             self?.shareToOpen = id
             PaveLinkInbox.send(.shares)

@@ -43,7 +43,7 @@ struct VacanciesScreen: View {
                 .padding(.horizontal, 24)
                 .padding(.top, 12)
                 .padding(.bottom, 24)
-                .frame(maxWidth: 600, alignment: .leading)
+                .frame(maxWidth: 1080, alignment: .leading)
                 .frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
