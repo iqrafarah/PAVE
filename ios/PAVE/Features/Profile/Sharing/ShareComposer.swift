@@ -31,6 +31,8 @@ struct ShareComposer: View {
     @State private var includesEmail = true
     /// Evidence shown briefly, from a saved profile.
     @State private var brief: Set<String> = []
+    /// Evidence whose files go along: verified evidence by default.
+    @State private var files: Set<String> = []
     @State private var headline = ""
     @State private var recipientName = ""
     @State private var organisation = ""
@@ -63,6 +65,11 @@ struct ShareComposer: View {
         _duration = State(initialValue: duration ?? template.duration)
     }
 
+    /// The evidence that goes with its files, in the order of the vault.
+    private var sharedFiles: [VaultItem] {
+        vault.items.filter { chosen.contains($0.id) && files.contains($0.id) && ShareFiles.hasDocument($0) }
+    }
+
     private var application: ApplicationDraft? { model.applications.first { $0.vacancy.id == applicationID } }
     private var name: String { profile.profile.fullName ?? profile.profile.displayName ?? "" }
 
@@ -73,12 +80,13 @@ struct ShareComposer: View {
                 name: name,
                 headline: headline.isEmpty ? nil : headline,
                 email: includesEmail ? profile.profile.email : nil,
-                summary: app.map(\.cv.profile).flatMap { $0.isEmpty ? nil : $0 }
+                summary: (app.map(\.cv.profile) ?? savedProfile?.summary).flatMap { $0.isEmpty ? nil : $0 }
             ),
             cv: app != nil && includesCV ? app?.cv : nil,
             letter: app != nil && includesLetter ? app?.letter : nil,
             vacancyID: app?.vacancy.id,
-            brief: brief.intersection(chosen).isEmpty ? nil : Array(brief.intersection(chosen))
+            brief: brief.intersection(chosen).isEmpty ? nil : Array(brief.intersection(chosen)),
+            files: sharedFiles.isEmpty ? nil : sharedFiles.map(\.id)
         )
         let ids = vault.items.filter { chosen.contains($0.id) }.map(\.id)
         return ShareDraft(
@@ -223,7 +231,7 @@ struct ShareComposer: View {
             }
             Text(SharingMessages.applicationNoneHint).textStyle(.caption).foregroundStyle(Color.inkMuted).fixedSize(horizontal: false, vertical: true).padding(.top, -12)
         }
-        ShareComposerItems(items: vault.items, template: template, chosen: $chosen)
+        ShareComposerItems(items: vault.items, template: template, chosen: $chosen, files: $files)
             .sheet(isPresented: $makesApplication, onDismiss: {
                 guard let vacancy = newVacancy else { return }
                 newVacancy = nil
@@ -327,6 +335,10 @@ struct ShareComposer: View {
             checkRow(SharingMessages.checkUntil, SharingMessages.checkUntilValue(draft.duration.end(from: .now)))
             ShareRowDivider(inset: 14)
             checkRow(SharingMessages.checkRights, SharingMessages.checkRightsValue(draft.allowsDownload))
+            ShareRowDivider(inset: 14)
+            checkRow(SharingMessages.checkFiles, sharedFiles.isEmpty
+                ? SharingMessages.filesNone
+                : SharingMessages.filesGoing(sharedFiles.flatMap { $0.files.filter { $0.role == .document }.map(\.name) }))
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(SharingMessages.summary(draft, items: draft.itemIDs.count, until: draft.duration.end(from: .now)))
@@ -421,9 +433,12 @@ struct ShareComposer: View {
         guard !didStart else { return }
         didStart = true
         chosen = Set(vault.items.filter { template.categories.contains($0.category) && $0.status != .rejected }.map(\.id))
+        files = ShareFiles.byDefault(vault.items)
         if let savedProfile {
             chosen = Set(savedProfile.itemIDs).intersection(vault.items.map(\.id))
             brief = savedProfile.briefIDs
+            files = savedProfile.fileIDs
+            if let kept = savedProfile.duration { duration = kept }
             includesEmail = savedProfile.includesEmail
             if !savedProfile.headline.isEmpty { headline = savedProfile.headline }
             step = .who

@@ -1,47 +1,114 @@
 import PAVECore
 import SwiftUI
 
-/// Snel delen: one screen to choose what (your profile or one you kept), with whom if you like, and how long; one tap and
-/// the QR code and link are there. While it is open you see the moment someone looks, and you can stop it right away.
+/// Delen, the one screen for every share: your profile (Snel delen), a selection you kept, or an application with its CV
+/// and letter. Choose what, with whom if you like, and how long; one tap and the QR code and link are there, with the
+/// files of verified evidence so the recipient can open them. While it is open you see the moment someone looks, and you
+/// can stop it right away. "Meer opties" leads to the steps with purpose and downloading.
 struct QuickShareSheet: View {
+    /// What the screen starts on.
+    enum Start: Equatable {
+        case profile
+        case selection(String)
+        /// A kind of recipient without a selection yet: what that recipient usually needs.
+        case kind(ShareTemplate)
+        case application(vacancyID: String, documents: Set<ApplicationDocumentKind>)
+    }
+
     let model: SharingModel
+    var start: Start = .profile
+    var recipientOrganisation: String?
+    var onShared: (ProfileShare) -> Void = { _ in }
+    var onMoreOptions: (() -> Void)?
     let onDone: () -> Void
 
     @Environment(VaultModel.self) private var vault
     @Environment(ProfileModel.self) private var profile
-    @AppStorage("quickShare.profileID") private var chosenID = ""
+    /// The last choice of your profile or a selection, for the next Snel delen.
+    @AppStorage("quickShare.profileID") private var lastChoice = ""
+    @State private var choice = ""
+    @State private var didStart = false
+    @State private var includesCV = true
+    @State private var includesLetter = true
     @State private var recipient = ""
     @State private var duration = ShareDuration.day
     @State private var includesEmail = false
     @State private var created: ProfileShare?
     @State private var isStopped = false
     @State private var showsPreview = false
+    @State private var showsAllApplications = false
 
-    private static let durations: [ShareDuration] = [.day, .week, .month]
+    /// The chosen application first, then the newest; three until you ask for all.
+    private var shownApplications: [ApplicationDraft] {
+        let sorted = model.applications.sorted { a, b in
+            if "app:\(a.vacancy.id)" == choice { return true }
+            if "app:\(b.vacancy.id)" == choice { return false }
+            return a.updatedAt > b.updatedAt
+        }
+        return showsAllApplications ? sorted : Array(sorted.prefix(3))
+    }
+
+    private static let durations: [ShareDuration] = ShareDuration.allCases
 
     private var name: String { profile.profile.fullName ?? profile.profile.displayName ?? "" }
     private var profiles: [SavedProfile] { model.profiles ?? [] }
-    private var chosenProfile: SavedProfile? { profiles.first { $0.id == chosenID } }
     private var shareable: [VaultItem] { vault.items.filter { $0.status != .rejected && $0.archivedAt == nil } }
 
+    /// A kept selection, or for a kind of recipient the one PAVE would start with.
+    private var chosenProfile: SavedProfile? {
+        if choice.hasPrefix("sel:") { return profiles.first { "sel:\($0.id)" == choice } }
+        if choice.hasPrefix("kind:"), let kind = ShareTemplate(rawValue: String(choice.dropFirst(5))) {
+            var starter = SavedProfile.starter(for: kind, items: vault.items)
+            starter.name = SharingMessages.template(kind)
+            return starter
+        }
+        return nil
+    }
+
+    private var application: ApplicationDraft? { model.applications.first { "app:\($0.vacancy.id)" == choice } }
+
     private var headline: String? {
-        chosenProfile?.headline.nilIfEmpty
+        if let application, !application.cv.headline.isEmpty { return application.cv.headline }
+        return chosenProfile?.headline.nilIfEmpty
             ?? vault.items.filter { $0.category == .diplomas }.max { ($0.period ?? "") < ($1.period ?? "") }.map { "Student \($0.title)" }
     }
 
-    /// Your whole profile goes briefly; a kept profile as you made it.
+    /// The evidence that goes along: of your profile all of it briefly, of a selection what you put in, of an application
+    /// what its CV is built from, so a tick on the CV can be opened.
+    private var itemIDs: [String] {
+        if let application {
+            let behindCV = Set(application.cv.sections.filter(\.isVisible).flatMap(\.entries).filter(\.isVisible).compactMap(\.sourceItemID))
+            return shareable.map(\.id).filter(behindCV.contains)
+        }
+        if let chosenProfile { return vault.items.map(\.id).filter(chosenProfile.itemIDs.contains) }
+        return shareable.map(\.id)
+    }
+
     private var draft: ShareDraft {
-        let ids = chosenProfile.map { kept in vault.items.map(\.id).filter(kept.itemIDs.contains) } ?? shareable.map(\.id)
-        let brief = chosenProfile?.brief ?? ids
+        let ids = itemIDs
+        let brief = application == nil ? (chosenProfile?.brief ?? ids) : []
+        // Verified evidence takes its file along, unless the selection says otherwise.
+        let fileIDs = chosenProfile.map { Set($0.files) } ?? ShareFiles.byDefault(vault.items)
+        let files = vault.items.filter { ids.contains($0.id) && fileIDs.contains($0.id) && ShareFiles.hasDocument($0) }.map(\.id)
         let content = ShareContent(
-            profile: ShareProfile(name: name, headline: headline, email: includesEmail ? profile.profile.email : nil),
-            brief: brief.isEmpty ? nil : brief
+            profile: ShareProfile(
+                name: name, headline: headline, email: includesEmail ? profile.profile.email : nil,
+                summary: application.map(\.cv.profile)?.nilIfEmpty ?? chosenProfile?.summary.nilIfEmpty
+            ),
+            cv: application != nil && includesCV ? application?.cv : nil,
+            letter: application != nil && includesLetter ? application?.letter : nil,
+            vacancyID: application?.vacancy.id,
+            brief: brief.isEmpty ? nil : brief,
+            files: files.isEmpty ? nil : files
         )
         let who = recipient.trimmingCharacters(in: .whitespaces)
+        let title = application.map { SharingMessages.applicationShareTitle($0.vacancy) }
+            ?? SharingMessages.quickShareTitle(chosenProfile?.name ?? SharingMessages.quickShareWhole)
         return ShareDraft(
-            title: SharingMessages.quickShareTitle(chosenProfile?.name ?? SharingMessages.quickShareWhole),
-            recipientName: who.isEmpty ? SharingMessages.quickShareRecipient : who,
-            template: chosenProfile?.template ?? .employer,
+            title: title,
+            recipientName: who.isEmpty ? (application?.vacancy.company ?? SharingMessages.quickShareRecipient) : who,
+            recipientOrganisation: application?.vacancy.company ?? "",
+            template: application == nil ? (chosenProfile?.template ?? .employer) : .employer,
             itemIDs: ids, content: content, duration: duration
         )
     }
@@ -64,7 +131,7 @@ struct QuickShareSheet: View {
                 if let live { shown(live) } else { choosing }
             }
             .background(Color.canvas)
-            .navigationTitle(SharingMessages.quickShare)
+            .navigationTitle(start == .profile ? SharingMessages.quickShare : SharingMessages.shareProfile)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -90,7 +157,36 @@ struct QuickShareSheet: View {
                     option(title: SharingMessages.quickShareWhole, detail: SharingMessages.quickShareWholeDetail(shareable.count), icon: .iconUserSolid, id: "")
                     ForEach(profiles) { kept in
                         ShareRowDivider(inset: 60)
-                        option(title: kept.name, detail: SharingMessages.profileSummary(kept), icon: ShareTemplateIcon.image(kept.template), id: kept.id)
+                        option(title: kept.name, detail: SharingMessages.profileSummary(kept), icon: ShareTemplateIcon.image(kept.template), id: "sel:\(kept.id)")
+                    }
+                    if case .kind(let kind) = start {
+                        ShareRowDivider(inset: 60)
+                        option(title: SharingMessages.template(kind), detail: SharingMessages.templateHint(kind), icon: ShareTemplateIcon.image(kind), id: "kind:\(kind.rawValue)")
+                    }
+                }
+                if !model.applications.isEmpty {
+                    SharePanel(title: SharingMessages.orApplication) {
+                        ForEach(Array(shownApplications.enumerated()), id: \.element.id) { index, draft in
+                            if index > 0 { ShareRowDivider(inset: 60) }
+                            option(title: ApplyMessages.title(draft.vacancy), detail: SharingMessages.applicationOption(draft.vacancy.title), icon: .iconBriefcaseSolid, id: "app:\(draft.vacancy.id)")
+                        }
+                        if model.applications.count > shownApplications.count {
+                            ShareRowDivider(inset: 14)
+                            Button(SharingMessages.showAllApplications(model.applications.count)) {
+                                withAnimation(.snappy(duration: 0.25)) { showsAllApplications = true }
+                            }
+                            .textStyle(.chip)
+                            .foregroundStyle(Color.paveAccent)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .buttonStyle(.pave)
+                        }
+                    }
+                }
+                if application != nil {
+                    SharePanel(title: SharingMessages.application) {
+                        Toggle(ApplyMessages.cv, isOn: $includesCV).tint(.paveAccentFill).textStyle(.bodyMedium).padding(14)
+                        ShareRowDivider(inset: 14)
+                        Toggle(ApplyMessages.letter, isOn: $includesLetter).tint(.paveAccentFill).textStyle(.bodyMedium).padding(14)
                     }
                 }
                 SharePanel(title: SharingMessages.quickShareWho) {
@@ -110,18 +206,23 @@ struct QuickShareSheet: View {
                         .textStyle(.bodyMedium)
                         .foregroundStyle(Color.inkMuted)
                         .padding(.leading, 8)
-                    HStack(spacing: 8) {
+                    FlowLayout(spacing: 8) {
                         ForEach(Self.durations, id: \.self) { option in
                             durationChip(option)
                         }
                     }
                 }
-                Button(SharingMessages.quickShareSeesLink) { showsPreview = true }
-                    .textStyle(.link)
-                    .foregroundStyle(Color.paveAccent)
-                    .frame(minHeight: 44)
-                    .buttonStyle(.pave)
-                    .disabled(draft.problem != nil)
+                HStack(spacing: 20) {
+                    Button(SharingMessages.quickShareSeesLink) { showsPreview = true }
+                        .disabled(draft.problem != nil)
+                    if let onMoreOptions {
+                        Button(SharingMessages.moreOptions, action: onMoreOptions)
+                    }
+                }
+                .textStyle(.link)
+                .foregroundStyle(Color.paveAccent)
+                .frame(minHeight: 44)
+                .buttonStyle(.pave)
             }
             .padding(20)
             .frame(maxWidth: 560)
@@ -142,16 +243,16 @@ struct QuickShareSheet: View {
         }
         .task {
             if vault.state != .ready { await vault.load() }
-            // A profile that was deleted since falls back to your whole profile.
-            if !chosenID.isEmpty, chosenProfile == nil, model.profiles != nil { chosenID = "" }
+            begin()
         }
     }
 
     private func option(title: String, detail: String, icon: ImageResource, id: String) -> some View {
-        let isOn = chosenID == id
+        let isOn = choice == id
         return Button {
             PaveHaptics.selection()
-            chosenID = id
+            choice = id
+            if !id.hasPrefix("app:"), !id.hasPrefix("kind:") { lastChoice = id }
         } label: {
             HStack(spacing: 14) {
                 ShareRowIcon(icon: icon, isMuted: !isOn)
@@ -169,6 +270,30 @@ struct QuickShareSheet: View {
         }
         .buttonStyle(.pave)
         .accessibilityAddTraits(isOn ? .isSelected : [])
+    }
+
+    /// Where it starts: what was asked for, or for Snel delen the choice of last time, if it still exists.
+    private func begin() {
+        guard !didStart else { return }
+        didStart = true
+        model.reloadApplications()
+        switch start {
+        case .profile:
+            let known = lastChoice.isEmpty || profiles.contains { "sel:\($0.id)" == lastChoice }
+            choice = known ? lastChoice : ""
+        case .selection(let id):
+            choice = "sel:\(id)"
+            if let kept = profiles.first(where: { $0.id == id }), let days = kept.duration { duration = days }
+        case .kind(let kind):
+            choice = "kind:\(kind.rawValue)"
+            duration = kind.duration
+        case .application(let vacancyID, let documents):
+            choice = "app:\(vacancyID)"
+            includesCV = documents.contains(.cv)
+            includesLetter = documents.contains(.letter)
+            duration = .twoWeeks
+        }
+        if let recipientOrganisation, recipient.isEmpty { recipient = recipientOrganisation }
     }
 
     private func durationChip(_ option: ShareDuration) -> some View {
@@ -195,8 +320,9 @@ struct QuickShareSheet: View {
         Task {
             let authenticator = LocalBiometricAuthenticator()
             if authenticator.kind != nil, !(await authenticator.authenticate(reason: SharingMessages.biometricReason(draft.recipientName))) { return }
-            if let share = await model.create(draft, application: nil, photo: nil) {
+            if let share = await model.create(draft, application: application, photo: profile.avatar) {
                 withAnimation(.spring(duration: 0.45, bounce: 0.15)) { created = share }
+                onShared(share)
                 // Your card goes to the wrist too, to be scanned without taking out the phone.
                 if let url = model.link(for: share) {
                     ShareWatchBridge.show(url: url, title: share.recipientName, until: share.expiresAt, name: name, headline: headline)

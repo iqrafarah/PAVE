@@ -11,6 +11,7 @@ struct SavedProfileEditor: View {
     @State private var profile: SavedProfile
     @State private var chosen: Set<String>
     @State private var brief: Set<String>
+    @State private var files: Set<String>
     @State private var isSaving = false
     @State private var confirmsDelete = false
     private let isNew: Bool
@@ -24,6 +25,7 @@ struct SavedProfileEditor: View {
         _profile = State(initialValue: profile)
         _chosen = State(initialValue: Set(profile.itemIDs))
         _brief = State(initialValue: profile.briefIDs)
+        _files = State(initialValue: profile.fileIDs)
     }
 
     /// In the order of the vault, so the recipient sees it as you keep it.
@@ -31,6 +33,7 @@ struct SavedProfileEditor: View {
         var kept = profile
         kept.itemIDs = vault.items.map(\.id).filter(chosen.contains)
         kept.briefIDs = brief.intersection(chosen)
+        kept.fileIDs = files.intersection(chosen)
         return kept
     }
 
@@ -64,10 +67,33 @@ struct SavedProfileEditor: View {
                         }
                         .padding(14)
                         ShareRowDivider(inset: 14)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(SharingMessages.selectionSummary).textStyle(.caption).foregroundStyle(Color.inkMuted)
+                            TextField(SharingMessages.selectionSummary, text: $profile.summary, prompt: Text(SharingMessages.selectionSummaryPrompt).foregroundStyle(Color.inkMuted), axis: .vertical)
+                                .lineLimit(2...6)
+                                .textStyle(.bodyMedium)
+                                .foregroundStyle(Color.ink)
+                                .onChange(of: profile.summary) { _, text in
+                                    if text.count > SavedProfile.summaryLimit { profile.summary = String(text.prefix(SavedProfile.summaryLimit)) }
+                                }
+                        }
+                        .padding(14)
+                        ShareRowDivider(inset: 14)
                         Toggle(SharingMessages.email, isOn: $profile.includesEmail)
                             .tint(.paveAccentFill)
                             .textStyle(.bodyMedium)
                             .padding(14)
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(SharingMessages.quickShareHowLong)
+                            .textStyle(.bodyMedium)
+                            .foregroundStyle(Color.inkMuted)
+                            .padding(.leading, 8)
+                        FlowLayout(spacing: 8) {
+                            ForEach(ShareDuration.allCases, id: \.self) { option in
+                                durationChip(option)
+                            }
+                        }
                     }
                     Text(SharingMessages.profileItems)
                         .textStyle(.calloutTitle)
@@ -78,7 +104,7 @@ struct SavedProfileEditor: View {
                         .foregroundStyle(Color.inkMuted)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, -12)
-                    ShareComposerItems(items: vault.items, template: profile.template, chosen: $chosen, brief: $brief)
+                    ShareComposerItems(items: vault.items, template: profile.template, chosen: $chosen, brief: $brief, files: $files)
                 }
                 .padding(20)
                 .frame(maxWidth: 640)
@@ -126,8 +152,27 @@ struct SavedProfileEditor: View {
                 Text(SharingMessages.deleteProfileHint)
             }
         }
-        .interactiveDismissDisabled(profile != original || chosen != Set(original.itemIDs) || brief != original.briefIDs)
+        .interactiveDismissDisabled(profile != original || chosen != Set(original.itemIDs) || brief != original.briefIDs || files != original.fileIDs)
         .onDisappear { model.problem = nil }
+    }
+
+    /// How long a share of this selection lasts; tapped again, it goes back to what fits the recipient.
+    private func durationChip(_ option: ShareDuration) -> some View {
+        let isOn = (profile.duration ?? profile.template.duration) == option
+        return Button(SharingMessages.duration(option)) {
+            PaveHaptics.selection()
+            profile.duration = option == profile.template.duration ? nil : option
+        }
+        .textStyle(.chip)
+        .foregroundStyle(isOn ? Color.white : Color.ink)
+        .padding(.horizontal, 16)
+        .frame(minHeight: 40)
+        .background(isOn ? Color.paveAccentFill : Color.panel, in: .capsule)
+        .overlay { Capsule().strokeBorder(isOn ? Color.clear : Color.cardBorder) }
+        .frame(minHeight: 44)
+        .contentShape(.capsule)
+        .buttonStyle(.pave)
+        .accessibilityAddTraits(isOn ? .isSelected : [])
     }
 
     private func templateChip(_ template: ShareTemplate) -> some View {

@@ -204,6 +204,14 @@ enum ApplyMessages {
     // Your own application
     static let newApplication = "Nieuwe sollicitatie"
     static let somethingWrong = "Dat lukte niet"
+    static let sourceAll = "Alles"
+    static func source(_ source: ApplicationSource) -> String {
+        switch source {
+        case .ayla: "Ayla"
+        case .own: "Zelf"
+        case .fair: "Beurs"
+        }
+    }
     static let shareApplication = "Deel je sollicitatie"
     static let theVacancy = "De vacature"
     static let showMore = "Lees meer"

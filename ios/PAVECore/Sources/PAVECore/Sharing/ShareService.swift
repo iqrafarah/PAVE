@@ -192,6 +192,10 @@ public final class SupabaseShareService: ShareService, @unchecked Sendable {
             "brief_ids": profile.brief,
             "headline": profile.headline.trimmingCharacters(in: .whitespaces).isEmpty ? NSNull() : profile.headline.trimmingCharacters(in: .whitespaces),
             "includes_email": profile.includesEmail,
+            "file_ids": profile.files,
+            "summary": profile.summary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? NSNull() : String(profile.summary.trimmingCharacters(in: .whitespacesAndNewlines).prefix(SavedProfile.summaryLimit)),
+            "duration_days": profile.duration.map(\.days) ?? NSNull(),
         ]
         let isNew = profile.id.isEmpty
         var urlRequest = try await request(
@@ -216,13 +220,17 @@ public final class SupabaseShareService: ShareService, @unchecked Sendable {
         let brief_ids: [String]?
         let headline: String?
         let includes_email: Bool?
+        let file_ids: [String]?
+        let summary: String?
+        let duration_days: Int?
         let updated_at: Date
 
         var profile: SavedProfile? {
             guard let template = ShareTemplate(rawValue: template) else { return nil }
             return SavedProfile(
                 id: id, name: name, template: template, itemIDs: item_ids, briefIDs: Set(brief_ids ?? []), headline: headline ?? "",
-                includesEmail: includes_email ?? true, updatedAt: updated_at
+                includesEmail: includes_email ?? true, fileIDs: Set(file_ids ?? []), summary: summary ?? "",
+                duration: duration_days.flatMap(ShareDuration.init(days:)), updatedAt: updated_at
             )
         }
     }

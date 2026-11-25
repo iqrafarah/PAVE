@@ -8,6 +8,8 @@ struct ShareComposerItems: View {
     @Binding var chosen: Set<String>
     /// For a saved profile: chosen evidence can be shown briefly. Nil in the composer.
     var brief: Binding<Set<String>>?
+    /// Evidence whose files go along; nil where files cannot be chosen.
+    var files: Binding<Set<String>>?
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openDestination) private var openDestination
@@ -44,7 +46,20 @@ struct ShareComposerItems: View {
         }
     }
 
+    /// The row, and under it, outside its button, whether the file goes along.
     private func row(_ item: VaultItem, isNeeded: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            choice(item, isNeeded: isNeeded)
+            if let files, chosen.contains(item.id), ShareFiles.hasDocument(item) {
+                fileChip(item, files: files)
+                    .padding(.leading, 46)
+                    .padding(.bottom, 8)
+                    .padding(.top, -6)
+            }
+        }
+    }
+
+    private func choice(_ item: VaultItem, isNeeded: Bool) -> some View {
         let isOn = chosen.contains(item.id)
         return Button {
             PaveHaptics.selection()
@@ -90,6 +105,26 @@ struct ShareComposerItems: View {
                 .padding(.bottom, 12)
             }
         }
+    }
+
+    /// The file of this evidence goes along, so the recipient can open it; on by default for verified evidence.
+    private func fileChip(_ item: VaultItem, files: Binding<Set<String>>) -> some View {
+        let isOn = files.wrappedValue.contains(item.id)
+        return Button {
+            PaveHaptics.selection()
+            if isOn { files.wrappedValue.remove(item.id) } else { files.wrappedValue.insert(item.id) }
+        } label: {
+            HStack(spacing: 6) {
+                PaveCheckbox(isOn: isOn, size: 16)
+                Text(SharingMessages.withFile(item.files.filter { $0.role == .document }.count))
+                    .textStyle(.caption)
+                    .foregroundStyle(isOn ? Color.ink : Color.inkMuted)
+            }
+            .frame(minHeight: 32)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.pave)
+        .accessibilityAddTraits(isOn ? .isSelected : [])
     }
 }
 

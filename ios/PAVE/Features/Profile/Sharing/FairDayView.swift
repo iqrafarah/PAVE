@@ -114,7 +114,11 @@ struct FairDayView: View {
             }
         }
         .sheet(isPresented: $showsShareBack) {
-            ShareComposer(model: model, template: .fair, recipientOrganisation: sharesBackWith, withApplication: false) { showsShareBack = false }
+            QuickShareSheet(
+                model: model,
+                start: model.profiles?.first(where: { $0.template == .fair }).map { .selection($0.id) } ?? .kind(.fair),
+                recipientOrganisation: sharesBackWith
+            ) { showsShareBack = false }
         }
         .sheet(item: $calendarFor) { application in
             if let moment = application.invitedFor {

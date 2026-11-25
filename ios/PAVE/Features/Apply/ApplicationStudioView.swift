@@ -21,6 +21,8 @@ struct ApplicationStudioView: View {
     @State private var sharing: ShareRequest?
     @State private var sharedNow: ProfileShare?
     @State private var asksSent = false
+    /// "Meer opties" was tapped: the steps open once the quick screen is gone.
+    @State private var detailedNext: Set<ApplicationDocumentKind>?
     @State private var openedShare: String?
     @State private var confirmsStop = false
     @Environment(\.paveReduceMotion) private var reduceMotion
@@ -31,6 +33,8 @@ struct ApplicationStudioView: View {
     private struct ShareRequest: Identifiable {
         let id = UUID()
         let documents: Set<ApplicationDocumentKind>
+        /// The steps with purpose and downloading, asked for with "Meer opties".
+        var isDetailed = false
     }
 
     private enum Panel: String, CaseIterable { case content, design }
@@ -80,11 +84,22 @@ struct ApplicationStudioView: View {
         .sheet(item: $exported) { VaultShareSheet(urls: [$0.url]) }
         .sheet(item: $sharing, onDismiss: sharingClosed) { request in
             if let shares {
-                ShareComposer(
-                    model: shares, template: .employer, recipientOrganisation: model.draft.vacancy.company, vacancyID: model.draft.vacancy.id,
-                    startsWith: request.documents, doneTitle: ApplyMessages.backToApplication,
-                    onShared: { sharedNow = $0 }
-                ) { sharing = nil }
+                if request.isDetailed {
+                    ShareComposer(
+                        model: shares, template: .employer, recipientOrganisation: model.draft.vacancy.company, vacancyID: model.draft.vacancy.id,
+                        startsWith: request.documents, doneTitle: ApplyMessages.backToApplication,
+                        onShared: { sharedNow = $0 }
+                    ) { sharing = nil }
+                } else {
+                    QuickShareSheet(
+                        model: shares, start: .application(vacancyID: model.draft.vacancy.id, documents: request.documents),
+                        onShared: { sharedNow = $0 },
+                        onMoreOptions: {
+                            detailedNext = request.documents
+                            sharing = nil
+                        }
+                    ) { sharing = nil }
+                }
             }
         }
         .sheet(item: Binding(get: { openedShare.map(OpenedShare.init) }, set: { openedShare = $0?.id })) { opened in
@@ -393,6 +408,11 @@ struct ApplicationStudioView: View {
 
     /// Back from sharing: on the overview, where the share now shows, and asked whether it went out.
     private func sharingClosed() {
+        if let documents = detailedNext {
+            detailedNext = nil
+            sharing = ShareRequest(documents: documents, isDetailed: true)
+            return
+        }
         guard sharedNow != nil else { return }
         sharedNow = nil
         model.showOverview()

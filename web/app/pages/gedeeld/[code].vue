@@ -33,6 +33,10 @@ function look() {
   open({ name: name.value || undefined, organisation: organisation.value || undefined });
 }
 
+function verifiedOn(date: string) {
+  return new Date(date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 async function download(kind: 'cv' | 'letter') {
   // Downloading is written down as well; the link from that answer saves the file.
   const fresh = await open({ name: name.value || undefined, organisation: organisation.value || undefined }, 'download');
@@ -126,11 +130,24 @@ async function download(kind: 'cv' | 'letter') {
             </p>
             <p v-if="item.description" class="mt-1 text-sm text-ink">{{ item.description }}</p>
             <p v-if="item.skills.length" class="mt-1 text-xs text-muted">{{ item.skills.join(' · ') }}</p>
+            <p v-if="item.verification" class="mt-2 flex items-center gap-1.5 text-xs font-medium text-brand">
+              <LayoutPaveIcon name="check" class="size-4 shrink-0" />
+              Geverifieerd door {{ item.verification.by }} op {{ verifiedOn(item.verification.on) }}
+            </p>
+            <ul v-if="item.files?.length" class="mt-2 flex flex-col gap-1.5">
+              <li v-for="file in item.files" :key="file.url">
+                <a :href="file.url" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-sm font-medium text-brand underline break-all">
+                  <LayoutPaveIcon name="folder" class="size-4 shrink-0" />
+                  Bekijk {{ file.name }}
+                </a>
+              </li>
+            </ul>
           </li>
         </ul>
       </section>
       <p class="text-center text-xs text-muted">
         Geverifieerd betekent: bevestigd door de organisatie zelf, in PAVE. Niet geverifieerd is door {{ view.profile?.name }} zelf toegevoegd.
+        Een bestand bekijken werkt een paar minuten; laad de pagina opnieuw als de link verlopen is.
       </p>
     </template>
   </div>

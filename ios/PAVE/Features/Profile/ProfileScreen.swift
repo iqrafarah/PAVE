@@ -17,6 +17,10 @@ struct ProfileScreen: View {
     @State private var sharesBack: FairEmployer?
     @State private var showsReport = false
     @State private var showsQuickShare = false
+    @State private var quickStart = QuickShareSheet.Start.profile
+    @State private var quickRecipient: String?
+    /// "Meer opties" was tapped: the steps open once the share screen is gone.
+    @State private var detailedNext: ShareTemplateChoice?
     @State private var showsPrivacy = false
     @State private var showsEarlier = false
     @State private var editing: SavedProfile?
@@ -35,7 +39,7 @@ struct ProfileScreen: View {
                             }
                             .buttonStyle(.pave)
                         }
-                        ShareProfileCard { showsQuickShare = true }
+                        ShareProfileCard { share(.profile) }
                         Text(SharingMessages.intro)
                             .textStyle(.caption)
                             .foregroundStyle(Color.inkMuted)
@@ -105,7 +109,7 @@ struct ProfileScreen: View {
         .sheet(isPresented: $showsScanner, onDismiss: {
             guard let employer = sharesBack else { return }
             sharesBack = nil
-            composing = ShareTemplateChoice(template: .fair, organisation: employer.name)
+            fairShare(to: employer.name)
         }) {
             ShareScanSheet(model: model) { sharesBack = $0 }
         }
@@ -126,7 +130,16 @@ struct ProfileScreen: View {
             if !model.live.isEmpty { Text(SharingMessages.stopAllHint(model.live.count)) }
         }
         .sheet(isPresented: $showsPrivacy) { SharePrivacySheet() }
-        .sheet(isPresented: $showsQuickShare) { QuickShareSheet(model: model) { showsQuickShare = false } }
+        .sheet(isPresented: $showsQuickShare, onDismiss: {
+            guard let next = detailedNext else { return }
+            detailedNext = nil
+            composing = next
+        }) {
+            QuickShareSheet(model: model, start: quickStart, recipientOrganisation: quickRecipient, onMoreOptions: {
+                detailedNext = detailedChoice(for: quickStart)
+                showsQuickShare = false
+            }) { showsQuickShare = false }
+        }
         .alert(SharingMessages.title, isPresented: Binding(get: { model.problem != nil }, set: { if !$0 { model.problem = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -213,6 +226,35 @@ struct ProfileScreen: View {
     }
 
     /// Your saved profiles, to share in two taps, and a new one.
+    /// Every share starts on the one share screen.
+    private func share(_ start: QuickShareSheet.Start, to recipient: String? = nil) {
+        quickStart = start
+        quickRecipient = recipient
+        showsQuickShare = true
+    }
+
+    /// Back to an employer you scanned: your fair selection if you made one, else what a fair usually needs.
+    private func fairShare(to employer: String) {
+        if let fair = model.profiles?.first(where: { $0.template == .fair }) {
+            share(.selection(fair.id), to: employer)
+        } else {
+            share(.kind(.fair), to: employer)
+        }
+    }
+
+    /// The steps with purpose and downloading, for what the share screen started on.
+    private func detailedChoice(for start: QuickShareSheet.Start) -> ShareTemplateChoice {
+        switch start {
+        case .selection(let id):
+            if let kept = model.profiles?.first(where: { $0.id == id }) {
+                return ShareTemplateChoice(template: kept.template, withApplication: false, profile: kept)
+            }
+            return ShareTemplateChoice(template: .employer)
+        case .kind(let kind): return ShareTemplateChoice(template: kind)
+        case .profile, .application: return ShareTemplateChoice(template: .employer)
+        }
+    }
+
     /// One list for everyone you share with: your own profiles first, then the kinds of recipient you have none for
     /// yet. Every row works the same: tap it to change or make the profile, Delen to share it.
     private func sharingList(_ profiles: [SavedProfile]) -> some View {
@@ -222,7 +264,7 @@ struct ProfileScreen: View {
             SharePanel(title: SharingMessages.profiles) {
                 ForEach(profiles) { profile in
                     SavedProfileRow(profile: profile) { editing = profile } onShare: {
-                        composing = ShareTemplateChoice(template: profile.template, withApplication: false, profile: profile)
+                        share(.selection(profile.id))
                     }
                     ShareRowDivider()
                 }
@@ -230,7 +272,7 @@ struct ProfileScreen: View {
                     SavedProfileRow(template: kind) {
                         editing = SavedProfile.starter(for: kind, items: vault.items)
                     } onShare: {
-                        composing = ShareTemplateChoice(template: kind)
+                        share(.kind(kind))
                     }
                     ShareRowDivider()
                 }

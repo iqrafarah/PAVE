@@ -1,8 +1,9 @@
 import PAVECore
 import SwiftUI
 
-/// All applications, by where they stand: concept first, then sent, interview, offer, and rejected last. Within a group
-/// the nearest deadline comes first. A tap opens that application's overview.
+/// All applications in one list, from Ayla, made yourself and left at the fair, by where they stand: concept first, then
+/// sent, interview, offer, and rejected last. Within a group the nearest deadline comes first. A tag says where each
+/// comes from, and the chips on top show only one source. A tap opens the overview, or Mijn beursdag for the fair.
 struct ApplicationsList: View {
     let applications: [ApplicationDraft]
     let onOpen: (Vacancy) -> Void
@@ -12,11 +13,27 @@ struct ApplicationsList: View {
     var onDelete: ((ApplicationDraft) -> Void)?
 
     @State private var deleting: ApplicationDraft?
+    @State private var source: ApplicationSource?
+    @State private var showsFairDay = false
+    @Environment(SharingModel.self) private var sharing: SharingModel?
 
-    private var groups: [(status: ApplicationStatus, drafts: [ApplicationDraft])] {
+    private var fair: [FairApplication] { sharing?.fairApplications ?? [] }
+
+    private var sources: [ApplicationSource] {
+        ApplicationSource.allCases.filter { kind in
+            kind == .fair ? !fair.isEmpty : applications.contains { ApplicationSource($0.vacancy) == kind }
+        }
+    }
+
+    private var groups: [(status: ApplicationStatus, drafts: [ApplicationDraft], fair: [FairApplication])] {
         ApplicationStatus.allCases.compactMap { status in
-            let drafts = applications.filter { $0.progress.status == status }.sorted(by: Self.isBefore)
-            return drafts.isEmpty ? nil : (status, drafts)
+            let drafts = source == .fair ? [] : applications
+                .filter { $0.progress.status == status && (source == nil || ApplicationSource($0.vacancy) == source) }
+                .sorted(by: Self.isBefore)
+            let left = source == nil || source == .fair
+                ? fair.filter { $0.applicationStatus == status }.sorted { ($0.invitedFor ?? $0.createdAt) < ($1.invitedFor ?? $1.createdAt) }
+                : []
+            return drafts.isEmpty && left.isEmpty ? nil : (status, drafts, left)
         }
     }
 
@@ -40,11 +57,22 @@ struct ApplicationsList: View {
             } message: {
                 Text(ApplyMessages.deleteApplicationHint)
             }
+            .sheet(isPresented: $showsFairDay) {
+                if let sharing {
+                    NavigationStack {
+                        FairDayView(model: sharing)
+                            .toolbar {
+                                ToolbarItem(placement: .cancellationAction) { Button(ApplyMessages.close) { showsFairDay = false } }
+                            }
+                    }
+                }
+            }
+            .task { if sharing?.fairApplications == nil { await sharing?.loadFairApplications() } }
     }
 
     @ViewBuilder
     private var list: some View {
-        if applications.isEmpty {
+        if applications.isEmpty, fair.isEmpty {
             VStack(spacing: 16) {
                 PaveEmptyState(icon: .iconBriefcase, title: ApplyMessages.applicationsEmptyTitle, message: ApplyMessages.applicationsEmpty)
                 if let onNew {
@@ -56,9 +84,10 @@ struct ApplicationsList: View {
         } else {
             VStack(alignment: .leading, spacing: 20) {
                 if let onNew { newButton(onNew) }
+                if sources.count > 1 { sourceChips }
                 ForEach(groups, id: \.status) { group in
                     VStack(alignment: .leading, spacing: 10) {
-                        Text(ApplyMessages.statusCount(group.status, group.drafts.count))
+                        Text(ApplyMessages.statusCount(group.status, group.drafts.count + group.fair.count))
                             .textStyle(.label)
                             .foregroundStyle(Color.inkMuted)
                             .accessibilityAddTraits(.isHeader)
@@ -74,11 +103,43 @@ struct ApplicationsList: View {
                                         }
                                     }
                             }
+                            ForEach(group.fair) { application in
+                                FairApplicationRow(application: application) { showsFairDay = true }
+                            }
                         }
                     }
                 }
             }
         }
+    }
+
+    /// Alles, then one chip per source there is: Ayla, Zelf, Beurs.
+    private var sourceChips: some View {
+        FlowLayout(spacing: 8) {
+            chip(ApplyMessages.sourceAll, isOn: source == nil) { source = nil }
+            ForEach(sources, id: \.self) { kind in
+                chip(ApplyMessages.source(kind), isOn: source == kind) { source = kind }
+            }
+        }
+    }
+
+    private func chip(_ title: String, isOn: Bool, action: @escaping () -> Void) -> some View {
+        Button {
+            PaveHaptics.selection()
+            withAnimation(.snappy(duration: 0.2)) { action() }
+        } label: {
+            Text(title)
+                .textStyle(.chip)
+                .foregroundStyle(isOn ? Color.white : Color.ink)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 36)
+                .background(isOn ? Color.paveAccentFill : Color.panel, in: .capsule)
+                .overlay { Capsule().strokeBorder(isOn ? Color.clear : Color.cardBorder) }
+                .frame(minHeight: 44)
+                .contentShape(.capsule)
+        }
+        .buttonStyle(.pave)
+        .accessibilityAddTraits(isOn ? .isSelected : [])
     }
 
     private var deleteQuestion: Binding<Bool> {

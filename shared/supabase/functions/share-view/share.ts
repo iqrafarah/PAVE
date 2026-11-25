@@ -38,6 +38,33 @@ export interface ItemRow {
   vault_item_skills?: { name: string; status: string | null }[] | null
 }
 
+/** A file of a piece of evidence, as kept in the vault. */
+export interface FileRow {
+  id: string
+  user_id: string
+  item_id: string
+  storage_path: string
+  file_name: string
+  mime_type: string
+  role: string | null
+}
+
+/** A decided verification of a piece of evidence. */
+export interface VerificationRow {
+  item_id: string
+  user_id: string
+  organisation_name: string
+  status: string
+  resolved_at: string | null
+}
+
+/** A file the recipient may open, with a short-lived link made by index.ts. */
+export interface FileView {
+  name: string
+  mimeType: string
+  url: string
+}
+
 export interface ViewRequest {
   code: string
   action: ViewAction
@@ -66,6 +93,34 @@ export function shareState(share: Pick<ShareRow, 'expires_at' | 'paused_at' | 'r
   return 'active'
 }
 
+/**
+ * The pieces of evidence whose files go along: only those the owner named in `content.files` and that are in the share.
+ */
+export function fileItemIDs(share: ShareRow): string[] {
+  const named = Array.isArray(share.content.files) ? (share.content.files as unknown[]).filter((id): id is string => typeof id === 'string') : []
+  const inShare = new Set(share.item_ids)
+  return [...new Set(named)].filter((id) => inShare.has(id))
+}
+
+/** The documents of those pieces of evidence, of the owner only; never a cover or logo image. */
+export function sharedFiles(share: ShareRow, files: FileRow[]): FileRow[] {
+  const allowed = new Set(fileItemIDs(share))
+  return files.filter((file) =>
+    file.user_id === share.user_id && allowed.has(file.item_id) && (file.role ?? 'document') === 'document' && !file.storage_path.includes('..')
+  )
+}
+
+/** Who verified each piece of evidence and when: the latest verified decision per item. */
+export function verifications(rows: VerificationRow[], owner: string): Map<string, { by: string; on: string }> {
+  const latest = new Map<string, { by: string; on: string }>()
+  for (const row of rows) {
+    if (row.user_id !== owner || row.status !== 'verified' || !row.resolved_at) continue
+    const known = latest.get(row.item_id)
+    if (!known || known.on < row.resolved_at) latest.set(row.item_id, { by: text(row.organisation_name, 200), on: row.resolved_at })
+  }
+  return latest
+}
+
 /** A piece of evidence as the recipient sees it: its status from the vault now, never from the share. */
 export function itemView(item: ItemRow) {
   return {
@@ -87,7 +142,9 @@ export function itemView(item: ItemRow) {
  * Only the evidence the share names, of its owner, not archived and not rejected; in the order the owner chose. What the
  * owner shared briefly ("kort", listed in `content.brief`) shows without its description and skills.
  */
-export function chosenItems(share: ShareRow, items: ItemRow[]) {
+export function chosenItems(
+  share: ShareRow, items: ItemRow[], files: Map<string, FileView[]> = new Map(), verified: Map<string, { by: string; on: string }> = new Map(),
+) {
   const byId = new Map(items.map((item) => [item.id, item]))
   const brief = new Set(Array.isArray(share.content.brief) ? (share.content.brief as unknown[]).filter((id) => typeof id === 'string') : [])
   return share.item_ids
@@ -95,6 +152,12 @@ export function chosenItems(share: ShareRow, items: ItemRow[]) {
     .filter((item): item is ItemRow => !!item && item.user_id === share.user_id && !item.archived_at && item.verification_status !== 'rejected')
     .map(itemView)
     .map((view) => brief.has(view.id) ? { ...view, description: undefined, skills: [] } : view)
+    .map((view) => ({
+      ...view,
+      files: files.get(view.id) ?? [],
+      // Only when the vault still says verified: a changed item loses its verification, and so does the share.
+      verification: view.verified ? verified.get(view.id) : undefined,
+    }))
 }
 
 /** The kept files of a share, only under its own folder. */
@@ -107,7 +170,10 @@ export function documentPaths(share: ShareRow): { kind: 'cv' | 'letter'; path: s
 }
 
 /** What the page receives for an active share. */
-export function shareView(share: ShareRow, items: ItemRow[], documents: { kind: string; url: string }[]) {
+export function shareView(
+  share: ShareRow, items: ItemRow[], documents: { kind: string; url: string }[],
+  files: Map<string, FileView[]> = new Map(), verified: Map<string, { by: string; on: string }> = new Map(),
+) {
   const content = share.content
   const profile = (content.profile ?? {}) as Record<string, unknown>
   return {
@@ -125,7 +191,7 @@ export function shareView(share: ShareRow, items: ItemRow[], documents: { kind: 
       city: text(profile.city, 80) || undefined,
       summary: text(profile.summary, 1200) || undefined,
     },
-    items: chosenItems(share, items),
+    items: chosenItems(share, items, files, verified),
     cv: typeof content.cv === 'object' && content.cv ? content.cv : undefined,
     letter: typeof content.letter === 'object' && content.letter ? content.letter : undefined,
     documents,

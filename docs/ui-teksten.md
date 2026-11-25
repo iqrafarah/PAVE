@@ -321,13 +321,22 @@ Delen is tijdelijk, per onderdeel te kiezen, te pauzeren en in te trekken (kick-
 | Leeg | Er is nog niets om te delen. Voeg eerst bewijs toe aan je kluis. |
 | Chats selecteren | Tik op de chats die je wilt vastzetten of verwijderen. |
 
-### Je profielen en de tijdlijn (iOS)
+### Selecties en de tijdlijn (iOS)
 
 | Waar | Tekst |
 |---|---|
-| Je profielen | Je eigen profielen, daarna Werkgever, Onderwijs, Gemeente en Banenbeurs als je daar nog geen profiel voor hebt / Delen / Nieuw profiel / Tik op een rij om het profiel samen te stellen of aan te passen. Met Delen kies je daarna met wie en hoe lang. |
+| Selecties | Selecties / je eigen selecties, daarna Werkgever, Onderwijs, Gemeente en Banenbeurs als je daar nog geen selectie voor hebt / Delen / Nieuwe selectie / Selectie aanpassen / Naam van de selectie / Bewaar selectie / Verwijder selectie / Over jou (niet verplicht): Twee of drie zinnen die ze als eerste lezen / Hoe lang? / {n} onderdelen · {m} met bestand · {k} kort / Een selectie is wat je één keer kiest voor een soort ontvanger. Tik op een rij om hem samen te stellen of aan te passen, met Delen deel je hem. |
 | Tijdlijn | Tijdlijn / Komt eraan / Op {status} gezet / Gedeeld met {ontvanger} / {naam} heeft je sollicitatie bekeken / {naam} heeft je cv of brief gedownload / Delen met {ontvanger} gestopt / Uitnodiging voor een kennismaking (demo) / Kennismakingsgesprek / Deadline om te versturen / Vandaag, Gisteren, Morgen {tijd} / Toon alles ({n}) |
 | Watch | Volgende stap / Gesprek bij {bedrijf} / Uitnodiging van {bedrijf} / Deadline {bedrijf} / {dag} {tijd} · antwoord op je iPhone / Je kaartje / Tot {moment} |
+
+### Delen: één scherm, bewijs inzien en één lijst sollicitaties (iOS en web)
+
+| Waar | Tekst |
+|---|---|
+| Deelscherm | Snel delen (vanaf je profiel) of Delen / Wat deel je? Je profiel, je selecties / Of een sollicitatie: Solliciteren bij {bedrijf}, {functie} · cv en brief / Toon alle {n} / Cv en brief / Meer opties |
+| Bestanden | Met bestand / Met de {n} bestanden (standaard aan bij geverifieerd bewijs) / Bestanden: Bestanden die ze kunnen openen: {namen} / Er gaan geen bestanden mee. Ze zien alleen wat er over je bewijs staat. |
+| Ontvanger (web /gedeeld) | Geverifieerd door {organisatie} op {datum} / Bekijk {bestandsnaam} / Een bestand bekijken werkt een paar minuten; laad de pagina opnieuw als de link verlopen is. |
+| Sollicitaties | Alles / Ayla / Zelf / Beurs (filter en label) / Achtergelaten, Uitgenodigd, Je komt, Afgezegd, Niet gekozen (beurs) |
 
 ## Terug en sluiten (iOS)
 

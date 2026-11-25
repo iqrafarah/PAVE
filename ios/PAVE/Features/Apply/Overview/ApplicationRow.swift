@@ -37,14 +37,13 @@ struct ApplicationRow: View {
                             .textStyle(.caption)
                             .foregroundStyle(Color.inkMuted)
                     }
-                    if distance != nil || liveShare != nil {
-                        FlowLayout(spacing: 6) {
-                            if let distance {
-                                badge(ApplyMessages.deadlineDistance(distance), color: distance.isUrgent ? Color.critical : Color.ink, fill: distance.isUrgent ? Color.criticalSurface : Color.canvas)
-                            }
-                            if let liveShare {
-                                badge(ApplyMessages.sharedLooks(liveShare.looks.count), color: Color.paveAccent, fill: Color.paveSurfaceTint)
-                            }
+                    FlowLayout(spacing: 6) {
+                        ApplicationSourceTag(source: ApplicationSource(vacancy))
+                        if let distance {
+                            badge(ApplyMessages.deadlineDistance(distance), color: distance.isUrgent ? Color.critical : Color.ink, fill: distance.isUrgent ? Color.criticalSurface : Color.canvas)
+                        }
+                        if let liveShare {
+                            badge(ApplyMessages.sharedLooks(liveShare.looks.count), color: Color.paveAccent, fill: Color.paveSurfaceTint)
                         }
                     }
                     Text(([ApplyMessages.changedOn(draft.updatedAt)] + (tracking.note.isEmpty ? [] : [tracking.note])).joined(separator: " · "))

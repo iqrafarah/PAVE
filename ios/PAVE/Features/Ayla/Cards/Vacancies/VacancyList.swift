@@ -26,6 +26,7 @@ struct VacancyList: View {
     @State private var filter = VacancyFilter()
     @State private var showsFilters = false
     @State private var makesApplication = false
+    @Environment(SharingModel.self) private var sharing: SharingModel?
     @State private var newVacancy: Vacancy?
 
     /// The tab's vacancies before the filter.
@@ -44,7 +45,11 @@ struct VacancyList: View {
         LazyVStack(spacing: 14) {
             // Without an account to keep vacancies in, the applications on this device still have their tab.
             if model.canSaveVacancies || !applications.isEmpty || onOpenApplication != nil {
-                VacancyTabs(tab: $tab, found: vacancies.count, saved: model.savedVacancies.count, applications: applications.count, showsSaved: model.canSaveVacancies)
+                // The applications tab counts what you left at the fair too: it is one list.
+                VacancyTabs(
+                    tab: $tab, found: vacancies.count, saved: model.savedVacancies.count,
+                    applications: applications.count + (sharing?.fairApplications?.count ?? 0), showsSaved: model.canSaveVacancies
+                )
                     .padding(.bottom, 4)
             }
             if let problem = model.vacancyProblem {

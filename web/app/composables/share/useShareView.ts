@@ -13,6 +13,10 @@ export interface SharedItem {
   isCurrent: boolean;
   verified: boolean;
   skills: string[];
+  /** The evidence itself, when the owner let it go along; each link works for a few minutes. */
+  files?: { name: string; mimeType: string; url: string }[];
+  /** Who verified it and when, while it is still verified. */
+  verification?: { by: string; on: string };
 }
 
 export interface SharedLetter {

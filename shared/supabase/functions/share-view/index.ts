@@ -2,7 +2,10 @@
 // written down for the owner. Paused, taken back or ended shares show nothing but that.
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { CORS, json } from '../_shared/http.ts'
-import { documentPaths, parseViewRequest, shareState, shareView, type ItemRow, type ShareRow } from './share.ts'
+import {
+  documentPaths, fileItemIDs, parseViewRequest, sharedFiles, shareState, shareView, verifications,
+  type FileRow, type FileView, type ItemRow, type ShareRow, type VerificationRow,
+} from './share.ts'
 
 const SECONDS_A_FILE_LINK_WORKS = 300
 
@@ -41,6 +44,34 @@ Deno.serve(async (req) => {
     items.push(...((data ?? []) as ItemRow[]))
   }
 
+  // Who verified the evidence, for every piece in the share; the files only of the pieces the owner let go along.
+  const verified = new Map<string, { by: string; on: string }>()
+  if (share.item_ids.length > 0) {
+    const { data } = await admin
+      .from('vault_validation_requests')
+      .select('item_id,user_id,organisation_name,status,resolved_at')
+      .in('item_id', share.item_ids)
+      .eq('user_id', share.user_id)
+      .eq('status', 'verified')
+    for (const [id, value] of verifications((data ?? []) as VerificationRow[], share.user_id)) verified.set(id, value)
+  }
+  const files = new Map<string, FileView[]>()
+  const withFiles = fileItemIDs(share)
+  if (withFiles.length > 0) {
+    const { data } = await admin
+      .from('vault_item_files')
+      .select('id,user_id,item_id,storage_path,file_name,mime_type,role')
+      .in('item_id', withFiles)
+      .eq('user_id', share.user_id)
+    for (const file of sharedFiles(share, (data ?? []) as FileRow[])) {
+      const { data: link } = await admin.storage
+        .from('pave-vault')
+        .createSignedUrl(file.storage_path, SECONDS_A_FILE_LINK_WORKS, share.allows_download ? { download: file.file_name } : undefined)
+      if (!link?.signedUrl) continue
+      files.set(file.item_id, [...(files.get(file.item_id) ?? []), { name: file.file_name, mimeType: file.mime_type, url: link.signedUrl }])
+    }
+  }
+
   const documents: { kind: string; url: string }[] = []
   for (const doc of documentPaths(share)) {
     const name = `${doc.kind === 'cv' ? 'Cv' : 'Motivatiebrief'}.pdf`
@@ -58,5 +89,5 @@ Deno.serve(async (req) => {
   })
   if (logError) console.error('share-view: writing down the look failed', logError.message)
 
-  return json(shareView(share, items, documents))
+  return json(shareView(share, items, documents, files, verified))
 })

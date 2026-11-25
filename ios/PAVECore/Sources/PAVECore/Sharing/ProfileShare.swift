@@ -80,14 +80,20 @@ public struct ShareContent: Codable, Equatable, Sendable {
     public var vacancyID: String?
     /// Evidence shown briefly on the recipient's page: no description and no skills.
     public var brief: [String]?
+    /// Evidence whose files the recipient may open, with who verified it.
+    public var files: [String]?
 
-    public init(profile: ShareProfile, cv: CVContent? = nil, letter: LetterContent? = nil, documents: [String: String]? = nil, vacancyID: String? = nil, brief: [String]? = nil) {
+    public init(
+        profile: ShareProfile, cv: CVContent? = nil, letter: LetterContent? = nil, documents: [String: String]? = nil, vacancyID: String? = nil,
+        brief: [String]? = nil, files: [String]? = nil
+    ) {
         self.profile = profile
         self.cv = cv
         self.letter = letter
         self.documents = documents
         self.vacancyID = vacancyID
         self.brief = brief
+        self.files = files
     }
 
     public init(from decoder: any Decoder) throws {
@@ -99,6 +105,7 @@ public struct ShareContent: Codable, Equatable, Sendable {
         documents = try? values.decodeIfPresent([String: String].self, forKey: .documents)
         vacancyID = try? values.decodeIfPresent(String.self, forKey: .vacancyID)
         brief = try? values.decodeIfPresent([String].self, forKey: .brief)
+        files = try? values.decodeIfPresent([String].self, forKey: .files)
     }
 }
 

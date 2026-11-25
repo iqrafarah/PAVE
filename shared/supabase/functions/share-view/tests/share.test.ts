@@ -1,5 +1,5 @@
 import { assertEquals } from 'jsr:@std/assert@1'
-import { chosenItems, documentPaths, parseViewRequest, shareState, shareView, type ItemRow, type ShareRow } from '../share.ts'
+import { chosenItems, documentPaths, fileItemIDs, parseViewRequest, sharedFiles, shareState, shareView, verifications, type FileRow, type ItemRow, type ShareRow, type VerificationRow } from '../share.ts'
 
 const owner = '11111111-1111-1111-1111-111111111111'
 const share: ShareRow = {
@@ -87,4 +87,33 @@ Deno.test('what was shared briefly shows without its description and skills', ()
   assertEquals(byId.i1.title, 'Titel i1')
   assertEquals(byId.i2.description, 'Ook lang')
   assertEquals(byId.i2.skills, ['Swift'])
+})
+
+Deno.test('files go along only for evidence the owner named, of the owner, and only documents', () => {
+  const withFiles: ShareRow = { ...share, content: { ...share.content, files: ['i1', 'i1', 'not-in-share', 7] } }
+  assertEquals(fileItemIDs(withFiles), ['i1'])
+  const rows: FileRow[] = [
+    { id: 'f1', user_id: owner, item_id: 'i1', storage_path: `${owner}/i1/diploma.pdf`, file_name: 'Diploma.pdf', mime_type: 'application/pdf', role: 'document' },
+    { id: 'f2', user_id: owner, item_id: 'i1', storage_path: `${owner}/i1/cover.jpg`, file_name: 'cover.jpg', mime_type: 'image/jpeg', role: 'cover' },
+    { id: 'f3', user_id: owner, item_id: 'i2', storage_path: `${owner}/i2/brief.pdf`, file_name: 'Brief.pdf', mime_type: 'application/pdf', role: null },
+    { id: 'f4', user_id: 'someone-else', item_id: 'i1', storage_path: 'x/i1/a.pdf', file_name: 'a.pdf', mime_type: 'application/pdf', role: 'document' },
+  ]
+  assertEquals(sharedFiles(withFiles, rows).map((f) => f.id), ['f1'])
+  assertEquals(fileItemIDs(share), [])
+})
+
+Deno.test('the latest verified decision per item, of the owner, shows only on evidence that is still verified', () => {
+  const rows: VerificationRow[] = [
+    { item_id: 'i1', user_id: owner, organisation_name: 'Fontys', status: 'verified', resolved_at: '2026-01-10T10:00:00Z' },
+    { item_id: 'i1', user_id: owner, organisation_name: 'Fontys Hogescholen', status: 'verified', resolved_at: '2026-01-12T10:00:00Z' },
+    { item_id: 'i2', user_id: owner, organisation_name: 'Pixelwerk', status: 'rejected', resolved_at: '2026-01-12T10:00:00Z' },
+    { item_id: 'i2', user_id: 'someone-else', organisation_name: 'Nep', status: 'verified', resolved_at: '2026-01-12T10:00:00Z' },
+  ]
+  const verified = verifications(rows, owner)
+  assertEquals(verified.get('i1'), { by: 'Fontys Hogescholen', on: '2026-01-12T10:00:00Z' })
+  assertEquals(verified.has('i2'), false)
+  const items = chosenItems(share, [item('i1', { verification_status: 'verified' }), item('i2')], new Map([['i1', [{ name: 'Diploma.pdf', mimeType: 'application/pdf', url: 'https://x' }]]]), new Map([...verified, ['i2', { by: 'Nep', on: 'x' }]]))
+  assertEquals(items.find((i) => i.id === 'i1')?.verification?.by, 'Fontys Hogescholen')
+  assertEquals(items.find((i) => i.id === 'i1')?.files.length, 1)
+  assertEquals(items.find((i) => i.id === 'i2')?.verification, undefined)
 })

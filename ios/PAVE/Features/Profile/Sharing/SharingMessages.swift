@@ -170,17 +170,28 @@ enum SharingMessages {
     static let detailFullHint = "Met beschrijving en vaardigheden"
     static let detailBriefHint = "Alleen titel, organisatie, periode en status"
     static let detailExplained = "Kort: alleen titel, organisatie, periode en status. Uitgebreid: ook de beschrijving en vaardigheden. Bestanden uit je kluis deel je niet."
-    static let profiles = "Je profielen"
-    static let profilesHint = "Tik op een rij om het profiel samen te stellen of aan te passen. Met Delen kies je daarna met wie en hoe lang."
-    static let newProfile = "Nieuw profiel"
-    static let editProfile = "Profiel aanpassen"
-    static let profileName = "Naam van het profiel"
+    static let profiles = "Selecties"
+    static let profilesHint = "Een selectie is wat je één keer kiest voor een soort ontvanger. Tik op een rij om hem samen te stellen of aan te passen, met Delen deel je hem."
+    static let newProfile = "Nieuwe selectie"
+    static let editProfile = "Selectie aanpassen"
+    static let profileName = "Naam van de selectie"
     static let profileFor = "Voor wie"
     static let profileItems = "Wat erin staat"
     static let vaultEmptyTitle = "Je kluis is nog leeg"
     static let vaultEmpty = "Voeg eerst bewijs toe, zoals een diploma, stage of project. Daarna kies je hier wat je deelt."
     static let toVault = "Naar je kluis"
     static let more = "Meer"
+    static func withFile(_ count: Int) -> String { count > 1 ? "Met de \(count) bestanden" : "Met bestand" }
+    static func filesGoing(_ names: [String]) -> String { "Bestanden die ze kunnen openen: \(names.joined(separator: ", "))" }
+    static let checkFiles = "Bestanden"
+    static func applicationOption(_ title: String) -> String { "\(title) · cv en brief" }
+    static func applicationShareTitle(_ vacancy: Vacancy) -> String { "Sollicitatie \(vacancy.title) bij \(vacancy.company)" }
+    static let moreOptions = "Meer opties"
+    static let orApplication = "Of een sollicitatie"
+    static func showAllApplications(_ count: Int) -> String { "Toon alle \(count)" }
+    static let selectionSummary = "Over jou (niet verplicht)"
+    static let selectionSummaryPrompt = "Twee of drie zinnen die ze als eerste lezen"
+    static let filesNone = "Er gaan geen bestanden mee. Ze zien alleen wat er over je bewijs staat."
     static let tryAgain = "Opnieuw proberen"
     static let scanUnknown = "Dit is geen code van PAVE. Scan de QR-code op de stand of de poster."
     static let scanNoWeb = "Dit gedeelde profiel kan hier niet worden geopend. Open de link in je browser."
@@ -190,21 +201,23 @@ enum SharingMessages {
     static let fillWho = "Vul de naam van de ontvanger en de naam van wat je deelt in."
     static func profileProblem(_ problem: SavedProfile.Problem) -> String {
         switch problem {
-        case .noName: "Geef je profiel een naam."
+        case .noName: "Geef je selectie een naam."
         case .nothingChosen: "Kies minstens één bewijsstuk."
         }
     }
     static let shareProfile = "Delen"
-    static let saveProfile = "Bewaar profiel"
-    static let deleteProfile = "Verwijder profiel"
+    static let saveProfile = "Bewaar selectie"
+    static let deleteProfile = "Verwijder selectie"
     static func deleteProfileQuestion(_ name: String) -> String { "\(name) verwijderen?" }
-    static let deleteProfileHint = "Wat je met dit profiel al deelde, blijft gedeeld tot je het intrekt."
+    static let deleteProfileHint = "Wat je met deze selectie al deelde, blijft gedeeld tot je het intrekt."
     static func profileSummary(_ profile: SavedProfile) -> String {
         let count = profile.itemIDs.count
         let items = count == 1 ? "1 onderdeel" : "\(count) onderdelen"
-        return profile.brief.isEmpty ? items : "\(items) · \(profile.brief.count) kort"
+        let files = profile.files.isEmpty ? nil : "\(profile.files.count) met bestand"
+        let brief = profile.brief.isEmpty ? nil : "\(profile.brief.count) kort"
+        return [items, files, brief].compactMap(\.self).joined(separator: " · ")
     }
-    static let profileSaveFailed = "Het profiel kon niet worden bewaard. Probeer het opnieuw."
+    static let profileSaveFailed = "De selectie kon niet worden bewaard. Probeer het opnieuw."
     static let you = "Jij"
     static let quickShare = "Snel delen"
     static let quickShareIntro = "Laat iemand een QR-code scannen of stuur een link. Het werkt meteen en stopt vanzelf."
