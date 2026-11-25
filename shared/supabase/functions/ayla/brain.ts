@@ -5,6 +5,7 @@ import { cleanMemories, type Memory, type MemorySuggestion, usedNotes } from './
 import type { ContentPart, ChatMessage, Complete, Effort } from './openrouter.ts'
 import { buildSystemPrompt, contextNote, MATCH_OUTPUT_SCHEMA } from './prompt.ts'
 import { vaultProposal } from './proposal.ts'
+import { type PlanContext, planChange, planProposal, type PlanStepStatus } from './plan.ts'
 import { type FoundVacancy, logoUrl, mergeFound, type SearchVacancies } from './vacancies.ts'
 
 /** A message so far. An Ayla turn says whether it asked to look in the vault, for the consent of this conversation. */
@@ -19,6 +20,8 @@ export interface BrainInput {
   memory?: Memory
   /** The project of this conversation, if any. */
   project?: { name: string; instructions: string; sourceIds?: string[] }
+  /** The plan of this conversation, if any: Ayla helps with its current step and can mark steps. */
+  plan?: PlanContext
   /** The vault items the user allowed Ayla to use. Missing means she sees none. She only sees them once the user said
    * Ja to looking in the vault in this conversation (see consent.ts). */
   vault?: AllowedVault
@@ -39,6 +42,8 @@ export interface BrainDeps {
   newId: () => string
   /** Whether a site the model named for a company really is there; without it no logos are shown. */
   siteExists?: (domain: string) => Promise<boolean>
+  /** Saves a step of the conversation's plan; without it the plan is never changed. */
+  updatePlanStep?: (stepId: string, status: PlanStepStatus) => Promise<boolean>
 }
 
 export const HISTORY_LIMIT = 20
@@ -109,6 +114,7 @@ interface ModelOutput {
   usedMemories: unknown
   usedVaultItems: unknown
   vaultItem: unknown
+  planStep: unknown
   askVault: unknown
   actions: unknown
   continues: boolean
@@ -175,7 +181,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
     {
       role: 'system',
       content: buildSystemPrompt({
-        device: request.device, input: request.input, firstName: input.firstName, context: request.context, memory, project: input.project,
+        device: request.device, input: request.input, firstName: input.firstName, context: request.context, memory, project: input.project, plan: input.plan,
         vault, vaultConsent: consent, vaultPart: part ? { mayAskMore } : undefined, app: request.app, hasFiles, english: writesEnglish(request.text),
       }),
     },
@@ -294,7 +300,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
       // Under found vacancies she always asks to compare them with the vault, until the user answered that.
       askVault: fit === 'ask' && items.length ? cleanPurpose(second.askVault) ?? ASK_FOR_MATCHES : fit === 'ask' ? second.askVault : null,
       usedVaultItems: [...list(decided.usedVaultItems), ...list(second.usedVaultItems)],
-      vacancySearch: null, navigation: null, vaultItem: null, actions: [], continues: false,
+      vacancySearch: null, navigation: null, vaultItem: null, planStep: null, actions: [], continues: false,
     }
     if (items.length && request.device !== 'watch') {
       // What fits and what is missing only with the vault allowed, and only what the vacancy text really says. The
@@ -366,6 +372,13 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
     delete reply.proposedAction
     if (reply.navigation?.screen === 'addEvidence') delete reply.navigation
     if (reply.question?.choices.some((c) => /^(ja|yes)$/i.test(c.label))) delete reply.question
+  }
+  // A step of the plan she marked: saved at once, as the user said it. While PAVE asks a question of its own, nothing
+  // changes. The apps hear it through updatePlan, unless a proposal for the vault already takes that place: then they
+  // pick it up when they load the plan again.
+  const change = purpose || sure || pointsAtNothing ? undefined : planChange(decided.planStep, input.plan)
+  if (change && input.plan && deps.updatePlanStep && await deps.updatePlanStep(change.step.id, change.status)) {
+    reply.proposedAction ??= planProposal(input.plan, change, deps.newId(), new Date())
   }
   return reply
 }
@@ -1004,10 +1017,11 @@ function parseOutput(raw: string): ModelOutput {
       actions: Array.isArray(json.actions) ? json.actions : [],
       continues: json.continues === true,
       vaultItem: json.vaultItem ?? null,
+      planStep: json.planStep ?? null,
       askVault: typeof json.askVault === 'string' ? json.askVault : null,
     }
   }
-  const empty: ModelOutput = { intent: null, text: '', question: null, navigation: null, vacancySearch: null, vacancyMatches: [], vacancySites: [], title: null, memories: [], usedMemories: [], usedVaultItems: [], vaultItem: null, askVault: null, actions: [], continues: false }
+  const empty: ModelOutput = { intent: null, text: '', question: null, navigation: null, vacancySearch: null, vacancyMatches: [], vacancySites: [], title: null, memories: [], usedMemories: [], usedVaultItems: [], vaultItem: null, planStep: null, askVault: null, actions: [], continues: false }
   // Plain words instead of JSON: that is the answer. JSON that was cut off (a long answer ran out of room) never
   // shows as it is: what was complete is kept (her text, a search she asked for, the vacancies she had compared),
   // the rest is left out.

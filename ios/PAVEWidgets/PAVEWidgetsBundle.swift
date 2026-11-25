@@ -8,5 +8,6 @@ struct PAVEWidgetsBundle: WidgetBundle {
         TalkToAylaControl()
         NewConversationControl()
         AylaVoiceLiveActivity()
+        PlanLiveActivity()
     }
 }

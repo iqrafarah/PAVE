@@ -13,6 +13,11 @@ struct AylaRootView: View {
     @Binding var showsChats: Bool
 
     @State private var isSelectingInColumn = false
+    /// For the plan around the Dynamic Island: the top safe area and width of the screen, and whether the chat asks
+    /// the plan to step aside (while talking).
+    @State private var topInset: CGFloat = 0
+    @State private var screenWidth: CGFloat = 0
+    @State private var planIslandHidden = false
     /// The width of the chats column on a wide screen, dragged by its edge.
     @AppStorage("aylaChatsColumnWidth") private var columnWidth = 300.0
     @Environment(\.scenePhase) private var scenePhase
@@ -23,12 +28,29 @@ struct AylaRootView: View {
         Binding(get: { showsChats ? .all : .detailOnly }, set: { showsChats = $0 != .detailOnly })
     }
 
+    private var island: CGRect? {
+        isWide ? nil : DynamicIslandFrame.frame(topInset: topInset, width: screenWidth)
+    }
+
     var body: some View {
         Group {
             if isWide {
                 splitLayout
             } else {
                 stackLayout
+            }
+        }
+        .environment(\.plansInIsland, island != nil)
+        .onGeometryChange(for: CGSize.self) { CGSize(width: $0.size.width, height: $0.safeAreaInsets.top) } action: { size in
+            screenWidth = size.width
+            topInset = size.height
+        }
+        .onPreferenceChange(PlanIslandHiddenKey.self) { planIslandHidden = $0 }
+        // Above the header, so unfolding it never slides under Ayla's buttons.
+        .overlay(alignment: .top) {
+            if let island, !showsChats, !planIslandHidden {
+                PlanIslandOverlay(chat: model, island: island, screenWidth: screenWidth)
+                    .ignoresSafeArea()
             }
         }
         // The locked chats hide again when PAVE goes to the background.

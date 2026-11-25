@@ -179,3 +179,37 @@ Ayla zegt in haar eigen woorden wat ze doet. Deze vaste teksten komen van de app
 | Stappen (voorbeelden) | Donker aanzetten / Map {naam} openen / Chat {titel} noemen / Chat vastzetten / Map {naam} maken / {bewijs} in de map {naam} zetten |
 | Kleine bol op een pagina | Ayla luistert… / Ayla denkt na… / Ayla praat / Je microfoon staat uit |
 | Stappen bij vacatures zoeken | Vacatures zoeken / {n} vacatures gevonden / Vergelijken met je kluis / Vacatures bekijken / Lijst openen |
+
+## Plannen en de Dynamic Bar (iOS)
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Leeg scherm | Je hebt nog geen plan |
+| Uitleg leeg scherm | Maak een plan voor een doel waar je naartoe wilt werken. Ayla helpt je stap voor stap. |
+| Knop | Nieuw plan |
+| Velden | Naam / Doel / Beginnen met |
+| Uitleg doel | Waar wil je naartoe werken? Ayla gebruikt dit in de gesprekken van dit plan. |
+| Sjablonen | Leeg plan / Een baan vinden / Een stage vinden / Mijn loopbaan ontdekken / Een vervolgopleiding kiezen / Een vaardigheid ontwikkelen / Een certificaat behalen / Een carrièreswitch maken |
+| Uitleg leeg plan | Begin met een doel en voeg zelf stappen toe. |
+| Soort stap | Algemeen / Gesprek met Ayla / Uitzoeken / Bewijs in je kluis / Laten verifiëren / Schrijven / Profiel / Contact / Zelf doen / Terugkijken / Mijlpaal |
+| Knop bij een stap | Open je kluis / Open je profiel / Open Meldingen |
+| Overgeslagen | Overgeslagen stappen tellen niet mee. |
+| Stap klaar (Dynamic Bar) | Stap afgerond |
+| Dynamic Bar ingeklapt | {plannaam} · {huidige stap}  {afgerond}/{totaal} |
+| Dynamic Island (iPhone met eiland) | compact: ring en {afgerond}/{totaal}; even open: {plannaam} / {huidige stap} of Stap afgerond / {stap} |
+| Tip bij het eiland (eerste keer) | Je plan staat hier — Tik net onder het eiland of veeg omlaag voor je stappen. Houd vast om het hele plan te openen. |
+| Plan voltooien | Voltooien / Weer openen / Actief / Voltooid |
+| Plan verwijderen met gesprekken | Verwijderen, gesprekken bewaren / Verwijderen met gesprekken / Wil je de {n} gesprekken met Ayla van dit plan bewaren? Ze komen dan in je gewone chats. Bewijs in je kluis blijft altijd bewaard. |
+| Plan in Ayla (plusknop) | Plan toevoegen / Nu: {plannaam} / Kies een plan / Ayla helpt je in deze chat met de stappen van het plan. |
+| Toegangsscherm (menu) | Toegangsscherm en Dynamic Island / Volg op toegangsscherm / Niet meer volgen / Naam en stap tonen |
+| Live Activity | Je plan / Stap {n} van {totaal} · {soort stap} / {afgerond}/{totaal} / Klaar / Alle stappen afgerond |
+| Nog niet beschikbaar | Plannen zijn nog niet beschikbaar. Probeer het later nog eens. |
+| Plan verwijderen | Plan verwijderen? — De stappen van dit plan verdwijnen. Bewijs in je kluis blijft altijd bewaard. |
+| Voortgang | {x} van {y} afgerond / Stap {n} van {totaal} (overgeslagen stappen tellen niet mee) |
+| Plan klaar | Klaar! Je hebt alle stappen afgerond. |
+| Acties bij een stap | Bespreken met Ayla / Afronden / Hier verder / Nog te doen / Overslaan / Gesprek van deze stap openen / Stap aanpassen |
+| Gesprekken | Gesprekken met Ayla / Nog geen gesprekken in dit plan. / Uit plan halen |
+| Knoppen plan | Verder met Ayla / Nieuw gesprek |
+| Dynamic Bar | Open plan / {n} gesprekken |
+| Tekst bij een nieuw gesprek voor een stap | Help me met de stap "{stap}". |
+| Fout | Je plan kon niet worden bewaard. Probeer het nog eens. |
