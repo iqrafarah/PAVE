@@ -1,8 +1,8 @@
 import PAVECore
 import SwiftUI
 
-/// One choice in Weergave kluis or Tekstgrootte (Figma 1393:5359): an icon and a name; the chosen one has a tint and a
-/// border in the accent colour.
+/// One choice in Weergave or Taal (Figma 1393:5359): an icon and a name; the chosen one is filled with the soft accent
+/// and its icon turns the accent colour, like SettingsChoice on the web.
 struct SettingsOptionCard<Icon: View>: View {
     let title: String
     let isSelected: Bool
@@ -16,7 +16,7 @@ struct SettingsOptionCard<Icon: View>: View {
         } label: {
             HStack(spacing: 12) {
                 icon
-                    .foregroundStyle(Color.ink)
+                    .foregroundStyle(isSelected ? Color.paveAccent : Color.ink)
                     .paveIconFrame(24)
                     .accessibilityHidden(true)
                 Text(title)
@@ -28,10 +28,11 @@ struct SettingsOptionCard<Icon: View>: View {
             }
             .padding(.horizontal, 16)
             .frame(maxWidth: .infinity, minHeight: 54)
-            .background(isSelected ? Color.paveAccent.opacity(0.1) : Color.panel, in: .rect(cornerRadius: 14))
+            .background(isSelected ? Color.paveAccent.opacity(0.15) : Color.panel, in: .rect(cornerRadius: 14))
             .overlay {
+                // Like the web (SettingsChoice.vue): the chosen card is filled with the soft accent, without a line.
                 RoundedRectangle(cornerRadius: 14)
-                    .strokeBorder(isSelected ? Color.paveAccent : Color.cardBorder, lineWidth: isSelected ? 1.5 : 1)
+                    .strokeBorder(isSelected ? Color.clear : Color.cardBorder, lineWidth: 1)
             }
             .contentShape(.rect(cornerRadius: 14))
         }
