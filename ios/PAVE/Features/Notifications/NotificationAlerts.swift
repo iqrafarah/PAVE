@@ -75,12 +75,12 @@ enum NotificationAlerts {
         let content = UNMutableNotificationContent()
         if notification.kind == .email, let threadID = notification.emailThreadID {
             if notification.emailIsLocked {
-                content.title = "Nieuwe e-mail"
-                content.body = "In een vergrendeld gesprek"
+                content.title = "Nieuwe e-mail".translated
+                content.body = "In een vergrendeld gesprek".translated
             } else {
                 content.title = notification.personName
                 // The subject, as Mail shows it; without one only the name.
-                content.body = notification.title
+                content.body = notification.title.translated
                 // Their photo beside it, when your contacts have one; a locked conversation never shows who it is.
                 if let person = notification.emailPeople.first, let photo = await photoAttachment(for: person) {
                     content.attachments = [photo]
@@ -89,7 +89,7 @@ enum NotificationAlerts {
             content.threadIdentifier = notification.id
             content.userInfo = [emailThreadKey: threadID]
         } else {
-            content.title = notification.title
+            content.title = notification.title.translated
             content.threadIdentifier = "meldingen"
         }
         content.sound = .default

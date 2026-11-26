@@ -20,6 +20,8 @@ enum SettingsMessages {
     static let email = "E-mailadres"
     static let fromOrganisation = "Komt van je school of organisatie en kun je hier niet aanpassen."
     static let appearance = "Weergave"
+    static let language = "Taal"
+    static let languageHint = "PAVE verandert meteen van taal. Ayla antwoordt in de taal waarin je haar schrijft. Wat je zelf hebt gemaakt, zoals je chats en je kluis, blijft zoals het is."
     static let themeColor = "Themakleur"
     static let customColorHint = "Kies je eigen kleur"
     static let vaultLayout = "Weergave kluis"

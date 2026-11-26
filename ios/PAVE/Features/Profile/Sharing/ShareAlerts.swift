@@ -45,7 +45,7 @@ enum ShareAlerts {
             if let seenUntil {
                 for (share, look) in ShareAdvice.newLooks(in: shares, since: seenUntil).suffix(5) {
                     let content = UNMutableNotificationContent()
-                    content.title = look.action == .download ? "\(share.recipientName) downloadde je gegevens" : "\(share.recipientName) bekeek je gegevens"
+                    content.title = (look.action == .download ? "\(share.recipientName) downloadde je gegevens" : "\(share.recipientName) bekeek je gegevens").translated
                     content.body = share.title
                     content.categoryIdentifier = lookCategory
                     content.threadIdentifier = "shares"
@@ -63,7 +63,7 @@ enum ShareAlerts {
                 let at = share.expiresAt.addingTimeInterval(-86_400)
                 guard at > now else { continue }
                 let content = UNMutableNotificationContent()
-                content.title = "Delen met \(share.recipientName) stopt morgen"
+                content.title = "Delen met \(share.recipientName) stopt morgen".translated
                 content.body = share.title
                 content.categoryIdentifier = endingCategory
                 content.threadIdentifier = "shares"

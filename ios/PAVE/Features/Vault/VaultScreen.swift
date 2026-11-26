@@ -64,24 +64,29 @@ struct VaultScreen: View {
         )
     }
 
+    /// The vault with its pages, split from the sheets and dialogs in `body` so Swift can check both in time.
+    private var routedContent: some View {
+        content
+            .background(Color.canvas.ignoresSafeArea())
+            .navigationTitle("Kluis")
+            .mainScreenToolbar("Kluis", onShowMenu: onShowMenu)
+            .navigationDestination(for: FolderRoute.self) { route in
+                Group {
+                    if route == .all {
+                        VaultAllFoldersPage(actions: actions)
+                    } else {
+                        VaultLibraryPage(folderID: route.id, actions: actions)
+                    }
+                }
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
+            }
+            .task { await model.load() }
+    }
+
     var body: some View {
         NavigationStack(path: $path) {
-            content
-                .background(Color.canvas.ignoresSafeArea())
-                .navigationTitle("Kluis")
-                .mainScreenToolbar("Kluis", onShowMenu: onShowMenu)
-                .navigationDestination(for: FolderRoute.self) { route in
-                    Group {
-                        if route == .all {
-                            VaultAllFoldersPage(actions: actions)
-                        } else {
-                            VaultLibraryPage(folderID: route.id, actions: actions)
-                        }
-                    }
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
-                }
-                .task { await model.load() }
+            routedContent
                 // Ayla pointed to one item: open it once the vault is there.
                 .onChange(of: model.itemToOpen, initial: true) { openRequestedItem() }
                 .onChange(of: model.state) { openRequestedItem() }

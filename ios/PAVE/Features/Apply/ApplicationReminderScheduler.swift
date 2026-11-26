@@ -22,8 +22,8 @@ enum ApplicationReminderScheduler {
             guard status == .authorized || status == .provisional else { return }
             for reminder in ApplicationReminders.plan(drafts, now: now) {
                 let content = UNMutableNotificationContent()
-                content.title = ApplyMessages.reminderTitle(reminder.kind)
-                content.body = ApplyMessages.reminderBody(reminder)
+                content.title = ApplyMessages.reminderTitle(reminder.kind).translated
+                content.body = ApplyMessages.reminderBody(reminder).translated
                 content.sound = .default
                 content.threadIdentifier = "application"
                 let parts = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: reminder.date)
