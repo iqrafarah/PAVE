@@ -46,7 +46,11 @@ Deno.serve(async (req) => {
   if (sessionLevel(token) !== 'aal2') return json({ error: 'insufficient_aal' }, 403)
 
   const request = parseRequest(await req.json().catch(() => null))
-  if (typeof request === 'string') return json({ error: 'invalid_request', detail: request }, 400)
+  if (typeof request === 'string') {
+    // Why a question was refused, so a 400 in the logs says what to fix.
+    console.warn('ayla: refused request:', request)
+    return json({ error: 'invalid_request', detail: request }, 400)
+  }
 
   let conversationId = request.conversationId
   if (conversationId) {

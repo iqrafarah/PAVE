@@ -88,11 +88,14 @@ public struct ShareContent: Codable, Equatable, Sendable {
     public var brief: [String]?
     /// Evidence whose files the recipient may open, with who verified it.
     public var files: [String]?
+    /// Single files of that evidence the recipient may not open: the owner turned them off one by one.
+    public var hiddenFiles: [String]?
 
     public init(
         profile: ShareProfile, cv: CVContent? = nil, letter: LetterContent? = nil, documents: [String: String]? = nil, vacancyID: String? = nil,
-        brief: [String]? = nil, files: [String]? = nil
+        brief: [String]? = nil, files: [String]? = nil, hiddenFiles: [String]? = nil
     ) {
+        self.hiddenFiles = hiddenFiles
         self.profile = profile
         self.cv = cv
         self.letter = letter
@@ -112,6 +115,7 @@ public struct ShareContent: Codable, Equatable, Sendable {
         vacancyID = try? values.decodeIfPresent(String.self, forKey: .vacancyID)
         brief = try? values.decodeIfPresent([String].self, forKey: .brief)
         files = try? values.decodeIfPresent([String].self, forKey: .files)
+        hiddenFiles = try? values.decodeIfPresent([String].self, forKey: .hiddenFiles)
     }
 }
 

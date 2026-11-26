@@ -2,6 +2,8 @@
 import type { MemoryCategory } from './memory.ts'
 
 export const CATEGORIES = ['diplomas', 'certificates', 'badges', 'projects', 'workExperience', 'internships', 'skills', 'feedback', 'reflections', 'other'] as const
+/** At most this many pieces of evidence chosen for one conversation: a whole folder fits, as when sharing. */
+export const MAX_CHOSEN_ITEMS = 100
 export const SCREENS = ['home', 'chat', 'vault', 'vaultItem', 'addEvidence', 'plans', 'vacancies', 'profile', 'settings'] as const
 export const DEVICES = ['watch', 'phone', 'web'] as const
 
@@ -227,7 +229,7 @@ export function parseRequest(body: unknown): AylaRequest | string {
     if (typeof c !== 'object' || c === null || !SCREENS.includes(c.screen as Screen)) return 'context is not valid'
     if (c.itemId !== undefined && typeof c.itemId !== 'string') return 'context is not valid'
     // Several items chosen with the plus button, for the whole conversation.
-    if (c.itemIds !== undefined && (!Array.isArray(c.itemIds) || c.itemIds.length > 10 || !c.itemIds.every((id) => typeof id === 'string' && id.trim()))) return 'context is not valid'
+    if (c.itemIds !== undefined && (!Array.isArray(c.itemIds) || c.itemIds.length > MAX_CHOSEN_ITEMS || !c.itemIds.every((id) => typeof id === 'string' && id.trim()))) return 'context is not valid'
     const itemIds = Array.isArray(c.itemIds) && c.itemIds.length ? (c.itemIds as string[]) : undefined
     // Also with items chosen from the vault: the vacancy is open while those items are what Ayla may use.
     const showsVacancies = c.screen === 'vacancies' || c.screen === 'vault' || c.screen === 'vaultItem'

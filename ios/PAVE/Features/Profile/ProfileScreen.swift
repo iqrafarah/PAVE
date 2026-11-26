@@ -32,13 +32,6 @@ struct ProfileScreen: View {
                 // What you share now on the left; making and keeping profiles on the right where there is room.
                 PaveColumns(minColumnWidth: 330, spacing: 22) {
                     VStack(alignment: .leading, spacing: 22) {
-                        if let invited = model.fairApplications?.first(where: \.awaitsAnswer) {
-                            NavigationLink { FairDayView(model: model) } label: {
-                                ShareLinkRow.label(icon: .iconCalendarDaysSolid, title: SharingMessages.fairInvitedTitle, detail: SharingMessages.fairInvitedBody(invited, employer: FairDay.employerName(slug: invited.employerSlug)))
-                                    .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 14))
-                            }
-                            .buttonStyle(.pave)
-                        }
                         ShareProfileCard { share(.profile) }
                         Text(SharingMessages.intro)
                             .textStyle(.caption)

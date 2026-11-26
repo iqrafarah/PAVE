@@ -18,6 +18,8 @@ struct QuickShareSheet: View {
     let model: SharingModel
     var start: Start = .profile
     var recipientOrganisation: String?
+    /// Opened as the last step of something longer, like an application: its steps show above, this one last.
+    var steps: [String]?
     var onShared: (ProfileShare) -> Void = { _ in }
     var onMoreOptions: (() -> Void)?
     let onDone: () -> Void
@@ -36,11 +38,14 @@ struct QuickShareSheet: View {
     @State private var includesPhoto = true
     @State private var created: ProfileShare?
     @State private var isStopped = false
+    @State private var isStopping = false
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @State private var showsPreview = false
     @State private var showsAllApplications = false
     /// What you changed by hand under "Pas aan"; nil follows the choice above.
     @State private var customItems: Set<String>?
     @State private var customFiles: Set<String>?
+    @State private var customHidden: Set<String>?
     @State private var adjusts = false
 
     /// The order of the applications, fixed when the screen opens: the one it started on first, then the newest. Choosing
@@ -99,6 +104,7 @@ struct QuickShareSheet: View {
         // Every file goes along, unless the selection or "Pas aan" says otherwise.
         let fileIDs = customFiles ?? chosenProfile.map { ShareFiles.of($0, items: vault.items) } ?? ShareFiles.byDefault(vault.items)
         let files = vault.items.filter { ids.contains($0.id) && fileIDs.contains($0.id) && ShareFiles.hasDocument($0) }.map(\.id)
+        let hidden = ShareFiles.hidden(customHidden ?? chosenProfile?.hiddenFileIDs ?? [], in: vault.items, withFiles: Set(files))
         let content = ShareContent(
             profile: ShareProfile(
                 name: name, headline: headline, email: includesEmail ? profile.profile.email : nil,
@@ -109,7 +115,8 @@ struct QuickShareSheet: View {
             letter: application != nil && includesLetter ? application?.letter : nil,
             vacancyID: application?.vacancy.id,
             brief: brief.isEmpty ? nil : brief,
-            files: files.isEmpty ? nil : files
+            files: files.isEmpty ? nil : files,
+            hiddenFiles: hidden.isEmpty ? nil : hidden
         )
         let who = recipient.trimmingCharacters(in: .whitespaces)
         let title = application.map { SharingMessages.applicationShareTitle($0.vacancy) }
@@ -137,7 +144,13 @@ struct QuickShareSheet: View {
 
     var body: some View {
         NavigationStack {
-            Group {
+            VStack(spacing: 0) {
+                if let steps, didStart {
+                    PaveStepper(steps: steps, current: live == nil ? steps.count - 1 : steps.count)
+                        .frame(maxWidth: 560)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                }
                 if let live {
                     shown(live)
                 } else if didStart {
@@ -282,6 +295,7 @@ struct QuickShareSheet: View {
                 choice = id
                 customItems = nil
                 customFiles = nil
+                customHidden = nil
             }
             if !id.hasPrefix("app:"), !id.hasPrefix("kind:") { lastChoice = id }
         } label: {
@@ -310,6 +324,7 @@ struct QuickShareSheet: View {
         return Button {
             customItems = customItems ?? Set(draft.itemIDs)
             customFiles = customFiles ?? Set(draft.content.files ?? [])
+            customHidden = customHidden ?? Set(draft.content.hiddenFiles ?? [])
             adjusts = true
         } label: {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -338,7 +353,8 @@ struct QuickShareSheet: View {
                         ShareComposerItems(
                             items: vault.items, template: draft.template,
                             chosen: Binding(get: { customItems ?? [] }, set: { customItems = $0 }),
-                            files: Binding(get: { customFiles ?? [] }, set: { customFiles = $0 })
+                            files: Binding(get: { customFiles ?? [] }, set: { customFiles = $0 }),
+                            hidden: Binding(get: { customHidden ?? [] }, set: { customHidden = $0 })
                         )
                     }
                     .padding(20)
@@ -461,7 +477,7 @@ struct QuickShareSheet: View {
                 if isStopped {
                     stopped
                 } else {
-                    ShareCodeCard(model: model, share: share)
+                    ShareCodeCard(model: model, share: share, showsCode: !isStopping)
                     QuickShareLookStatus(share: share)
                     Text(SharingMessages.quickShareEnds(share.expiresAt))
                         .textStyle(.caption)
@@ -469,10 +485,14 @@ struct QuickShareSheet: View {
                         .multilineTextAlignment(.center)
                     Button(SharingMessages.quickShareStop, role: .destructive) {
                         Task {
+                            isStopping = true
                             await model.revoke(share)
                             ShareWatchBridge.clear(share.id)
                             PaveHaptics.success()
+                            // The code falls apart into Ayla's blocks first: you see it stop working.
+                            try? await Task.sleep(for: .milliseconds(reduceMotion ? 0 : 650))
                             withAnimation(.easeOut(duration: 0.2)) { isStopped = true }
+                            isStopping = false
                         }
                     }
                     .textStyle(.link)

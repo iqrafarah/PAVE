@@ -97,7 +97,9 @@ enum ApplyMessages {
 
     // Going back, stopping and sharing
     static let backToApplication = "Terug naar je sollicitatie"
-    static let steps = ["Ontwerp", "Inhoud", "Schrijven"]
+    static let steps = ["Ontwerp", "Inhoud", "Schrijven", "Delen"]
+    /// Above the editor, where the steps themselves do not fit: for whom you write and where you are.
+    static func writingStep(_ vacancy: Vacancy) -> String { "\(title(vacancy)) · stap 3 van 4: schrijven" }
     static let saved = "Bewaard op dit toestel"
 
     // The demo invitation after applying

@@ -14,6 +14,8 @@ public struct SavedProfile: Identifiable, Equatable, Sendable {
     public var includesEmail: Bool
     /// Evidence whose files go along, so the recipient can open the diploma itself.
     public var fileIDs: Set<String>
+    /// Single files (not evidence) that stay behind although their evidence takes its files along.
+    public var hiddenFileIDs: Set<String>
     /// A few sentences about you, on top of what you share.
     public var summary: String
     /// How long a share of this selection lasts; nil keeps what fits the recipient.
@@ -24,8 +26,10 @@ public struct SavedProfile: Identifiable, Equatable, Sendable {
 
     public init(
         id: String = "", name: String, template: ShareTemplate, itemIDs: [String] = [], briefIDs: Set<String> = [], headline: String = "",
-        includesEmail: Bool = true, fileIDs: Set<String> = [], summary: String = "", duration: ShareDuration? = nil, updatedAt: Date = .now
+        includesEmail: Bool = true, fileIDs: Set<String> = [], hiddenFileIDs: Set<String> = [], summary: String = "", duration: ShareDuration? = nil,
+        updatedAt: Date = .now
     ) {
+        self.hiddenFileIDs = hiddenFileIDs
         self.id = id
         self.name = name
         self.template = template
@@ -75,6 +79,22 @@ extension ShareTemplate {
 /// Which evidence takes its files along when you share: every piece that has a document, unless you turn it off.
 public enum ShareFiles {
     public static func hasDocument(_ item: VaultItem) -> Bool { item.files.contains { $0.role == .document } }
+
+    /// The documents of a piece of evidence; never its cover or logo image.
+    public static func documents(of item: VaultItem) -> [VaultItem.File] { item.files.filter { $0.role == .document } }
+
+    /// The documents a recipient may open: all of them, minus the ones turned off one by one.
+    public static func documents(of item: VaultItem, hidden: Set<String>) -> [VaultItem.File] {
+        documents(of: item).filter { !hidden.contains($0.id) }
+    }
+
+    /// Whether anything of this evidence is left to open.
+    public static func sharesDocument(_ item: VaultItem, hidden: Set<String>) -> Bool { !documents(of: item, hidden: hidden).isEmpty }
+
+    /// Hidden files that still mean something: of evidence that is shared with its files.
+    public static func hidden(_ hidden: Set<String>, in items: [VaultItem], withFiles: Set<String>) -> [String] {
+        items.filter { withFiles.contains($0.id) }.flatMap { documents(of: $0) }.map(\.id).filter(hidden.contains)
+    }
 
     public static func byDefault(_ items: [VaultItem]) -> Set<String> {
         Set(items.filter { $0.status != .rejected && hasDocument($0) }.map(\.id))

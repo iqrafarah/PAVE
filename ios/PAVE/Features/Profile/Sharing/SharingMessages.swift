@@ -129,6 +129,27 @@ enum SharingMessages {
         "Je kaartje blijft in PAVE. \(employer) doet niet echt mee: in de demo bekijkt een medespeler het als werkgever."
     }
     static let quickApplySend = "Laat je kaartje achter"
+    static let quickApplyAlso = "Wat ze verder mogen zien"
+    static let quickApplyProfile = "Je profiel met bewijs"
+    static func quickApplyProfileHint(_ count: Int) -> String {
+        count == 0
+            ? "Je kluis is nog leeg, dus er is geen profiel om te laten zien."
+            : "Ze kunnen je \(count == 1 ? "bewijsstuk" : "\(count) bewijsstukken") en de bestanden inzien, twee weken lang. Stoppen kan altijd bij Profiel."
+    }
+    static func quickApplyShareTitle(_ employer: String) -> String { "Kaartje bij \(employer)" }
+    static let inboxOpenProfile = "Bekijk profiel"
+    static let notificationsFair = "Van de beurs"
+    static let fairDetailTitle = "Sollicitatie van de beurs"
+    static let fairDetailInvitation = "Uitnodiging"
+    static let fairDetailLeft = "Wat je achterliet"
+    static let fairDetailPitch = "Je pitch"
+    static let fairDetailWithProfile = "Meegestuurd. Stoppen kan bij Profiel, onder wat je deelt."
+    static let fairDetailNoProfile = "Niet meegestuurd."
+    static func fairDetailFooter(_ date: Date) -> String {
+        "Achtergelaten op \(date.formatted(.dateTime.day().month(.wide).locale(Locale(identifier: "nl_NL")))). Alles van je beursdag staat bij Profiel › Mijn beursdag."
+    }
+    static let fairDetailGone = "Niet meer gevonden"
+    static let fairDetailGoneHint = "Deze sollicitatie staat niet meer in je lijst."
     static let quickApplyNeedsName = "Vul je naam in."
     static let quickApplyNeedsWhy = "Schrijf kort waarom je hier wilt werken, of spreek het in."
     static let fairVacancies = "Vacatures"
@@ -140,6 +161,13 @@ enum SharingMessages {
     static let availability = "Wanneer kun je werken"
     static let maxHours = "Hoeveel uur per week, hoogstens"
     static func hours(_ value: Int) -> String { "\(value) uur" }
+    /// What you chose, said back in one line under the cells.
+    static func availabilitySummary(_ availability: Availability) -> String {
+        if availability.isEmpty { return "Tik op de dagen dat je kunt en kies hoeveel uur." }
+        let days = availability.days.count == 7 ? "Alle dagen" : availability.days.map { $0.rawValue }.joined(separator: ", ")
+        let hours = availability.maxHours.map { "hoogstens \($0) uur per week" }
+        return [days.isEmpty ? nil : days.prefix(1).uppercased() + days.dropFirst(), hours].compactMap(\.self).joined(separator: " · ")
+    }
     static func day(_ day: Availability.Day) -> String {
         switch day {
         case .maandag: "ma"
@@ -182,6 +210,7 @@ enum SharingMessages {
     static let toVault = "Naar je kluis"
     static let more = "Meer"
     static func withFile(_ count: Int) -> String { count > 1 ? "Met de \(count) bestanden" : "Met bestand" }
+    static func fileGoes(_ name: String) -> String { "Bestand \(name) meesturen" }
     static func filesGoing(_ names: [String]) -> String { "Bestanden die ze kunnen openen: \(names.joined(separator: ", "))" }
     static let checkFiles = "Bestanden"
     static func applicationOption(_ title: String) -> String { "\(title) · cv en brief" }

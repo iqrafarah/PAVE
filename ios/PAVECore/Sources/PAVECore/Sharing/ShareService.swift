@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 public enum ShareError: Error, Equatable, Sendable {
     case notSignedIn, noConnection, notSetUp, unavailable
@@ -39,6 +40,8 @@ extension ShareService {
 }
 
 public final class SupabaseShareService: ShareService, @unchecked Sendable {
+    /// Whether `share_profiles.hidden_file_ids` exists: seen in a row that was read.
+    private let hasHiddenFiles = OSAllocatedUnfairLock(initialState: false)
     public static let bucket = "profile-shares"
 
     private let restURL: URL
@@ -181,11 +184,12 @@ public final class SupabaseShareService: ShareService, @unchecked Sendable {
     public func savedProfiles() async throws -> [SavedProfile] {
         let data = try await send(try await request(restURL.appending(path: "share_profiles"), query: [("select", "*"), ("order", "updated_at.desc"), ("limit", "50")]))
         guard let rows = try? Self.decoder.decode([ProfileRow].self, from: data) else { throw ShareError.unavailable }
+        if rows.contains(where: { $0.hidden_file_ids != nil }) { hasHiddenFiles.withLock { $0 = true } }
         return rows.compactMap(\.profile)
     }
 
     public func save(_ profile: SavedProfile) async throws -> SavedProfile {
-        let row: [String: Any] = [
+        var row: [String: Any] = [
             "name": profile.name.trimmingCharacters(in: .whitespaces),
             "template": profile.template.rawValue,
             "item_ids": profile.itemIDs,
@@ -197,6 +201,8 @@ public final class SupabaseShareService: ShareService, @unchecked Sendable {
                 ? NSNull() : String(profile.summary.trimmingCharacters(in: .whitespacesAndNewlines).prefix(SavedProfile.summaryLimit)),
             "duration_days": profile.duration.map(\.days) ?? NSNull(),
         ]
+        // Left out until the column is known to be there, so saving keeps working before migration 20261126130000.
+        if !profile.hiddenFileIDs.isEmpty || hasHiddenFiles.withLock({ $0 }) { row["hidden_file_ids"] = Array(profile.hiddenFileIDs).sorted() }
         let isNew = profile.id.isEmpty
         var urlRequest = try await request(
             restURL.appending(path: "share_profiles"), query: isNew ? [("select", "*")] : [("select", "*"), ("id", "eq.\(profile.id)")],
@@ -221,6 +227,7 @@ public final class SupabaseShareService: ShareService, @unchecked Sendable {
         let headline: String?
         let includes_email: Bool?
         let file_ids: [String]?
+        let hidden_file_ids: [String]?
         let summary: String?
         let duration_days: Int?
         let updated_at: Date
@@ -229,7 +236,7 @@ public final class SupabaseShareService: ShareService, @unchecked Sendable {
             guard let template = ShareTemplate(rawValue: template) else { return nil }
             return SavedProfile(
                 id: id, name: name, template: template, itemIDs: item_ids, briefIDs: Set(brief_ids ?? []), headline: headline ?? "",
-                includesEmail: includes_email ?? true, fileIDs: Set(file_ids ?? []), summary: summary ?? "",
+                includesEmail: includes_email ?? true, fileIDs: Set(file_ids ?? []), hiddenFileIDs: Set(hidden_file_ids ?? []), summary: summary ?? "",
                 duration: duration_days.flatMap(ShareDuration.init(days:)), updatedAt: updated_at
             )
         }

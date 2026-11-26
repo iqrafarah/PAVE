@@ -1,6 +1,9 @@
 import Foundation
 
 public struct AylaRequest: Codable, Equatable, Sendable {
+    /// At most this many pieces of evidence chosen for one conversation, as the ayla function accepts (MAX_CHOSEN_ITEMS).
+    public static let maximumChosenItems = 100
+
     public struct Context: Codable, Equatable, Sendable {
         public var screen: AylaScreen
         public var itemId: String?

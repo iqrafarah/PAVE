@@ -496,3 +496,12 @@ Een flow met stappen heeft linksboven een pijl terug naar de vorige stap, en op 
 | Dynamic Bar | Open plan / {n} gesprekken |
 | Tekst bij een nieuw gesprek voor een stap | Help me met de stap "{stap}". |
 | Fout | Je plan kon niet worden bewaard. Probeer het nog eens. |
+| Snel solliciteren, beschikbaarheid | Tik op de dagen dat je kunt en kies hoeveel uur. / {dagen} of Alle dagen, hoogstens {n} uur per week |
+| Snel solliciteren, meedelen | Wat ze verder mogen zien / Je profiel met bewijs / Ze kunnen je {n} bewijsstukken en de bestanden inzien, twee weken lang. Stoppen kan altijd bij Profiel. / Je kluis is nog leeg, dus er is geen profiel om te laten zien. / Kaartje bij {bedrijf} |
+| Postvak werkgever | Bekijk profiel / web: Bekijk profiel en bewijs |
+| Meldingen, beurs | Van de beurs |
+| Werkgever op de beurs, kop in eigen stijl | OGD: > werken bij ogd / Start je ict-carrière_ · Sioux: // engineering / Engineers gezocht · Catharina: Werken in de zorg? · Jumbo: Kom bij Jumbo · Eindhoven: Werk aan je eigen stad (zelfde regels als op de posters) |
+| Sollicitatie, stappen | Ontwerp / Inhoud / Schrijven / Delen (ook boven het overzicht en het deelscherm) / in de editor: Solliciteren bij {bedrijf} · stap 3 van 4: schrijven |
+| Sollicitatie van de beurs (uit de lijst Sollicitaties) | Sollicitatie van de beurs / Uitnodiging / Wat je achterliet / Waarom deze bijbaan / Je pitch / Wanneer kun je werken / Je profiel met bewijs: Meegestuurd. Stoppen kan bij Profiel, onder wat je deelt. of Niet meegestuurd. / Achtergelaten op {datum}. Alles van je beursdag staat bij Profiel › Mijn beursdag. / Niet meer gevonden — Deze sollicitatie staat niet meer in je lijst. |
+| Delen, per bestand | Met de {n} bestanden, daaronder elk bestand met zijn naam en een vinkje (VoiceOver: Bestand {naam} meesturen) |
+| Instellingen › Weergave, lettertype | Lettertype / PAVE, Systeem, Rond, Schreef, Leesbaar / Leesbaar is Atkinson Hyperlegible: letters die je minder snel door elkaar haalt. Je keuze blijft op dit toestel. |

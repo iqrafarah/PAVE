@@ -181,6 +181,7 @@ struct NotificationsScreen: View {
     var onRestore: ((String) async -> Bool)?
     /// Applications with the demo's invitation from the company, kept on this device; they open Mijn sollicitatie.
     var invitations: [ApplicationDraft] = []
+    @Environment(SharingModel.self) private var sharing: SharingModel?
     var onOpenApplication: ((Vacancy) -> Void)?
 
     @State private var searchText = ""
@@ -288,6 +289,7 @@ struct NotificationsScreen: View {
                 .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
+                if let sharing, searchText.isEmpty, tab != .evidence { NotificationFairSection(sharing: sharing) }
                 if let email, searchText.isEmpty, tab != .evidence, !email.pinnedThreads.isEmpty {
                     EmailPinnedGrid(threads: email.pinnedThreads) { openedEmailThreadID = $0 } onUnpin: { id in
                         PaveHaptics.selection()

@@ -17,6 +17,9 @@ struct QuickApplySheet: View {
     @State private var card = FairApplicationCard(name: "")
     @State private var isWriting = false
     @State private var aylaFailed = false
+    /// The employer may open your profile with its evidence, as a share you can stop.
+    @State private var sharesProfile = true
+    @State private var includesPhoto = true
     @State private var isSending = false
     @State private var sent: FairApplication?
     @State private var dictation = SpeechDictation()
@@ -87,6 +90,22 @@ struct QuickApplySheet: View {
                         .background(Color.panel, in: .rect(cornerRadius: 14))
                 }
                 QuickApplyAvailability(availability: $card.availability)
+                SharePanel(title: SharingMessages.quickApplyAlso) {
+                    if profile.avatar != nil {
+                        Toggle(SharingMessages.photo, isOn: $includesPhoto).tint(.paveAccentFill).textStyle(.bodyMedium).padding(14)
+                        ShareRowDivider(inset: 14)
+                    }
+                    Toggle(isOn: $sharesProfile) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(SharingMessages.quickApplyProfile).textStyle(.bodyMedium).foregroundStyle(Color.ink)
+                            Text(SharingMessages.quickApplyProfileHint(shareable.count)).textStyle(.caption).foregroundStyle(Color.inkMuted)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .tint(.paveAccentFill)
+                    .padding(14)
+                    .disabled(shareable.isEmpty)
+                }
                 VStack(alignment: .leading, spacing: 8) {
                     Text(SharingMessages.quickApplyPitch).textStyle(.bodyMedium).foregroundStyle(Color.inkMuted).padding(.leading, 8)
                     VStack(alignment: .leading, spacing: 10) {
@@ -126,9 +145,12 @@ struct QuickApplySheet: View {
                 PavePrimaryButton(title: SharingMessages.quickApplySend, loadingTitle: SharingMessages.sharing, isLoading: isSending) { send() }
                     .disabled(card.problem != nil || isSending)
             }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 12)
-                .background(Color.canvas)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            // As wide as the form above it, also on an open Duo or iPad.
+            .frame(maxWidth: 640)
+            .frame(maxWidth: .infinity)
+            .background(Color.canvas)
         }
         .interactiveDismissDisabled(sent == nil && (!card.why.isEmpty || !card.pitch.isEmpty))
         .onDisappear { model.problem = nil }
@@ -140,6 +162,30 @@ struct QuickApplySheet: View {
         case .noWhy: SharingMessages.quickApplyNeedsWhy
         case nil: nil
         }
+    }
+
+    private var shareable: [VaultItem] { vault.items.filter { $0.status != .rejected && $0.archivedAt == nil } }
+
+    /// Your profile for this employer: your fair selection when you made one, else all your evidence briefly, with
+    /// its files, for two weeks.
+    private var profileDraft: ShareDraft {
+        let selection = model.profiles?.first { $0.template == .fair }
+        let ids = selection.map { kept in vault.items.map(\.id).filter(kept.itemIDs.contains) } ?? shareable.map(\.id)
+        let fileIDs = selection.map { ShareFiles.of($0, items: vault.items) } ?? ShareFiles.byDefault(vault.items)
+        let files = vault.items.filter { ids.contains($0.id) && fileIDs.contains($0.id) && ShareFiles.hasDocument($0) }.map(\.id)
+        let brief = selection?.brief ?? ids
+        return ShareDraft(
+            title: SharingMessages.quickApplyShareTitle(employer.name), recipientName: employer.name, template: .fair, itemIDs: ids,
+            content: ShareContent(
+                profile: ShareProfile(
+                    name: card.name, headline: card.headline.nilIfEmpty, summary: card.why.nilIfEmpty,
+                    showsPhoto: includesPhoto && profile.avatar != nil ? true : nil
+                ),
+                brief: brief.isEmpty ? nil : brief, files: files.isEmpty ? nil : files,
+                hiddenFiles: ShareFiles.hidden(selection?.hiddenFileIDs ?? [], in: vault.items, withFiles: Set(files)).nilIfEmpty
+            ),
+            duration: .twoWeeks
+        )
     }
 
     private func labelled(_ title: String, @ViewBuilder field: () -> some View) -> some View {
@@ -193,6 +239,12 @@ struct QuickApplySheet: View {
             if authenticator.kind != nil, !(await authenticator.authenticate(reason: SharingMessages.biometricReason(employer.name))) {
                 isSending = false
                 return
+            }
+            var card = card
+            card.showsPhoto = includesPhoto && profile.avatar != nil ? true : nil
+            // The profile goes first, so the card can carry its code; without it the card still goes.
+            if sharesProfile, profileDraft.problem == nil, let share = await model.create(profileDraft, application: nil, photo: nil) {
+                card.profileCode = share.code
             }
             let kept = await model.apply(card, employer: employer, vacancy: vacancy)
             isSending = false

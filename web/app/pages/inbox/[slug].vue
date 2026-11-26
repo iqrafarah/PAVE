@@ -57,15 +57,27 @@ onBeforeUnmount(() => clearInterval(timer));
       </section>
       <LayoutEmptyState v-if="!inbox.applications.length" icon="briefcase" title="Nog niemand" message="Laat iemand de poster of de stand scannen en snel solliciteren." />
       <article v-for="application in inbox.applications" :key="application.id" class="flex flex-col gap-2 rounded-2xl border border-card-border bg-panel p-5">
-        <div>
-          <h2 class="text-lg font-semibold text-ink">{{ application.name || 'Sollicitant' }}</h2>
-          <p class="text-sm text-subtle">{{ [application.headline, application.vacancyTitle].filter(Boolean).join(' · ') }}</p>
+        <div class="flex items-center gap-3">
+          <img v-if="application.photo" :src="application.photo" alt="" width="48" height="48" class="size-12 shrink-0 rounded-full object-cover" />
+          <div v-else class="flex size-12 shrink-0 items-center justify-center rounded-full bg-tint text-brand" aria-hidden="true">
+            <LayoutPaveIcon name="person" class="size-6" />
+          </div>
+          <div class="min-w-0">
+            <h2 class="text-lg font-semibold text-ink break-words">{{ application.name || 'Sollicitant' }}</h2>
+            <p class="text-sm text-subtle">{{ [application.headline, application.vacancyTitle].filter(Boolean).join(' · ') }}</p>
+          </div>
         </div>
         <p v-if="application.why" class="text-base text-ink">{{ application.why }}</p>
         <p v-if="application.pitch" class="text-sm italic text-subtle">“{{ application.pitch }}”</p>
         <p v-if="application.availability.days.length || application.availability.maxHours" class="text-sm text-subtle">
           Kan op {{ application.availability.days.map((day) => days[day] ?? day).join(', ') }}<template v-if="application.availability.maxHours"> · max. {{ application.availability.maxHours }} uur</template>
         </p>
+        <NuxtLink
+          v-if="application.profileCode"
+          :to="`/gedeeld/${application.profileCode}`"
+          target="_blank"
+          class="self-start rounded-full border border-brand px-4 py-2 text-sm font-semibold text-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand"
+        >Bekijk profiel en bewijs</NuxtLink>
         <p v-if="application.status === 'invited' && application.answer === 'accepted'" class="font-semibold text-brand">Komt op {{ when(application.invitedFor) }}</p>
         <p v-else-if="application.status === 'invited' && application.answer === 'declined'" class="font-semibold text-subtle">Kan niet op dat moment</p>
         <p v-else-if="application.status === 'invited'" class="text-sm text-subtle">Uitgenodigd voor {{ when(application.invitedFor) }}, wacht op antwoord</p>

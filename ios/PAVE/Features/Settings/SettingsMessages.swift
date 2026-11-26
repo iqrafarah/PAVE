@@ -25,6 +25,17 @@ enum SettingsMessages {
     static let vaultLayout = "Weergave kluis"
     static let vaultLayoutHint = "Zo opent je kluis. In de kluis kun je even wisselen; de volgende keer opent hij weer zo."
     static let textSize = "Tekstgrootte"
+    static let fontStyle = "Lettertype"
+    static let fontStyleHint = "Leesbaar is Atkinson Hyperlegible: letters die je minder snel door elkaar haalt. Je keuze blijft op dit toestel."
+    static func title(_ style: PaveFontStyle) -> String {
+        switch style {
+        case .pave: "PAVE"
+        case .system: "Systeem"
+        case .rounded: "Rond"
+        case .serif: "Schreef"
+        case .readable: "Leesbaar"
+        }
+    }
     static let animationsOff = "Animaties uitzetten"
     static let animationsOffHint = "Alles in PAVE blijft stil staan: geen bewegende overgangen, laders of golven. Geldt alleen op dit apparaat."
     static let onThisDeviceOnly = "Je keuzes gelden nu alleen op dit toestel. Zodra PAVE er klaar voor is, gelden ze voor je hele account."

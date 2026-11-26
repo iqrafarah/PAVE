@@ -212,7 +212,9 @@ test('items chosen with the plus button are the context, and consent, for the co
   assert.match(fake.calls[0][0].content, /koos deze items uit de kluis voor dit gesprek: 1 \(Eindstage\), 2 \(/)
   assert.match(fake.calls[0][0].content, /1 gekozen item mag je niet zien/)
   assert.equal(reply.accessRequest, undefined)
-  assert.equal(typeof parseRequest({ ...request, context: { screen: 'vault', itemIds: Array(11).fill('x') } }), 'string')
+  assert.equal(typeof parseRequest({ ...request, context: { screen: 'vault', itemIds: Array(101).fill('x') } }), 'string')
+  // A whole folder fits: up to a hundred chosen pieces of evidence.
+  assert.notEqual(typeof parseRequest({ ...request, context: { screen: 'vault', itemIds: Array(100).fill('x') } }), 'string')
 })
 
 test('a stored question for the vault goes into the history, so the model knows what Ja answers', () => {

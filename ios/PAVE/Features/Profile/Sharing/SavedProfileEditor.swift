@@ -12,6 +12,7 @@ struct SavedProfileEditor: View {
     @State private var chosen: Set<String>
     @State private var brief: Set<String>
     @State private var files: Set<String>
+    @State private var hidden: Set<String>
     @State private var isSaving = false
     @State private var confirmsDelete = false
     private let isNew: Bool
@@ -26,6 +27,7 @@ struct SavedProfileEditor: View {
         _chosen = State(initialValue: Set(profile.itemIDs))
         _brief = State(initialValue: profile.briefIDs)
         _files = State(initialValue: profile.fileIDs)
+        _hidden = State(initialValue: profile.hiddenFileIDs)
     }
 
     /// In the order of the vault, so the recipient sees it as you keep it.
@@ -34,6 +36,7 @@ struct SavedProfileEditor: View {
         kept.itemIDs = vault.items.map(\.id).filter(chosen.contains)
         kept.briefIDs = brief.intersection(chosen)
         kept.fileIDs = files.intersection(chosen)
+        kept.hiddenFileIDs = Set(ShareFiles.hidden(hidden, in: vault.items, withFiles: kept.fileIDs))
         return kept
     }
 
@@ -104,7 +107,7 @@ struct SavedProfileEditor: View {
                         .foregroundStyle(Color.inkMuted)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, -12)
-                    ShareComposerItems(items: vault.items, template: profile.template, chosen: $chosen, brief: $brief, files: $files)
+                    ShareComposerItems(items: vault.items, template: profile.template, chosen: $chosen, brief: $brief, files: $files, hidden: $hidden)
                 }
                 .padding(20)
                 .frame(maxWidth: 640)
@@ -152,7 +155,7 @@ struct SavedProfileEditor: View {
                 Text(SharingMessages.deleteProfileHint)
             }
         }
-        .interactiveDismissDisabled(profile != original || chosen != Set(original.itemIDs) || brief != original.briefIDs || files != original.fileIDs)
+        .interactiveDismissDisabled(profile != original || chosen != Set(original.itemIDs) || brief != original.briefIDs || files != original.fileIDs || hidden != original.hiddenFileIDs)
         .onDisappear { model.problem = nil }
     }
 

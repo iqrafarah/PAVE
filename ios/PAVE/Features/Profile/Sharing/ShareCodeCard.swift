@@ -5,6 +5,8 @@ import SwiftUI
 struct ShareCodeCard: View {
     let model: SharingModel
     let share: ProfileShare
+    /// False lets the code flow back into Ayla's orb, just before it is taken away.
+    var showsCode = true
 
     @State private var copied = false
     @State private var onWatch = false
@@ -12,7 +14,7 @@ struct ShareCodeCard: View {
     var body: some View {
         VStack(spacing: 14) {
             if let url = model.link(for: share) {
-                ShareQRCode(url: url)
+                ShareQRCode(url: url, isShown: showsCode)
                     .frame(maxWidth: 240)
                 Text(url.absoluteString)
                     .textStyle(.caption)

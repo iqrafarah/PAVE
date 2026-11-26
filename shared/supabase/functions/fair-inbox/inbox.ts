@@ -14,6 +14,7 @@ export interface InboxRequest {
 
 export interface ApplicationRow {
   id: string
+  user_id?: string
   employer_slug: string
   vacancy_id: string
   vacancy_title: string
@@ -58,8 +59,24 @@ export function sameHash(a: string, b: string): boolean {
   return difference === 0
 }
 
-/** What the employer sees of one application: the card the applicant left, never their account. */
-export function inboxView(row: ApplicationRow) {
+/** The applicant's own profile photo, only when the card says to show it and the path is theirs. */
+export function photoPath(row: ApplicationRow, avatarPath: string | null | undefined): string | undefined {
+  if (row.card?.showsPhoto !== true || !row.user_id || !avatarPath) return undefined
+  if (!avatarPath.startsWith(`${row.user_id}/`) || avatarPath.includes('..')) return undefined
+  return avatarPath
+}
+
+/** The code of the profile the applicant shared along with the card, when it looks like one. */
+export function profileCode(row: ApplicationRow): string | undefined {
+  const code = row.card?.profileCode
+  return typeof code === 'string' && /^[0-9a-f]{32}$/.test(code) ? code : undefined
+}
+
+/**
+ * What the employer sees of one application: the card the applicant left, their photo and a link to their shared
+ * profile when they chose to give those; never their account.
+ */
+export function inboxView(row: ApplicationRow, photo?: string) {
   const card = row.card ?? {}
   const text = (value: unknown, max: number) => typeof value === 'string' ? value.slice(0, max) : undefined
   const availability = (card.availability ?? {}) as Record<string, unknown>
@@ -75,6 +92,8 @@ export function inboxView(row: ApplicationRow) {
       days: Array.isArray(availability.days) ? availability.days.filter((day) => typeof day === 'string').slice(0, 7) : [],
       maxHours: typeof availability.maxHours === 'number' ? availability.maxHours : undefined,
     },
+    photo,
+    profileCode: profileCode(row),
     status: row.status,
     invitedFor: row.invited_for ?? undefined,
     answer: row.answer ?? undefined,

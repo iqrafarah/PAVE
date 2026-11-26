@@ -5,6 +5,7 @@ definePageMeta({ layout: 'public' });
 const slug = String(useRoute().params.slug ?? '');
 const { data: employers, error } = await useAsyncData(`fair-${slug}`, () => loadFairEmployers(slug), { server: false });
 const employer = computed(() => employers.value?.[0]);
+const brand = computed(() => fairBrand(slug));
 useHead(() => ({ title: employer.value ? `${employer.value.name} · PAVE` : 'Werkgever · PAVE' }));
 const addedOn = computed(() => employer.value?.created_at
   ? new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(employer.value.created_at))
@@ -21,7 +22,11 @@ const addedOn = computed(() => employer.value?.created_at
       <p v-else class="rounded-2xl bg-tint p-4 text-sm text-ink">
         Echte vacatures van {{ employer.name }}, opgehaald op {{ addedOn }}. {{ employer.name }} doet niet mee aan PAVE.
       </p>
-      <section class="rounded-2xl border border-card-border bg-panel p-5">
+      <template v-if="brand">
+        <FairBrandHero :brand="brand" :name="employer.name" :city="employer.city" :stand="employer.stand" />
+        <p class="px-1 text-base text-ink">{{ employer.about }}</p>
+      </template>
+      <section v-else class="rounded-2xl border border-card-border bg-panel p-5">
         <h1 class="font-heading text-2xl font-semibold text-heading">{{ employer.name }}</h1>
         <p class="text-sm text-subtle">{{ [employer.city, employer.stand].filter(Boolean).join(' · ') }}</p>
         <p class="mt-3 text-base text-ink">{{ employer.about }}</p>

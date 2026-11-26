@@ -8,12 +8,13 @@ struct ShareRecipientItemDetail: View {
     /// Shared briefly: no description and no skills.
     let isBrief: Bool
     let showsFiles: Bool
+    var hiddenFiles: Set<String> = []
 
     @Environment(\.dismiss) private var dismiss
     @Environment(VaultModel.self) private var vault
     @State private var previewURL: URL?
 
-    private var documents: [VaultItem.File] { showsFiles ? item.files.filter { $0.role == .document } : [] }
+    private var documents: [VaultItem.File] { showsFiles ? ShareFiles.documents(of: item, hidden: hiddenFiles) : [] }
 
     var body: some View {
         NavigationStack {
