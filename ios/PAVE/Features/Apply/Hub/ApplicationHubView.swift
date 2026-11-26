@@ -39,6 +39,7 @@ struct ApplicationHubView: View {
                         ApplicationHubStatus(model: model)
                         let events = ApplicationTimeline.events(tracking: model.tracking, shares: shares ?? [])
                         if !events.isEmpty { ApplicationTimelineView(events: events) }
+                        if let reports = model.shown.practice, !reports.isEmpty { practice(reports) }
                         if hasVacancyText { vacancyText }
                         employer
                         nextSteps
@@ -238,6 +239,41 @@ struct ApplicationHubView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.panel, in: .rect(cornerRadius: 16))
             .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.cardBorder, lineWidth: 1) }
+        }
+    }
+}
+
+extension ApplicationHubView {
+    /// The practice interviews for this vacancy, the newest first; each opens its report.
+    func practice(_ reports: [PracticeReport]) -> some View {
+        SharePanel(title: ApplyMessages.practiceReports) {
+            ForEach(Array(reports.reversed().enumerated()), id: \.element.id) { index, report in
+                NavigationLink {
+                    ScrollView {
+                        PracticeReportView(report: report, vacancy: model.shown.vacancy)
+                            .padding(20)
+                            .frame(maxWidth: 640)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .background(Color.canvas)
+                    .navigationTitle(ApplyMessages.practiceReportTitle)
+                    .navigationBarTitleDisplayMode(.inline)
+                } label: {
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(report.verdict).textStyle(.bodyMedium).foregroundStyle(Color.ink).lineLimit(2).multilineTextAlignment(.leading)
+                            Text(ApplyMessages.practiceReportDate(report.madeAt)).textStyle(.caption).foregroundStyle(Color.inkMuted)
+                        }
+                        Spacer(minLength: 8)
+                        Image(.iconChevronRightSolid).renderingMode(.template).resizable().scaledToFit().frame(width: 10, height: 10)
+                            .foregroundStyle(Color.inkMuted).accessibilityHidden(true)
+                    }
+                    .padding(14)
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.pave)
+                if index < reports.count - 1 { ShareRowDivider(inset: 14) }
+            }
         }
     }
 }

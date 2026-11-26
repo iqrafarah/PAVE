@@ -17,6 +17,8 @@ public struct ApplicationDraft: Codable, Equatable, Sendable, Identifiable {
     public var showsVerified: Bool?
     /// Status, deadline and note of the application; nil until the user sets one.
     public var tracking: ApplicationTracking?
+    /// Reports of practice interviews for this vacancy, the newest last.
+    public var practice: [PracticeReport]?
     public var updatedAt: Date
 
     /// The tracking, or a new one.

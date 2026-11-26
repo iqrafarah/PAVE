@@ -373,6 +373,19 @@ enum ApplyMessages {
     static let removeParagraphQuestion = "Deze alinea verwijderen?"
     static let cancel = "Annuleer"
     static let done = "Klaar"
+    static let practiceReportTitle = "Verslag van je oefengesprek"
+    static func practiceReportFor(_ vacancy: Vacancy) -> String { "Oefengesprek voor \(vacancy.title)\(vacancy.company.isEmpty ? "" : " bij \(vacancy.company)")" }
+    static func practiceReportDate(_ date: Date) -> String { date.formatted(.dateTime.day().month(.wide).hour().minute().locale(Locale(identifier: "nl_NL"))) }
+    static let practiceStrengths = "Wat goed ging"
+    static let practiceImprove = "Wat beter kan"
+    static let practiceExamples = "Zo kun je het zeggen"
+    static let practiceReportWriting = "Ayla schrijft je verslag…"
+    static let practiceReportFailed = "Ayla kon nu geen verslag maken. Probeer het opnieuw."
+    static let practiceKeep = "Bewaar bij je sollicitatie"
+    static let practiceKept = "Bewaard bij je sollicitatie"
+    static let practiceReports = "Oefengesprekken"
+    static let practiceReportReady = "Bekijk verslag"
+    static let practiceDone = "Oefengesprek klaar"
     static let fromVault = "Uit je kluis"
     static let typedByHand = "Zelf toegevoegd"
 

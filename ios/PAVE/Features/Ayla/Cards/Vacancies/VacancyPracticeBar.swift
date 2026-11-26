@@ -5,6 +5,8 @@ import SwiftUI
 struct VacancyPracticeBar: View {
     let vacancy: Vacancy
     let onStop: () -> Void
+    /// The practice ended: the bar offers its report instead of stopping.
+    var onReport: (() -> Void)?
 
     var body: some View {
         HStack(spacing: 8) {
@@ -15,15 +17,15 @@ struct VacancyPracticeBar: View {
                 .paveIconFrame(14)
                 .foregroundStyle(Color.paveAccent)
                 .accessibilityHidden(true)
-            Text(AylaMessages.practiceTitle(vacancy))
+            Text(onReport == nil ? AylaMessages.practiceTitle(vacancy) : ApplyMessages.practiceDone)
                 .textStyle(.caption)
                 .foregroundStyle(Color.ink)
                 .lineLimit(1)
-            Button(AylaMessages.practiceStop, action: onStop)
+            Button(onReport == nil ? AylaMessages.practiceStop : ApplyMessages.practiceReportReady, action: onReport ?? onStop)
                 .textStyle(.label)
                 .foregroundStyle(Color.paveAccent)
                 .padding(.horizontal, 10)
-                .frame(minHeight: 36)
+                .frame(minHeight: 44)
                 .contentShape(.rect)
                 .buttonStyle(.pave)
         }

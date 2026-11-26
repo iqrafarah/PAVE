@@ -123,6 +123,8 @@ struct AylaChatScreen: View {
     @State private var confirmationItem: VaultItem?
     /// The talk Ayla puts in your calendar; you save it yourself in the sheet.
     @State private var calendarTalk: FairApplication?
+    @State private var practiceReport: PracticeReportRequest?
+    @State private var reportVacancy: Vacancy?
     /// Making a CV and a letter for a vacancy ("Solliciteren").
     @State private var application: ApplicationStudioModel?
     /// The application a task came from, offered at the top until the user goes back or moves on.
@@ -427,6 +429,14 @@ struct AylaChatScreen: View {
             guard !items.isEmpty, let itemID = photoTargetID else { return }
             itemPhotoItems = []
             Task { await addItemPhotos(items, to: itemID) }
+        }
+        .sheet(isPresented: Binding(get: { practiceReport != nil }, set: { if !$0 { practiceReport = nil } })) {
+            if let request = practiceReport, let vacancy = reportVacancy {
+                PracticeReportSheet(vacancy: vacancy, request: request, service: model.service, name: model.firstName, items: vault?.items ?? []) {
+                    practiceReport = nil
+                    model.forgetFinishedPractice()
+                }
+            }
         }
         .sheet(item: $calendarTalk) { application in
             if let moment = application.invitedFor {
@@ -1820,8 +1830,14 @@ struct AylaChatScreen: View {
     }
 
     private var practiceBar: VacancyPracticeBar? {
-        guard let practice = model.practice else { return nil }
-        return VacancyPracticeBar(vacancy: practice, onStop: stopPractice)
+        if let practice = model.practice { return VacancyPracticeBar(vacancy: practice, onStop: stopPractice) }
+        // Ended, and Ayla said her last word: the report is one tap away.
+        guard let finished = model.finishedPractice, !model.isAnswering else { return nil }
+        return VacancyPracticeBar(vacancy: finished.vacancy, onStop: {}) {
+            if isTalking { stopVoice() }
+            practiceReport = PracticeReportRequest(vacancy: finished.vacancy, turns: model.finishedPracticeTurns(), items: vault?.items ?? [])
+            reportVacancy = finished.vacancy
+        }
     }
 
     /// A button on a vacancy: the question goes in the chat as yours, and Ayla answers it, out loud while talking.
