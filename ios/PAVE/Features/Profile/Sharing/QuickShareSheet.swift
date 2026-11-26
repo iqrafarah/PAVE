@@ -43,14 +43,17 @@ struct QuickShareSheet: View {
     @State private var customFiles: Set<String>?
     @State private var adjusts = false
 
-    /// The chosen application first, then the newest; three until you ask for all.
+    /// The order of the applications, fixed when the screen opens: the one it started on first, then the newest. Choosing
+    /// one never moves the rows under your finger.
+    @State private var applicationOrder: [String] = []
+
+    /// Three until you ask for all.
     private var shownApplications: [ApplicationDraft] {
-        let sorted = model.applications.sorted { a, b in
-            if "app:\(a.vacancy.id)" == choice { return true }
-            if "app:\(b.vacancy.id)" == choice { return false }
-            return a.updatedAt > b.updatedAt
-        }
-        return showsAllApplications ? sorted : Array(sorted.prefix(3))
+        let byID = Dictionary(model.applications.map { ($0.vacancy.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let ordered = applicationOrder.compactMap { byID[$0] }
+        let rest = model.applications.filter { !applicationOrder.contains($0.vacancy.id) }.sorted { $0.updatedAt > $1.updatedAt }
+        let all = ordered + rest
+        return showsAllApplications ? all : Array(all.prefix(3))
     }
 
     private static let durations: [ShareDuration] = ShareDuration.allCases
@@ -135,7 +138,14 @@ struct QuickShareSheet: View {
     var body: some View {
         NavigationStack {
             Group {
-                if let live { shown(live) } else { choosing }
+                if let live {
+                    shown(live)
+                } else if didStart {
+                    choosing
+                } else {
+                    // A moment while the vault loads and the choice of last time is set, so nothing jumps.
+                    ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity).task { await prepare() }
+                }
             }
             .background(Color.canvas)
             .navigationTitle(start == .profile ? SharingMessages.quickShare : SharingMessages.shareProfile)
@@ -196,6 +206,7 @@ struct QuickShareSheet: View {
                         ShareRowDivider(inset: 14)
                         Toggle(ApplyMessages.letter, isOn: $includesLetter).tint(.paveAccentFill).textStyle(.bodyMedium).padding(14)
                     }
+                    .transition(.opacity)
                 }
                 SharePanel(title: SharingMessages.quickShareWho) {
                     TextField("", text: $recipient, prompt: Text(SharingMessages.quickShareWhoPrompt).foregroundStyle(Color.inkMuted))
@@ -256,19 +267,22 @@ struct QuickShareSheet: View {
             .frame(maxWidth: .infinity)
             .background(Color.canvas)
         }
-        .task {
-            if vault.state != .ready { await vault.load() }
-            begin()
-        }
+    }
+
+    private func prepare() async {
+        if vault.state != .ready { await vault.load() }
+        begin()
     }
 
     private func option(title: String, detail: String, icon: ImageResource, id: String) -> some View {
         let isOn = choice == id
         return Button {
             PaveHaptics.selection()
-            choice = id
-            customItems = nil
-            customFiles = nil
+            withAnimation(.snappy(duration: 0.2)) {
+                choice = id
+                customItems = nil
+                customFiles = nil
+            }
             if !id.hasPrefix("app:"), !id.hasPrefix("kind:") { lastChoice = id }
         } label: {
             HStack(spacing: 14) {
@@ -344,7 +358,6 @@ struct QuickShareSheet: View {
     /// Where it starts: what was asked for, or for Snel delen the choice of last time, if it still exists.
     private func begin() {
         guard !didStart else { return }
-        didStart = true
         model.reloadApplications()
         switch start {
         case .profile:
@@ -363,6 +376,12 @@ struct QuickShareSheet: View {
             duration = .twoWeeks
         }
         if let recipientOrganisation, recipient.isEmpty { recipient = recipientOrganisation }
+        let started = choice.hasPrefix("app:") ? [String(choice.dropFirst(4))] : []
+        applicationOrder = started + model.applications
+            .filter { !started.contains($0.vacancy.id) }
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .map(\.vacancy.id)
+        didStart = true
     }
 
     private func durationChip(_ option: ShareDuration) -> some View {
