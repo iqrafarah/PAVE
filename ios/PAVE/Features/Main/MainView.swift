@@ -25,6 +25,7 @@ struct MainView: View {
     @State private var aylaShare: ShareTemplateChoice?
     /// An employer opened from the iPhone's camera, over whatever screen is open.
     @State private var fairEmployer: FairEmployerSlug?
+    @State private var draftSync: ApplicationDraftSyncer?
     /// The employer's inbox of the demo, opened from its key's code.
     @State private var employerInbox: EmployerInboxKey?
     /// Applications whose demo invitation has arrived, for Meldingen and the bell; read again when you move around.
@@ -112,6 +113,8 @@ struct MainView: View {
             while !Task.isCancelled {
                 await notificationsModel.refresh()
                 await sharing.loadFairApplications()
+                if draftSync == nil { draftSync = ApplicationDraftSyncer.make(auth: appState.authService) }
+                if await draftSync?.run() == true { sharing.reloadApplications() }
                 try? await Task.sleep(for: .seconds(30))
             }
         }
@@ -166,6 +169,8 @@ struct MainView: View {
         // A deleted chat that could still be brought back is really deleted when the app goes away.
         .onChange(of: scenePhase) { _, phase in
             if phase == .background {
+                // What was written just now is in the account before the app sleeps, for the next device.
+                Task { await draftSync?.run() }
                 model.commitPendingDeletion()
                 memory.commitPendingForget()
             }

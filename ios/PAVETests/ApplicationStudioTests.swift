@@ -500,3 +500,57 @@ struct ApplicationStudioTests {
         #expect(model.tracking.invitation?.done == [.practise])
     }
 }
+
+@MainActor
+struct ApplicationDraftSyncerTests {
+    private actor FakeService: ApplicationDraftService {
+        var rows: [String: RemoteApplicationDraft] = [:]
+        func set(_ row: RemoteApplicationDraft) { rows[row.id] = row }
+        func all() async throws -> [RemoteApplicationDraft] { Array(rows.values) }
+        func save(_ draft: ApplicationDraft) async throws { rows[draft.id] = RemoteApplicationDraft(id: draft.id, updatedAt: draft.updatedAt, draft: draft) }
+        func delete(id: String, at date: Date) async throws { rows[id] = RemoteApplicationDraft(id: id, updatedAt: date, deletedAt: date, draft: nil) }
+    }
+
+    private func store() -> ApplicationStore {
+        let name = "sync-\(UUID().uuidString)"
+        return ApplicationStore(folder: URL.temporaryDirectory.appending(path: name), defaults: UserDefaults(suiteName: name)!)
+    }
+
+    private func draft(_ id: String, at date: Date = .now) -> ApplicationDraft {
+        ApplicationDraft(vacancy: Vacancy(id: id, title: "Junior", company: "Kade", source: .example), cv: CVContent(name: "Ravi"), letter: LetterContent(), updatedAt: date)
+    }
+
+    @Test func aDraftMadeHereShowsUpOnTheOtherDevice() async {
+        let service = FakeService()
+        let phone = store(), tablet = store()
+        phone.save(draft("a"))
+        await ApplicationDraftSyncer(service: service, store: phone) { "ravi" }.run()
+        let changed = await ApplicationDraftSyncer(service: service, store: tablet) { "ravi" }.run()
+        #expect(changed)
+        #expect(tablet.load("a") != nil)
+    }
+
+    @Test func deletingHereRemovesItOnTheOtherDevice() async {
+        let service = FakeService()
+        let phone = store(), tablet = store()
+        let old = draft("a", at: .now.addingTimeInterval(-3600))
+        phone.save(old)
+        tablet.save(old)
+        await ApplicationDraftSyncer(service: service, store: phone) { "ravi" }.run()
+        phone.delete("a")
+        await ApplicationDraftSyncer(service: service, store: phone) { "ravi" }.run()
+        await ApplicationDraftSyncer(service: service, store: tablet) { "ravi" }.run()
+        #expect(tablet.load("a") == nil)
+        #expect(phone.deletions().isEmpty)
+    }
+
+    @Test func anotherAccountOnThisDeviceGetsNothing() async {
+        let service = FakeService()
+        let phone = store()
+        phone.save(draft("a"))
+        await ApplicationDraftSyncer(service: service, store: phone) { "ravi" }.run()
+        let other = FakeService()
+        await ApplicationDraftSyncer(service: other, store: phone) { "maria" }.run()
+        #expect(await other.rows.isEmpty)
+    }
+}
