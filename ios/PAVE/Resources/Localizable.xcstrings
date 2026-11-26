@@ -694,6 +694,23 @@
         }
       }
     },
+    "%@ kan het daarna niet meer openen. Wat al gedownload is, kan PAVE niet terughalen.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ can't open it after that. PAVE can't get back what has already been downloaded."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ no por habri e mas despues. PAVE no por trese bèk loke a wòrdu bahá kaba."
+          }
+        }
+      }
+    },
     "%@ keer bekeken": {
       "extractionState": "manual",
       "localizations": {
@@ -792,6 +809,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ kòrtiku"
+          }
+        }
+      }
+    },
+    "%@ laten weten dat je komt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Let %@ know you're coming"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laga %@ sa ku bo ta bini"
+          }
+        }
+      }
+    },
+    "%@ laten weten dat je niet kunt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Let %@ know you can't make it"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laga %@ sa ku bo no por"
+          }
+        }
+      }
+    },
+    "%@ leren": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Learn %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siña %@"
           }
         }
       }
@@ -1034,6 +1102,23 @@
         }
       }
     },
+    "%@ stappen afgerond": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ steps completed"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ paso kompletá"
+          }
+        }
+      }
+    },
     "%@ uitnodigen": {
       "extractionState": "manual",
       "localizations": {
@@ -1098,6 +1183,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ vakatura"
+          }
+        }
+      }
+    },
+    "%@ vacatures die je bekeek vragen hierom.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ vacancies you viewed ask for this."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ vakatura ku bo a wak ta pidi esaki."
           }
         }
       }
@@ -1323,6 +1425,23 @@
         }
       }
     },
+    "%@ wil je spreken over %@. Dit bericht is nagespeeld in PAVE.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ would like to talk to you about %@. This message is simulated in PAVE."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ke papia ku bo tokante %@. E mensahe aki ta simulá den PAVE."
+          }
+        }
+      }
+    },
     "%@ wil je spreken over %@. Dit is een demo in PAVE.": {
       "extractionState": "manual",
       "localizations": {
@@ -1336,6 +1455,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ ke papia ku bo tokante %@. Esaki ta un demo den PAVE."
+          }
+        }
+      }
+    },
+    "%@ ziet je kaartje en je profiel in de postbus van de stand, ook zonder vacature.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ sees your card and your profile in the stand's inbox, even without a vacancy."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ta mira bo karchi i bo perfil den e buzon di e stand, tambe sin vakatura."
           }
         }
       }
@@ -1411,6 +1547,23 @@
         }
       }
     },
+    "%@ · antwoord op je iPhone": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · reply on your iPhone"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · kontestá riba bo iPhone"
+          }
+        }
+      }
+    },
     "%@ · cv en brief": {
       "extractionState": "manual",
       "localizations": {
@@ -1441,6 +1594,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ · último %@"
+          }
+        }
+      }
+    },
+    "%@ · stap 3 van 4: schrijven": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · step 3 of 4: writing"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · paso 3 di 4: skirbi"
           }
         }
       }
@@ -2171,6 +2341,23 @@
         }
       }
     },
+    "Aan: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To: %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pa: %@"
+          }
+        }
+      }
+    },
     "Aan: iedereen": {
       "extractionState": "manual",
       "localizations": {
@@ -2252,6 +2439,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kambia"
+          }
+        }
+      }
+    },
+    "Aanpassen of wissen doe je op je iPhone.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You edit or erase it on your iPhone."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bo ta kambia òf kita esaki riba bo iPhone."
           }
         }
       }
@@ -2392,6 +2596,23 @@
         }
       }
     },
+    "Achtergelaten op %@. Alles van je beursdag staat bij Profiel › Mijn beursdag.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Left on %@. Everything from your fair day is in Profile › My fair day."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lagá riba %@. Tur kos di bo dia di feria ta na Perfil › Mi dia di feria."
+          }
+        }
+      }
+    },
     "Achternaam": {
       "extractionState": "manual",
       "localizations": {
@@ -2460,6 +2681,23 @@
         }
       }
     },
+    "Acties": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actions"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Akshonnan"
+          }
+        }
+      }
+    },
     "Acties voor %@": {
       "extractionState": "manual",
       "localizations": {
@@ -2473,6 +2711,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Akshonnan pa %@"
+          }
+        }
+      }
+    },
+    "Adem rustig mee": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Breathe along calmly"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hala rosea trankil"
           }
         }
       }
@@ -2881,6 +3136,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tur persona di kontakto"
+          }
+        }
+      }
+    },
+    "Alle dagen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Every day"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tur dia"
           }
         }
       }
@@ -3357,6 +3629,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Skohe otro organisashon òf sukursal"
+          }
+        }
+      }
+    },
+    "Andere stappen voorstellen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suggest other steps"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugerí otro pasonan"
           }
         }
       }
@@ -3854,6 +4143,23 @@
         }
       }
     },
+    "Ayla denkt na over je stappen…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla is thinking about your steps…"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla ta pensando riba bo pasonan…"
+          }
+        }
+      }
+    },
     "Ayla denkt na…": {
       "extractionState": "manual",
       "localizations": {
@@ -3990,6 +4296,40 @@
         }
       }
     },
+    "Ayla gebruikt de naam en het doel van je plan en de vacature waar het om gaat. %@ Er wordt niets toegevoegd tot jij kiest.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla uses the name and goal of your plan and the vacancy it's about. %@ Nothing is added until you choose."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla ta usa e nòmber i e meta di bo plan i e vakatura ku e ta trata di dje. %@ Nada no ta wòrdu añadí te ora bo skohe."
+          }
+        }
+      }
+    },
+    "Ayla gebruikt de naam en het doel van je plan. %@ Er wordt niets toegevoegd tot jij kiest.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla uses the name and goal of your plan. %@ Nothing is added until you choose."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla ta usa e nòmber i e meta di bo plan. %@ Nada no ta wòrdu añadí te ora bo skohe."
+          }
+        }
+      }
+    },
     "Ayla gebruikt dit in je gesprekken op je iPhone, het web en je Apple Watch.": {
       "extractionState": "manual",
       "localizations": {
@@ -4109,6 +4449,23 @@
         }
       }
     },
+    "Ayla heeft geen nieuwe stappen voor dit plan. Vul je doel aan en probeer het opnieuw, of voeg zelf een stap toe.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla has no new steps for this plan. Add to your goal and try again, or add a step yourself."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla no tin pasonan nobo pa e plan aki. Kompletá bo meta i purba atrobe, òf añadí un paso bo mes."
+          }
+        }
+      }
+    },
     "Ayla heeft het bewijs ingevuld. Controleer de velden.": {
       "extractionState": "manual",
       "localizations": {
@@ -4207,6 +4564,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ayla no ta disponibel awor. Purba atrobe mas despues den PAVE."
+          }
+        }
+      }
+    },
+    "Ayla is even niet bereikbaar. Probeer het zo nog eens.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla can't be reached right now. Try again in a moment."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla no ta disponibel awor. Purba atrobe den un ratu."
           }
         }
       }
@@ -4411,6 +4785,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ayla no por a kontestá awor. Purba atrobe den un ratu."
+          }
+        }
+      }
+    },
+    "Ayla kon nu geen punten geven. Probeer het op je iPhone.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla couldn't give points right now. Try it on your iPhone."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla no por a duna puntonan awor. Purba riba bo iPhone."
+          }
+        }
+      }
+    },
+    "Ayla kon nu geen stappen voorstellen. Probeer het opnieuw.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla couldn't suggest steps right now. Try again."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla no por a sugerí pasonan awor. Purba atrobe."
+          }
+        }
+      }
+    },
+    "Ayla kon nu geen verslag maken. Probeer het opnieuw.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla couldn't make a report right now. Try again."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla no por a traha un informe awor. Purba atrobe."
           }
         }
       }
@@ -4772,6 +5197,23 @@
         }
       }
     },
+    "Ayla onthoudt nog niets over je. Vertel het haar, dan vraagt ze of ze het mag onthouden.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla doesn't remember anything about you yet. Tell her, and she'll ask if she may remember it."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla ainda no ta kòrda nada di bo. Kont'é, anto e ta puntra si e mag kòrd'é."
+          }
+        }
+      }
+    },
     "Ayla onthoudt nog niets over je. Vertel je in een gesprek iets wat later handig is, zoals je opleiding of een doel, dan vraagt ze of ze het mag onthouden. Je kunt ook zelf iets toevoegen.": {
       "extractionState": "manual",
       "localizations": {
@@ -4785,6 +5227,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ayla no ta kòrda nada di bo ainda. Si den un kombersashon bo konta algu ku ta util despues, manera bo estudio òf un meta, e ta puntra si e mag kòrda esaki. Bo por añadí algu bo mes tambe."
+          }
+        }
+      }
+    },
+    "Ayla onthoudt nu niets. Je kunt dit aanzetten op je iPhone.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla isn't remembering anything now. You can turn this on on your iPhone."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla no ta kòrda nada awor. Bo por pone esaki na riba bo iPhone."
           }
         }
       }
@@ -4840,6 +5299,23 @@
         }
       }
     },
+    "Ayla schrijft je verslag…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla is writing your report…"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla ta skirbiendo bo informe…"
+          }
+        }
+      }
+    },
     "Ayla schrijft mee": {
       "extractionState": "manual",
       "localizations": {
@@ -4870,6 +5346,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ayla ta skirbiendo…"
+          }
+        }
+      }
+    },
+    "Ayla stelt stappen voor bij je doel. Jij kiest welke je houdt.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla suggests steps for your goal. You choose which ones to keep."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla ta sugerí pasonan pa bo meta. Abo ta skohe kua bo ta keda ku nan."
           }
         }
       }
@@ -5142,6 +5635,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ayla ta mira %@ prueba: %@."
+          }
+        }
+      }
+    },
+    "Ayla zoekt je punten…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla is finding your points…"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla ta buska bo puntonan…"
           }
         }
       }
@@ -5537,6 +6047,23 @@
         }
       }
     },
+    "Bekeek %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Viewed %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A wak %@"
+          }
+        }
+      }
+    },
     "Bekeken": {
       "extractionState": "manual",
       "localizations": {
@@ -5669,6 +6196,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Wak ku formato"
+          }
+        }
+      }
+    },
+    "Bekijk profiel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View profile"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wak perfil"
+          }
+        }
+      }
+    },
+    "Bekijk verslag": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View report"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wak informe"
           }
         }
       }
@@ -6077,6 +6638,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Archivo"
+          }
+        }
+      }
+    },
+    "Bestand %@ meesturen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send file %@ along"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manda archivo %@ huntu"
           }
         }
       }
@@ -6591,6 +7169,23 @@
         }
       }
     },
+    "Bewaar bij je sollicitatie": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save with your application"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warda na bo solisitut"
+          }
+        }
+      }
+    },
     "Bewaar een project, resultaat of feedback.": {
       "extractionState": "manual",
       "localizations": {
@@ -6689,6 +7284,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Wardá"
+          }
+        }
+      }
+    },
+    "Bewaard bij je sollicitatie": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved with your application"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wardá na bo solisitut"
           }
         }
       }
@@ -7012,6 +7624,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Añadí prueba na %@"
+          }
+        }
+      }
+    },
+    "Bewijs: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evidence: %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prueba: %@"
           }
         }
       }
@@ -8903,6 +9532,23 @@
         }
       }
     },
+    "Dat kan alleen op je iPhone.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That only works on your iPhone."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esei ta posibel solamente riba bo iPhone."
+          }
+        }
+      }
+    },
     "Dat kon ik niet instellen: die keuze ken ik niet.": {
       "extractionState": "manual",
       "localizations": {
@@ -9005,6 +9651,23 @@
         }
       }
     },
+    "Dat lukte niet. Probeer het op je iPhone.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That didn't work. Try it on your iPhone."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esei no a bai bon. Purba riba bo iPhone."
+          }
+        }
+      }
+    },
     "Dat lukte niet. Probeer het opnieuw.": {
       "extractionState": "manual",
       "localizations": {
@@ -9103,6 +9766,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "E feria ta funshoná solamente ku un kuenta di bèrdat, no den e demo."
+          }
+        }
+      }
+    },
+    "De beurs werkt alleen met een echt account.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The fair only works with a real account."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E feria ta funshoná solamente ku un kuenta di bèrdat."
+          }
+        }
+      }
+    },
+    "De bijlage is niet meer te vinden.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The attachment can no longer be found."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No por haña e anekso mas."
+          }
+        }
+      }
+    },
+    "De bijlage staat nog niet in Verzonden. Probeer het straks opnieuw.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The attachment isn't in Sent yet. Try again later."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E anekso ainda no ta den Mandá. Purba atrobe despues."
           }
         }
       }
@@ -9307,6 +10021,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "E fecha final ta promé ku e fecha di kuminsamentu."
+          }
+        }
+      }
+    },
+    "De gesprekken van dit plan komen dan in dat project en gebruiken de instructies en bronnen ervan.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This plan's conversations then go into that project and use its instructions and sources."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E kombersashonnan di e plan aki ta bai den e proyekto ei i ta usa su instrukshonnan i fuentenan."
+          }
+        }
+      }
+    },
+    "De gesprekken van dit plan staan in dit project en gebruiken de instructies en bronnen ervan.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This plan's conversations are in this project and use its instructions and sources."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E kombersashonnan di e plan aki ta den e proyekto aki i ta usa su instrukshonnan i fuentenan."
           }
         }
       }
@@ -9651,6 +10399,23 @@
         }
       }
     },
+    "De prullenmand is niet gevonden.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The trash folder wasn't found."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No a haña e basurero."
+          }
+        }
+      }
+    },
     "De selectie kon niet worden bewaard. Probeer het opnieuw.": {
       "extractionState": "manual",
       "localizations": {
@@ -9664,6 +10429,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "No por a warda e selekshon. Purba atrobe."
+          }
+        }
+      }
+    },
+    "De stap %@ staat al in dat plan.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The step %@ is already in that plan."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E paso %@ ta den e plan ei kaba."
           }
         }
       }
@@ -9940,6 +10722,23 @@
         }
       }
     },
+    "Deadline %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deadline %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fecha límite %@"
+          }
+        }
+      }
+    },
     "Deadline instellen": {
       "extractionState": "manual",
       "localizations": {
@@ -10174,6 +10973,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kompartí ta funshoná solamente ku un kuenta di bèrdat, no den e demo."
+          }
+        }
+      }
+    },
+    "Delen werkt alleen met een echt account.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sharing only works with a real account."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kompartí ta funshoná solamente ku un kuenta di bèrdat."
           }
         }
       }
@@ -10586,6 +11402,23 @@
         }
       }
     },
+    "Deze sollicitatie staat niet meer in je lijst.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This application is no longer in your list."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E solisitut aki no ta den bo lista mas."
+          }
+        }
+      }
+    },
     "Deze week": {
       "extractionState": "manual",
       "localizations": {
@@ -10790,6 +11623,23 @@
         }
       }
     },
+    "Dit bericht is nagespeeld: er is geen echte werkgever bij betrokken.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This message is simulated: no real employer is involved."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E mensahe aki ta simulá: no tin ningun dunadó di trabou di bèrdat involukrá."
+          }
+        }
+      }
+    },
     "Dit bericht verwijderen?": {
       "extractionState": "manual",
       "localizations": {
@@ -10960,6 +11810,23 @@
         }
       }
     },
+    "Dit gesprek hoort niet bij een project. Zeg in welk project het moet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This conversation isn't part of a project. Say which project it should go in."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E kombersashon aki no ta pertenesé na un proyekto. Bisa den ki proyekto e mester bai."
+          }
+        }
+      }
+    },
     "Dit gesprek staat niet meer in de prullenmand van iCloud. Het is definitief verwijderd en kan niet meer terug.": {
       "extractionState": "manual",
       "localizations": {
@@ -11024,6 +11891,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bo mes ta tene kuenta ku esaki. PAVE no ta manda nada pa e kompania."
+          }
+        }
+      }
+    },
+    "Dit is een Hotmail- of Outlook-adres. PAVE werkt alleen met iCloud Mail: een @icloud.com-, @me.com- of @mac.com-adres.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This is a Hotmail or Outlook address. PAVE only works with iCloud Mail: an @icloud.com, @me.com or @mac.com address."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esaki ta un adrès di Hotmail òf Outlook. PAVE ta funshoná solamente ku iCloud Mail: un adrès @icloud.com, @me.com òf @mac.com."
           }
         }
       }
@@ -11228,6 +12112,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "E tipo di archivo aki no por drenta bo kaha fuerte. Skohe un PDF, archivo di Word, teksto òf foto."
+          }
+        }
+      }
+    },
+    "Dit voorstel is verlopen. Vraag het Ayla opnieuw.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This suggestion has expired. Ask Ayla again."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E sugerensia aki a vense. Puntra Ayla atrobe."
           }
         }
       }
@@ -11504,6 +12405,23 @@
         }
       }
     },
+    "Doorgegeven dat je niet kunt.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passed on that you can't make it."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A pasa sa ku bo no por."
+          }
+        }
+      }
+    },
     "Doorgestuurd": {
       "extractionState": "manual",
       "localizations": {
@@ -11585,6 +12503,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reenviá"
+          }
+        }
+      }
+    },
+    "Downloadde je cv of brief · %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloaded your CV or letter · %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A baha bo CV òf karta · %@"
           }
         }
       }
@@ -11895,6 +12830,23 @@
         }
       }
     },
+    "Een certificaat, project of feedback waaruit blijkt dat je het kunt.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A certificate, project or feedback that shows you can do it."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un sertifikado, proyekto òf feedback ku ta mustra ku bo por."
+          }
+        }
+      }
+    },
     "Een inschatting uit een stukje van de vacaturetekst": {
       "extractionState": "manual",
       "localizations": {
@@ -12010,6 +12962,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Un PDF, foto òf archivo di teksto. Solamente e teksto ta bai na Ayla."
+          }
+        }
+      }
+    },
+    "Een plan maken": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Make a plan"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traha un plan"
+          }
+        }
+      }
+    },
+    "Een plan voor %@ maken": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Make a plan for %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traha un plan pa %@"
           }
         }
       }
@@ -12231,6 +13217,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Desaroyá un abilidat"
+          }
+        }
+      }
+    },
+    "Een vacature die je bekeek vraagt hierom.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A vacancy you viewed asks for this."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un vakatura ku bo a wak ta pidi esaki."
           }
         }
       }
@@ -12609,6 +13612,23 @@
         }
       }
     },
+    "Er is geen prullenmand in je mailbox gevonden.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No trash folder was found in your mailbox."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No a haña ningun basurero den bo buzon."
+          }
+        }
+      }
+    },
     "Er is niemand om aan te antwoorden.": {
       "extractionState": "manual",
       "localizations": {
@@ -12626,6 +13646,23 @@
         }
       }
     },
+    "Er is nog geen e-mail gekoppeld. Dat doe je bij Meldingen, onder de drie puntjes.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No email is connected yet. You do that in Notifications, under the three dots."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ainda no tin e-mail konektá. Bo ta hasi esei na Notifikashonnan, bou di e tres puntonan."
+          }
+        }
+      }
+    },
     "Er is nog niets om te delen. Voeg eerst bewijs toe aan je kluis.": {
       "extractionState": "manual",
       "localizations": {
@@ -12639,6 +13676,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ainda no tin nada pa kompartí. Añadí prueba na bo kaha fuerte promé."
+          }
+        }
+      }
+    },
+    "Er kijkt iemand": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Someone is looking"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un hende ta wak"
           }
         }
       }
@@ -12694,6 +13748,23 @@
         }
       }
     },
+    "Even denken…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thinking…"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pensando…"
+          }
+        }
+      }
+    },
     "Even geduld.": {
       "extractionState": "manual",
       "localizations": {
@@ -12724,6 +13795,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kargando…"
+          }
+        }
+      }
+    },
+    "Even verstaan…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Understanding…"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Komprendiendo…"
           }
         }
       }
@@ -13170,6 +14258,23 @@
         }
       }
     },
+    "Ga naar": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Go to"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bai na"
+          }
+        }
+      }
+    },
     "Ga naar account.apple.com": {
       "extractionState": "manual",
       "localizations": {
@@ -13234,6 +14339,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ta bai huntu"
+          }
+        }
+      }
+    },
+    "Gaat mee zodra je iPhone in de buurt is.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Will be sent once your iPhone is nearby."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo bai ora bo iPhone ta serka."
           }
         }
       }
@@ -13319,6 +14441,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Usa %@"
+          }
+        }
+      }
+    },
+    "Gebruik %@ als deadline": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use %@ as deadline"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa %@ komo fecha límite"
           }
         }
       }
@@ -13816,6 +14955,23 @@
         }
       }
     },
+    "Geen apparaten bij dit voorbeeldaccount": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No devices for this example account"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No tin aparato pa e kuenta di ehempel aki"
+          }
+        }
+      }
+    },
     "Geen apparaten in de demo": {
       "extractionState": "manual",
       "localizations": {
@@ -13969,6 +15125,23 @@
         }
       }
     },
+    "Geen kluis bij dit voorbeeldaccount": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No vault for this example account"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No tin kaha fuerte pa e kuenta di ehempel aki"
+          }
+        }
+      }
+    },
     "Geen kluis in de demo": {
       "extractionState": "manual",
       "localizations": {
@@ -14071,6 +15244,23 @@
         }
       }
     },
+    "Geen project": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No project"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin proyekto"
+          }
+        }
+      }
+    },
     "Geen resultaten voor “%@”.": {
       "extractionState": "manual",
       "localizations": {
@@ -14105,6 +15295,23 @@
         }
       }
     },
+    "Geen uitnodigingen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No invitations"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No tin invitashon"
+          }
+        }
+      }
+    },
     "Geen vacature past bij deze filters.": {
       "extractionState": "manual",
       "localizations": {
@@ -14118,6 +15325,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ningun vakatura ta kuadra ku e filtronan aki."
+          }
+        }
+      }
+    },
+    "Geen verbinding. Kijk of je internet hebt en probeer het opnieuw.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No connection. Check that you're online and try again."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No tin konekshon. Wak si bo tin internet i purba atrobe."
           }
         }
       }
@@ -14140,6 +15364,23 @@
       }
     },
     "Geen verbinding. Probeer het zo nog een keer.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No connection. Try again in a moment."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No tin konekshon. Purba atrobe den un ratu."
+          }
+        }
+      }
+    },
+    "Geen verbinding. Probeer het zo nog eens.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -14309,6 +15550,23 @@
         }
       }
     },
+    "Geplaatst op %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posted on %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publiká riba %@"
+          }
+        }
+      }
+    },
     "Geplakt document": {
       "extractionState": "manual",
       "localizations": {
@@ -14394,6 +15652,23 @@
         }
       }
     },
+    "Gescand": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanned"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skèn"
+          }
+        }
+      }
+    },
     "Gesprek": {
       "extractionState": "manual",
       "localizations": {
@@ -14424,6 +15699,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kombersashon %@"
+          }
+        }
+      }
+    },
+    "Gesprek %@. Kom je?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Interview %@. Are you coming?"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrevista %@. Bo ta bini?"
+          }
+        }
+      }
+    },
+    "Gesprek bij %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Interview at %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrevista na %@"
           }
         }
       }
@@ -14564,6 +15873,23 @@
         }
       }
     },
+    "Gesprek-coach": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Interview coach"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coach di entrevista"
+          }
+        }
+      }
+    },
     "Gesprek: %@": {
       "extractionState": "manual",
       "localizations": {
@@ -14683,6 +16009,23 @@
         }
       }
     },
+    "Geverifieerd bewijs weegt zwaarder bij een werkgever.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verified evidence carries more weight with an employer."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prueba verifiká tin mas peso pa un dunadó di trabou."
+          }
+        }
+      }
+    },
     "Geverifieerd door %@": {
       "extractionState": "manual",
       "localizations": {
@@ -14713,6 +16056,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Verifiká pa e organisashon mes"
+          }
+        }
+      }
+    },
+    "Geverifieerd: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verified: %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verifiká: %@"
           }
         }
       }
@@ -14764,6 +16124,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hañá: %@"
+          }
+        }
+      }
+    },
+    "Gevraagd in %@ van de %@ vacatures, en nog niet in je kluis.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Asked for in %@ of the %@ vacancies, and not yet in your vault."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pidí den %@ di e %@ vakaturanan, i ainda no den bo kaha fuerte."
+          }
+        }
+      }
+    },
+    "Gewijzigd op %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edited on %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kambiá riba %@"
           }
         }
       }
@@ -15414,6 +16808,23 @@
         }
       }
     },
+    "Het plan %@ staat klaar bij Plan.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The plan %@ is ready in Plan."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E plan %@ ta kla na Plan."
+          }
+        }
+      }
+    },
     "Het project kon niet worden opgeslagen. Probeer het opnieuw.": {
       "extractionState": "manual",
       "localizations": {
@@ -15444,6 +16855,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "E ta den bo kaha fuerte komo No konfirmá te ora un skol òf dunadó di trabou konfirm'é."
+          }
+        }
+      }
+    },
+    "Het staat klaar op je iPhone.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It's ready on your iPhone."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E ta kla riba bo iPhone."
           }
         }
       }
@@ -15512,6 +16940,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "No tin archivo ta bai huntu aki. Puntra e persona ku a kompartí esaki si bo ke mira mas."
+          }
+        }
+      }
+    },
+    "Hier haal je het meest uit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This is where you gain the most"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aki bo ta gana mas tantu"
           }
         }
       }
@@ -15924,6 +17369,23 @@
         }
       }
     },
+    "Houd ingedrukt voor je gesprekken": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hold for your conversations"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tene primí pa bo kombersashonnan"
+          }
+        }
+      }
+    },
     "Huidige pincode": {
       "extractionState": "manual",
       "localizations": {
@@ -15971,6 +17433,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ikono"
+          }
+        }
+      }
+    },
+    "Iedere keer dat iemand iets opende wat je deelde, de afgelopen 30 dagen. Wat nog te zien is, stop je hier in één tik.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Every time someone opened something you shared, in the last 30 days. Anything that can still be seen, you can stop here in one tap."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kada biaha ku un hende a habri algu ku bo a kompartí, den e último 30 dianan. Loke ainda por wòrdu mirá, bo ta stop aki ku un tok."
           }
         }
       }
@@ -16094,6 +17573,57 @@
         }
       }
     },
+    "Ik heb %@ laten weten dat je komt.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I've let %@ know you're coming."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi a laga %@ sa ku bo ta bini."
+          }
+        }
+      }
+    },
+    "Ik heb %@ laten weten dat je komt. Ik open je agenda: bewaar het gesprek daar als je wilt.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I've let %@ know you're coming. I'm opening your calendar: save the interview there if you like."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi a laga %@ sa ku bo ta bini. Mi ta habri bo kalender: warda e entrevista einan si bo ke."
+          }
+        }
+      }
+    },
+    "Ik heb %@ laten weten dat je niet kunt.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I've let %@ know you can't make it."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi a laga %@ sa ku bo no por."
+          }
+        }
+      }
+    },
     "Ik heb %@ uit je kluis verwijderd.": {
       "extractionState": "manual",
       "localizations": {
@@ -16128,6 +17658,40 @@
         }
       }
     },
+    "Ik heb de stap %@ bijgewerkt.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I've updated the step %@."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi a aktualisá e paso %@."
+          }
+        }
+      }
+    },
+    "Ik heb de stap %@ toegevoegd.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I've added the step %@."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi a añadí e paso %@."
+          }
+        }
+      }
+    },
     "Ik heb een foto toegevoegd aan %@.": {
       "extractionState": "manual",
       "localizations": {
@@ -16158,6 +17722,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mi a kita e kombersashon."
+          }
+        }
+      }
+    },
+    "Ik hoorde niets. Probeer het nog een keer.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I didn't hear anything. Try again."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi no a tende nada. Purba un biaha mas."
           }
         }
       }
@@ -16213,6 +17794,23 @@
         }
       }
     },
+    "Ik kon de stap %@ niet vinden in je plannen.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I couldn't find the step %@ in your plans."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi no por a haña e paso %@ den bo plannan."
+          }
+        }
+      }
+    },
     "Ik kon geen gesprek vinden over %@.": {
       "extractionState": "manual",
       "localizations": {
@@ -16226,6 +17824,91 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mi no por a haña un kombersashon tokante %@."
+          }
+        }
+      }
+    },
+    "Ik kon geen mail vinden van of over %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I couldn't find an email from or about %@."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi no por a haña un e-mail di òf tokante %@."
+          }
+        }
+      }
+    },
+    "Ik kon geen sollicitatie vinden voor %@. Open eerst de vacature, dan begin ik er een.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I couldn't find an application for %@. Open the vacancy first, then I'll start one."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi no por a haña un solisitut pa %@. Habri e vakatura promé, anto mi ta kuminsá un."
+          }
+        }
+      }
+    },
+    "Ik kon geen uitnodiging vinden van %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I couldn't find an invitation from %@."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi no por a haña un invitashon di %@."
+          }
+        }
+      }
+    },
+    "Ik kon het plan %@ niet vinden.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I couldn't find the plan %@."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi no por a haña e plan %@."
+          }
+        }
+      }
+    },
+    "Ik kon het project %@ niet vinden.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I couldn't find the project %@."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi no por a haña e proyekto %@."
           }
         }
       }
@@ -16417,6 +18100,74 @@
         }
       }
     },
+    "Ik vond geen vacature bij %@. Open hem op je iPhone.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I didn't find a vacancy at %@. Open it on your iPhone."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi no a haña un vakatura na %@. Habri e riba bo iPhone."
+          }
+        }
+      }
+    },
+    "Ik weet niet voor welke vacature. Open de vacature of zeg welke van de getoonde vacatures je bedoelt.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I don't know which vacancy. Open the vacancy or say which of the vacancies shown you mean."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi no sa pa ki vakatura. Habri e vakatura òf bisa ki di e vakaturanan mustrá bo ke men."
+          }
+        }
+      }
+    },
+    "Ik weet niet welk plan je bedoelt. Noem de naam van het plan.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I don't know which plan you mean. Say the name of the plan."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi no sa ki plan bo ke men. Menshoná e nòmber di e plan."
+          }
+        }
+      }
+    },
+    "Ik weet niet welke mail je bedoelt. Noem de naam of het onderwerp.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I don't know which email you mean. Say the name or the subject."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi no sa ki e-mail bo ke men. Menshoná e nòmber òf e tema."
+          }
+        }
+      }
+    },
     "Ik wil stoppen met oefenen.": {
       "extractionState": "manual",
       "localizations": {
@@ -16587,6 +18338,40 @@
         }
       }
     },
+    "In je kluis gezet, nog niet bevestigd": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Added to your vault, not yet confirmed"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poné den bo kaha fuerte, ainda no konfirmá"
+          }
+        }
+      }
+    },
+    "In je plan": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In your plan"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Den bo plan"
+          }
+        }
+      }
+    },
     "In mappen": {
       "extractionState": "manual",
       "localizations": {
@@ -16634,6 +18419,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sirá"
+          }
+        }
+      }
+    },
+    "Ingeklapt, %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collapsed, %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sirá, %@"
+          }
+        }
+      }
+    },
+    "Ingelogd op %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signed in on %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drenta riba %@"
           }
         }
       }
@@ -16978,6 +18797,23 @@
         }
       }
     },
+    "In…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In…"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aden…"
+          }
+        }
+      }
+    },
     "Item toevoegen": {
       "extractionState": "manual",
       "localizations": {
@@ -17042,6 +18878,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Si, kita"
+          }
+        }
+      }
+    },
+    "Je @icloud.com-adres, ook in Mail op je Mac": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your @icloud.com address, also in Mail on your Mac"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bo adrès @icloud.com, tambe den Mail riba bo Mac"
           }
         }
       }
@@ -17233,6 +19086,23 @@
         }
       }
     },
+    "Je bent er klaar voor.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You're ready for it."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bo ta kla pa esaki."
+          }
+        }
+      }
+    },
     "Je bent helemaal bij": {
       "extractionState": "manual",
       "localizations": {
@@ -17331,6 +19201,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bo a sali riba e aparato aki. Esaki ta pasa por ehèmpel ora bo kontraseña a kambia."
+          }
+        }
+      }
+    },
+    "Je bent te lang ingelogd geweest. Log opnieuw in en probeer het dan nog eens.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You've been signed in for too long. Sign in again and then try again."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bo a keda drenta pa muchu largu. Drenta atrobe i purba un biaha mas."
           }
         }
       }
@@ -17569,6 +19456,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bo CV i karta"
+          }
+        }
+      }
+    },
+    "Je cv en brief klaarzetten": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prepare your CV and letter"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prepará bo CV i karta"
+          }
+        }
+      }
+    },
+    "Je cv en brief voor %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your CV and letter for %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bo CV i karta pa %@"
+          }
+        }
+      }
+    },
+    "Je cv en brief voor %@ klaarzetten": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prepare your CV and letter for %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prepará bo CV i karta pa %@"
           }
         }
       }
@@ -18440,6 +20378,23 @@
         }
       }
     },
+    "Je kaartje blijft in PAVE. %@ doet niet echt mee: een medespeler bekijkt het als werkgever.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your card stays in PAVE. %@ isn't really taking part: a fellow player views it as the employer."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bo karchi ta keda den PAVE. %@ no ta partisipá di bèrdat: un kompañero ta wak e komo dunadó di trabou."
+          }
+        }
+      }
+    },
     "Je kaartje blijft in PAVE. %@ doet niet echt mee: in de demo bekijkt een medespeler het als werkgever.": {
       "extractionState": "manual",
       "localizations": {
@@ -18593,6 +20548,23 @@
         }
       }
     },
+    "Je kluis is nog leeg, dus er is geen profiel om te laten zien.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your vault is still empty, so there's no profile to show."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bo kaha fuerte ta bashí ainda, p'esei no tin perfil pa mustra."
+          }
+        }
+      }
+    },
     "Je kluis is nog leeg. Voeg eerst iets toe aan je kluis.": {
       "extractionState": "manual",
       "localizations": {
@@ -18708,6 +20680,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bo ta bini"
+          }
+        }
+      }
+    },
+    "Je komt. Het staat op je iPhone.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You're coming. It's on your iPhone."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bo ta bini. E ta riba bo iPhone."
           }
         }
       }
@@ -18861,6 +20850,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bo por kompará 3 di un biaha"
+          }
+        }
+      }
+    },
+    "Je kunt er maximaal %@ kiezen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can choose up to %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bo por skohe maksimo %@"
           }
         }
       }
@@ -19086,6 +21092,23 @@
         }
       }
     },
+    "Je pitch": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your pitch"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bo pitch"
+          }
+        }
+      }
+    },
     "Je plan": {
       "extractionState": "manual",
       "localizations": {
@@ -19133,6 +21156,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bo plan ta aki"
+          }
+        }
+      }
+    },
+    "Je plan voor %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your plan for %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bo plan pa %@"
           }
         }
       }
@@ -19201,6 +21241,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aktualisá bo perfil"
+          }
+        }
+      }
+    },
+    "Je profiel met bewijs": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your profile with evidence"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bo perfil ku prueba"
           }
         }
       }
@@ -19851,6 +21908,23 @@
         }
       }
     },
+    "Kaartje bij %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Card at %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karchi na %@"
+          }
+        }
+      }
+    },
     "Kader": {
       "extractionState": "manual",
       "localizations": {
@@ -19949,6 +22023,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kombersashon di introdukshon, planiá den PAVE (demo). Trese bo CV."
+          }
+        }
+      }
+    },
+    "Kennismakingsgesprek, gepland in PAVE. Neem je cv mee.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Introductory meeting, scheduled in PAVE. Bring your CV."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kombersashon di introdukshon, planifiká den PAVE. Trese bo CV."
           }
         }
       }
@@ -20701,6 +22792,23 @@
         }
       }
     },
+    "Klaar op je iPhone.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done on your iPhone."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kla riba bo iPhone."
+          }
+        }
+      }
+    },
     "Klaar! Je hebt alle stappen afgerond.": {
       "extractionState": "manual",
       "localizations": {
@@ -20731,6 +22839,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kla, warda teksto"
+          }
+        }
+      }
+    },
+    "Klaargezet door Ayla, vanaf je Watch.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prepared by Ayla, from your Watch."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prepará pa Ayla, for di bo Watch."
           }
         }
       }
@@ -20820,6 +22945,23 @@
         }
       }
     },
+    "Kluisweergave": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vault view"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vista di kaha fuerte"
+          }
+        }
+      }
+    },
     "Knik ja of schud nee": {
       "extractionState": "manual",
       "localizations": {
@@ -20833,6 +22975,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hasi si òf nò ku bo kabes"
+          }
+        }
+      }
+    },
+    "Knopmodus": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Button mode"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modo di boton"
           }
         }
       }
@@ -20867,6 +23026,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tas"
+          }
+        }
+      }
+    },
+    "Kom je?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Are you coming?"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bo ta bini?"
           }
         }
       }
@@ -21037,6 +23213,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Konektá"
+          }
+        }
+      }
+    },
+    "Koppel aan een project": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Link to a project"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konektá ku un proyekto"
           }
         }
       }
@@ -21466,6 +23659,40 @@
         }
       }
     },
+    "Laat Ayla stappen voorstellen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Let Ayla suggest steps"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laga Ayla sugerí pasonan"
+          }
+        }
+      }
+    },
+    "Laat achter bij %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leave with %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laga na %@"
+          }
+        }
+      }
+    },
     "Laat de uitgever je certificaat bevestigen.": {
       "extractionState": "manual",
       "localizations": {
@@ -21479,6 +23706,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Laga e emisor konfirmá bo sertifikado."
+          }
+        }
+      }
+    },
+    "Laat het verifiëren": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get it verified"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laga verifiká esaki"
           }
         }
       }
@@ -21568,6 +23812,23 @@
         }
       }
     },
+    "Laat je profiel achter": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leave your profile"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laga bo perfil"
+          }
+        }
+      }
+    },
     "Laat los om aan je bericht toe te voegen": {
       "extractionState": "manual",
       "localizations": {
@@ -21615,6 +23876,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mustra kiko bo ta trese i kiko bo a siña ademas."
+          }
+        }
+      }
+    },
+    "Laatst gewijzigd op %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last edited on %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Último kambio riba %@"
           }
         }
       }
@@ -21891,6 +24169,40 @@
         }
       }
     },
+    "Leesbaar": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Readable"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lesabel"
+          }
+        }
+      }
+    },
+    "Leesbaar is Atkinson Hyperlegible: letters die je minder snel door elkaar haalt. Je keuze blijft op dit toestel.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Readable is Atkinson Hyperlegible: letters you're less likely to mix up. Your choice stays on this device."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lesabel ta Atkinson Hyperlegible: lèternan ku bo no ta konfundí asina lihé. Bo eskoho ta keda riba e aparato aki."
+          }
+        }
+      }
+    },
     "Leg de afspraken vast met school en je stageplek.": {
       "extractionState": "manual",
       "localizations": {
@@ -21955,6 +24267,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tene kuenta ku e rekisitonan aki bou."
+          }
+        }
+      }
+    },
+    "Lettertype": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Font"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tipo di lèter"
           }
         }
       }
@@ -22231,6 +24560,23 @@
         }
       }
     },
+    "Log in op je iPhone": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in on your iPhone"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drenta riba bo iPhone"
+          }
+        }
+      }
+    },
     "Log je de volgende keer in? Gebruik dan je wachtwoord en een code uit je authenticator-app. Houd de app op je telefoon.": {
       "extractionState": "manual",
       "localizations": {
@@ -22499,6 +24845,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Traha CV i karta"
+          }
+        }
+      }
+    },
+    "Maak een plan voor deze vacature": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Make a plan for this vacancy"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traha un plan pa e vakatura aki"
           }
         }
       }
@@ -22860,6 +25223,23 @@
         }
       }
     },
+    "Meegestuurd. Stoppen kan bij Profiel, onder wat je deelt.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sent along. You can stop in Profile, under what you share."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mandá huntu. Bo por stop na Perfil, bou di loke bo ta kompartí."
+          }
+        }
+      }
+    },
     "Meer": {
       "extractionState": "manual",
       "localizations": {
@@ -22924,6 +25304,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mas wak"
+          }
+        }
+      }
+    },
+    "Meest gevraagd wat je mist: %@ (%@ van %@)": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Most asked for that you're missing: %@ (%@ of %@)"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mas pidí ku ta falta bo: %@ (%@ di %@)"
           }
         }
       }
@@ -23149,6 +25546,23 @@
         }
       }
     },
+    "Menu en gesprekken": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menu and conversations"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menu i kombersashonnan"
+          }
+        }
+      }
+    },
     "Menu sluiten": {
       "extractionState": "manual",
       "localizations": {
@@ -23315,6 +25729,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ku e kódigo PIN aki bo ta habri PAVE. Skohe 6 sifra, pero no 111111 òf 123456."
+          }
+        }
+      }
+    },
+    "Met een stap voor elk van de %@ dingen die je nog mist, je cv en brief, en het gesprek.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "With a step for each of the %@ things you're still missing, your CV and letter, and the interview."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ku un paso pa kada un di e %@ kosnan ku ainda ta falta bo, bo CV i karta, i e entrevista."
+          }
+        }
+      }
+    },
+    "Met een stap voor wat je nog mist, je cv en brief, en het gesprek.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "With a step for what you're still missing, your CV and letter, and the interview."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ku un paso pa loke ainda ta falta bo, bo CV i karta, i e entrevista."
           }
         }
       }
@@ -24220,6 +26668,23 @@
         }
       }
     },
+    "Niet meegestuurd.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not sent along."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No a manda huntu."
+          }
+        }
+      }
+    },
     "Niet meer bewaard": {
       "extractionState": "manual",
       "localizations": {
@@ -24233,6 +26698,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "No ta wardá mas"
+          }
+        }
+      }
+    },
+    "Niet meer gevonden": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No longer found"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No a haña mas"
           }
         }
       }
@@ -24322,6 +26804,40 @@
         }
       }
     },
+    "Niet onthouden": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not remembered"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No a kòrda"
+          }
+        }
+      }
+    },
+    "Niet toegevoegd": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not added"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No a añadí"
+          }
+        }
+      }
+    },
     "Niet voldaan": {
       "extractionState": "manual",
       "localizations": {
@@ -24335,6 +26851,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "No kumpli"
+          }
+        }
+      }
+    },
+    "Niets gedaan": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing done"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada no a wòrdu hasí"
           }
         }
       }
@@ -24481,13 +27014,30 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "New conversation"
+            "value": "New chat"
           }
         },
         "pap": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kombersashon nobo"
+            "value": "Chat nobo"
+          }
+        }
+      }
+    },
+    "Nieuw gesprek met Ayla": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New chat with Ayla"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chat nobo ku Ayla"
           }
         }
       }
@@ -24815,6 +27365,40 @@
         }
       }
     },
+    "Nodigt een werkgever je uit, dan staat dat hier.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If an employer invites you, it shows up here."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si un dunadó di trabou invitá bo, e ta aparesé aki."
+          }
+        }
+      }
+    },
+    "Noemde zichzelf zo; je deelde dit met %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gave themselves this name; you shared this with %@."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A yama su mes asina; bo a kompartí esaki ku %@."
+          }
+        }
+      }
+    },
     "Nog %@ dagen": {
       "extractionState": "manual",
       "localizations": {
@@ -24968,7 +27552,23 @@
         }
       }
     },
-    "Nog geen berichten.": {},
+    "Nog geen berichten.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No messages yet."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ainda no tin mensahe."
+          }
+        }
+      }
+    },
     "Nog geen bestanden gedeeld.": {
       "extractionState": "manual",
       "localizations": {
@@ -25105,6 +27705,23 @@
         }
       }
     },
+    "Nog geen gesprekken.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No conversations yet."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ainda no tin kombersashon."
+          }
+        }
+      }
+    },
     "Nog geen instructies. Kies Aanpassen om Ayla te vertellen waar dit project over gaat.": {
       "extractionState": "manual",
       "localizations": {
@@ -25173,6 +27790,23 @@
         }
       }
     },
+    "Nog iets? Ik luister…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anything else? I'm listening…"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Algu mas? Mi ta skuchando…"
+          }
+        }
+      }
+    },
     "Nog leeg": {
       "extractionState": "manual",
       "localizations": {
@@ -25237,6 +27871,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ainda ningun hende no a wak."
+          }
+        }
+      }
+    },
+    "Nog niemand keek": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No one has looked yet"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ainda niun hende no a wak"
           }
         }
       }
@@ -25411,6 +28062,23 @@
         }
       }
     },
+    "Nog te zien": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Still visible"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ainda por mira"
+          }
+        }
+      }
+    },
     "Nooit": {
       "extractionState": "manual",
       "localizations": {
@@ -25441,6 +28109,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nota"
+          }
+        }
+      }
+    },
+    "Notities": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notes"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notanan"
           }
         }
       }
@@ -25649,6 +28334,57 @@
         }
       }
     },
+    "Oefengesprek klaar": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Practice interview done"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrevista di práktika kla"
+          }
+        }
+      }
+    },
+    "Oefengesprek voor %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Practice interview for %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrevista di práktika pa %@"
+          }
+        }
+      }
+    },
+    "Oefengesprek voor %@ bij %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Practice interview for %@ at %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrevista di práktika pa %@ na %@"
+          }
+        }
+      }
+    },
     "Oefengesprek · %@": {
       "extractionState": "manual",
       "localizations": {
@@ -25666,6 +28402,23 @@
         }
       }
     },
+    "Oefengesprekken": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Practice interviews"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrevistanan di práktika"
+          }
+        }
+      }
+    },
     "Of": {
       "extractionState": "manual",
       "localizations": {
@@ -25679,6 +28432,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Òf"
+          }
+        }
+      }
+    },
+    "Of deel met een QR-code": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Or share with a QR code"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Òf kompartí ku un kódigo QR"
           }
         }
       }
@@ -25713,6 +28483,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Òf kita tur kos i kuminsá di nobo"
+          }
+        }
+      }
+    },
+    "Om te noemen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Points to mention"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pa menshoná"
           }
         }
       }
@@ -26295,6 +29082,40 @@
         }
       }
     },
+    "Op je iPhone": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On your iPhone"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riba bo iPhone"
+          }
+        }
+      }
+    },
+    "Op je iPhone afmaken": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finish on your iPhone"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaba riba bo iPhone"
+          }
+        }
+      }
+    },
     "Op je kaart: %@": {
       "extractionState": "manual",
       "localizations": {
@@ -26380,6 +29201,40 @@
         }
       }
     },
+    "Open PAVE en begin meteen een gesprek met Ayla.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open PAVE and start a conversation with Ayla right away."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Habri PAVE i kuminsá un kombersashon ku Ayla mesora."
+          }
+        }
+      }
+    },
+    "Open PAVE en pauzeer of trek alles in wat je deelt. Je bevestigt het in de app.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open PAVE and pause or revoke everything you share. You confirm it in the app."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Habri PAVE i pousa òf retirá tur loke bo ta kompartí. Bo ta konfirmá esaki den e app."
+          }
+        }
+      }
+    },
     "Open PAVE met %@ in plaats van je pincode. Je pincode blijft altijd werken.": {
       "extractionState": "manual",
       "localizations": {
@@ -26397,6 +29252,57 @@
         }
       }
     },
+    "Open PAVE met een nieuw, leeg gesprek met Ayla.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open PAVE with a new, empty conversation with Ayla."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Habri PAVE ku un kombersashon nobo i bashí ku Ayla."
+          }
+        }
+      }
+    },
+    "Open PAVE op Profiel: wat je nu deelt, met wie en hoe lang nog.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open PAVE on Profile: what you're sharing now, with whom and for how much longer."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Habri PAVE na Perfil: kiko bo ta kompartí awor, ku ken i pa kuantu tempu mas."
+          }
+        }
+      }
+    },
+    "Open PAVE op je Apple Watch en begin meteen te praten met Ayla.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open PAVE on your Apple Watch and start talking to Ayla right away."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Habri PAVE riba bo Apple Watch i kuminsá papia ku Ayla mesora."
+          }
+        }
+      }
+    },
     "Open PAVE op je iPhone en kies Instellingen › Ingelogde apparaten.": {
       "extractionState": "manual",
       "localizations": {
@@ -26410,6 +29316,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "Habri PAVE riba bo iPhone i skohe Konfigurashon › Aparatonan drentá."
+          }
+        }
+      }
+    },
+    "Open PAVE op je iPhone en log in. Dan kun je hier met Ayla praten.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open PAVE on your iPhone and sign in. Then you can talk to Ayla here."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Habri PAVE riba bo iPhone i drenta. Anto bo por papia ku Ayla aki."
+          }
+        }
+      }
+    },
+    "Open PAVE op je iPhone en probeer het opnieuw.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open PAVE on your iPhone and try again."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Habri PAVE riba bo iPhone i purba atrobe."
+          }
+        }
+      }
+    },
+    "Open Vacatures en sollicitaties": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Vacancies and applications"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Habri Vakaturanan i solisitutnan"
+          }
+        }
+      }
+    },
+    "Open cv en brief": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open CV and letter"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Habri CV i karta"
           }
         }
       }
@@ -26546,6 +29520,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Habri bo plan"
+          }
+        }
+      }
+    },
+    "Open je plan voor deze vacature": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open your plan for this vacancy"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Habri bo plan pa e vakatura aki"
           }
         }
       }
@@ -26869,6 +29860,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ta habri bo solisitut"
+          }
+        }
+      }
+    },
+    "Opent nu %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Now opening %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta habri %@ awor"
+          }
+        }
+      }
+    },
+    "Opgezocht door Ayla op %@. Controleer het bij de bronnen.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Looked up by Ayla on %@. Check it against the sources."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buská pa Ayla riba %@. Kontrolá esaki ku e fuentenan."
           }
         }
       }
@@ -27277,6 +30302,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Den %@ dia"
+          }
+        }
+      }
+    },
+    "Over de %@ vacatures die je vond, bewaarde of waarop je solliciteert: wat ze vragen, wat je al kunt laten zien en wat je nog mist.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About the %@ vacancies you found, saved or are applying for: what they ask for, what you can already show and what you're still missing."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tokante e %@ vakaturanan ku bo a haña, warda òf ta solisitá pa nan: kiko nan ta pidi, kiko bo por mustra kaba i kiko ainda ta falta bo."
+          }
+        }
+      }
+    },
+    "Over de vacature die je vond, bewaarde of waarop je solliciteert: wat ze vragen, wat je al kunt laten zien en wat je nog mist.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About the vacancy you found, saved or are applying for: what it asks for, what you can already show and what you're still missing."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tokante e vakatura ku bo a haña, warda òf ta solisitá pa dje: kiko e ta pidi, kiko bo por mustra kaba i kiko ainda ta falta bo."
           }
         }
       }
@@ -27808,6 +30867,23 @@
         }
       }
     },
+    "Past volgens de vacature; zet er bewijs van in je kluis.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Matches according to the vacancy; put evidence of it in your vault."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta kuadra segun e vakatura; pone prueba di dje den bo kaha fuerte."
+          }
+        }
+      }
+    },
     "Pauze": {
       "extractionState": "manual",
       "localizations": {
@@ -28114,6 +31190,23 @@
         }
       }
     },
+    "Plan %@ openen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open plan %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Habri plan %@"
+          }
+        }
+      }
+    },
     "Plan aanpassen": {
       "extractionState": "manual",
       "localizations": {
@@ -28127,6 +31220,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kambia plan"
+          }
+        }
+      }
+    },
+    "Plan in dit project": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan in this project"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan den e proyekto aki"
           }
         }
       }
@@ -28195,6 +31305,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kita plan?"
+          }
+        }
+      }
+    },
+    "Plannen in dit project": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plans in this project"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plannan den e proyekto aki"
           }
         }
       }
@@ -28352,6 +31479,23 @@
         }
       }
     },
+    "Praten met Ayla kan nog niet op je Apple Watch.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Talking to Ayla isn't available on your Apple Watch yet."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ainda bo no por papia ku Ayla riba bo Apple Watch."
+          }
+        }
+      }
+    },
     "Praten met iemand uit het vak": {
       "extractionState": "manual",
       "localizations": {
@@ -28488,6 +31632,23 @@
         }
       }
     },
+    "Probeer opnieuw": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try again"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Purba atrobe"
+          }
+        }
+      }
+    },
     "Profiel": {
       "extractionState": "manual",
       "localizations": {
@@ -28501,6 +31662,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Perfil"
+          }
+        }
+      }
+    },
+    "Profiel achterlaten": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leave profile"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laga perfil"
           }
         }
       }
@@ -28692,6 +31870,23 @@
         }
       }
     },
+    "QR-code": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR code"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kódigo QR"
+          }
+        }
+      }
+    },
     "QR-code laden...": {
       "extractionState": "manual",
       "localizations": {
@@ -28739,6 +31934,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kódigo QR pa bo app di outentikashon"
+          }
+        }
+      }
+    },
+    "QR-codes (%@)": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR codes (%@)"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kódigo QR (%@)"
           }
         }
       }
@@ -28875,6 +32087,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Chats resien"
+          }
+        }
+      }
+    },
+    "Recente gesprekken": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recent conversations"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kombersashonnan resien"
           }
         }
       }
@@ -29028,6 +32257,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Eksplorá direkshonnan"
+          }
+        }
+      }
+    },
+    "Rond": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rounded"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rondo"
           }
         }
       }
@@ -29304,6 +32550,23 @@
         }
       }
     },
+    "Schreef": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serif"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serif"
+          }
+        }
+      }
+    },
     "Schrijf hier in 2 of 3 zinnen wie je bent en wat je zoekt.": {
       "extractionState": "manual",
       "localizations": {
@@ -29559,6 +32822,23 @@
         }
       }
     },
+    "Skill-kompas": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skill compass"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kompas di abilidat"
+          }
+        }
+      }
+    },
     "Sla over": {
       "extractionState": "manual",
       "localizations": {
@@ -29589,6 +32869,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hala pa move, kue ku dede pa skala"
+          }
+        }
+      }
+    },
+    "Sluit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sera"
           }
         }
       }
@@ -29742,6 +33039,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kita solisitut na %@?"
+          }
+        }
+      }
+    },
+    "Sollicitatie van de beurs": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Application from the fair"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solisitut for di e feria"
           }
         }
       }
@@ -29929,6 +33243,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ta den e proyekto aki kaba"
+          }
+        }
+      }
+    },
+    "Staat bij je vaardigheden, zonder bewijs erachter": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listed in your skills, without evidence behind it"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta den bo abilidatnan, sin prueba atras di dje"
           }
         }
       }
@@ -30188,6 +33519,57 @@
         }
       }
     },
+    "Stap %@ afronden": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Complete step %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kompletá paso %@"
+          }
+        }
+      }
+    },
+    "Stap %@ bijwerken": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update step %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktualisá paso %@"
+          }
+        }
+      }
+    },
+    "Stap %@ toevoegen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add step %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadí paso %@"
+          }
+        }
+      }
+    },
     "Stap %@ van %@": {
       "extractionState": "manual",
       "localizations": {
@@ -30337,6 +33719,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pasonan"
+          }
+        }
+      }
+    },
+    "Stappen van Ayla": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steps from Ayla"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pasonan di Ayla"
+          }
+        }
+      }
+    },
+    "Stappen van de vacature lezen tot het gesprek oefenen.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steps from reading the vacancy to practising the interview."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pasonan for di lesa e vakatura te praktiká e entrevista."
           }
         }
       }
@@ -30494,6 +33910,23 @@
         }
       }
     },
+    "Stop delen met %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop sharing with %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop di kompartí ku %@"
+          }
+        }
+      }
+    },
     "Stop met delen": {
       "extractionState": "manual",
       "localizations": {
@@ -30613,6 +34046,23 @@
         }
       }
     },
+    "Stopt vanzelf op %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stops automatically on %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta stop outomátikamente riba %@"
+          }
+        }
+      }
+    },
     "Student %@": {
       "extractionState": "manual",
       "localizations": {
@@ -30728,6 +34178,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Swift"
+          }
+        }
+      }
+    },
+    "Systeem": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "System"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sistema"
           }
         }
       }
@@ -31225,6 +34692,23 @@
         }
       }
     },
+    "Thema": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Theme"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tema"
+          }
+        }
+      }
+    },
     "Thema veranderen": {
       "extractionState": "manual",
       "localizations": {
@@ -31276,6 +34760,23 @@
         }
       }
     },
+    "Tik als je klaar bent": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap when you're done"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tok ora bo kaba"
+          }
+        }
+      }
+    },
     "Tik bij een vacature op Solliciteren, of maak er zelf een. Hier houd je bij hoe het ermee staat.": {
       "extractionState": "manual",
       "localizations": {
@@ -31289,6 +34790,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tok riba Solisitá na un vakatura, òf traha bo mes un. Aki bo ta tene kuenta kon e ta bayendo."
+          }
+        }
+      }
+    },
+    "Tik en praat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap and talk"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tok i papia"
           }
         }
       }
@@ -31412,6 +34930,23 @@
         }
       }
     },
+    "Tik om in te klappen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap to collapse"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tok pa sera"
+          }
+        }
+      }
+    },
     "Tik om je vraag nu te versturen": {
       "extractionState": "manual",
       "localizations": {
@@ -31459,6 +34994,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tok pa habri"
+          }
+        }
+      }
+    },
+    "Tik om te tonen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap to show"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tok pa mustra"
           }
         }
       }
@@ -31565,6 +35117,23 @@
         }
       }
     },
+    "Tik op Ayla voor een nieuwe vraag": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap Ayla for a new question"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tok riba Ayla pa un pregunta nobo"
+          }
+        }
+      }
+    },
     "Tik op Bewaren bij een vacature om hem hier terug te vinden, ook op je andere apparaten.": {
       "extractionState": "manual",
       "localizations": {
@@ -31595,6 +35164,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tok riba e chats ku bo ke fiha òf kita."
+          }
+        }
+      }
+    },
+    "Tik op de dagen dat je kunt en kies hoeveel uur.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap the days you can work and choose how many hours."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tok riba e dianan ku bo por i skohe kuantu ora."
           }
         }
       }
@@ -32190,6 +35776,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "Te"
+          }
+        }
+      }
+    },
+    "Tot %@ · %@ keer bekeken": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Until %@ · viewed %@ times"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Te %@ · wak %@ biaha"
+          }
+        }
+      }
+    },
+    "Tot %@ · 1 keer bekeken": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Until %@ · viewed once"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Te %@ · wak un biaha"
+          }
+        }
+      }
+    },
+    "Tot %@ · nog niet bekeken": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Until %@ · not viewed yet"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Te %@ · ainda no wak"
           }
         }
       }
@@ -32874,6 +36511,23 @@
         }
       }
     },
+    "Uitnodiging": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invitation"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invitashon"
+          }
+        }
+      }
+    },
     "Uitnodiging kennismaking": {
       "extractionState": "manual",
       "localizations": {
@@ -32887,6 +36541,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Invitashon pa un kombersashon di introdukshon"
+          }
+        }
+      }
+    },
+    "Uitnodiging van %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invitation from %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invitashon di %@"
           }
         }
       }
@@ -32993,6 +36664,23 @@
         }
       }
     },
+    "Uit…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Out…"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afó…"
+          }
+        }
+      }
+    },
     "Uren": {
       "extractionState": "manual",
       "localizations": {
@@ -33010,7 +36698,23 @@
         }
       }
     },
-    "VOORBEELD": {},
+    "VOORBEELD": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EXAMPLE"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EHÈMPEL"
+          }
+        }
+      }
+    },
     "Vaardigheden": {
       "extractionState": "manual",
       "localizations": {
@@ -33249,6 +36953,23 @@
         }
       }
     },
+    "Van de beurs": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From the fair"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For di e feria"
+          }
+        }
+      }
+    },
     "Van een organisatie": {
       "extractionState": "manual",
       "localizations": {
@@ -33279,6 +37000,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Di un dunadó di trabou na un feria, òf un perfil kompartí."
+          }
+        }
+      }
+    },
+    "Van je kluis ziet ze alleen de titels van de %@ bewijsstukken die ze mag bekijken.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From your vault she only sees the titles of the %@ pieces of evidence she's allowed to view."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For di bo kaha fuerte e ta mira solamente e títulonan di e %@ prueba ku e mag wak."
+          }
+        }
+      }
+    },
+    "Van je kluis ziet ze alleen de titels van de 1 bewijsstuk die ze mag bekijken.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From your vault she only sees the title of the 1 piece of evidence she's allowed to view."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For di bo kaha fuerte e ta mira solamente e título di e 1 prueba ku e mag wak."
           }
         }
       }
@@ -33330,6 +37085,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "For di loke bo ta buska te bo promé dia di trabou."
+          }
+        }
+      }
+    },
+    "Van werkgevers": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From employers"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Di dunadónan di trabou"
           }
         }
       }
@@ -33483,6 +37255,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fiha no a bai bon. Purba atrobe."
+          }
+        }
+      }
+    },
+    "Vast…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hold…"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tene…"
           }
         }
       }
@@ -33653,6 +37442,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sigui na PAVE"
+          }
+        }
+      }
+    },
+    "Verder praten": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep talking"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sigui papia"
           }
         }
       }
@@ -33997,6 +37803,23 @@
         }
       }
     },
+    "Verleng met een week": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extend by a week"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prolongá ku un siman"
+          }
+        }
+      }
+    },
     "Verloopt binnen een dag. Verlengen?": {
       "extractionState": "manual",
       "localizations": {
@@ -34095,6 +37918,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Move pa"
+          }
+        }
+      }
+    },
+    "Verslag van je oefengesprek": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Report of your practice interview"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Informe di bo entrevista di práktika"
           }
         }
       }
@@ -34609,6 +38449,23 @@
         }
       }
     },
+    "Via deze iPhone, gekoppeld op %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Via this iPhone, connected on %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Via e iPhone aki, konektá riba %@"
+          }
+        }
+      }
+    },
     "Vinkje bij geverifieerd bewijs": {
       "extractionState": "manual",
       "localizations": {
@@ -34622,6 +38479,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Marka pa prueba verifiká"
+          }
+        }
+      }
+    },
+    "Voeg %@ stappen toe": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add %@ steps"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadí %@ paso"
+          }
+        }
+      }
+    },
+    "Voeg 1 stap toe": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add 1 step"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadí 1 paso"
           }
         }
       }
@@ -34877,6 +38768,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Siguiente prueba"
+          }
+        }
+      }
+    },
+    "Volgende stap": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next step"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siguiente paso"
           }
         }
       }
@@ -35238,6 +39146,23 @@
         }
       }
     },
+    "Voorbeeldaccount. Er wordt geen echte verificatiecode gemaakt.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Example account. No real verification code is created."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kuenta di ehempel. No ta traha un kódigo di verifikashon di bèrdat."
+          }
+        }
+      }
+    },
     "Voorbeeldvacature": {
       "extractionState": "manual",
       "localizations": {
@@ -35336,6 +39261,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sugerensia di "
+          }
+        }
+      }
+    },
+    "Voorstel van Ayla": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suggestion from Ayla"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugerensia di Ayla"
           }
         }
       }
@@ -36326,6 +40268,57 @@
         }
       }
     },
+    "Wat Ayla over je weet is nog niet beschikbaar.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What Ayla knows about you isn't available yet."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loke Ayla sa di bo ainda no ta disponibel."
+          }
+        }
+      }
+    },
+    "Wat Ayla weet": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What Ayla knows"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiko Ayla sa"
+          }
+        }
+      }
+    },
+    "Wat beter kan": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What could be better"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiko por ta mihó"
+          }
+        }
+      }
+    },
     "Wat breng je mee? Noem een voorbeeld uit je kluis.": {
       "extractionState": "manual",
       "localizations": {
@@ -36373,6 +40366,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kiko e vakatura ta pidi"
+          }
+        }
+      }
+    },
+    "Wat de vacatures vragen en wat je al kunt laten zien": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What the vacancies ask for and what you can already show"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiko e vakaturanan ta pidi i kiko bo por mustra kaba"
+          }
+        }
+      }
+    },
+    "Wat deel ik?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What am I sharing?"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiko mi ta kompartí?"
           }
         }
       }
@@ -36479,6 +40506,23 @@
         }
       }
     },
+    "Wat goed ging": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What went well"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiko a bai bon"
+          }
+        }
+      }
+    },
     "Wat heb je gedaan of geleerd?": {
       "extractionState": "manual",
       "localizations": {
@@ -36496,6 +40540,23 @@
         }
       }
     },
+    "Wat je achterliet": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What you left"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loke bo a laga"
+          }
+        }
+      }
+    },
     "Wat je al kunt": {
       "extractionState": "manual",
       "localizations": {
@@ -36509,6 +40570,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Loke bo por kaba"
+          }
+        }
+      }
+    },
+    "Wat je al kunt laten zien": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What you can already show"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiko bo por mustra kaba"
           }
         }
       }
@@ -36836,6 +40914,40 @@
         }
       }
     },
+    "Wat ze verder mogen zien": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What else they may see"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiko mas nan mag mira"
+          }
+        }
+      }
+    },
+    "Wat zoek je? (niet verplicht)": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What are you looking for? (optional)"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiko bo ta buska? (no ta obligatorio)"
+          }
+        }
+      }
+    },
     "We hebben een nieuwe code naar je e-mail gestuurd.": {
       "extractionState": "manual",
       "localizations": {
@@ -37108,6 +41220,40 @@
         }
       }
     },
+    "Werk": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Work"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trabou"
+          }
+        }
+      }
+    },
+    "Werk aan %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Work on %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traha riba %@"
+          }
+        }
+      }
+    },
     "Werk de stof door en oefen met proefexamens.": {
       "extractionState": "manual",
       "localizations": {
@@ -37193,6 +41339,23 @@
         }
       }
     },
+    "Werkgever-modus": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Employer mode"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modo di dunadó di trabou"
+          }
+        }
+      }
+    },
     "Werkgever-modus · demo": {
       "extractionState": "manual",
       "localizations": {
@@ -37261,6 +41424,23 @@
         }
       }
     },
+    "Wie kan mijn gegevens zien?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Who can see my data?"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ken por mira mi datonan?"
+          }
+        }
+      }
+    },
     "Wie keek er": {
       "extractionState": "manual",
       "localizations": {
@@ -37291,6 +41471,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ken a wak kiko den e último 30 dianan."
+          }
+        }
+      }
+    },
+    "Wie wat van je zag en wanneer, en wat nog te zien is.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Who saw what of yours and when, and what can still be seen."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ken a mira kiko di bo i ki ora, i kiko ainda por wòrdu mirá."
           }
         }
       }
@@ -37601,6 +41798,57 @@
         }
       }
     },
+    "Ze kunnen je %@ bewijsstukken en de bestanden inzien, twee weken lang. Stoppen kan altijd bij Profiel.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "They can view your %@ pieces of evidence and the files for two weeks. You can always stop in Profile."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nan por wak bo %@ prueba i e archivonan, pa dos siman. Bo por stop semper na Perfil."
+          }
+        }
+      }
+    },
+    "Ze kunnen je bewijsstuk en de bestanden inzien, twee weken lang. Stoppen kan altijd bij Profiel.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "They can view your piece of evidence and the files for two weeks. You can always stop in Profile."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nan por wak bo prueba i e archivonan, pa dos siman. Bo por stop semper na Perfil."
+          }
+        }
+      }
+    },
+    "Ze ziet geen bewijs uit je kluis: daar gaf je geen toestemming voor.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "She doesn't see any evidence from your vault: you didn't give permission for that."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E no ta mira ningun prueba for di bo kaha fuerte: bo no a duna permiso pa esei."
+          }
+        }
+      }
+    },
     "Zeg \"Praat met Ayla in PAVE\" om verder te gaan.": {
       "extractionState": "manual",
       "localizations": {
@@ -37614,6 +41862,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bisa \"Papia ku Ayla den PAVE\" pa sigui."
+          }
+        }
+      }
+    },
+    "Zeg eerst dat je komt, dan zet ik het gesprek in je agenda.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "First say you're coming, then I'll put the interview in your calendar."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bisa promé ku bo ta bini, anto mi ta pone e entrevista den bo kalender."
           }
         }
       }
@@ -37839,6 +42104,23 @@
         }
       }
     },
+    "Zet de microfoon aan voor PAVE in Instellingen op je Apple Watch.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn on the microphone for PAVE in Settings on your Apple Watch."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pone e mikròfono na pa PAVE den Konfigurashon riba bo Apple Watch."
+          }
+        }
+      }
+    },
     "Zet de vaardigheid in je profiel.": {
       "extractionState": "manual",
       "localizations": {
@@ -37941,6 +42223,23 @@
         }
       }
     },
+    "Zet in een plan": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add to a plan"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pone den un plan"
+          }
+        }
+      }
+    },
     "Zet in je agenda": {
       "extractionState": "manual",
       "localizations": {
@@ -37954,6 +42253,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pone den bo kalender"
+          }
+        }
+      }
+    },
+    "Zet je bewijs in je kluis": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Put your evidence in your vault"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pone bo prueba den bo kaha fuerte"
           }
         }
       }
@@ -38111,6 +42427,23 @@
         }
       }
     },
+    "Zo kun je het zeggen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How you could say it"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Asina bo por bis'é"
+          }
+        }
+      }
+    },
     "Zo opent je kluis. In de kluis kun je even wisselen; de volgende keer opent hij weer zo.": {
       "extractionState": "manual",
       "localizations": {
@@ -38162,6 +42495,23 @@
         }
       }
     },
+    "Zo ziet de werkgever wie er bij de stand solliciteerde. Hier speelt een medespeler de recruiter.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This is how the employer sees who applied at the stand. Here, a fellow player plays the recruiter."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Asina e dunadó di trabou ta mira ken a solisitá na e stand. Aki, un kompañero ta hunga e rekrutadó."
+          }
+        }
+      }
+    },
     "Zo ziet de werkgever wie er bij de stand solliciteerde. In de demo speelt een medespeler de recruiter.": {
       "extractionState": "manual",
       "localizations": {
@@ -38175,6 +42525,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Asina e dunadó di trabou ta mira ken a solisitá na e stand. Den e demo, un kompañero ta hunga e rekrutadó."
+          }
+        }
+      }
+    },
+    "Zo ziet je kaart eruit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This is how your card looks"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Asina bo karchi ta parse"
           }
         }
       }
@@ -38226,6 +42593,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ora un organisashon evaluá bo prueba, bo ta mir'é aki."
+          }
+        }
+      }
+    },
+    "Zodra iemand opent wat je deelde, zie je hier wie, wat en wanneer.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As soon as someone opens what you shared, you'll see who, what and when here."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Asina ku un hende habri loke bo a kompartí, bo ta mira aki ken, kiko i ki ora."
           }
         }
       }
@@ -38379,6 +42763,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Buska ku Ayla kompanianan ku ta ofresé stashi."
+          }
+        }
+      }
+    },
+    "Zoek of bewaar vacatures met Ayla. Dan zie je hier wat ze vragen en wat je nog mist.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search or save vacancies with Ayla. Then you'll see here what they ask for and what you're still missing."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buska òf warda vakaturanan ku Ayla. Anto bo ta mira aki kiko nan ta pidi i kiko ainda ta falta bo."
           }
         }
       }
@@ -38655,6 +43056,23 @@
         }
       }
     },
+    "Zoekt: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Looking for: %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta buska: %@"
+          }
+        }
+      }
+    },
     "Zoekveld leegmaken": {
       "extractionState": "manual",
       "localizations": {
@@ -38740,6 +43158,40 @@
         }
       }
     },
+    "bezig": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "in progress"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "den progreso"
+          }
+        }
+      }
+    },
+    "biometrie": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "biometrics"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "biometria"
+          }
+        }
+      }
+    },
     "de %@ gesprekken": {
       "extractionState": "manual",
       "localizations": {
@@ -38753,6 +43205,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "e %@ kombersashonnan"
+          }
+        }
+      }
+    },
+    "di": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ma"
           }
         }
       }
@@ -38774,6 +43243,23 @@
         }
       }
     },
+    "do": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Th"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "we"
+          }
+        }
+      }
+    },
     "en nog %@": {
       "extractionState": "manual",
       "localizations": {
@@ -38791,6 +43277,74 @@
         }
       }
     },
+    "gedaan": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "done"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "hasí"
+          }
+        }
+      }
+    },
+    "geen map Verzonden gevonden": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no Sent folder found"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no a haña fòlder Mandá"
+          }
+        }
+      }
+    },
+    "gisteren": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "yesterday"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ayera"
+          }
+        }
+      }
+    },
+    "het": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "it"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "esaki"
+          }
+        }
+      }
+    },
     "het gesprek": {
       "extractionState": "manual",
       "localizations": {
@@ -38804,6 +43358,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "e kombersashon"
+          }
+        }
+      }
+    },
+    "hoogstens %@ uur per week": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "at most %@ hours a week"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "maksimo %@ ora pa siman"
           }
         }
       }
@@ -38838,6 +43409,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Konektá iCloud Mail"
+          }
+        }
+      }
+    },
+    "iCloud Mail werkt alleen met een @icloud.com-, @me.com- of @mac.com-adres. Je gewone Apple-inlogadres werkt hier niet als het van een andere provider is.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud Mail only works with an @icloud.com, @me.com or @mac.com address. Your usual Apple sign-in address won't work here if it's from another provider."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud Mail ta funshoná solamente ku un adrès @icloud.com, @me.com òf @mac.com. Bo adrès normal di drenta na Apple no ta funshoná aki si e ta di un otro proveedor."
           }
         }
       }
@@ -38927,6 +43515,23 @@
         }
       }
     },
+    "ma": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mo"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "lu"
+          }
+        }
+      }
+    },
     "mag ze alleen bekijken": {
       "extractionState": "manual",
       "localizations": {
@@ -39012,6 +43617,40 @@
         }
       }
     },
+    "naam@icloud.com": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "name@icloud.com"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nòmber@icloud.com"
+          }
+        }
+      }
+    },
+    "naam@voorbeeld.nl": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "name@example.com"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nòmber@ehèmpel.com"
+          }
+        }
+      }
+    },
     "niet gelukt": {
       "extractionState": "manual",
       "localizations": {
@@ -39080,7 +43719,23 @@
         }
       }
     },
-    "nu": {},
+    "nu": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "now"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "awor"
+          }
+        }
+      }
+    },
     "nu bezig": {
       "extractionState": "manual",
       "localizations": {
@@ -39179,6 +43834,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "awe"
+          }
+        }
+      }
+    },
+    "vr": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fr"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bi"
+          }
+        }
+      }
+    },
+    "wo": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ra"
+          }
+        }
+      }
+    },
+    "za": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sa"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sa"
+          }
+        }
+      }
+    },
+    "zo": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Su"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "du"
           }
         }
       }
