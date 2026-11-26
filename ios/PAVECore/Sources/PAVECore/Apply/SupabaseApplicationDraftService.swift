@@ -1,13 +1,13 @@
 import Foundation
 
 public enum ApplicationDraftServiceError: Error, Equatable, Sendable {
-    /// The table does not exist yet (migration 20261126120000).
+    /// The table does not exist yet (migration 20261126121000).
     case notSetUp
     case noSession
     case failed(status: Int)
 }
 
-/// Applications in Supabase (`application_drafts`, migration 20261126120000), with the user's own session, so row
+/// Applications in Supabase (`application_drafts`, migration 20261126121000), with the user's own session, so row
 /// level security decides what can be read and changed. The draft is kept whole, as the app writes it on the device.
 public struct SupabaseApplicationDraftService: ApplicationDraftService {
     private let tableURL: URL
