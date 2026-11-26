@@ -51,6 +51,8 @@ struct RootView: View {
         .environment(\.paveAccentColor, Color.paveAccent)
         .environment(\.paveOrbPalette, PaveAppearance.orbPalette)
         .tint(Color.paveAccent)
+        // Dates and numbers in the language of Instellingen › Taal; the texts translate themselves.
+        .environment(\.locale, PaveLanguageStore.shared.language.locale)
         .onChange(of: appState.phase) { _, phase in
             if phase != .signedOut { PaveThemeStore.shared.usesEduID = false }
         }
