@@ -808,9 +808,12 @@ struct AylaChatScreen: View {
         if model.entries.isEmpty, !model.isLoadingConversation, let project = model.openProject {
             // The start page of a project: its chats and sources, and the text field below starts a chat in it.
             ScrollView {
-                AylaProjectStart(project: project, model: model) { chat in
+                AylaProjectStart(project: project, model: model, onOpenChat: { chat in
                     Task { await model.open(chat) }
-                }
+                }, onBack: {
+                    model.openProject = nil
+                    closingShelf(then: onShowChats)
+                })
                 .opacity(isTalking ? 0 : 1)
             }
             .scrollBounceBehavior(.basedOnSize)

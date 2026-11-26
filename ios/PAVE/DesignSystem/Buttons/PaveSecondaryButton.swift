@@ -16,6 +16,9 @@ struct PaveSecondaryButton: View {
                 }
                 Text(title)
                     .textStyle(.button)
+                    // One line in every language: a long word shrinks a little instead of breaking the label in two.
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
         }
         .buttonStyle(SecondaryButtonStyle())

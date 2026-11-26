@@ -168,15 +168,23 @@ struct PlanDetailView: View {
                         .contentTransition(.numericText())
                 }
             }
-            HStack(spacing: 10) {
-                if plan.isFinished {
-                    PaveSoftButton(title: PlanMessages.reopen) { model.reopen(plan.id) }
-                } else {
-                    PavePrimaryButton(title: PlanMessages.resume) { resume(plan) }
-                    PaveSoftButton(title: PlanMessages.newConversation) { actions.start(plan, plan.currentStep) }
-                }
+            // Side by side where the words fit (Dutch on a phone), under each other where they do not (other
+            // languages, larger text), so a label never breaks over two lines.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) { planButtons(plan) }
+                VStack(spacing: 10) { planButtons(plan) }
             }
             .padding(.top, 4)
+        }
+    }
+
+    @ViewBuilder
+    private func planButtons(_ plan: PavePlan) -> some View {
+        if plan.isFinished {
+            PaveSoftButton(title: PlanMessages.reopen) { model.reopen(plan.id) }
+        } else {
+            PavePrimaryButton(title: PlanMessages.resume) { resume(plan) }
+            PaveSoftButton(title: PlanMessages.newConversation) { actions.start(plan, plan.currentStep) }
         }
     }
 
