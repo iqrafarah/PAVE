@@ -70,8 +70,11 @@ final class PaveLanguageStore {
         language = Self.stored(in: defaults)
     }
 
+    /// Whether a language was picked in Instellingen, rather than taken from the device.
+    var isChosen: Bool { defaults.string(forKey: Self.key) != nil }
+
     func select(_ language: PaveLanguage) {
-        guard language != self.language else { return }
+        guard language != self.language || !isChosen else { return }
         defaults.set(language.rawValue, forKey: Self.key)
         // iOS's own texts (share sheet, photo picker) follow from the next launch; it has no Papiamentu, so Dutch.
         defaults.set([language.rawValue, PaveLanguage.dutch.rawValue], forKey: "AppleLanguages")

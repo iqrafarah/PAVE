@@ -33,6 +33,8 @@ final class ProfileModel {
     private(set) var displayMode = PaveAppearance.displayMode
     /// False until the account can keep it (migration 20261119140000); it is then kept on this device only.
     private(set) var savesDisplayMode = false
+    /// Instellingen › Taal is saved in the account, so every device opens in the same language.
+    private(set) var savesLanguage = false
 
     private let service: (any ProfileService)?
     private let defaults: UserDefaults
@@ -77,6 +79,7 @@ final class ProfileModel {
                 savesDisplayMode = true
                 applyDisplayMode(mode)
             }
+            await loadLanguage(from: service)
             await loadAvatar()
         } catch {
             if state != .ready { state = .failed }
@@ -93,6 +96,33 @@ final class ProfileModel {
             try await service.setDisplayMode(mode)
         } catch {
             applyDisplayMode(before)
+            problem = SettingsMessages.message(for: ProfileError(error))
+        }
+    }
+
+    /// The account's language wins. Is there none yet, then a language chosen earlier on this device goes into the
+    /// account, so the other devices follow.
+    private func loadLanguage(from service: any ProfileService) async {
+        guard let saved = try? await service.language() else { return }
+        savesLanguage = true
+        let store = PaveLanguageStore.shared
+        if let code = saved.code, let language = PaveLanguage(rawValue: code) {
+            store.select(language)
+        } else if store.isChosen {
+            try? await service.setLanguage(store.language.rawValue)
+        }
+    }
+
+    func setLanguage(_ language: PaveLanguage) async {
+        let store = PaveLanguageStore.shared
+        guard language != store.language || !store.isChosen else { return }
+        let before = store.language
+        store.select(language)
+        guard let service, savesLanguage else { return }
+        do {
+            try await service.setLanguage(language.rawValue)
+        } catch {
+            store.select(before)
             problem = SettingsMessages.message(for: ProfileError(error))
         }
     }
