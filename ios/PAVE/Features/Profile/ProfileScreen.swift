@@ -266,33 +266,15 @@ struct ProfileScreen: View {
                     SavedProfileRow(profile: profile) { editing = profile } onShare: {
                         share(.selection(profile.id))
                     }
-                    ShareRowDivider()
+                    if profile.id != profiles.last?.id || !open.isEmpty { ShareRowDivider() }
                 }
-                ForEach(open, id: \.self) { kind in
+                ForEach(Array(open.enumerated()), id: \.element) { index, kind in
+                    if index > 0 { ShareRowDivider() }
                     SavedProfileRow(template: kind) {
                         editing = SavedProfile.starter(for: kind, items: vault.items)
                     } onShare: {
                         share(.kind(kind))
                     }
-                    ShareRowDivider()
-                }
-                Menu {
-                    ForEach(ShareTemplate.allCases, id: \.self) { kind in
-                        Button {
-                            editing = SavedProfile.starter(for: kind, items: vault.items)
-                        } label: {
-                            Label(SharingMessages.template(kind), image: ShareTemplateIcon.image(kind))
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 14) {
-                        ShareRowIcon(icon: .iconPlus)
-                        Text(SharingMessages.newProfile).textStyle(.bodyMedium).foregroundStyle(Color.paveAccent)
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, 14)
-                    .contentShape(.rect)
                 }
             }
             .disabled(!canShare)
