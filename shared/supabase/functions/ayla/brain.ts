@@ -736,6 +736,7 @@ const NEEDS_TARGET: readonly ActionKind[] = [
   'openPlan', 'openProject', 'markPlanStep', 'removePlanStep', 'linkPlanToProject',
   'renamePlanStep', 'describePlanStep', 'answerInvitation', 'addTalkToCalendar', 'addProjectSource',
 ]
+/** Mail actions may leave out who: then the newest conversation is meant. */
 const NEEDS_VALUE: readonly ActionKind[] = [
   'openSettingsPage', 'renameChat', 'pinChat', 'setChatExpiry', 'setTheme', 'setTextSize', 'setDisplayMode', 'setVaultLayout', 'setVoiceText',
   'setChatsInSearch', 'setAnimations', 'setMemory', 'createFolder', 'moveToFolder', 'allowAyla', 'openVacancy', 'saveVacancy',

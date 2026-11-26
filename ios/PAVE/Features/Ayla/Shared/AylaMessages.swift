@@ -33,6 +33,8 @@ enum AylaMessages {
     static func actionNoProject(_ name: String) -> String { "Ik kon het project \(name) niet vinden." }
     static func actionNoApplication(_ name: String) -> String { "Ik kon geen sollicitatie vinden voor \(name). Open eerst de vacature, dan begin ik er een." }
     static let actionNoVacancyForPlan = "Ik weet niet voor welke vacature. Open de vacature of zeg welke van de getoonde vacatures je bedoelt."
+    static func actionNoMail(_ words: String) -> String { words.isEmpty ? "Ik weet niet welke mail je bedoelt. Noem de naam of het onderwerp." : "Ik kon geen mail vinden van of over \(words)." }
+    static let actionNoMailbox = "Er is nog geen e-mail gekoppeld. Dat doe je bij Meldingen, onder de drie puntjes."
     static func actionNoInvitation(_ name: String) -> String { "Ik kon geen uitnodiging vinden van \(name)." }
     static func actionInvitationAccepted(_ employer: String) -> String { "Ik heb \(employer) laten weten dat je komt. Ik open je agenda: bewaar het gesprek daar als je wilt." }
     static let actionInvitationNotAccepted = "Zeg eerst dat je komt, dan zet ik het gesprek in je agenda."

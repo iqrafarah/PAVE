@@ -296,6 +296,14 @@ struct EmailThreadScreen: View {
             Task { await email.open(threadID) }
         }
         .onAppear { email.openThreadID = threadID }
+        // Asked from a chat with Ayla: what she was asked starts here, behind the same consent as the buttons.
+        .task(id: threadID) {
+            guard let asked = email.aylaRequest, asked.threadID == threadID else { return }
+            email.aylaRequest = nil
+            try? await Task.sleep(for: .milliseconds(400))
+            if !asked.wish.isEmpty { draft = asked.wish }
+            askAyla(asked.task)
+        }
         .onDisappear {
             dictation.stop()
             if email.openThreadID == threadID { email.openThreadID = nil }

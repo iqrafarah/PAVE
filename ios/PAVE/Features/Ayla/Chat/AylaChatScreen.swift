@@ -22,6 +22,7 @@ struct AylaChatScreen: View {
     @Environment(ProfileModel.self) private var profile: ProfileModel?
     @Environment(PlanModel.self) private var plans: PlanModel?
     @Environment(SharingModel.self) private var sharing: SharingModel?
+    @Environment(EmailModel.self) private var email: EmailModel?
     @Environment(\.openPlan) private var openPlan
     @Environment(\.openDestination) private var openDestination
     @State private var picksPlan = false
@@ -2925,6 +2926,18 @@ struct AylaChatScreen: View {
             }
             closeShelf()
             openPlan(plan.id)
+        case "openMail", "summarizeMail", "replyMail":
+            guard let email, let openDestination else { return .failed(AylaMessages.actionUnavailable) }
+            guard email.hasAccounts else { return .failed(AylaMessages.actionNoMailbox) }
+            guard let thread = email.thread(matching: action.target) else { return .failed(AylaMessages.actionNoMail(action.target ?? "")) }
+            switch action.kind {
+            case "summarizeMail": email.aylaRequest = (thread.id, .summarize, "")
+            case "replyMail": email.aylaRequest = (thread.id, .suggestReply, action.value ?? "")
+            default: break
+            }
+            closeShelf()
+            email.threadToOpen = thread.id
+            openDestination(.notifications)
         case "renamePlanStep", "describePlanStep":
             guard let plans else { return .failed(AylaMessages.actionUnavailable) }
             let planActions = AylaPlanActions(plans: plans, chatPlan: plans.plan(containing: model.conversationID))
