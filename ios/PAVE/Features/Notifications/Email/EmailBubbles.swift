@@ -179,13 +179,13 @@ struct EmailMessageRow: View {
     @ViewBuilder
     private func messageMenu(copy: String) -> some View {
         if let onReply {
-            Button(action: onReply) { Label("Antwoord", systemImage: "arrowshape.turn.up.left.fill") }
+            Button(action: onReply) { Label("Antwoord", tinted: .iconArrowUturnLeftSolid) }
         }
         if let onReplyAll {
-            Button(action: onReplyAll) { Label("Allen antwoorden", systemImage: "arrowshape.turn.up.left.2.fill") }
+            Button(action: onReplyAll) { Label("Allen antwoorden", tinted: .iconArrowUturnLeftSolid) }
         }
         if let onForward {
-            Button(action: onForward) { Label("Doorsturen", systemImage: "arrowshape.turn.up.right.fill") }
+            Button(action: onForward) { Label("Doorsturen", tinted: .iconArrowUturnRightSolid) }
         }
         Button { UIPasteboard.general.string = copy } label: {
             Label("Kopiëren", tinted: .iconDocumentDuplicate)
@@ -211,7 +211,7 @@ struct EmailMessageRow: View {
             Button { onSaveToVault(attachment) } label: { Label("Bewaar in kluis", tinted: .iconFolderArrowDownSolid) }
         }
         if let onForward {
-            Button(action: onForward) { Label("Doorsturen", systemImage: "arrowshape.turn.up.right.fill") }
+            Button(action: onForward) { Label("Doorsturen", tinted: .iconArrowUturnRightSolid) }
         }
         if let onDelete {
             Button(role: .destructive, action: onDelete) { Label("Verwijderen", tinted: .iconTrash) }
@@ -502,7 +502,7 @@ struct EmailForwardCard: View {
 
     var body: some View {
         VStack(alignment: mine ? .trailing : .leading, spacing: 4) {
-            Label("Doorgestuurd", systemImage: "arrowshape.turn.up.right.fill")
+            Label("Doorgestuurd", tinted: .iconArrowUturnRightSolid)
                 .labelStyle(EmailSmallLabelStyle())
                 .textStyle(.meta)
                 .foregroundStyle(Color.inkMuted)

@@ -53,7 +53,7 @@ struct VaultItemActionButtons: View {
             Button {
                 Task { await model.setArchived(true, item) }
             } label: {
-                SwiftUI.Label { Text(RetentionMessages.archive) } icon: { Image(systemName: "archivebox.fill") }
+                SwiftUI.Label { Text(RetentionMessages.archive) } icon: { Image(.iconArchiveBoxSolid).renderingMode(.template) }
             }
         }
         Button(role: .destructive, action: onDelete) {

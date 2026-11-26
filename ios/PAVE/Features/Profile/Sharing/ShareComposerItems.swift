@@ -143,7 +143,7 @@ struct ShareComposerItems: View {
                     .truncationMode(.middle)
             }
             .padding(.leading, 22)
-            .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
             .contentShape(.rect)
         }
         .buttonStyle(.pave)
@@ -164,7 +164,7 @@ struct ShareComposerItems: View {
                     .textStyle(.caption)
                     .foregroundStyle(isOn ? Color.ink : Color.inkMuted)
             }
-            .frame(minHeight: 32)
+            .frame(minHeight: 44)
             .contentShape(.rect)
         }
         .buttonStyle(.pave)

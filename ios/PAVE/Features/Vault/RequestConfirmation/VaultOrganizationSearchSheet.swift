@@ -48,15 +48,17 @@ struct VaultOrganizationSearchSheet: View {
                 if isLoading && results.isEmpty {
                     ProgressView()
                 } else if failed {
-                    ContentUnavailableView("Laden lukte niet", systemImage: "wifi.exclamationmark", description: Text("Probeer het opnieuw."))
+                    PaveEmptyState(icon: .iconSignalSlash, title: "Laden lukte niet", message: "Probeer het opnieuw.")
+                        .listRowBackground(Color.clear)
                 } else if results.isEmpty && !isLoading {
-                    ContentUnavailableView("Geen organisatie gevonden", systemImage: "building.2", description: Text("Probeer een andere naam, plaats of categorie."))
+                    PaveEmptyState(icon: .iconBuildingOfficeSolid, title: "Geen organisatie gevonden", message: "Probeer een andere naam, plaats of categorie.")
+                        .listRowBackground(Color.clear)
                 }
             }
             .navigationTitle("Organisatie kiezen")
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $text, placement: .navigationBarDrawer(displayMode: .always), prompt: "Organisatie, plaats of adres")
-            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Gereed") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button(ApplyMessages.done) { dismiss() } } }
             .task(id: query) { await search() }
             .onAppear { if text.isEmpty { text = initialQuery } }
         }
@@ -98,13 +100,13 @@ struct VaultOrganizationSearchSheet: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(place.organizationName).foregroundStyle(Color.ink)
                     Text((kind == nil ? "\(place.organizationKind.title) · " : "") + place.locationTitle)
-                        .font(.caption).foregroundStyle(Color.inkMuted)
+                        .textStyle(.caption).foregroundStyle(Color.inkMuted)
                     if let address = place.addressLine {
-                        Text(address).font(.caption).foregroundStyle(Color.inkMuted).lineLimit(1)
+                        Text(address).textStyle(.caption).foregroundStyle(Color.inkMuted).lineLimit(1)
                     }
                 }
                 Spacer()
-                if place.id == selectedID { Image(systemName: "checkmark").foregroundStyle(Color.paveAccent) }
+                if place.id == selectedID { Image(.iconCheck).renderingMode(.template).resizable().scaledToFit().paveIconFrame(14).foregroundStyle(Color.paveAccent) }
             }
             .contentShape(Rectangle())
         }

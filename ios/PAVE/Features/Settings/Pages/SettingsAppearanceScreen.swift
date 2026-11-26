@@ -86,8 +86,9 @@ struct SettingsAppearanceScreen: View {
     private var displayModeOptions: some View {
         ForEach(PaveDisplayMode.allCases) { mode in
             SettingsOptionCard(title: SettingsMessages.title(mode), isSelected: profile.displayMode == mode) {
-                Image(systemName: Self.symbol(mode))
-                .font(.system(size: 20, weight: .semibold))
+                Image(Self.icon(mode))
+                .renderingMode(.template)
+                .paveIconScale()
                 .accessibilityHidden(true)
             } action: {
                 Task { await profile.setDisplayMode(mode) }
@@ -95,11 +96,12 @@ struct SettingsAppearanceScreen: View {
         }
     }
 
-    private static func symbol(_ mode: PaveDisplayMode) -> String {
+    /// Filled, like the vault layout cards on the same page. Automatisch follows the device.
+    private static func icon(_ mode: PaveDisplayMode) -> ImageResource {
         switch mode {
-        case .auto: "circle.lefthalf.filled"
-        case .light: "sun.max.fill"
-        case .dark: "moon.fill"
+        case .auto: .iconDevicePhoneSolid
+        case .light: .iconSunSolid
+        case .dark: .iconMoonSolid
         }
     }
 

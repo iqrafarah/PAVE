@@ -261,7 +261,7 @@ enum AylaMessages {
     static func yesNoAnswer(_ isYes: Bool, byHead: Bool) -> String {
         byHead ? headAnswer(isYes) : isYes ? "Je koos: Ja" : "Je koos: Nee"
     }
-    static let conceptRequestConfirmation = "Bevestiging aanvragen"
+    static let conceptRequestConfirmation = "Laten verifiëren"
     static let conceptUnknown = "nog niet bekend"
 
     static func conceptFromFiles(logo: Bool, cover: Bool, items: Int) -> String? {

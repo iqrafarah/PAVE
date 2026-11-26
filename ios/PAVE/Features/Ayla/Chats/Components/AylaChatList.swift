@@ -369,7 +369,7 @@ struct AylaChatList: View {
                     actions.rename(renaming, newTitle)
                 }
             }
-            Button("Annuleren", role: .cancel) {}
+            Button(ApplyMessages.cancel, role: .cancel) {}
         }
     }
 
@@ -402,7 +402,7 @@ struct AylaChatList: View {
                 Button {
                     pin([conversation])
                 } label: {
-                    Label { Text(conversation.isPinned ? "Losmaken" : "Vastzetten") } icon: { Image(systemName: conversation.isPinned ? "pin.slash.fill" : "pin.fill") }
+                    Label { Text(conversation.isPinned ? "Losmaken" : "Vastzetten") } icon: { Image(conversation.isPinned ? .iconBookmarkSlashSolid : .iconBookmarkSolid).renderingMode(.template) }
                 }
                 .tint(.paveAccent)
             }
@@ -411,14 +411,14 @@ struct AylaChatList: View {
             Button(role: .destructive) {
                 delete([conversation])
             } label: {
-                Label("Verwijderen", image: .iconTrash)
+                Label("Verwijderen", tinted: .iconTrash)
             }
             // Red, not the app's green tint.
             .tint(.red)
             Button {
                 startRenaming(conversation)
             } label: {
-                Label("Naam wijzigen", image: .iconPencil)
+                Label("Naam wijzigen", tinted: .iconPencil)
             }
             .tint(.inkMuted)
         }
@@ -447,13 +447,13 @@ struct AylaChatList: View {
         Button {
             startRenaming(conversation)
         } label: {
-            Label("Naam wijzigen", image: .iconPencil)
+            Label("Naam wijzigen", tinted: .iconPencil)
         }
         if list.canPin {
             Button {
                 pin([conversation])
             } label: {
-                Label { Text(conversation.isPinned ? "Losmaken" : "Vastzetten") } icon: { Image(systemName: conversation.isPinned ? "pin.slash.fill" : "pin.fill") }
+                Label { Text(conversation.isPinned ? "Losmaken" : "Vastzetten") } icon: { Image(conversation.isPinned ? .iconBookmarkSlashSolid : .iconBookmarkSolid).renderingMode(.template) }
             }
         }
         if let projects = actions.projects, list.canUseProjects {
@@ -490,7 +490,7 @@ struct AylaChatList: View {
             Button {
                 retention.archive([conversation])
             } label: {
-                Label(RetentionMessages.archive, systemImage: "archivebox.fill")
+                Label(RetentionMessages.archive, tinted: .iconArchiveBoxSolid)
             }
             // In a project a chat never expires, so there is nothing to choose.
             if conversation.projectID == nil {
@@ -518,7 +518,7 @@ struct AylaChatList: View {
                         Text(RetentionMessages.expires(date))
                     }
                 } label: {
-                    Label(RetentionMessages.expiry, systemImage: "timer")
+                    Label(RetentionMessages.expiry, tinted: .iconClockSolid)
                 }
             }
         }
@@ -526,12 +526,12 @@ struct AylaChatList: View {
             isSelecting = true
             selection = [conversation.id]
         } label: {
-            Label("Selecteren", systemImage: "checkmark.circle.fill")
+            Label("Selecteren", tinted: .iconCheckCircleSolid)
         }
         Button(role: .destructive) {
             delete([conversation])
         } label: {
-            Label("Verwijderen", image: .iconTrash)
+            Label("Verwijderen", tinted: .iconTrash)
         }
     }
 
@@ -551,7 +551,7 @@ struct AylaChatList: View {
                         pin(chosen)
                         isSelecting = false
                     } label: {
-                        Label { Text(allPinned ? "Losmaken" : "Vastzetten") } icon: { Image(systemName: allPinned ? "pin.slash.fill" : "pin.fill") }
+                        Label { Text(allPinned ? "Losmaken" : "Vastzetten") } icon: { Image(allPinned ? .iconBookmarkSlashSolid : .iconBookmarkSolid).renderingMode(.template) }
                             .textStyle(.action)
                             .frame(maxWidth: .infinity, minHeight: 50)
                             .contentShape(.capsule)
@@ -564,7 +564,7 @@ struct AylaChatList: View {
                     delete(chosen)
                     isSelecting = false
                 } label: {
-                    Label(chosen.count > 1 ? "Verwijder \(chosen.count)" : "Verwijderen", image: .iconTrash)
+                    Label(chosen.count > 1 ? "Verwijder \(chosen.count)" : "Verwijderen", tinted: .iconTrash)
                         .textStyle(.action)
                         .frame(maxWidth: .infinity, minHeight: 50)
                         .contentShape(.capsule)
@@ -767,13 +767,13 @@ struct AylaChatList: View {
             Button(role: .destructive) {
                 projectToDelete = project
             } label: {
-                Label(AylaMessages.projectDelete, image: .iconTrash)
+                Label(AylaMessages.projectDelete, tinted: .iconTrash)
             }
             .tint(.red)
             Button {
                 projectEditor = .edit(project)
             } label: {
-                Label(AylaMessages.projectSettings, image: .iconPencil)
+                Label(AylaMessages.projectSettings, tinted: .iconPencil)
             }
             .tint(.inkMuted)
         }
@@ -787,7 +787,7 @@ struct AylaChatList: View {
         Button {
             actions.projects?.togglePin(project)
         } label: {
-            Label { Text(project.isPinned ? "Losmaken" : "Vastzetten") } icon: { Image(systemName: project.isPinned ? "pin.slash.fill" : "pin.fill") }
+            Label { Text(project.isPinned ? "Losmaken" : "Vastzetten") } icon: { Image(project.isPinned ? .iconBookmarkSlashSolid : .iconBookmarkSolid).renderingMode(.template) }
         }
         Button(role: .destructive) { projectToDelete = project } label: { Label { Text(AylaMessages.projectDelete) } icon: { Image(.iconTrash) } }
     }

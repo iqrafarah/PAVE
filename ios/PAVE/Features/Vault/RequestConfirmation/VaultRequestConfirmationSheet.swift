@@ -541,7 +541,7 @@ struct VaultRequestConfirmationSheet: View {
     private var successView: some View {
         VStack(spacing: 18) {
             Spacer(minLength: 0)
-            Image(systemName: "checkmark.seal.fill").resizable().scaledToFit().frame(width: 32, height: 32)
+            Image(.iconCheckBadgeSolid).renderingMode(.template).resizable().scaledToFit().frame(width: 32, height: 32)
                 .foregroundStyle(Color.paveAccent).frame(width: 72, height: 72).background(Color.paveSurfaceTint, in: .circle).accessibilityHidden(true)
             VStack(spacing: 8) {
                 Text("Verzoek verstuurd").textStyle(.emptyTitle).foregroundStyle(Color.ink).multilineTextAlignment(.center).accessibilityAddTraits(.isHeader)

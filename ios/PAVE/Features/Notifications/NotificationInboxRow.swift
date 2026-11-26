@@ -57,8 +57,11 @@ struct NotificationInboxRow: View {
                             .accessibilityLabel("Vergrendeld")
                     }
                     if notification.emailIsMuted {
-                        Image(systemName: "bell.slash.fill")
-                            .font(.system(size: 11))
+                        Image(.iconBellSlashSolid)
+                            .renderingMode(.template)
+                            .resizable()
+                            .scaledToFit()
+                            .paveIconFrame(11)
                             .foregroundStyle(Color.inkMuted)
                             .accessibilityLabel("Gedempt")
                     }

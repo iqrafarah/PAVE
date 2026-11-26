@@ -101,7 +101,7 @@ struct PlanPickerSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuleren") { dismiss() }
+                    Button(ApplyMessages.cancel) { dismiss() }
                 }
                 if currentPlanID != nil {
                     ToolbarItem(placement: .destructiveAction) {

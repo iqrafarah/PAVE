@@ -49,8 +49,11 @@ struct VaultFolderTile: View {
                             .foregroundStyle(Color.ink)
                             .lineLimit(1)
                         if isPinned {
-                            Image(systemName: "pin.fill")
-                                .font(.system(size: 10, weight: .semibold))
+                            Image(.iconBookmarkSolid)
+                                .renderingMode(.template)
+                                .resizable()
+                                .scaledToFit()
+                                .paveIconFrame(10)
                                 .foregroundStyle(Color.inkMuted)
                                 .accessibilityHidden(true)
                         }

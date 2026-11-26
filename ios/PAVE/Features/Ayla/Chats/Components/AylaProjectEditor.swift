@@ -128,7 +128,7 @@ struct AylaProjectEditor: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuleren") { dismiss() }
+                    Button(ApplyMessages.cancel) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(project == nil ? AylaMessages.projectCreate : "Bewaren") { save() }

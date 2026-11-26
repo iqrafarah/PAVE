@@ -116,19 +116,19 @@ struct AylaMemoryFolderScreen: View {
                 PaveHaptics.tap(.medium)
                 memory.forget(note)
             } label: {
-                Label("Vergeten", image: .iconTrash)
+                Label("Vergeten", tinted: .iconTrash)
             }
             .tint(.red)
             Button {
                 editing = note
             } label: {
-                Label("Aanpassen", image: .iconPencil)
+                Label("Aanpassen", tinted: .iconPencil)
             }
             .tint(.paveAccent)
         }
         .contextMenu {
-            Button { editing = note } label: { Label("Aanpassen", image: .iconPencil) }
-            Button(role: .destructive) { memory.forget(note) } label: { Label("Vergeten", image: .iconTrash) }
+            Button { editing = note } label: { Label("Aanpassen", tinted: .iconPencil) }
+            Button(role: .destructive) { memory.forget(note) } label: { Label("Vergeten", tinted: .iconTrash) }
         }
         .accessibilityActions {
             Button("Aanpassen") { editing = note }

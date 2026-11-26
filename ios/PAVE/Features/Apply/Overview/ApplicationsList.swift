@@ -99,7 +99,7 @@ struct ApplicationsList: View {
                                     }
                                     .contextMenu {
                                         if onDelete != nil {
-                                            Button(role: .destructive) { deleting = draft } label: { Label(ApplyMessages.deleteApplication, image: .iconTrash) }
+                                            Button(role: .destructive) { deleting = draft } label: { Label(ApplyMessages.deleteApplication, tinted: .iconTrash) }
                                         }
                                     }
                             }

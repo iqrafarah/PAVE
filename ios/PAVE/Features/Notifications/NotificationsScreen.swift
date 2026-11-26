@@ -682,9 +682,9 @@ struct NotificationsScreen: View {
                 withAnimation(.snappy) { email?.toggleMute(id) }
             } label: {
                 if notification.emailIsMuted {
-                    Label("Dempen opheffen", systemImage: "bell.fill")
+                    Label("Dempen opheffen", tinted: .iconBellSolid)
                 } else {
-                    Label("Dempen", systemImage: "bell.slash.fill")
+                    Label("Dempen", tinted: .iconBellSlashSolid)
                 }
             }
         }
@@ -1023,8 +1023,12 @@ private struct VerificationRequestNotificationDetail: View {
     }
 
     private func logoFallback(_ item: NotificationReviewItem) -> some View {
-        Text(String((item.organisationName ?? item.title).prefix(1)).uppercased())
-            .font(.system(size: 18, weight: .semibold))
+        // An organisation without a logo gets the building, never its first letter.
+        Image(.iconBuildingOfficeSolid)
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .paveIconFrame(18)
             .foregroundStyle(Color.paveAccent)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.panel)

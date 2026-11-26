@@ -121,7 +121,7 @@ struct EmailAccountsScreen: View {
                     PaveHaptics.success()
                 }
             }
-            Button("Annuleren", role: .cancel) {}
+            Button(ApplyMessages.cancel, role: .cancel) {}
         } message: { account in
             Text("PAVE vergeet je wachtwoord. Je e-mails blijven gewoon in je mailbox. Trek het app-specifieke wachtwoord ook in bij account.apple.com als je het niet meer gebruikt.")
         }
@@ -250,7 +250,7 @@ struct EmailICloudSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuleren") { dismiss() }
+                    Button(ApplyMessages.cancel) { dismiss() }
                         .disabled(isWorking)
                 }
                 ToolbarItem(placement: .confirmationAction) {

@@ -38,7 +38,7 @@ struct EmailVaultPicker: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuleren") { dismiss() }.disabled(isAdding)
+                    Button(ApplyMessages.cancel) { dismiss() }.disabled(isAdding)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(isAdding ? "Bezig…" : selected.isEmpty ? "Voeg toe" : "Voeg toe (\(selected.count))") {
