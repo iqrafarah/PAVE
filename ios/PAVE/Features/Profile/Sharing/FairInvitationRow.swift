@@ -9,21 +9,17 @@ struct FairInvitationRow: View {
     let onAnswer: (Bool) -> Void
     let onCalendar: () -> Void
     let onPractise: () -> Void
+    /// Opens the application itself, with what you left there; nil where the row already is on that page.
+    var onOpen: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 14) {
-                ShareRowIcon(icon: .iconCalendarDaysSolid)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(SharingMessages.dayInvitedFor(application.vacancyTitle)).textStyle(.listTitle).foregroundStyle(Color.ink)
-                    Text(employer).textStyle(.caption).foregroundStyle(Color.inkMuted)
-                    if let moment = application.invitedFor {
-                        Text(ApplyMessages.slot(moment)).textStyle(.bodyMedium).foregroundStyle(Color.paveAccent)
-                    }
-                }
-            }
-            if let message = application.invitationMessage, !message.isEmpty {
-                Text("“\(message)”").textStyle(.caption).foregroundStyle(Color.inkMuted).fixedSize(horizontal: false, vertical: true)
+            if let onOpen {
+                Button(action: onOpen) { summary(showsChevron: true).contentShape(.rect) }
+                    .buttonStyle(.pave)
+                    .accessibilityHint(SharingMessages.fairOpenApplication)
+            } else {
+                summary(showsChevron: false)
             }
             switch application.answer {
             case nil:
@@ -45,5 +41,36 @@ struct FairInvitationRow: View {
             }
         }
         .padding(14)
+    }
+
+    private func summary(showsChevron: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 14) {
+                ShareRowIcon(icon: .iconCalendarDaysSolid)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(SharingMessages.dayInvitedFor(application.vacancyTitle)).textStyle(.listTitle).foregroundStyle(Color.ink)
+                        .multilineTextAlignment(.leading)
+                    Text(employer).textStyle(.caption).foregroundStyle(Color.inkMuted)
+                    if let moment = application.invitedFor {
+                        Text(ApplyMessages.slot(moment)).textStyle(.bodyMedium).foregroundStyle(Color.paveAccent)
+                    }
+                }
+                Spacer(minLength: 0)
+                if showsChevron {
+                    Image(.iconChevronRightSolid)
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 10, height: 10)
+                        .foregroundStyle(Color.inkMuted)
+                        .accessibilityHidden(true)
+                }
+            }
+            if let message = application.invitationMessage, !message.isEmpty {
+                Text("“\(message)”").textStyle(.caption).foregroundStyle(Color.inkMuted).multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

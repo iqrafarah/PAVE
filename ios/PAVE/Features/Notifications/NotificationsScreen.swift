@@ -130,10 +130,12 @@ extension View {
     }
 }
 
-/// The tabs above Meldingen: everything, the people you talk with (e-mail and Ayla), and what happens to your evidence.
+/// The tabs above Meldingen: everything, the people you write with, what employers answered, and what happens to your
+/// evidence. Each tab shows only its own kind; Alles shows them all.
 enum NotificationTab: String, CaseIterable, Identifiable {
     case all
     case conversations
+    case applications
     case evidence
 
     var id: Self { self }
@@ -142,15 +144,22 @@ enum NotificationTab: String, CaseIterable, Identifiable {
         switch self {
         case .all: "Alles"
         case .conversations: "Gesprekken"
+        case .applications: "Werk"
         case .evidence: "Bewijs"
         }
     }
+
+    /// Invitations from employers and from the fair: they are no meldingen of their own, but sections above the list.
+    var showsApplications: Bool { self == .all || self == .applications }
+    /// Pinned e-mail conversations.
+    var showsPinned: Bool { self == .all || self == .conversations }
 
     func includes(_ kind: PaveNotificationKind) -> Bool {
         switch self {
         case .all: true
         // People you write with. Ayla's chats live in Ayla; their meldingen stay under Alles.
         case .conversations: kind == .email
+        case .applications: false
         case .evidence: kind == .verifiedEvidence || kind == .rejectedEvidence || kind == .verificationRequest
         }
     }
@@ -159,6 +168,7 @@ enum NotificationTab: String, CaseIterable, Identifiable {
         switch self {
         case .all: "Je bent helemaal bij"
         case .conversations: "Geen gesprekken"
+        case .applications: "Geen uitnodigingen"
         case .evidence: "Niets over je bewijs"
         }
     }
@@ -186,6 +196,8 @@ struct NotificationsScreen: View {
 
     @State private var searchText = ""
     @State private var tab = NotificationTab.all
+    @AppStorage("meldingen.fairCollapsed") private var fairCollapsed = false
+    @AppStorage("meldingen.employersCollapsed") private var employersCollapsed = false
     /// Not there in previews; MainView passes the connected mailboxes.
     @Environment(EmailModel.self) private var email: EmailModel?
     @AppStorage("emailCardDismissed") private var emailCardDismissed = false
@@ -289,8 +301,10 @@ struct NotificationsScreen: View {
                 .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
-                if let sharing, searchText.isEmpty, tab != .evidence { NotificationFairSection(sharing: sharing) }
-                if let email, searchText.isEmpty, tab != .evidence, !email.pinnedThreads.isEmpty {
+                if let sharing, searchText.isEmpty, tab.showsApplications {
+                    NotificationFairSection(sharing: sharing, isCollapsed: $fairCollapsed)
+                }
+                if let email, searchText.isEmpty, tab.showsPinned, !email.pinnedThreads.isEmpty {
                     EmailPinnedGrid(threads: email.pinnedThreads) { openedEmailThreadID = $0 } onUnpin: { id in
                         PaveHaptics.selection()
                         withAnimation(.snappy) { email.unpin(id) }
@@ -302,8 +316,9 @@ struct NotificationsScreen: View {
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
                 }
-                if !invitations.isEmpty, searchText.isEmpty {
+                if !invitations.isEmpty, searchText.isEmpty, tab.showsApplications {
                     Section {
+                        if !employersCollapsed {
                         ForEach(invitations) { draft in
                             if let invitation = draft.progress.invitation {
                                 Button { onOpenApplication?(draft.vacancy) } label: {
@@ -314,12 +329,9 @@ struct NotificationsScreen: View {
                                 .listRowInsets(EdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14))
                             }
                         }
+                        }
                     } header: {
-                        Text(ApplyMessages.fromEmployers)
-                            .textStyle(.caption)
-                            .foregroundStyle(Color.paveAccent)
-                            .textCase(nil)
-                            .accessibilityAddTraits(.isHeader)
+                        NotificationSectionHeader(title: ApplyMessages.fromEmployers, count: invitations.count, isCollapsed: $employersCollapsed)
                     }
                 }
                 notificationList
@@ -555,7 +567,10 @@ struct NotificationsScreen: View {
     @ViewBuilder
     private var notificationList: some View {
         if visibleNotifications.isEmpty {
-            if searchText.isEmpty {
+            if searchText.isEmpty, tab.showsApplications, hasApplications {
+                // The invitations above are what there is: no "nothing here" under them.
+                EmptyView()
+            } else if searchText.isEmpty {
                 PaveEmptyState(
                     icon: .iconEnvelopeOpenSolid,
                     title: tab.emptyTitle,
@@ -601,7 +616,13 @@ struct NotificationsScreen: View {
         }
     }
 
+    /// Whether a section with invitations shows above the list.
+    private var hasApplications: Bool {
+        !invitations.isEmpty || !NotificationFairSection.shown(sharing?.fairApplications ?? []).isEmpty
+    }
+
     private var emptyMessage: String {
+        if tab == .applications { return "Nodigt een werkgever je uit, dan staat dat hier." }
         if tab == .conversations {
             return email?.hasAccounts == true
                 ? "E-mails van mensen die je kent staan hier. Begin een gesprek via ⋯ › Nieuw bericht."

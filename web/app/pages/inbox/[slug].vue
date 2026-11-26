@@ -51,9 +51,9 @@ onBeforeUnmount(() => clearInterval(timer));
     <LayoutEmptyState v-else-if="problem === 'failed' && !inbox" icon="briefcase" title="Niet geladen" message="De inbox kon niet worden geladen. Probeer het opnieuw." />
     <template v-else-if="inbox">
       <section>
-        <p class="text-xs font-semibold uppercase tracking-wide text-brand">Werkgever-modus · demo</p>
+        <p class="text-xs font-semibold uppercase tracking-wide text-brand">Werkgever-modus</p>
         <h1 class="font-heading text-2xl font-semibold text-heading">{{ inbox.employer?.name }}</h1>
-        <p class="text-sm text-subtle">Zo ziet de werkgever wie er bij de stand solliciteerde. In de demo speelt een medespeler de recruiter.</p>
+        <p class="text-sm text-subtle">Zo ziet de werkgever wie er bij de stand solliciteerde. Hier speelt een medespeler de recruiter.</p>
       </section>
       <LayoutEmptyState v-if="!inbox.applications.length" icon="briefcase" title="Nog niemand" message="Laat iemand de poster of de stand scannen en snel solliciteren." />
       <article v-for="application in inbox.applications" :key="application.id" class="flex flex-col gap-2 rounded-2xl border border-card-border bg-panel p-5">

@@ -21,12 +21,6 @@ struct ApplicationInvitationCard: View {
                     .textStyle(.listTitle)
                     .foregroundStyle(Color.ink)
                     .accessibilityAddTraits(.isHeader)
-                Text(ApplyMessages.demo)
-                    .textStyle(.caption)
-                    .foregroundStyle(Color.inkMuted)
-                    .padding(.horizontal, 8)
-                    .frame(minHeight: 22)
-                    .background(Color.tileFill, in: .capsule)
                 Spacer(minLength: 0)
             }
             if let chosen = invitation.chosen {

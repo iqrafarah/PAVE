@@ -78,7 +78,7 @@ enum ApplyMessages {
         case .looked(let name, let downloaded):
             downloaded ? "\(name ?? "Iemand") heeft je cv of brief gedownload" : "\(name ?? "Iemand") heeft je sollicitatie bekeken"
         case .stoppedSharing(let recipient): "Delen met \(recipient) gestopt"
-        case .invited: "Uitnodiging voor een kennismaking (demo)"
+        case .invited: "Uitnodiging voor een kennismaking"
         case .talk: "Kennismakingsgesprek"
         case .deadline: "Deadline om te versturen"
         }
@@ -103,20 +103,19 @@ enum ApplyMessages {
     static let saved = "Bewaard op dit toestel"
 
     // The demo invitation after applying
-    static let demo = "Demo"
-    static let fromEmployers = "Van werkgevers · demo"
+    static let fromEmployers = "Van werkgevers"
     static let invitationTitle = "Uitnodiging kennismaking"
     static func invitationText(_ vacancy: Vacancy) -> String {
         "\(vacancy.company) wil je graag spreken over \(vacancy.title). Kies een moment dat je uitkomt."
     }
-    static let invitationDemoNote = "Dit bericht is nagespeeld voor de demo; er is geen echte werkgever bij betrokken."
+    static let invitationDemoNote = "Dit bericht is nagespeeld: er is geen echte werkgever bij betrokken."
     static func slot(_ date: Date) -> String {
         date.formatted(.dateTime.weekday(.wide).day().month(.wide).hour().minute().locale(Locale(identifier: "nl_NL")))
     }
     static func talkPlanned(_ date: Date) -> String { "Je gesprek is op \(slot(date))" }
     static let talkToCalendar = "Zet in je agenda"
     static func talkCalendarTitle(_ vacancy: Vacancy) -> String { "Kennismaking \(vacancy.company)" }
-    static let talkCalendarNotes = "Kennismakingsgesprek, gepland in PAVE (demo). Neem je cv mee."
+    static let talkCalendarNotes = "Kennismakingsgesprek, gepland in PAVE. Neem je cv mee."
     static let prepTitle = "Voorbereiden"
     static func prep(_ step: ApplicationInvitation.PrepStep, _ vacancy: Vacancy) -> String {
         switch step {
@@ -175,7 +174,7 @@ enum ApplyMessages {
         let job = "\(reminder.vacancyTitle) bij \(reminder.company)"
         switch reminder.kind {
         case .followUp: return "Je solliciteerde een week geleden op \(job). Zet de status bij als er nieuws is."
-        case .invitation: return "\(reminder.company) wil je spreken over \(reminder.vacancyTitle). Dit is een demo in PAVE."
+        case .invitation: return "\(reminder.company) wil je spreken over \(reminder.vacancyTitle). Dit bericht is nagespeeld in PAVE."
         default: return "Je sollicitatie voor \(job) staat nog op concept."
         }
     }

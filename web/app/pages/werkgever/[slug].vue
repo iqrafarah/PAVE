@@ -17,7 +17,7 @@ const addedOn = computed(() => employer.value?.created_at
     <LayoutEmptyState v-if="error" icon="briefcase" title="Niet gevonden" message="Deze werkgever staat niet op de beurs." />
     <template v-else-if="employer">
       <p v-if="employer.is_example" class="rounded-2xl bg-tint p-4 text-sm text-ink">
-        Voorbeeldwerkgever: verzonnen voor de demo van de banenbeurs.
+        Voorbeeldwerkgever: verzonnen voor de banenbeurs.
       </p>
       <p v-else class="rounded-2xl bg-tint p-4 text-sm text-ink">
         Echte vacatures van {{ employer.name }}, opgehaald op {{ addedOn }}. {{ employer.name }} doet niet mee aan PAVE.

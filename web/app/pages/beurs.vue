@@ -11,7 +11,7 @@ const { data: employers, error } = await useAsyncData('fair', () => loadFairEmpl
       <h1 class="font-heading text-2xl font-semibold text-heading">Banenbeurs</h1>
       <p class="mt-1 text-sm text-subtle">
         Scan de code van een stand met PAVE: je ziet de werkgever en zijn vacatures, en je kunt je profiel met hem delen.
-        Deze werkgevers zijn verzonnen voor de demo.
+        Deze werkgevers zijn verzonnen.
       </p>
     </section>
     <LayoutEmptyState v-if="error" icon="userGroup" title="De beurs kon niet laden" message="Probeer het zo opnieuw." />
