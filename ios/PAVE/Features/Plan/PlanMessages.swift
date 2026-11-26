@@ -1,7 +1,26 @@
+import Foundation
 import PAVECore
 
 /// The words of the plans, the same as in docs/ui-teksten.md.
 enum PlanMessages {
+    /// Under a step: its deadline and the evidence that shows it, such as "Voor 15 dec. · 1 bewijsstuk".
+    static func stepExtras(_ step: PavePlanStep) -> String? {
+        var parts: [String] = []
+        if let due = step.due.flatMap(VaultDay.init), let date = Calendar.current.date(from: DateComponents(year: due.year, month: due.month, day: due.day)) {
+            parts.append("Voor \(date.formatted(.dateTime.day().month(.abbreviated).locale(PaveLanguageStore.current.locale)))".translated)
+        }
+        let count = step.evidenceIDs.count
+        if count > 0 { parts.append((count == 1 ? "1 bewijsstuk" : "\(count) bewijsstukken").translated) }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    /// A deadline that passed on a step that is not done.
+    static func isOverdue(_ step: PavePlanStep, now: Date = .now) -> Bool {
+        guard step.status != .done, step.status != .skipped, let due = step.due.flatMap(VaultDay.init),
+              let date = Calendar.current.date(from: DateComponents(year: due.year, month: due.month, day: due.day + 1)) else { return false }
+        return date < now
+    }
+
     static let title = "Plan"
     static let emptyTitle = "Je hebt nog geen plan"
     static let emptyMessage = "Maak een plan voor een doel waar je naartoe wilt werken. Ayla helpt je stap voor stap."

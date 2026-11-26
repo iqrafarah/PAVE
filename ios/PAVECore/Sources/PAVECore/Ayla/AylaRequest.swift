@@ -126,12 +126,16 @@ public struct AylaRequest: Codable, Equatable, Sendable {
         public var projects: [String]?
         /// Invitations from employers at the fair, one line each: who, for what, when, answered or not.
         public var invitations: [String]?
+        /// Your applications, one line each: what, where, status and deadline.
+        public var applications: [String]?
 
         public init(
             theme: String? = nil, textSize: String? = nil, displayMode: String? = nil, vaultLayout: String? = nil,
             voiceText: Bool? = nil, animations: Bool? = nil, memory: Bool? = nil, chatTitle: String? = nil, chatPinned: Bool? = nil,
-            seeing: String? = nil, font: String? = nil, plans: [String]? = nil, projects: [String]? = nil, invitations: [String]? = nil
+            seeing: String? = nil, font: String? = nil, plans: [String]? = nil, projects: [String]? = nil, invitations: [String]? = nil,
+            applications: [String]? = nil
         ) {
+            self.applications = applications.map { $0.prefix(10).map { String($0.prefix(200)) } }
             self.invitations = invitations.map { $0.prefix(6).map { String($0.prefix(200)) } }
             self.font = font
             // The server takes at most 8 plans of 200 characters and 12 projects of 80.

@@ -126,6 +126,7 @@ struct AylaChatScreen: View {
     @State private var calendarTalk: FairApplication?
     @State private var calendarMoment: AylaCalendarMoment?
     @State private var mailDraft: EmailDraft?
+    @State private var evidenceEdit: EvidenceEdit?
     @State private var practiceReport: PracticeReportRequest?
     @State private var reportVacancy: Vacancy?
     /// Making a CV and a letter for a vacancy ("Solliciteren").
@@ -444,6 +445,12 @@ struct AylaChatScreen: View {
         .sheet(item: $calendarMoment) { moment in
             AylaCalendarEditor(moment: moment) { calendarMoment = nil }
                 .ignoresSafeArea()
+        }
+        .sheet(item: $evidenceEdit) { edit in
+            if let vault {
+                VaultEvidenceEditor(vault: vault, item: edit.item, changes: edit.changes)
+                    .paveSheet()
+            }
         }
         .sheet(item: $mailDraft) { draft in
             if let email {
@@ -2846,7 +2853,8 @@ struct AylaChatScreen: View {
             font: PaveFontStore.shared.style.rawValue,
             plans: plans.map { AylaPlanActions.lines($0.plans) },
             projects: model.conversationList.projects.map(\.name),
-            invitations: sharing?.fairApplications.map(AylaPlanActions.invitationLines)
+            invitations: sharing?.fairApplications.map(AylaPlanActions.invitationLines),
+            applications: AylaPlanActions.applicationLines(ApplicationStore().all())
         )
     }
 
@@ -3061,6 +3069,59 @@ struct AylaChatScreen: View {
             guard application.answer == .accepted, application.invitedFor != nil else { return .failed(AylaMessages.actionInvitationNotAccepted) }
             if isTalking { stopVoice() }
             closingShelf { calendarTalk = application }
+        case "editEvidence":
+            guard vault != nil, let item = item() else { return .failed(AylaMessages.actionNoItem(action.target ?? "")) }
+            if isTalking { stopVoice() }
+            closingShelf { evidenceEdit = EvidenceEdit(item: item, changes: action.value) }
+        case "restoreEvidence":
+            guard let vault else { return .failed(AylaMessages.actionUnavailable) }
+            let named = vault.archived.map { AylaAppCommand.Named(id: $0.id, name: $0.title) }
+            guard let found = AylaAppAction.best(action.target, in: named), let item = vault.archived.first(where: { $0.id == found.id }) else {
+                return .failed(AylaMessages.actionNotArchived(action.target ?? ""))
+            }
+            guard await vault.setArchived(false, item) else { return .failed(AylaMessages.actionUnavailable) }
+        case "addSkill":
+            guard let vault, let item = item() else { return .failed(AylaMessages.actionNoItem(action.target ?? "")) }
+            guard let skill = action.value?.trimmingCharacters(in: .whitespaces), !skill.isEmpty else { return .failed(AylaMessages.actionUnknownValue) }
+            if item.skills.contains(where: { $0.caseInsensitiveCompare(skill) == .orderedSame }) { return .said(AylaMessages.actionSkillThere(skill)) }
+            do {
+                try await vault.addSkills([skill], to: item.id)
+                await vault.load()
+            } catch {
+                return .failed(AylaMessages.actionUnavailable)
+            }
+        case "linkEvidenceToStep":
+            guard let plans, let vault else { return .failed(AylaMessages.actionUnavailable) }
+            let named = vault.items.map { AylaAppCommand.Named(id: $0.id, name: $0.title) }
+            guard let found = AylaAppAction.best(action.value, in: named), let item = vault.items.first(where: { $0.id == found.id }) else {
+                return .failed(AylaMessages.actionNoItem(action.value ?? ""))
+            }
+            if let problem = AylaPlanActions(plans: plans, chatPlan: plans.plan(containing: model.conversationID)).link(evidence: item, toStep: action.target) {
+                return .failed(problem)
+            }
+        case "setStepDue", "moveStep":
+            guard let plans else { return .failed(AylaMessages.actionUnavailable) }
+            let planActions = AylaPlanActions(plans: plans, chatPlan: plans.plan(containing: model.conversationID))
+            let problem = action.kind == "setStepDue" ? planActions.setDue(action.target, to: action.value) : planActions.moveStep(action.target, before: action.value)
+            if let problem { return .failed(problem) }
+        case "setApplicationStatus":
+            guard let status = ApplicationStatus(rawValue: action.value ?? "") else { return .failed(AylaMessages.actionUnknownValue) }
+            let store = ApplicationStore()
+            guard var draft = AylaPlanActions.application(action.target, in: store.all()) else { return .failed(AylaMessages.actionNoApplicationFound(action.target ?? "")) }
+            var tracking = draft.progress
+            if status == .sent { tracking.send() } else { tracking.set(status) }
+            draft.tracking = tracking
+            store.save(draft)
+        case "startPractice":
+            let known = ApplicationStore().all().map(\.vacancy) + model.savedVacancies.map(\.vacancy) + model.latestVacancySearch.vacancies
+            let named = known.map { AylaAppCommand.Named(id: $0.id, name: "\($0.title) \($0.company)") }
+            guard let found = AylaAppAction.best(action.target, in: named), let vacancy = known.first(where: { $0.id == found.id }) else {
+                return .failed(AylaMessages.actionNoApplicationFound(action.target ?? ""))
+            }
+            run(.interview, on: [vacancy])
+        case "setLanguage":
+            guard let language = PaveLanguage(rawValue: action.value ?? "") else { return .failed(AylaMessages.actionUnknownValue) }
+            PaveLanguageStore.shared.select(language)
         case "addToCalendar":
             guard let moment = AylaCalendarMoment(title: action.target ?? "", value: action.value ?? "") else { return .failed(AylaMessages.actionBadDate) }
             if isTalking { stopVoice() }
@@ -3122,7 +3183,9 @@ struct AylaChatScreen: View {
         case "shareWith":
             guard let shareFromAyla, let who = action.value, !who.isEmpty else { return .failed(AylaMessages.actionUnavailable) }
             closeShelf()
-            shareFromAyla(.share(organisation: who, duration: nil, withApplication: false))
+            let days = action.target.flatMap { Int($0.filter(\.isNumber)) }
+            let duration = days.map { days in ShareDuration.allCases.min { abs($0.days - days) < abs($1.days - days) } } ?? nil
+            shareFromAyla(.share(organisation: who, duration: duration, withApplication: false))
         case "stopSharing":
             guard let shareFromAyla, let who = action.value, !who.isEmpty else { return .failed(AylaMessages.actionUnavailable) }
             closeShelf()
@@ -3324,4 +3387,11 @@ private extension View {
     func transform(_ change: (Self) -> some View) -> some View {
         change(self)
     }
+}
+
+/// Evidence Ayla opens for you to change, with what she filled in.
+struct EvidenceEdit: Identifiable {
+    let item: VaultItem
+    let changes: String?
+    var id: String { item.id }
 }

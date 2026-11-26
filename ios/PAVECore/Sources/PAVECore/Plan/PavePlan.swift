@@ -147,6 +147,19 @@ public struct PavePlan: Codable, Equatable, Sendable, Identifiable {
         normalize()
     }
 
+    /// Puts a step before another one, or at the end when `otherID` is nil. Which step is active stays the same.
+    public mutating func moveStep(id: String, before otherID: String?, at date: Date = .now) {
+        guard id != otherID, let from = steps.firstIndex(where: { $0.id == id }) else { return }
+        let step = steps.remove(at: from)
+        if let otherID, let to = steps.firstIndex(where: { $0.id == otherID }) {
+            steps.insert(step, at: to)
+        } else {
+            steps.append(step)
+        }
+        updatedAt = date
+        normalize()
+    }
+
     public mutating func removeStep(id: String, at date: Date = .now) {
         steps.removeAll { $0.id == id }
         updatedAt = date
@@ -238,6 +251,21 @@ public struct PavePlanStep: Codable, Equatable, Sendable, Identifiable {
         self.conversationID = conversationID
         self.completedAt = completedAt
         self.metadata = metadata
+    }
+
+    /// When the step should be done ("2026-12-15"), set by you or by Ayla; nil without a deadline.
+    public static let dueKey = "due"
+    /// The vault items that show this step is done, by id, comma-separated.
+    public static let evidenceKey = "evidenceIDs"
+
+    public var due: String? {
+        get { metadata[Self.dueKey] }
+        set { metadata[Self.dueKey] = newValue }
+    }
+
+    public var evidenceIDs: [String] {
+        get { metadata[Self.evidenceKey]?.split(separator: ",").map(String.init) ?? [] }
+        set { metadata[Self.evidenceKey] = newValue.isEmpty ? nil : newValue.joined(separator: ",") }
     }
 
     /// What sort of step it is. An open set: a flow can bring kinds of its own, and the app shows those as a general step.

@@ -805,6 +805,7 @@ const NEEDS_TARGET: readonly ActionKind[] = [
   'openFolder', 'openChat', 'moveToFolder', 'archiveEvidence', 'allowAyla', 'requestVerification', 'deleteEvidence',
   'openPlan', 'openProject', 'markPlanStep', 'removePlanStep', 'linkPlanToProject',
   'renamePlanStep', 'describePlanStep', 'answerInvitation', 'addTalkToCalendar', 'addProjectSource', 'addToCalendar',
+  'editEvidence', 'restoreEvidence', 'addSkill', 'linkEvidenceToStep', 'setStepDue', 'moveStep', 'setApplicationStatus', 'startPractice',
 ]
 /** Mail actions may leave out who: then the newest conversation is meant. */
 const NEEDS_VALUE: readonly ActionKind[] = [
@@ -812,6 +813,7 @@ const NEEDS_VALUE: readonly ActionKind[] = [
   'setChatsInSearch', 'setAnimations', 'setMemory', 'createFolder', 'moveToFolder', 'allowAyla', 'openVacancy', 'saveVacancy',
   'setFontStyle', 'addPlanStep', 'markPlanStep', 'linkPlanToProject', 'shareWith', 'stopSharing',
   'renamePlanStep', 'describePlanStep', 'answerInvitation', 'addToCalendar', 'writeMail',
+  'addSkill', 'linkEvidenceToStep', 'setStepDue', 'moveStep', 'setApplicationStatus', 'setLanguage',
 ]
 
 /** The actions of an answer as the app gets them: known ones only, complete, at most 4, and only on the iPhone. */
@@ -824,7 +826,7 @@ export function moreThanOneRound(raw: unknown): boolean {
 /** A day (2026-12-03) or a day and time (2026-12-03T14:30), as the app puts it in the calendar. */
 const CALENDAR_DATE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])(T([01]\d|2[0-3]):[0-5]\d)?$/
 
-export const WATCH_ACTIONS: readonly ActionKind[] = ['addPlanStep', 'markPlanStep', 'answerInvitation', 'openApplication', 'makeVacancyPlan', 'openPlan']
+export const WATCH_ACTIONS: readonly ActionKind[] = ['addPlanStep', 'markPlanStep', 'answerInvitation', 'openApplication', 'makeVacancyPlan', 'openPlan', 'addToCalendar']
 
 export function cleanActions(raw: unknown, device: AylaRequest['device']): AppAction[] {
   if (device === 'web' || !Array.isArray(raw)) return []
@@ -833,12 +835,16 @@ export function cleanActions(raw: unknown, device: AylaRequest['device']): AppAc
   for (const entry of raw as Record<string, unknown>[]) {
     const kind = entry?.do as ActionKind
     if (!ACTIONS.includes(kind) || (onWatch && !WATCH_ACTIONS.includes(kind))) continue
-    const word = (value: unknown) => (typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, 120) : '')
+    // The changes to evidence can be a description; everything else is a name, a title or a date.
+    const word = (value: unknown) => (typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, kind === 'editEvidence' ? 400 : 120) : '')
     const value = word(entry.value)
     const target = word(entry.target)
     if ((NEEDS_TARGET.includes(kind) && !target) || (NEEDS_VALUE.includes(kind) && !value)) continue
     // A moment in the calendar is a real date, as the app reads it.
     if (kind === 'addToCalendar' && !CALENDAR_DATE.test(value)) continue
+    if (kind === 'setStepDue' && value !== 'none' && !/^\d{4}-\d{2}-\d{2}$/.test(value)) continue
+    if (kind === 'setApplicationStatus' && !['concept', 'sent', 'interview', 'offer', 'rejected'].includes(value)) continue
+    if (kind === 'setLanguage' && !['nl', 'en', 'pap'].includes(value)) continue
     // On the Watch every action waits for Ja on the wrist, so it carries no question of its own.
     actions.push({ do: kind, ...(value ? { value } : {}), ...(target ? { target } : {}), ...(!onWatch && needsConfirmation(kind, value) ? { confirm: true as const } : {}) })
     if (actions.length === (onWatch ? 2 : 4)) break

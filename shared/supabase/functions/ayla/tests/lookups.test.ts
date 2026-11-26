@@ -60,9 +60,24 @@ test('a calendar moment needs a real date; a new mail needs a subject', () => {
     { do: 'writeMail', target: 'info@school.nl', value: '' },
   ], 'phone')
   assert.deepEqual(actions.map((a) => a.value), ['2026-12-03', '2026-12-03T14:30'])
-  assert.deepEqual(cleanActions([{ do: 'addToCalendar', target: 'x', value: '2026-12-03' }], 'watch'), [])
+  // From the Watch it goes to the iPhone, which opens the calendar there.
+  assert.deepEqual(cleanActions([{ do: 'addToCalendar', target: 'x', value: '2026-12-03' }], 'watch'), [{ do: 'addToCalendar', target: 'x', value: '2026-12-03' }])
+  assert.deepEqual(cleanActions([{ do: 'writeMail', target: 'x', value: 'y' }], 'watch'), [])
 })
 
 test('she knows what day it is in the Netherlands', () => {
   assert.equal(todayLine(new Date('2026-11-26T23:30:00Z')), 'Vandaag is het vrijdag 27 november 2026 (2026-11-27), 00:30 Nederlandse tijd.')
+})
+
+test('the new actions carry what the app needs, and nothing it cannot read', () => {
+  const actions = cleanActions([
+    { do: 'setStepDue', target: 'Cv bijwerken', value: '2026-12-15' },
+    { do: 'setStepDue', target: 'Cv bijwerken', value: 'snel' },
+    { do: 'setApplicationStatus', target: 'Kade', value: 'sent' },
+    { do: 'setApplicationStatus', target: 'Kade', value: 'verstuurd' },
+    { do: 'setLanguage', value: 'en' },
+    { do: 'linkEvidenceToStep', target: 'Scrum halen', value: 'PSM I' },
+  ], 'phone')
+  assert.deepEqual(actions.map((a) => `${a.do}:${a.value}`), ['setStepDue:2026-12-15', 'setApplicationStatus:sent', 'setLanguage:en', 'linkEvidenceToStep:PSM I'])
+  assert.equal(cleanActions([{ do: 'editEvidence', target: 'Stage', value: 'x'.repeat(390) }], 'phone')[0].value?.length, 390)
 })

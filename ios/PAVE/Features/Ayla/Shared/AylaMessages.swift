@@ -9,6 +9,9 @@ enum AylaMessages {
     static let sourceHint = "Opent de pagina in Safari"
     static let calendarNotes = "Klaargezet door Ayla in PAVE."
     static let actionBadDate = "Die datum kon ik niet lezen. Zeg de dag nog eens, bijvoorbeeld 3 december."
+    static func actionNotArchived(_ name: String) -> String { "Ik kon \(name) niet vinden in het archief." }
+    static func actionSkillThere(_ skill: String) -> String { "\(skill) staat er al bij." }
+    static func actionNoApplicationFound(_ name: String) -> String { "Ik kon geen sollicitatie of vacature vinden bij \(name)." }
     static let actionMailOpened = "De mail staat klaar. Lees hem na en verstuur hem zelf."
     /// On one line where "Ayla denkt na…" stands, so a long search is shortened in the middle.
     static func activity(_ activity: AylaActivity) -> String {

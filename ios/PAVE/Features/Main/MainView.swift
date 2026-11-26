@@ -26,6 +26,8 @@ struct MainView: View {
     @State private var sharing: SharingModel
     /// Ayla was asked to share: the composer opens over the chat, so you are back with her once it is done.
     @State private var aylaShare: ShareTemplateChoice?
+    /// A moment Ayla set up on the Watch, for the iPhone's calendar screen.
+    @State private var calendarFromWatch: AylaCalendarMoment?
     /// An employer opened from the iPhone's camera, over whatever screen is open.
     @State private var fairEmployer: FairEmployerSlug?
     @State private var draftSync: ApplicationDraftSyncer?
@@ -316,6 +318,10 @@ struct MainView: View {
             sharing: sharing, vault: vault, profile: profile, model: model,
             fairEmployer: $fairEmployer, employerInbox: $employerInbox, aylaShare: $aylaShare
         ))
+        .sheet(item: $calendarFromWatch) { moment in
+            AylaCalendarEditor(moment: moment) { calendarFromWatch = nil }
+                .ignoresSafeArea()
+        }
     }
 
     private var openDestinationAction: (MainDestination) -> Void {
@@ -775,6 +781,14 @@ extension MainView {
                     open(.ayla)
                 }
                 said.append(WatchHandoffMessages.onIPhone)
+            case "addToCalendar":
+                guard let moment = AylaCalendarMoment(title: action.target ?? "", value: action.value ?? "") else {
+                    said.append(AylaMessages.actionBadDate)
+                    continue
+                }
+                calendarFromWatch = moment
+                handOff(title: moment.title, detail: WatchHandoffMessages.calendarOnIPhone)
+                said.append(WatchHandoffMessages.calendarOnIPhone)
             case "openPlan":
                 guard let plan = planActions.plan(named: action.target) else {
                     said.append(AylaMessages.actionNoPlan(action.target))
@@ -820,6 +834,7 @@ enum WatchHandoffMessages {
     static let onIPhone = "Het staat klaar op je iPhone."
     static let fromWatch = "Klaargezet door Ayla, vanaf je Watch."
     static let onlyOnIPhone = "Dat kan alleen op je iPhone."
+    static let calendarOnIPhone = "Open je iPhone om het in je agenda te bewaren."
     static func stepAdded(_ title: String) -> String { "Ik heb de stap \(title) toegevoegd." }
     static func stepMarked(_ title: String) -> String { "Ik heb de stap \(title) bijgewerkt." }
     static func noVacancy(_ words: String) -> String { "Ik vond geen vacature bij \(words). Open hem op je iPhone." }

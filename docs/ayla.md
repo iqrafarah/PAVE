@@ -672,3 +672,13 @@ apply). In a plan chat she searches instead of only offering to.
 Fixed sentences the server writes itself (confirm questions, the vault question, Ja/Nee, fallbacks, plan updates) are
 translated in `ayla/localize.ts` just before the reply leaves, so the checks in `brain.ts` keep working on the Dutch
 words. Yes, Si and Nò count as answers.
+
+### More actions (2026-11-26)
+
+`editEvidence` (opens the evidence form with Ayla's changes filled in, as "veld: waarde; …"; the user saves, and a
+verified item says it needs verifying again), `restoreEvidence`, `addSkill`, `linkEvidenceToStep` (step metadata
+`evidenceIDs`), `setStepDue` (step metadata `due`, shown under the step, red when passed) and `moveStep`,
+`setApplicationStatus` (the user's own record; PAVE sends nothing) and `startPractice`, `setLanguage`, `addToCalendar`
+(also from the Watch: the calendar opens on the iPhone), `writeMail`, and `shareWith` with a duration in days as
+target. The app sends its applications as lines in `app.applications`. What she can do for a plan depends on the
+device (`PLAN_TOOLS` in plan.ts), so she never promises something that does not happen there.

@@ -37,6 +37,12 @@ struct PlanTimeline<Trailing: View>: View {
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                 }
+                if let extra = PlanMessages.stepExtras(step) {
+                    Text(extra)
+                        .textStyle(.caption)
+                        .foregroundStyle(PlanMessages.isOverdue(step) ? Color.critical : Color.inkMuted)
+                        .lineLimit(1)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             trailing(step)
@@ -55,7 +61,7 @@ struct PlanTimeline<Trailing: View>: View {
         }
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(step.title), \(PlanMessages.status(step.status))\(step.summary.isEmpty ? "" : ". \(step.summary)")")
+        .accessibilityLabel("\(step.title), \(PlanMessages.status(step.status))\(step.summary.isEmpty ? "" : ". \(step.summary)")\(PlanMessages.stepExtras(step).map { ". \($0)" } ?? "")")
 
         if let onSelect {
             Button { onSelect(step) } label: { content }

@@ -235,6 +235,10 @@ final class PlanModel {
         Task { await change(planID) { $0.updateStep(step) } }
     }
 
+    func moveStep(_ stepID: String, before otherID: String?, in planID: String) {
+        Task { await change(planID) { $0.moveStep(id: stepID, before: otherID) } }
+    }
+
     func removeStep(_ stepID: String, from planID: String) {
         Task { await change(planID) { $0.removeStep(id: stepID) } }
     }

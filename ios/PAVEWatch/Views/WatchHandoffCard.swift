@@ -54,6 +54,7 @@ struct WatchHandoffCard: View {
         case "openApplication": return "Je cv en brief\(target.isEmpty ? "" : " voor \(target)") klaarzetten"
         case "makeVacancyPlan": return "Een plan\(target.isEmpty ? "" : " voor \(target)") maken"
         case "openPlan": return "Plan \(target) openen"
+        case "addToCalendar": return "\(target) in je agenda zetten"
         default: return "Op je iPhone afmaken"
         }
     }

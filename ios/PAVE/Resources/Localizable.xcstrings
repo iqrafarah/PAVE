@@ -592,6 +592,23 @@
         }
       }
     },
+    "%@ in je agenda zetten": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Put %@ in your calendar"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pone %@ den bo agenda"
+          }
+        }
+      }
+    },
     "%@ is losgemaakt.": {
       "extractionState": "manual",
       "localizations": {
@@ -1115,6 +1132,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sera %@"
+          }
+        }
+      }
+    },
+    "%@ staat er al bij.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ is already there."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ta aden kaba."
           }
         }
       }
@@ -18032,6 +18066,23 @@
         }
       }
     },
+    "Ik kon %@ niet vinden in het archief.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I couldn't find %@ in the archive."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi no por a haña %@ den e archivo."
+          }
+        }
+      }
+    },
     "Ik kon %@ niet vinden in je kluis.": {
       "extractionState": "manual",
       "localizations": {
@@ -18113,6 +18164,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mi no por a haña un e-mail di òf tokante %@."
+          }
+        }
+      }
+    },
+    "Ik kon geen sollicitatie of vacature vinden bij %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I couldn't find an application or vacancy for %@."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi no por a haña un aplikashon of vakatura pa %@."
           }
         }
       }
@@ -29813,6 +29881,23 @@
         }
       }
     },
+    "Open je iPhone om het in je agenda te bewaren.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open your iPhone to save it in your calendar."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Habri bo iPhone pa warda esaki den bo agenda."
+          }
+        }
+      }
+    },
     "Open je kluis": {
       "extractionState": "manual",
       "localizations": {
@@ -39346,6 +39431,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kompletá"
+          }
+        }
+      }
+    },
+    "Voor %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "By %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pa %@"
           }
         }
       }

@@ -64,6 +64,8 @@ export interface AppState {
   projects?: string[]
   /** Invitations from employers at the fair, one line each as the app writes it: who, for what, when, answered or not. At most 6. */
   invitations?: string[]
+  /** The user's applications: "functie bij bedrijf · status · deadline". */
+  applications?: string[]
 }
 
 /** The vacancy the user has open in the app, as the card shows it, so "past deze bij mij?" is about that one. */
@@ -110,6 +112,8 @@ export const ACTIONS = [
   'openPlan', 'addPlanStep', 'markPlanStep', 'renamePlanStep', 'describePlanStep', 'linkPlanToProject', 'makeVacancyPlan',
   'addTalkToCalendar', 'addToCalendar', 'openMail', 'summarizeMail', 'replyMail', 'writeMail',
   'shareWith', 'stopSharing', 'showShares',
+  'editEvidence', 'restoreEvidence', 'addSkill', 'linkEvidenceToStep', 'setStepDue', 'moveStep',
+  'setApplicationStatus', 'startPractice', 'setLanguage',
   'deleteChat', 'deleteEvidence', 'signOut', 'forgetAll', 'removePlanStep', 'answerInvitation', 'addProjectSource',
 ] as const
 export type ActionKind = (typeof ACTIONS)[number]
@@ -339,7 +343,7 @@ export function parseRequest(body: unknown): AylaRequest | string {
 }
 
 const APP_WORDS = ['theme', 'textSize', 'displayMode', 'vaultLayout', 'chatTitle', 'seeing', 'font'] as const
-const APP_LISTS = { plans: { count: 8, length: 200 }, projects: { count: 12, length: 80 }, invitations: { count: 6, length: 200 } } as const
+const APP_LISTS = { plans: { count: 8, length: 200 }, projects: { count: 12, length: 80 }, invitations: { count: 6, length: 200 }, applications: { count: 10, length: 200 } } as const
 const APP_SWITCHES = ['voiceText', 'animations', 'memory', 'chatPinned'] as const
 
 function parseAppState(raw: unknown): AppState | null {

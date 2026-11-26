@@ -61,6 +61,45 @@ struct AylaPlanActions {
         return nil
     }
 
+    /// A deadline for a step ("2026-12-15"), or none to take it away.
+    func setDue(_ title: String?, to value: String?) -> String? {
+        guard let found = step(titled: title) else { return AylaMessages.actionNoStep(title ?? "") }
+        var step = found.step
+        let none = ["none", "geen", ""].contains(value?.lowercased() ?? "")
+        guard none || VaultDay(value ?? "") != nil else { return AylaMessages.actionBadDate }
+        step.due = none ? nil : value
+        plans.updateStep(step, in: found.plan.id)
+        return nil
+    }
+
+    /// A step before another one of the same plan, or first or last.
+    func moveStep(_ title: String?, before other: String?) -> String? {
+        guard let found = step(titled: title) else { return AylaMessages.actionNoStep(title ?? "") }
+        let steps = found.plan.steps.filter { $0.id != found.step.id }
+        let place = other?.lowercased() ?? "last"
+        let beforeID: String?
+        switch place {
+        case "first", "eerst", "begin": beforeID = steps.first?.id
+        case "last", "laatst", "einde", "": beforeID = nil
+        default:
+            let named = steps.map { AylaAppCommand.Named(id: $0.id, name: $0.title) }
+            guard let target = AylaAppAction.best(other, in: named) else { return AylaMessages.actionNoStep(other ?? "") }
+            beforeID = target.id
+        }
+        plans.moveStep(found.step.id, before: beforeID, in: found.plan.id)
+        return nil
+    }
+
+    /// Evidence that shows the step is done, kept with the step.
+    func link(evidence item: VaultItem, toStep title: String?) -> String? {
+        guard let found = step(titled: title) else { return AylaMessages.actionNoStep(title ?? "") }
+        var step = found.step
+        guard !step.evidenceIDs.contains(item.id) else { return nil }
+        step.evidenceIDs.append(item.id)
+        plans.updateStep(step, in: found.plan.id)
+        return nil
+    }
+
     func removeStep(_ title: String?) -> String? {
         guard let found = step(titled: title) else { return AylaMessages.actionNoStep(title ?? "") }
         plans.removeStep(found.step.id, from: found.plan.id)
@@ -83,6 +122,22 @@ struct AylaPlanActions {
         plans.setProject(project.id, of: plan.id)
         moveChats(plan, project)
         return nil
+    }
+
+    /// Your applications as one line each for Ayla: what, where, status and deadline.
+    static func applicationLines(_ drafts: [ApplicationDraft]) -> [String] {
+        drafts.prefix(10).map { draft in
+            let tracking = draft.progress
+            let deadline = tracking.deadline.map { ", deadline \($0.formatted(.iso8601.year().month().day()))" } ?? ""
+            return String("\(draft.vacancy.title) bij \(draft.vacancy.company), \(tracking.status.rawValue)\(deadline)".prefix(200))
+        }
+    }
+
+    /// An application by the words used for it: the job or the company.
+    static func application(_ words: String?, in drafts: [ApplicationDraft]) -> ApplicationDraft? {
+        if drafts.count == 1, words?.isEmpty != false { return drafts[0] }
+        let named = drafts.map { AylaAppCommand.Named(id: $0.id, name: "\($0.vacancy.title) \($0.vacancy.company)") }
+        return AylaAppAction.best(words, in: named).flatMap { found in drafts.first { $0.id == found.id } }
     }
 
     /// The invitations from the fair as one line each for Ayla: who, for what, when, and whether you answered.
@@ -109,7 +164,7 @@ struct AylaPlanActions {
     /// The plans as one line each for Ayla: the name, how far it is and the step you are on. No goals and no summaries.
     static func lines(_ plans: [PavePlan]) -> [String] {
         plans.filter { !$0.isFinished }.prefix(8).map { plan in
-            let current = plan.currentStep.map { ", nu: \($0.title)" } ?? ""
+            let current = plan.currentStep.map { step in ", nu: \(step.title)" + (step.due.map { " (deadline \($0))" } ?? "") } ?? ""
             return String("\(plan.name) (\(plan.doneCount) van \(plan.totalCount) stappen\(current))".prefix(200))
         }
     }

@@ -1578,7 +1578,7 @@ test('each task has its own layer, with the question itself, and only applying a
   assert.match(gaps, /## Taak: wat mist er nog/)
   assert.match(gaps, /altijd twee tot vijf stappen/)
   assert.match(gaps, /zeg niet dat ze bewaard zijn/)
-  assert.match(gaps, /bij Plan een plan van kan maken/)
+  assert.match(gaps, /of je er een plan van zal maken/)
   const prepare = prompt({ vacancy: appwerk, task: 'prepare' })
   assert.match(prepare, /zet askVault op "je te helpen solliciteren op deze vacature"/)
   assert.match(prepare, /Heb je meer nodig, vraag het dan met askVault/)
