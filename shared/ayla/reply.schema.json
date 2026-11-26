@@ -129,9 +129,10 @@
             "createFolder", "moveToFolder", "archiveEvidence", "allowAyla", "requestVerification",
             "openVacancy", "saveVacancy",
             "openNotifications", "openApplications", "openApplication", "openProject", "setFontStyle",
-            "openPlan", "addPlanStep", "markPlanStep", "linkPlanToProject", "makeVacancyPlan",
+            "openPlan", "addPlanStep", "markPlanStep", "renamePlanStep", "describePlanStep", "linkPlanToProject", "makeVacancyPlan",
+            "addTalkToCalendar",
             "shareWith", "stopSharing", "showShares",
-            "deleteChat", "deleteEvidence", "signOut", "forgetAll", "removePlanStep"
+            "deleteChat", "deleteEvidence", "signOut", "forgetAll", "removePlanStep", "answerInvitation", "addProjectSource"
           ]
         },
         "value": { "type": "string" },

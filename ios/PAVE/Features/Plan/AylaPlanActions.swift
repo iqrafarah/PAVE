@@ -48,6 +48,19 @@ struct AylaPlanActions {
         return nil
     }
 
+    /// A new title, or a new line about the step; nil when it worked, else what to tell the user.
+    func editStep(_ title: String?, newTitle: String? = nil, summary: String? = nil) -> String? {
+        guard let found = step(titled: title) else { return AylaMessages.actionNoStep(title ?? "") }
+        var step = found.step
+        if let newTitle {
+            guard let clean = PavePlan.cleanName(newTitle) else { return AylaMessages.actionUnknownValue }
+            step.title = clean
+        }
+        if let summary { step.summary = PavePlan.cleanGoal(summary) }
+        plans.updateStep(step, in: found.plan.id)
+        return nil
+    }
+
     func removeStep(_ title: String?) -> String? {
         guard let found = step(titled: title) else { return AylaMessages.actionNoStep(title ?? "") }
         plans.removeStep(found.step.id, from: found.plan.id)
@@ -70,6 +83,27 @@ struct AylaPlanActions {
         plans.setProject(project.id, of: plan.id)
         moveChats(plan, project)
         return nil
+    }
+
+    /// The invitations from the fair as one line each for Ayla: who, for what, when, and whether you answered.
+    static func invitationLines(_ applications: [FairApplication]) -> [String] {
+        applications.filter { $0.status == .invited }.prefix(6).map { application in
+            let moment = application.invitedFor.map { ", \(ApplyMessages.slot($0))" } ?? ""
+            let answer = switch application.answer {
+            case .accepted?: "je komt"
+            case .declined?: "je kunt niet"
+            case nil: "wacht op je antwoord"
+            }
+            return String("\(FairApplicationDetail.employerName(application)): \(application.vacancyTitle)\(moment), \(answer)".prefix(200))
+        }
+    }
+
+    /// An invitation by the employer's name or the job, among the ones still waiting or said yes to.
+    static func invitation(_ name: String?, in applications: [FairApplication]) -> FairApplication? {
+        let invited = applications.filter { $0.status == .invited }
+        if invited.count == 1, name?.isEmpty != false { return invited[0] }
+        let named = invited.map { AylaAppCommand.Named(id: $0.id, name: "\(FairApplicationDetail.employerName($0)) \($0.vacancyTitle)") }
+        return AylaAppAction.best(name, in: named).flatMap { found in invited.first { $0.id == found.id } }
     }
 
     /// The plans as one line each for Ayla: the name, how far it is and the step you are on. No goals and no summaries.

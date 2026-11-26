@@ -21,6 +21,7 @@ struct AylaChatScreen: View {
     @Environment(NotificationsModel.self) private var notifications: NotificationsModel?
     @Environment(ProfileModel.self) private var profile: ProfileModel?
     @Environment(PlanModel.self) private var plans: PlanModel?
+    @Environment(SharingModel.self) private var sharing: SharingModel?
     @Environment(\.openPlan) private var openPlan
     @Environment(\.openDestination) private var openDestination
     @State private var picksPlan = false
@@ -119,6 +120,8 @@ struct AylaChatScreen: View {
     @State private var waveStartedAt: Date?
     @State private var isSavingForUser = false
     @State private var confirmationItem: VaultItem?
+    /// The talk Ayla puts in your calendar; you save it yourself in the sheet.
+    @State private var calendarTalk: FairApplication?
     /// Making a CV and a letter for a vacancy ("Solliciteren").
     @State private var application: ApplicationStudioModel?
     /// The application a task came from, offered at the top until the user goes back or moves on.
@@ -423,6 +426,12 @@ struct AylaChatScreen: View {
             guard !items.isEmpty, let itemID = photoTargetID else { return }
             itemPhotoItems = []
             Task { await addItemPhotos(items, to: itemID) }
+        }
+        .sheet(item: $calendarTalk) { application in
+            if let moment = application.invitedFor {
+                ApplicationCalendarEditor(vacancy: FairApplicationDetail.vacancy(of: application), deadline: moment, isTalk: true) { calendarTalk = nil }
+                    .ignoresSafeArea()
+            }
         }
         .sheet(item: $confirmationItem) { item in
             VaultRequestConfirmationSheet(item: item, documentCount: vault?.documents(of: item).count ?? 0)
@@ -2741,7 +2750,8 @@ struct AylaChatScreen: View {
             seeing: seeingNow,
             font: PaveFontStore.shared.style.rawValue,
             plans: plans.map { AylaPlanActions.lines($0.plans) },
-            projects: model.conversationList.projects.map(\.name)
+            projects: model.conversationList.projects.map(\.name),
+            invitations: sharing?.fairApplications.map(AylaPlanActions.invitationLines)
         )
     }
 
@@ -2915,6 +2925,46 @@ struct AylaChatScreen: View {
             }
             closeShelf()
             openPlan(plan.id)
+        case "renamePlanStep", "describePlanStep":
+            guard let plans else { return .failed(AylaMessages.actionUnavailable) }
+            let planActions = AylaPlanActions(plans: plans, chatPlan: plans.plan(containing: model.conversationID))
+            let problem = action.kind == "renamePlanStep"
+                ? planActions.editStep(action.target, newTitle: action.value)
+                : planActions.editStep(action.target, summary: action.value ?? "")
+            if let problem { return .failed(problem) }
+        case "answerInvitation":
+            guard let sharing, let isOn = action.isOn ?? (action.value?.lowercased() == "yes" ? true : action.value?.lowercased() == "no" ? false : nil) else {
+                return .failed(AylaMessages.actionUnknownValue)
+            }
+            guard let application = AylaPlanActions.invitation(action.target, in: sharing.fairApplications ?? []) else {
+                return .failed(AylaMessages.actionNoInvitation(action.target ?? ""))
+            }
+            await sharing.answer(application, accepted: isOn)
+            return .said(AylaMessages.actionInvitationAnswered(FairApplicationDetail.employerName(application), accepted: isOn))
+        case "addTalkToCalendar":
+            guard let sharing, let application = AylaPlanActions.invitation(action.target, in: sharing.fairApplications ?? []) else {
+                return .failed(AylaMessages.actionNoInvitation(action.target ?? ""))
+            }
+            guard application.answer == .accepted, application.invitedFor != nil else { return .failed(AylaMessages.actionInvitationNotAccepted) }
+            if isTalking { stopVoice() }
+            closingShelf { calendarTalk = application }
+        case "addProjectSource":
+            guard let vault, let item = item() else { return .failed(AylaMessages.actionNoItem(action.target ?? "")) }
+            let projects = model.conversationList.projects
+            let here = model.currentConversation?.projectID.flatMap { id in projects.first { $0.id == id } } ?? model.openProject
+            let named = action.value.flatMap { name in AylaAppAction.best(name, in: projects.map { AylaAppCommand.Named(id: $0.id, name: $0.name) }) }
+            let project = named.flatMap { found in projects.first { $0.id == found.id } } ?? (action.value == nil ? here : nil)
+            guard let project else { return .failed(action.value.map(AylaMessages.actionNoProject) ?? AylaMessages.actionNoProjectHere) }
+            // A source is only of use when she may see it; you said yes to that with this action.
+            if item.aylaAllowedAt == nil {
+                do {
+                    try await vault.setAylaAllowed(true, itemID: item.id)
+                } catch {
+                    return .failed(AylaMessages.actionUnavailable)
+                }
+            }
+            await model.addSources([item.id], to: project)
+            if model.sourcesProblem != nil { return .failed(AylaMessages.actionUnavailable) }
         case "addPlanStep", "markPlanStep", "removePlanStep", "linkPlanToProject":
             guard let plans else { return .failed(AylaMessages.actionUnavailable) }
             let planActions = AylaPlanActions(plans: plans, chatPlan: plans.plan(containing: model.conversationID))

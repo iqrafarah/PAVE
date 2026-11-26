@@ -73,4 +73,31 @@ struct AylaPlanActionsTests {
         plan.addStep(PavePlanStep(title: "Examen doen"))
         #expect(AylaPlanActions.lines([plan]) == ["Scrum halen (0 van 2 stappen, nu: Cursus kiezen)"])
     }
+
+    @Test func aStepGetsANewTitleAndALineAboutIt() async {
+        let (plans, _, scrum) = await model()
+        let actions = AylaPlanActions(plans: plans, chatPlan: nil)
+        #expect(actions.editStep("cursus kiezen", newTitle: "Scrum-cursus kiezen") == nil)
+        await settled(plans) { plans.plan(id: scrum.id)?.steps.first?.title == "Scrum-cursus kiezen" }
+        #expect(AylaPlanActions(plans: plans, chatPlan: nil).editStep("Scrum-cursus kiezen", summary: "Kies een erkende cursus.") == nil)
+        await settled(plans) { plans.plan(id: scrum.id)?.steps.first?.summary == "Kies een erkende cursus." }
+        #expect(plans.plan(id: scrum.id)?.steps.first?.summary == "Kies een erkende cursus.")
+        #expect(actions.editStep("bestaat niet", newTitle: "x") != nil)
+    }
+
+    @Test func invitationsAreTheOnesFromTheFairByEmployerOrJob() {
+        let card = FairApplicationCard(name: "Ravi")
+        let jumbo = FairApplication(id: "a", employerSlug: "jumbo", vacancyID: "v", vacancyTitle: "Medewerker Planning", card: card, status: .invited, invitedFor: .now.addingTimeInterval(86_400))
+        let ogd = FairApplication(id: "b", employerSlug: "ogd", vacancyID: "w", vacancyTitle: "Traineeship IT", card: card, status: .invited, answer: .accepted)
+        let waiting = FairApplication(id: "c", employerSlug: "sioux-technologies", vacancyID: "x", vacancyTitle: "Software Engineer", card: card)
+        let all = [jumbo, ogd, waiting]
+        #expect(AylaPlanActions.invitation("Jumbo", in: all)?.id == "a")
+        #expect(AylaPlanActions.invitation("traineeship", in: all)?.id == "b")
+        #expect(AylaPlanActions.invitation("Software Engineer", in: all) == nil)
+        #expect(AylaPlanActions.invitation(nil, in: [jumbo])?.id == "a")
+        let lines = AylaPlanActions.invitationLines(all)
+        #expect(lines.count == 2)
+        #expect(lines[0].contains("Medewerker Planning") && lines[0].hasSuffix("wacht op je antwoord"))
+        #expect(lines[1].hasSuffix("je komt"))
+    }
 }
