@@ -27,6 +27,10 @@ final class PlanModel {
     init(service: (any PlanService)?, liveActivity: PlanActivityController? = nil) {
         self.service = service
         self.liveActivity = liveActivity
+        // "Stap klaar" on the Lock Screen while PAVE runs.
+        if liveActivity != nil {
+            PlanStepCompletion.handler = { [weak self] planID in self?.completeCurrentStep(in: planID) }
+        }
     }
 
     // MARK: Lock Screen
@@ -87,7 +91,15 @@ final class PlanModel {
         do {
             plans = try await service.plans()
             isAvailable = true
-            if !hasLoaded { liveActivity?.sync(plans) }
+            if !hasLoaded {
+                // Steps finished on the Lock Screen while PAVE was closed.
+                if liveActivity != nil {
+                    for planID in PlanStepCompletion.takePending() where plans.contains(where: { $0.id == planID }) {
+                        completeCurrentStep(in: planID)
+                    }
+                }
+                liveActivity?.sync(plans, force: true)
+            }
         } catch PlanServiceError.notSetUp {
             isAvailable = false
         } catch {

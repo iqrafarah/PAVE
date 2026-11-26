@@ -8,7 +8,16 @@ import PAVECore
 /// account, behind its own PIN.
 enum AylaHandoff {
     static let activityType = "nl.fontys.pave.conversation"
+    static let planActivityType = "nl.fontys.pave.plan"
     static let idKey = "conversationID"
+
+    /// The same chat on the PAVE website, so a Mac (or any device without the app) picks it up in Safari.
+    static func webURL(conversation id: String) -> URL? {
+        ShareServiceFactory.webURL()?.appending(path: "ayla").appending(path: id)
+    }
+
+    /// Plans on the PAVE website.
+    static var planWebURL: URL? { ShareServiceFactory.webURL()?.appending(path: "plan") }
 
     static func conversationID(in activity: NSUserActivity) -> String? {
         activity.userInfo?[idKey] as? String

@@ -8,7 +8,7 @@ import WidgetKit
 struct PlanLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: PlanActivityAttributes.self) { context in
-            PlanLockScreenView(state: context.state, accent: context.attributes.accent)
+            PlanLockScreenView(state: context.state, accent: context.attributes.accent, planID: context.attributes.planID)
                 .widgetURL(PaveLink.plan.url)
         } dynamicIsland: { context in
             let accent = context.attributes.accent
@@ -37,6 +37,17 @@ struct PlanLiveActivity: Widget {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                DynamicIslandExpandedRegion(.bottom) {
+                    if !context.state.isFinished {
+                        Button(intent: CompletePlanStepIntent(planID: context.attributes.planID)) {
+                            Label(context.state.markDone, systemImage: "checkmark")
+                                .font(.subheadline.weight(.semibold))
+                                .frame(maxWidth: .infinity)
+                        }
+                        .tint(light)
+                        .padding(.top, 4)
+                    }
+                }
             } compactLeading: {
                 PlanRing(state: context.state, accent: light, size: 18, lineWidth: 2.5)
             } compactTrailing: {
@@ -55,6 +66,7 @@ struct PlanLiveActivity: Widget {
 private struct PlanLockScreenView: View {
     let state: PlanActivityAttributes.ContentState
     let accent: Color
+    let planID: String
 
     var body: some View {
         HStack(spacing: 14) {
@@ -70,9 +82,22 @@ private struct PlanLockScreenView: View {
                     .lineLimit(1)
             }
             Spacer(minLength: 0)
-            Text(state.short)
-                .font(.title3.weight(.semibold).monospacedDigit())
-                .foregroundStyle(.secondary)
+            if state.isFinished {
+                Text(state.short)
+                    .font(.title3.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(.secondary)
+            } else {
+                // Done with the step, right here: the ring moves on and PAVE saves it.
+                Button(intent: CompletePlanStepIntent(planID: planID)) {
+                    Image(systemName: "checkmark")
+                        .font(.body.weight(.bold))
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(accent)
+                .background(accent.opacity(0.18), in: .circle)
+                .accessibilityLabel(state.markDone)
+            }
         }
         .padding(16)
     }

@@ -607,6 +607,8 @@ struct AylaChatScreen: View {
             activity.isEligibleForSearch = false
             activity.isEligibleForPrediction = false
             activity.addUserInfoEntries(from: [AylaHandoff.idKey: id])
+            // On a Mac it opens in Safari, where you are signed in to the same PAVE.
+            activity.webpageURL = AylaHandoff.webURL(conversation: id)
         }
         .fullScreenCover(isPresented: $isScanning) {
             DocumentScanner { pages in

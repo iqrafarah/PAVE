@@ -33,6 +33,14 @@ struct PlanDetailView: View {
             }
         }
         .background(Color.canvas.ignoresSafeArea())
+        // Handoff: on an iPad the plans open, on a Mac the plans on the PAVE website. The plan's name stays private.
+        .userActivity(AylaHandoff.planActivityType) { activity in
+            activity.title = PlanMessages.title
+            activity.isEligibleForHandoff = true
+            activity.isEligibleForSearch = false
+            activity.isEligibleForPrediction = false
+            activity.webpageURL = AylaHandoff.planWebURL
+        }
         .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

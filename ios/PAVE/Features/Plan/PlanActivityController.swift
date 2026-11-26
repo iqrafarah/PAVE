@@ -90,7 +90,14 @@ final class PlanActivityController {
             kindTitle: step?.kind.title,
             symbol: step?.kind.symbol ?? "map",
             planName: showsNames ? plan.name : nil,
-            stepTitle: showsNames ? step?.title : nil
+            stepTitle: showsNames ? step?.title : nil,
+            words: .init(
+                yourPlan: "Je plan".translated,
+                allDone: "Alle stappen afgerond".translated,
+                stepOf: "Stap %@ van %@".translated,
+                done: "Klaar".translated,
+                markDone: "Stap klaar".translated
+            )
         )
     }
 }

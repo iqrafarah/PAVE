@@ -33978,6 +33978,23 @@
         }
       }
     },
+    "Stap klaar": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Step done"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paso kla"
+          }
+        }
+      }
+    },
     "Stap over naar ander werk, met wat je al kunt.": {
       "extractionState": "manual",
       "localizations": {
