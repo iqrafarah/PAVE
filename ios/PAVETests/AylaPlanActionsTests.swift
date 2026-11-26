@@ -23,7 +23,7 @@ struct AylaPlanActionsTests {
     @Test func aPlanIsFoundByYourOwnWords() async {
         let (plans, stage, scrum) = await model()
         let actions = AylaPlanActions(plans: plans, chatPlan: nil)
-        #expect(actions.plan(named: "mijn plan voor de stage")?.id == nil || actions.plan(named: "stage vinden")?.id == stage.id)
+        #expect(actions.plan(named: "stage vinden")?.id == stage.id)
         #expect(actions.plan(named: "Scrum halen")?.id == scrum.id)
         #expect(actions.plan(named: nil) == nil)
         #expect(AylaPlanActions(plans: plans, chatPlan: scrum).plan(named: nil)?.id == scrum.id)
