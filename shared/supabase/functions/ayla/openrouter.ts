@@ -13,7 +13,11 @@ const STEADY = 'mistralai/mistral-large-2512'
 const STRONG = 'mistralai/mistral-medium-3-5'
 
 export const MODELS = [STEADY, STRONG, SMALL]
-export const HEDGE_MS = 3500
+/**
+ * How long the first model may take to start before the next one starts beside it. The next one is the strong model,
+ * which costs three times as much and has no cache discount: at 3.5 s it answered most ordinary questions (2026-11-26).
+ */
+export const HEDGE_MS = 5000
 /** OpenRouter may only send a request to Mistral's own servers. */
 export const PROVIDER = { only: ['mistral'] }
 
