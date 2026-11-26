@@ -74,6 +74,7 @@ struct ApplicationStudioView: View {
             case .hub:
                 VStack(spacing: 0) {
                     stepBar(back: nil)
+                    steps(current: shares?.shares(forVacancy: model.draft.vacancy.id).isEmpty == false ? 4 : 3)
                     ApplicationHubView(
                         model: model, photo: photo, shares: shares.map { $0.shares(forVacancy: model.draft.vacancy.id) },
                         onShare: shares == nil ? nil : { share(model.hasLetter ? [.cv, .letter] : [.cv]) },
@@ -99,6 +100,7 @@ struct ApplicationStudioView: View {
                 } else {
                     QuickShareSheet(
                         model: shares, start: .application(vacancyID: model.draft.vacancy.id, documents: request.documents),
+                        steps: ApplyMessages.steps,
                         onShared: { sharedNow = $0 },
                         onMoreOptions: {
                             detailedNext = request.documents
@@ -146,6 +148,13 @@ struct ApplicationStudioView: View {
             let isWide = proxy.size.width >= Self.wideWidth
             VStack(spacing: 0) {
                 topBar
+                Text(ApplyMessages.writingStep(model.draft.vacancy))
+                    .textStyle(.caption)
+                    .foregroundStyle(Color.inkMuted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 8)
                 if isWide {
                     HStack(spacing: 0) {
                         ScrollView {

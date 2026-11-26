@@ -18,6 +18,8 @@ struct QuickShareSheet: View {
     let model: SharingModel
     var start: Start = .profile
     var recipientOrganisation: String?
+    /// Opened as the last step of something longer, like an application: its steps show above, this one last.
+    var steps: [String]?
     var onShared: (ProfileShare) -> Void = { _ in }
     var onMoreOptions: (() -> Void)?
     let onDone: () -> Void
@@ -137,7 +139,13 @@ struct QuickShareSheet: View {
 
     var body: some View {
         NavigationStack {
-            Group {
+            VStack(spacing: 0) {
+                if let steps, didStart {
+                    PaveStepper(steps: steps, current: live == nil ? steps.count - 1 : steps.count)
+                        .frame(maxWidth: 560)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                }
                 if let live {
                     shown(live)
                 } else if didStart {

@@ -418,3 +418,4 @@ Een flow met stappen heeft linksboven een pijl terug naar de vorige stap, en op 
 | Postvak werkgever | Bekijk profiel / web: Bekijk profiel en bewijs |
 | Meldingen, beurs | Van de beurs |
 | Werkgever op de beurs, kop in eigen stijl | OGD: > werken bij ogd / Start je ict-carrière_ · Sioux: // engineering / Engineers gezocht · Catharina: Werken in de zorg? · Jumbo: Kom bij Jumbo · Eindhoven: Werk aan je eigen stad (zelfde regels als op de posters) |
+| Sollicitatie, stappen | Ontwerp / Inhoud / Schrijven / Delen (ook boven het overzicht en het deelscherm) / in de editor: Solliciteren bij {bedrijf} · stap 3 van 4: schrijven |
