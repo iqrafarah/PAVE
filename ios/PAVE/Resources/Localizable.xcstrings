@@ -10688,6 +10688,23 @@
         }
       }
     },
+    "De selectie %@ staat klaar bij Profiel. Kijk hem na en bewaar hem.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The selection %@ is ready in Profile. Check it and save it."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E seleckshon %@ ta kla den Perfil. Kontrolá i warda é."
+          }
+        }
+      }
+    },
     "De selectie kon niet worden bewaard. Probeer het opnieuw.": {
       "extractionState": "manual",
       "localizations": {
@@ -18538,6 +18555,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mi ta prepará esaki pa %@. Kontrolá kiko ta aden i konfirm'é; mi no ta kompartí nada mi mes."
+          }
+        }
+      }
+    },
+    "Ik zie geen bestand in dit gesprek. Stuur de foto of het bestand eerst hier.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I don't see a file in this chat. Send the photo or file here first."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi no ta mira un archivo den e kombersashon aki. Manda e potret of archivo aki promé."
           }
         }
       }

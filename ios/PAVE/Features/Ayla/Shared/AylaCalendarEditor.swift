@@ -9,17 +9,29 @@ struct AylaCalendarMoment: Identifiable, Equatable {
     let date: Date
     /// Only a day: an all-day event with a reminder the day before.
     let isAllDay: Bool
+    /// "Elke vrijdag": the event comes back, until you stop it in the calendar.
+    let repeats: EKRecurrenceFrequency?
 
-    /// "2026-12-03" or "2026-12-03T14:30", in the time of the Netherlands.
+    /// "2026-12-03" or "2026-12-03T14:30", in the time of the Netherlands, with " weekly", " daily" or " monthly" after
+    /// it for a moment that comes back.
     init?(title: String, value: String) {
+        let parts = value.split(separator: " ").map(String.init)
+        guard let moment = parts.first, parts.count <= 2 else { return nil }
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = TimeZone(identifier: "Europe/Amsterdam")
-        formatter.dateFormat = value.contains("T") ? "yyyy-MM-dd'T'HH:mm" : "yyyy-MM-dd"
-        guard let date = formatter.date(from: value) else { return nil }
+        formatter.dateFormat = moment.contains("T") ? "yyyy-MM-dd'T'HH:mm" : "yyyy-MM-dd"
+        guard let date = formatter.date(from: moment) else { return nil }
+        let frequencies: [String: EKRecurrenceFrequency] = ["daily": .daily, "weekly": .weekly, "monthly": .monthly]
+        if parts.count == 2 {
+            guard let frequency = frequencies[parts[1]] else { return nil }
+            repeats = frequency
+        } else {
+            repeats = nil
+        }
         self.title = title
         self.date = date
-        isAllDay = !value.contains("T")
+        isAllDay = !moment.contains("T")
     }
 }
 
@@ -47,6 +59,9 @@ struct AylaCalendarEditor: UIViewControllerRepresentable {
             event.addAlarm(EKAlarm(relativeOffset: -3600))
         }
         event.notes = AylaMessages.calendarNotes
+        if let repeats = moment.repeats {
+            event.addRecurrenceRule(EKRecurrenceRule(recurrenceWith: repeats, interval: 1, end: nil))
+        }
         let controller = EKEventEditViewController()
         controller.eventStore = store
         controller.event = event

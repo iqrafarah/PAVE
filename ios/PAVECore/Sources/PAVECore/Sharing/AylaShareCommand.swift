@@ -6,6 +6,8 @@ public enum AylaShareCommand: Equatable, Sendable {
     case share(organisation: String, duration: ShareDuration?, withApplication: Bool)
     case stop(organisation: String)
     case showShares
+    /// A selection Ayla put together: it opens at Profiel with these items on, and you save it yourself.
+    case selection(name: String, template: ShareTemplate, itemIDs: [String])
 
     public static func command(in text: String) -> AylaShareCommand? {
         let asked = text.lowercased()

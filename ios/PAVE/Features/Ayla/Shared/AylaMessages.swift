@@ -12,6 +12,7 @@ enum AylaMessages {
     static func actionNotArchived(_ name: String) -> String { "Ik kon \(name) niet vinden in het archief." }
     static func actionSkillThere(_ skill: String) -> String { "\(skill) staat er al bij." }
     static func actionNoApplicationFound(_ name: String) -> String { "Ik kon geen sollicitatie of vacature vinden bij \(name)." }
+    static let actionNoChatFile = "Ik zie geen bestand in dit gesprek. Stuur de foto of het bestand eerst hier."
     static let actionMailOpened = "De mail staat klaar. Lees hem na en verstuur hem zelf."
     /// On one line where "Ayla denkt na…" stands, so a long search is shortened in the middle.
     static func activity(_ activity: AylaActivity) -> String {
@@ -225,6 +226,7 @@ enum AylaMessages {
         case .share(let organisation, _, _): "Ik zet het klaar voor \(organisation). Controleer wat erin staat en bevestig het; ik deel niets zelf."
         case .stop(let organisation): "Ik open het delen met \(organisation). Tik op Intrekken om het te stoppen."
         case .showShares: "Hier zie je wat je nu deelt, met wie en hoe lang nog."
+        case .selection(let name, _, _): "De selectie \(name) staat klaar bij Profiel. Kijk hem na en bewaar hem."
         }
     }
     static let vacancyApplicationsTab = "Sollicitaties"

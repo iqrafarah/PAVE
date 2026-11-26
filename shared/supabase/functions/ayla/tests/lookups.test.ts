@@ -56,10 +56,12 @@ test('a calendar moment needs a real date; a new mail needs a subject', () => {
   const actions = cleanActions([
     { do: 'addToCalendar', target: 'Open dag', value: '2026-12-03' },
     { do: 'addToCalendar', target: 'Gesprek', value: '2026-12-03T14:30' },
+    { do: 'addToCalendar', target: 'Plan', value: '2026-11-27T17:00 weekly' },
     { do: 'addToCalendar', target: 'Ooit', value: 'volgende week' },
+    { do: 'addToCalendar', target: 'Vaak', value: '2026-11-27 hourly' },
     { do: 'writeMail', target: 'info@school.nl', value: '' },
   ], 'phone')
-  assert.deepEqual(actions.map((a) => a.value), ['2026-12-03', '2026-12-03T14:30'])
+  assert.deepEqual(actions.map((a) => a.value), ['2026-12-03', '2026-12-03T14:30', '2026-11-27T17:00 weekly'])
   // From the Watch it goes to the iPhone, which opens the calendar there.
   assert.deepEqual(cleanActions([{ do: 'addToCalendar', target: 'x', value: '2026-12-03' }], 'watch'), [{ do: 'addToCalendar', target: 'x', value: '2026-12-03' }])
   assert.deepEqual(cleanActions([{ do: 'writeMail', target: 'x', value: 'y' }], 'watch'), [])
@@ -80,4 +82,26 @@ test('the new actions carry what the app needs, and nothing it cannot read', () 
   ], 'phone')
   assert.deepEqual(actions.map((a) => `${a.do}:${a.value}`), ['setStepDue:2026-12-15', 'setApplicationStatus:sent', 'setLanguage:en', 'linkEvidenceToStep:PSM I'])
   assert.equal(cleanActions([{ do: 'editEvidence', target: 'Stage', value: 'x'.repeat(390) }], 'phone')[0].value?.length, 390)
+})
+
+test('attaching a file asks first, in the words of the app', async () => {
+  const { confirmable } = await import('../brain.ts')
+  const { localized } = await import('../localize.ts')
+  const [attach] = cleanActions([{ do: 'attachToEvidence', target: 'Stage bij Kade', value: 'last' }], 'phone')
+  assert.equal(attach.confirm, true)
+  const sure = confirmable([attach])!
+  assert.equal(sure.question, 'Zal ik het bestand uit dit gesprek bij "Stage bij Kade" in je kluis zetten?')
+  assert.equal(localized(sure.question, 'en'), 'Shall I add the file from this chat to "Stage bij Kade" in your vault?')
+  assert.equal(cleanActions([{ do: 'makeSelection', target: 'Stage, PSM I', value: 'Voor IT' }], 'phone').length, 1)
+})
+
+test('an open verification request reaches her, and who was asked', async () => {
+  const { withPendingRequests } = await import('../vault.ts')
+  const items = [
+    { id: 'a', kind: 'internships', category: 'Stages', title: 'Stage', status: 'niet geverifieerd', skills: [], files: [] },
+    { id: 'b', kind: 'diplomas', category: "Diploma's", title: 'Havo', status: 'geverifieerd', skills: [], files: [] },
+  ]
+  const out = withPendingRequests(items, new Map([['a', 'Kade Consultancy'], ['b', 'DUO']]))
+  assert.equal(out[0].status, 'niet geverifieerd, verificatie aangevraagd bij Kade Consultancy, wacht op antwoord')
+  assert.equal(out[1].status, 'geverifieerd')
 })

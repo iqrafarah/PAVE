@@ -79,7 +79,33 @@ export async function loadAllowedVault(supabase: VaultQuery): Promise<AllowedVau
   // Before migration 20261120120000 there is no archive yet: the vault is read as before.
   if (error?.code === '42703' && !usesArchive) ({ data, error } = await allowed(true))
   if (error) return { status: 'unavailable' }
-  return { status: 'on', items: ((data ?? []) as VaultRow[]).map(toItem).filter((item): item is AllowedItem => item !== undefined) }
+  const items = ((data ?? []) as VaultRow[]).map(toItem).filter((item): item is AllowedItem => item !== undefined)
+  return { status: 'on', items: withPendingRequests(items, await pendingRequests(supabase)) }
+}
+
+/**
+ * Verification asked for and not answered yet, by item: who was asked. Read on its own, so a problem here never takes
+ * the vault away from Ayla; she then only misses that a request is open.
+ */
+async function pendingRequests(supabase: VaultQuery): Promise<Map<string, string>> {
+  try {
+    const { data, error } = await supabase.from('vault_validation_requests').select('item_id,organisation_name').eq('status', 'pending')
+    if (error || !Array.isArray(data)) return new Map()
+    return new Map((data as { item_id?: unknown; organisation_name?: unknown }[])
+      .filter((row) => typeof row.item_id === 'string')
+      .map((row) => [row.item_id as string, text(row.organisation_name) ?? '']))
+  } catch {
+    return new Map()
+  }
+}
+
+/** An item still waiting for a verification says so, and who was asked, so she does not ask the user to ask again. */
+export function withPendingRequests(items: AllowedItem[], pending: Map<string, string>): AllowedItem[] {
+  return items.map((item) => {
+    if (item.status !== 'niet geverifieerd' || !pending.has(item.id)) return item
+    const who = pending.get(item.id)
+    return { ...item, status: `niet geverifieerd, verificatie aangevraagd${who ? ` bij ${who}` : ''}, wacht op antwoord` }
+  })
 }
 
 function toItem(row: VaultRow): AllowedItem | undefined {

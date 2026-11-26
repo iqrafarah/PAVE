@@ -31,6 +31,8 @@ const SENTENCES: [nl: string, en: string, pap: string][] = [
   ['Zal ik de stap {1} uit je plan halen?', 'Shall I remove the step {1} from your plan?', 'Mi mester kita e paso {1} for di bo plan?'],
   ['Zal ik {1} laten weten dat je niet kunt?', "Shall I let {1} know you can't make it?", 'Mi mester laga {1} sa ku bo no por?'],
   ['Zal ik {1} laten weten dat je komt?', "Shall I let {1} know you're coming?", 'Mi mester laga {1} sa ku bo ta bini?'],
+  ['Zal ik het bestand uit dit gesprek bij {1} in je kluis zetten?', 'Shall I add the file from this chat to {1} in your vault?', 'Mi mester pone e archivo di e kombersashon aki na {1} den bo kaha fuerte?'],
+  ['Zal ik {1} bij {2} in je kluis zetten?', 'Shall I add {1} to {2} in your vault?', 'Mi mester pone {1} na {2} den bo kaha fuerte?'],
   ['Zal ik {1} als bron toevoegen aan {2}? Dan mag ik het bekijken en gebruiken in dat project.', 'Shall I add {1} as a source to {2}? Then I may view and use it in that project.', 'Mi mester agregá {1} komo fuente na {2}? Anto mi por mira i usa esaki den e proyekto ei.'],
   ['Zal ik {1} als bron toevoegen? Dan mag ik het bekijken en gebruiken in dat project.', 'Shall I add {1} as a source? Then I may view and use it in that project.', 'Mi mester agregá {1} komo fuente? Anto mi por mira i usa esaki den e proyekto ei.'],
   ['Stap {1} afgerond', 'Step {1} done', 'Paso {1} kla'],

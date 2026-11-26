@@ -3119,6 +3119,32 @@ struct AylaChatScreen: View {
                 return .failed(AylaMessages.actionNoApplicationFound(action.target ?? ""))
             }
             run(.interview, on: [vacancy])
+        case "attachToEvidence":
+            guard let vault, let item = item() else { return .failed(AylaMessages.actionNoItem(action.target ?? "")) }
+            let files = model.conversationUploads
+            let named = files.map { AylaAppCommand.Named(id: $0.fileName, name: $0.fileName) }
+            let wantsLast = ["last", "laatste", ""].contains(action.value?.lowercased() ?? "")
+            let upload = wantsLast ? files.last : AylaAppAction.best(action.value, in: named).flatMap { found in files.last { $0.fileName == found.id } }
+            guard let upload else { return .failed(AylaMessages.actionNoChatFile) }
+            do {
+                try await vault.attach(upload, to: item.id)
+                await vault.load()
+            } catch {
+                return .failed(AylaMessages.actionUnavailable)
+            }
+        case "makeSelection":
+            guard let shareFromAyla, let vault, let name = action.value?.trimmingCharacters(in: .whitespaces), !name.isEmpty else {
+                return .failed(AylaMessages.actionUnavailable)
+            }
+            let titles = (action.target ?? "").split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            let named = vault.items.map { AylaAppCommand.Named(id: $0.id, name: $0.title) }
+            let ids = titles.compactMap { AylaAppAction.best($0, in: named)?.id }
+            guard !ids.isEmpty else { return .failed(AylaMessages.actionNoItem(action.target ?? "")) }
+            let lowered = name.lowercased()
+            let template: ShareTemplate = lowered.contains("beurs") ? .fair
+                : ["opleiding", "school", "studie", "study"].contains(where: lowered.contains) ? .education : .employer
+            closeShelf()
+            shareFromAyla(.selection(name: name, template: template, itemIDs: Array(Set(ids))))
         case "setLanguage":
             guard let language = PaveLanguage(rawValue: action.value ?? "") else { return .failed(AylaMessages.actionUnknownValue) }
             PaveLanguageStore.shared.select(language)

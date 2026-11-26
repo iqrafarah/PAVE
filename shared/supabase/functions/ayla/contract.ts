@@ -113,13 +113,13 @@ export const ACTIONS = [
   'addTalkToCalendar', 'addToCalendar', 'openMail', 'summarizeMail', 'replyMail', 'writeMail',
   'shareWith', 'stopSharing', 'showShares',
   'editEvidence', 'restoreEvidence', 'addSkill', 'linkEvidenceToStep', 'setStepDue', 'moveStep',
-  'setApplicationStatus', 'startPractice', 'setLanguage',
+  'setApplicationStatus', 'startPractice', 'setLanguage', 'attachToEvidence', 'makeSelection',
   'deleteChat', 'deleteEvidence', 'signOut', 'forgetAll', 'removePlanStep', 'answerInvitation', 'addProjectSource',
 ] as const
 export type ActionKind = (typeof ACTIONS)[number]
 
 /** What cannot be undone: PAVE asks Ja or Nee first, and the app only acts after Ja. */
-export const CONFIRMED_ACTIONS: readonly ActionKind[] = ['deleteChat', 'deleteEvidence', 'signOut', 'forgetAll', 'removePlanStep', 'answerInvitation', 'addProjectSource']
+export const CONFIRMED_ACTIONS: readonly ActionKind[] = ['deleteChat', 'deleteEvidence', 'signOut', 'forgetAll', 'removePlanStep', 'answerInvitation', 'addProjectSource', 'attachToEvidence']
 
 export interface AppAction { do: ActionKind; value?: string; target?: string; confirm?: true }
 

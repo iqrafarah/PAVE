@@ -618,6 +618,7 @@ const CONFIRM_QUESTIONS: Partial<Record<ActionKind, (action: AppAction) => strin
   answerInvitation: (action) => /^(no|nee)$/i.test(action.value ?? '')
     ? `Zal ik ${action.target} laten weten dat je niet kunt?`
     : `Zal ik ${action.target} laten weten dat je komt?`,
+  attachToEvidence: (action) => `Zal ik ${action.value === 'last' || !action.value ? 'het bestand uit dit gesprek' : `"${action.value}"`} bij "${action.target}" in je kluis zetten?`,
   addProjectSource: (action) => `Zal ik "${action.target}" als bron toevoegen${action.value ? ` aan ${action.value}` : ''}? Dan mag ik het bekijken en gebruiken in dat project.`,
 }
 
@@ -806,6 +807,7 @@ const NEEDS_TARGET: readonly ActionKind[] = [
   'openPlan', 'openProject', 'markPlanStep', 'removePlanStep', 'linkPlanToProject',
   'renamePlanStep', 'describePlanStep', 'answerInvitation', 'addTalkToCalendar', 'addProjectSource', 'addToCalendar',
   'editEvidence', 'restoreEvidence', 'addSkill', 'linkEvidenceToStep', 'setStepDue', 'moveStep', 'setApplicationStatus', 'startPractice',
+  'attachToEvidence', 'makeSelection',
 ]
 /** Mail actions may leave out who: then the newest conversation is meant. */
 const NEEDS_VALUE: readonly ActionKind[] = [
@@ -813,7 +815,7 @@ const NEEDS_VALUE: readonly ActionKind[] = [
   'setChatsInSearch', 'setAnimations', 'setMemory', 'createFolder', 'moveToFolder', 'allowAyla', 'openVacancy', 'saveVacancy',
   'setFontStyle', 'addPlanStep', 'markPlanStep', 'linkPlanToProject', 'shareWith', 'stopSharing',
   'renamePlanStep', 'describePlanStep', 'answerInvitation', 'addToCalendar', 'writeMail',
-  'addSkill', 'linkEvidenceToStep', 'setStepDue', 'moveStep', 'setApplicationStatus', 'setLanguage',
+  'addSkill', 'linkEvidenceToStep', 'setStepDue', 'moveStep', 'setApplicationStatus', 'setLanguage', 'makeSelection',
 ]
 
 /** The actions of an answer as the app gets them: known ones only, complete, at most 4, and only on the iPhone. */
@@ -823,8 +825,8 @@ export function moreThanOneRound(raw: unknown): boolean {
 }
 
 /** What Ayla may set up from the Watch: the Watch asks Ja or Nee itself, and the iPhone carries it out. */
-/** A day (2026-12-03) or a day and time (2026-12-03T14:30), as the app puts it in the calendar. */
-const CALENDAR_DATE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])(T([01]\d|2[0-3]):[0-5]\d)?$/
+/** A day (2026-12-03) or a day and time (2026-12-03T14:30), as the app puts it in the calendar; repeating with daily, weekly or monthly after it. */
+const CALENDAR_DATE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])(T([01]\d|2[0-3]):[0-5]\d)?( (daily|weekly|monthly))?$/
 
 export const WATCH_ACTIONS: readonly ActionKind[] = ['addPlanStep', 'markPlanStep', 'answerInvitation', 'openApplication', 'makeVacancyPlan', 'openPlan', 'addToCalendar']
 
@@ -836,7 +838,7 @@ export function cleanActions(raw: unknown, device: AylaRequest['device']): AppAc
     const kind = entry?.do as ActionKind
     if (!ACTIONS.includes(kind) || (onWatch && !WATCH_ACTIONS.includes(kind))) continue
     // The changes to evidence can be a description; everything else is a name, a title or a date.
-    const word = (value: unknown) => (typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, kind === 'editEvidence' ? 400 : 120) : '')
+    const word = (value: unknown) => (typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, kind === 'editEvidence' || kind === 'makeSelection' ? 400 : 120) : '')
     const value = word(entry.value)
     const target = word(entry.target)
     if ((NEEDS_TARGET.includes(kind) && !target) || (NEEDS_VALUE.includes(kind) && !value)) continue
