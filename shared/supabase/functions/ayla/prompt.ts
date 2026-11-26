@@ -3,6 +3,7 @@ import type { VaultConsent } from './consent.ts'
 import { ACTIONS, type AppState, type Context, type Device, type Screen, type VacancyContext } from './contract.ts'
 import { MEMORY_CATEGORIES, type Memory, memoryPrompt } from './memory.ts'
 import { VAULT_ITEM_SCHEMA } from './proposal.ts'
+import { NO_PLAN_RULE, PLAN_STEP_SCHEMA, type PlanContext, planLayer } from './plan.ts'
 
 // Layer 1: who Ayla is and her rules. Adapted from the voice demo, without
 // the demo parts and without privacy claims that are not true for this setup.
@@ -209,6 +210,8 @@ export interface PromptInput {
   memory?: Memory
   /** The project this conversation belongs to, with the instructions the user wrote for it. */
   project?: { name: string; instructions: string; sourceIds?: string[] }
+  /** The plan this conversation belongs to, with its steps. */
+  plan?: PlanContext
   vault?: AllowedVault
   /** Whether the user let Ayla look in the vault in this conversation. Missing means yes, as before consent existed. */
   vaultConsent?: VaultConsent
@@ -237,6 +240,7 @@ export function buildSystemPrompt(input: PromptInput): string {
   if (project) layers.push(project)
   const sources = projectSourcesLayer(input.project, input.vault, input.vaultConsent)
   if (sources) layers.push(sources)
+  layers.push(planLayer(input.plan) ?? NO_PLAN_RULE)
   layers.push(OUTPUT_PROMPT)
   layers.push(input.device === 'phone' ? ACTIONS_PROMPT : NO_ACTIONS_PROMPT)
   const app = input.device === 'phone' ? appLayer(input.app) : null
@@ -491,7 +495,7 @@ export const MODEL_OUTPUT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
   // In the order of the properties: what the app needs first (the text, a question about the vault) comes first.
-  required: ['intent', 'text', 'askVault', 'vacancySearch', 'question', 'navigation', 'actions', 'continues', 'usedVaultItems', 'title', 'usedMemories', 'memories', 'vaultItem'],
+  required: ['intent', 'text', 'askVault', 'vacancySearch', 'question', 'navigation', 'actions', 'continues', 'usedVaultItems', 'title', 'usedMemories', 'memories', 'vaultItem', 'planStep'],
   properties: {
     // First of all: what this answer is. The model commits before it writes, and the server holds it to that.
     intent: { type: 'string', enum: ['answer', 'askUser', 'askVault', 'search', 'propose', 'act', 'decline'] },
@@ -554,6 +558,8 @@ export const MODEL_OUTPUT_SCHEMA = {
       },
     },
     vaultItem: VAULT_ITEM_SCHEMA,
+    // Last: a step of the plan that is done, skipped or the one to go on with; null without a plan.
+    planStep: PLAN_STEP_SCHEMA,
   },
 } as const
 

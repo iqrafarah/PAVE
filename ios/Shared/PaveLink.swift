@@ -5,6 +5,8 @@ import Foundation
 nonisolated enum PaveLink: String, CaseIterable, Sendable {
     case talk = "praat-met-ayla"
     case newConversation = "nieuw-gesprek"
+    /// The plan you follow on the Lock Screen.
+    case plan = "plan"
 
     static let scheme = "pave"
 

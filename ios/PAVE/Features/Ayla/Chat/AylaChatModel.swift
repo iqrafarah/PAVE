@@ -56,6 +56,8 @@ final class AylaChatModel {
 
     /// "Nieuwe chat in project": the next question starts the conversation inside this project.
     private(set) var newChatProject: AylaProject?
+    /// "Nieuw gesprek in plan": the plan (and the step in it) the next chat belongs to. Any other new chat leaves it.
+    private(set) var newChatPlan: (planID: String, stepID: String?)?
     private(set) var firstName: String?
 
     /// The name changed in Instellingen: the welcome and the menu use it at once.
@@ -350,7 +352,7 @@ final class AylaChatModel {
         phase = .thinking
         let request = AylaRequest(
             conversationId: conversationID, text: text, device: .phone, input: input, context: requestContext(for: text), attachments: files,
-            projectId: newChatProject?.id, app: appState?()
+            projectId: newChatProject?.id, planId: newChatPlan?.planID, planStepId: newChatPlan?.stepID, app: appState?()
         )
         return Turn(service: service, request: request, text: text, files: files)
     }
@@ -668,7 +670,7 @@ final class AylaChatModel {
             }
             let request = AylaRequest(
                 conversationId: conversationID, text: question.text, device: .phone, input: .text, context: context, attachments: files,
-                projectId: newChatProject?.id, app: appState?()
+                projectId: newChatProject?.id, planId: newChatPlan?.planID, planStepId: newChatPlan?.stepID, app: appState?()
             )
             await stream(Turn(service: service, request: request, text: question.text, files: files))
         }
@@ -802,10 +804,18 @@ final class AylaChatModel {
         context = nil
     }
 
-    func newConversation(in project: AylaProject? = nil) {
+    /// "Plan toevoegen" before the chat has begun: its first message starts it in this plan (nil: in none). What was
+    /// typed and added stays.
+    func startInPlan(_ planID: String?) {
+        guard conversationID == nil else { return }
+        newChatPlan = planID.map { ($0, nil) }
+    }
+
+    func newConversation(in project: AylaProject? = nil, plan planID: String? = nil, step stepID: String? = nil) {
         guard !isAnswering else { return }
         openProject = nil
         newChatProject = project
+        newChatPlan = planID.map { ($0, stepID) }
         clearContext()
         endPractice()
         entries = []
@@ -830,6 +840,7 @@ final class AylaChatModel {
 
     func open(_ conversation: AylaConversation) async {
         openProject = nil
+        newChatPlan = nil
         guard let service, !isAnswering else { return }
         clearContext()
         endPractice()
