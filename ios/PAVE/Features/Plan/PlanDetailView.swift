@@ -11,9 +11,11 @@ struct PlanDetailView: View {
 
     @Environment(PlanModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.vacancyRequest) private var vacancyRequest
     @State private var selectedStep: PavePlanStep?
     @State private var editedStep: PavePlanStep?
     @State private var addsStep = false
+    @State private var proposesSteps = false
     @State private var editsPlan = false
     @State private var deletedPlan: PavePlan?
     @State private var deleteAfterEdit = false
@@ -41,6 +43,7 @@ struct PlanDetailView: View {
                 Menu {
                     Button(PlanMessages.rename, systemImage: "pencil") { editsPlan = true }
                     Button(PlanMessages.addStep, systemImage: "plus") { addsStep = true }
+                    Button(PlanMessages.proposeSteps, systemImage: "sparkles") { proposesSteps = true }
                     if plan?.isFinished == true {
                         Button(PlanMessages.reopen, systemImage: "arrow.uturn.backward") { model.reopen(planID) }
                     } else {
@@ -92,6 +95,19 @@ struct PlanDetailView: View {
             PlanStepEditor(step: nil) { step in model.addStep(step, to: planID) }
                 .paveSheet()
         }
+        .sheet(isPresented: $proposesSteps) {
+            if let plan {
+                PlanStepProposalSheet(plan: plan) { steps in model.addSteps(steps, to: planID) }
+                    .paveSheet()
+            }
+        }
+        .task(id: model.proposesStepsFor) {
+            // A plan made "with Ayla" opens her proposal as soon as its page shows.
+            guard model.proposesStepsFor == planID else { return }
+            model.proposesStepsFor = nil
+            try? await Task.sleep(for: .milliseconds(450))
+            proposesSteps = true
+        }
         .sheet(item: $editedStep) { step in
             PlanStepEditor(step: step) { changed in
                 model.updateStep(changed, in: planID)
@@ -109,6 +125,7 @@ struct PlanDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 header(plan)
+                PlanProjectRow(plan: plan, projects: chats.projects) { model.setProject($0, of: planID) }
                 steps(plan)
                 conversations(plan)
             }
@@ -189,6 +206,18 @@ struct PlanDetailView: View {
                     Text(PlanMessages.addStep).textStyle(.action)
                 } icon: {
                     Image(.iconPlus).renderingMode(.template).resizable().scaledToFit().paveIconFrame(12)
+                }
+                .foregroundStyle(Color.paveAccent)
+                .frame(minHeight: 44)
+            }
+            .buttonStyle(.pave)
+            Button {
+                proposesSteps = true
+            } label: {
+                Label {
+                    Text(PlanMessages.proposeSteps).textStyle(.action)
+                } icon: {
+                    AylaLetter(color: Color.paveAccent).frame(width: 12, height: 12)
                 }
                 .foregroundStyle(Color.paveAccent)
                 .frame(minHeight: 44)
@@ -281,6 +310,15 @@ struct PlanDetailView: View {
             }
             if step.status != .skipped, step.status != .done {
                 Button(PlanMessages.markSkipped) { model.setStatus(.skipped, of: step.id, in: planID) }
+            }
+            if let vacancy = PlanVacancy.vacancy(of: plan), let vacancyRequest {
+                // A plan for a vacancy: its steps lead straight to that application and that talk.
+                if step.kind == .document {
+                    Button(PlanMessages.openApplication) { vacancyRequest(.application(ApplicationStore().load(vacancy.id)?.vacancy ?? vacancy)) }
+                }
+                if step.kind == .conversation, step.metadata[PlanVacancy.idKey] != nil {
+                    Button(PlanMessages.practiseTalk) { vacancyRequest(.task(.interview, vacancy)) }
+                }
             }
             if let destination = step.kind.destination {
                 Button(destination.planStepAction) { actions.go(destination) }

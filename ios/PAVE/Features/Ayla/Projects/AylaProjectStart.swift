@@ -20,6 +20,7 @@ struct AylaProjectStart: View {
     @State private var picksSources = false
     @State private var fileSource: VaultFileSource?
     @State private var uploadFlow: VaultAddEvidenceModel?
+    @State private var uploading: VaultAddEvidenceModel?
     @State private var openedItem: VaultItem?
 
     private var chats: [AylaConversation] {
@@ -51,6 +52,7 @@ struct AylaProjectStart: View {
                     .lineLimit(3)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+            ProjectPlansList(project: project)
             if model.canUseSources {
                 Picker("Weergave", selection: $tab) {
                     Text(AylaMessages.projectTabChats).tag(Tab.chats)
@@ -104,6 +106,7 @@ struct AylaProjectStart: View {
             flow.pick(result)
             if case .success = result { flow.fillWithAyla() }
             uploadFlow = flow
+            uploading = flow
         }
         .sheet(item: $uploadFlow, onDismiss: addUploadedSource) { flow in
             VaultAddEvidenceSheet(flow: flow)
@@ -361,8 +364,10 @@ struct AylaProjectStart: View {
             .fixedSize(horizontal: false, vertical: true)
     }
 
+    /// The sheet's own item is already nil when it closes, so the flow is kept apart to read what it saved.
     private func addUploadedSource() {
-        guard let id = uploadFlow?.savedItemID else { return }
+        guard let id = uploading?.savedItemID else { return }
+        uploading = nil
         Task { await model.addSources([id], to: project) }
     }
 }

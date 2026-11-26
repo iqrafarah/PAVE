@@ -117,14 +117,19 @@ enum PlanTemplates {
     )
 
     /// What the Plan screen offers when you make a plan; the empty one first.
-    static let all: [PavePlanTemplate] = [.empty, job, internship, career, education, skill, certificate, careerSwitch]
+    /// No steps yet: once the plan is made, Ayla proposes them and the user picks.
+    static let withAyla = PavePlanTemplate(id: "with-ayla", name: "", summary: PlanMessages.withAylaSummary, goal: "", steps: [])
+
+    static let all: [PavePlanTemplate] = [.empty, withAyla, job, internship, career, education, skill, certificate, careerSwitch]
 
     static func title(of template: PavePlanTemplate) -> String {
-        template.steps.isEmpty ? "Leeg plan" : template.name
+        if template.id == withAyla.id { return PlanMessages.withAylaTitle }
+        return template.steps.isEmpty ? "Leeg plan" : template.name
     }
 
     static func summary(of template: PavePlanTemplate) -> String {
-        template.steps.isEmpty ? "Begin met een doel en voeg zelf stappen toe." : template.summary
+        if template.id == withAyla.id { return PlanMessages.withAylaSummary }
+        return template.steps.isEmpty ? "Begin met een doel en voeg zelf stappen toe." : template.summary
     }
 
     /// The icon of a template, and of a plan that started from it.
@@ -138,6 +143,8 @@ enum PlanTemplates {
         case certificate.id: .iconCheckBadgeOutline
         case careerSwitch.id: .iconArrowsRightLeftOutline
         case PavePlanTemplate.empty.id: .iconPlus
+        case withAyla.id: .iconChatBubbleLeftEllipsisOutline
+        case "vacancy": .iconBriefcaseOutline
         default: .iconMap
         }
     }

@@ -386,7 +386,7 @@ struct PlanIslandOverlay: View {
                     },
                     onNewConversation: {
                         setExpanded(false)
-                        chat.newConversation(plan: plan.id, step: plan.currentStep?.id)
+                        chat.newConversation(in: chat.conversationList.projects.first { $0.id == plan.projectID }, plan: plan.id, step: plan.currentStep?.id)
                     }
                 )
                 .transition(.scale(scale: 0.6, anchor: .top).combined(with: .opacity))

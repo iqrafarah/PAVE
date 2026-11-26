@@ -70,6 +70,7 @@ struct PlanScreen: View {
         .sheet(isPresented: $createsPlan) {
             PlanEditor(plan: nil) { name, goal, template in
                 guard let plan = await model.create(name: name, goal: goal, from: template) else { return false }
+                if template.id == PlanTemplates.withAyla.id { model.proposesStepsFor = plan.id }
                 model.openPlanID = plan.id
                 return true
             }

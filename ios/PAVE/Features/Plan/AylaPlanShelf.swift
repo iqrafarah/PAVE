@@ -26,7 +26,7 @@ struct AylaPlanShelf: View {
                 },
                 start: { plan, step in
                     onLeave {
-                        chat.newConversation(plan: plan.id, step: step?.id)
+                        chat.newConversation(in: chat.conversationList.projects.first { $0.id == plan.projectID }, plan: plan.id, step: step?.id)
                         if let step { chat.draft = PlanMessages.stepPrompt(step) }
                     }
                 },

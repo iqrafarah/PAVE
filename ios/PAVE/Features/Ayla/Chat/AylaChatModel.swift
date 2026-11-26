@@ -1224,14 +1224,36 @@ final class AylaChatModel {
     func loadSources(of project: AylaProject) async {
         guard let service else { return }
         sourcesProblem = nil
-        do {
-            projectSources[project.id] = try await service.projectSources(projectID: project.id)
-            canUseSources = true
-        } catch AylaError.notSetUp {
-            canUseSources = false
-        } catch {
-            if projectSources[project.id] == nil { projectSources[project.id] = [] }
-            sourcesProblem = AylaMessages.sourcesFailed
+        // A hiccup of the connection is tried once more before anything is said.
+        for attempt in 0..<2 {
+            do {
+                projectSources[project.id] = try await service.projectSources(projectID: project.id)
+                canUseSources = true
+                return
+            } catch AylaError.notSetUp {
+                canUseSources = false
+                return
+            } catch is CancellationError {
+                // The page went away while loading: nothing failed.
+                return
+            } catch {
+                if attempt == 0, !Task.isCancelled {
+                    try? await Task.sleep(for: .milliseconds(700))
+                    continue
+                }
+                if Task.isCancelled { return }
+                if projectSources[project.id] == nil { projectSources[project.id] = [] }
+                sourcesProblem = Self.sourcesMessage(for: error)
+            }
+        }
+    }
+
+    /// What went wrong with the sources, as far as the app can tell.
+    private static func sourcesMessage(for error: any Error) -> String {
+        switch error {
+        case AylaError.noConnection: AylaMessages.sourcesNoConnection
+        case AylaError.insufficientAssurance, AylaError.notSignedIn: AylaMessages.sourcesSignInAgain
+        default: AylaMessages.sourcesFailed
         }
     }
 
@@ -1241,12 +1263,16 @@ final class AylaChatModel {
         let fresh = itemIDs.filter { !known.contains($0) }
         guard !fresh.isEmpty else { return }
         projectSources[project.id] = fresh + known
+        sourcesProblem = nil
         do {
             try await service.addProjectSources(fresh, projectID: project.id)
             PaveHaptics.success()
+        } catch AylaError.notSetUp {
+            projectSources[project.id] = known
+            canUseSources = false
         } catch {
             projectSources[project.id] = known
-            sourcesProblem = AylaMessages.sourcesFailed
+            sourcesProblem = Self.sourcesMessage(for: error)
         }
     }
 
@@ -1259,7 +1285,7 @@ final class AylaChatModel {
                 try await service.removeProjectSource(itemID, projectID: project.id)
             } catch {
                 projectSources[project.id] = before
-                sourcesProblem = AylaMessages.sourcesFailed
+                sourcesProblem = Self.sourcesMessage(for: error)
             }
         }
     }

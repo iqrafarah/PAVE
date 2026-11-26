@@ -611,6 +611,13 @@ belong to projects.
 - **Other flows** (such as finding work) make a plan from their own `PavePlanTemplate` with kinds of their own; ids of
   steps are UUIDs. `metadata` on a plan and a step is free room for that flow.
 
+### Steps proposed by Ayla, vacancies and projects (2026-11-26)
+
+- **`ayla-plan` function** (`shared/supabase/functions/ayla-plan`): proposes up to six steps for a plan. It gets the plan's name and goal, the titles of the steps it already has, and of the vault only the title, kind and verified-or-not of evidence with "Ayla mag dit bekijken en gebruiken" on; with a plan for a vacancy also that vacancy and what the user still misses. Nothing is stored: the app shows the steps and the user picks which go into the plan. Same models and two-step verification as `ayla-skills`.
+- **A plan for a vacancy** is made in the app (`PlanVacancy` in PAVECore), not by the model: a step per missing skill (at most three), evidence, CV and letter, sharing, practising the talk. The plan keeps the vacancy in `plans.metadata` (`vacancyID`, `vacancyTitle`, `vacancyCompany`, `vacancySummary`, `vacancyMissing` joined with U+001F). `loadPlan` reads that, and the prompt tells Ayla which vacancy the plan is for and what is missing.
+- **The prompt** now says of each step what kind it is and where in PAVE it is done, and no longer claims that Plan and Profiel are empty or that plans cannot be saved. The evals `plan`, `r2 stappenplan …` and `r3 wat mis ik` were written for the old wording: run them again before deploying.
+- **A plan in a project**: `plans.metadata.projectID`. New chats of the plan start in that project (the apps send `projectId` next to `planId`), so the project's instructions and sources apply. Existing chats stay where they are.
+
 ## Privacy: things to be honest about
 
 - The chat models are hosted by Mistral and requests are pinned to it (`provider.only`), but they still pass through OpenRouter, which does not guarantee that data stays in Europe; and the voice model is from OpenAI. Until 2026-11-23 ordinary turns went to DeepInfra, Parasail or Venice without anyone having chosen that (see "Which models, and where the data goes"). The demo prompt says that data stays in Europe and that conversations are not used for training. **Only keep claims in the prompt that are true for this setup.**

@@ -529,6 +529,9 @@ struct MainView: View {
                     open(destination)
                 }, deleteChats: deleteChats)
             )
+            // Ayla's proposal for steps reads the evidence she may see and asks her service.
+            .environment(vault)
+            .environment(model)
         case .profile:
             ProfileScreen(model: sharing, onShowMenu: onShowMenu)
                 .environment(vault)
@@ -672,7 +675,9 @@ struct MainView: View {
     /// "Nieuw gesprek" in a plan: an empty chat that joins the plan with its first message. For a step, the text field
     /// already asks Ayla about it.
     private func startConversation(in plan: PavePlan, for step: PavePlanStep?) {
-        model.newConversation(plan: plan.id, step: step?.id)
+        // A plan in a project starts its chats there, so Ayla has the project's instructions and sources.
+        let project = model.conversationList.projects.first { $0.id == plan.projectID }
+        model.newConversation(in: project, plan: plan.id, step: step?.id)
         if let step { model.draft = PlanMessages.stepPrompt(step) }
         destination = .ayla
         isMenuOpen = false

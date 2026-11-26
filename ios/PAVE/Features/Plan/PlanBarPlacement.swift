@@ -106,7 +106,7 @@ private struct PlanBarPlacement: ViewModifier {
             },
             onNewConversation: {
                 setExpanded(false)
-                chat.newConversation(plan: plan.id, step: plan.currentStep?.id)
+                chat.newConversation(in: chat.conversationList.projects.first { $0.id == plan.projectID }, plan: plan.id, step: plan.currentStep?.id)
             }
         )
         // The chat keeps room for the pill only: unfolding lies over the chat and never moves it. The pill stays pinned

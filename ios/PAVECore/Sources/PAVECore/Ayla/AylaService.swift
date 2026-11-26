@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// What comes in while Ayla writes her answer.
 public enum AylaStreamEvent: Equatable, Sendable {
@@ -91,6 +92,8 @@ public protocol AylaService: Sendable {
     func companyAbout(company: String, city: String?) async throws -> CompanyAbout?
     /// Ayla writes along with a CV or a letter (the `ayla-document` function).
     func writeApplication(_ request: ApplicationWritingRequest) async throws -> ApplicationWriting
+    /// Ayla proposes steps for a plan (the `ayla-plan` function); nothing is saved until the user picks them.
+    func proposePlanSteps(_ request: PlanStepsRequest) async throws -> [PavePlanTemplate.Step]
     /// What Ayla remembers about the user, the newest first. `notSetUp` until the tables exist.
     func memories() async throws -> AylaMemories
     /// Saves a note the user kept or wrote.
@@ -165,6 +168,8 @@ extension AylaService {
     public func companyAbout(company: String, city: String?) async throws -> CompanyAbout? { throw AylaError.unavailable }
 
     public func writeApplication(_ request: ApplicationWritingRequest) async throws -> ApplicationWriting { throw AylaError.unavailable }
+
+    public func proposePlanSteps(_ request: PlanStepsRequest) async throws -> [PavePlanTemplate.Step] { throw AylaError.unavailable }
 
     public func memories() async throws -> AylaMemories { throw AylaError.notSetUp }
     public func remember(
@@ -430,6 +435,19 @@ public struct SupabaseAylaService: AylaService {
         let data = try await perform(urlRequest, accepting: [200])
         guard let writing = try? JSONDecoder().decode(ApplicationWriting.self, from: data) else { throw AylaError.unavailable }
         return writing
+    }
+
+    public func proposePlanSteps(_ request: PlanStepsRequest) async throws -> [PavePlanTemplate.Step] {
+        guard let token = await accessToken() else { throw AylaError.notSignedIn }
+        var urlRequest = URLRequest(url: projectURL.appending(path: "functions/v1/ayla-plan"), timeoutInterval: 60)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue(publishableKey, forHTTPHeaderField: "apikey")
+        urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        urlRequest.httpBody = try JSONEncoder().encode(request)
+        let data = try await perform(urlRequest, accepting: [200])
+        guard let proposal = try? JSONDecoder().decode(PlanStepsProposal.self, from: data) else { throw AylaError.unavailable }
+        return proposal.templateSteps
     }
 
     public func companyAbout(company: String, city: String?) async throws -> CompanyAbout? {
@@ -944,16 +962,23 @@ public struct SupabaseAylaService: AylaService {
         return urlRequest
     }
 
+    private static let logger = Logger(subsystem: "nl.fontys.pave", category: "ayla")
+
     private func perform(_ urlRequest: URLRequest, accepting statuses: Set<Int>) async throws -> Data {
         let data: Data
         let response: URLResponse
         do {
             (data, response) = try await session.data(for: urlRequest)
+        } catch let error as URLError where error.code == .cancelled {
+            // The screen that asked went away: nothing failed, so nobody should be told it did.
+            throw CancellationError()
         } catch is URLError {
             throw AylaError.noConnection
         }
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         if statuses.contains(status) { return data }
+        // Why the server said no, for the console: the app only shows a short message. Never the token or the body sent.
+        Self.logger.error("\(urlRequest.httpMethod ?? "GET", privacy: .public) \(urlRequest.url?.path() ?? "", privacy: .public) gave \(status): \(String(decoding: data.prefix(300), as: UTF8.self), privacy: .public)")
         if Self.isMissingTable(status: status, body: data) { throw AylaError.notSetUp }
         if Self.isMissingColumn(status: status, body: data) { throw MissingColumn() }
         switch status {

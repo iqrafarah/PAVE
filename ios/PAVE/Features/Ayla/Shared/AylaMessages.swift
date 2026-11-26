@@ -366,6 +366,8 @@ enum AylaMessages {
     static let sourcesFromVault = "Uit kluis halen"
     static let sourcesRemove = "Verwijderen uit project"
     static let sourcesFailed = "Dit is niet gelukt. Probeer het opnieuw."
+    static let sourcesNoConnection = "Geen verbinding. Kijk of je internet hebt en probeer het opnieuw."
+    static let sourcesSignInAgain = "Je bent te lang ingelogd geweest. Log opnieuw in en probeer het dan nog eens."
     static let sourcesLoading = "Bronnen laden…"
     static let sourcesNoMatch = "Geen bronnen met dit filter."
     static let sourcesSortLabel = "Sorteren"
