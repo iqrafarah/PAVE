@@ -656,3 +656,19 @@ Not reused: the pixel orb and icons, the audience questions with QR code, the de
 4. Conversations and messages in Supabase, with live sync.
 5. Chat in the apps, then voice.
 6. Consent and the vault, then memory, then proposals.
+
+### Studies and courses (2026-11-26)
+
+`educationSearch` (`{ what, where }`) makes Ayla look up studies and courses through OpenRouter's web plugin (Exa), in
+`ayla/educations.ts`. Only pages the search returned count, as with vacancies, so a school or page cannot be invented.
+The results come as an `educations` block (`name`, `school`, `level` mbo/hbo/wo/cursus/overig, `city`, `duration`,
+`url`, `summary`), with a second short answer about which fits and what to check on the site. Not on the Watch: there
+she says to ask on the iPhone. On the iPhone each card has "Bekijk de site" and "Zet in plan" (a research step with the
+page in `metadata.educationURL`) or, without a plan, "Maak er een plan van" (look, admission, open day, evidence,
+apply). In a plan chat she searches instead of only offering to.
+
+### Language
+
+Fixed sentences the server writes itself (confirm questions, the vault question, Ja/Nee, fallbacks, plan updates) are
+translated in `ayla/localize.ts` just before the reply leaves, so the checks in `brain.ts` keep working on the Dutch
+words. Yes, Si and Nò count as answers.

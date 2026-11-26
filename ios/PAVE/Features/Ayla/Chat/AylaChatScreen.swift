@@ -21,6 +21,7 @@ struct AylaChatScreen: View {
     @Environment(NotificationsModel.self) private var notifications: NotificationsModel?
     @Environment(ProfileModel.self) private var profile: ProfileModel?
     @Environment(PlanModel.self) private var plans: PlanModel?
+    @Environment(\.openURL) private var openURL
     @Environment(SharingModel.self) private var sharing: SharingModel?
     @Environment(EmailModel.self) private var email: EmailModel?
     @Environment(\.openPlan) private var openPlan
@@ -984,6 +985,17 @@ struct AylaChatScreen: View {
                     ) {
                         openVacancies(from: entry.id)
                     }
+                    .padding(.top, 3)
+                }
+                let educations = Self.educations(in: entry)
+                if !educations.isEmpty {
+                    EducationResults(
+                        educations: educations,
+                        hasPlan: chatPlan != nil,
+                        isInPlan: { education in chatPlan?.steps.contains { $0.metadata[AylaEducation.idKey] == education.id } ?? false },
+                        onOpenSite: { openURL($0.url) },
+                        onPlan: { putInPlan($0) }
+                    )
                     .padding(.top, 3)
                 }
             }
@@ -2238,6 +2250,32 @@ struct AylaChatScreen: View {
     private func chooseFile() {
         isAttachMenuOpen = false
         isChoosingFile = true
+    }
+
+    static func educations(in entry: AylaChatModel.Entry) -> [AylaEducation] {
+        entry.reply?.blocks.lazy.compactMap { block -> [AylaEducation]? in
+            if case .educations(let items, _) = block { return items }
+            return nil
+        }.first ?? []
+    }
+
+    /// A study from Ayla's results into the plan of this chat as a step, or, without a plan, into a plan of its own
+    /// that this chat then belongs to.
+    private func putInPlan(_ education: AylaEducation) {
+        guard let plans else { return }
+        if let plan = chatPlan {
+            guard !plan.steps.contains(where: { $0.metadata[AylaEducation.idKey] == education.id }) else { return }
+            withAnimation(.easeOut(duration: 0.2)) { plans.addStep(EducationMessages.step(for: education), to: plan.id) }
+            PaveHaptics.success()
+            AccessibilityNotification.Announcement(EducationMessages.addedTo(plan.name)).post()
+            return
+        }
+        Task {
+            guard let made = await plans.create(name: education.name, goal: EducationMessages.template(for: education).goal, from: EducationMessages.template(for: education)) else { return }
+            putChat(in: made)
+            PaveHaptics.success()
+            AccessibilityNotification.Announcement(EducationMessages.planMade(made.name)).post()
+        }
     }
 
     /// The plan this chat is in, or that it will start in.

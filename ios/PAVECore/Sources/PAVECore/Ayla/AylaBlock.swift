@@ -6,6 +6,7 @@ public enum AylaBlock: Codable, Equatable, Sendable {
     case vaultSelection([CategoryCount])
     case vacancies([Vacancy], search: VacancySearch? = nil)
     case skillSuggestions(itemId: String, skills: [SkillSuggestion])
+    case educations([AylaEducation], search: EducationSearch? = nil)
     case cv(CurriculumVitae)
     case unknown(type: String)
 
@@ -70,6 +71,11 @@ public enum AylaBlock: Codable, Equatable, Sendable {
                 try container.decode([Vacancy].self, forKey: .items),
                 search: try? container.decodeIfPresent(VacancySearch.self, forKey: .search)
             )
+        case "educations":
+            self = .educations(
+                try container.decode([AylaEducation].self, forKey: .items),
+                search: try? container.decodeIfPresent(EducationSearch.self, forKey: .search)
+            )
         case "skillSuggestions":
             self = .skillSuggestions(
                 itemId: try container.decode(String.self, forKey: .itemId),
@@ -94,6 +100,10 @@ public enum AylaBlock: Codable, Equatable, Sendable {
             try container.encode(categories, forKey: .categories)
         case .vacancies(let items, let search):
             try container.encode("vacancies", forKey: .type)
+            try container.encode(items, forKey: .items)
+            try container.encodeIfPresent(search, forKey: .search)
+        case .educations(let items, let search):
+            try container.encode("educations", forKey: .type)
             try container.encode(items, forKey: .items)
             try container.encodeIfPresent(search, forKey: .search)
         case .skillSuggestions(let itemId, let skills):

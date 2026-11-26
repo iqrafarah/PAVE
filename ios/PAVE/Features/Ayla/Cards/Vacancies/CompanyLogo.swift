@@ -12,6 +12,8 @@ struct CompanyLogo: View {
     var looksUp = true
     /// The logo fills the whole circle, like the logo of evidence in the vault, instead of sitting small in the middle.
     var fills = false
+    /// What shows when no logo is found.
+    var placeholder: ImageResource = .iconBuilding
 
     @State private var logo: UIImage?
 
@@ -46,7 +48,7 @@ struct CompanyLogo: View {
                     .transition(.opacity)
                     .accessibilityHidden(true)
             } else {
-                CompanyIconBadge(size: size)
+                CompanyIconBadge(size: size, icon: placeholder)
             }
         }
         .animation(.easeOut(duration: 0.2), value: logo != nil)

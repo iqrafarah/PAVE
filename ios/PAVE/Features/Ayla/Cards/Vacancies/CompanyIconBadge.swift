@@ -3,9 +3,11 @@ import SwiftUI
 /// A round white badge with a building, used when a company has no logo: an icon, never its first letter.
 struct CompanyIconBadge: View {
     var size: CGFloat = 64
+    /// A school gets a cap instead of a building.
+    var icon: ImageResource = .iconBuilding
 
     var body: some View {
-        Image(.iconBuilding)
+        Image(icon)
             .renderingMode(.template)
             .resizable()
             .scaledToFit()

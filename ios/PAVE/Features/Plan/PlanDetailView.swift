@@ -4,6 +4,7 @@ import SwiftUI
 /// The page of one plan: its goal and progress, all steps, and its chats with Ayla. From here you go on with Ayla
 /// (the latest chat of the plan, or a new one for the step you are on) and change the steps yourself.
 struct PlanDetailView: View {
+    @Environment(\.openURL) private var openURL
     let planID: String
     let chats: AylaConversationList
     let chatsAreComplete: Bool
@@ -334,6 +335,9 @@ struct PlanDetailView: View {
                 if step.kind == .conversation, step.metadata[PlanVacancy.idKey] != nil {
                     Button(PlanMessages.practiseTalk) { vacancyRequest(.task(.interview, vacancy)) }
                 }
+            }
+            if let site = step.metadata[AylaEducation.urlKey].flatMap(URL.init(string:)) {
+                Button(EducationMessages.openSite) { openURL(site) }
             }
             if let destination = step.kind.destination {
                 Button(destination.planStepAction) { actions.go(destination) }

@@ -16,6 +16,8 @@ enum AylaMessages {
             guard withVault else { return "Ayla bekijkt \(vacancies)…" }
             if let chosen, chosen > 0 { return "Ayla vergelijkt \(vacancies) met wat je koos…" }
             return "Ayla vergelijkt \(vacancies) met je kluis…"
+        case .searchingEducations(let what, let place):
+            return EducationMessages.searching(what, in: place)
         case .continuing:
             return "Ayla gaat verder…"
         }
@@ -69,6 +71,7 @@ enum AylaMessages {
         switch activity {
         case .searchingVacancies: "Zoekt vacatures"
         case .comparingVacancies: "Vergelijkt vacatures"
+        case .searchingEducations: EducationMessages.searchingShort
         case .continuing: "Gaat verder"
         }
     }

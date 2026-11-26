@@ -252,6 +252,23 @@
         }
       }
     },
+    "%@ bij %@ bekijken": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Look at %@ at %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mira %@ na %@"
+          }
+        }
+      }
+    },
     "%@ bij %@ had je al bewaard.": {
       "extractionState": "manual",
       "localizations": {
@@ -677,6 +694,23 @@
         }
       }
     },
+    "%@ jaar": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ years"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ aña"
+          }
+        }
+      }
+    },
     "%@ kan %@ zien tot en met %@, en %@. Je ziet wanneer iemand kijkt, en je kunt het altijd intrekken.": {
       "extractionState": "manual",
       "localizations": {
@@ -881,6 +915,23 @@
         }
       }
     },
+    "%@ maanden": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ months"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ luna"
+          }
+        }
+      }
+    },
     "%@ mappen": {
       "extractionState": "manual",
       "localizations": {
@@ -996,6 +1047,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ riba %@"
+          }
+        }
+      }
+    },
+    "%@ opleidingen gevonden": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ studies found"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ estudio haña"
           }
         }
       }
@@ -1387,6 +1455,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kita %@"
+          }
+        }
+      }
+    },
+    "%@ weken": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ weeks"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ siman"
           }
         }
       }
@@ -2149,6 +2234,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "1 parti"
+          }
+        }
+      }
+    },
+    "1 opleiding gevonden": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 study found"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 estudio haña"
           }
         }
       }
@@ -5690,6 +5792,40 @@
         }
       }
     },
+    "Ayla zoekt opleidingen: %@ in %@…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla is looking up studies: %@ in %@…"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla ta buska estudio: %@ na %@…"
+          }
+        }
+      }
+    },
+    "Ayla zoekt opleidingen: %@…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla is looking up studies: %@…"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla ta buska estudio: %@…"
+          }
+        }
+      }
+    },
     "Ayla zoekt vacatures: %@ in %@…": {
       "extractionState": "manual",
       "localizations": {
@@ -5996,6 +6132,23 @@
         }
       }
     },
+    "Beginnen aan %@ bij %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start %@ at %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kuminsá ku %@ na %@"
+          }
+        }
+      }
+    },
     "Beginnen met": {
       "extractionState": "manual",
       "localizations": {
@@ -6145,6 +6298,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Wak prueba"
+          }
+        }
+      }
+    },
+    "Bekijk de site": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View the site"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mira e sitio"
           }
         }
       }
@@ -7573,6 +7743,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Prueba den preparashon"
+          }
+        }
+      }
+    },
+    "Bewijs klaarzetten in je kluis": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get your evidence ready in your vault"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prepará bo prueba den bo kaha fuerte"
           }
         }
       }
@@ -9409,6 +9596,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kreativo"
+          }
+        }
+      }
+    },
+    "Cursus": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Course"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurso"
           }
         }
       }
@@ -11517,6 +11721,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Diplomanan"
+          }
+        }
+      }
+    },
+    "Diploma's en cijferlijsten die de school vraagt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diplomas and grade lists the school asks for"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diploma i lista di nota ku e skol ta pidi"
           }
         }
       }
@@ -24883,6 +25104,23 @@
         }
       }
     },
+    "Maak er een plan van": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Make it a plan"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hasi un plan di dje"
+          }
+        }
+      }
+    },
     "Maak je eduID aan": {
       "extractionState": "manual",
       "localizations": {
@@ -24947,6 +25185,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hasi'é kabe riba 1 página"
+          }
+        }
+      }
+    },
+    "Maakt een plan met de stappen om je aan te melden": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Makes a plan with the steps to apply"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta traha un plan ku e pasonan pa inskribí"
           }
         }
       }
@@ -26460,6 +26715,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bai na e fòlder"
+          }
+        }
+      }
+    },
+    "Naar een open dag of meeloopdag": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Go to an open day or taster day"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bai un dia habrí of dia di kana huntu"
           }
         }
       }
@@ -29694,6 +29966,23 @@
         }
       }
     },
+    "Opent de site van de school in Safari": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens the school's site in Safari"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta habri e sitio di e skol den Safari"
+          }
+        }
+      }
+    },
     "Opent de vacature": {
       "extractionState": "manual",
       "localizations": {
@@ -31186,6 +31475,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Plan"
+          }
+        }
+      }
+    },
+    "Plan %@ gemaakt.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan %@ made."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan %@ traha."
           }
         }
       }
@@ -33243,6 +33549,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ta den e proyekto aki kaba"
+          }
+        }
+      }
+    },
+    "Staat als stap in %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Added as a step in %@."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta un paso den %@."
           }
         }
       }
@@ -35372,6 +35695,23 @@
         }
       }
     },
+    "Toelating, kosten en open dagen staan op de site van de school.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Admission, costs and open days are on the school's site."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aseptashon, kosto i dianan habrí ta riba e sitio di e skol."
+          }
+        }
+      }
+    },
     "Toelatingseisen checken": {
       "extractionState": "manual",
       "localizations": {
@@ -35385,6 +35725,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kontrolá rekisitonan di admishon"
+          }
+        }
+      }
+    },
+    "Toelatingseisen nakijken": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check the admission requirements"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kontrolá e rekisitonan di aseptashon"
           }
         }
       }
@@ -40353,6 +40710,23 @@
         }
       }
     },
+    "Wat de school vraagt aan vooropleiding, keuring of toets": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What the school asks for in prior education, a medical or a test"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiko e skol ta pidi di edukashon previo, keuring of tèst"
+          }
+        }
+      }
+    },
     "Wat de vacature vraagt": {
       "extractionState": "manual",
       "localizations": {
@@ -42138,6 +42512,23 @@
         }
       }
     },
+    "Zet deze opleiding als stap in je plan": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adds this study as a step to your plan"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta pone e estudio aki komo paso den bo plan"
+          }
+        }
+      }
+    },
     "Zet diploma's, certificaten en werkervaring in je kluis.": {
       "extractionState": "manual",
       "localizations": {
@@ -42253,6 +42644,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pone den bo kalender"
+          }
+        }
+      }
+    },
+    "Zet in plan": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add to plan"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pone den plan"
           }
         }
       }
@@ -43035,6 +43443,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ta buska den bo chats, proyektonan i kaha fuerte"
+          }
+        }
+      }
+    },
+    "Zoekt opleidingen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Looking up studies"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta buska estudio"
           }
         }
       }
