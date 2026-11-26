@@ -355,6 +355,12 @@ final class AylaChatModel {
         var isFollowUp = false
     }
 
+    /// A question PAVE asks for you ("Help me solliciteren op …") goes in the language of Instellingen › Taal, so
+    /// Ayla answers in it too. "Toegevoegd aan mijn kluis" stays Dutch: the server waits for those exact words.
+    private static func outgoing(_ text: String) -> String {
+        text.hasPrefix("Toegevoegd aan mijn kluis") ? text : text.translated
+    }
+
     /// Shows the question at once and returns what to send, or nil when nothing can be sent now.
     private func prepare(_ text: String, input: AylaInput) -> Turn? {
         if let results = pendingResults {
@@ -394,7 +400,7 @@ final class AylaChatModel {
         uploads = [:]
         phase = .thinking
         let request = AylaRequest(
-            conversationId: conversationID, text: text, device: .phone, input: input, context: requestContext(for: text), attachments: files,
+            conversationId: conversationID, text: Self.outgoing(text), device: .phone, input: input, context: requestContext(for: text), attachments: files,
             projectId: newChatProject?.id, planId: newChatPlan?.planID, planStepId: newChatPlan?.stepID, app: appState?()
         )
         return Turn(service: service, request: request, text: text, files: files)

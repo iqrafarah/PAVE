@@ -58,8 +58,8 @@ enum FairAlerts {
             guard status == .authorized || status == .provisional else { return }
             for application in fresh {
                 let content = UNMutableNotificationContent()
-                content.title = SharingMessages.fairInvitedTitle
-                content.body = SharingMessages.fairInvitedBody(application, employer: FairDay.employerName(slug: application.employerSlug))
+                content.title = SharingMessages.fairInvitedTitle.translated
+                content.body = SharingMessages.fairInvitedBody(application, employer: FairDay.employerName(slug: application.employerSlug)).translated
                 content.sound = .default
                 content.threadIdentifier = "fair"
                 content.categoryIdentifier = categoryID

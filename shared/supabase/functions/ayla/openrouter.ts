@@ -35,6 +35,20 @@ export function modelsFor(effort: Effort): { models: string[]; hedgeMs: number }
 }
 const TIMEOUT_MS = 25000
 
+/**
+ * OpenRouter, unless OPENROUTER_BASE_URL points elsewhere: the iOS integration tests set it to a fake OpenRouter on the
+ * same machine (ios/scripts/fake-openrouter.mjs). Never set on the hosted project.
+ */
+export function completionsURL(): string {
+  let base: string | undefined
+  try {
+    base = Deno.env.get('OPENROUTER_BASE_URL')
+  } catch {
+    // No permission to read the environment (unit tests): the real OpenRouter.
+  }
+  return `${(base || 'https://openrouter.ai/api/v1').replace(/\/+$/, '')}/chat/completions`
+}
+
 export type ContentPart = { type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }
 
 export interface ChatMessage { role: 'system' | 'user' | 'assistant'; content: string | ContentPart[] }
@@ -98,7 +112,7 @@ export function openRouterCompletion(
         const hedge = setTimeout(launch, turnHedgeMs)
         const timeout = setTimeout(() => controller.abort(), timeoutMs)
 
-        fetchImpl('https://openrouter.ai/api/v1/chat/completions', {
+        fetchImpl(completionsURL(), {
           method: 'POST',
           headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({

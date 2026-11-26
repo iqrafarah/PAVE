@@ -9,6 +9,7 @@ Bij een compileerfout op een MacBook: controleer eerst dat Xcode 26 of nieuwer a
 ```
 PAVE/
   App/            PAVEApp, AppState (loading → login → pincode → main), RootView, PaveAppDelegate
+    Localization/ Taal: Nederlands, English, Papiamentu (Instellingen › Taal). Zie "Talen" hieronder
     Services/     Keuze tussen echte en demo-diensten (AuthServiceFactory, AylaServiceFactory), Face ID, internetverbinding
     Shortcuts/    Sneltoetsen (PaveCommands) en Siri/Opdrachten (PaveAppShortcuts)
   DesignSystem/   Herbruikbare UI voor de hele app
@@ -329,3 +330,18 @@ Alles hieronder opent alleen de app. PAVE vraagt dus eerst je pincode of Face ID
 
 - De kluiskeuze uit Figma ("Alle items", kaarten met vinkjes, "Verder") en de kaart "2 gegevens geselecteerd" zijn gebouwd (`VaultSelectionList`, `VaultSelectionBar`, `ChatAttachmentCard`), maar alleen te zien in de Xcode-voorbeelden. Ze gaan aan zodra de kluis bestaat.
 - Bedrijfslogo's: Adzuna levert die niet, dus de kaarten tonen de eerste letter van het bedrijf.
+
+## Talen
+
+PAVE is er in het Nederlands, Engels en Papiamentu; je kiest in Instellingen › Taal en de app verandert meteen. Teksten
+blijven in het Nederlands in de code (zie `docs/ui-teksten.md`). De vertalingen staan in
+`PAVE/Resources/Localizable.xcstrings`, met de Nederlandse tekst als sleutel.
+
+- `Text`, `Button`, `Label`, `Toggle`, `TextField`, `navigationTitle`, `alert` en de andere teksten van SwiftUI
+  vertalen een `String` vanzelf (`App/Localization/PaveLocalizedViews.swift`). Een naam of iets wat de gebruiker
+  schreef en nooit mag veranderen: `Text(verbatim:)`.
+- Een tekst met een waarde erin krijgt `%@` in de sleutel, zoals `Na %@ minuten`.
+- Buiten SwiftUI (meldingen, vragen aan Ayla) gebruik je `.translated`.
+- Een nieuwe tekst: voeg hem toe aan de catalogus met een Engelse en Papiamentse vertaling. Zonder vertaling blijft
+  hij Nederlands.
+- Schrijf hele zinnen; plak geen losse stukken aan elkaar, want elke taal zet de woorden in een andere volgorde.
