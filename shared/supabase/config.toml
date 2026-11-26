@@ -13,3 +13,45 @@ verify_jwt = false
 
 [functions.fair-inbox]
 verify_jwt = false
+
+# Local stack only (`supabase start`, used by the iOS integration tests). Ports moved off the 543xx defaults so this
+# runs next to other local Supabase projects. Nothing here changes the hosted project.
+[api]
+port = 55321
+
+[db]
+port = 55322
+shadow_port = 55320
+
+[db.pooler]
+port = 55329
+
+[studio]
+port = 55323
+
+[inbucket]
+port = 55324
+
+[analytics]
+port = 55327
+
+[auth]
+site_url = "http://127.0.0.1:3000"
+
+[auth.email]
+enable_confirmations = false
+
+# Two-step verification, as on the hosted project: most tables need an aal2 session.
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+# The migrations do not build the database from nothing: `profiles`, `organizations` and more were made on the hosted
+# project before they were tracked. Locally the schema comes from a dump of the hosted project instead (local/).
+# `supabase db push` and the hosted project are not affected by this.
+[db.migrations]
+enabled = false
+
+[db.seed]
+enabled = true
+sql_paths = ["./local/extensions.sql", "./local/public.sql", "./local/extras.sql"]
