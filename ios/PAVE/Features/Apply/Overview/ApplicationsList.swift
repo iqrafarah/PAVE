@@ -14,7 +14,7 @@ struct ApplicationsList: View {
 
     @State private var deleting: ApplicationDraft?
     @State private var source: ApplicationSource?
-    @State private var showsFairDay = false
+    @State private var openedFair: OpenedFairApplication?
     @Environment(SharingModel.self) private var sharing: SharingModel?
 
     private var fair: [FairApplication] { sharing?.fairApplications ?? [] }
@@ -57,12 +57,12 @@ struct ApplicationsList: View {
             } message: {
                 Text(ApplyMessages.deleteApplicationHint)
             }
-            .sheet(isPresented: $showsFairDay) {
+            .sheet(item: $openedFair) { opened in
                 if let sharing {
                     NavigationStack {
-                        FairDayView(model: sharing)
+                        FairApplicationDetail(model: sharing, applicationID: opened.id)
                             .toolbar {
-                                ToolbarItem(placement: .cancellationAction) { Button(ApplyMessages.close) { showsFairDay = false } }
+                                ToolbarItem(placement: .cancellationAction) { Button(ApplyMessages.close) { openedFair = nil } }
                             }
                     }
                 }
@@ -104,7 +104,7 @@ struct ApplicationsList: View {
                                     }
                             }
                             ForEach(group.fair) { application in
-                                FairApplicationRow(application: application) { showsFairDay = true }
+                                FairApplicationRow(application: application) { openedFair = OpenedFairApplication(id: application.id) }
                             }
                         }
                     }
@@ -171,3 +171,5 @@ struct ApplicationsList: View {
         .buttonStyle(.pave)
     }
 }
+
+private struct OpenedFairApplication: Identifiable { let id: String }

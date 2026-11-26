@@ -6,6 +6,7 @@ import SwiftUI
 struct MainFairSheets: ViewModifier {
     let sharing: SharingModel
     let vault: VaultModel
+    let profile: ProfileModel
     let model: AylaChatModel
     @Binding var fairEmployer: FairEmployerSlug?
     @Binding var employerInbox: EmployerInboxKey?
@@ -33,7 +34,11 @@ struct MainFairSheets: ViewModifier {
                         }
                     }
                 }
+                // These sheets hang outside the screens, so what the screens get has to be passed on by hand: without
+                // the profile a poster's quick application could not open.
                 .environment(vault)
+                .environment(profile)
+                .environment(sharing)
                 .environment(model)
             }
             .sheet(item: $employerInbox) { opened in

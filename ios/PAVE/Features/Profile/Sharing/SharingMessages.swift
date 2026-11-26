@@ -139,6 +139,17 @@ enum SharingMessages {
     static func quickApplyShareTitle(_ employer: String) -> String { "Kaartje bij \(employer)" }
     static let inboxOpenProfile = "Bekijk profiel"
     static let notificationsFair = "Van de beurs"
+    static let fairDetailTitle = "Sollicitatie van de beurs"
+    static let fairDetailInvitation = "Uitnodiging"
+    static let fairDetailLeft = "Wat je achterliet"
+    static let fairDetailPitch = "Je pitch"
+    static let fairDetailWithProfile = "Meegestuurd. Stoppen kan bij Profiel, onder wat je deelt."
+    static let fairDetailNoProfile = "Niet meegestuurd."
+    static func fairDetailFooter(_ date: Date) -> String {
+        "Achtergelaten op \(date.formatted(.dateTime.day().month(.wide).locale(Locale(identifier: "nl_NL")))). Alles van je beursdag staat bij Profiel › Mijn beursdag."
+    }
+    static let fairDetailGone = "Niet meer gevonden"
+    static let fairDetailGoneHint = "Deze sollicitatie staat niet meer in je lijst."
     static let quickApplyNeedsName = "Vul je naam in."
     static let quickApplyNeedsWhy = "Schrijf kort waarom je hier wilt werken, of spreek het in."
     static let fairVacancies = "Vacatures"
@@ -199,6 +210,7 @@ enum SharingMessages {
     static let toVault = "Naar je kluis"
     static let more = "Meer"
     static func withFile(_ count: Int) -> String { count > 1 ? "Met de \(count) bestanden" : "Met bestand" }
+    static func fileGoes(_ name: String) -> String { "Bestand \(name) meesturen" }
     static func filesGoing(_ names: [String]) -> String { "Bestanden die ze kunnen openen: \(names.joined(separator: ", "))" }
     static let checkFiles = "Bestanden"
     static func applicationOption(_ title: String) -> String { "\(title) · cv en brief" }

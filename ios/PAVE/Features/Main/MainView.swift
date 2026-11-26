@@ -248,7 +248,7 @@ struct MainView: View {
         .environment(\.openDestination, openDestinationAction)
         .environment(\.vacancyRequest, vacancyRequestAction)
         .modifier(MainFairSheets(
-            sharing: sharing, vault: vault, model: model,
+            sharing: sharing, vault: vault, profile: profile, model: model,
             fairEmployer: $fairEmployer, employerInbox: $employerInbox, aylaShare: $aylaShare
         ))
     }

@@ -25,6 +25,7 @@ struct ShareRecipientPreview: View {
     }
 
     private var files: Set<String> { Set(share.content.files ?? []) }
+    private var hidden: Set<String> { Set(share.content.hiddenFiles ?? []) }
     private var brief: Set<String> { Set(share.content.brief ?? []) }
 
     var body: some View {
@@ -47,7 +48,7 @@ struct ShareRecipientPreview: View {
                         SharePanel(title: group.category.title) {
                             ForEach(Array(group.items.enumerated()), id: \.element.id) { index, item in
                                 if index > 0 { ShareRowDivider(inset: 66) }
-                                ShareRecipientItemRow(item: item, hasFile: files.contains(item.id) && ShareFiles.hasDocument(item)) {
+                                ShareRecipientItemRow(item: item, hasFile: files.contains(item.id) && ShareFiles.sharesDocument(item, hidden: hidden)) {
                                     opened = item
                                 }
                             }
@@ -67,7 +68,7 @@ struct ShareRecipientPreview: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button(ApplyMessages.done) { dismiss() } } }
             .sheet(item: $opened) { item in
-                ShareRecipientItemDetail(item: item, isBrief: brief.contains(item.id), showsFiles: files.contains(item.id))
+                ShareRecipientItemDetail(item: item, isBrief: brief.contains(item.id), showsFiles: files.contains(item.id), hiddenFiles: hidden)
             }
         }
     }

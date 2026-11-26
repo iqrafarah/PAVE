@@ -34,6 +34,8 @@ struct ShareComposer: View {
     @State private var brief: Set<String> = []
     /// Evidence whose files go along: every piece with a document by default.
     @State private var files: Set<String> = []
+    /// Single files turned off, of evidence whose files go along.
+    @State private var hidden: Set<String> = []
     @State private var headline = ""
     @State private var recipientName = ""
     @State private var organisation = ""
@@ -88,7 +90,8 @@ struct ShareComposer: View {
             letter: app != nil && includesLetter ? app?.letter : nil,
             vacancyID: app?.vacancy.id,
             brief: brief.intersection(chosen).isEmpty ? nil : Array(brief.intersection(chosen)),
-            files: sharedFiles.isEmpty ? nil : sharedFiles.map(\.id)
+            files: sharedFiles.isEmpty ? nil : sharedFiles.map(\.id),
+            hiddenFiles: ShareFiles.hidden(hidden, in: vault.items, withFiles: Set(sharedFiles.map(\.id))).nilIfEmpty
         )
         let ids = vault.items.filter { chosen.contains($0.id) }.map(\.id)
         return ShareDraft(
@@ -237,7 +240,7 @@ struct ShareComposer: View {
             }
             Text(SharingMessages.applicationNoneHint).textStyle(.caption).foregroundStyle(Color.inkMuted).fixedSize(horizontal: false, vertical: true).padding(.top, -12)
         }
-        ShareComposerItems(items: vault.items, template: template, chosen: $chosen, files: $files)
+        ShareComposerItems(items: vault.items, template: template, chosen: $chosen, files: $files, hidden: $hidden)
             .sheet(isPresented: $makesApplication, onDismiss: {
                 guard let vacancy = newVacancy else { return }
                 newVacancy = nil
@@ -344,7 +347,7 @@ struct ShareComposer: View {
             ShareRowDivider(inset: 14)
             checkRow(SharingMessages.checkFiles, sharedFiles.isEmpty
                 ? SharingMessages.filesNone
-                : SharingMessages.filesGoing(sharedFiles.flatMap { $0.files.filter { $0.role == .document }.map(\.name) }))
+                : SharingMessages.filesGoing(sharedFiles.flatMap { ShareFiles.documents(of: $0, hidden: hidden).map(\.name) }))
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(SharingMessages.summary(draft, items: draft.itemIDs.count, until: draft.duration.end(from: .now)))
@@ -444,6 +447,7 @@ struct ShareComposer: View {
             chosen = Set(savedProfile.itemIDs).intersection(vault.items.map(\.id))
             brief = savedProfile.briefIDs
             files = ShareFiles.of(savedProfile, items: vault.items)
+            hidden = savedProfile.hiddenFileIDs
             if let kept = savedProfile.duration { duration = kept }
             includesEmail = savedProfile.includesEmail
             if !savedProfile.headline.isEmpty { headline = savedProfile.headline }

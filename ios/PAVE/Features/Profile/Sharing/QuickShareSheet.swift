@@ -45,6 +45,7 @@ struct QuickShareSheet: View {
     /// What you changed by hand under "Pas aan"; nil follows the choice above.
     @State private var customItems: Set<String>?
     @State private var customFiles: Set<String>?
+    @State private var customHidden: Set<String>?
     @State private var adjusts = false
 
     /// The order of the applications, fixed when the screen opens: the one it started on first, then the newest. Choosing
@@ -103,6 +104,7 @@ struct QuickShareSheet: View {
         // Every file goes along, unless the selection or "Pas aan" says otherwise.
         let fileIDs = customFiles ?? chosenProfile.map { ShareFiles.of($0, items: vault.items) } ?? ShareFiles.byDefault(vault.items)
         let files = vault.items.filter { ids.contains($0.id) && fileIDs.contains($0.id) && ShareFiles.hasDocument($0) }.map(\.id)
+        let hidden = ShareFiles.hidden(customHidden ?? chosenProfile?.hiddenFileIDs ?? [], in: vault.items, withFiles: Set(files))
         let content = ShareContent(
             profile: ShareProfile(
                 name: name, headline: headline, email: includesEmail ? profile.profile.email : nil,
@@ -113,7 +115,8 @@ struct QuickShareSheet: View {
             letter: application != nil && includesLetter ? application?.letter : nil,
             vacancyID: application?.vacancy.id,
             brief: brief.isEmpty ? nil : brief,
-            files: files.isEmpty ? nil : files
+            files: files.isEmpty ? nil : files,
+            hiddenFiles: hidden.isEmpty ? nil : hidden
         )
         let who = recipient.trimmingCharacters(in: .whitespaces)
         let title = application.map { SharingMessages.applicationShareTitle($0.vacancy) }
@@ -292,6 +295,7 @@ struct QuickShareSheet: View {
                 choice = id
                 customItems = nil
                 customFiles = nil
+                customHidden = nil
             }
             if !id.hasPrefix("app:"), !id.hasPrefix("kind:") { lastChoice = id }
         } label: {
@@ -320,6 +324,7 @@ struct QuickShareSheet: View {
         return Button {
             customItems = customItems ?? Set(draft.itemIDs)
             customFiles = customFiles ?? Set(draft.content.files ?? [])
+            customHidden = customHidden ?? Set(draft.content.hiddenFiles ?? [])
             adjusts = true
         } label: {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -348,7 +353,8 @@ struct QuickShareSheet: View {
                         ShareComposerItems(
                             items: vault.items, template: draft.template,
                             chosen: Binding(get: { customItems ?? [] }, set: { customItems = $0 }),
-                            files: Binding(get: { customFiles ?? [] }, set: { customFiles = $0 })
+                            files: Binding(get: { customFiles ?? [] }, set: { customFiles = $0 }),
+                            hidden: Binding(get: { customHidden ?? [] }, set: { customHidden = $0 })
                         )
                     }
                     .padding(20)

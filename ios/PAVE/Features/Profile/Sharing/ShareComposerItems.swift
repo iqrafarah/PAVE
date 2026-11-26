@@ -10,6 +10,8 @@ struct ShareComposerItems: View {
     var brief: Binding<Set<String>>?
     /// Evidence whose files go along; nil where files cannot be chosen.
     var files: Binding<Set<String>>?
+    /// Single files turned off, of evidence whose files go along; nil where that cannot be chosen.
+    var hidden: Binding<Set<String>>?
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openDestination) private var openDestination
@@ -51,10 +53,19 @@ struct ShareComposerItems: View {
         VStack(alignment: .leading, spacing: 0) {
             choice(item, isNeeded: isNeeded)
             if let files, chosen.contains(item.id), ShareFiles.hasDocument(item) {
-                fileChip(item, files: files)
-                    .padding(.leading, 46)
-                    .padding(.bottom, 8)
-                    .padding(.top, -6)
+                VStack(alignment: .leading, spacing: 0) {
+                    fileChip(item, files: files)
+                    // More than one file: each can stay behind on its own.
+                    if let hidden, files.wrappedValue.contains(item.id), ShareFiles.documents(of: item).count > 1 {
+                        ForEach(ShareFiles.documents(of: item)) { file in
+                            fileRow(file, of: item, files: files, hidden: hidden)
+                        }
+                    }
+                }
+                .padding(.leading, 46)
+                .padding(.trailing, 14)
+                .padding(.bottom, 8)
+                .padding(.top, -6)
             }
         }
     }
@@ -107,6 +118,39 @@ struct ShareComposerItems: View {
         }
     }
 
+    /// One file of evidence with several: on unless turned off. Turning the last one off turns the files of this
+    /// evidence off altogether.
+    private func fileRow(_ file: VaultItem.File, of item: VaultItem, files: Binding<Set<String>>, hidden: Binding<Set<String>>) -> some View {
+        let isOn = !hidden.wrappedValue.contains(file.id)
+        return Button {
+            PaveHaptics.selection()
+            if isOn {
+                hidden.wrappedValue.insert(file.id)
+                if !ShareFiles.sharesDocument(item, hidden: hidden.wrappedValue) {
+                    files.wrappedValue.remove(item.id)
+                    ShareFiles.documents(of: item).forEach { hidden.wrappedValue.remove($0.id) }
+                }
+            } else {
+                hidden.wrappedValue.remove(file.id)
+            }
+        } label: {
+            HStack(spacing: 8) {
+                PaveCheckbox(isOn: isOn, size: 16)
+                Text(file.name)
+                    .textStyle(.caption)
+                    .foregroundStyle(isOn ? Color.ink : Color.inkMuted)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            .padding(.leading, 22)
+            .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.pave)
+        .accessibilityLabel(SharingMessages.fileGoes(file.name))
+        .accessibilityAddTraits(isOn ? .isSelected : [])
+    }
+
     /// The file of this evidence goes along, so the recipient can open it; on by default.
     private func fileChip(_ item: VaultItem, files: Binding<Set<String>>) -> some View {
         let isOn = files.wrappedValue.contains(item.id)
@@ -116,7 +160,7 @@ struct ShareComposerItems: View {
         } label: {
             HStack(spacing: 6) {
                 PaveCheckbox(isOn: isOn, size: 16)
-                Text(SharingMessages.withFile(item.files.filter { $0.role == .document }.count))
+                Text(SharingMessages.withFile(isOn ? ShareFiles.documents(of: item, hidden: hidden?.wrappedValue ?? []).count : ShareFiles.documents(of: item).count))
                     .textStyle(.caption)
                     .foregroundStyle(isOn ? Color.ink : Color.inkMuted)
             }
@@ -130,4 +174,8 @@ struct ShareComposerItems: View {
 
 extension String {
     var nilIfEmpty: String? { isEmpty ? nil : self }
+}
+
+extension Array {
+    var nilIfEmpty: Self? { isEmpty ? nil : self }
 }

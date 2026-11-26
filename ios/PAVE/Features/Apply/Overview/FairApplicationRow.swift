@@ -2,7 +2,7 @@ import PAVECore
 import SwiftUI
 
 /// A card you left at the fair, in the one list of applications: the job, the employer, where it stands, and the tag
-/// Beurs. A tap opens Mijn beursdag, where you answer an invitation.
+/// Beurs. A tap opens this one application, where you answer an invitation.
 struct FairApplicationRow: View {
     let application: FairApplication
     let action: () -> Void

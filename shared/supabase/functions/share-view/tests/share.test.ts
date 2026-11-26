@@ -99,6 +99,11 @@ Deno.test('files go along only for evidence the owner named, of the owner, and o
     { id: 'f4', user_id: 'someone-else', item_id: 'i1', storage_path: 'x/i1/a.pdf', file_name: 'a.pdf', mime_type: 'application/pdf', role: 'document' },
   ]
   assertEquals(sharedFiles(withFiles, rows).map((f) => f.id), ['f1'])
+  // A single file the owner turned off stays behind, also when its evidence takes files along.
+  const more: FileRow[] = [...rows, { id: 'f5', user_id: owner, item_id: 'i1', storage_path: `${owner}/i1/cijferlijst.pdf`, file_name: 'Cijferlijst.pdf', mime_type: 'application/pdf', role: 'document' }]
+  assertEquals(sharedFiles(withFiles, more).map((f) => f.id), ['f1', 'f5'])
+  const oneOff = { ...withFiles, content: { ...withFiles.content, hiddenFiles: ['f5', 7, 'unknown'] } }
+  assertEquals(sharedFiles(oneOff, more).map((f) => f.id), ['f1'])
   assertEquals(fileItemIDs(share), [])
 })
 

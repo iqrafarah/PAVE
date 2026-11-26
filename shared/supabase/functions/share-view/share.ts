@@ -105,8 +105,10 @@ export function fileItemIDs(share: ShareRow): string[] {
 /** The documents of those pieces of evidence, of the owner only; never a cover or logo image. */
 export function sharedFiles(share: ShareRow, files: FileRow[]): FileRow[] {
   const allowed = new Set(fileItemIDs(share))
+  // Single files the owner turned off, of evidence that otherwise takes its files along.
+  const hidden = new Set(Array.isArray(share.content.hiddenFiles) ? (share.content.hiddenFiles as unknown[]).filter((id): id is string => typeof id === 'string') : [])
   return files.filter((file) =>
-    file.user_id === share.user_id && allowed.has(file.item_id) && (file.role ?? 'document') === 'document' && !file.storage_path.includes('..')
+    file.user_id === share.user_id && allowed.has(file.item_id) && !hidden.has(file.id) && (file.role ?? 'document') === 'document' && !file.storage_path.includes('..')
   )
 }
 

@@ -181,7 +181,8 @@ struct QuickApplySheet: View {
                     name: card.name, headline: card.headline.nilIfEmpty, summary: card.why.nilIfEmpty,
                     showsPhoto: includesPhoto && profile.avatar != nil ? true : nil
                 ),
-                brief: brief.isEmpty ? nil : brief, files: files.isEmpty ? nil : files
+                brief: brief.isEmpty ? nil : brief, files: files.isEmpty ? nil : files,
+                hiddenFiles: ShareFiles.hidden(selection?.hiddenFileIDs ?? [], in: vault.items, withFiles: Set(files)).nilIfEmpty
             ),
             duration: .twoWeeks
         )

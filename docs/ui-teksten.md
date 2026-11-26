@@ -419,3 +419,6 @@ Een flow met stappen heeft linksboven een pijl terug naar de vorige stap, en op 
 | Meldingen, beurs | Van de beurs |
 | Werkgever op de beurs, kop in eigen stijl | OGD: > werken bij ogd / Start je ict-carrière_ · Sioux: // engineering / Engineers gezocht · Catharina: Werken in de zorg? · Jumbo: Kom bij Jumbo · Eindhoven: Werk aan je eigen stad (zelfde regels als op de posters) |
 | Sollicitatie, stappen | Ontwerp / Inhoud / Schrijven / Delen (ook boven het overzicht en het deelscherm) / in de editor: Solliciteren bij {bedrijf} · stap 3 van 4: schrijven |
+| Sollicitatie van de beurs (uit de lijst Sollicitaties) | Sollicitatie van de beurs / Uitnodiging / Wat je achterliet / Waarom deze bijbaan / Je pitch / Wanneer kun je werken / Je profiel met bewijs: Meegestuurd. Stoppen kan bij Profiel, onder wat je deelt. of Niet meegestuurd. / Achtergelaten op {datum}. Alles van je beursdag staat bij Profiel › Mijn beursdag. / Niet meer gevonden — Deze sollicitatie staat niet meer in je lijst. |
+| Delen, per bestand | Met de {n} bestanden, daaronder elk bestand met zijn naam en een vinkje (VoiceOver: Bestand {naam} meesturen) |
+| Instellingen › Weergave, lettertype | Lettertype / PAVE, Systeem, Rond, Schreef, Leesbaar / Leesbaar is Atkinson Hyperlegible: letters die je minder snel door elkaar haalt. Je keuze blijft op dit toestel. |
