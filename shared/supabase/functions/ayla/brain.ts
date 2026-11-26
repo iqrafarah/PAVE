@@ -621,6 +621,19 @@ export function endsWithOpenQuestion(text: string): boolean {
   return /^(wat|welke?|hoe|wanneer|waar\w*|wie|waarom|hoeveel|hoelang)\b/i.test(last)
 }
 
+/** The text without its last question when the question under it asks the same, so the user does not read it twice. */
+export function withoutRepeatedQuestion(text: string, question: string): string {
+  const words = (s: string) => new Set(s.toLocaleLowerCase('nl').split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 2))
+  const asked = words(question)
+  if (asked.size === 0) return text
+  const sentences = text.trim().split(/(?<=[.!?])\s+|\n+/).map((s) => s.trim()).filter(Boolean)
+  const last = sentences.at(-1) ?? ''
+  if (sentences.length < 2 || !last.endsWith('?')) return text
+  const said = words(last)
+  const shared = [...asked].filter((w) => said.has(w)).length
+  return shared / asked.size >= 0.7 ? sentences.slice(0, -1).join(' ') : text
+}
+
 /** The text without the sentences in which the model itself asks whether it may look in the vault. */
 export function withoutConsentAsk(text: string): string {
   const sentences = text.split(/(?<=[.!?])\s+|\n+/).map((s) => s.trim()).filter(Boolean)
@@ -1151,6 +1164,7 @@ function toReply(output: ModelOutput, blocks: Block[], conversationId: string, i
     .slice(0, 3)
     .map((c, i) => ({ id: typeof c.id === 'string' && c.id.trim() ? c.id.trim() : `choice_${i + 1}`, label: c.label.trim() }))
   if (output.question && choices.length >= 2) reply.question = { text: output.question.text ?? '', choices }
+  if (reply.question) reply.text = withoutRepeatedQuestion(reply.text, reply.question.text)
   const screen = output.navigation?.screen as Screen
   if (SCREENS.includes(screen) && NAVIGABLE.has(screen)) reply.navigation = { screen }
   // Opening one item from the vault: only an item the user allowed, by its id; otherwise the vault itself.

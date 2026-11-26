@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { test } from 'node:test'
-import { alreadySo, asksAboutShown, shownNames, asksForWork, asksToSave, moreThanOneRound, writesEnglish, announcesSearchOnly, answer, asksBeforeDoing, confirmable, declinedOffer, entriesSoFar, ownWords, vaultScope, bestFirst, sitesFromName, cleanActions, cleanTitle, effortFor, resultsMessage, siteFits, withLogos, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
+import { alreadySo, asksAboutShown, shownNames, asksForWork, asksToSave, moreThanOneRound, writesEnglish, announcesSearchOnly, answer, asksBeforeDoing, confirmable, declinedOffer, entriesSoFar, ownWords, vaultScope, bestFirst, sitesFromName, cleanActions, cleanTitle, effortFor, resultsMessage, siteFits, withLogos, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk, withoutRepeatedQuestion } from '../brain.ts'
 import { needsConfirmation, parseRequest } from '../contract.ts'
 import { cleanPurpose, grantsWholeVault, revokesVault, saysNo, saysYes, vaultConsent } from '../consent.ts'
 import { MODELS, modelsFor, openRouterCompletion } from '../openrouter.ts'
@@ -1667,4 +1667,11 @@ test('the new actions that act for the user ask with their own words first', () 
   assert.match(confirmable([{ do: 'addProjectSource', target: 'Eindstage', value: 'Afstuderen', confirm: true }])?.question ?? '', /bron toevoegen aan Afstuderen\? Dan mag ik het bekijken/)
   assert.equal(needsConfirmation('answerInvitation', 'yes'), true)
   assert.equal(needsConfirmation('addTalkToCalendar', ''), false)
+})
+
+test('a question under the answer is not asked twice in the text', () => {
+  const text = 'Voor een pilootopleiding vragen scholen vaak een vooropleiding met wiskunde. Wil je dat ik opleidingen voor je opzoek?'
+  assert.equal(withoutRepeatedQuestion(text, 'Wil je dat ik opleidingen voor piloot voor je opzoek?'), 'Voor een pilootopleiding vragen scholen vaak een vooropleiding met wiskunde.')
+  assert.equal(withoutRepeatedQuestion('Wil je een plan?', 'Wil je een plan?'), 'Wil je een plan?')
+  assert.equal(withoutRepeatedQuestion('Dat kan. Welke stap eerst?', 'Zal ik het in je kluis zetten?'), 'Dat kan. Welke stap eerst?')
 })
