@@ -22,9 +22,9 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => null) as {
     action?: string; requestId?: string; itemId?: string; organizationId?: string
     locationId?: string; departmentId?: string | null; contactId?: string
-    message?: string; outcome?: string; response?: string
+    message?: string; outcome?: string; response?: string; contactIds?: unknown
   } | null
-  if (!body || !['inbox', 'detail', 'create', 'resolve'].includes(body.action ?? '')) return json({ error: 'invalid_request' }, 400)
+  if (!body || !['inbox', 'detail', 'create', 'resolve', 'contactPhotos'].includes(body.action ?? '')) return json({ error: 'invalid_request' }, 400)
 
   try {
     if (body.action === 'create') {
@@ -99,6 +99,35 @@ Deno.serve(async (req) => {
         }
       }
       return json({ id: request.id, requestedAt: request.requested_at })
+    }
+
+    // The profile photos of contact persons a learner can choose, as links valid for an hour. Only of active persons
+    // with an account, never the learner's own, and never which account it is.
+    if (body.action === 'contactPhotos') {
+      const ids = Array.isArray(body.contactIds) ? body.contactIds.filter((id): id is string => typeof id === 'string') : []
+      if (ids.length === 0 || ids.length > 50) return json({ error: 'invalid_request' }, 400)
+      const { data: contacts, error: contactsError } = await admin.from('organization_contacts')
+        .select('id,reviewer_id').in('id', ids).eq('is_active', true).not('reviewer_id', 'is', null).neq('reviewer_id', user.id)
+      if (contactsError) throw contactsError
+      const accounts = [...new Set((contacts ?? []).map((contact) => contact.reviewer_id as string))]
+      if (accounts.length === 0) return json({ photos: {} })
+      const { data: profiles, error: profilesError } = await admin.from('profiles')
+        .select('id,avatar_path,avatar_url').in('id', accounts)
+      if (profilesError) throw profilesError
+      const photoOf = new Map<string, string>()
+      for (const profile of profiles ?? []) {
+        if (profile.avatar_path) {
+          const { data } = await admin.storage.from('pave-avatars').createSignedUrl(profile.avatar_path, 3600)
+          if (data?.signedUrl) { photoOf.set(profile.id, data.signedUrl); continue }
+        }
+        if (typeof profile.avatar_url === 'string' && profile.avatar_url.startsWith('https://')) photoOf.set(profile.id, profile.avatar_url)
+      }
+      const photos: Record<string, string> = {}
+      for (const contact of contacts ?? []) {
+        const url = photoOf.get(contact.reviewer_id as string)
+        if (url) photos[contact.id] = url
+      }
+      return json({ photos })
     }
 
     if (body.action === 'resolve') {

@@ -1,14 +1,19 @@
 import PAVECore
 import SwiftUI
 
-/// One search for every organisation in the directory, filtered on kind: Alles, Onderwijs, Bedrijven, Overheid, Overig.
-/// Searched on the server a page at a time; only organisations where someone may confirm this kind of evidence.
+/// One search for every organisation in the directory, one row per location ("Albert Heijn · Breda"), filtered on kind:
+/// Alles, Onderwijs, Bedrijven, Overheid, Overig. Searched on organisation name, city, location name and address, on the
+/// server, a page at a time; only locations where someone may confirm this kind of evidence. Two McDonald's in Tilburg
+/// are two rows: "Westermarkt, Tilburg" and "Reeshof, Tilburg".
 struct VaultOrganizationSearchSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(VaultModel.self) private var vault
     let category: VaultCategory
+    /// The chosen location.
     let selectedID: String?
-    let onChoose: (VaultValidationOrganization) -> Void
+    /// The organisation of the evidence, so its locations are listed straight away.
+    var initialQuery = ""
+    let onChoose: (VaultValidationPlace) -> Void
 
     private struct Query: Hashable {
         var text: String
@@ -17,7 +22,7 @@ struct VaultOrganizationSearchSheet: View {
 
     @State private var text = ""
     @State private var kind: VaultOrganizationKind?
-    @State private var results: [VaultValidationOrganization] = []
+    @State private var results: [VaultValidationPlace] = []
     @State private var total = 0
     @State private var isLoading = false
     @State private var isLoadingMore = false
@@ -29,9 +34,9 @@ struct VaultOrganizationSearchSheet: View {
         NavigationStack {
             List {
                 Section {
-                    ForEach(results) { organization in
-                        row(organization)
-                            .onAppear { if organization.id == results.last?.id { Task { await loadMore() } } }
+                    ForEach(results) { place in
+                        row(place)
+                            .onAppear { if place.id == results.last?.id { Task { await loadMore() } } }
                     }
                     if isLoadingMore { ProgressView().frame(maxWidth: .infinity) }
                 } header: {
@@ -45,14 +50,15 @@ struct VaultOrganizationSearchSheet: View {
                 } else if failed {
                     ContentUnavailableView("Laden lukte niet", systemImage: "wifi.exclamationmark", description: Text("Probeer het opnieuw."))
                 } else if results.isEmpty && !isLoading {
-                    ContentUnavailableView("Geen organisatie gevonden", systemImage: "building.2", description: Text("Probeer een andere naam of categorie."))
+                    ContentUnavailableView("Geen organisatie gevonden", systemImage: "building.2", description: Text("Probeer een andere naam, plaats of categorie."))
                 }
             }
             .navigationTitle("Organisatie kiezen")
             .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $text, placement: .navigationBarDrawer(displayMode: .always), prompt: "Naam van de organisatie")
+            .searchable(text: $text, placement: .navigationBarDrawer(displayMode: .always), prompt: "Organisatie, plaats of adres")
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Gereed") { dismiss() } } }
             .task(id: query) { await search() }
+            .onAppear { if text.isEmpty { text = initialQuery } }
         }
         .presentationDetents([.large])
     }
@@ -81,27 +87,30 @@ struct VaultOrganizationSearchSheet: View {
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 
-    /// The kind only under "Alles": with a kind chosen it would say the same on every row.
-    private func row(_ organization: VaultValidationOrganization) -> some View {
+    /// The organisation, and under it the location ("Westermarkt, Tilburg") with its address; the kind too under "Alles".
+    private func row(_ place: VaultValidationPlace) -> some View {
         Button {
-            onChoose(organization)
+            onChoose(place)
             dismiss()
         } label: {
             HStack(spacing: 12) {
+                VaultPlaceLogo(place: place, size: 34)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(organization.name).foregroundStyle(Color.ink)
-                    let details = [kind == nil ? organization.kindTitle : nil, organization.citySummary].compactMap { $0 }
-                    if !details.isEmpty {
-                        Text(details.joined(separator: " · ")).font(.caption).foregroundStyle(Color.inkMuted)
+                    Text(place.organizationName).foregroundStyle(Color.ink)
+                    Text((kind == nil ? "\(place.organizationKind.title) · " : "") + place.locationTitle)
+                        .font(.caption).foregroundStyle(Color.inkMuted)
+                    if let address = place.addressLine {
+                        Text(address).font(.caption).foregroundStyle(Color.inkMuted).lineLimit(1)
                     }
                 }
                 Spacer()
-                if organization.id == selectedID { Image(systemName: "checkmark").foregroundStyle(Color.paveAccent) }
+                if place.id == selectedID { Image(systemName: "checkmark").foregroundStyle(Color.paveAccent) }
             }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityAddTraits(organization.id == selectedID ? [.isSelected] : [])
+        .accessibilityLabel([place.title, place.addressLine].compactMap { $0 }.joined(separator: ", "))
+        .accessibilityAddTraits(place.id == selectedID ? [.isSelected] : [])
     }
 
     private func search() async {
@@ -110,7 +119,7 @@ struct VaultOrganizationSearchSheet: View {
         guard !Task.isCancelled else { return }
         isLoading = true; defer { isLoading = false }
         do {
-            let page = try await vault.searchValidationOrganizations(
+            let page = try await vault.searchValidationPlaces(
                 category: category, query: current.text, kind: current.kind, offset: 0
             )
             guard !Task.isCancelled, current == query else { return }
@@ -127,7 +136,7 @@ struct VaultOrganizationSearchSheet: View {
         let current = query
         guard results.count < total, !isLoadingMore, !isLoading else { return }
         isLoadingMore = true; defer { isLoadingMore = false }
-        guard let page = try? await vault.searchValidationOrganizations(
+        guard let page = try? await vault.searchValidationPlaces(
             category: category, query: current.text, kind: current.kind, offset: results.count
         ), current == query else { return }
         results += page.rows.filter { row in !results.contains { $0.id == row.id } }

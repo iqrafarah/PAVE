@@ -10,14 +10,18 @@ struct NotificationRow: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 11) {
-            Image(notification.kind.icon)
-                .renderingMode(.template)
-                .resizable()
-                .scaledToFit()
-                .foregroundStyle(Color.paveAccent)
-                .frame(width: 20, height: 20)
-                .frame(width: 40, height: 40)
-                .background(Color.panel.opacity(0.85), in: .rect(cornerRadius: 11))
+            if notification.kind == .email, !notification.emailPeople.isEmpty {
+                EmailAvatarStack(people: notification.emailPeople, size: 40)
+            } else {
+                Image(notification.kind.icon)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .foregroundStyle(Color.paveAccent)
+                    .frame(width: 20, height: 20)
+                    .frame(width: 40, height: 40)
+                    .background(Color.panel.opacity(0.85), in: .rect(cornerRadius: 11))
+            }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(notification.title)
@@ -63,7 +67,7 @@ struct NotificationRow: View {
         switch notification.kind {
         case .verifiedEvidence, .rejectedEvidence:
             [notification.documentName, notification.personName].compactMap { $0 }.joined(separator: " · ")
-        case .conversation, .verificationRequest:
+        case .conversation, .verificationRequest, .email:
             notification.personName
         }
     }

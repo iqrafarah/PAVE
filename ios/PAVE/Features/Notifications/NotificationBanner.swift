@@ -6,27 +6,47 @@ struct NotificationBanner: View {
     let onOpen: () -> Void
     let onDismiss: () -> Void
 
+    private var isEmail: Bool { notification.kind == .email && !notification.emailPeople.isEmpty }
+
     var body: some View {
         Button(action: onOpen) {
             HStack(spacing: 11) {
-                Image(notification.kind.icon)
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .foregroundStyle(notification.kind.tint)
-                    .frame(width: 18, height: 18)
-                    .frame(width: 36, height: 36)
-                    .background(notification.kind.surface, in: .rect(cornerRadius: 10))
+                if isEmail {
+                    // As in Messages: their photo, their name, and what they wrote.
+                    EmailAvatarStack(people: notification.emailPeople, size: 38)
+                } else {
+                    Image(notification.kind.icon)
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .foregroundStyle(notification.kind.tint)
+                        .frame(width: 18, height: 18)
+                        .frame(width: 36, height: 36)
+                        .background(notification.kind.surface, in: .rect(cornerRadius: 10))
+                }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(notification.title)
-                        .textStyle(.bodyMedium)
-                        .foregroundStyle(Color.ink)
-                        .lineLimit(1)
-                    // Who or what it is about; "Nieuwe melding" only when the server sent nothing to say.
-                    Text(notification.detail.isEmpty ? "Nieuwe melding" : notification.detail)
-                        .textStyle(.caption)
-                        .foregroundStyle(Color.inkMuted)
-                        .lineLimit(1)
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(isEmail ? notification.personName : notification.title)
+                            .textStyle(.bodyMedium)
+                            .foregroundStyle(Color.ink)
+                            .lineLimit(1)
+                        Spacer(minLength: 4)
+                        if isEmail {
+                            Text("nu").textStyle(.meta).foregroundStyle(Color.inkMuted)
+                        }
+                    }
+                    if isEmail {
+                        Text(notification.emailPreview ?? notification.title)
+                            .textStyle(.caption)
+                            .foregroundStyle(Color.ink)
+                            .lineLimit(2)
+                    } else {
+                        // Who or what it is about; "Nieuwe melding" only when the server sent nothing to say.
+                        Text(notification.detail.isEmpty ? "Nieuwe melding" : notification.detail)
+                            .textStyle(.caption)
+                            .foregroundStyle(Color.inkMuted)
+                            .lineLimit(1)
+                    }
                 }
                 Spacer(minLength: 0)
             }
@@ -38,8 +58,10 @@ struct NotificationBanner: View {
             .contentShape(.rect(cornerRadius: 16))
         }
         .buttonStyle(.pave)
-        .accessibilityLabel("Nieuwe melding: \(notification.title)")
-        .accessibilityHint("Opent je meldingen")
+        .accessibilityLabel(isEmail
+            ? "Nieuw bericht van \(notification.personName): \(notification.emailPreview ?? notification.title)"
+            : "Nieuwe melding: \(notification.title)")
+        .accessibilityHint(isEmail ? "Opent het gesprek" : "Opent je meldingen")
         .accessibilityAction(named: "Sluiten", onDismiss)
         .gesture(DragGesture(minimumDistance: 12).onEnded { value in
             if value.translation.height < -10 { onDismiss() }
@@ -50,6 +72,32 @@ struct NotificationBanner: View {
             onDismiss()
         }
     }
+}
+
+extension AnyTransition {
+    /// As iOS's own banners: the card grows out of the Dynamic Island (or the top edge on an iPhone without one) and
+    /// shrinks back into it when it goes.
+    static var fromIsland: AnyTransition {
+        .modifier(active: IslandEmergence(progress: 0), identity: IslandEmergence(progress: 1))
+    }
+}
+
+/// 0 is tucked into the island: narrow, flat, blurred and pulled up behind it; 1 is the card as it is.
+private struct IslandEmergence: ViewModifier {
+    let progress: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(x: 0.3 + 0.7 * progress, y: 0.15 + 0.85 * progress, anchor: .top)
+            .offset(y: -28 * (1 - progress))
+            .blur(radius: 10 * (1 - progress))
+            .opacity(progress)
+    }
+}
+
+/// The animation that goes with `fromIsland`: a short spring with a little bounce, as the island has.
+extension Animation {
+    static let island = Animation.spring(duration: 0.45, bounce: 0.28)
 }
 
 /// The banner as it arrives in the app: tap "Stuur melding" and it slides in over the screen, then leaves after 5 seconds.
@@ -83,10 +131,10 @@ struct NotificationBanner: View {
             NotificationBanner(notification: shown) { banner = nil } onDismiss: { banner = nil }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
-                .transition(.move(edge: .top).combined(with: .opacity))
+                .transition(.fromIsland)
         }
     }
-    .animation(.snappy, value: banner?.id)
+    .animation(.island, value: banner?.id)
 }
 
 #Preview("Banner") {

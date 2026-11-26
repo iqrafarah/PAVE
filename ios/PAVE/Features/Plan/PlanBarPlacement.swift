@@ -14,8 +14,9 @@ extension View {
     }
 
     /// Loads the plans, puts a new chat that was started in a plan into it as soon as the chat has an id, keeps the
-    /// titles of the plan's chats the same as in the list of chats, and follows the steps Ayla changes: at once from
-    /// her answer (updatePlan), and from Supabase after every answer in a plan's chat.
+    /// titles of the plan's chats the same as in the list of chats, makes the plan Ayla made when the user asked for one
+    /// (createPlan), and follows the steps Ayla changes: at once from her answer (updatePlan), and from Supabase after
+    /// every answer in a plan's chat.
     func followsPlans(_ plans: PlanModel, chat: AylaChatModel) -> some View {
         task { await plans.load() }
             .onChange(of: chat.conversationID) { _, id in
@@ -27,6 +28,12 @@ extension View {
                 // Only an answer that just came in: opening an older chat never applies its changes again.
                 guard let entry = chat.entries.last(where: { $0.role == .ayla }), let reply = entry.reply,
                       Date.now.timeIntervalSince(entry.sentAt) < 120 else { return }
+                if let action = reply.proposedAction, action.kind == .createPlan {
+                    let id = chat.conversationID ?? reply.conversationId
+                    let title = chat.conversationList.conversations.first { $0.id == id }?.title ?? ""
+                    Task { await plans.create(from: action, conversationID: id, title: title) }
+                    return
+                }
                 if let update = reply.proposedAction?.planStep { plans.apply(update) }
                 if plans.plan(containing: chat.conversationID) != nil || reply.proposedAction?.kind == .updatePlan {
                     Task { await plans.refresh() }

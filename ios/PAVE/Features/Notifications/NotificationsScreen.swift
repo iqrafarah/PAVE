@@ -12,6 +12,7 @@ enum PaveNotificationKind: String, CaseIterable, Hashable, Identifiable, Sendabl
     case verifiedEvidence
     case rejectedEvidence
     case verificationRequest
+    case email
 
     var id: Self { self }
 
@@ -21,6 +22,7 @@ enum PaveNotificationKind: String, CaseIterable, Hashable, Identifiable, Sendabl
         case .verifiedEvidence: "Verificatie"
         case .rejectedEvidence: "Afgewezen bewijs"
         case .verificationRequest: "Verificatie aanvraag"
+        case .email: "E-mail"
         }
     }
 
@@ -34,6 +36,7 @@ enum PaveNotificationKind: String, CaseIterable, Hashable, Identifiable, Sendabl
         case .verifiedEvidence: "Bewijs dat is geverifieerd"
         case .rejectedEvidence: "Bewijs dat is afgewezen"
         case .verificationRequest: "Aanvragen die je kunt beoordelen"
+        case .email: "Nieuwe e-mails van je gekoppelde account"
         }
     }
 
@@ -41,8 +44,9 @@ enum PaveNotificationKind: String, CaseIterable, Hashable, Identifiable, Sendabl
         switch self {
         case .conversation: .iconChat
         case .verifiedEvidence: .iconCheckBadgeSolid
-        case .rejectedEvidence: .iconExclamationCircle
+        case .rejectedEvidence: .iconExclamationCircleSolid
         case .verificationRequest: .iconDocumentTextSolid
+        case .email: .iconEnvelopeSolid
         }
     }
 
@@ -51,7 +55,7 @@ enum PaveNotificationKind: String, CaseIterable, Hashable, Identifiable, Sendabl
         switch self {
         case .rejectedEvidence: .statusRejected
         case .verificationRequest: .statusPending
-        case .conversation, .verifiedEvidence: .paveAccent
+        case .conversation, .verifiedEvidence, .email: .paveAccent
         }
     }
 
@@ -60,7 +64,7 @@ enum PaveNotificationKind: String, CaseIterable, Hashable, Identifiable, Sendabl
         switch self {
         case .rejectedEvidence: .statusRejectedSurface
         case .verificationRequest: .statusPendingSurface
-        case .conversation, .verifiedEvidence: .paveSurfaceTint
+        case .conversation, .verifiedEvidence, .email: .paveSurfaceTint
         }
     }
 }
@@ -82,6 +86,16 @@ struct PaveNotification: Identifiable, Hashable, Sendable {
     var documentName: String?
     var documentType: String?
     var documentFileName: String?
+    /// For `.email`: the conversation in the connected mailbox.
+    var emailThreadID: String?
+    /// For `.email`: who you write with, for their photo on the row.
+    var emailPeople: [EmailAddress] = []
+    /// For `.email`: the last message, as the line under the subject.
+    var emailPreview: String?
+    /// For `.email`: the conversation needs your PIN.
+    var emailIsLocked = false
+    /// For `.email`: no banners for this conversation.
+    var emailIsMuted = false
 }
 
 extension PaveNotification {
@@ -92,7 +106,7 @@ extension PaveNotification {
             [documentName, personName].compactMap { $0 }.joined(separator: " · ")
         case .verificationRequest:
             [learnerName ?? personName, documentName].compactMap { $0 }.joined(separator: " · ")
-        case .conversation:
+        case .conversation, .email:
             personName
         }
     }
@@ -113,6 +127,40 @@ extension View {
             .listRowInsets(EdgeInsets(top: top, leading: 20, bottom: bottom, trailing: 20))
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
+    }
+}
+
+/// The tabs above Meldingen: everything, the people you talk with (e-mail and Ayla), and what happens to your evidence.
+enum NotificationTab: String, CaseIterable, Identifiable {
+    case all
+    case conversations
+    case evidence
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .all: "Alles"
+        case .conversations: "Gesprekken"
+        case .evidence: "Bewijs"
+        }
+    }
+
+    func includes(_ kind: PaveNotificationKind) -> Bool {
+        switch self {
+        case .all: true
+        // People you write with. Ayla's chats live in Ayla; their meldingen stay under Alles.
+        case .conversations: kind == .email
+        case .evidence: kind == .verifiedEvidence || kind == .rejectedEvidence || kind == .verificationRequest
+        }
+    }
+
+    var emptyTitle: String {
+        switch self {
+        case .all: "Je bent helemaal bij"
+        case .conversations: "Geen gesprekken"
+        case .evidence: "Niets over je bewijs"
+        }
     }
 }
 
@@ -137,6 +185,13 @@ struct NotificationsScreen: View {
     var onOpenApplication: ((Vacancy) -> Void)?
 
     @State private var searchText = ""
+    @State private var tab = NotificationTab.all
+    /// Not there in previews; MainView passes the connected mailboxes.
+    @Environment(EmailModel.self) private var email: EmailModel?
+    @AppStorage("emailCardDismissed") private var emailCardDismissed = false
+    @State private var showsEmailAccounts = false
+    @State private var composesEmail = false
+    @State private var openedEmailThreadID: String?
     @State private var alertStatus: UNAuthorizationStatus?
     @Environment(\.openURL) private var openURL
     @State private var showsTrash = false
@@ -144,6 +199,8 @@ struct NotificationsScreen: View {
     @State private var readIDs: Set<String> = []
     /// The meldingen just deleted (a chat with several is one row), while "Ongedaan maken" is on screen.
     @State private var undoIDs: [String] = []
+    /// An e-mail conversation just deleted; it goes to the bin of the mailbox once "Ongedaan maken" is gone.
+    @State private var undoEmailThreadID: String?
     /// What was just done with a verification request, shown for a moment after coming back to the list.
     @State private var resolved: String?
 
@@ -163,10 +220,13 @@ struct NotificationsScreen: View {
     }
 
     private var visibleNotifications: [PaveNotification] {
-        inbox
+        // E-mail is also found by what is in its messages, not only by its subject and names.
+        let mailMatches = email?.threadIDs(matching: searchText) ?? []
+        return inbox
+            .filter { tab.includes($0.kind) }
             .filter {
-                searchText.isEmpty || [
-                    $0.title, $0.personName, $0.documentName ?? "", $0.documentType ?? ""
+                searchText.isEmpty || $0.emailThreadID.map(mailMatches.contains) == true || [
+                    $0.title, $0.personName, $0.documentName ?? "", $0.documentType ?? "", $0.emailPreview ?? ""
                 ].joined(separator: " ").localizedCaseInsensitiveContains(searchText)
             }
             .sorted { $0.date > $1.date }
@@ -181,7 +241,7 @@ struct NotificationsScreen: View {
     }
 
     private var hasUnread: Bool {
-        inbox.contains { $0.isUnread && !readIDs.contains($0.id) }
+        inbox.contains { $0.isUnread && !readIDs.contains($0.id) } || (email?.unreadCount ?? 0) > 0
     }
 
     /// Everything behind one row: all meldingen of the same chat, or just the one.
@@ -203,17 +263,45 @@ struct NotificationsScreen: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(Color.panel, in: .rect(cornerRadius: 12))
                 }
+                if let problem = email?.problem {
+                    Text(problem)
+                        .textStyle(.caption)
+                        .foregroundStyle(Color.statusRejected)
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.panel, in: .rect(cornerRadius: 12))
+                }
                 if alertStatus == .notDetermined || alertStatus == .denied {
                     alertsCard
+                }
+                if let email, !email.hasAccounts, !emailCardDismissed {
+                    emailCard
                 }
                 if inbox.count >= Self.searchThreshold || !searchText.isEmpty {
                     PaveSearchField(text: $searchText, prompt: "Zoek in meldingen")
                 }
+                Picker("Toon", selection: $tab) {
+                    ForEach(NotificationTab.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: tab) { PaveHaptics.selection() }
                 }
                 .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
-                if let sharing, searchText.isEmpty { NotificationFairSection(sharing: sharing) }
+                if let sharing, searchText.isEmpty, tab != .evidence { NotificationFairSection(sharing: sharing) }
+                if let email, searchText.isEmpty, tab != .evidence, !email.pinnedThreads.isEmpty {
+                    EmailPinnedGrid(threads: email.pinnedThreads) { openedEmailThreadID = $0 } onUnpin: { id in
+                        PaveHaptics.selection()
+                        withAnimation(.snappy) { email.unpin(id) }
+                    } onDelete: { id in
+                        PaveHaptics.tap(.medium)
+                        deleteEmail(id)
+                    }
+                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                }
                 if !invitations.isEmpty, searchText.isEmpty {
                     Section {
                         ForEach(invitations) { draft in
@@ -243,7 +331,16 @@ struct NotificationsScreen: View {
             .animation(.snappy, value: visibleNotifications.map(\.id))
             .refreshable { await onRefresh?() }
             .safeAreaInset(edge: .bottom, spacing: 12) {
-                if !undoIDs.isEmpty {
+                if let id = undoEmailThreadID {
+                    AylaUndoBar(message: "Gesprek verwijderd") {
+                        PaveHaptics.success()
+                        withAnimation(.snappy) { email?.undoDelete(id) }
+                        undoEmailThreadID = nil
+                    }
+                    .padding(.horizontal, 16)
+                    .frame(maxWidth: 560)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                } else if !undoIDs.isEmpty {
                     AylaUndoBar(message: "Melding verwijderd") { undoDelete() }
                         .padding(.horizontal, 16)
                         .frame(maxWidth: 560)
@@ -256,6 +353,13 @@ struct NotificationsScreen: View {
                 }
             }
             .animation(.snappy, value: undoIDs)
+            .animation(.snappy, value: undoEmailThreadID)
+            .task(id: undoEmailThreadID) {
+                guard undoEmailThreadID != nil else { return }
+                try? await Task.sleep(for: .seconds(EmailModel.undoSeconds))
+                guard !Task.isCancelled else { return }
+                undoEmailThreadID = nil
+            }
             .animation(.snappy, value: resolved)
             .task(id: resolved) {
                 guard resolved != nil else { return }
@@ -298,11 +402,28 @@ struct NotificationsScreen: View {
                     }
                 }
             }
+            .navigationDestination(isPresented: Binding(
+                get: { openedEmailThreadID != nil },
+                set: { if !$0 { openedEmailThreadID = nil } }
+            )) {
+                if let id = openedEmailThreadID { EmailThreadScreen(threadID: id) }
+            }
+            .sheet(isPresented: $composesEmail) {
+                EmailComposeSheet { threadID in openedEmailThreadID = threadID }
+            }
+            .navigationDestination(isPresented: $showsEmailAccounts) {
+                EmailAccountsScreen()
+            }
             .navigationDestination(isPresented: $showsTrash) {
                 NotificationTrashScreen(notifications: deletedNotifications, onRestore: onRestore)
             }
         }
         .tint(.paveAccent)
+        .onChange(of: email?.threadToOpen, initial: true) { _, id in
+            guard let id else { return }
+            openedEmailThreadID = id
+            email?.threadToOpen = nil
+        }
         .task { await onRefresh?() }
         .task { alertStatus = await NotificationAlerts.status() }
     }
@@ -347,20 +468,77 @@ struct NotificationsScreen: View {
         .overlay { RoundedRectangle(cornerRadius: 13).strokeBorder(Color.cardBorder) }
     }
 
-    /// Everything that is not about one melding: read them all, and the bin.
+    /// Your e-mail in Meldingen: offered once, and always reachable from the menu.
+    private var emailCard: some View {
+        HStack(spacing: 11) {
+            Image(.iconEnvelopeSolid)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(Color.paveAccent)
+                .frame(width: 18, height: 18)
+                .frame(width: 36, height: 36)
+                .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 10))
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Je e-mail ook hier?")
+                    .textStyle(.bodyMedium)
+                    .foregroundStyle(Color.ink)
+                Text("Koppel iCloud Mail en beantwoord e-mails als een chat.")
+                    .textStyle(.caption)
+                    .foregroundStyle(Color.inkMuted)
+            }
+            Spacer(minLength: 6)
+            Button("Koppel") { showsEmailAccounts = true }
+                .textStyle(.caption)
+                .foregroundStyle(Color.paveAccent)
+                .buttonStyle(.pave)
+            Button { emailCardDismissed = true } label: {
+                Image(.iconXMark)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 11, height: 11)
+                    .foregroundStyle(Color.inkMuted)
+                    .frame(width: 32, height: 32)
+            }
+            .buttonStyle(.pave)
+            .accessibilityLabel("Niet nu")
+        }
+        .padding(10)
+        .background(Color.panel, in: .rect(cornerRadius: 13))
+        .overlay { RoundedRectangle(cornerRadius: 13).strokeBorder(Color.cardBorder) }
+    }
+
+    /// Everything that is not about one melding: read them all, your e-mail, and the bin.
     private var moreMenu: some View {
         Menu {
-            Button {
-                markAllRead()
-            } label: {
-                Label("Alles als gelezen markeren", image: .iconMailOpen)
+            if email?.hasAccounts == true {
+                Section {
+                    Button { composesEmail = true } label: {
+                        Label("Nieuw bericht", tinted: .iconPencil)
+                    }
+                }
             }
-            .disabled(!hasUnread)
-            Button { showsTrash = true } label: {
-                Label(
-                    deletedNotifications.isEmpty ? "Recent verwijderd" : "Recent verwijderd (\(deletedNotifications.count))",
-                    image: .iconTrash
-                )
+            Section {
+                Button {
+                    markAllRead()
+                } label: {
+                    Label("Alles als gelezen markeren", tinted: .iconEnvelopeOpenSolid)
+                }
+                .disabled(!hasUnread)
+                Button { showsTrash = true } label: {
+                    Label(
+                        deletedNotifications.isEmpty ? "Recent verwijderd" : "Recent verwijderd (\(deletedNotifications.count))",
+                        image: .iconTrash
+                    )
+                }
+            }
+            if email != nil {
+                Section {
+                    Button { showsEmailAccounts = true } label: {
+                        Label(email?.hasAccounts == true ? "E-mailaccounts" : "E-mailaccount koppelen", tinted: .iconEnvelopeSolid)
+                    }
+                }
             }
         } label: {
             Image(.iconEllipsis)
@@ -379,8 +557,8 @@ struct NotificationsScreen: View {
         if visibleNotifications.isEmpty {
             if searchText.isEmpty {
                 PaveEmptyState(
-                    icon: .iconMailOpen,
-                    title: "Je bent helemaal bij",
+                    icon: .iconEnvelopeOpenSolid,
+                    title: tab.emptyTitle,
                     message: emptyMessage
                 )
                 .padding(.top, 30)
@@ -424,7 +602,12 @@ struct NotificationsScreen: View {
     }
 
     private var emptyMessage: String {
-        switch audience {
+        if tab == .conversations {
+            return email?.hasAccounts == true
+                ? "E-mails van mensen die je kent staan hier. Begin een gesprek via ⋯ › Nieuw bericht."
+                : "Koppel je e-mail via ⋯ om je gesprekken hier te zien."
+        }
+        return switch audience {
         case .learner: "Zodra een organisatie je bewijs beoordeelt, zie je dat hier."
         case .administrator: "Nieuwe verificatieaanvragen en beslissingen verschijnen hier."
         }
@@ -440,15 +623,19 @@ struct NotificationsScreen: View {
         .listRowInsets(EdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14))
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) { delete(notification) } label: {
-                Label("Verwijderen", image: .iconTrash)
+                Label("Verwijderen", tinted: .iconTrash)
             }
             // Red, not the app's green tint.
             .tint(.red)
         }
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            if let id = notification.emailThreadID, email?.canPinMore == true, !notification.emailIsLocked {
+                Button { pin(id) } label: { Label("Vastzetten", tinted: .iconBookmarkSolid) }
+                    .tint(.paveAccent)
+            }
             if isUnread(notification) {
                 Button { markRead(notification) } label: {
-                    Label("Gelezen", image: .iconMailOpen)
+                    Label("Gelezen", tinted: .iconEnvelopeOpenSolid)
                 }
                 .tint(.paveAccent)
             }
@@ -462,29 +649,57 @@ struct NotificationsScreen: View {
     private func menu(for notification: PaveNotification) -> some View {
         if isUnread(notification) {
             Button { markRead(notification) } label: {
-                Label("Markeer als gelezen", image: .iconMailOpen)
+                Label("Markeer als gelezen", tinted: .iconEnvelopeOpenSolid)
+            }
+        }
+        if let id = notification.emailThreadID, email?.canPinMore == true, !notification.emailIsLocked {
+            Button { pin(id) } label: { Label("Vastzetten", tinted: .iconBookmarkSolid) }
+        }
+        if let id = notification.emailThreadID {
+            Button {
+                PaveHaptics.selection()
+                withAnimation(.snappy) { email?.toggleMute(id) }
+            } label: {
+                if notification.emailIsMuted {
+                    Label("Dempen opheffen", systemImage: "bell.fill")
+                } else {
+                    Label("Dempen", systemImage: "bell.slash.fill")
+                }
             }
         }
         Button(role: .destructive) { delete(notification) } label: {
-            Label("Verwijderen", image: .iconTrash)
+            Label("Verwijderen", tinted: .iconTrash)
         }
     }
 
     private func open(_ notification: PaveNotification) {
-        markRead(notification)
+        // A locked conversation is only read once the PIN opens it.
+        if !notification.emailIsLocked || email?.showsLocked == true { markRead(notification) }
         switch notification.kind {
         case .conversation:
             if let id = notification.conversationID, let onOpenConversation { onOpenConversation(id); return }
         case .verifiedEvidence, .rejectedEvidence:
             if let id = notification.vaultItemID, let onOpenVerifiedEvidence { onOpenVerifiedEvidence(id); return }
+        case .email:
+            if let id = notification.emailThreadID { openedEmailThreadID = id; return }
         case .verificationRequest:
             break
         }
         openedNotification = notification
     }
 
+    private func pin(_ threadID: String) {
+        PaveHaptics.selection()
+        withAnimation(.snappy) { email?.togglePin(threadID) }
+    }
+
     private func delete(_ notification: PaveNotification) {
         PaveHaptics.tap(.medium)
+        // E-mail goes to the bin of your mailbox, after the few seconds of "Ongedaan maken".
+        if let threadID = notification.emailThreadID {
+            deleteEmail(threadID)
+            return
+        }
         let all = ids(of: notification)
         undoIDs = all
         Task {
@@ -494,6 +709,11 @@ struct NotificationsScreen: View {
                 undoIDs = undoIDs.filter { $0 != id }
             }
         }
+    }
+
+    private func deleteEmail(_ threadID: String) {
+        withAnimation(.snappy) { email?.delete(threadID) }
+        undoEmailThreadID = threadID
     }
 
     private func undoDelete() {

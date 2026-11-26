@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { answer } from '../brain.ts'
 import { parseRequest } from '../contract.ts'
 import { buildSystemPrompt, MODEL_OUTPUT_SCHEMA } from '../prompt.ts'
-import { type PlanContext, planChange, planLayer, toPlan } from '../plan.ts'
+import { newPlanProposal, type PlanContext, planChange, planLayer, toPlan } from '../plan.ts'
 
 const PLAN_ID = '11111111-1111-4111-8111-111111111111'
 const STEP_ID = '22222222-2222-4222-8222-222222222222'
@@ -101,4 +101,43 @@ test('rows from the database become a plan in order', () => {
   assert.deepEqual(loaded.steps.map((s) => s.id), ['a', 'b'])
   assert.equal(loaded.steps[0].status, 'upcoming')
   assert.equal(loaded.stepId, 'b')
+})
+
+const madePlan = {
+  name: '  Stage   vinden in Utrecht ',
+  goal: 'Een stage in de zorg',
+  steps: [
+    { title: 'Je cv bijwerken', summary: 'Zet je laatste werk erin.', kind: 'document' },
+    { title: '', summary: 'Leeg', kind: 'general' },
+    { title: 'Vacatures zoeken', summary: '', kind: 'unknown' },
+    { title: 'Solliciteren', summary: '', kind: 'action' },
+  ],
+}
+
+test('asked for a plan, the iPhone gets it as createPlan, tidied up', async () => {
+  const reply = await answer(
+    { request: { ...request, text: 'Maak een plan om een stage te vinden' }, conversationId: 'c', history: [] },
+    { ...model(say('Ik heb een plan gemaakt. Begin met je cv.', { intent: 'act', newPlan: madePlan })), newId: ids() },
+  )
+  assert.equal(reply.proposedAction?.kind, 'createPlan')
+  assert.equal(reply.proposedAction?.newPlan?.name, 'Stage vinden in Utrecht')
+  assert.deepEqual(reply.proposedAction?.newPlan?.steps.map((s) => s.title), ['Je cv bijwerken', 'Vacatures zoeken', 'Solliciteren'])
+  assert.equal(reply.proposedAction?.newPlan?.steps[1].kind, 'general')
+})
+
+test('no new plan on the Watch, without a name, or with fewer than two steps', async () => {
+  const watch = await answer(
+    { request: { ...request, device: 'watch' as const }, conversationId: 'c', history: [] },
+    { ...model(say('Klaar.', { newPlan: madePlan })), newId: ids() },
+  )
+  assert.equal(watch.proposedAction, undefined)
+  assert.equal(newPlanProposal({ ...madePlan, name: ' ' }, 'x', new Date()), undefined)
+  assert.equal(newPlanProposal({ ...madePlan, steps: madePlan.steps.slice(0, 2) }, 'x', new Date()), undefined)
+  assert.equal(newPlanProposal(null, 'x', new Date()), undefined)
+})
+
+test('only the iPhone is told it can make a plan', () => {
+  assert.match(buildSystemPrompt({ device: 'phone' }), /newPlan: vraagt de gebruiker/)
+  assert.match(buildSystemPrompt({ device: 'watch' }), /newPlan is altijd null/)
+  assert.ok(MODEL_OUTPUT_SCHEMA.required.includes('newPlan'))
 })

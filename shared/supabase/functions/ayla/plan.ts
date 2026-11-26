@@ -124,6 +124,73 @@ export function planProposal(plan: PlanContext, change: { step: PlanStep; status
   }
 }
 
+/** The kinds of step the apps know; another kind shows as a general step, so the model only picks from these. */
+export const PLAN_STEP_KINDS = ['general', 'conversation', 'research', 'evidence', 'verification', 'document', 'action', 'reflection', 'milestone', 'profile', 'contact'] as const
+const MIN_NEW_STEPS = 2
+const MAX_NEW_STEPS = 8
+
+/** A new plan the user asked for ("maak een plan"): a name, the goal and the steps, in the order to do them. */
+export const NEW_PLAN_SCHEMA = {
+  type: ['object', 'null'],
+  additionalProperties: false,
+  required: ['name', 'goal', 'steps'],
+  properties: {
+    name: { type: 'string' },
+    goal: { type: 'string' },
+    steps: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['title', 'summary', 'kind'],
+        properties: { title: { type: 'string' }, summary: { type: 'string' }, kind: { type: 'string', enum: [...PLAN_STEP_KINDS] } },
+      },
+    },
+  },
+} as const
+
+export const NEW_PLAN_RULE = 'newPlan: vraagt de gebruiker je een plan te maken (zoals "maak een plan", "help me een plan maken om ..."), vul dan newPlan. name: kort, hooguit 80 tekens, zoals "Stage vinden in Utrecht". goal: het doel in één zin, in de woorden van de gebruiker. steps: 3 tot 6 stappen in de volgorde waarin de gebruiker ze doet, elk met een korte title (hooguit 80 tekens, begint met een werkwoord, zoals "Je cv bijwerken"), een summary van één zin en het kind dat het best past. Gebruik wat je uit dit gesprek, de kluis en je notities weet. Zeg in text kort dat je het plan hebt gemaakt en dat het bovenaan dit gesprek staat, en noem de eerste stap. Weet je nog niet waar het plan over gaat, vraag dan eerst naar het doel en zet newPlan op null. Hoort dit gesprek al bij een plan, maak dan alleen een nieuw plan als de gebruiker uitdrukkelijk om een nieuw of ander plan vraagt. Anders is newPlan null.'
+
+/** Where the apps cannot make a plan, the model never proposes one. */
+export const NO_NEW_PLAN_RULE = 'newPlan is altijd null.'
+
+export interface NewPlan { name: string; goal: string; steps: { title: string; summary: string; kind: string }[] }
+
+/** A checked new plan, or undefined when the model gave nothing usable. Lengths follow the plans tables. */
+export function newPlanProposal(raw: unknown, id: string, now: Date): NonNullable<AylaReply['proposedAction']> | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  const value = raw as { name?: unknown; goal?: unknown; steps?: unknown }
+  const name = line(value.name, 80)
+  if (!name) return undefined
+  const steps = (Array.isArray(value.steps) ? value.steps : [])
+    .map((step) => {
+      const { title, summary, kind } = (step ?? {}) as { title?: unknown; summary?: unknown; kind?: unknown }
+      const cleanTitle = line(title, 80)
+      if (!cleanTitle) return undefined
+      return {
+        title: cleanTitle,
+        summary: line(summary, 280) ?? '',
+        kind: (PLAN_STEP_KINDS as readonly unknown[]).includes(kind) ? kind as string : 'general',
+      }
+    })
+    .filter((step): step is NewPlan['steps'][number] => !!step)
+    .slice(0, MAX_NEW_STEPS)
+  if (steps.length < MIN_NEW_STEPS) return undefined
+  return {
+    id,
+    kind: 'createPlan',
+    summary: `Plan "${name}" gemaakt`,
+    expiresAt: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+    newPlan: { name, goal: line(value.goal, 280) ?? '', steps },
+  }
+}
+
+function line(raw: unknown, max: number): string | undefined {
+  if (typeof raw !== 'string') return undefined
+  const value = raw.replace(/\s+/g, ' ').trim()
+  return value ? value.slice(0, max).trim() : undefined
+}
+
 /** The user's words on one line, without quotes that could end the quote around them. */
 function clean(text: string): string {
   return text.replace(/\s+/g, ' ').replace(/"/g, "'").trim().slice(0, 280)

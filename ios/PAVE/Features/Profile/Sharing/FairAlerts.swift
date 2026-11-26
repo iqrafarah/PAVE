@@ -37,10 +37,10 @@ enum FairAlerts {
         case acceptAction, declineAction:
             let accepted = response.actionIdentifier == acceptAction
             if let id, let onAnswer, await onAnswer(id, accepted) { return true }
-            NotificationAlerts.onTap?()
+            NotificationAlerts.onTap?(nil)
         default:
             // The invitation is in Meldingen, with every other message.
-            NotificationAlerts.onTap?()
+            NotificationAlerts.onTap?(nil)
         }
         return true
     }

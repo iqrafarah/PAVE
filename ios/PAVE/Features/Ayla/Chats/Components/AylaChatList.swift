@@ -52,7 +52,7 @@ struct AylaLockActions {
     var model: AylaChatModel
 }
 
-/// The chats with Ayla (Figma "Chats"), as in Mail and ChatGPT: search, then pinned and by when they were last used.
+/// The chats with Ayla, laid out like the web's chat panel: search, then Vastgezet, Projecten and Recent.
 /// Swipe a chat to pin it (from the left) or to rename or delete it (from the right); press and hold it to see its
 /// last messages and the same actions. "Selecteren" lets you pin or delete several at once. A deleted chat can be
 /// brought back for a few seconds. Pull down to refresh; older chats load when you reach the end.
@@ -99,6 +99,9 @@ struct AylaChatList: View {
     @Environment(VaultModel.self) private var vault: VaultModel?
     @Environment(\.openFromAyla) private var openFromAyla
     @State private var searchTab = PaveSearchTab.all
+    @AppStorage("pave-collapsed-pinned") private var isPinnedFolded = false
+    @AppStorage("pave-collapsed-projects") private var isProjectsFolded = false
+    @AppStorage("pave-collapsed-recent") private var isRecentFolded = false
     @State private var previewURL: URL?
 
     private var isSearching: Bool { !search.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -117,12 +120,24 @@ struct AylaChatList: View {
         }
     }
 
-    /// One flat list of headers, projects and chats: Vastgezet, then Projecten, then the rest by when it was used, as on
-    /// the web.
+    /// The three groups of the web's chat panel. Each folds under its heading, remembered on this device.
+    private enum Group: String {
+        case pinned, projects, recent
+
+        var title: String {
+            switch self {
+            case .pinned: AylaMessages.pinned
+            case .projects: AylaMessages.projects
+            case .recent: AylaMessages.recent
+            }
+        }
+    }
+
+    /// One flat list of headings, projects and chats, as on the web: Vastgezet (pinned projects, then pinned chats),
+    /// Projecten (the other projects, then Vergrendelde chats), then Recent (every other chat, the newest first).
     private enum Item: Identifiable {
-        case header(String)
+        case header(Group)
         case chat(AylaConversation)
-        case projectsHeader
         case project(AylaProject)
         case projectChat(AylaConversation)
         case locked(Int)
@@ -132,9 +147,8 @@ struct AylaChatList: View {
         /// glitch.
         var id: String {
             switch self {
-            case .header(let title): "header-\(title)"
+            case .header(let group): "header-\(group.rawValue)"
             case .chat(let conversation): conversation.isPinned ? "\(conversation.id)-pinned" : conversation.id
-            case .projectsHeader: "projects"
             case .project(let project): "project-\(project.id)"
             case .projectChat(let conversation): "\(conversation.id)-in-\(conversation.projectID ?? "")"
             case .locked: "locked"
@@ -142,24 +156,59 @@ struct AylaChatList: View {
         }
     }
 
-    private var items: [Item] {
-        let sections = list.sections()
-        let pinned = sections.filter { $0.kind == .pinned }
-        let rest = sections.filter { $0.kind != .pinned }
-        var items = pinned.flatMap { [Item.header($0.title)] + $0.conversations.map(Item.chat) }
-        let hasLocked = list.canLock && actions.locks != nil && !list.locked.isEmpty
-        if list.canUseProjects, actions.projects != nil {
-            items.append(.projectsHeader)
-            for project in list.orderedProjects {
-                items.append(.project(project))
-                if openProjects.contains(project.id) {
-                    items += list.chats(in: project.id).map(Item.projectChat)
-                }
+    private var usesProjects: Bool { list.canUseProjects && actions.projects != nil }
+
+    private func isFolded(_ group: Group) -> Bool {
+        switch group {
+        case .pinned: isPinnedFolded
+        case .projects: isProjectsFolded
+        case .recent: isRecentFolded
+        }
+    }
+
+    private func toggleFold(_ group: Group) {
+        PaveHaptics.selection()
+        withAnimation(listAnimation) {
+            switch group {
+            case .pinned: isPinnedFolded.toggle()
+            case .projects: isProjectsFolded.toggle()
+            case .recent: isRecentFolded.toggle()
             }
         }
-        // As on the web: the last entry of Projecten, like a folder of its own, above the other chats.
-        if hasLocked { items.append(.locked(list.locked.count)) }
-        items += rest.flatMap { [Item.header($0.title)] + $0.conversations.map(Item.chat) }
+    }
+
+    private func projectItems(_ project: AylaProject) -> [Item] {
+        guard openProjects.contains(project.id) else { return [.project(project)] }
+        return [.project(project)] + list.chats(in: project.id).map(Item.projectChat)
+    }
+
+    private var items: [Item] {
+        var items: [Item] = []
+        let projects = usesProjects ? list.orderedProjects : []
+        let pinnedProjects = projects.filter(\.isPinned)
+        let pinnedChats = list.pinned
+        if !pinnedProjects.isEmpty || !pinnedChats.isEmpty {
+            items.append(.header(.pinned))
+            if !isPinnedFolded {
+                items += pinnedProjects.flatMap(projectItems)
+                items += pinnedChats.map(Item.chat)
+            }
+        }
+        let hasLocked = list.canLock && actions.locks != nil && !list.locked.isEmpty
+        if usesProjects {
+            items.append(.header(.projects))
+            if !isProjectsFolded {
+                items += projects.filter { !$0.isPinned }.flatMap(projectItems)
+                if hasLocked { items.append(.locked(list.locked.count)) }
+            }
+        } else if hasLocked {
+            items.append(.locked(list.locked.count))
+        }
+        let recent = list.others
+        if !recent.isEmpty {
+            items.append(.header(.recent))
+            if !isRecentFolded { items += recent.map(Item.chat) }
+        }
         return items
     }
 
@@ -326,7 +375,7 @@ struct AylaChatList: View {
 
     // MARK: Rows
 
-    private func row(_ conversation: AylaConversation) -> some View {
+    private func row(_ conversation: AylaConversation, showsIcon: Bool = false) -> some View {
         let isChosen = selection.contains(conversation.id)
         return HStack(spacing: 4) {
             if isSelecting {
@@ -334,7 +383,7 @@ struct AylaChatList: View {
                     .padding(.leading, 10)
                     .transition(.move(edge: .leading).combined(with: .opacity))
             }
-            AylaChatRow(conversation: conversation, isCurrent: conversation.id == currentID && !isSelecting) {
+            AylaChatRow(conversation: conversation, isCurrent: conversation.id == currentID && !isSelecting, showsIcon: showsIcon) {
                 actions.open(conversation)
             }
             // While selecting, a tap selects the row instead of opening it.
@@ -682,14 +731,11 @@ struct AylaChatList: View {
     @ViewBuilder
     private func itemRow(_ item: Item) -> some View {
         switch item {
-        case .header(let title):
-            header(title)
+        case .header(let group):
+            header(group)
                 .selectionDisabled()
         case .chat(let conversation):
-            row(conversation)
-        case .projectsHeader:
-            projectsHeader
-                .selectionDisabled()
+            row(conversation, showsIcon: conversation.isPinned)
         case .project(let project):
             projectRow(project)
                 .selectionDisabled()
@@ -704,47 +750,16 @@ struct AylaChatList: View {
 
     // MARK: Projects
 
-    private var projectsHeader: some View {
-        HStack {
-            Text(AylaMessages.projects)
-                .textStyle(.bodyMedium)
-                .foregroundStyle(Color.inkMuted)
-                .accessibilityAddTraits(.isHeader)
-            Spacer()
-            Button {
-                projectEditor = .new
-            } label: {
-                Image(.iconPlus)
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .paveIconFrame(16)
-                    .foregroundStyle(Color.inkMuted)
-                    .frame(width: 44, height: 44)
-                    .contentShape(.rect)
-            }
-            .buttonStyle(.pave)
-            .accessibilityLabel(AylaMessages.newProject)
-        }
-        .padding(.leading, 12)
-        .padding(.top, 14)
-        .plainRow()
-    }
-
+    /// As on the web: tapping a project opens its page and its chats underneath; tapping it again, while you are on its
+    /// page, folds them.
     private func projectRow(_ project: AylaProject) -> some View {
         let isOpen = openProjects.contains(project.id)
-        return AylaProjectRow(
-            project: project,
-            count: list.chats(in: project.id).count,
-            isOpen: isOpen
-        ) {
-            PaveHaptics.selection()
-            actions.projects?.open(project)
-        } onToggle: {
+        return AylaProjectRow(project: project, isOpen: isOpen) {
             PaveHaptics.selection()
             withAnimation(listAnimation) {
                 if isOpen { openProjects.remove(project.id) } else { openProjects.insert(project.id) }
             }
+            if !isOpen { actions.projects?.open(project) }
         }
         .plainRow()
         .contextMenu { projectMenu(project) }
@@ -808,17 +823,15 @@ struct AylaChatList: View {
         let placed = shown.compactMap { item in rowFrames.frames[item.id].map { (item: item, frame: $0) } }
         let under = placed.first { $0.frame.minY <= point.y && point.y < $0.frame.maxY }?.item
             ?? placed.filter { $0.frame.maxY <= point.y }.max { $0.frame.maxY < $1.frame.maxY }?.item
-        let pinnedTitle = "Vastgezet"
-
         enum Target { case pinned, project(AylaProject), locked, plain, nothing }
         let target: Target = switch under {
-        case .header(let title) where title == pinnedTitle: .pinned
-        case .chat(let conversation) where conversation.isPinned: .pinned
+        case .header(.pinned): .pinned
+        case .header(.projects), nil: .nothing
+        case .header(.recent): .plain
+        case .chat(let conversation): conversation.isPinned ? .pinned : .plain
         case .project(let project): .project(project)
         case .projectChat(let conversation): list.project(of: conversation).map(Target.project) ?? .plain
         case .locked: list.canLock ? .locked : .nothing
-        case .projectsHeader, nil: .nothing
-        default: .plain
         }
 
         switch target {
@@ -909,15 +922,52 @@ struct AylaChatList: View {
         Binding(get: { lockTarget != nil }, set: { if !$0 { lockTarget = nil } })
     }
 
-    private func header(_ title: String) -> some View {
-        Text(title)
-            .textStyle(.bodyMedium)
-            .foregroundStyle(Color.inkMuted)
-            .padding(.leading, 12)
-            .padding(.top, 14)
-            .padding(.bottom, 2)
+    /// A small grey heading with a chevron that folds its group, as on the web; Projecten also has its + for a new one.
+    private func header(_ group: Group) -> some View {
+        let folded = isFolded(group)
+        return HStack(spacing: 0) {
+            Button {
+                toggleFold(group)
+            } label: {
+                HStack(spacing: 4) {
+                    Text(group.title)
+                        .textStyle(.caption)
+                    Image(.iconChevronRight)
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 8, height: 8)
+                        .rotationEffect(.degrees(folded ? 0 : 90))
+                        .accessibilityHidden(true)
+                }
+                .foregroundStyle(Color.inkMuted)
+                .frame(minHeight: 44)
+                .padding(.horizontal, 12)
+                .contentShape(.rect)
+            }
+            .buttonStyle(.pave)
             .accessibilityAddTraits(.isHeader)
-            .plainRow()
+            .accessibilityValue(folded ? "Ingeklapt" : "Uitgeklapt")
+            Spacer(minLength: 0)
+            if group == .projects {
+                Button {
+                    projectEditor = .new
+                } label: {
+                    Image(.iconPlus)
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .paveIconFrame(16)
+                        .foregroundStyle(Color.paveAccent)
+                        .frame(width: 44, height: 44)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.pave)
+                .accessibilityLabel(AylaMessages.newProject)
+            }
+        }
+        .padding(.top, 8)
+        .plainRow()
     }
 
     // MARK: Actions
