@@ -2940,6 +2940,12 @@ struct AylaChatScreen: View {
                 return .failed(AylaMessages.actionNoInvitation(action.target ?? ""))
             }
             await sharing.answer(application, accepted: isOn)
+            // Said yes to a talk at a set moment: the calendar opens at once, and you save it there yourself.
+            if isOn, application.invitedFor != nil, let answered = sharing.fairApplications?.first(where: { $0.id == application.id }), answered.answer == .accepted {
+                if isTalking { stopVoice() }
+                closingShelf { calendarTalk = answered }
+                return .said(AylaMessages.actionInvitationAccepted(FairApplicationDetail.employerName(application)))
+            }
             return .said(AylaMessages.actionInvitationAnswered(FairApplicationDetail.employerName(application), accepted: isOn))
         case "addTalkToCalendar":
             guard let sharing, let application = AylaPlanActions.invitation(action.target, in: sharing.fairApplications ?? []) else {
