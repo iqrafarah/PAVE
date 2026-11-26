@@ -947,13 +947,24 @@ test('what Ayla does in the app reaches the iPhone as checked actions, in order'
   assert.match(fake.calls[0][0].content, /Zeg nooit dat je iets\s+gedaan hebt als het niet in actions staat/)
 })
 
-test('other devices get no actions and are told so', async () => {
-  for (const device of ['web', 'watch'] as const) {
-    const fake = model(say('Dat staat bij Instellingen.', { actions: [{ do: 'setDisplayMode', value: 'dark', target: null }] }))
-    const reply = await answer({ request: { ...request, device }, conversationId: 'c', history: [] }, { complete: fake.complete, newId: ids() })
-    assert.equal(reply.actions, undefined)
-    assert.match(fake.calls[0][0].content, /actions is altijd een lege lijst/)
-  }
+test('the web gets no actions and is told so', async () => {
+  const fake = model(say('Dat staat bij Instellingen.', { actions: [{ do: 'setDisplayMode', value: 'dark', target: null }] }))
+  const reply = await answer({ request: { ...request, device: 'web' }, conversationId: 'c', history: [] }, { complete: fake.complete, newId: ids() })
+  assert.equal(reply.actions, undefined)
+  assert.match(fake.calls[0][0].content, /actions is altijd een lege lijst/)
+})
+
+test('the Watch only sets up what the iPhone carries out, and asks Ja itself', async () => {
+  const fake = model(say('Ik zet je cv voor Kade klaar op je iPhone.', { actions: [
+    { do: 'setDisplayMode', value: 'dark', target: null },
+    { do: 'openApplication', value: null, target: 'Kade' },
+    { do: 'answerInvitation', value: 'yes', target: 'Jumbo' },
+    { do: 'markPlanStep', value: 'done', target: 'Cursus kiezen' },
+  ] }))
+  const reply = await answer({ request: { ...request, device: 'watch' }, conversationId: 'c', history: [] }, { complete: fake.complete, newId: ids() })
+  assert.deepEqual(reply.actions, [{ do: 'openApplication', target: 'Kade' }, { do: 'answerInvitation', value: 'yes', target: 'Jumbo' }])
+  assert.equal(reply.question, undefined)
+  assert.match(fake.calls[0][0].content, /Zelf iets doen vanaf de Watch/)
 })
 
 test('what cannot be undone waits for a Ja to a question with fixed words', async () => {

@@ -53,7 +53,7 @@ struct AylaVaultSelectionSheet: View {
                 }
             }
             Button(AylaMessages.askWithoutThem) { finish(chosen) }
-            Button("Annuleren", role: .cancel) {}
+            Button(ApplyMessages.cancel, role: .cancel) {}
         } message: { _ in
             Text(AylaMessages.askNotAllowedMessage)
         }

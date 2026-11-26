@@ -9,8 +9,31 @@ enum SharingMessages {
     static let earlier = "Eerder gedeeld"
     static let scan = "Scan een QR-code"
     static let scanHint = "Van een werkgever op een beurs, of een gedeeld profiel."
-    static let report = "Delen-rapport"
-    static let reportHint = "Wie wat de afgelopen 30 dagen heeft bekeken."
+    static let report = "Wie keek er"
+    static let reportHint = "Wie wat van je zag en wanneer, en wat nog te zien is."
+    static let whoLookedActive = "Nu gedeeld"
+    static let whoLookedViews = "Bekeken"
+    static let whoLookedDownloads = "Gedownload"
+    static let whoLookedIntro = "Iedere keer dat iemand iets opende wat je deelde, de afgelopen 30 dagen. Wat nog te zien is, stop je hier in één tik."
+    static let whoLookedEmptyTitle = "Nog niemand keek"
+    static let whoLookedEmpty = "Zodra iemand opent wat je deelde, zie je hier wie, wat en wanneer."
+    static let whoLookedStillVisible = "Nog te zien"
+    static let whoLookedStop = "Stop"
+    static let whoLookedStopQuestion = "Stoppen met delen?"
+    static func whoLookedStopLabel(_ who: String) -> String { "Stop delen met \(who)" }
+    static func whoLookedStopHint(_ who: String) -> String { "\(who) kan het daarna niet meer openen. Wat al gedownload is, kan PAVE niet terughalen." }
+    static func whoLookedWhat(_ downloaded: Bool, title: String) -> String { downloaded ? "Downloadde je cv of brief · \(title)" : "Bekeek \(title)" }
+    static func whoLookedSaid(_ recipient: String) -> String { "Noemde zichzelf zo; je deelde dit met \(recipient)." }
+    static func whoLookedUntil(_ date: Date, looks: Int) -> String {
+        "Tot \(date.formatted(.dateTime.day().month(.wide).locale(Locale(identifier: "nl_NL")))) · \(looks == 0 ? "nog niet bekeken" : looks == 1 ? "1 keer bekeken" : "\(looks) keer bekeken")"
+    }
+    static func whoLookedDay(_ date: Date) -> String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) { return "Vandaag" }
+        if calendar.isDateInYesterday(date) { return "Gisteren" }
+        let text = date.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(Locale(identifier: "nl_NL")))
+        return text.prefix(1).uppercased() + text.dropFirst()
+    }
     static let howItWorks = "Zo gaan we met je gegevens om"
     static let notSetUp = "Delen is nog niet beschikbaar in dit account."
     static let demoOnly = "Delen werkt alleen met een echt account."
@@ -155,6 +178,12 @@ enum SharingMessages {
     static let quickApplyNeedsWhy = "Schrijf kort waarom je hier wilt werken, of spreek het in."
     static let fairVacancies = "Vacatures"
     static let fairShareBack = "Deel je profiel"
+    static let leaveProfile = "Laat je profiel achter"
+    static func leaveProfileHint(_ employer: String) -> String { "\(employer) ziet je kaartje en je profiel in de postbus van de stand, ook zonder vacature." }
+    static let leaveProfileTitle = "Profiel achterlaten"
+    static let leaveProfileWhy = "Wat zoek je? (niet verplicht)"
+    static func leaveProfileSend(_ employer: String) -> String { "Laat achter bij \(employer)" }
+    static let shareByCode = "Of deel met een QR-code"
     static let quickApplySentTitle = "Achtergelaten"
     static func quickApplySentText(_ employer: String, vacancy: String) -> String {
         "Je kaartje voor \(vacancy) staat klaar bij \(employer). Je krijgt een melding als je wordt uitgenodigd; alles staat in Mijn beursdag."

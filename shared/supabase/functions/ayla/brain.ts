@@ -736,6 +736,7 @@ const NEEDS_TARGET: readonly ActionKind[] = [
   'openPlan', 'openProject', 'markPlanStep', 'removePlanStep', 'linkPlanToProject',
   'renamePlanStep', 'describePlanStep', 'answerInvitation', 'addTalkToCalendar', 'addProjectSource',
 ]
+/** Mail actions may leave out who: then the newest conversation is meant. */
 const NEEDS_VALUE: readonly ActionKind[] = [
   'openSettingsPage', 'renameChat', 'pinChat', 'setChatExpiry', 'setTheme', 'setTextSize', 'setDisplayMode', 'setVaultLayout', 'setVoiceText',
   'setChatsInSearch', 'setAnimations', 'setMemory', 'createFolder', 'moveToFolder', 'allowAyla', 'openVacancy', 'saveVacancy',
@@ -749,18 +750,23 @@ export function moreThanOneRound(raw: unknown): boolean {
   return Array.isArray(raw) && raw.filter((entry) => ACTIONS.includes((entry as Record<string, unknown>)?.do as ActionKind)).length > 4
 }
 
+/** What Ayla may set up from the Watch: the Watch asks Ja or Nee itself, and the iPhone carries it out. */
+export const WATCH_ACTIONS: readonly ActionKind[] = ['addPlanStep', 'markPlanStep', 'answerInvitation', 'openApplication', 'makeVacancyPlan', 'openPlan']
+
 export function cleanActions(raw: unknown, device: AylaRequest['device']): AppAction[] {
-  if (device !== 'phone' || !Array.isArray(raw)) return []
+  if (device === 'web' || !Array.isArray(raw)) return []
+  const onWatch = device === 'watch'
   const actions: AppAction[] = []
   for (const entry of raw as Record<string, unknown>[]) {
     const kind = entry?.do as ActionKind
-    if (!ACTIONS.includes(kind)) continue
+    if (!ACTIONS.includes(kind) || (onWatch && !WATCH_ACTIONS.includes(kind))) continue
     const word = (value: unknown) => (typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, 120) : '')
     const value = word(entry.value)
     const target = word(entry.target)
     if ((NEEDS_TARGET.includes(kind) && !target) || (NEEDS_VALUE.includes(kind) && !value)) continue
-    actions.push({ do: kind, ...(value ? { value } : {}), ...(target ? { target } : {}), ...(needsConfirmation(kind, value) ? { confirm: true as const } : {}) })
-    if (actions.length === 4) break
+    // On the Watch every action waits for Ja on the wrist, so it carries no question of its own.
+    actions.push({ do: kind, ...(value ? { value } : {}), ...(target ? { target } : {}), ...(!onWatch && needsConfirmation(kind, value) ? { confirm: true as const } : {}) })
+    if (actions.length === (onWatch ? 2 : 4)) break
   }
   return actions
 }

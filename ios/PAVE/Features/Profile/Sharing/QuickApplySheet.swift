@@ -25,6 +25,11 @@ struct QuickApplySheet: View {
     @State private var dictation = SpeechDictation()
     @State private var didStart = false
 
+    /// Not for one job: your profile left at the stand, as an open application. A reason is welcome, not needed.
+    private var isOpen: Bool { vacancy.id == FairEmployer.openApplicationID }
+    /// What still stops the card from going: only a name for an open application.
+    private var problem: FairApplicationCard.Problem? { isOpen ? (card.problem == .noName ? .noName : nil) : card.problem }
+
     var body: some View {
         NavigationStack {
             Group {
@@ -35,7 +40,7 @@ struct QuickApplySheet: View {
                 }
             }
             .background(Color.canvas)
-            .navigationTitle(sent == nil ? SharingMessages.quickApply : "")
+            .navigationTitle(sent == nil ? (isOpen ? SharingMessages.leaveProfileTitle : SharingMessages.quickApply) : "")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if sent == nil {
@@ -66,7 +71,7 @@ struct QuickApplySheet: View {
                 }
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text(SharingMessages.quickApplyWhy).textStyle(.bodyMedium).foregroundStyle(Color.inkMuted)
+                        Text(isOpen ? SharingMessages.leaveProfileWhy : SharingMessages.quickApplyWhy).textStyle(.bodyMedium).foregroundStyle(Color.inkMuted)
                         Spacer()
                         if chat.isAvailable {
                             Button { Task { await writeWhy() } } label: {
@@ -142,8 +147,8 @@ struct QuickApplySheet: View {
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 8) {
                 ShareBottomNote(error: model.problem ?? (aylaFailed ? ApplyMessages.aylaFailed : nil), reason: reason)
-                PavePrimaryButton(title: SharingMessages.quickApplySend, loadingTitle: SharingMessages.sharing, isLoading: isSending) { send() }
-                    .disabled(card.problem != nil || isSending)
+                PavePrimaryButton(title: isOpen ? SharingMessages.leaveProfileSend(employer.name) : SharingMessages.quickApplySend, loadingTitle: SharingMessages.sharing, isLoading: isSending) { send() }
+                    .disabled(problem != nil || isSending)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
@@ -157,7 +162,7 @@ struct QuickApplySheet: View {
     }
 
     private var reason: String? {
-        switch card.problem {
+        switch problem {
         case .noName: SharingMessages.quickApplyNeedsName
         case .noWhy: SharingMessages.quickApplyNeedsWhy
         case nil: nil

@@ -7,7 +7,7 @@ struct AylaChatsMoreMenu: View {
     var body: some View {
         Menu {
             Button(action: onSelect) {
-                Label("Selecteren", systemImage: "checkmark.circle.fill")
+                Label("Selecteren", tinted: .iconCheckCircleSolid)
             }
         } label: {
             Image(.iconEllipsis)

@@ -19,6 +19,13 @@ struct VacanciesScreen: View {
 
     private var latest: (vacancies: [Vacancy], search: VacancySearch?, usedData: [AylaVaultCategory]) { model.latestVacancySearch }
 
+    /// What the compass looks at: what Ayla found last, what you kept and what you apply for.
+    private var compassVacancies: [Vacancy] {
+        model.savedVacancies.map(\.vacancy) + ApplicationStore().all().map(\.vacancy) + latest.vacancies
+    }
+
+    private var compass: SkillCompass.Result { SkillCompass.build(vacancies: compassVacancies, items: vault?.items ?? []) }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -26,6 +33,18 @@ struct VacanciesScreen: View {
                     Text(AylaMessages.vacanciesPageHint)
                         .textStyle(.bodyMedium)
                         .foregroundStyle(Color.inkMuted)
+                    if compass.vacancyCount > 0 {
+                        NavigationLink {
+                            SkillCompassView(
+                                compass: compass,
+                                vacancyAsking: { skill in compassVacancies.first { $0.skillGap.contains { $0.skill.caseInsensitiveCompare(skill) == .orderedSame } } },
+                                onAskAyla: model.isAvailable ? { skill, vacancy in onRequest(.askGap(skill, vacancy)) } : nil
+                            )
+                        } label: {
+                            SkillCompassCard(compass: compass)
+                        }
+                        .buttonStyle(.pave)
+                    }
                     VacancyList(
                         vacancies: latest.vacancies, model: model, tab: $tab, search: latest.search, usedData: latest.usedData,
                         foundEmptyMessage: AylaMessages.vacancyFoundEmptyOnPage,

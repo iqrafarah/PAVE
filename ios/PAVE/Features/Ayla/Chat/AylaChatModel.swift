@@ -34,6 +34,9 @@ final class AylaChatModel {
     private(set) var context: AylaRequest.Context?
     /// A practice interview for this vacancy is going on: every question goes along with it until it stops.
     private(set) var practice: Vacancy?
+    /// A practice that just ended, from which entry it began: its report can be made.
+    private(set) var finishedPractice: (vacancy: Vacancy, from: Int)?
+    @ObservationIgnored private var practiceStart = 0
     /// A button on a vacancy: the next question goes along with this, once.
     @ObservationIgnored private var nextTask: AylaRequest.Context?
     /// The question that ends the practice is still sent as part of it, so Ayla sums it up.
@@ -798,6 +801,8 @@ final class AylaChatModel {
             return task == .gaps ? AylaMessages.vacancyGapsQuestion(first) : AylaMessages.vacancyPrepareQuestion(first)
         case .interview:
             practice = first
+            practiceStart = entries.count
+            finishedPractice = nil
             endsPractice = false
             return AylaMessages.vacancyPracticeQuestion(first)
         }
@@ -810,9 +815,18 @@ final class AylaChatModel {
         return AylaMessages.practiceStopQuestion
     }
 
+    /// The practice that ended, as turns for its report.
+    func finishedPracticeTurns() -> [(fromUser: Bool, text: String)] {
+        guard let start = finishedPractice?.from, start < entries.count else { return [] }
+        return entries[start...].map { ($0.role == .user, $0.text) }.filter { !$0.text.isEmpty }
+    }
+
+    func forgetFinishedPractice() { finishedPractice = nil }
+
     /// Ends the practice at once, such as when the conversation changes.
     func endPractice() {
         practice = nil
+        finishedPractice = nil
         endsPractice = false
         nextTask = nil
     }
@@ -826,6 +840,7 @@ final class AylaChatModel {
         guard let practice else { return context }
         let sent = AylaRequest.Context(screen: .vacancies, itemIds: context?.itemIds, vacancy: .init(practice), task: .interview)
         if endsPractice || AylaMessages.endsPractice(text) {
+            finishedPractice = (practice, practiceStart)
             self.practice = nil
             endsPractice = false
         }

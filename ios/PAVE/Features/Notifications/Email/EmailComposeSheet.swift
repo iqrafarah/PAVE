@@ -172,7 +172,7 @@ struct EmailComposeSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuleren") { dismiss() }
+                    Button(ApplyMessages.cancel) { dismiss() }
                         .disabled(isSending)
                 }
                 ToolbarItem(placement: .confirmationAction) {

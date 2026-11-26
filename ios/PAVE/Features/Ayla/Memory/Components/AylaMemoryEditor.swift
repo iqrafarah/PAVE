@@ -70,7 +70,7 @@ struct AylaMemoryEditor: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuleren") { dismiss() }
+                    Button(ApplyMessages.cancel) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Bewaren") {

@@ -1,5 +1,6 @@
 import PAVECore
 import SwiftUI
+import UserNotifications
 
 /// The app after signing in. You can go to Ayla, your vault or your plans yourself with the menu, laid out like
 /// ChatGPT: on a wide screen (iPad, the open iPhone Duo held sideways) it is a sidebar next to the screen that you
@@ -124,6 +125,8 @@ struct MainView: View {
             await notificationsModel.refresh()
             if round % 4 == 0 { await emailModel.refresh() }
             await sharing.loadFairApplications()
+            // With a Watch, who looked at what you shared taps your wrist within half a minute.
+            if ShareWatchBridge.isAvailable { await sharing.load() }
             if draftSync == nil { draftSync = ApplicationDraftSyncer.make(auth: appState.authService) }
             if await draftSync?.run() == true { sharing.reloadApplications() }
             round += 1
@@ -217,6 +220,8 @@ struct MainView: View {
             }
         }
         .task { await model.start() }
+        .task { connectWatch() }
+        .onChange(of: plans.plans) { _, all in sendPlanToWatch(all) }
         .followsPlans(plans, chat: model)
         .keepsOpenChat(destination == .ayla && scenePhase == .active && appState.isOpen ? model.conversationID : nil, in: notificationsModel)
         .task { await memory.load() }
@@ -710,6 +715,116 @@ struct MainView: View {
 #Preview {
     MainView(service: nil, vaultService: nil)
         .environment(AppState())
+}
+
+// MARK: The Watch
+
+extension MainView {
+    /// What you decide on the Watch is carried out here: an invitation answered, a plan step, an application to open.
+    func connectWatch() {
+        WatchEventBridge.onAnswer = { id, accepted in
+            guard let application = sharing.fairApplications?.first(where: { $0.id == id }) else { return false }
+            await sharing.answer(application, accepted: accepted)
+            return true
+        }
+        WatchEventBridge.onActions = { actions in await carryOutFromWatch(actions) }
+        sendPlanToWatch(plans.plans)
+    }
+
+    /// The plan you follow, or else the one changed last, for the wrist.
+    func sendPlanToWatch(_ all: [PavePlan]) {
+        let going = all.filter { !$0.isFinished }
+        guard let plan = going.first(where: { $0.id == plans.followedPlanID }) ?? going.max(by: { $0.updatedAt < $1.updatedAt }) else { return }
+        WatchEventBridge.send(.plan(name: plan.name, done: plan.doneCount, total: plan.totalCount, current: plan.currentStep?.title))
+    }
+
+    /// Actions Ayla proposed on the Watch, after Ja there. Plans and invitations change here at once; an application or
+    /// plan opens on the iPhone, which says so on the wrist and lights up with a notification.
+    func carryOutFromWatch(_ actions: [AylaAppAction]) async -> String {
+        var said: [String] = []
+        let planActions = AylaPlanActions(plans: plans, chatPlan: nil)
+        for action in actions.prefix(4) {
+            switch action.kind {
+            case "addPlanStep":
+                said.append(planActions.addStep(action.value, toPlanNamed: action.target) ?? WatchHandoffMessages.stepAdded(action.value ?? ""))
+            case "markPlanStep":
+                said.append(planActions.markStep(action.target, as: action.value) ?? WatchHandoffMessages.stepMarked(action.target ?? ""))
+            case "answerInvitation":
+                let accepted = ["yes", "ja", "on"].contains(action.value?.lowercased() ?? "")
+                guard let application = AylaPlanActions.invitation(action.target, in: sharing.fairApplications ?? []) else {
+                    said.append(AylaMessages.actionNoInvitation(action.target ?? ""))
+                    continue
+                }
+                await sharing.answer(application, accepted: accepted)
+                said.append(AylaMessages.actionInvitationAnswered(FairApplicationDetail.employerName(application), accepted: accepted))
+            case "openApplication", "makeVacancyPlan":
+                guard let vacancy = vacancyFromWatch(action.target) else {
+                    said.append(WatchHandoffMessages.noVacancy(action.target ?? ""))
+                    continue
+                }
+                if action.kind == "makeVacancyPlan" {
+                    let template = PlanVacancy.template(for: vacancy)
+                    if plans.plans.contains(where: { PlanVacancy.vacancyID(of: $0) == vacancy.id }) == false {
+                        _ = await plans.create(name: template.name, goal: template.goal, from: template)
+                    }
+                    handOff(title: WatchHandoffMessages.planReady(vacancy), detail: WatchHandoffMessages.onIPhone)
+                    open(.plan)
+                } else {
+                    handOff(title: WatchHandoffMessages.applicationReady(vacancy), detail: WatchHandoffMessages.onIPhone)
+                    model.request(.application(vacancy))
+                    open(.ayla)
+                }
+                said.append(WatchHandoffMessages.onIPhone)
+            case "openPlan":
+                guard let plan = planActions.plan(named: action.target) else {
+                    said.append(AylaMessages.actionNoPlan(action.target))
+                    continue
+                }
+                plans.openPlanID = plan.id
+                open(.plan)
+                handOff(title: plan.name, detail: WatchHandoffMessages.onIPhone)
+                said.append(WatchHandoffMessages.onIPhone)
+            default:
+                said.append(WatchHandoffMessages.onlyOnIPhone)
+            }
+        }
+        return said.joined(separator: " ")
+    }
+
+    /// A vacancy by the words said on the Watch: an application you have, one you kept, or one Ayla found last.
+    func vacancyFromWatch(_ words: String?) -> Vacancy? {
+        let known = ApplicationStore().all().map(\.vacancy) + model.savedVacancies.map(\.vacancy) + model.latestVacancySearch.vacancies
+        let named = known.map { AylaAppCommand.Named(id: $0.id, name: "\($0.title) \($0.company)") }
+        if let found = AylaAppAction.best(words, in: named) { return known.first { $0.id == found.id } }
+        return words?.isEmpty != false ? known.first : nil
+    }
+
+    /// The iPhone lights up, and the wrist says it is ready there.
+    func handOff(title: String, detail: String) {
+        WatchEventBridge.send(.handoff(title: title, detail: detail))
+        Task {
+            let center = UNUserNotificationCenter.current()
+            let status = await center.notificationSettings().authorizationStatus
+            guard status == .authorized || status == .provisional else { return }
+            let content = UNMutableNotificationContent()
+            content.title = title
+            content.body = WatchHandoffMessages.fromWatch
+            content.sound = .default
+            try? await center.add(UNNotificationRequest(identifier: "watch.handoff.\(UUID().uuidString)", content: content, trigger: nil))
+        }
+    }
+}
+
+/// The words of what was set up from the Watch.
+enum WatchHandoffMessages {
+    static let onIPhone = "Het staat klaar op je iPhone."
+    static let fromWatch = "Klaargezet door Ayla, vanaf je Watch."
+    static let onlyOnIPhone = "Dat kan alleen op je iPhone."
+    static func stepAdded(_ title: String) -> String { "Ik heb de stap \(title) toegevoegd." }
+    static func stepMarked(_ title: String) -> String { "Ik heb de stap \(title) bijgewerkt." }
+    static func noVacancy(_ words: String) -> String { "Ik vond geen vacature bij \(words). Open hem op je iPhone." }
+    static func applicationReady(_ vacancy: Vacancy) -> String { "Je cv en brief voor \(vacancy.company)" }
+    static func planReady(_ vacancy: Vacancy) -> String { "Je plan voor \(vacancy.company)" }
 }
 
 /// When knopmodus should run: chosen, PAVE in front, and unlocked.

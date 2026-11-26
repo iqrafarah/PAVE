@@ -1,3 +1,4 @@
+import PAVECore
 import SwiftUI
 
 /// The splash, then either Ayla or the request to sign in on the iPhone.
@@ -42,6 +43,10 @@ struct WatchRootView: View {
                 .sheet(isPresented: $showsNewCode) {
                     WatchSharedCodeView(codes: sessions.sharedCodes, startID: sessions.newCodeID)
                 }
+                // What just happened on the iPhone, with a tap on the wrist.
+                .sheet(item: Binding(get: { sessions.event.map(ShownEvent.init) }, set: { if $0 == nil { sessions.event = nil } })) { shown in
+                    WatchEventCard(event: shown.event, sessions: sessions) { sessions.event = nil }
+                }
             } else {
                 WatchSignedOutView(needsConnecting: sessions.needsConnecting)
             }
@@ -56,6 +61,11 @@ struct WatchRootView: View {
             .environment(\.paveOrbPalette, preferences.orbPalette)
             .tint(preferences.accentColor)
     }
+}
+
+private struct ShownEvent: Identifiable {
+    let event: WatchEvent
+    var id: String { String(describing: event) }
 }
 
 #Preview {

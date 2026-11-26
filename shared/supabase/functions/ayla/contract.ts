@@ -102,7 +102,7 @@ export const ACTIONS = [
   'openVacancy', 'saveVacancy',
   'openNotifications', 'openApplications', 'openApplication', 'openProject', 'setFontStyle',
   'openPlan', 'addPlanStep', 'markPlanStep', 'renamePlanStep', 'describePlanStep', 'linkPlanToProject', 'makeVacancyPlan',
-  'addTalkToCalendar',
+  'addTalkToCalendar', 'openMail', 'summarizeMail', 'replyMail',
   'shareWith', 'stopSharing', 'showShares',
   'deleteChat', 'deleteEvidence', 'signOut', 'forgetAll', 'removePlanStep', 'answerInvitation', 'addProjectSource',
 ] as const

@@ -288,6 +288,10 @@ struct PlanIsland: View {
                                     .padding(.horizontal, 10)
                                     .frame(minHeight: 28)
                                     .background(Color.paveSurfaceTint, in: .capsule)
+                                    // Small to look at, a full finger to hit.
+                                    .padding(.vertical, 8)
+                                    .contentShape(.rect)
+                                    .padding(.vertical, -8)
                                     .buttonStyle(.pave)
                             }
                         }

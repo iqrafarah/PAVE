@@ -15,6 +15,14 @@ public struct FairEmployer: Identifiable, Equatable, Sendable, Decodable {
     /// When it was put on the fair: for a real employer, the day its vacancies were read.
     public let addedAt: Date?
 
+    /// The "vacancy" of a profile left at the stand without a job: an open application.
+    public static let openApplicationID = "open"
+
+    /// Your profile for this employer as an open application, for the employer's inbox.
+    public var openApplication: Vacancy {
+        Vacancy(id: Self.openApplicationID, title: "Open sollicitatie", company: name, source: isExample ? .example : .web)
+    }
+
     enum CodingKeys: String, CodingKey {
         case slug, name, city, about, stand, website, vacancies
         case isExample = "is_example"

@@ -62,6 +62,25 @@ enum PlanMessages {
     static let openApplication = "Open cv en brief"
     static let practiseTalk = "Oefen het gesprek met Ayla"
     static let project = "Project"
+    static let compassTitle = "Skill-kompas"
+    static func compassIntro(_ count: Int) -> String { "Over \(count == 1 ? "de vacature" : "de \(count) vacatures") die je vond, bewaarde of waarop je solliciteert: wat ze vragen, wat je al kunt laten zien en wat je nog mist." }
+    static let compassNext = "Hier haal je het meest uit"
+    static func compassAskedIn(_ count: Int, of total: Int) -> String { "Gevraagd in \(count) van de \(total) vacatures, en nog niet in je kluis." }
+    static func compassCount(_ count: Int, of total: Int) -> String { "\(count) van \(total)" }
+    static let compassMissing = "Wat je nog mist"
+    static let compassHave = "Wat je al kunt laten zien"
+    static let compassMatchedOnly = "Past volgens de vacature; zet er bewijs van in je kluis."
+    static func compassProof(_ titles: [String], verified: Bool) -> String { (verified ? "Geverifieerd: " : "Bewijs: ") + titles.prefix(2).joined(separator: ", ") }
+    static let compassToPlan = "Zet in een plan"
+    static let compassAdded = "In je plan"
+    static let compassNewPlan = "Nieuw plan"
+    static let compassAsk = "Vraag Ayla"
+    static func compassStep(_ skill: String) -> String { String("Werk aan \(skill)".prefix(80)) }
+    static func compassStepSummary(_ count: Int) -> String { count == 1 ? "Een vacature die je bekeek vraagt hierom." : "\(count) vacatures die je bekeek vragen hierom." }
+    static let compassEmptyTitle = "Nog geen vacatures"
+    static let compassEmpty = "Zoek of bewaar vacatures met Ayla. Dan zie je hier wat ze vragen en wat je nog mist."
+    static func compassCardHint(_ skill: String, count: Int, of total: Int) -> String { "Meest gevraagd wat je mist: \(skill) (\(count) van \(total))" }
+    static let compassCardAllSet = "Wat de vacatures vragen en wat je al kunt laten zien"
     static let noProject = "Geen project"
     static let linkProject = "Koppel aan een project"
     static let linkProjectHint = "De gesprekken van dit plan komen dan in dat project en gebruiken de instructies en bronnen ervan."

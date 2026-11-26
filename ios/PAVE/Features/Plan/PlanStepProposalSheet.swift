@@ -82,7 +82,7 @@ struct PlanStepProposalSheet: View {
             .navigationTitle(PlanMessages.proposalTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Annuleren") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(ApplyMessages.cancel) { dismiss() } }
             }
             .task(id: round) { await load() }
         }

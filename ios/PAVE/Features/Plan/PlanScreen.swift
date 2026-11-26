@@ -245,7 +245,7 @@ private struct PlanDeletion: ViewModifier {
                 Button(PlanMessages.deleteKeepChats) { delete(plan, chats: []) }
                 Button(PlanMessages.deleteWithChats, role: .destructive) { delete(plan, chats: ids) }
             }
-            Button("Annuleren", role: .cancel) {}
+            Button(ApplyMessages.cancel, role: .cancel) {}
         } message: { plan in
             let count = chatIDs(of: plan).count
             Text(count == 0 ? PlanMessages.deleteBody : PlanMessages.deleteBody(chats: count))

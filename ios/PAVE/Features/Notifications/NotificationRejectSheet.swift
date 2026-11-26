@@ -47,7 +47,7 @@ struct NotificationRejectSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuleren") { dismiss() }
+                    Button(ApplyMessages.cancel) { dismiss() }
                         .disabled(isWorking)
                 }
                 ToolbarItem(placement: .confirmationAction) {

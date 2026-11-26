@@ -189,8 +189,11 @@ struct ArchiveScreen: View {
             HStack(spacing: 6) {
                 Text(sortTitle)
                     .lineLimit(1)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 10, weight: .semibold))
+                Image(.iconChevronDown)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .paveIconHeight(6)
                     .accessibilityHidden(true)
             }
             .textStyle(.caption)

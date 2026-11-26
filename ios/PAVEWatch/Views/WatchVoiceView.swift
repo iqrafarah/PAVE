@@ -20,7 +20,7 @@ struct WatchVoiceView: View {
     /// Ayla asks something you answer on the screen; otherwise her answer is only spoken.
     private var hasAnswer: Bool {
         guard let reply = model.reply else { return false }
-        return !(reply.question?.choices.isEmpty ?? true) || model.proposal != nil || model.remember != nil
+        return !(reply.question?.choices.isEmpty ?? true) || model.proposal != nil || model.remember != nil || model.handoff != nil
     }
 
     var body: some View {
@@ -134,6 +134,9 @@ struct WatchVoiceView: View {
             }
             if let proposal = model.proposal {
                 WatchProposalCard(proposal: proposal) { model.answerProposal($0) }
+            }
+            if let handoff = model.handoff {
+                WatchHandoffCard(handoff: handoff) { model.answerHandoff($0) }
             }
             if let remember = model.remember {
                 WatchRememberCard(remember: remember) { model.answerRemember($0) }

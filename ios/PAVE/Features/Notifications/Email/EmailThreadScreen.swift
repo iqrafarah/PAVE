@@ -93,7 +93,7 @@ struct EmailThreadScreen: View {
                 PaveHaptics.tap(.medium)
                 Task { await email.delete(message, in: threadID) }
             }
-            Button("Annuleren", role: .cancel) {}
+            Button(ApplyMessages.cancel, role: .cancel) {}
         } message: { _ in
             Text("Het gaat naar de prullenmand van je iCloud-mailbox. Daar kun je het in Mail nog terugzetten.")
         }
@@ -135,7 +135,7 @@ struct EmailThreadScreen: View {
                 aylaAllowed = true
                 Task { await runAyla(task) }
             }
-            Button("Annuleren", role: .cancel) {}
+            Button(ApplyMessages.cancel, role: .cancel) {}
         } message: { _ in
             Text("Hiervoor gaat de tekst van dit gesprek naar Ayla, met de namen en adressen erin. Ze gebruikt hem alleen hiervoor; er komt geen chat van bij je chats. Ayla kan fouten maken, dus lees na wat ze schrijft.")
         }
@@ -152,7 +152,7 @@ struct EmailThreadScreen: View {
                 .navigationTitle("Gesprek vergrendelen")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    ToolbarItem(placement: .cancellationAction) { Button("Annuleren") { choosesLockPin = false } }
+                    ToolbarItem(placement: .cancellationAction) { Button(ApplyMessages.cancel) { choosesLockPin = false } }
                 }
             }
             .tint(.paveAccent)
@@ -198,16 +198,16 @@ struct EmailThreadScreen: View {
             }
             Section {
                 Button { forwarding = EmailForwarding(messages: thread.messages) } label: {
-                    Label(thread.messages.count == 1 ? "Doorsturen" : "Gesprek doorsturen", systemImage: "arrowshape.turn.up.right.fill")
+                    Label(thread.messages.count == 1 ? "Doorsturen" : "Gesprek doorsturen", tinted: .iconArrowUturnRightSolid)
                 }
                 Button {
                     PaveHaptics.selection()
                     email.toggleMute(threadID)
                 } label: {
                     if email.isMuted(thread) {
-                        Label("Dempen opheffen", systemImage: "bell.fill")
+                        Label("Dempen opheffen", tinted: .iconBellSolid)
                     } else {
-                        Label("Dempen", systemImage: "bell.slash.fill")
+                        Label("Dempen", tinted: .iconBellSlashSolid)
                     }
                 }
                 if email.isLocked(thread) {
@@ -249,7 +249,7 @@ struct EmailThreadScreen: View {
                         .padding(.top, 8)
                 }
                 if email.isMuted(thread) {
-                    Label("Gedempt", systemImage: "bell.slash.fill")
+                    Label("Gedempt", tinted: .iconBellSlashSolid)
                         .textStyle(.meta)
                         .foregroundStyle(Color.inkMuted)
                 }
@@ -296,6 +296,14 @@ struct EmailThreadScreen: View {
             Task { await email.open(threadID) }
         }
         .onAppear { email.openThreadID = threadID }
+        // Asked from a chat with Ayla: what she was asked starts here, behind the same consent as the buttons.
+        .task(id: threadID) {
+            guard let asked = email.aylaRequest, asked.threadID == threadID else { return }
+            email.aylaRequest = nil
+            try? await Task.sleep(for: .milliseconds(400))
+            if !asked.wish.isEmpty { draft = asked.wish }
+            askAyla(asked.task)
+        }
         .onDisappear {
             dictation.stop()
             if email.openThreadID == threadID { email.openThreadID = nil }
@@ -392,6 +400,8 @@ struct EmailThreadScreen: View {
                             .frame(width: 9, height: 9)
                             .foregroundStyle(Color.inkMuted)
                             .frame(width: 30, height: 30)
+                            .frame(width: 44, height: 44)
+                            .contentShape(.rect)
                     }
                     .buttonStyle(.pave)
                     .accessibilityLabel("Terug naar antwoorden aan iedereen")
@@ -537,6 +547,8 @@ struct EmailThreadScreen: View {
                         .frame(width: 9, height: 9)
                         .foregroundStyle(Color.inkMuted)
                         .frame(width: 30, height: 30)
+                        .frame(width: 44, height: 44)
+                        .contentShape(.rect)
                 }
                 .buttonStyle(.pave)
                 .accessibilityLabel("Samenvatting sluiten")
@@ -814,7 +826,7 @@ struct EmailReplyField: View {
                 .accessibilityHint("Ayla maakt van je tekst een net antwoord op deze mail")
         } else if let onAyla {
             Menu {
-                Button { onAyla(.suggestReply) } label: { Label("Stel een antwoord voor", systemImage: "text.bubble.fill") }
+                Button { onAyla(.suggestReply) } label: { Label("Stel een antwoord voor", tinted: .iconAyla) }
                 Button { onAyla(.summarize) } label: { Label("Vat samen", tinted: .iconListBulletSolid) }
             } label: { markLabel }
                 .menuOrder(.fixed)

@@ -27,4 +27,18 @@ enum WatchMessages {
         case .conversationNotFound, .unavailable: "Ayla is even niet bereikbaar. Probeer het zo nog eens."
         }
     }
+    static let handoffDone = "Klaar op je iPhone."
+    static let handoffQueued = "Gaat mee zodra je iPhone in de buurt is."
+    static func coachQuestion(_ company: String) -> String {
+        "Ik heb zo een gesprek bij \(company). Geef me drie korte punten om te noemen, elk één zin, op basis van wat je van mij weet."
+    }
+    static let coachTitle = "Gesprek-coach"
+    static let coachBreathe = "Adem rustig mee"
+    static let coachIn = "In…"
+    static let coachHold = "Vast…"
+    static let coachOut = "Uit…"
+    static let coachPoints = "Om te noemen"
+    static let coachThinking = "Ayla zoekt je punten…"
+    static let coachFailed = "Ayla kon nu geen punten geven. Probeer het op je iPhone."
+    static let coachGo = "Je bent er klaar voor."
 }

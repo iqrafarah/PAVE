@@ -34,7 +34,7 @@ struct ShareRecipientItemRow: View {
                         VaultStatusBadge(item: item)
                             .padding(.leading, -4)
                         if hasFile {
-                            Label(SharingMessages.recipientHasFile, image: .iconPaperclip)
+                            Label(SharingMessages.recipientHasFile, tinted: .iconPaperclip)
                                 .labelStyle(.titleAndIcon)
                                 .textStyle(.caption)
                                 .foregroundStyle(Color.paveAccent)

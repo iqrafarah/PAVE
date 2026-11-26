@@ -22,8 +22,8 @@ struct AylaStepMark: View {
                     .background(Color.paveAccentFill, in: .circle)
                     .transition(.scale(scale: 0.5).combined(with: .opacity))
             case .failed:
-                Image(systemName: "exclamationmark")
-                    .font(.system(size: 10, weight: .bold))
+                Text("!")
+                    .font(.custom("InterVariable-Bold", fixedSize: 11))
                     .foregroundStyle(Color.white)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color.criticalInk, in: .circle)

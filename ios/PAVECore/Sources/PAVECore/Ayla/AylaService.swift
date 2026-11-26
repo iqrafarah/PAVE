@@ -94,6 +94,8 @@ public protocol AylaService: Sendable {
     func writeApplication(_ request: ApplicationWritingRequest) async throws -> ApplicationWriting
     /// Ayla proposes steps for a plan (the `ayla-plan` function); nothing is saved until the user picks them.
     func proposePlanSteps(_ request: PlanStepsRequest) async throws -> [PavePlanTemplate.Step]
+    /// The report of a practice interview (the `ayla-practice` function).
+    func practiceReport(_ request: PracticeReportRequest) async throws -> PracticeReport
     /// What Ayla remembers about the user, the newest first. `notSetUp` until the tables exist.
     func memories() async throws -> AylaMemories
     /// Saves a note the user kept or wrote.
@@ -170,6 +172,8 @@ extension AylaService {
     public func writeApplication(_ request: ApplicationWritingRequest) async throws -> ApplicationWriting { throw AylaError.unavailable }
 
     public func proposePlanSteps(_ request: PlanStepsRequest) async throws -> [PavePlanTemplate.Step] { throw AylaError.unavailable }
+
+    public func practiceReport(_ request: PracticeReportRequest) async throws -> PracticeReport { throw AylaError.unavailable }
 
     public func memories() async throws -> AylaMemories { throw AylaError.notSetUp }
     public func remember(
@@ -448,6 +452,19 @@ public struct SupabaseAylaService: AylaService {
         let data = try await perform(urlRequest, accepting: [200])
         guard let proposal = try? JSONDecoder().decode(PlanStepsProposal.self, from: data) else { throw AylaError.unavailable }
         return proposal.templateSteps
+    }
+
+    public func practiceReport(_ request: PracticeReportRequest) async throws -> PracticeReport {
+        guard let token = await accessToken() else { throw AylaError.notSignedIn }
+        var urlRequest = URLRequest(url: projectURL.appending(path: "functions/v1/ayla-practice"), timeoutInterval: 60)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue(publishableKey, forHTTPHeaderField: "apikey")
+        urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        urlRequest.httpBody = try JSONEncoder().encode(request)
+        let data = try await perform(urlRequest, accepting: [200])
+        guard let report = try? JSONDecoder().decode(PracticeReport.self, from: data) else { throw AylaError.unavailable }
+        return report
     }
 
     public func companyAbout(company: String, city: String?) async throws -> CompanyAbout? {

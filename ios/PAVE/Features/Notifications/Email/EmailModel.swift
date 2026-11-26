@@ -1,4 +1,5 @@
 import Foundation
+import PAVECore
 import Observation
 
 /// The connected mailboxes and their conversations, for Meldingen. Mail is fetched live from iCloud and
@@ -766,6 +767,19 @@ final class EmailModel {
 
     /// Asked from outside Meldingen (the banner): Meldingen opens this conversation as soon as it is on screen.
     var threadToOpen: String?
+
+    /// Asked of Ayla from a chat: once this conversation is open, she summarises it or proposes a reply (with what
+    /// the user wants it to say). The thread asks for her consent first, as when you tap the button yourself.
+    var aylaRequest: (threadID: String, task: EmailAylaTask, wish: String)?
+
+    /// A conversation by the words you use for it: a name, an address or the subject. Nil when none or several fit.
+    func thread(matching words: String?) -> EmailThread? {
+        let named = threads.map { AylaAppCommand.Named(id: $0.id, name: "\($0.participantNames) \($0.participants.map(\.address).joined(separator: " ")) \($0.subject)") }
+        if let found = AylaAppAction.best(words, in: named) { return thread(found.id) }
+        // "de laatste mail", or no words at all: the newest conversation.
+        if words.map({ $0.isEmpty || $0.lowercased().contains("laatste") || $0.lowercased().contains("nieuwste") }) ?? true { return threads.max { $0.date < $1.date } }
+        return nil
+    }
 
     /// Conversations whose names, subject or text contain `text`, for the search in Meldingen.
     func threadIDs(matching text: String) -> Set<String> {

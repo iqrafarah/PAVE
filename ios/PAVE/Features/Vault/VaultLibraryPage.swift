@@ -402,7 +402,7 @@ struct VaultLibraryPage: View {
                 Button {
                     Task { await model.setPinned(!folder.isPinned, folder: folder) }
                 } label: {
-                    Label { Text(folder.isPinned ? VaultMessages.unpinFolder : VaultMessages.pinFolder) } icon: { Image(systemName: folder.isPinned ? "pin.slash.fill" : "pin.fill") }
+                    Label { Text(folder.isPinned ? VaultMessages.unpinFolder : VaultMessages.pinFolder) } icon: { Image(folder.isPinned ? .iconBookmarkSlashSolid : .iconBookmarkSolid).renderingMode(.template) }
                 }
                 Button { actions.editFolder(folder) } label: {
                     Label { Text("Map aanpassen") } icon: { Image(.iconPencil) }

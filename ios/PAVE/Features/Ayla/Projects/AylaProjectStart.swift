@@ -263,8 +263,11 @@ struct AylaProjectStart: View {
         HStack(spacing: 6) {
             Text(text)
                 .lineLimit(1)
-            Image(systemName: "chevron.down")
-                .font(.system(size: 10, weight: .semibold))
+            Image(.iconChevronDown)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .paveIconHeight(6)
                 .accessibilityHidden(true)
         }
         .textStyle(.caption)
@@ -422,7 +425,7 @@ struct AylaSourcePicker: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuleren") { dismiss() }
+                    Button(ApplyMessages.cancel) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(picked.isEmpty ? "Toevoegen" : "Toevoegen (\(picked.count))", action: add)
@@ -446,7 +449,7 @@ struct AylaSourcePicker: View {
                 Button(AylaMessages.askWithoutThem) {
                     finish(Array(picked.subtracting(notAllowed.map(\.id))))
                 }
-                Button("Annuleren", role: .cancel) {}
+                Button(ApplyMessages.cancel, role: .cancel) {}
             } message: { _ in
                 Text(AylaMessages.askNotAllowedMessage)
             }
@@ -491,9 +494,7 @@ struct AylaSourcePicker: View {
                         .foregroundStyle(Color.inkMuted)
                 }
                 Spacer(minLength: 8)
-                Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 22))
-                    .foregroundStyle(isOn ? Color.paveAccent : Color.inkMuted)
+                PaveCheckbox(isOn: isOn, size: 20)
                     .opacity(isSource ? 0.5 : 1)
                     .accessibilityHidden(true)
             }
