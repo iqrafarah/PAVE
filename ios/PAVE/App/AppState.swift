@@ -24,6 +24,9 @@ final class AppState {
     var conversationToOpen: String?
     /// Something asked from outside the app (Siri, a widget, Control Center); done once the app is unlocked.
     var link: PaveLink?
+    /// A fair code scanned with the iPhone's own camera ("Open in PAVE"): an employer, a poster or an employer's
+    /// inbox. Opens once the app is unlocked.
+    var fairToOpen: ShareLinks.Scanned?
     /// A melding banner was tapped; PAVE opens on Meldingen once it is unlocked.
     var opensNotifications = false
     /// The banner was for new mail: this conversation opens in Meldingen.

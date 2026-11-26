@@ -156,6 +156,17 @@ struct VaultAddEvidenceTests {
         #expect(flow.draft.title == "Professional Scrum Master I")
     }
 
+    @Test func fillingItInYourselfFromTheChatKeepsTheFilesAndReadsNothing() async {
+        let service = FakeVault()
+        await service.propose([certificate])
+        let flow = VaultAddEvidenceModel.filledByYou(vault: VaultModel(service: service), category: .certificates, documents: [pdf])
+        #expect(flow.documents == [pdf])
+        #expect(flow.page == .details)
+        #expect(flow.aylaFill == .idle)
+        #expect(flow.draft.title != "Professional Scrum Master I")
+        #expect(!flow.draft.filledByAyla)
+    }
+
     @Test func filesReadInTheChatAreNotReadAgain() async {
         let service = FakeVault()
         let chat = AylaReply.VaultItemProposal(category: .certificates, title: "PSM I", issuedOn: "2025-06-12")

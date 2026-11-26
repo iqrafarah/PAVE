@@ -217,7 +217,9 @@ struct AylaChatList: View {
     }
 
     var body: some View {
-        List(selection: $selection) {
+        // Selecting is done by the rows themselves: only chats get a check, never the titles, projects or locked chats
+        // (the list's own edit mode puts a circle in front of every row).
+        List {
             if !isSelecting {
                 PaveSearchField(text: $search, prompt: "Zoeken in chats", isFocused: $isSearchFocused)
                     .padding(.bottom, 8)
@@ -253,7 +255,6 @@ struct AylaChatList: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.interactively)
-        .environment(\.editMode, .constant(isSelecting ? .active : .inactive))
         .coordinateSpace(.named(Self.listSpace))
         // A list takes no drops on its own rows, so while a chat is dragged a clear layer over it catches the drop and
         // the place decides where it goes (tested in the simulator: drops on rows inside a List never arrive).
@@ -375,12 +376,26 @@ struct AylaChatList: View {
     // MARK: Rows
 
     private func row(_ conversation: AylaConversation, showsIcon: Bool = false) -> some View {
-        AylaChatRow(conversation: conversation, isCurrent: conversation.id == currentID && !isSelecting, showsIcon: showsIcon) {
-            actions.open(conversation)
+        let isChosen = selection.contains(conversation.id)
+        return HStack(spacing: 4) {
+            if isSelecting {
+                PaveCheckbox(isOn: isChosen, size: 22)
+                    .padding(.leading, 10)
+                    .transition(.move(edge: .leading).combined(with: .opacity))
+            }
+            AylaChatRow(conversation: conversation, isCurrent: conversation.id == currentID && !isSelecting, showsIcon: showsIcon) {
+                actions.open(conversation)
+            }
+            // While selecting, a tap selects the row instead of opening it.
+            .allowsHitTesting(!isSelecting)
         }
-        // While selecting, a tap selects the row instead of opening it.
-        .allowsHitTesting(!isSelecting)
-        .tag(conversation.id)
+        .contentShape(.rect)
+        .onTapGesture {
+            guard isSelecting else { return }
+            if isChosen { selection.remove(conversation.id) } else { selection.insert(conversation.id) }
+        }
+        .animation(.snappy(duration: 0.2), value: isSelecting)
+        .accessibilityAddTraits(isSelecting && isChosen ? .isSelected : [])
         .plainRow()
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             if list.canPin {
@@ -524,36 +539,47 @@ struct AylaChatList: View {
     private var selectionBar: some View {
         let chosen = selected
         let allPinned = !chosen.isEmpty && chosen.allSatisfy(\.isPinned)
-        return HStack(spacing: 10) {
-            if list.canPin {
+        return VStack(spacing: 8) {
+            if chosen.isEmpty {
+                Text(AylaMessages.selectChatsHint)
+                    .textStyle(.caption)
+                    .foregroundStyle(Color.inkMuted)
+            }
+            HStack(spacing: 10) {
+                if list.canPin {
+                    Button {
+                        pin(chosen)
+                        isSelecting = false
+                    } label: {
+                        Label { Text(allPinned ? "Losmaken" : "Vastzetten") } icon: { Image(systemName: allPinned ? "pin.slash.fill" : "pin.fill") }
+                            .textStyle(.action)
+                            .frame(maxWidth: .infinity, minHeight: 50)
+                            .contentShape(.capsule)
+                    }
+                    .buttonStyle(.pave)
+                    .foregroundStyle(Color.paveAccent)
+                    .glassEffect(.regular.interactive(), in: .capsule)
+                }
                 Button {
-                    pin(chosen)
+                    delete(chosen)
                     isSelecting = false
                 } label: {
-                    Label { Text(allPinned ? "Losmaken" : "Vastzetten") } icon: { Image(systemName: allPinned ? "pin.slash.fill" : "pin.fill") }
+                    Label(chosen.count > 1 ? "Verwijder \(chosen.count)" : "Verwijderen", image: .iconTrash)
                         .textStyle(.action)
                         .frame(maxWidth: .infinity, minHeight: 50)
                         .contentShape(.capsule)
                 }
                 .buttonStyle(.pave)
-                .foregroundStyle(Color.paveAccent)
-                .glassEffect(.regular.interactive(), in: .capsule)
+                .foregroundStyle(.white)
+                .background(chosen.isEmpty ? Color.inkMuted : Color.red, in: .capsule)
             }
-            Button {
-                delete(chosen)
-                isSelecting = false
-            } label: {
-                Label(chosen.count > 1 ? "Verwijder \(chosen.count)" : "Verwijderen", image: .iconTrash)
-                    .textStyle(.action)
-                    .frame(maxWidth: .infinity, minHeight: 50)
-                    .contentShape(.capsule)
-            }
-            .buttonStyle(.pave)
-            .foregroundStyle(.white)
-            .background(Color.red, in: .capsule)
+            .disabled(chosen.isEmpty)
         }
-        .disabled(chosen.isEmpty)
-        .opacity(chosen.isEmpty ? 0.5 : 1)
+        // A solid strip, so the chats never shine through the buttons.
+        .padding(.top, 10)
+        .padding(.bottom, 4)
+        .background(Color.canvas)
+        .overlay(alignment: .top) { Rectangle().fill(Color.cardBorder).frame(height: 1).padding(.horizontal, -11) }
     }
 
     @ViewBuilder
@@ -694,7 +720,7 @@ struct AylaChatList: View {
             .plainRow()
             .selectionDisabled()
         } else {
-            PaveEmptyState(icon: .iconChat, title: "Nog geen chats", message: "Je gesprekken met Ayla komen hier te staan, ook die je op web begint.")
+            PaveEmptyState(icon: .iconChat, title: "Nog geen chats", message: "Je gesprekken met Ayla komen hier te staan, ook die je op web of je Apple Watch begint.")
                 .frame(maxWidth: .infinity)
                 .padding(.top, 60)
                 .plainRow()

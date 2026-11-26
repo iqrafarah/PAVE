@@ -1,6 +1,9 @@
 import Foundation
 
 public struct AylaRequest: Codable, Equatable, Sendable {
+    /// At most this many pieces of evidence chosen for one conversation, as the ayla function accepts (MAX_CHOSEN_ITEMS).
+    public static let maximumChosenItems = 100
+
     public struct Context: Codable, Equatable, Sendable {
         public var screen: AylaScreen
         public var itemId: String?
@@ -68,6 +71,10 @@ public struct AylaRequest: Codable, Equatable, Sendable {
     public var conversationId: String?
     /// Starts a new conversation inside this project; ignored when `conversationId` is given.
     public var projectId: String?
+    /// Starts a new conversation inside this plan, for this step of it; ignored when `conversationId` is given. Ayla
+    /// reads the plan of an existing conversation herself.
+    public var planId: String?
+    public var planStepId: String?
     public var text: String
     public var device: AylaDevice
     public var input: AylaInput
@@ -110,12 +117,24 @@ public struct AylaRequest: Codable, Equatable, Sendable {
         public var chatPinned: Bool?
         /// What is on screen right now, in a few words, so "deze" and "hier" need no asking back.
         public var seeing: String?
+        public var font: String?
+        /// The plans still going, one line each: name, how far, the step you are on. So she can open, change and link them.
+        public var plans: [String]?
+        /// The names of the projects in Ayla.
+        public var projects: [String]?
+        /// Invitations from employers at the fair, one line each: who, for what, when, answered or not.
+        public var invitations: [String]?
 
         public init(
             theme: String? = nil, textSize: String? = nil, displayMode: String? = nil, vaultLayout: String? = nil,
             voiceText: Bool? = nil, animations: Bool? = nil, memory: Bool? = nil, chatTitle: String? = nil, chatPinned: Bool? = nil,
-            seeing: String? = nil
+            seeing: String? = nil, font: String? = nil, plans: [String]? = nil, projects: [String]? = nil, invitations: [String]? = nil
         ) {
+            self.invitations = invitations.map { $0.prefix(6).map { String($0.prefix(200)) } }
+            self.font = font
+            // The server takes at most 8 plans of 200 characters and 12 projects of 80.
+            self.plans = plans.map { $0.prefix(8).map { String($0.prefix(200)) } }
+            self.projects = projects.map { $0.prefix(12).map { String($0.prefix(80)) } }
             self.theme = theme
             self.textSize = textSize
             self.displayMode = displayMode
@@ -131,6 +150,14 @@ public struct AylaRequest: Codable, Equatable, Sendable {
         }
     }
 
+    /// The same question without the plan, for an Ayla function from before plans.
+    public var withoutPlan: AylaRequest {
+        var request = self
+        request.planId = nil
+        request.planStepId = nil
+        return request
+    }
+
     public init(
         conversationId: String? = nil,
         text: String,
@@ -139,11 +166,15 @@ public struct AylaRequest: Codable, Equatable, Sendable {
         context: Context? = nil,
         attachments: [AylaAttachment] = [],
         projectId: String? = nil,
+        planId: String? = nil,
+        planStepId: String? = nil,
         app: AppState? = nil,
         results: [ActionResult]? = nil
     ) {
         self.conversationId = conversationId
         self.projectId = conversationId == nil ? projectId : nil
+        self.planId = conversationId == nil ? planId : nil
+        self.planStepId = conversationId == nil && planId != nil ? planStepId : nil
         self.text = text
         self.device = device
         self.input = input

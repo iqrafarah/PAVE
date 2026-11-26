@@ -20,11 +20,25 @@ enum SettingsMessages {
     static let email = "E-mailadres"
     static let fromOrganisation = "Komt van je school of organisatie en kun je hier niet aanpassen."
     static let appearance = "Weergave"
+    static let language = "Taal"
+    static let languageSynced = "Deze keuze volgt je account op al je apparaten."
+    static let languageHint = "PAVE verandert meteen van taal. Ayla antwoordt in de taal waarin je haar schrijft. Wat je zelf hebt gemaakt, zoals je chats en je kluis, blijft zoals het is."
     static let themeColor = "Themakleur"
     static let customColorHint = "Kies je eigen kleur"
     static let vaultLayout = "Weergave kluis"
     static let vaultLayoutHint = "Zo opent je kluis. In de kluis kun je even wisselen; de volgende keer opent hij weer zo."
     static let textSize = "Tekstgrootte"
+    static let fontStyle = "Lettertype"
+    static let fontStyleHint = "Leesbaar is Atkinson Hyperlegible: letters die je minder snel door elkaar haalt. Je keuze blijft op dit toestel."
+    static func title(_ style: PaveFontStyle) -> String {
+        switch style {
+        case .pave: "PAVE"
+        case .system: "Systeem"
+        case .rounded: "Rond"
+        case .serif: "Schreef"
+        case .readable: "Leesbaar"
+        }
+    }
     static let animationsOff = "Animaties uitzetten"
     static let animationsOffHint = "Alles in PAVE blijft stil staan: geen bewegende overgangen, laders of golven. Geldt alleen op dit apparaat."
     static let onThisDeviceOnly = "Je keuzes gelden nu alleen op dit toestel. Zodra PAVE er klaar voor is, gelden ze voor je hele account."

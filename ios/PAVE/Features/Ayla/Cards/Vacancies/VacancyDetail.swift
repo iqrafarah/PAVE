@@ -15,6 +15,9 @@ struct VacancyDetail: View {
     var actions: VacancyActions?
     var compareBar: VacancyCompareBar?
 
+    /// Where Ayla is, for looking up the company; absent in previews.
+    @Environment(AylaChatModel.self) private var chat: AylaChatModel?
+
     private var hasFit: Bool { !vacancy.matches.isEmpty || !vacancy.skillGap.isEmpty }
 
     var body: some View {
@@ -49,6 +52,8 @@ struct VacancyDetail: View {
                     .padding(.top, -12)
                 }
 
+                VacancyPlanLink(vacancy: vacancy)
+
                 if !vacancy.matches.isEmpty {
                     section(AylaMessages.vacancyFits) { VacancyFitGroup(links: vacancy.matches, isGap: false) }
                 }
@@ -77,12 +82,16 @@ struct VacancyDetail: View {
                     }
                 }
 
+                section(EmployerMessages.title(vacancy.company)) {
+                    EmployerAboutSection(vacancy: vacancy, service: chat?.service)
+                }
+
                 VStack(spacing: 12) {
                     if let url = vacancy.url {
                         Link(destination: url) {
                             HStack(spacing: 8) {
                                 Text(AylaMessages.vacancyOpen)
-                                Image(.iconArrowUpRightOutline)
+                                Image(.iconArrowRight)
                                     .renderingMode(.template)
                                     .resizable()
                                     .scaledToFit()

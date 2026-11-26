@@ -13,7 +13,7 @@ struct WatchSignedOutView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 28, height: 28)
-                    .foregroundStyle(Color.brandGreen)
+                    .foregroundStyle(WatchPreferences.shared.accentColor)
                 Text(needsConnecting ? WatchMessages.notConnectedTitle : WatchMessages.signedOutTitle)
                     .font(.headline)
                     .multilineTextAlignment(.center)

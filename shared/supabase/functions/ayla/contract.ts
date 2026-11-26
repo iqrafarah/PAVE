@@ -2,6 +2,8 @@
 import type { MemoryCategory } from './memory.ts'
 
 export const CATEGORIES = ['diplomas', 'certificates', 'badges', 'projects', 'workExperience', 'internships', 'skills', 'feedback', 'reflections', 'other'] as const
+/** At most this many pieces of evidence chosen for one conversation: a whole folder fits, as when sharing. */
+export const MAX_CHOSEN_ITEMS = 100
 export const SCREENS = ['home', 'chat', 'vault', 'vaultItem', 'addEvidence', 'plans', 'vacancies', 'profile', 'settings'] as const
 export const DEVICES = ['watch', 'phone', 'web'] as const
 
@@ -17,6 +19,9 @@ export interface AylaRequest {
   conversationId?: string
   /** Starts a new conversation inside this project. Ignored when conversationId is given. */
   projectId?: string
+  /** Starts a new conversation inside this plan, for this step of it. Ignored when conversationId is given. */
+  planId?: string
+  planStepId?: string
   text: string
   device: Device
   input: 'voice' | 'text'
@@ -46,6 +51,13 @@ export interface AppState {
   chatPinned?: boolean
   /** What is on screen right now, in a few words the app writes itself ("de lijst met vacatures, tabblad Bewaard"). */
   seeing?: string
+  font?: string
+  /** The user's plans, one line each as the app writes it: name, how far, and the step they are on. At most 8. */
+  plans?: string[]
+  /** The names of the user's projects in Ayla. At most 12. */
+  projects?: string[]
+  /** Invitations from employers at the fair, one line each as the app writes it: who, for what, when, answered or not. At most 6. */
+  invitations?: string[]
 }
 
 /** The vacancy the user has open in the app, as the card shows it, so "past deze bij mij?" is about that one. */
@@ -88,12 +100,16 @@ export const ACTIONS = [
   'setTheme', 'setTextSize', 'setDisplayMode', 'setVaultLayout', 'setVoiceText', 'setChatsInSearch', 'setAnimations', 'setMemory',
   'createFolder', 'moveToFolder', 'archiveEvidence', 'allowAyla', 'requestVerification',
   'openVacancy', 'saveVacancy',
-  'deleteChat', 'deleteEvidence', 'signOut', 'forgetAll',
+  'openNotifications', 'openApplications', 'openApplication', 'openProject', 'setFontStyle',
+  'openPlan', 'addPlanStep', 'markPlanStep', 'renamePlanStep', 'describePlanStep', 'linkPlanToProject', 'makeVacancyPlan',
+  'addTalkToCalendar',
+  'shareWith', 'stopSharing', 'showShares',
+  'deleteChat', 'deleteEvidence', 'signOut', 'forgetAll', 'removePlanStep', 'answerInvitation', 'addProjectSource',
 ] as const
 export type ActionKind = (typeof ACTIONS)[number]
 
 /** What cannot be undone: PAVE asks Ja or Nee first, and the app only acts after Ja. */
-export const CONFIRMED_ACTIONS: readonly ActionKind[] = ['deleteChat', 'deleteEvidence', 'signOut', 'forgetAll']
+export const CONFIRMED_ACTIONS: readonly ActionKind[] = ['deleteChat', 'deleteEvidence', 'signOut', 'forgetAll', 'removePlanStep', 'answerInvitation', 'addProjectSource']
 
 export interface AppAction { do: ActionKind; value?: string; target?: string; confirm?: true }
 
@@ -162,11 +178,15 @@ export interface AylaReply {
   accessRequest?: { id: string; purpose: string; categories: Category[] }
   proposedAction?: {
     id: string
-    kind: 'addVaultItem' | 'updatePlan' | 'draftProfile' | 'requestValidation'
+    kind: 'addVaultItem' | 'updatePlan' | 'createPlan' | 'draftProfile' | 'requestValidation'
     summary: string
     expiresAt: string
     /** With `addVaultItem`: what to put in the vault once the user confirms. */
     vaultItem?: VaultItemProposal
+    /** With `updatePlan`: the step of the conversation's plan Ayla changed. It is saved already; the apps show it. */
+    planStep?: { planId: string; stepId: string; status: 'upcoming' | 'active' | 'done' | 'skipped' }
+    /** With `createPlan`: the plan the user asked for. The app saves it with the user's own session and puts the chat in it. */
+    newPlan?: { name: string; goal: string; steps: { title: string; summary: string; kind: string }[] }
   }
   blocks: Block[]
   navigation?: { screen: Screen; itemId?: string }
@@ -197,7 +217,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 export function parseRequest(body: unknown): AylaRequest | string {
   if (typeof body !== 'object' || body === null) return 'body must be an object'
   const b = body as Record<string, unknown>
-  const allowed = new Set(['conversationId', 'projectId', 'text', 'device', 'input', 'context', 'attachments', 'app', 'results'])
+  const allowed = new Set(['conversationId', 'projectId', 'planId', 'planStepId', 'text', 'device', 'input', 'context', 'attachments', 'app', 'results'])
   const extra = Object.keys(b).find((key) => !allowed.has(key))
   if (extra) return `unknown field ${extra}`
   if (typeof b.text !== 'string' || !b.text.trim()) return 'text is required'
@@ -210,13 +230,17 @@ export function parseRequest(body: unknown): AylaRequest | string {
   if (b.projectId !== undefined && (typeof b.projectId !== 'string' || !UUID.test(b.projectId))) {
     return 'projectId is not valid'
   }
+  if (b.planId !== undefined && (typeof b.planId !== 'string' || !UUID.test(b.planId))) return 'planId is not valid'
+  if (b.planStepId !== undefined && (typeof b.planStepId !== 'string' || !UUID.test(b.planStepId) || !b.planId)) {
+    return 'planStepId is not valid'
+  }
   let context: AylaRequest['context']
   if (b.context !== undefined) {
     const c = b.context as Record<string, unknown>
     if (typeof c !== 'object' || c === null || !SCREENS.includes(c.screen as Screen)) return 'context is not valid'
     if (c.itemId !== undefined && typeof c.itemId !== 'string') return 'context is not valid'
     // Several items chosen with the plus button, for the whole conversation.
-    if (c.itemIds !== undefined && (!Array.isArray(c.itemIds) || c.itemIds.length > 10 || !c.itemIds.every((id) => typeof id === 'string' && id.trim()))) return 'context is not valid'
+    if (c.itemIds !== undefined && (!Array.isArray(c.itemIds) || c.itemIds.length > MAX_CHOSEN_ITEMS || !c.itemIds.every((id) => typeof id === 'string' && id.trim()))) return 'context is not valid'
     const itemIds = Array.isArray(c.itemIds) && c.itemIds.length ? (c.itemIds as string[]) : undefined
     // Also with items chosen from the vault: the vacancy is open while those items are what Ayla may use.
     const showsVacancies = c.screen === 'vacancies' || c.screen === 'vault' || c.screen === 'vaultItem'
@@ -293,18 +317,21 @@ export function parseRequest(body: unknown): AylaRequest | string {
     ...(results ? { results } : {}),
     ...(b.conversationId ? { conversationId: b.conversationId as string } : {}),
     ...(b.projectId && !b.conversationId ? { projectId: b.projectId as string } : {}),
+    ...(b.planId && !b.conversationId ? { planId: b.planId as string } : {}),
+    ...(b.planStepId && b.planId && !b.conversationId ? { planStepId: b.planStepId as string } : {}),
     ...(context ? { context } : {}),
     ...(attachments?.length ? { attachments } : {}),
   }
 }
 
-const APP_WORDS = ['theme', 'textSize', 'displayMode', 'vaultLayout', 'chatTitle', 'seeing'] as const
+const APP_WORDS = ['theme', 'textSize', 'displayMode', 'vaultLayout', 'chatTitle', 'seeing', 'font'] as const
+const APP_LISTS = { plans: { count: 8, length: 200 }, projects: { count: 12, length: 80 }, invitations: { count: 6, length: 200 } } as const
 const APP_SWITCHES = ['voiceText', 'animations', 'memory', 'chatPinned'] as const
 
 function parseAppState(raw: unknown): AppState | null {
   const a = raw as Record<string, unknown>
   if (typeof a !== 'object' || a === null || Array.isArray(a)) return null
-  const known = new Set<string>([...APP_WORDS, ...APP_SWITCHES])
+  const known = new Set<string>([...APP_WORDS, ...APP_SWITCHES, ...Object.keys(APP_LISTS)])
   if (Object.keys(a).some((key) => !known.has(key))) return null
   const state: AppState = {}
   for (const key of APP_WORDS) {
@@ -317,6 +344,13 @@ function parseAppState(raw: unknown): AppState | null {
     if (a[key] === undefined) continue
     if (typeof a[key] !== 'boolean') return null
     state[key] = a[key] as boolean
+  }
+  for (const [key, limit] of Object.entries(APP_LISTS) as [keyof typeof APP_LISTS, { count: number; length: number }][]) {
+    if (a[key] === undefined) continue
+    const list = a[key]
+    if (!Array.isArray(list) || list.length > limit.count || list.some((line) => typeof line !== 'string' || line.length > limit.length)) return null
+    const lines = (list as string[]).map((line) => line.replace(/\s+/g, ' ').trim()).filter(Boolean)
+    if (lines.length) state[key] = lines
   }
   return state
 }

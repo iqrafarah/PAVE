@@ -12,6 +12,10 @@ public protocol ProfileService: Sendable {
     /// Licht, Donker or Automatisch, the same as on the web; nil before the migration (20261119140000).
     func displayMode() async throws -> PaveDisplayMode?
     func setDisplayMode(_ mode: PaveDisplayMode) async throws
+    /// Instellingen › Taal, the same on every device; nil before the migration (20261126120000).
+    func language() async throws -> PaveAccountLanguage?
+    /// A language code such as "en", or nil to follow the device again.
+    func setLanguage(_ code: String?) async throws
     /// Uploads a JPEG as the new photo and returns its path; the old one is removed.
     func setAvatar(_ jpeg: Data, replacing oldPath: String?) async throws -> String
     func removeAvatar(_ path: String) async throws
@@ -86,6 +90,21 @@ public struct SupabaseProfileService: ProfileService {
 
     public func setDisplayMode(_ mode: PaveDisplayMode) async throws {
         try await patch(["display_mode": mode.rawValue])
+    }
+
+    public func language() async throws -> PaveAccountLanguage? {
+        let userID = try await currentUserID()
+        do {
+            let data = try await send(try await request(profileURL(userID, select: "language")))
+            let rows = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
+            return PaveAccountLanguage(code: rows?.first?["language"] as? String)
+        } catch ProfileError.notSetUp {
+            return nil
+        }
+    }
+
+    public func setLanguage(_ code: String?) async throws {
+        try await patch(["language": code.map { $0 as Any } ?? NSNull()])
     }
 
     public func setRetention(_ retention: PaveRetention) async throws {
@@ -217,6 +236,17 @@ public extension ProfileService {
     func setRetention(_ retention: PaveRetention) async throws { throw ProfileError.notSetUp }
     func displayMode() async throws -> PaveDisplayMode? { nil }
     func setDisplayMode(_ mode: PaveDisplayMode) async throws { throw ProfileError.notSetUp }
+    func language() async throws -> PaveAccountLanguage? { nil }
+    func setLanguage(_ code: String?) async throws { throw ProfileError.notSetUp }
+}
+
+/// The language saved in the account: a code such as "pap", or nil when none was chosen yet.
+public struct PaveAccountLanguage: Equatable, Sendable {
+    public let code: String?
+
+    public init(code: String?) {
+        self.code = code
+    }
 }
 
 struct SettingsProfileRow: Decodable {

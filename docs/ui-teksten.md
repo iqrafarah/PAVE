@@ -212,6 +212,87 @@ Onder een vacature staan vier acties. Tik je erop, dan komt de vraag als jouw be
 | Tijdens het oefenen | Oefengesprek · {bedrijf} / Stoppen |
 | Jouw bericht bij Stoppen | Ik wil stoppen met oefenen. |
 
+## Bewijs toevoegen vanuit de chat (web en iOS)
+
+Besloten op 2026-11-24: de conceptkaart van iOS met de keuzes van web. Ayla bouwt het bewijs op in een kaart; daaronder kies je hoe het de kluis in gaat. Zonder logo of omslag vraagt PAVE daarna eerst die, en pas als dat klaar is hoort Ayla dat het in de kluis staat.
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Knoppen onder de kaart | Zet in de kluis / Zelf invullen |
+| Zet in de kluis | Gaat er meteen in met wat Ayla invulde (op web: "Ayla vult het in"); mist er iets, dan opent het formulier |
+| Zelf invullen | Het formulier, leeg, met de bestanden uit de chat |
+| Geen logo en geen omslag | Ayla vond geen logo of omslag. Wil je er zelf een kiezen? |
+| Geen logo | Ayla vond geen logo. Wil je er zelf een kiezen? |
+| Geen omslag | Nog geen omslag. Wil je er een kiezen? |
+| Knoppen daarbij | Logo kiezen / Omslag kiezen / Klaar |
+| Afbeelding lukt niet | Die afbeelding kon niet bij je bewijs worden gezet. Kies een JPG of PNG. |
+| Wat Ayla daarna hoort | Toegevoegd aan mijn kluis: {titel}. |
+
+## Cv en motivatiebrief (iOS, vanuit een vacature)
+
+"Solliciteren" bij een vacature opent eerst een galerij met ontwerpen, al ingevuld met je eigen gegevens. Daarna kies je wat erin komt: Ayla's voorstel voor deze vacature staat al aangevinkt, met per bewijsstuk waarom, en mikt op één pagina. Dan kies je hoe je begint: Ayla vult het in, of je vult het zelf in (je profiel en brief schrijf je dan zelf, met hints). Daarna pas je elk onderdeel aan door erop te tikken; via Inhoud kies je opnieuw wat erop staat. Ayla schrijft alleen met het bewijs dat ze mag bekijken. Cv en brief hebben altijd hetzelfde ontwerp.
+
+Het cv volgt wat op een cv gebruikelijk is: elk onderdeel met het nieuwste bovenaan, bij een diploma of certificaat alleen de naam, de school en het jaar, en een beschrijving alleen bij werk en projecten. Past het niet op één A4, dan loopt het door op een volgende pagina; een blok wordt nooit doormidden geknipt.
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Galerij | Kies een ontwerp / Voor {functie} bij {bedrijf}. Al ingevuld met jouw gegevens; wisselen kan later altijd. / Gebruik {ontwerp} |
+| Filters | Alle / Met foto / Zakelijk / Creatief / Minimalistisch / Elegant |
+| Ontwerpen, van eenvoudig naar uitgesproken | Helder / Kader / Lijn / Salie / Nacht / Zuil / Tegel / Koraal / Kring / Schuin |
+| Kleuren | PAVE / Salie / Oceaan / Petrol / Nacht / Koraal / Roos / Lavendel / Zwart-wit |
+| Mijn sollicitatie (opent als je al een cv voor de vacature hebt) | Mijn sollicitatie / {functie} · {bedrijf} / Status: Concept, Verstuurd, Gesprek, Aanbod, Afgewezen / Dit houd je zelf bij. PAVE stuurt niets naar het bedrijf. / Deadline / Notitie / Bijvoorbeeld: contactpersoon of wat je nog wilt doen / Je cv en brief / Cv bewerken / Brief bewerken / Laatst gewijzigd op {datum} |
+| Herinneringen en geschiedenis (in Mijn sollicitatie) | Herinner me / Je krijgt een melding de dag voor je deadline en een week nadat je Verstuurd zet. De meldingen blijven op dit toestel. / Meldingen staan uit voor PAVE. Zet ze aan in de Instellingen van je iPhone om herinneringen te krijgen. / Geschiedenis / {status} · {datum} |
+| Delen vanuit cv en brief (knop Delen in de editor, blok in Mijn sollicitatie) | Delen / Delen met {bedrijf} / Je kiest zelf wat {bedrijf} ziet en hoe lang. Je kunt het altijd pauzeren of intrekken. / Deel met {bedrijf} / Nog een keer delen / Terug naar je sollicitatie (na het delen) / Zet je sollicitatie op Verstuurd? / Je hebt gedeeld met {bedrijf}. Dit houd je zelf bij; PAVE stuurt niets naar het bedrijf. / Op Verstuurd zetten / Niet nu. Vanuit de editor staat alleen het document aan dat je bekijkt; vanuit Mijn sollicitatie de brief alleen als die tekst heeft. |
+| Terug en stoppen in de studio | Pijl terug: Terug naar je sollicitatie / Brief (in de schakelaar Cv – Brief) / Stoppen met deze sollicitatie? / Je gekozen ontwerp en inhoud worden niet bewaard. / Stoppen / Doorgaan |
+| Na een taak voor je sollicitatie (in de Ayla-chat) | Terug naar je sollicitatie bij {bedrijf} |
+| Deadline | Vandaag / Morgen / Over {n} dagen / Verlopen, {n} dag(en) geleden |
+| Meldingen | Morgen is de deadline / Vandaag is de deadline: Je sollicitatie voor {functie} bij {bedrijf} staat nog op concept. / Al iets gehoord?: Je solliciteerde een week geleden op {functie} bij {bedrijf}. Zet de status bij als er nieuws is. |
+| Menu Vacatures (iOS, onder Kluis) | Vacatures / Wat Ayla laatst vond, wat je bewaarde en je sollicitaties. / Vraag Ayla om vacatures te zoeken die bij je passen. Wat ze vindt, staat daarna ook hier. / Zoek met Ayla |
+| Deadline uit de vacature | In de vacature staat een sluitingsdatum / “{zin uit de vacature}” / Gebruik {datum} als deadline / Zet in je agenda (agenda-item: Deadline sollicitatie {functie} bij {bedrijf}, notitie: Bijgehouden in PAVE.) |
+| Op Ayla's start | Je deadline is vandaag / Je deadline is morgen / Je deadline is over {n} dagen, met {functie} bij {bedrijf} |
+| Tabblad Sollicitaties (in het vacaturepaneel, naast Gevonden en Bewaard) | Sollicitaties / Concept · {n}, Verstuurd · {n}, Gesprek · {n}, Aanbod · {n}, Afgewezen · {n} / Gewijzigd op {datum} / Nog geen sollicitaties / Tik bij een vacature op Solliciteren, of maak er zelf een. Hier houd je bij hoe het ermee staat. / Nieuwe sollicitatie / (lang indrukken) Verwijder sollicitatie / Sollicitatie bij {bedrijf} verwijderen? / Je cv, brief en wat je bijhield gaan weg van deze iPhone. Wat je al deelde, beheer je bij Profiel. |
+| Volgende stappen | Volgende stappen / {n} eis(en) staan nog niet op je cv / Wat kan ik doen? / Oefen het gesprek / Alles wat de vacature vraagt staat op je cv. |
+| Wat komt erin | Wat komt erin? / Ayla's voorstel voor {functie} bij {bedrijf}. Zet aan of uit wat je wilt laten zien. / (in de editor) Zet aan of uit wat op je cv staat. |
+| Lengte | Past op 1 pagina / {n} pagina's / Maak passend op 1 pagina / Terug naar Ayla's voorstel |
+| Waarom aan of uit | Past bij {vaardigheid} en {vaardigheid} / Loopt nog / Recent / Hoort op elk cv / Lang geleden en past minder bij deze vacature / Uit, zodat je cv op 1 pagina past |
+| Bij een bewijsstuk | (de status uit de kluis) / Ayla mag dit niet bekijken en schrijft er niet over |
+| Wat de vacature vraagt (ingeklapt, tik om te openen) | Wat de vacature vraagt / {n} van de {m} staan op je cv / {n} van de {m} staan op je cv, {k} kun je aanzetten |
+| Per eis | Staat op je cv bij {titel} / Staat op je cv bij {titel} en {n} andere / Staat bij je vaardigheden, zonder bewijs erachter / Staat in je kluis, maar niet op je cv (met de knop Zet aan) / Staat nog niet in je kluis |
+| Nadruk | Waar wil je de nadruk op leggen? / Hoeft niet. Ayla legt hier de nadruk op in je profiel en brief, voor zover je bewijs dat laat zien. / Bijvoorbeeld: samenwerken met klanten |
+| Hoe beginnen | Zelf invullen / Ayla vult het in / Ayla gebruikt alleen de {n} bewijsstukken die ze mag bekijken. |
+| Hints (alleen tijdens bewerken, niet in de pdf) | Schrijf hier in 2 of 3 zinnen wie je bent en wat je zoekt. / Waarom deze vacature en dit bedrijf? / Wat breng je mee? Noem een voorbeeld uit je kluis. / Sluit af en nodig uit tot een gesprek. / Telefoon / Woonplaats (zolang die leeg zijn) |
+| Meer dan één pagina | Je cv is {n} pagina's. Eén pagina leest het prettigst. (met de knop Maak passend op 1 pagina) / Je brief is {n} pagina's. Een brief past het best op één pagina. / Pagina {n} van {totaal} (VoiceOver) |
+| Bovenaan | Cv / Motivatiebrief |
+| Knoppen | Ontwerp / Inhoud (cv) / Alinea (brief) / Ayla schrijft / Klaar |
+| Ontwerp | Sjabloon / Kleur / Profielfoto tonen / Vinkje bij geverifieerd bewijs / Onderdelen |
+| Geverifieerd op het cv | (onderaan de laatste pagina) In PAVE geverifieerd door de organisatie zelf. / Op je cv staat een vinkje bij bewijs dat door de organisatie is geverifieerd. Pas je de titel, organisatie of periode aan, dan vervalt het vinkje. / Er staat nog geen geverifieerd bewijs op je cv. |
+| Ayla vraagt door | Ayla heeft 1 vraag / Ayla heeft {n} vragen / Vragen van Ayla / Je antwoord komt in dat onderdeel van je cv. Ayla gebruikt alleen wat je hier schrijft en wat ze al mocht bekijken. / Bij {titel} / Je antwoord, in één zin / Verwerk in je cv / Sla over / Verwerkt in je cv / Ongedaan maken / Ayla heeft nu geen vragen. / Laat Ayla doorvragen / Ayla leest je cv… |
+| Antwoord in de kluis | Bewaar ook in je kluis / Bewaard in je kluis / Je antwoord komt bij de beschrijving van dit bewijsstuk. / Dit bewijsstuk is geverifieerd. Als je het aanvult, moet het opnieuw geverifieerd worden en vervalt het vinkje op je cv. / Het bewaren in je kluis lukte niet. Probeer het zo opnieuw. |
+| Geen profielfoto | Voeg een profielfoto toe bij Instellingen › Account om hem hier te tonen. |
+| Paneel (iPad, Duo open liggend) | Inhoud / Ontwerp / Tik op een onderdeel om het aan te passen. |
+| Kopjes op het cv | Profiel / Werkervaring / Opleiding / Certificaten / Projecten / Vaardigheden / Contact |
+| Ayla | Ayla schrijft mee / Laat Ayla je profiel schrijven / Laat Ayla de brief schrijven / Ayla schrijft… |
+| Wat Ayla gebruikt | Ayla gebruikt alleen de {n} bewijsstukken die ze mag bekijken. |
+| Ayla mag niets zien | Ayla mag nog geen bewijs uit je kluis bekijken, dus ze schrijft algemeen. Zet bij een bewijsstuk "Ayla mag dit bekijken en gebruiken" aan. |
+| Herschrijven | Korter / Sterker voor deze vacature / In het Engels / Formeler / Persoonlijker / Ongedaan maken |
+| Waar een regel vandaan komt | Uit je kluis: {titel} (met de status) / Zelf toegevoegd |
+| Alinea weghalen | Alinea verwijderen / Deze alinea verwijderen? / Annuleer |
+| Fouten | Ayla kon nu niet schrijven. Probeer het zo opnieuw. / De pdf kon niet worden gemaakt. Probeer het opnieuw. |
+| Pdf | Cv {naam} {bedrijf}.pdf / Motivatiebrief {naam} {bedrijf}.pdf |
+
+## Zelf een sollicitatie maken (iOS)
+
+| Waar | Tekst |
+|---|---|
+| Scherm | Nieuwe sollicitatie / Voor een vacature die je zelf vond, of een open sollicitatie bij een bedrijf. Daarna kies je een ontwerp voor je cv en brief. |
+| Velden | Bedrijf * (Bijvoorbeeld Albert Heijn) / Functie (Leeg laten voor een open sollicitatie) / Plaats (Bijvoorbeeld Eindhoven) / Link naar de vacature (Bijvoorbeeld werkenbij.ah.nl/…) / Tekst van de vacature (Plak hier de vacature, dan kan Ayla je brief erop afstemmen) |
+| Onder de tekst | Alleen voor jouw cv en brief. PAVE stuurt niets naar het bedrijf. |
+| Fouten | Vul het bedrijf in. / Dit lijkt geen link. Controleer hem of laat het veld leeg. |
+| Knop | Maak cv en brief |
+| Open sollicitatie | Titel: Open sollicitatie / Brief: Betreft: open sollicitatie / Graag stel ik mij voor bij {bedrijf}. Ik ben benieuwd of er bij jullie een plek is waar ik kan bijdragen. |
+| Mijn sollicitatie | De vacature / Lees meer / Minder / Bekijk de vacature / Deel je sollicitatie |
+| Fouten | Dat lukte niet (titel) / Je kluis kon niet worden geladen, dus je cv zou leeg blijven. Probeer het zo opnieuw. / Ayla is nu niet bereikbaar. Je kunt alles zelf invullen. |
+
 ## Animaties uitzetten (web en iOS, Instellingen › Weergave)
 
 | Onderdeel | Tekst |
@@ -262,3 +343,175 @@ Ayla zegt in haar eigen woorden wat ze doet. Deze vaste teksten komen van de app
 | Stappen (voorbeelden) | Donker aanzetten / Map {naam} openen / Chat {titel} noemen / Chat vastzetten / Map {naam} maken / {bewijs} in de map {naam} zetten |
 | Kleine bol op een pagina | Ayla luistert… / Ayla denkt na… / Ayla praat / Je microfoon staat uit |
 | Stappen bij vacatures zoeken | Vacatures zoeken / {n} vacatures gevonden / Vergelijken met je kluis / Vacatures bekijken / Lijst openen |
+
+## Profiel en delen (iOS)
+
+Delen is tijdelijk, per onderdeel te kiezen, te pauzeren en in te trekken (kick-off p. 10, 36; schetsboek p. 4–5). De ontvanger opent een link of QR-code op de website, zonder account. Toestemming voor Ayla en delen met anderen blijven twee aparte dingen.
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Pagina | Profiel / Jij bepaalt wat je deelt, met wie en hoe lang. Je kunt het altijd pauzeren of intrekken. |
+| Secties | Nu gedeeld / Iets delen / Meer / Eerder gedeeld |
+| Leeg | Je deelt nu niets / Kies hieronder voor wie je iets wilt delen. Jij kiest per onderdeel wat erin staat. |
+| Voor wie | Werkgever: Cv, brief en wat je hebt gedaan, voor een sollicitatie. / Onderwijs: Diploma's, certificaten en projecten, voor een opleiding. / Gemeente: Wat je hebt behaald en gewerkt, voor de gemeente. / Banenbeurs: Een korte kaart om te laten scannen op een beurs. |
+| Rij | {ontvanger} ({organisatie}) / Nog {n} dagen, Nog {n} uur, Gepauzeerd, Verlopen, Ingetrokken / Nog niet bekeken, {n} keer bekeken |
+| Stappen | Wat deel je? / Met wie en waarvoor? / Hoe lang? / Controleer en deel / Volgende / Terug / Annuleer / Weggooien / Wil je stoppen met delen? Er is nog niets gedeeld. |
+| Wat | Over jou: Naam, E-mail, Regel onder je naam / Cv en brief: Geen sollicitatie, Uit Mijn sollicitatie, zoals je ze hebt gemaakt. / Niet nodig voor deze ontvanger |
+| Met wie | Naam van de ontvanger / Organisatie / Naam van wat je deelt / Waarvoor / Bezoekers van mijn stand (beurs) |
+| Hoe lang | 1 dag / 1 week / 2 weken / 1 maand / 3 maanden / Mag downloaden / Zet je dit aan, dan kan de ontvanger je cv en brief als pdf bewaren. Bewaren kun je daarna niet meer terugdraaien. Staat het uit, dan kan de ontvanger alleen kijken; helemaal tegenhouden dat iemand een schermafbeelding maakt, kan geen enkele app. |
+| Controleren | {ontvanger} van {organisatie} kan {wat} zien tot en met {datum}, en mag ze alleen bekijken / mag ze bekijken en downloaden. Je ziet wanneer iemand kijkt, en je kunt het altijd intrekken. / Deel met Face ID / Bevestig dat je deelt met {ontvanger} |
+| Gedeeld | Gedeeld / Laat {ontvanger} de QR-code scannen of stuur de link. / Kopieer link / Stuur link / Toon op Apple Watch / Staat op je Apple Watch |
+| Beheren | Pauzeer / Hervat / Verleng (+ 1 dag, 1 week, 2 weken, 1 maand) / Intrekken / Delen met {ontvanger} intrekken? / De link werkt dan niet meer, ook niet als je opnieuw deelt. Wat de ontvanger al heeft gedownload, kan PAVE niet terughalen. |
+| Logboek | Wie keek er / Nog niemand heeft gekeken. / Bekeken door {naam}, Gedownload door {naam} / Een naam die de bezoeker zelf heeft ingevuld, niet gecontroleerd. |
+| Voorstellen | Je sollicitatie is afgewezen. Toegang intrekken? / Je sollicitatie is afgerond. Toegang intrekken? / De deadline is voorbij en je sollicitatie is niet verstuurd. Toegang intrekken? / Verloopt binnen een dag. Verlengen? |
+| Meldingen | {ontvanger} bekeek je gegevens / {ontvanger} downloadde je gegevens / Delen met {ontvanger} stopt morgen / knoppen Intrekken, Verleng met een week |
+| Delen-rapport | Wie wat de afgelopen 30 dagen heeft bekeken. / Actief, Bekeken, Gedownload / Meest bekeken |
+| Uitleg | Zo gaan we met je gegevens om: Wat delen betekent / Wat de ontvanger mag / Wat er bewaard blijft / Wie er keek / Ayla en delen zijn twee dingen / Wie PAVE maakt |
+| Scannen | Scan een QR-code / Van een werkgever op een beurs, of een gedeeld profiel. / Voorbeeldwerkgever: verzonnen voor de demo van de banenbeurs. / Deel je profiel met {werkgever} |
+| Website | De webpagina draait nu alleen op deze computer. Zodra de site online staat, werkt de link ook voor anderen. / De webpagina voor ontvangers staat nog niet online, dus de link werkt nog niet buiten PAVE. |
+| Siri en Opdrachten | Wie kan mijn gegevens zien? / Wat deel ik? / Stop met delen (opent PAVE achter je pincode) |
+| Bedieningspaneel | Stop met delen: Open PAVE en pauzeer of trek alles in wat je deelt. |
+| Alles stoppen | Stoppen met delen? / Je deelt nu {n} keer iets. Pauzeren kun je terugdraaien, intrekken niet. / Alles pauzeren / Alles intrekken / Je deelt nu niets. |
+| Ayla | Ik zet het klaar voor {organisatie}. Controleer wat erin staat en bevestig het; ik deel niets zelf. / Ik open het delen met {organisatie}. Tik op Intrekken om het te stoppen. / Hier zie je wat je nu deelt, met wie en hoe lang nog. |
+| Apple Watch | QR-code voor {ontvanger} (in het menu) / Voor {ontvanger}, tot {datum} |
+| Web, gedeeld profiel | Iemand deelt gegevens met je / Via PAVE, tijdelijk en alleen wat diegene heeft gekozen. Je bezoek wordt bijgehouden, zodat diegene ziet dat je hebt gekeken. Je naam invullen hoeft niet. / Je naam / Je organisatie / Bekijk / Je kijkt tijdelijk mee tot en met {datum}. / Je mag het cv en de brief downloaden. Je mag alleen kijken, niet downloaden. / Geverifieerd, Niet geverifieerd / Even niet te zien, Niet meer gedeeld, Niet meer te zien, Deze link bestaat niet |
+| Web, beurs | Banenbeurs / Scan de code van een stand met PAVE: je ziet de werkgever en zijn vacatures, en je kunt je profiel met hem delen. Deze werkgevers zijn verzonnen voor de demo. |
+| Na het delen | Bekijk wat je deelt (vanuit Profiel, opent het nieuwe deel) / Terug naar Ayla (als Ayla het delen klaarzette) / Opnieuw scannen (na het scannen van een werkgever) |
+
+### Uitleg bij een grijze knop en fouten (iOS, delen)
+
+| Waar | Tekst |
+|---|---|
+| Lege kluis | Je kluis is nog leeg / Voeg eerst bewijs toe, zoals een diploma, stage of project. Daarna kies je hier wat je deelt. / Naar je kluis |
+| Profiel bewaren | Geef je profiel een naam. / Kies minstens één bewijsstuk. |
+| Delen, stap Wat | Kies minstens één bewijsstuk, of je cv of brief. |
+| Delen, stap Met wie | Vul de naam van de ontvanger en de naam van wat je deelt in. / Naam van wat je deelt (Bijvoorbeeld: mijn cv voor Kade) |
+| Geen cv of brief | Je hebt nog geen cv of brief. Maak een sollicitatie, dan deel je hem daarna vanuit Mijn sollicitatie. / Nieuwe sollicitatie |
+| Pdf mislukt | Gedeeld, maar je cv of brief kon niet mee. Deel opnieuw vanuit Mijn sollicitatie als je ze erbij wilt. |
+| Snel solliciteren | Laat je kaartje achter / Vul je naam in. / Schrijf kort waarom je hier wilt werken, of spreek het in. |
+| Beurs | Vacatures / Deel je profiel / Opnieuw proberen / Meer |
+| Uitnodiging (melding) | Je bent uitgenodigd: {bedrijf} wil je spreken over {functie} op {moment}. |
+| Scannen | Dit is geen code van PAVE. Scan de QR-code op de stand of de poster. / Dit gedeelde profiel kan hier niet worden geopend. Open de link in je browser. / Scannen lukt hier niet. Geef PAVE toegang tot je camera bij Instellingen, of gebruik de Camera-app. |
+
+### Snel delen (iOS, Profiel)
+
+| Waar | Tekst |
+|---|---|
+| Scherm | Snel delen / Laat iemand een QR-code scannen of stuur een link. Het werkt meteen en stopt vanzelf. |
+| Keuzes | Wat deel je? / Je profiel ({n} bewijsstukken, kort) of een van je profielen / Met wie? (mag leeg) (Bijvoorbeeld: Sanne van Jumbo) / E-mail / Hoe lang? 1 dag, 1 week, 1 maand / Bekijk wat zij zien |
+| Knop | Maak QR-code (met Face ID) |
+| Daarna | Nog niet bekeken / Bekeken door {naam} om {tijd} / Stopt vanzelf op {moment} / Stop met delen / Gestopt. De link en de QR-code werken niet meer. |
+| Leeg | Er is nog niets om te delen. Voeg eerst bewijs toe aan je kluis. |
+| Chats selecteren | Tik op de chats die je wilt vastzetten of verwijderen. |
+
+### Selecties en de tijdlijn (iOS)
+
+| Waar | Tekst |
+|---|---|
+| Selecties | Selecties / je eigen selecties, daarna Werkgever, Onderwijs, Gemeente en Banenbeurs als je daar nog geen selectie voor hebt / Delen / Nieuwe selectie / Selectie aanpassen / Naam van de selectie / Bewaar selectie / Verwijder selectie / Over jou (niet verplicht): Twee of drie zinnen die ze als eerste lezen / Hoe lang? / {n} onderdelen · {m} met bestand · {k} kort / Een selectie is wat je één keer kiest voor een soort ontvanger. Tik op een rij om hem samen te stellen of aan te passen, met Delen deel je hem. |
+| Tijdlijn | Tijdlijn / Komt eraan / Op {status} gezet / Gedeeld met {ontvanger} / {naam} heeft je sollicitatie bekeken / {naam} heeft je cv of brief gedownload / Delen met {ontvanger} gestopt / Uitnodiging voor een kennismaking (demo) / Kennismakingsgesprek / Deadline om te versturen / Vandaag, Gisteren, Morgen {tijd} / Toon alles ({n}) |
+| Watch | Volgende stap / Gesprek bij {bedrijf} / Uitnodiging van {bedrijf} / Deadline {bedrijf} / {dag} {tijd} · antwoord op je iPhone / Je kaartje / Tot {moment} |
+
+### Delen: één scherm, bewijs inzien en één lijst sollicitaties (iOS en web)
+
+| Waar | Tekst |
+|---|---|
+| Deelscherm | Snel delen (vanaf je profiel) of Delen / Wat deel je? Je profiel, je selecties / Of een sollicitatie: Solliciteren bij {bedrijf}, {functie} · cv en brief / Toon alle {n} / Cv en brief / Meer opties |
+| Bestanden | Met bestand / Met de {n} bestanden (standaard aan bij elk bewijsstuk met een bestand) / Bestanden: Bestanden die ze kunnen openen: {namen} / Er gaan geen bestanden mee. Ze zien alleen wat er over je bewijs staat. |
+| Ontvanger (web /gedeeld) | Geverifieerd door {organisatie} op {datum} / Bekijk {bestandsnaam} / Een bestand bekijken werkt een paar minuten; laad de pagina opnieuw als de link verlopen is. |
+| Sollicitaties | Alles / Ayla / Zelf / Beurs (filter en label) / Achtergelaten, Uitgenodigd, Je komt, Afgezegd, Niet gekozen (beurs) |
+
+### Wat de ontvanger ziet, en aanpassen bij Snel delen (iOS en web)
+
+| Waar | Tekst |
+|---|---|
+| Snel delen | Je deelt {n} bewijsstukken, {m} met bestand. Pas aan / Wat deel je? (Zet aan wat ze mogen zien. Met bestand kunnen ze het bewijs zelf openen, zoals je cijferlijst of diploma.) / Je profielfoto |
+| Gestopt | Gestopt met delen / De link en de QR-code werken niet meer. Wie ze nu opent, ziet niets van je. / Klaar / Opnieuw delen |
+| Ontvanger | {n} geverifieerd / {n} bewijsstukken / {n} bestanden om te openen / Gedeeld met {ontvanger} · nog {tijd} · alleen bekijken / Bestand / Bestanden / Open / Geverifieerd door {organisatie} / Hier gaat geen bestand mee. Vraag het aan degene die dit deelde als je meer wilt zien. |
+| Sollicitatie openen | Terug naar Sollicitaties (pijl terug in plaats van een kruisje, binnen de app naast het menu) |
+
+## Terug en sluiten (iOS)
+
+Een flow met stappen heeft linksboven een pijl terug naar de vorige stap, en op de eerste stap Annuleer. Een blad dat je in één keer invult, heeft rechtsboven een kruisje. Met iets ingevuld vraagt PAVE eerst of je wilt stoppen, ook als je het blad naar beneden veegt.
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Algemeen | Terug (pijl, voor VoiceOver) / Sluiten (kruisje) / Annuleer |
+| Bewijs toevoegen | Stoppen (kruisje rechtsboven) / na Toevoegen: Afronden opent het nieuwe bewijs, Bevestiging aanvragen opent meteen de aanvraag |
+| Bevestiging aanvragen | Annuleer / na versturen: Bekijk in meldingen / Sluiten |
+| Meldingen, beoordelen | Je hebt het bewijs geverifieerd. / Je hebt de aanvraag afgewezen. |
+| Delen, overzicht en beheren | Nog niet ingevuld bij Instellingen › Account (als je naam ontbreekt) / Regel onder je naam, bijvoorbeeld: student HBO-ICT / Wat de ontvanger mag / Controleer en deel: Wat, Met wie, Waarvoor, Tot en met, Mag (Alleen bekijken / Bekijken en downloaden) / Je ziet wanneer iemand kijkt, en je kunt het altijd pauzeren of intrekken. / Beheren: Pauzeer of Hervat, Verleng, Zo ziet de ontvanger het, Intrekken / {n} keer bekeken · laatst {tijd} |
+
+## Overzicht en filters (iOS)
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Nieuwe sollicitatie, stappen | Ontwerp / Inhoud / Schrijven |
+| Editor | Bewaard op dit toestel (kort na elke wijziging) |
+| Mijn sollicitatie, kaart bovenaan | {functie} / {bedrijf} · {plaats} / status: Concept, Verstuurd, Gesprek, Aanbod, Afgewezen / Over {n} dagen, Morgen, Vandaag, Verlopen / Gedeeld, nog niet bekeken / Gedeeld, {n} keer bekeken |
+| Profiel, kaart bovenaan | {naam} of Jij / Student {diploma} / {n} bewijsstukken · {n} geverifieerd / Snel delen (met je beursprofiel als je dat hebt) |
+| Vacatures, filteren | {n} vacatures / {n} van {totaal} vacatures / Zoals gevonden / Beste match eerst / Filter, Filter ({n}) / Plaats, Uren, Werkgever / Alle, Fulltime, Part-time / Direct bij het bedrijf, Uitzendbureau of bemiddelaar / Herkend aan de naam van het bedrijf; dat kan een keer mis zijn. / Wis filters / Toon {n} vacatures / Geen vacature past bij deze filters. / Zet een filter weer op Alle om meer te zien. |
+| Vacaturekaart | {n}% match (VoiceOver: Een inschatting uit een stukje van de vacaturetekst) |
+| Over de werkgever (vacature en Mijn sollicitatie) | Over {bedrijf} / {bedrijf} · {plaats} / Uitzendbureau of bemiddelaar (herkend aan de naam) / Je deelt met {naam}, nog niet bekeken / Je deelt met {naam}, {n} keer bekeken / Laat Ayla opzoeken / Ayla zoekt op het web wat er voor een sollicitant toe doet. Alleen de naam en de plaats van het bedrijf gaan mee, niets over jou. / Ayla zoekt op wat er over {bedrijf} te vinden is… / Ayla vond niets betrouwbaars over {bedrijf}. Kijk anders op de website van het bedrijf. / Opnieuw opzoeken / Bronnen / Opgezocht door Ayla op {datum}. Controleer het bij de bronnen. |
+| Vervolg na solliciteren (demo, een paar minuten na Verstuurd) | Uitnodiging kennismaking / Demo / {bedrijf} wil je graag spreken over {functie}. Kies een moment dat je uitkomt. / {dag datum} om {tijd} / Je gesprek is op {dag datum} om {tijd} / Zet in je agenda / Voorbereiden: Lees de vacature nog eens door, Lees wat er over {bedrijf} bekend is, Oefen het gesprek met Ayla, Bedenk twee vragen voor hen, Plan je reis of test je videoverbinding / {n} van {totaal} gedaan / Dit bericht is nagespeeld voor de demo; er is geen echte werkgever bij betrokken. / Meldingen: Van werkgevers · demo / melding: Uitnodiging voor een kennismaking — {bedrijf} wil je spreken over {functie}. Dit is een demo in PAVE. / agenda: Kennismaking {bedrijf} |
+| Bewaarde profielen (Profiel) | Je profielen / Stel een profiel één keer samen, en deel het daarna in twee tikken. / Voor werkgevers, Voor school, Voor de gemeente, Voor de banenbeurs / {n} onderdelen · {n} kort / Delen / Nieuw profiel / Profiel aanpassen / Naam van het profiel / Voor wie / Wat erin staat / Kort: alleen titel, organisatie, periode en status. Uitgebreid: ook de beschrijving en vaardigheden. Bestanden uit je kluis deel je niet. / Kort, Uitgebreid / Bewaar profiel / Bewaren… / Verwijder profiel / {naam} verwijderen? / Wat je met dit profiel al deelde, blijft gedeeld tot je het intrekt. / Het profiel kon niet worden bewaard. Probeer het opnieuw. |
+| Widget Mijn sollicitaties | Mijn sollicitaties / Je deadlines en wie keek naar wat je deelde. / Nog geen sollicitaties / Solliciteer vanuit een vacature in PAVE. / Vandaag, Morgen, Over {n} dagen, Verlopen / Gedeeld, nog niet bekeken / {n} keer bekeken |
+| Banenbeurs, echte werkgevers | Echte vacatures van {bedrijf}, opgehaald op {datum}. {bedrijf} doet niet mee aan PAVE en ziet niets van wat je hier doet. / Bekijk de vacature / web: Lees de hele vacature / pdf: Banenbeurs · demo van PAVE, Stand A–E, Scan met PAVE: Profiel › Scan een QR-code |
+| Beurs, code gevonden | Gevonden / Even laden… / {bedrijf} / {stand} / Niet gevonden / Deze werkgever kon niet worden geladen. Probeer het opnieuw. / De beurs werkt alleen met een echt account, niet in de demo. / pdf: Scan met je camera of in PAVE (Profiel › Scan een QR-code) |
+| Snel solliciteren (beurs, poster) | Snel solliciteren / Naam / School of opleiding (Bijvoorbeeld: havo 4, Lorentz Casimir Lyceum) / Waarom deze bijbaan (Twee of drie zinnen, in je eigen woorden) / Ayla schrijft mee, Ayla schrijft… / Wanneer kun je werken: ma–zo, Hoeveel uur per week, hoogstens: 8–32 uur / Vertel het liever? (niet verplicht): Spreek je pitch in, Stop — Vertel in een halve minuut wie je bent. Het wordt tekst die je kunt aanpassen; de opname zelf wordt niet bewaard. / Je kaartje blijft in PAVE. {bedrijf} doet niet echt mee: in de demo bekijkt een medespeler het als werkgever. / Laat achter bij {bedrijf} / Achtergelaten — Je kaartje voor {vacature} staat klaar bij {bedrijf}. Je krijgt een melding als je wordt uitgenodigd; alles staat in Mijn beursdag. |
+| Mijn beursdag | Mijn beursdag / Wat je vandaag scande en waar je solliciteerde / Uitnodigingen: Gesprek: {vacature}, {moment}, Ik kom, Kan niet, Je hebt gezegd dat je komt., Oefen met Ayla / Hier liet je je kaartje achter: Achtergelaten, Uitgenodigd, Je komt, Afgezegd / Nog te doen: Je scande {bedrijf} (Stand X), maar solliciteerde nog niet / Nog niets vandaag / melding: Je bent uitgenodigd — Voor een gesprek over {vacature} op {moment}. |
+| Werkgever-modus (demo, app en web /inbox/{slug}?sleutel=) | Werkgever-modus · demo / Zo ziet de werkgever wie er bij de stand solliciteerde. In de demo speelt een medespeler de recruiter. / Nog niemand / Uitnodigen voor een gesprek / Wanneer, Bericht (Bijvoorbeeld: meld je bij de servicebalie), Verstuur / Uitgenodigd voor {moment}, wacht op antwoord / Komt op {moment} / Kan niet op dat moment / Deze werkgeverssleutel klopt niet. |
+| Posters (pdf) | Wij zoeken jou! / Scan met je camera en solliciteer in één minuut met PAVE / Geen cv nodig: laat je kaartje achter, met wanneer je kunt werken. |
+
+## Plannen en de Dynamic Bar (iOS)
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Leeg scherm | Je hebt nog geen plan |
+| Uitleg leeg scherm | Maak een plan voor een doel waar je naartoe wilt werken. Ayla helpt je stap voor stap. |
+| Knop | Nieuw plan |
+| Velden | Naam / Doel / Beginnen met |
+| Uitleg doel | Waar wil je naartoe werken? Ayla gebruikt dit in de gesprekken van dit plan. |
+| Sjablonen | Leeg plan / Een baan vinden / Een stage vinden / Mijn loopbaan ontdekken / Een vervolgopleiding kiezen / Een vaardigheid ontwikkelen / Een certificaat behalen / Een carrièreswitch maken |
+| Uitleg leeg plan | Begin met een doel en voeg zelf stappen toe. |
+| Soort stap | Algemeen / Gesprek met Ayla / Uitzoeken / Bewijs in je kluis / Laten verifiëren / Schrijven / Profiel / Contact / Zelf doen / Terugkijken / Mijlpaal |
+| Knop bij een stap | Open je kluis / Open je profiel / Open Meldingen |
+| Overgeslagen | Overgeslagen stappen tellen niet mee. |
+| Stap klaar (Dynamic Bar) | Stap afgerond |
+| Dynamic Bar ingeklapt | {plannaam} · {huidige stap}  {afgerond}/{totaal} |
+| Dynamic Island (iPhone met eiland) | compact: ring en {afgerond}/{totaal}; even open: {plannaam} / {huidige stap} of Stap afgerond / {stap} |
+| Tip bij het eiland (eerste keer) | Je plan staat hier — Tik net onder het eiland of veeg omlaag voor je stappen. Houd vast om het hele plan te openen. |
+| Plan voltooien | Voltooien / Weer openen / Actief / Voltooid |
+| Plan verwijderen met gesprekken | Verwijderen, gesprekken bewaren / Verwijderen met gesprekken / Wil je de {n} gesprekken met Ayla van dit plan bewaren? Ze komen dan in je gewone chats. Bewijs in je kluis blijft altijd bewaard. |
+| Plan in Ayla (plusknop) | Plan toevoegen / Nu: {plannaam} / Kies een plan / Ayla helpt je in deze chat met de stappen van het plan. |
+| Toegangsscherm (menu) | Toegangsscherm en Dynamic Island / Volg op toegangsscherm / Niet meer volgen / Naam en stap tonen |
+| Live Activity | Je plan / Stap {n} van {totaal} · {soort stap} / {afgerond}/{totaal} / Klaar / Alle stappen afgerond |
+| Nog niet beschikbaar | Plannen zijn nog niet beschikbaar. Probeer het later nog eens. |
+| Plan verwijderen | Plan verwijderen? — De stappen van dit plan verdwijnen. Bewijs in je kluis blijft altijd bewaard. |
+| Voortgang | {x} van {y} afgerond / Stap {n} van {totaal} (overgeslagen stappen tellen niet mee) |
+| Plan klaar | Klaar! Je hebt alle stappen afgerond. |
+| Acties bij een stap | Bespreken met Ayla / Afronden / Hier verder / Nog te doen / Overslaan / Gesprek van deze stap openen / Stap aanpassen |
+| Gesprekken | Gesprekken met Ayla / Nog geen gesprekken in dit plan. / Uit plan halen |
+| Knoppen plan | Verder met Ayla / Nieuw gesprek |
+| Dynamic Bar | Open plan / {n} gesprekken |
+| Tekst bij een nieuw gesprek voor een stap | Help me met de stap "{stap}". |
+| Fout | Je plan kon niet worden bewaard. Probeer het nog eens. |
+| Snel solliciteren, beschikbaarheid | Tik op de dagen dat je kunt en kies hoeveel uur. / {dagen} of Alle dagen, hoogstens {n} uur per week |
+| Snel solliciteren, meedelen | Wat ze verder mogen zien / Je profiel met bewijs / Ze kunnen je {n} bewijsstukken en de bestanden inzien, twee weken lang. Stoppen kan altijd bij Profiel. / Je kluis is nog leeg, dus er is geen profiel om te laten zien. / Kaartje bij {bedrijf} |
+| Postvak werkgever | Bekijk profiel / web: Bekijk profiel en bewijs |
+| Meldingen, beurs | Van de beurs |
+| Werkgever op de beurs, kop in eigen stijl | OGD: > werken bij ogd / Start je ict-carrière_ · Sioux: // engineering / Engineers gezocht · Catharina: Werken in de zorg? · Jumbo: Kom bij Jumbo · Eindhoven: Werk aan je eigen stad (zelfde regels als op de posters) |
+| Sollicitatie, stappen | Ontwerp / Inhoud / Schrijven / Delen (ook boven het overzicht en het deelscherm) / in de editor: Solliciteren bij {bedrijf} · stap 3 van 4: schrijven |
+| Sollicitatie van de beurs (uit de lijst Sollicitaties) | Sollicitatie van de beurs / Uitnodiging / Wat je achterliet / Waarom deze bijbaan / Je pitch / Wanneer kun je werken / Je profiel met bewijs: Meegestuurd. Stoppen kan bij Profiel, onder wat je deelt. of Niet meegestuurd. / Achtergelaten op {datum}. Alles van je beursdag staat bij Profiel › Mijn beursdag. / Niet meer gevonden — Deze sollicitatie staat niet meer in je lijst. |
+| Delen, per bestand | Met de {n} bestanden, daaronder elk bestand met zijn naam en een vinkje (VoiceOver: Bestand {naam} meesturen) |
+| Instellingen › Weergave, lettertype | Lettertype / PAVE, Systeem, Rond, Schreef, Leesbaar / Leesbaar is Atkinson Hyperlegible: letters die je minder snel door elkaar haalt. Je keuze blijft op dit toestel. |
+| Meldingen, filters en groepen | Alles / Gesprekken / Werk / Bewijs — Werk: Geen uitnodigingen, Nodigt een werkgever je uit, dan staat dat hier. / Van de beurs en Van werkgevers klappen in: {titel} · {n} (VoiceOver: Ingeklapt, {n} / Uitgeklapt) / rij van de beurs opent je sollicitatie |
+| Zonder het woord demo | Van werkgevers / Uitnodiging voor een kennismaking / Dit bericht is nagespeeld: er is geen echte werkgever bij betrokken. / Kennismakingsgesprek, gepland in PAVE. Neem je cv mee. / Werkgever-modus — Hier speelt een medespeler de recruiter. / Knopmodus / Voorbeeldaccount. Er wordt geen echte verificatiecode gemaakt. / Geen kluis bij dit voorbeeldaccount / Geen apparaten bij dit voorbeeldaccount / Delen werkt alleen met een echt account. / De beurs werkt alleen met een echt account. |
+| Plan, stappen van Ayla | Laat Ayla stappen voorstellen / Voorstel van Ayla / Ayla denkt na over je stappen… / Voeg {n} stappen toe / Andere stappen voorstellen / Probeer opnieuw / Ayla kon nu geen stappen voorstellen. Probeer het opnieuw. / Ayla heeft geen nieuwe stappen voor dit plan. Vul je doel aan en probeer het opnieuw, of voeg zelf een stap toe. / Ayla gebruikt de naam en het doel van je plan (en de vacature waar het om gaat). Van je kluis ziet ze alleen de titels van de {n} bewijsstukken die ze mag bekijken. Er wordt niets toegevoegd tot jij kiest. / Ze ziet geen bewijs uit je kluis: daar gaf je geen toestemming voor. / nieuw plan: Stappen van Ayla — Ayla stelt stappen voor bij je doel. Jij kiest welke je houdt. |
+| Plan en vacature | Maak een plan voor deze vacature / Open je plan voor deze vacature / {n} van {m} stappen afgerond / stappen: Lees de vacature goed, Werk aan {vaardigheid}, Zet passend bewijs in je kluis, Schrijf je cv en brief, Deel je sollicitatie, Oefen het gesprek met Ayla / Open cv en brief / Open Vacatures en sollicitaties |
+| Plan en project | Koppel aan een project / Geen project / Nieuwe gesprekken van dit plan gebruiken (dan) de instructies en bronnen van dit/dat project. / op het project: Plan in dit project, Plannen in dit project |
+| Project, bronnen, fouten | Geen verbinding. Kijk of je internet hebt en probeer het opnieuw. / Je bent te lang ingelogd geweest. Log opnieuw in en probeer het dan nog eens. / Dit is niet gelukt. Probeer het opnieuw. |
+| Ayla doet het zelf, als het niet lukt | Ik kon het plan {naam} niet vinden. / Ik weet niet welk plan je bedoelt. Noem de naam van het plan. / Ik kon de stap {titel} niet vinden in je plannen. / De stap {titel} staat al in dat plan. / Ik kon het project {naam} niet vinden. / Ik kon geen sollicitatie vinden voor {naam}. Open eerst de vacature, dan begin ik er een. / Ik weet niet voor welke vacature. Open de vacature of zeg welke van de getoonde vacatures je bedoelt. / Het plan {naam} staat klaar bij Plan. |
+| Plan in een project | De gesprekken van dit plan staan in dit project en gebruiken de instructies en bronnen ervan. / De gesprekken van dit plan komen dan in dat project en gebruiken de instructies en bronnen ervan. |
+| Ayla vraagt eerst | Zal ik de stap "{titel}" uit je plan halen? / Zal ik {werkgever} laten weten dat je komt? / Zal ik {werkgever} laten weten dat je niet kunt? / Zal ik "{bewijs}" als bron toevoegen aan {project}? Dan mag ik het bekijken en gebruiken in dat project. |
+| Ayla, uitnodigingen | Ik heb {werkgever} laten weten dat je komt. / Ik heb {werkgever} laten weten dat je niet kunt. / Ik kon geen uitnodiging vinden van {naam}. / Zeg eerst dat je komt, dan zet ik het gesprek in je agenda. / Dit gesprek hoort niet bij een project. Zeg in welk project het moet. |

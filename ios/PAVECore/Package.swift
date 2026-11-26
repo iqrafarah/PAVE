@@ -29,5 +29,15 @@ let package = Package(
                 .product(name: "Auth", package: "supabase-swift"),
             ]
         ),
+        // Against a local Supabase (shared/supabase, `supabase start`). Skipped unless PAVE_INTEGRATION=1:
+        // see ios/PAVECore/Tests/PAVEIntegrationTests/README.md.
+        .testTarget(
+            name: "PAVEIntegrationTests",
+            dependencies: [
+                "PAVECore",
+                .product(name: "Auth", package: "supabase-swift"),
+            ],
+            exclude: ["README.md"]
+        ),
     ]
 )

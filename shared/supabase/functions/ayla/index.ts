@@ -4,6 +4,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { answer, CONSENT_HISTORY_LIMIT, type StoredMessage, titleFrom, toPastMessage } from './brain.ts'
 import { loadMemory } from './memory.ts'
 import { loadAllowedVault } from './vault.ts'
+import { loadPlan, planExists, stepUpdater } from './plan.ts'
 import { type AylaReply, parseRequest } from './contract.ts'
 import { openRouterCompletion } from './openrouter.ts'
 import { MODEL_OUTPUT_SCHEMA } from './prompt.ts'
@@ -45,7 +46,11 @@ Deno.serve(async (req) => {
   if (sessionLevel(token) !== 'aal2') return json({ error: 'insufficient_aal' }, 403)
 
   const request = parseRequest(await req.json().catch(() => null))
-  if (typeof request === 'string') return json({ error: 'invalid_request', detail: request }, 400)
+  if (typeof request === 'string') {
+    // Why a question was refused, so a 400 in the logs says what to fix.
+    console.warn('ayla: refused request:', request)
+    return json({ error: 'invalid_request', detail: request }, 400)
+  }
 
   let conversationId = request.conversationId
   if (conversationId) {
@@ -57,16 +62,23 @@ Deno.serve(async (req) => {
       const { data } = await supabase.from('ayla_projects').select('id').eq('id', request.projectId).maybeSingle()
       if (!data) return json({ error: 'project_not_found' }, 404)
     }
+    // A plan that is not there (or before the plans migration) is left out: the chat still starts, without a plan.
+    const inPlan = request.planId && await planExists(supabase, request.planId)
     const { data, error } = await supabase
       .from('ayla_conversations')
-      .insert({ started_on: request.device, title: titleFrom(request.text), ...(request.projectId ? { project_id: request.projectId } : {}) })
+      .insert({
+        started_on: request.device,
+        title: titleFrom(request.text),
+        ...(request.projectId ? { project_id: request.projectId } : {}),
+        ...(inPlan ? { plan_id: request.planId, ...(request.planStepId ? { plan_step_id: request.planStepId } : {}) } : {}),
+      })
       .select('id')
       .single()
     if (error || !data) return json({ error: 'unavailable' }, 500)
     conversationId = data.id as string
   }
 
-  const [{ data: past }, { data: profile }, memory, vault, project] = await Promise.all([
+  const [{ data: past }, { data: profile }, memory, vault, project, plan] = await Promise.all([
     // More than the model gets, so a Ja to the vault early in a long conversation still counts.
     supabase
       .from('ayla_messages')
@@ -78,6 +90,7 @@ Deno.serve(async (req) => {
     loadMemory(supabase),
     loadAllowedVault(supabase),
     loadProject(supabase, conversationId),
+    loadPlan(supabase, conversationId),
   ])
   const history = ((past ?? []) as StoredMessage[]).reverse().map(toPastMessage)
   const firstName = (profile?.preferred_name || profile?.full_name?.split(' ')[0] || undefined) as string | undefined
@@ -93,12 +106,13 @@ Deno.serve(async (req) => {
   ]
 
   let title: string | undefined
-  const input = { request, conversationId, history, firstName, memory, vault, project, onTitle: request.conversationId ? undefined : (t: string) => { title = t } }
+  const input = { request, conversationId, history, firstName, memory, vault, project, plan, onTitle: request.conversationId ? undefined : (t: string) => { title = t } }
   const deps = {
     complete: openRouterCompletion(openRouterKey, MODEL_OUTPUT_SCHEMA),
     searchVacancies: withSupport(firstThatFinds(apis), webSearch(openRouterKey)),
     newId: () => crypto.randomUUID(),
     siteExists: siteChecker(),
+    updatePlanStep: stepUpdater(supabase),
   }
 
   /** Stores the question and the answer together. */

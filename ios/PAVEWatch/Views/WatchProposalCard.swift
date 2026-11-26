@@ -10,7 +10,7 @@ struct WatchProposalCard: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Voorstel van Ayla")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.brandGreen)
+                .foregroundStyle(WatchPreferences.shared.accentColor)
             Text(proposal.draft.title)
                 .font(.footnote.weight(.medium))
             Text(details)
@@ -23,7 +23,7 @@ struct WatchProposalCard: View {
                     HStack(spacing: 6) {
                         Button("Nee") { onAnswer(false) }
                         Button("Ja") { onAnswer(true) }
-                            .tint(.brandGreen)
+                            .tint(WatchPreferences.shared.accentColor)
                     }
                     .buttonStyle(.borderedProminent)
                 } else {
@@ -45,7 +45,7 @@ struct WatchProposalCard: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.brandGreen.opacity(0.18), in: .rect(cornerRadius: 12))
+        .background(WatchPreferences.shared.accentColor.opacity(0.18), in: .rect(cornerRadius: 12))
         .accessibilityElement(children: .contain)
     }
 

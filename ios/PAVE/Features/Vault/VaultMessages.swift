@@ -2,13 +2,15 @@ import PAVECore
 
 /// The texts of the vault in one place, so web can use the same words.
 enum VaultMessages {
+    static let cancel = "Annuleer"
+    static let seeInNotifications = "Bekijk in meldingen"
     static let scanFailed = "Je scan kon niet gelezen worden. Probeer het nog eens of voeg een bestand toe."
     static let emptyTitle = "Je kluis is nog leeg"
     static let emptyMessage = "Bewaar hier je diploma's, certificaten, projecten en ervaringen. Dan heb je alles op één plek."
     static let noResultsTitle = "Niets gevonden"
     static let noResultsMessage = "Probeer een ander woord of zet de filters uit."
     static let emptyFolderMessage = "Houd een item ingedrukt en kies Verplaatsen naar map."
-    static let notInDemoTitle = "Geen kluis in de demo"
+    static let notInDemoTitle = "Geen kluis bij dit voorbeeldaccount"
     static let notInDemoMessage = "Log in met je eigen account om je kluis te gebruiken."
     static let loadFailedTitle = "Je kluis kon niet laden"
     static let newFolderTitle = "Nieuwe map"

@@ -38,6 +38,21 @@ struct SettingsAppearanceScreen: View {
                     .foregroundStyle(Color.inkMuted)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            card(SettingsMessages.fontStyle) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 132), spacing: 10)], spacing: 10) {
+                    ForEach(PaveFontStyle.allCases) { style in
+                        SettingsOptionCard(title: SettingsMessages.title(style), isSelected: PaveFontStore.shared.style == style) {
+                            FontStyleGlyph(style: style)
+                        } action: {
+                            PaveFontStore.shared.style = style
+                        }
+                    }
+                }
+                Text(SettingsMessages.fontStyleHint)
+                    .textStyle(.caption)
+                    .foregroundStyle(Color.inkMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             card(SettingsMessages.textSize) {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 10) { textSizeOptions }

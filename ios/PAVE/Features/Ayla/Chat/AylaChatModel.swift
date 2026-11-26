@@ -52,10 +52,49 @@ final class AylaChatModel {
         let navigation: AylaReply.Navigation
     }
     private(set) var screenRequest: ScreenRequest?
+
+    /// What the vacancies page asks of the chat: Ayla's help with a vacancy, or the application for it.
+    enum VacancyRequest: Equatable {
+        case task(AylaRequest.VacancyTask, Vacancy)
+        /// A task asked from an application, which the chat offers to go back to.
+        case applicationTask(AylaRequest.VacancyTask, Vacancy)
+        case ask(Vacancy)
+        case askGap(String, Vacancy)
+        case application(Vacancy)
+        case search
+    }
+
+    struct PendingVacancyRequest: Equatable {
+        let id = UUID()
+        let request: VacancyRequest
+    }
+
+    /// Picked up by the chat once it is on screen.
+    var vacancyRequest: PendingVacancyRequest?
+    /// Vacatures should open on the applications tab, as from the widget or a reminder.
+    var opensApplications = false
+
+    func request(_ request: VacancyRequest) {
+        vacancyRequest = PendingVacancyRequest(request: request)
+    }
+
+    /// Ayla's newest search in this chat: what she found, what she searched for and which data she used.
+    var latestVacancySearch: (vacancies: [Vacancy], search: VacancySearch?, usedData: [AylaVaultCategory]) {
+        for entry in entries.reversed() {
+            for block in entry.reply?.blocks ?? [] {
+                if case .vacancies(let items, let search) = block, !items.isEmpty {
+                    return (items, search, entry.reply?.usedData ?? [])
+                }
+            }
+        }
+        return ([], nil, [])
+    }
     private var opensPageAlready = false
 
     /// "Nieuwe chat in project": the next question starts the conversation inside this project.
     private(set) var newChatProject: AylaProject?
+    /// "Nieuw gesprek in plan": the plan (and the step in it) the next chat belongs to. Any other new chat leaves it.
+    private(set) var newChatPlan: (planID: String, stepID: String?)?
     private(set) var firstName: String?
 
     /// The name changed in Instellingen: the welcome and the menu use it at once.
@@ -249,6 +288,8 @@ final class AylaChatModel {
             guard !Task.isCancelled else { return }
             self?.isGreetingReady = true
         }
+        // Kept vacancies are known from the start, also while talking hands-free, when the panel is not opened.
+        async let saved: Void = loadSavedVacancies()
         let name = await service.firstName()
         timeout.cancel()
         // A name that comes in after the welcome is shown is left out, so the welcome does not jump.
@@ -257,6 +298,7 @@ final class AylaChatModel {
             isGreetingReady = true
         }
         await refreshConversations()
+        await saved
     }
 
     /// Ayla is thinking or writing; the send button is a stop button meanwhile.
@@ -310,6 +352,12 @@ final class AylaChatModel {
         var isFollowUp = false
     }
 
+    /// A question PAVE asks for you ("Help me solliciteren op …") goes in the language of Instellingen › Taal, so
+    /// Ayla answers in it too. "Toegevoegd aan mijn kluis" stays Dutch: the server waits for those exact words.
+    private static func outgoing(_ text: String) -> String {
+        text.hasPrefix("Toegevoegd aan mijn kluis") ? text : text.translated
+    }
+
     /// Shows the question at once and returns what to send, or nil when nothing can be sent now.
     private func prepare(_ text: String, input: AylaInput) -> Turn? {
         if let results = pendingResults {
@@ -349,8 +397,8 @@ final class AylaChatModel {
         uploads = [:]
         phase = .thinking
         let request = AylaRequest(
-            conversationId: conversationID, text: text, device: .phone, input: input, context: requestContext(for: text), attachments: files,
-            projectId: newChatProject?.id, app: appState?()
+            conversationId: conversationID, text: Self.outgoing(text), device: .phone, input: input, context: requestContext(for: text), attachments: files,
+            projectId: newChatProject?.id, planId: newChatPlan?.planID, planStepId: newChatPlan?.stepID, app: appState?()
         )
         return Turn(service: service, request: request, text: text, files: files)
     }
@@ -593,10 +641,20 @@ final class AylaChatModel {
     /// item starts clean.
     /// `deliver` sends the notice another way, such as out loud in a spoken conversation.
     func markAdded(replyID: String, itemID: String? = nil, title: String, uploads: [VaultUpload], saying words: String? = nil, deliver: ((String) -> Void)? = nil) {
+        noteAdded(replyID: replyID, itemID: itemID, uploads: uploads)
+        tellAdded(title: title, saying: words, deliver: deliver)
+    }
+
+    /// The card shows it is in the vault and its files no longer go along; Ayla does not hear it yet.
+    func noteAdded(replyID: String, itemID: String?, uploads: [VaultUpload]) {
         addedReplies.insert(replyID)
         addedItemIDs[replyID] = itemID
         if let itemID { lastAddedItemID = itemID }
         sentUploads.removeAll { upload in uploads.contains(upload) }
+    }
+
+    /// Ayla hears it is in the vault, and goes on from there.
+    func tellAdded(title: String, saying words: String? = nil, deliver: ((String) -> Void)? = nil) {
         let name = title.trimmingCharacters(in: .whitespacesAndNewlines)
         let notice = AylaMessages.addedToVault(name.isEmpty ? nil : name)
         let message = words.map { "\($0)\n\(notice)" } ?? notice
@@ -668,7 +726,7 @@ final class AylaChatModel {
             }
             let request = AylaRequest(
                 conversationId: conversationID, text: question.text, device: .phone, input: .text, context: context, attachments: files,
-                projectId: newChatProject?.id, app: appState?()
+                projectId: newChatProject?.id, planId: newChatPlan?.planID, planStepId: newChatPlan?.stepID, app: appState?()
             )
             await stream(Turn(service: service, request: request, text: question.text, files: files))
         }
@@ -714,7 +772,7 @@ final class AylaChatModel {
     func attach(_ items: [VaultItem]) {
         guard let first = items.first else { return }
         // Chosen items are all Ayla uses in this conversation, also when it is one: she sees nothing else of the vault.
-        context = AylaRequest.Context(screen: .vault, itemIds: items.map(\.id), vacancy: context?.vacancy)
+        context = AylaRequest.Context(screen: .vault, itemIds: Array(items.map(\.id).prefix(AylaRequest.maximumChosenItems)), vacancy: context?.vacancy)
         contextTitle = items.count == 1 ? first.title : AylaMessages.contextItems(items.count)
     }
 
@@ -802,10 +860,18 @@ final class AylaChatModel {
         context = nil
     }
 
-    func newConversation(in project: AylaProject? = nil) {
+    /// "Plan toevoegen" before the chat has begun: its first message starts it in this plan (nil: in none). What was
+    /// typed and added stays.
+    func startInPlan(_ planID: String?) {
+        guard conversationID == nil else { return }
+        newChatPlan = planID.map { ($0, nil) }
+    }
+
+    func newConversation(in project: AylaProject? = nil, plan planID: String? = nil, step stepID: String? = nil) {
         guard !isAnswering else { return }
         openProject = nil
         newChatProject = project
+        newChatPlan = planID.map { ($0, stepID) }
         clearContext()
         endPractice()
         entries = []
@@ -830,6 +896,7 @@ final class AylaChatModel {
 
     func open(_ conversation: AylaConversation) async {
         openProject = nil
+        newChatPlan = nil
         guard let service, !isAnswering else { return }
         clearContext()
         endPractice()
@@ -1105,9 +1172,12 @@ final class AylaChatModel {
         do {
             savedVacancies = try await service.savedVacancies()
             canSaveVacancies = true
+            vacancyProblem = nil
         } catch AylaError.notSetUp {
             canSaveVacancies = false
         } catch {
+            // The panel closed or was built again while loading: that is not a failure, and the next load will do.
+            guard !Task.isCancelled else { return }
             vacancyProblem = AylaMessages.vacancySavedLoadFailed
         }
     }
@@ -1160,14 +1230,36 @@ final class AylaChatModel {
     func loadSources(of project: AylaProject) async {
         guard let service else { return }
         sourcesProblem = nil
-        do {
-            projectSources[project.id] = try await service.projectSources(projectID: project.id)
-            canUseSources = true
-        } catch AylaError.notSetUp {
-            canUseSources = false
-        } catch {
-            if projectSources[project.id] == nil { projectSources[project.id] = [] }
-            sourcesProblem = AylaMessages.sourcesFailed
+        // A hiccup of the connection is tried once more before anything is said.
+        for attempt in 0..<2 {
+            do {
+                projectSources[project.id] = try await service.projectSources(projectID: project.id)
+                canUseSources = true
+                return
+            } catch AylaError.notSetUp {
+                canUseSources = false
+                return
+            } catch is CancellationError {
+                // The page went away while loading: nothing failed.
+                return
+            } catch {
+                if attempt == 0, !Task.isCancelled {
+                    try? await Task.sleep(for: .milliseconds(700))
+                    continue
+                }
+                if Task.isCancelled { return }
+                if projectSources[project.id] == nil { projectSources[project.id] = [] }
+                sourcesProblem = Self.sourcesMessage(for: error)
+            }
+        }
+    }
+
+    /// What went wrong with the sources, as far as the app can tell.
+    private static func sourcesMessage(for error: any Error) -> String {
+        switch error {
+        case AylaError.noConnection: AylaMessages.sourcesNoConnection
+        case AylaError.insufficientAssurance, AylaError.notSignedIn: AylaMessages.sourcesSignInAgain
+        default: AylaMessages.sourcesFailed
         }
     }
 
@@ -1177,12 +1269,16 @@ final class AylaChatModel {
         let fresh = itemIDs.filter { !known.contains($0) }
         guard !fresh.isEmpty else { return }
         projectSources[project.id] = fresh + known
+        sourcesProblem = nil
         do {
             try await service.addProjectSources(fresh, projectID: project.id)
             PaveHaptics.success()
+        } catch AylaError.notSetUp {
+            projectSources[project.id] = known
+            canUseSources = false
         } catch {
             projectSources[project.id] = known
-            sourcesProblem = AylaMessages.sourcesFailed
+            sourcesProblem = Self.sourcesMessage(for: error)
         }
     }
 
@@ -1195,7 +1291,7 @@ final class AylaChatModel {
                 try await service.removeProjectSource(itemID, projectID: project.id)
             } catch {
                 projectSources[project.id] = before
-                sourcesProblem = AylaMessages.sourcesFailed
+                sourcesProblem = Self.sourcesMessage(for: error)
             }
         }
     }

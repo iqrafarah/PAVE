@@ -27,6 +27,8 @@
 		A650AACB9495333BC3055FC2 /* PaveIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BB8E50CBECFA7C43BD0172C /* PaveIntents.swift */; };
 		A7C0FFEE00000000000000A2 /* AylaVoiceActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C0FFEE00000000000000A1 /* AylaVoiceActivity.swift */; };
 		A7C0FFEE00000000000000A3 /* AylaVoiceActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C0FFEE00000000000000A1 /* AylaVoiceActivity.swift */; };
+		A7C0FFEE00000000000000B2 /* PlanActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C0FFEE00000000000000B1 /* PlanActivity.swift */; };
+		A7C0FFEE00000000000000B3 /* PlanActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C0FFEE00000000000000B1 /* PlanActivity.swift */; };
 		C5F838A8F5389AA439976568 /* PAVECore in Frameworks */ = {isa = PBXBuildFile; productRef = BFAAF27B879F677ADF44BCF9 /* PAVECore */; };
 		CFC885971A785DDF39827BE1 /* PaveSplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C616F072C4F978843892A158 /* PaveSplashView.swift */; };
 		D1A7C0FFEE00000000000001 /* PAVECore in Frameworks */ = {isa = PBXBuildFile; productRef = D1A7C0FFEE00000000000002 /* PAVECore */; };
@@ -104,6 +106,7 @@
 		89B1896BB53A1F4216CBA41C /* Inter-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Inter-OFL.txt"; sourceTree = "<group>"; };
 		973322EAB88C92C7FE97EB1A /* InterVariable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = InterVariable.ttf; sourceTree = "<group>"; };
 		A7C0FFEE00000000000000A1 /* AylaVoiceActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AylaVoiceActivity.swift; sourceTree = "<group>"; };
+		A7C0FFEE00000000000000B1 /* PlanActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanActivity.swift; sourceTree = "<group>"; };
 		BF1D741B8FA937E5AA513AA9 /* PAVEWidgets-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "PAVEWidgets-Info.plist"; sourceTree = "<group>"; };
 		C616F072C4F978843892A158 /* PaveSplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaveSplashView.swift; sourceTree = "<group>"; };
 		D1A7C0FFEE0000000000000B /* AylaPixelOrb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AylaPixelOrb.swift; sourceTree = "<group>"; };
@@ -213,6 +216,7 @@
 				C616F072C4F978843892A158 /* PaveSplashView.swift */,
 				3BFEE001DD9C244F3F78FC55 /* PixelWaveIcon.swift */,
 				A7C0FFEE00000000000000A1 /* AylaVoiceActivity.swift */,
+				A7C0FFEE00000000000000B1 /* PlanActivity.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -356,7 +360,9 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				Base,
+				en,
 				nl,
+				pap,
 			);
 			mainGroup = 356C90FA62F3E8823ADBEB2E;
 			minimizedProjectReferenceProxies = 1;
@@ -422,6 +428,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A7C0FFEE00000000000000A2 /* AylaVoiceActivity.swift in Sources */,
+				A7C0FFEE00000000000000B2 /* PlanActivity.swift in Sources */,
 				15C5E62E401984801CF64CF7 /* PaveSplashView.swift in Sources */,
 				D1A7C0FFEE0000000000000C /* AylaPixelOrb.swift in Sources */,
 				D1A7C0FFEE0000000000000F /* AylaPixelIcons.swift in Sources */,
@@ -456,6 +463,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A7C0FFEE00000000000000A3 /* AylaVoiceActivity.swift in Sources */,
+				A7C0FFEE00000000000000B3 /* PlanActivity.swift in Sources */,
 				98E635EA69087DC3097BE8A3 /* PaveMark.swift in Sources */,
 				E6583B2779788EDAA6A29D7C /* PixelWaveIcon.swift in Sources */,
 				67AD7CD53E595390E5886AFE /* PaveLink.swift in Sources */,

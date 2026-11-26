@@ -75,7 +75,7 @@ struct EmailVaultPicker: View {
                         .foregroundStyle(Color.inkMuted)
                 }
                 Spacer(minLength: 8)
-                Image(isSelected ? .iconCheckCircle : .iconCheckCircleOutline)
+                Image(isSelected ? .iconCheckCircleSolid : .iconCheckCircleOutline)
                     .renderingMode(.template)
                     .resizable()
                     .scaledToFit()

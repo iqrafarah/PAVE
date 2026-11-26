@@ -22,6 +22,17 @@ struct MainView: View {
     @State private var notificationsModel: NotificationsModel
     /// iCloud Mail, read live on this iPhone; its conversations show up in Meldingen.
     @State private var emailModel = EmailModel()
+    @State private var sharing: SharingModel
+    /// Ayla was asked to share: the composer opens over the chat, so you are back with her once it is done.
+    @State private var aylaShare: ShareTemplateChoice?
+    /// An employer opened from the iPhone's camera, over whatever screen is open.
+    @State private var fairEmployer: FairEmployerSlug?
+    @State private var draftSync: ApplicationDraftSyncer?
+    /// The employer's inbox of the demo, opened from its key's code.
+    @State private var employerInbox: EmployerInboxKey?
+    /// Applications whose demo invitation has arrived, for Meldingen and the bell; read again when you move around.
+    @State private var invitations: [ApplicationDraft] = []
+    @State private var plans: PlanModel
     @State private var destination = MainDestination.ayla
     /// Demo: the Camera Control button steers PAVE while "knopmodus" is on.
     @State private var cameraControl = PaveCameraControl()
@@ -46,17 +57,28 @@ struct MainView: View {
     private static let sidebarWidth: CGFloat = 800
     private static let sidebarSize: CGFloat = 320
 
-    init(service: (any AylaService)?, vaultService: (any VaultService)?, devicesService: (any DevicesService)? = nil, profileService: (any ProfileService)? = nil, notificationsService: SupabaseNotificationsService? = nil) {
+    init(
+        service: (any AylaService)?, vaultService: (any VaultService)?, devicesService: (any DevicesService)? = nil,
+        profileService: (any ProfileService)? = nil, notificationsService: SupabaseNotificationsService? = nil,
+        shareService: (any ShareService)? = nil, planService: (any PlanService)? = nil
+    ) {
+        _sharing = State(initialValue: SharingModel(service: shareService, webURL: ShareServiceFactory.webURL()))
         _model = State(initialValue: AylaChatModel(service: service, drafts: .standard, pendingFiles: .standard))
         _memory = State(initialValue: AylaMemoryModel(service: service))
         _vault = State(initialValue: VaultModel(service: vaultService))
         _devices = State(initialValue: SignedInDevicesModel(service: devicesService))
         _profile = State(initialValue: ProfileModel(service: profileService))
         _notificationsModel = State(initialValue: NotificationsModel(service: notificationsService))
+        _plans = State(initialValue: PlanModel(service: planService, liveActivity: PlanActivityController()))
     }
 
-    /// Meldingen and e-mail conversations you have not read: the bell and the app icon.
-    private var unreadCount: Int { notificationsModel.unreadCount + emailModel.unreadCount }
+    /// Meldingen, e-mail conversations and invitations you have not read: the bell and the app icon.
+    private var unreadCount: Int {
+        notificationsModel.unreadCount + emailModel.unreadCount
+            + invitations.filter { $0.progress.invitation?.isRead == false }.count
+            // Invitations from the fair wait for an answer in Meldingen too.
+            + (sharing.fairApplications?.filter(\.awaitsAnswer).count ?? 0)
+    }
 
     private var currentBanner: PaveNotification? { notificationsModel.banner ?? emailModel.banner }
 
@@ -101,12 +123,138 @@ struct MainView: View {
         while !Task.isCancelled {
             await notificationsModel.refresh()
             if round % 4 == 0 { await emailModel.refresh() }
+            await sharing.loadFairApplications()
+            if draftSync == nil { draftSync = ApplicationDraftSyncer.make(auth: appState.authService) }
+            if await draftSync?.run() == true { sharing.reloadApplications() }
             round += 1
             try? await Task.sleep(for: .seconds(30))
         }
     }
 
+    /// The layout with its environment, banners, polling and knopmodus surface.
+    private var framedLayout: some View {
+        layout
+        .dynamicTypeSize(deviceTextSize.shifted(by: profile.textSize))
+        .task { await profile.load() }
+        .onChange(of: profile.profile.displayName) { _, name in
+            if let name { model.nameChanged(name) }
+            emailModel.senderName = name
+        }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+        .environment(\.reportMenuButtonFrame) { menuButtonFrame = $0 }
+        .environment(\.hidesScreenButtons, menuReplacesButtons)
+        .environment(\.toolbarIsBeside, MainMenuDrawer.isButtonBeside(menuButtonFrame))
+        .environment(\.menuButtonFrame, menuButtonFrame)
+        .environment(\.chatSearchRequestedAt, chatSearchRequestedAt)
+        .focusedSceneValue(\.paveActions, keyboardActions)
+        .tint(.paveAccent)
+        .environment(memory)
+        .environment(plans)
+        .environment(cameraControl)
+        .environment(\.unreadNotifications, unreadCount)
+        .environment(emailModel)
+        .task(id: destination) { invitations = Self.arrivedInvitations() }
+        // A container that is always there, so the card's insertion and removal have something to animate in.
+        .overlay(alignment: .top) { ZStack(alignment: .top) { bannerView } }
+        .onChange(of: visibleBanner?.id, initial: true) {
+            withAnimation(.island) { shownBanner = visibleBanner }
+        }
+        // New meldingen show up while PAVE is open: a quiet refresh every 30 seconds, and the badge on the icon follows.
+        .task(id: PollingState(isActive: scenePhase == .active, isOpen: appState.isOpen)) {
+            guard scenePhase == .active, appState.isOpen else { return }
+            await pollMeldingen()
+        }
+        // New mail the moment iCloud has it, not only at the two-minute look.
+        .task(id: PollingState(isActive: scenePhase == .active, isOpen: appState.isOpen)) {
+            guard scenePhase == .active, appState.isOpen else { return }
+            await emailModel.watchForNewMail()
+        }
+        .onChange(of: unreadCount, initial: true) { _, count in
+            NotificationAlerts.setBadge(count)
+        }
+        // Knopmodus: a full press does Ayla's choice, or starts talking. The presses are caught on an empty layer
+        // behind the screen that only exists in knopmodus: around the whole screen, even switched off, iOS's catcher
+        // took every tap on the toolbar buttons. iOS's own green dot shows the camera is on.
+        // What the button rests on in a menu that is not lit up on the screen itself, such as a chat, a step or an action.
+        .overlay(alignment: .top) {
+            if cameraControl.topSource == nil, let highlight = cameraControl.highlight, !CameraMenu.litOnScreen.contains(highlight.menu) {
+                AylaHeadHint(text: "\(highlight.menuTitle): \(highlight.title)", isAnswer: true)
+                    .padding(.top, 52)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .allowsHitTesting(false)
+            }
+        }
+        .animation(.spring(duration: 0.3, bounce: 0.2), value: cameraControl.highlight)
+        .background {
+            if cameraControl.isOn {
+                PaveCameraControlSurface(camera: cameraControl.camera) { cameraControl.fullPress() }
+                    .ignoresSafeArea()
+                    .accessibilityHidden(true)
+            }
+        }
+    }
+
+    // Split from `body`, which became too long for the compiler to type-check in one piece.
     var body: some View {
+        framedLayout
+        .onAppear {
+            cameraControl.onGoTo = { open($0) }
+            cameraControl.onAyla = { action in
+                switch action {
+                case .talk: talk()
+                case .newConversation: startNewConversation()
+                case .chats: openChats()
+                }
+            }
+        }
+        .onChange(of: destination) { _, destination in cameraControl.show(destination) }
+        // Knopmodus stays on: it starts whenever PAVE is in front and unlocked, and stops when it is not.
+        .onChange(of: CameraControlWanted(isEnabled: cameraControl.isEnabled && !cameraControl.isSuspended, changed: cameraControl.enabledChanged, isActive: scenePhase != .background, isOpen: appState.isOpen), initial: true) { _, wanted in
+            if wanted.isEnabled, wanted.isActive, wanted.isOpen {
+                Task { await cameraControl.start(at: destination) }
+            } else {
+                cameraControl.stop()
+            }
+        }
+        .task { await model.start() }
+        .followsPlans(plans, chat: model)
+        .keepsOpenChat(destination == .ayla && scenePhase == .active && appState.isOpen ? model.conversationID : nil, in: notificationsModel)
+        .task { await memory.load() }
+        .task { await model.followConversationChanges() }
+        .onChange(of: hasSidebar) { isMenuOpen = false }
+        // A deleted chat that could still be brought back is really deleted when the app goes away.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background {
+                // What was written just now is in the account before the app sleeps, for the next device.
+                Task { await draftSync?.run() }
+                model.commitPendingDeletion()
+                memory.commitPendingForget()
+                // Locked e-mail conversations need the PIN again, as locked chats do.
+                emailModel.showsLocked = false
+                // Ask iOS again for a look in the background, for new meldingen and mail.
+                NotificationAlerts.scheduleRefresh()
+            }
+        }
+        .onChange(of: model.conversationList, initial: true) { _, list in
+            if chatsInSpotlight { AylaSpotlight.update(list) }
+        }
+        .onChange(of: chatsInSpotlight) { _, isOn in
+            if isOn { AylaSpotlight.update(model.conversationList) } else { AylaSpotlight.removeAll() }
+        }
+        // Siri, a widget or the iPhone's search wait until the app is unlocked, so Ayla never starts listening behind
+        // the PIN screen.
+        .onChange(of: appState.conversationToOpen, initial: true) { handlePending() }
+        .onChange(of: appState.link, initial: true) { handlePending() }
+        .onChange(of: appState.fairToOpen, initial: true) { handlePending() }
+        .onChange(of: appState.isRelocked) { handlePending() }
+        .onChange(of: appState.opensNotifications, initial: true) { handlePending() }
+        .onChange(of: connection.isOnline) { _, isOnline in
+            if isOnline { Task { await model.refreshConversations() } }
+        }
+    }
+
+    /// The screens and the menu for every shape of screen, with what opens over them.
+    private var layout: some View {
         GeometryReader { proxy in
             // One layout for every shape of screen, with the screen always in the same place in it: folding, turning
             // or resizing only moves it, so what is open on it (a sheet, a half-filled form) stays open.
@@ -155,110 +303,26 @@ struct MainView: View {
         }
         // Your look from Instellingen: the photo in the menu, the text size, and the name Ayla uses.
         .environment(profile)
-        .dynamicTypeSize(deviceTextSize.shifted(by: profile.textSize))
-        .task { await profile.load() }
-        .onChange(of: profile.profile.displayName) { _, name in
-            if let name { model.nameChanged(name) }
-            emailModel.senderName = name
-        }
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
-        .environment(\.reportMenuButtonFrame) { menuButtonFrame = $0 }
-        .environment(\.hidesScreenButtons, menuReplacesButtons)
-        .environment(\.toolbarIsBeside, MainMenuDrawer.isButtonBeside(menuButtonFrame))
-        .environment(\.menuButtonFrame, menuButtonFrame)
-        .environment(\.chatSearchRequestedAt, chatSearchRequestedAt)
-        .focusedSceneValue(\.paveActions, keyboardActions)
-        .tint(.paveAccent)
-        .environment(memory)
-        .environment(cameraControl)
-        .environment(\.unreadNotifications, unreadCount)
-        .environment(emailModel)
-        // A container that is always there, so the card's insertion and removal have something to animate in.
-        .overlay(alignment: .top) { ZStack(alignment: .top) { bannerView } }
-        .onChange(of: visibleBanner?.id, initial: true) {
-            withAnimation(.island) { shownBanner = visibleBanner }
-        }
-        // New meldingen show up while PAVE is open: a quiet refresh every 30 seconds, and the badge on the icon follows.
-        .task(id: PollingState(isActive: scenePhase == .active, isOpen: appState.isOpen)) {
-            guard scenePhase == .active, appState.isOpen else { return }
-            await pollMeldingen()
-        }
-        // New mail the moment iCloud has it, not only at the two-minute look.
-        .task(id: PollingState(isActive: scenePhase == .active, isOpen: appState.isOpen)) {
-            guard scenePhase == .active, appState.isOpen else { return }
-            await emailModel.watchForNewMail()
-        }
-        .onChange(of: unreadCount, initial: true) { _, count in
-            NotificationAlerts.setBadge(count)
-        }
-        // Knopmodus: a full press does Ayla's choice, or starts talking. The presses are caught on an empty layer
-        // behind the screen that only exists in knopmodus: around the whole screen, even switched off, iOS's catcher
-        // took every tap on the toolbar buttons. iOS's own green dot shows the camera is on.
-        // What the button rests on in a menu that is not lit up on the screen itself, such as a chat, a step or an action.
-        .overlay(alignment: .top) {
-            if cameraControl.topSource == nil, let highlight = cameraControl.highlight, !CameraMenu.litOnScreen.contains(highlight.menu) {
-                AylaHeadHint(text: "\(highlight.menuTitle): \(highlight.title)", isAnswer: true)
-                    .padding(.top, 52)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .allowsHitTesting(false)
-            }
-        }
-        .animation(.spring(duration: 0.3, bounce: 0.2), value: cameraControl.highlight)
-        .background {
-            if cameraControl.isOn {
-                PaveCameraControlSurface(camera: cameraControl.camera) { cameraControl.fullPress() }
-                    .ignoresSafeArea()
-                    .accessibilityHidden(true)
-            }
-        }
-        .onAppear {
-            cameraControl.onGoTo = { open($0) }
-            cameraControl.onAyla = { action in
-                switch action {
-                case .talk: talk()
-                case .newConversation: startNewConversation()
-                case .chats: openChats()
-                }
-            }
-        }
-        .onChange(of: destination) { _, destination in cameraControl.show(destination) }
-        // Knopmodus stays on: it starts whenever PAVE is in front and unlocked, and stops when it is not.
-        .onChange(of: CameraControlWanted(isEnabled: cameraControl.isEnabled && !cameraControl.isSuspended, changed: cameraControl.enabledChanged, isActive: scenePhase != .background, isOpen: appState.isOpen), initial: true) { _, wanted in
-            if wanted.isEnabled, wanted.isActive, wanted.isOpen {
-                Task { await cameraControl.start(at: destination) }
-            } else {
-                cameraControl.stop()
-            }
-        }
-        .task { await model.start() }
-        .task { await memory.load() }
-        .task { await model.followConversationChanges() }
-        .onChange(of: hasSidebar) { isMenuOpen = false }
-        // A deleted chat that could still be brought back is really deleted when the app goes away.
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .background {
-                model.commitPendingDeletion()
-                memory.commitPendingForget()
-                // Locked e-mail conversations need the PIN again, as locked chats do.
-                emailModel.showsLocked = false
-                // Ask iOS again for a look in the background, for new meldingen and mail.
-                NotificationAlerts.scheduleRefresh()
-            }
-        }
-        .onChange(of: model.conversationList, initial: true) { _, list in
-            if chatsInSpotlight { AylaSpotlight.update(list) }
-        }
-        .onChange(of: chatsInSpotlight) { _, isOn in
-            if isOn { AylaSpotlight.update(model.conversationList) } else { AylaSpotlight.removeAll() }
-        }
-        // Siri, a widget or the iPhone's search wait until the app is unlocked, so Ayla never starts listening behind
-        // the PIN screen.
-        .onChange(of: appState.conversationToOpen, initial: true) { handlePending() }
-        .onChange(of: appState.link, initial: true) { handlePending() }
-        .onChange(of: appState.isRelocked) { handlePending() }
-        .onChange(of: appState.opensNotifications, initial: true) { handlePending() }
-        .onChange(of: connection.isOnline) { _, isOnline in
-            if isOnline { Task { await model.refreshConversations() } }
+        // Sharing from the studio and from Ayla, next to the Profiel page.
+        .environment(sharing)
+        .environment(\.openDestination, openDestinationAction)
+        .environment(\.vacancyRequest, vacancyRequestAction)
+        .modifier(MainFairSheets(
+            sharing: sharing, vault: vault, profile: profile, model: model,
+            fairEmployer: $fairEmployer, employerInbox: $employerInbox, aylaShare: $aylaShare
+        ))
+    }
+
+    private var openDestinationAction: (MainDestination) -> Void {
+        { destination in open(destination) }
+    }
+
+    /// A vacancy task from outside the chat (the fair): close what is over it and let Ayla take it.
+    private var vacancyRequestAction: (AylaChatModel.VacancyRequest) -> Void {
+        { request in
+            fairEmployer = nil
+            model.request(request)
+            open(.ayla)
         }
     }
 
@@ -271,6 +335,16 @@ struct MainView: View {
         if let link = appState.link {
             appState.link = nil
             follow(link)
+        }
+        if let fair = appState.fairToOpen {
+            appState.fairToOpen = nil
+            isMenuOpen = false
+            switch fair {
+            case .employer(let slug): fairEmployer = FairEmployerSlug(slug: slug)
+            case .vacancy(let slug, let id): fairEmployer = FairEmployerSlug(slug: slug, vacancyID: id)
+            case .inbox(let slug, let key): employerInbox = EmployerInboxKey(slug: slug, key: key)
+            case .share: break
+            }
         }
         if appState.opensNotifications {
             appState.opensNotifications = false
@@ -297,8 +371,31 @@ struct MainView: View {
 
     /// Siri, a widget or Control Center: a talk starts in a new chat, as in ChatGPT.
     private func follow(_ link: PaveLink) {
-        startNewConversation()
-        if link == .talk { talk() }
+        switch link {
+        case .shares:
+            isMenuOpen = false
+            open(.profile)
+        case .stopSharing:
+            isMenuOpen = false
+            open(.profile)
+            sharing.asksToStopAll = true
+        case .applications:
+            isMenuOpen = false
+            model.opensApplications = true
+            open(.vacancies)
+        case .fairDay:
+            isMenuOpen = false
+            open(.profile)
+            sharing.showsFairDay = true
+        case .plan:
+            // The plan on the Lock Screen opens on the Plan screen.
+            plans.openPlanID = plans.followedPlanID
+            isMenuOpen = false
+            open(.plan)
+        case .talk, .newConversation:
+            startNewConversation()
+            if link == .talk { talk() }
+        }
     }
 
     /// Talking starts in the chat that is open.
@@ -396,6 +493,19 @@ struct MainView: View {
                 .environment(profile)
                 .environment(watchConnection)
                 .environment(\.openFromAyla, openFromAyla)
+                .environment(\.shareFromAyla) { command in
+                    if case .share(let organisation, let duration, let withApplication) = command {
+                        sharing.reloadApplications()
+                        aylaShare = ShareTemplateChoice(template: .employer, organisation: organisation, duration: duration, withApplication: withApplication)
+                    } else {
+                        sharing.request(command)
+                        open(.profile)
+                    }
+                }
+                .environment(\.openPlan) { id in
+                    plans.openPlanID = id
+                    open(.plan)
+                }
         case .vault:
             VaultScreen(onShowMenu: onShowMenu)
                 .environment(vault)
@@ -403,10 +513,35 @@ struct MainView: View {
                     model.ask(about: item)
                     open(.ayla)
                 }
+        case .vacancies:
+            VacanciesScreen(model: model, onShowMenu: onShowMenu) { request in
+                model.request(request)
+                open(.ayla)
+            }
+            .environment(vault)
         case .plan:
-            PlanScreen(onShowMenu: onShowMenu)
+            PlanScreen(
+                onShowMenu: onShowMenu,
+                chats: model.conversationList,
+                chatsAreComplete: model.hasLoadedList && !model.canLoadMore && !model.listFailed,
+                actions: PlanChatActions(open: openFromSearch, start: startConversation(in:for:), go: { destination in
+                    isMenuOpen = false
+                    open(destination)
+                }, moveChats: { plan, projectID in
+                    let project = model.conversationList.projects.first { $0.id == projectID }
+                    for chat in model.conversationList.conversations where plan.conversations.contains(where: { $0.id == chat.id }) && chat.projectID != projectID {
+                        model.move(chat, to: project)
+                    }
+                }, deleteChats: deleteChats)
+            )
+            // Ayla's proposal for steps reads the evidence she may see and asks her service.
+            .environment(vault)
+            .environment(model)
         case .profile:
-            ProfileScreen(onShowMenu: onShowMenu)
+            ProfileScreen(model: sharing, onShowMenu: onShowMenu)
+                .environment(vault)
+                .environment(profile)
+                .environment(model)
         case .settings:
             SettingsScreen(name: model.firstName, onShowMenu: onShowMenu, onSignOut: appState.signOut)
                 .environment(model)
@@ -450,6 +585,11 @@ struct MainView: View {
                 onRestore: { id in
                     if let thread = EmailModel.threadID(fromNotification: id) { return await emailModel.restore(thread) }
                     return await notificationsModel.restore(id)
+                },
+                invitations: invitations,
+                onOpenApplication: { vacancy in
+                    model.request(.application(vacancy))
+                    open(.ayla)
                 }
             )
             .environment(vault)
@@ -474,6 +614,13 @@ struct MainView: View {
         withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.4, bounce: 0.1)) {
             isSidebarHidden = isHidden
         }
+    }
+
+    /// Applications whose demo invitation has arrived, newest first.
+    static func arrivedInvitations(now: Date = .now) -> [ApplicationDraft] {
+        ApplicationStore().all()
+            .filter { $0.progress.invitation?.hasArrived(now: now) == true }
+            .sorted { ($0.progress.invitation?.arrivesAt ?? .distantPast) > ($1.progress.invitation?.arrivesAt ?? .distantPast) }
     }
 
     private func open(_ destination: MainDestination) {
@@ -528,6 +675,27 @@ struct MainView: View {
         }
         let conversation = known ?? AylaConversation(id: id, title: "", updatedAt: .now)
         Task { await model.open(conversation) }
+    }
+
+    /// "Nieuw gesprek" in a plan: an empty chat that joins the plan with its first message. For a step, the text field
+    /// already asks Ayla about it.
+    private func startConversation(in plan: PavePlan, for step: PavePlanStep?) {
+        // A plan in a project starts its chats there, so Ayla has the project's instructions and sources.
+        let project = model.conversationList.projects.first { $0.id == plan.projectID }
+        model.newConversation(in: project, plan: plan.id, step: step?.id)
+        if let step { model.draft = PlanMessages.stepPrompt(step) }
+        destination = .ayla
+        isMenuOpen = false
+        if !isWide { showsChats = false }
+    }
+
+    /// A plan deleted together with its chats: they go as when deleted from the list of chats.
+    private func deleteChats(_ ids: [String]) {
+        let chats = model.conversationList.conversations.filter { ids.contains($0.id) }
+        guard !chats.isEmpty else { return }
+        model.delete(chats)
+        // Asked and confirmed already: no undo window in a list that is not on screen.
+        model.commitPendingDeletion()
     }
 
     /// From the menu, wherever you are: back to Ayla with an empty chat.

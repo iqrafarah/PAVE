@@ -44,9 +44,9 @@ enum PaveNotificationKind: String, CaseIterable, Hashable, Identifiable, Sendabl
         switch self {
         case .conversation: .iconChat
         case .verifiedEvidence: .iconCheckBadgeSolid
-        case .rejectedEvidence: .iconExclamationCircle
+        case .rejectedEvidence: .iconExclamationCircleSolid
         case .verificationRequest: .iconDocumentTextSolid
-        case .email: .iconMail
+        case .email: .iconEnvelopeSolid
         }
     }
 
@@ -130,10 +130,12 @@ extension View {
     }
 }
 
-/// The tabs above Meldingen: everything, the people you talk with (e-mail and Ayla), and what happens to your evidence.
+/// The tabs above Meldingen: everything, the people you write with, what employers answered, and what happens to your
+/// evidence. Each tab shows only its own kind; Alles shows them all.
 enum NotificationTab: String, CaseIterable, Identifiable {
     case all
     case conversations
+    case applications
     case evidence
 
     var id: Self { self }
@@ -142,15 +144,22 @@ enum NotificationTab: String, CaseIterable, Identifiable {
         switch self {
         case .all: "Alles"
         case .conversations: "Gesprekken"
+        case .applications: "Werk"
         case .evidence: "Bewijs"
         }
     }
+
+    /// Invitations from employers and from the fair: they are no meldingen of their own, but sections above the list.
+    var showsApplications: Bool { self == .all || self == .applications }
+    /// Pinned e-mail conversations.
+    var showsPinned: Bool { self == .all || self == .conversations }
 
     func includes(_ kind: PaveNotificationKind) -> Bool {
         switch self {
         case .all: true
         // People you write with. Ayla's chats live in Ayla; their meldingen stay under Alles.
         case .conversations: kind == .email
+        case .applications: false
         case .evidence: kind == .verifiedEvidence || kind == .rejectedEvidence || kind == .verificationRequest
         }
     }
@@ -159,6 +168,7 @@ enum NotificationTab: String, CaseIterable, Identifiable {
         switch self {
         case .all: "Je bent helemaal bij"
         case .conversations: "Geen gesprekken"
+        case .applications: "Geen uitnodigingen"
         case .evidence: "Niets over je bewijs"
         }
     }
@@ -179,9 +189,15 @@ struct NotificationsScreen: View {
     /// Both report whether the server saved it; the model puts the notification back if not.
     var onDelete: ((String) async -> Bool)?
     var onRestore: ((String) async -> Bool)?
+    /// Applications with the demo's invitation from the company, kept on this device; they open Mijn sollicitatie.
+    var invitations: [ApplicationDraft] = []
+    @Environment(SharingModel.self) private var sharing: SharingModel?
+    var onOpenApplication: ((Vacancy) -> Void)?
 
     @State private var searchText = ""
     @State private var tab = NotificationTab.all
+    @AppStorage("meldingen.fairCollapsed") private var fairCollapsed = false
+    @AppStorage("meldingen.employersCollapsed") private var employersCollapsed = false
     /// Not there in previews; MainView passes the connected mailboxes.
     @Environment(EmailModel.self) private var email: EmailModel?
     @AppStorage("emailCardDismissed") private var emailCardDismissed = false
@@ -197,6 +213,8 @@ struct NotificationsScreen: View {
     @State private var undoIDs: [String] = []
     /// An e-mail conversation just deleted; it goes to the bin of the mailbox once "Ongedaan maken" is gone.
     @State private var undoEmailThreadID: String?
+    /// What was just done with a verification request, shown for a moment after coming back to the list.
+    @State private var resolved: String?
 
     /// Search only earns its place once the list is long enough to need it.
     private static let searchThreshold = 8
@@ -283,7 +301,10 @@ struct NotificationsScreen: View {
                 .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
-                if let email, searchText.isEmpty, tab != .evidence, !email.pinnedThreads.isEmpty {
+                if let sharing, searchText.isEmpty, tab.showsApplications {
+                    NotificationFairSection(sharing: sharing, isCollapsed: $fairCollapsed)
+                }
+                if let email, searchText.isEmpty, tab.showsPinned, !email.pinnedThreads.isEmpty {
                     EmailPinnedGrid(threads: email.pinnedThreads) { openedEmailThreadID = $0 } onUnpin: { id in
                         PaveHaptics.selection()
                         withAnimation(.snappy) { email.unpin(id) }
@@ -295,13 +316,30 @@ struct NotificationsScreen: View {
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
                 }
+                if !invitations.isEmpty, searchText.isEmpty, tab.showsApplications {
+                    Section {
+                        if !employersCollapsed {
+                        ForEach(invitations) { draft in
+                            if let invitation = draft.progress.invitation {
+                                Button { onOpenApplication?(draft.vacancy) } label: {
+                                    NotificationInvitationRow(draft: draft, invitation: invitation)
+                                }
+                                .buttonStyle(.plain)
+                                .listRowBackground(Color.panel)
+                                .listRowInsets(EdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14))
+                            }
+                        }
+                        }
+                    } header: {
+                        NotificationSectionHeader(title: ApplyMessages.fromEmployers, count: invitations.count, isCollapsed: $employersCollapsed)
+                    }
+                }
                 notificationList
             }
             // One grouped list, like Instellingen: a panel per section with dividers, not a card per melding.
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
             .contentMargins(.top, 8, for: .scrollContent)
-            .contentMargins(.horizontal, 8, for: .scrollContent)
             .animation(.snappy, value: visibleNotifications.map(\.id))
             .refreshable { await onRefresh?() }
             .safeAreaInset(edge: .bottom, spacing: 12) {
@@ -319,6 +357,11 @@ struct NotificationsScreen: View {
                         .padding(.horizontal, 16)
                         .frame(maxWidth: 560)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
+                } else if let resolved {
+                    NotificationResolvedBar(message: resolved)
+                        .padding(.horizontal, 16)
+                        .frame(maxWidth: 560)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
             .animation(.snappy, value: undoIDs)
@@ -328,6 +371,13 @@ struct NotificationsScreen: View {
                 try? await Task.sleep(for: .seconds(EmailModel.undoSeconds))
                 guard !Task.isCancelled else { return }
                 undoEmailThreadID = nil
+            }
+            .animation(.snappy, value: resolved)
+            .task(id: resolved) {
+                guard resolved != nil else { return }
+                try? await Task.sleep(for: .seconds(4))
+                guard !Task.isCancelled else { return }
+                resolved = nil
             }
             .task(id: undoIDs) {
                 guard !undoIDs.isEmpty else { return }
@@ -349,7 +399,15 @@ struct NotificationsScreen: View {
                         VerificationRequestNotificationDetail(
                             notification: notification,
                             onLoadReview: onLoadReview,
-                            onResolve: onResolveRequest
+                            onResolve: onResolveRequest.map { resolve in
+                                { id, status, reason in
+                                    let error = await resolve(id, status, reason)
+                                    if error == nil {
+                                        resolved = status == "verified" ? NotificationResolvedBar.verified : NotificationResolvedBar.rejected
+                                    }
+                                    return error
+                                }
+                            }
                         )
                     } else {
                         NotificationMessageDetail(notification: notification)
@@ -425,7 +483,7 @@ struct NotificationsScreen: View {
     /// Your e-mail in Meldingen: offered once, and always reachable from the menu.
     private var emailCard: some View {
         HStack(spacing: 11) {
-            Image(.iconMail)
+            Image(.iconEnvelopeSolid)
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
@@ -477,7 +535,7 @@ struct NotificationsScreen: View {
                 Button {
                     markAllRead()
                 } label: {
-                    Label("Alles als gelezen markeren", tinted: .iconMailOpen)
+                    Label("Alles als gelezen markeren", tinted: .iconEnvelopeOpenSolid)
                 }
                 .disabled(!hasUnread)
                 Button { showsTrash = true } label: {
@@ -490,7 +548,7 @@ struct NotificationsScreen: View {
             if email != nil {
                 Section {
                     Button { showsEmailAccounts = true } label: {
-                        Label(email?.hasAccounts == true ? "E-mailaccounts" : "E-mailaccount koppelen", tinted: .iconMail)
+                        Label(email?.hasAccounts == true ? "E-mailaccounts" : "E-mailaccount koppelen", tinted: .iconEnvelopeSolid)
                     }
                 }
             }
@@ -509,9 +567,12 @@ struct NotificationsScreen: View {
     @ViewBuilder
     private var notificationList: some View {
         if visibleNotifications.isEmpty {
-            if searchText.isEmpty {
+            if searchText.isEmpty, tab.showsApplications, hasApplications {
+                // The invitations above are what there is: no "nothing here" under them.
+                EmptyView()
+            } else if searchText.isEmpty {
                 PaveEmptyState(
-                    icon: .iconMailOpen,
+                    icon: .iconEnvelopeOpenSolid,
                     title: tab.emptyTitle,
                     message: emptyMessage
                 )
@@ -555,7 +616,13 @@ struct NotificationsScreen: View {
         }
     }
 
+    /// Whether a section with invitations shows above the list.
+    private var hasApplications: Bool {
+        !invitations.isEmpty || !NotificationFairSection.shown(sharing?.fairApplications ?? []).isEmpty
+    }
+
     private var emptyMessage: String {
+        if tab == .applications { return "Nodigt een werkgever je uit, dan staat dat hier." }
         if tab == .conversations {
             return email?.hasAccounts == true
                 ? "E-mails van mensen die je kent staan hier. Begin een gesprek via ⋯ › Nieuw bericht."
@@ -589,7 +656,7 @@ struct NotificationsScreen: View {
             }
             if isUnread(notification) {
                 Button { markRead(notification) } label: {
-                    Label("Gelezen", tinted: .iconMailOpen)
+                    Label("Gelezen", tinted: .iconEnvelopeOpenSolid)
                 }
                 .tint(.paveAccent)
             }
@@ -603,7 +670,7 @@ struct NotificationsScreen: View {
     private func menu(for notification: PaveNotification) -> some View {
         if isUnread(notification) {
             Button { markRead(notification) } label: {
-                Label("Markeer als gelezen", tinted: .iconMailOpen)
+                Label("Markeer als gelezen", tinted: .iconEnvelopeOpenSolid)
             }
         }
         if let id = notification.emailThreadID, email?.canPinMore == true, !notification.emailIsLocked {
@@ -745,13 +812,6 @@ private struct VerificationRequestNotificationDetail: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                Button { dismiss() } label: {
-                    Label("Terug naar meldingen", tinted: .iconArrowLeft)
-                        .textStyle(.caption)
-                        .foregroundStyle(Color.paveAccent)
-                }
-                .buttonStyle(.pave)
-
                 Text("Verificatie aanvraag")
                     .textStyle(.calloutTitle)
                     .foregroundStyle(Color.ink)
@@ -800,7 +860,7 @@ private struct VerificationRequestNotificationDetail: View {
                                     Image(.iconDocumentText).frame(width: 18, height: 18)
                                     Text(file.name).lineLimit(1)
                                     Spacer()
-                                    Image(.iconEye).frame(width: 17, height: 17)
+                                    Image(.iconEyeSolid).renderingMode(.template).resizable().scaledToFit().frame(width: 17, height: 17)
                                 }
                                 .textStyle(.caption)
                                 .foregroundStyle(Color.ink)
@@ -844,8 +904,7 @@ private struct VerificationRequestNotificationDetail: View {
             .frame(maxWidth: .infinity)
         }
         .background(Color.canvas.ignoresSafeArea())
-        .navigationBarBackButtonHidden()
-        .toolbar(.hidden, for: .navigationBar)
+        .navigationBarTitleDisplayMode(.inline)
         .task(id: requestID) { await loadReview() }
         .sheet(isPresented: $writesRejection, onDismiss: {
             // Back to the notifications once the sheet is gone, not while it is still closing.

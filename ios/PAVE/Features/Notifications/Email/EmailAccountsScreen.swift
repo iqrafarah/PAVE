@@ -94,7 +94,7 @@ struct EmailAccountsScreen: View {
                         .textStyle(.caption)
                         .foregroundStyle(Color.inkMuted)
                 } icon: {
-                    Image(.iconShieldCheck)
+                    Image(.iconShieldCheckSolid)
                         .renderingMode(.template)
                         .foregroundStyle(Color.paveAccent)
                 }
@@ -157,7 +157,7 @@ struct EmailProviderIcon: View {
     let provider: EmailProvider
 
     var body: some View {
-        Image(.iconMail)
+        Image(.iconEnvelopeSolid)
             .renderingMode(.template)
             .resizable()
             .scaledToFit()

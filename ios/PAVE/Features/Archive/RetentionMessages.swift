@@ -26,8 +26,10 @@ enum RetentionMessages {
     /// Before a choice that can delete chats at once, as the web asks before a shorter time.
     static func confirmMessage(_ expiry: ChatExpiry) -> String {
         let period = expiry.days.map { $0 == 1 ? "1 dag" : "\($0) dagen" } ?? ""
-        let since = expiry.start == .created ? "geleden zijn aangemaakt" : "niet zijn gebruikt"
-        return "Chats die langer dan \(period) \(since) worden verwijderd, ook de bestaande. Dit kan niet ongedaan worden gemaakt."
+        // Whole sentences, so each language can put the words in its own order.
+        return expiry.start == .created
+            ? "Chats die langer dan \(period) geleden zijn aangemaakt worden verwijderd, ook de bestaande. Dit kan niet ongedaan worden gemaakt."
+            : "Chats die langer dan \(period) niet zijn gebruikt worden verwijderd, ook de bestaande. Dit kan niet ongedaan worden gemaakt."
     }
 
     static func chatExpiresMessage(_ title: String, at date: Date, now: Date = .now) -> String {

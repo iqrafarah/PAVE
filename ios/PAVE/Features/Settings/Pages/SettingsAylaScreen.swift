@@ -42,7 +42,8 @@ struct SettingsAylaScreen: View {
                         .foregroundStyle(Color.ink)
                 }
                 .tint(.paveAccent)
-                Text("Je leest zin voor zin mee met wat Ayla zegt. Zet je dit uit, dan zie je alleen de orb.")
+                .onChange(of: showsVoiceText) { WatchBridge.shared.update() }
+                Text("Je leest zin voor zin mee met wat Ayla zegt, ook op je Apple Watch. Zet je dit uit, dan zie je alleen de orb.")
                     .textStyle(.caption)
                     .foregroundStyle(Color.inkMuted)
             }
@@ -60,7 +61,7 @@ struct SettingsAylaScreen: View {
                 get: { _ = cameraControl.enabledChanged; return cameraControl.isEnabled },
                 set: { cameraControl.isEnabled = $0 }
             )) {
-                Text("Knopmodus (demo)")
+                Text("Knopmodus")
                     .textStyle(.listTitle)
                     .foregroundStyle(Color.ink)
             }

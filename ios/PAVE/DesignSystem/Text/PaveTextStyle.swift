@@ -89,8 +89,27 @@ enum PaveTextStyle {
         }
     }
 
-    var font: Font {
-        .custom(fontName, size: size, relativeTo: relativeTo)
+    /// How heavy the style is, read from PAVE's own font, for the other typefaces.
+    fileprivate var weight: Font.Weight {
+        if fontName.hasSuffix("SemiBold") { return .semibold }
+        if fontName.hasSuffix("Bold") { return .bold }
+        if fontName.hasSuffix("Medium") { return .medium }
+        return .regular
+    }
+
+    var font: Font { font(scale: 1) }
+
+    /// In the chosen typeface. Apple's typefaces have no name to scale by, so they take `scale`: how much bigger the
+    /// text is than standard, from the text size of the device and of PAVE.
+    fileprivate func font(scale: CGFloat) -> Font {
+        switch PaveFontStore.shared.style {
+        case .pave: .custom(fontName, size: size, relativeTo: relativeTo)
+        case .system: .system(size: size * scale, weight: weight)
+        case .rounded: .system(size: size * scale, weight: weight, design: .rounded)
+        case .serif: .system(size: size * scale, weight: weight, design: .serif)
+        case .readable:
+            .custom(weight == .semibold || weight == .bold ? PaveFontStyle.readableBold : PaveFontStyle.readableRegular, size: size, relativeTo: relativeTo)
+        }
     }
 }
 
@@ -100,7 +119,7 @@ private struct PaveTextStyleModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .font(style.font)
+            .font(style.font(scale: scale))
             .lineSpacing(lineSpacing)
     }
 

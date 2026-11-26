@@ -6,6 +6,7 @@ import SwiftUI
 struct WatchMenuView: View {
     @Bindable var model: WatchAylaModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(WatchSessionStore.self) private var sessions
 
     var body: some View {
         NavigationStack {
@@ -20,7 +21,30 @@ struct WatchMenuView: View {
                         Image(.watchIconPlus).renderingMode(.template)
                     }
                 }
-                .listItemTint(.brandGreen)
+                .listItemTint(WatchPreferences.shared.accentColor)
+
+                if let step = sessions.nextStep, step.date > .now {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Volgende stap")
+                            .font(.caption2)
+                            .foregroundStyle(WatchPreferences.shared.accentColor)
+                        Text(WatchNextStep.title(step))
+                            .font(.headline)
+                        Text(WatchNextStep.when(step))
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+
+                let codes = sessions.sharedCodes.filter(\.isValid)
+                if !codes.isEmpty {
+                    NavigationLink {
+                        WatchSharedCodeView(codes: codes)
+                    } label: {
+                        Text(codes.count == 1 ? "QR-code" : "QR-codes (\(codes.count))")
+                    }
+                }
 
                 NavigationLink {
                     WatchMemoryView(model: model)
