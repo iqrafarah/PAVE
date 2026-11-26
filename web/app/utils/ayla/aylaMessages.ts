@@ -120,7 +120,7 @@ export const AYLA_SECTION_TITLES = {
   pinned: 'Vastgezet',
   today: AYLA_TODAY,
   yesterday: AYLA_YESTERDAY,
-  lastWeek: 'Afgelopen 7 dagen',
+  lastWeek: 'Recent',
   lastMonth: 'Afgelopen 30 dagen',
   earlier: 'Eerder',
 } as const;

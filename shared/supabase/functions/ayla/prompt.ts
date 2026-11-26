@@ -3,7 +3,7 @@ import type { VaultConsent } from './consent.ts'
 import { ACTIONS, type AppState, type Context, type Device, type Screen, type VacancyContext } from './contract.ts'
 import { MEMORY_CATEGORIES, type Memory, memoryPrompt } from './memory.ts'
 import { VAULT_ITEM_SCHEMA } from './proposal.ts'
-import { NO_PLAN_RULE, PLAN_STEP_SCHEMA, type PlanContext, planLayer } from './plan.ts'
+import { NEW_PLAN_RULE, NEW_PLAN_SCHEMA, NO_NEW_PLAN_RULE, NO_PLAN_RULE, PLAN_STEP_SCHEMA, type PlanContext, planLayer } from './plan.ts'
 
 // Layer 1: who Ayla is and her rules. Adapted from the voice demo, without
 // the demo parts and without privacy claims that are not true for this setup.
@@ -166,7 +166,7 @@ Antwoord altijd met JSON volgens het schema:
   - "askVault": je wilt eerst in de kluis kijken en mag dat nog niet. askVault is gevuld.
   - "search": je zoekt nu vacatures. vacancySearch is gevuld.
   - "propose": je bouwt iets voor de kluis op (vaultItem) of biedt aan iets toe te voegen.
-  - "act": je doet nu zelf iets in de app. actions of navigation is gevuld.
+  - "act": je doet nu zelf iets in de app. actions, navigation of newPlan is gevuld.
   - "decline": de vraag gaat niet over leren, werk, ontwikkeling of PAVE (zoals een weetje, een recept of huiswerk). Je zegt in één zin dat je daar niet mee helpt en waarmee wel. Het antwoord op die vraag staat nergens in text, ook niet kort of tussendoor. Vragen over PAVE zelf, over wat jij kunt, over wat er met gegevens gebeurt, en over beroepen, salarissen, opleidingen, solliciteren en werk horen wel bij je rol: die beantwoord je.
 - text: wat je zegt.
 - question: alleen als je de gebruiker uit vaste keuzes laat kiezen, met 2 of 3 korte keuzes. Anders null.
@@ -241,6 +241,8 @@ export function buildSystemPrompt(input: PromptInput): string {
   const sources = projectSourcesLayer(input.project, input.vault, input.vaultConsent)
   if (sources) layers.push(sources)
   layers.push(planLayer(input.plan) ?? NO_PLAN_RULE)
+  // Only the iPhone makes a plan from her answer; elsewhere she offers none.
+  layers.push(input.device === 'phone' ? NEW_PLAN_RULE : NO_NEW_PLAN_RULE)
   layers.push(OUTPUT_PROMPT)
   layers.push(input.device === 'phone' ? ACTIONS_PROMPT : NO_ACTIONS_PROMPT)
   const app = input.device === 'phone' ? appLayer(input.app) : null
@@ -495,7 +497,7 @@ export const MODEL_OUTPUT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
   // In the order of the properties: what the app needs first (the text, a question about the vault) comes first.
-  required: ['intent', 'text', 'askVault', 'vacancySearch', 'question', 'navigation', 'actions', 'continues', 'usedVaultItems', 'title', 'usedMemories', 'memories', 'vaultItem', 'planStep'],
+  required: ['intent', 'text', 'askVault', 'vacancySearch', 'question', 'navigation', 'actions', 'continues', 'usedVaultItems', 'title', 'usedMemories', 'memories', 'vaultItem', 'planStep', 'newPlan'],
   properties: {
     // First of all: what this answer is. The model commits before it writes, and the server holds it to that.
     intent: { type: 'string', enum: ['answer', 'askUser', 'askVault', 'search', 'propose', 'act', 'decline'] },
@@ -560,6 +562,8 @@ export const MODEL_OUTPUT_SCHEMA = {
     vaultItem: VAULT_ITEM_SCHEMA,
     // Last: a step of the plan that is done, skipped or the one to go on with; null without a plan.
     planStep: PLAN_STEP_SCHEMA,
+    // A new plan the user asked for; null otherwise.
+    newPlan: NEW_PLAN_SCHEMA,
   },
 } as const
 

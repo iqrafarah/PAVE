@@ -127,6 +127,21 @@ struct PlanTests {
         #expect(reply.proposedAction?.planStep == AylaReply.PlanStepUpdate(planId: "p1", stepId: "s1", status: .done))
     }
 
+    @Test func aReplyCanCarryANewPlan() throws {
+        let json = Data("""
+        {"version":1,"id":"r","conversationId":"c","text":"Ik heb een plan gemaakt.","blocks":[],"usedData":[],
+         "proposedAction":{"id":"a","kind":"createPlan","summary":"Plan gemaakt","expiresAt":"2026-11-26T10:00:00Z",
+           "newPlan":{"name":"Stage vinden","goal":"Een stage in de zorg","steps":[
+             {"title":"Je cv bijwerken","summary":"","kind":"document"},{"title":"Solliciteren","summary":"Stuur drie brieven","kind":"action"}]}}}
+        """.utf8)
+        let reply = try AylaReply.decode(json)
+        #expect(reply.proposedAction?.kind == .createPlan)
+        let plan = PavePlan(template: try #require(reply.proposedAction?.newPlan).template)
+        #expect(plan.name == "Stage vinden")
+        #expect(plan.steps.map(\.kind) == [.document, .action])
+        #expect(plan.currentStep?.title == "Je cv bijwerken")
+    }
+
     @Test func completingAPlanFinishesWhatIsLeftAndReopeningGoesOnFromTheLastStep() {
         var plan = PavePlan(template: template, now: now)
         plan.setStatus(.skipped, of: plan.steps[1].id)

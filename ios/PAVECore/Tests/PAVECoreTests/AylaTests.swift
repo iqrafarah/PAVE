@@ -874,7 +874,7 @@ struct AylaConversationListTests {
             canPin: true
         )
         let sections = list.sections(now: now, calendar: calendar)
-        #expect(sections.map(\.title) == ["Vastgezet", "Vandaag", "Gisteren", "Afgelopen 7 dagen", "Afgelopen 30 dagen", "Eerder"])
+        #expect(sections.map(\.title) == ["Vastgezet", "Vandaag", "Gisteren", "Recent", "Afgelopen 30 dagen", "Eerder"])
         #expect(sections.map { $0.conversations.map(\.id) } == [["pin"], ["today"], ["yesterday"], ["week"], ["month"], ["old"]])
     }
 

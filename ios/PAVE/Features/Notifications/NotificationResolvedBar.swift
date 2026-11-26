@@ -9,7 +9,7 @@ struct NotificationResolvedBar: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(.iconCheckCircle)
+            Image(.iconCheckCircleSolid)
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()

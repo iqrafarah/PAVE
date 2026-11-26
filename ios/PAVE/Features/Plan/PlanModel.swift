@@ -115,6 +115,34 @@ final class PlanModel {
         return plan
     }
 
+    /// The plan Ayla made because the user asked for one in a chat, with that chat in it. Once per answer: the plan
+    /// keeps the id of Ayla's proposal, so opening the chat again never makes it a second time.
+    @discardableResult
+    func create(from action: AylaReply.ProposedAction, conversationID: String?, title: String = "") async -> PavePlan? {
+        guard let made = action.newPlan, !madeFromAyla.contains(action.id),
+              !plans.contains(where: { $0.metadata[Self.aylaProposalKey] == action.id }) else { return nil }
+        guard let name = PavePlan.cleanName(made.name) else { return nil }
+        madeFromAyla.insert(action.id)
+        defer { madeFromAyla.remove(action.id) }
+        var template = made.template
+        template.metadata[Self.aylaProposalKey] = action.id
+        var plan = PavePlan(template: template, name: name, goal: PavePlan.cleanGoal(made.goal))
+        // A chat belongs to one plan: asked for a new plan in a plan's chat, the chat moves to the new one.
+        let old = self.plan(containing: conversationID)
+        if let conversationID { plan.attach(conversationID: conversationID, title: title, at: plan.createdAt) }
+        plans.append(plan)
+        guard await persist(plan) else {
+            plans.removeAll { $0.id == plan.id }
+            return nil
+        }
+        if let old, let conversationID { detach(conversationID: conversationID, from: old.id) }
+        return plan
+    }
+
+    private static let aylaProposalKey = "aylaProposal"
+    /// Proposals being saved as a plan right now.
+    private var madeFromAyla: Set<String> = []
+
     func rename(_ planID: String, to name: String, goal: String? = nil) async -> Bool {
         guard let name = PavePlan.cleanName(name) else { return false }
         return await change(planID) { plan in

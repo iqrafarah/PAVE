@@ -1,73 +1,47 @@
 import PAVECore
 import SwiftUI
 
-/// A project in the chat list (web AylaProjectList): its icon in its own colour, its name and how many chats it holds.
-/// Tapping it opens its page; the arrow opens or closes its chats underneath. A chat dragged onto it goes into the project.
+/// A project in the chat list, as on the web (AylaProjectList): its icon in its own colour and its name. Tapping it
+/// opens its page and its chats underneath; tapping it again folds them. The plain folder shows open while it is open.
 struct AylaProjectRow: View {
     let project: AylaProject
-    let count: Int
     let isOpen: Bool
     var isDropTarget = false
-    let onOpen: () -> Void
-    let onToggle: () -> Void
+    let onTap: () -> Void
+
+    private var icon: ImageResource {
+        guard project.icon == nil || project.icon == .folder else { return project.iconImage }
+        return isOpen ? .iconFolderSolid : .iconFolderClosedSolid
+    }
 
     var body: some View {
-        HStack(spacing: 0) {
-            Button(action: onOpen) {
-                HStack(spacing: 10) {
-                    Image(project.iconImage)
-                        .renderingMode(.template)
-                        .resizable()
-                        .scaledToFit()
-                        .paveIconFrame(20)
-                        .foregroundStyle(project.tint)
-                    Text(project.name)
-                        .textStyle(.listTitle)
-                        .foregroundStyle(Color.ink)
-                        .lineLimit(1)
-                    if project.isPinned {
-                        Image(systemName: "pin.fill")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(Color.inkMuted)
-                            .accessibilityHidden(true)
-                    }
-                    Spacer(minLength: 8)
-                    if count > 0 {
-                        Text("\(count)")
-                            .textStyle(.caption)
-                            .foregroundStyle(Color.inkMuted)
-                    }
-                }
-                .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
-                .padding(.leading, 12)
-                .contentShape(.rect)
-            }
-            .buttonStyle(.pave)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("\(project.name), project\(project.isPinned ? ", vastgezet" : ""), \(count == 1 ? "1 chat" : "\(count) chats")")
-            .accessibilityHint("Opent het project")
-
-            Button(action: onToggle) {
-                Image(.iconChevronRight)
+        Button(action: onTap) {
+            HStack(spacing: 8) {
+                Image(icon)
                     .renderingMode(.template)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 10, height: 10)
-                    .foregroundStyle(Color.inkMuted)
-                    .rotationEffect(.degrees(isOpen ? 90 : 0))
-                    .frame(width: 44, height: 48)
-                    .contentShape(.rect)
+                    .paveIconFrame(16)
+                    .foregroundStyle(project.tint)
+                Text(project.name)
+                    .textStyle(.listTitle)
+                    .foregroundStyle(Color.ink)
+                    .lineLimit(1)
             }
-            .buttonStyle(.pave)
-            .accessibilityLabel(isOpen ? "Chats van \(project.name) verbergen" : "Chats van \(project.name) tonen")
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .padding(.horizontal, 12)
+            .contentShape(.rect(cornerRadius: 12))
         }
+        .buttonStyle(.pave)
         .background {
             RoundedRectangle(cornerRadius: 12)
                 .fill(isDropTarget ? Color.paveSurfaceTint : .clear)
                 .strokeBorder(isDropTarget ? Color.paveAccent : .clear, lineWidth: 1.5)
         }
-        .contentShape(.rect(cornerRadius: 12))
         .hoverEffect(.highlight)
         .animation(.easeOut(duration: 0.15), value: isDropTarget)
+        .accessibilityLabel("\(project.name), project")
+        .accessibilityValue(isOpen ? "Chats getoond" : "Chats verborgen")
+        .accessibilityHint(isOpen ? "Verbergt de chats" : "Opent het project en toont de chats")
     }
 }

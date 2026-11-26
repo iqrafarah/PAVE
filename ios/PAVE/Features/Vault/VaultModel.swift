@@ -389,16 +389,18 @@ final class VaultModel {
         return try await service.validationContacts(departmentID: departmentID)
     }
 
-    func searchValidationOrganizations(
-        category: VaultCategory, query: String, kind: VaultOrganizationKind?, offset: Int
-    ) async throws -> VaultValidationPage<VaultValidationOrganization> {
+    func searchValidationPlaces(
+        category: VaultCategory, query: String, kind: VaultOrganizationKind?, organizationID: String? = nil, offset: Int
+    ) async throws -> VaultValidationPage<VaultValidationPlace> {
         guard let service else { throw VaultError.notSetUp }
-        return try await service.searchValidationOrganizations(category: category, query: query, kind: kind, offset: offset)
+        return try await service.searchValidationPlaces(
+            category: category, query: query, kind: kind, organizationID: organizationID, offset: offset
+        )
     }
 
-    func validationOrganizations(ids: [String], category: VaultCategory) async throws -> [VaultValidationOrganization] {
+    func validationPlaces(locationIDs: [String], category: VaultCategory) async throws -> [VaultValidationPlace] {
         guard let service else { throw VaultError.notSetUp }
-        return try await service.validationOrganizations(ids: ids, category: category)
+        return try await service.validationPlaces(locationIDs: locationIDs, category: category)
     }
 
     func searchValidationPeople(
@@ -413,6 +415,11 @@ final class VaultModel {
     func validationFilterOptions(organizationID: String, category: VaultCategory) async throws -> [VaultValidationFilterOption] {
         guard let service else { throw VaultError.notSetUp }
         return try await service.validationFilterOptions(organizationID: organizationID, category: category)
+    }
+
+    /// Profile photos are a nice-to-have: without them the form shows initials.
+    func validationContactPhotos(contactIDs: [String]) async -> [String: URL] {
+        (try? await service?.validationContactPhotos(contactIDs: contactIDs)) ?? [:]
     }
 
     func previousValidationPeople(category: VaultCategory) async throws -> [VaultValidationPerson] {
