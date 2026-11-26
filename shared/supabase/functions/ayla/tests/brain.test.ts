@@ -1399,7 +1399,8 @@ test('the prompt fits the device and the conversation', () => {
   assert.doesNotMatch(watch, /via de bol/)
   assert.doesNotMatch(phone, /hoeft geen diploma of certificaat te zijn/)
   assert.match(buildSystemPrompt({ device: 'phone', hasFiles: true }), /hoeft geen diploma of certificaat te zijn/)
-  assert.match(phone, /Tot slot, bij elk antwoord[\s\S]*één vraag tegelijk, in de taal van de gebruiker\.$/)
+  assert.match(phone, /Tot slot, bij elk antwoord[\s\S]*één vraag tegelijk, in de taal van de gebruiker\.\n7\. [^\n]*nooit in de kluis\.$/)
+  assert.match(web, /Tot slot, bij elk antwoord[\s\S]*één vraag tegelijk, in de taal van de gebruiker\.$/)
   // The first round no longer carries the matches; the round after a search does.
   assert.equal('vacancyMatches' in MODEL_OUTPUT_SCHEMA.properties, false)
   assert.deepEqual(MODEL_OUTPUT_SCHEMA.required[0], 'intent')

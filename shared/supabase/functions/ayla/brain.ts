@@ -405,10 +405,16 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
     delete reply.question
     delete reply.navigation
   }
-  const asked = purpose || pointsAtNothing ? [] : cleanActions(decided.actions, request.device)
+  const asked = (purpose || pointsAtNothing ? [] : cleanActions(decided.actions, request.device))
+    // Answering an employer that did not invite you would send a yes to nobody: someone who is not on the list of
+    // invitations wrote a mail, and the answer goes there, in the user's own words.
+    .map((action) => action.do === 'answerInvitation' && request.device === 'phone' && !invitationListed(action.target, request.app?.invitations)
+      ? { do: 'replyMail' as const, ...(action.target ? { target: action.target } : {}), value: request.text.slice(0, 120) }
+      : action)
   // What already is so is not done again, and a vacancy is only saved when the user said so, whatever the model says.
-  const wanted = asked.filter((action) => !alreadySo(action, request.app) && (action.do !== 'saveVacancy' || asksToSave(request.text, lastAyla)))
-  if (asked.length && !wanted.length && !blocks.length) reply.text = ALREADY_SO_TEXT
+  const notYet = asked.filter((action) => !alreadySo(action, request.app))
+  const wanted = notYet.filter((action) => action.do !== 'saveVacancy' || asksToSave(request.text, lastAyla))
+  if (asked.length && !notYet.length && !blocks.length) reply.text = ALREADY_SO_TEXT
   const sure = confirmable(wanted)
   const actions = sure ? sure.actions : asksBeforeDoing(cleanText(decided.text), decided.intent) ? [] : wanted
   if (actions.length) {
@@ -690,6 +696,21 @@ export function withoutRepeatedQuestion(text: string, question: string): string 
   return shared / asked.size >= 0.7 ? sentences.slice(0, -1).join(' ') : text
 }
 
+/** Whether an invitation from the fair the app listed is meant: a word of the employer's name in the target. */
+export function invitationListed(target: string | undefined, invitations: string[] | undefined): boolean {
+  if (!target || !invitations?.length) return false
+  const words = target.toLocaleLowerCase('nl').split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 2)
+  return invitations.some((line) => {
+    const employer = line.split(':')[0].toLocaleLowerCase('nl')
+    return words.some((w) => employer.includes(w))
+  })
+}
+
+/** A question that offers to put a plan in the vault: a plan is no evidence, so it is never asked. */
+export function offersPlanForVault(text: string | undefined): boolean {
+  return !!text && /\b(stappen)?plan\b/i.test(text) && /\bkluis\b/i.test(text)
+}
+
 /** The text without the sentences in which the model itself asks whether it may look in the vault. */
 export function withoutConsentAsk(text: string): string {
   const sentences = text.split(/(?<=[.!?])\s+|\n+/).map((s) => s.trim()).filter(Boolean)
@@ -778,7 +799,7 @@ Ga verder met wat de gebruiker vroeg: doe de stappen die nog moeten, kies een an
 }
 
 const LIGHT = /^(hoi|hey|hallo|hi|goedemorgen|goedemiddag|goedenavond|dank ?je( wel)?|dankjewel|bedankt|thanks|top|oke|oké|ok|prima|fijn|doei|tot ziens)[\s!.]*$/i
-const HARD = /\b(privacy|gegevens|avg|veilig|cv|curriculum|motivatiebrief|sollicitatiebrief|plan|stappenplan|vergelijk|analyseer|analyse|samenvat|samenvatting|herschrijf|verbeter|leg uit|waarom|voor- en nadelen|advies)\b/i
+const HARD = /\b(privacy|gegevens|avg|veilig|cv|curriculum|motivatiebrief|sollicitatiebrief|stappenplan|vergelijk|analyseer|analyse|samenvat|samenvatting|herschrijf|verbeter|leg uit|waarom|voor- en nadelen|advies)\b|\b(maak|maken|opstellen|bedenk|schrijf|help)\b[^.?!]*\bplan\b/i
 const SEVERAL = /\b(en dan|daarna|vervolgens|en ook)\b| en (zet|maak|open|verplaats|archiveer|verwijder|bewaar|noem|start)\b/i
 
 /**
@@ -1241,6 +1262,8 @@ function toReply(output: ModelOutput, blocks: Block[], conversationId: string, i
     .map((c, i) => ({ id: typeof c.id === 'string' && c.id.trim() ? c.id.trim() : `choice_${i + 1}`, label: c.label.trim() }))
   if (output.question && choices.length >= 2) reply.question = { text: output.question.text ?? '', choices }
   if (reply.question) reply.text = withoutRepeatedQuestion(reply.text, reply.question.text)
+  // "Wil je dit plan in je kluis zetten?" never goes out: a plan is made at Plan, not kept as evidence.
+  if (reply.question && offersPlanForVault(reply.question.text)) delete reply.question
   const screen = output.navigation?.screen as Screen
   if (SCREENS.includes(screen) && NAVIGABLE.has(screen)) reply.navigation = { screen }
   // Opening one item from the vault: only an item the user allowed, by its id; otherwise the vault itself.

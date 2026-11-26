@@ -68,8 +68,23 @@ export interface CompleteOptions {
 
 export type Complete = (messages: ChatMessage[], options?: CompleteOptions) => Promise<{ model: string; content: string }>
 
+/** What one call cost: tokens in, the part of them that came from Mistral's cache, tokens out, and dollars. */
+export interface Usage { model: string; promptTokens: number; cachedTokens: number; completionTokens: number; cost: number }
+
 /** A chat reply is short; a whole evidence item with its skills and sources needs more room, and more time with photos. */
-export interface CompletionLimits { maxTokens?: number; timeoutMs?: number }
+export interface CompletionLimits { maxTokens?: number; timeoutMs?: number; onUsage?: (usage: Usage) => void }
+
+/** OpenRouter's usage block as a `Usage`; nothing when it is missing. */
+export function usageFrom(model: string, usage: any): Usage | null {
+  if (!usage || typeof usage.prompt_tokens !== 'number') return null
+  return {
+    model,
+    promptTokens: usage.prompt_tokens,
+    cachedTokens: usage.prompt_tokens_details?.cached_tokens ?? 0,
+    completionTokens: usage.completion_tokens ?? 0,
+    cost: typeof usage.cost === 'number' ? usage.cost : 0,
+  }
+}
 
 export function openRouterCompletion(
   apiKey: string,
@@ -121,6 +136,7 @@ export function openRouterCompletion(
             max_tokens: turnTokens,
             messages,
             provider: PROVIDER,
+            usage: { include: true },
             ...(streams ? { stream: true } : {}),
             response_format: { type: 'json_schema', json_schema: { name: 'ayla_reply', strict: true, schema: options.schema ?? responseSchema } },
           }),
@@ -134,9 +150,11 @@ export function openRouterCompletion(
             }
             if (!streams) {
               const json = await response.json()
+              const usage = usageFrom(model, json?.usage)
+              if (usage) limits.onUsage?.(usage)
               return json?.choices?.[0]?.message?.content
             }
-            return await readStream(response, (content) => {
+            return await readStream(response, (usage) => { const u = usageFrom(model, usage); if (u) limits.onUsage?.(u) }, (content) => {
               if (done) return
               if (!leader) {
                 // This model writes first: it answers, the others stop.
@@ -178,7 +196,7 @@ export function openRouterCompletion(
 const MAX_TRAILING_SPACE = 120
 
 /** Reads OpenRouter's server-sent events and returns everything the model wrote. */
-async function readStream(response: Response, onContent: (content: string) => void): Promise<string> {
+async function readStream(response: Response, onUsage: (usage: unknown) => void, onContent: (content: string) => void): Promise<string> {
   const reader = response.body?.getReader()
   if (!reader) return ''
   const decoder = new TextDecoder()
@@ -196,7 +214,9 @@ async function readStream(response: Response, onContent: (content: string) => vo
       const data = line.slice(5).trim()
       if (data === '[DONE]') return content
       try {
-        const delta = JSON.parse(data)?.choices?.[0]?.delta?.content
+        const chunk = JSON.parse(data)
+        if (chunk?.usage) onUsage(chunk.usage)
+        const delta = chunk?.choices?.[0]?.delta?.content
         if (typeof delta === 'string' && delta) {
           content += delta
           // A model that only writes spaces and tabs any more never finishes its JSON: what it wrote is the answer.

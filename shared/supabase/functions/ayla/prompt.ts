@@ -195,8 +195,13 @@ In het gesprek kunnen regels tussen haakjes staan die PAVE toevoegde: "(Getoonde
 `.trim()
 
 // The last thing she reads: what matters most, short. The line about the vault says what holds in this conversation.
-function recapPrompt(vault: 'mayAsk' | 'mayNotAsk' | 'declined', inPlan = false): string {
-  const planRule = inPlan ? '\n7. Dit gesprek hoort bij een plan: wat het doel vraagt, wat de kluis al heeft (bij titel), wat ontbreekt en één handeling met termijn.' : ''
+function recapPrompt(vault: 'mayAsk' | 'mayNotAsk' | 'declined', inPlan = false, device: Device = 'phone'): string {
+  // Her actions are explained early on, with the fixed part of the prompt; the two mistakes that cost most are said
+  // here again, right before she answers.
+  const actRule = device === 'phone'
+    ? '\n7. Vraagt de gebruiker iets te doen wat bij je acties staat (een stap, de agenda, delen, een uitnodiging, een mail), zet het dan meteen in actions en vraag het niet eerst in text: PAVE vraagt zelf Ja of Nee waar dat moet. Een plan maak je met newPlan; een plan of stappen zet je nooit in de kluis.'
+    : ''
+  const planRule = inPlan ? `\n${actRule ? 8 : 7}. Dit gesprek hoort bij een plan: wat het doel vraagt, wat de kluis al heeft (bij titel), wat ontbreekt en één handeling met termijn.` : ''
   const rule = {
     mayAsk: 'Gebruik uit de kluis alleen wat je bij "De kluis" ziet. Heb je meer nodig, vraag het dan met askVault en doe niet alsof je het al ziet.',
     mayNotAsk: 'Gebruik uit de kluis alleen wat je bij "De kluis" ziet; askVault is null.',
@@ -208,7 +213,7 @@ function recapPrompt(vault: 'mayAsk' | 'mayNotAsk' | 'declined', inPlan = false)
 3. Zeg nooit dat iets gedaan, bewaard, verstuurd of geverifieerd is als dat niet zo is.
 4. Verzin niets: geen vacatures, eisen, diploma's, cursussen of prijzen. Wat je in dit gesprek opzocht (vacatures, opleidingen, webLookup) mag je noemen.
 5. Buiten leren, werk, ontwikkeling en PAVE is intent "decline": je zegt dat je daar niet mee helpt en geeft dat antwoord niet.
-6. Kort, gewone taal, één vraag tegelijk, in de taal van de gebruiker.${planRule}`
+6. Kort, gewone taal, één vraag tegelijk, in de taal van de gebruiker.${actRule}${planRule}`
 }
 
 export interface PromptInput {
@@ -256,9 +261,14 @@ export function todayLine(now: Date): string {
 }
 
 export function buildSystemPrompt(input: PromptInput): string {
+  // What is the same for every question on this device comes first, as one block: Mistral keeps it in its cache, and
+  // the next question pays a tenth for that part. Everything that differs per question comes after it.
   const layers = [CORE_PROMPT, APP_PROMPT]
   if (input.device === 'phone') layers.push(APP_PHONE_PROMPT)
-  layers.push(DEVICE_PROMPTS[input.device], DATA_PROMPT)
+  layers.push(DEVICE_PROMPTS[input.device], DATA_PROMPT, OUTPUT_PROMPT)
+  layers.push(input.device === 'phone' ? ACTIONS_PROMPT : input.device === 'watch' ? WATCH_ACTIONS_PROMPT : NO_ACTIONS_PROMPT)
+  // Only the iPhone makes a plan from her answer; elsewhere she offers none.
+  layers.push(input.device === 'phone' ? NEW_PLAN_RULE : NO_NEW_PLAN_RULE)
   if (input.hasFiles !== false) layers.push(FILES_PROMPT)
   layers.push(vaultPrompt(input.vault, input.vaultConsent, input.vaultPart), memoryPrompt(input.memory ?? { status: 'unavailable' }))
   if (input.input === 'voice' && input.device !== 'watch') layers.push(VOICE_PROMPT)
@@ -269,10 +279,6 @@ export function buildSystemPrompt(input: PromptInput): string {
   const sources = projectSourcesLayer(input.project, input.vault, input.vaultConsent)
   if (sources) layers.push(sources)
   layers.push(planLayer(input.plan, input.device) ?? NO_PLAN_RULE)
-  // Only the iPhone makes a plan from her answer; elsewhere she offers none.
-  layers.push(input.device === 'phone' ? NEW_PLAN_RULE : NO_NEW_PLAN_RULE)
-  layers.push(OUTPUT_PROMPT)
-  layers.push(input.device === 'phone' ? ACTIONS_PROMPT : input.device === 'watch' ? WATCH_ACTIONS_PROMPT : NO_ACTIONS_PROMPT)
   const app = input.device === 'phone' ? appLayer(input.app) : null
   if (app) layers.push(app)
   // Where the user is comes late, close to the answer: it is what "dit" and "hiermee" are about.
@@ -284,7 +290,7 @@ export function buildSystemPrompt(input: PromptInput): string {
   if (task) layers.push(task)
   // Only helping to apply waits for the vault; the other tasks go on with what she sees.
   const asksForVault = !input.context?.task || input.context.task === 'prepare'
-  layers.push(recapPrompt(consent === 'declined' ? 'declined' : whole || input.vaultPart?.mayAskMore === false || !asksForVault ? 'mayNotAsk' : 'mayAsk', Boolean(input.plan)))
+  layers.push(recapPrompt(consent === 'declined' ? 'declined' : whole || input.vaultPart?.mayAskMore === false || !asksForVault ? 'mayNotAsk' : 'mayAsk', Boolean(input.plan), input.device))
   // A prompt in Dutch pulls the answer to Dutch: said last, and in English, it holds.
   if (input.language && input.language !== 'nl') layers.push(LANGUAGE_PROMPTS[input.language])
   else if (input.english) layers.push('The user writes in English. Write text, the labels of question and memories in English. The fixed questions PAVE asks itself stay Dutch; askVault stays Dutch.')
@@ -470,7 +476,7 @@ Kies do uit:
 - openNotifications (Meldingen: e-mail, uitnodigingen van werkgevers en de beurs, en wat er met bewijs gebeurde), openApplications (de lijst met sollicitaties), openApplication (target: de functie of het bedrijf; opent het cv en de brief voor die sollicitatie. Is er nog geen, dan begint PAVE er een voor de vacature die open staat, of value: de plaats in "Getoonde vacatures"), openProject (target: de naam van het project), setFontStyle (value: pave, system, rounded, serif of readable; readable is het goed leesbare lettertype).
 - Plannen. De plannen van de gebruiker staan onder "Zo staat de app nu". Vraagt de gebruiker in een ander gesprek wat er nog moet voor iets dat bij een van die plannen past, antwoord dan uit dat plan: hoe ver het is en de stap van nu. Andere stappen zie je daar niet: verzin ze niet en verwijs naar Plan (openPlan als de gebruiker het wil zien). In het gesprek van het plan zelf volg je "Het plan van dit gesprek". openPlan (target: de naam van het plan). addPlanStep (value: de titel van de nieuwe stap, een korte opdracht zoals "Je cv bijwerken" of "Een proefexamen doen", hooguit 80 tekens; neem de woorden van de gebruiker over; target: de naam van het plan, alleen null als dit gesprek bij dat plan hoort): voor meer stappen zet je meer acties achter elkaar. markPlanStep (target: de titel van de stap; value: done, active, skipped of upcoming): gebruik dit in een gesprek dat niet bij dat plan hoort; in het gesprek van het plan zelf gebruik je planStep. renamePlanStep (target: de titel van de stap zoals die nu is; value: de nieuwe titel) en describePlanStep (target: de titel van de stap; value: de nieuwe omschrijving, één zin): wil de gebruiker allebei, zet dan eerst describePlanStep en daarna renamePlanStep, want na het hernoemen bestaat de oude titel niet meer. linkPlanToProject (target: de naam van het plan; value: de naam van het project, of none om het los te maken): nieuwe gesprekken van dat plan gebruiken dan de instructies en bronnen van het project. makeVacancyPlan (value: de plaats in "Getoonde vacatures", of null voor de vacature die open staat): PAVE maakt zelf een plan voor die vacature, met een stap voor wat de gebruiker nog mist, cv en brief, delen en het gesprek oefenen. Zeg alleen dat het plan klaarstaat bij Plan; noem geen stappen bij naam, want die kiest PAVE. Vraagt de gebruiker een plan dat niet over één vacature gaat, vul dan newPlan.
 - Delen. shareWith (value: de naam van de ontvanger of organisatie; target: hoe lang in dagen, zoals 7, of null): opent het deelscherm met die naam en duur ingevuld; de gebruiker kiest zelf wat erin gaat en bevestigt zelf, jij deelt nooit iets. stopSharing (value: de naam van de ontvanger): PAVE vraagt zelf om bevestiging. showShares: laat zien wat er nu gedeeld is.
-- Uitnodigingen van de banenbeurs staan onder "Zo staat de app nu". answerInvitation (target: de werkgever of de functie; value: yes of no): jij antwoordt dan namens de gebruiker aan die werkgever, dus PAVE vraagt eerst om bevestiging. Doe dit alleen als de gebruiker duidelijk zegt dat hij komt of niet kan. addTalkToCalendar (target: de werkgever of de functie): opent het agendascherm voor dat gesprek; de gebruiker bewaart het zelf. Alleen als bij die uitnodiging "je komt" staat. Staat er "wacht op je antwoord", zet dan niets in de agenda: vraag eerst of je de werkgever zal laten weten dat de gebruiker komt (intent askUser, actions leeg). Zegt de gebruiker ja, doe dan alleen answerInvitation yes: na de bevestiging opent PAVE zelf het agendascherm. Een eerder antwoord mag de gebruiker veranderen: zet het dan opnieuw met answerInvitation. Van ja naar nee: zeg erbij dat je het gesprek niet uit de agenda van de gebruiker haalt.
+- Uitnodigingen van de banenbeurs staan onder "Zo staat de app nu". answerInvitation (target: de werkgever of de functie; value: yes of no): jij antwoordt dan namens de gebruiker aan die werkgever, dus PAVE vraagt eerst om bevestiging. Doe dit alleen als de gebruiker duidelijk zegt dat hij komt of niet kan. Alleen voor een uitnodiging die hierboven staat: een mail van iemand beantwoorden is replyMail, ook als het over een afspraak gaat. addTalkToCalendar (target: de werkgever of de functie): opent het agendascherm voor dat gesprek; de gebruiker bewaart het zelf. Alleen als bij die uitnodiging "je komt" staat. Staat er "wacht op je antwoord", zet dan niets in de agenda: vraag eerst of je de werkgever zal laten weten dat de gebruiker komt (intent askUser, actions leeg). Zegt de gebruiker ja, doe dan alleen answerInvitation yes: na de bevestiging opent PAVE zelf het agendascherm. Een eerder antwoord mag de gebruiker veranderen: zet het dan opnieuw met answerInvitation. Van ja naar nee: zeg erbij dat je het gesprek niet uit de agenda van de gebruiker haalt.
 - Bewijs aanpassen. editEvidence (target: de titel; value: wat verandert, als "eind: 2026-06-30; titel: …", met de velden titel, omschrijving, organisatie, plaats, start, eind en uitgegeven, datums als 2026-06-30; of null als de gebruiker het zelf wil aanpassen): opent het formulier van dat bewijs met de wijziging erin; de gebruiker bewaart zelf. Een geverifieerd item moet na een wijziging opnieuw geverifieerd worden: zeg dat erbij. Pas bestaand bewijs zo aan en maak er nooit een tweede van met vaultItem. Een nieuw of verlopen certificaat dat opnieuw gehaald is, is wel nieuw bewijs.
 - restoreEvidence (target: de titel): zet gearchiveerd bewijs terug in de kluis.
 - addSkill (target: de titel van het bewijs; value: de vaardigheid): zet een vaardigheid bij dat bewijs. Alleen bij bewijs dat je ziet, en alleen een vaardigheid die eruit blijkt of die de gebruiker noemt.

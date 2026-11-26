@@ -105,3 +105,40 @@ test('an open verification request reaches her, and who was asked', async () => 
   assert.equal(out[0].status, 'niet geverifieerd, verificatie aangevraagd bij Kade Consultancy, wacht op antwoord')
   assert.equal(out[1].status, 'geverifieerd')
 })
+
+test('the fixed part of her instructions comes first and is the same for every question on a device', async () => {
+  const { buildSystemPrompt } = await import('../prompt.ts')
+  const item = { id: 'a', kind: 'projects', category: 'Projecten', title: 'PAVE', status: 'niet geverifieerd', skills: ['Swift'], files: [] }
+  const one = buildSystemPrompt({ device: 'phone', input: 'text', firstName: 'Ravi', now: new Date('2026-11-26T10:00:00Z') } as any)
+  const two = buildSystemPrompt({
+    device: 'phone', input: 'voice', firstName: 'Sanne', now: new Date('2026-12-01T18:00:00Z'), vault: { status: 'on', items: [item] }, vaultConsent: 'granted',
+    memory: { status: 'on', notes: [{ id: 'm', text: 'Woont in Utrecht', category: 'personal' }] },
+    plan: { id: 'p', name: 'Scrum', goal: 'PSM I', steps: [{ id: 's', title: 'Cursus', summary: '', kind: 'research', status: 'active' }] },
+  } as any)
+  let same = 0
+  while (same < one.length && one[same] === two[same]) same++
+  // Everything up to the files and the vault: the rules, the app, the output and every action.
+  assert.ok(same / one.length > 0.8, `only ${same} of ${one.length} characters are shared`)
+  assert.ok(one.slice(0, same).includes('## Zelf iets doen in de app') || one.slice(0, same).includes('addToCalendar'))
+})
+
+test('an invitation is only answered when the app listed it, and a plan is never offered for the vault', async () => {
+  const { invitationListed, offersPlanForVault, effortFor } = await import('../brain.ts')
+  const listed = ['Jumbo: Medewerker Planning & Support, zaterdag 28 november om 12:35, wacht op je antwoord']
+  assert.ok(invitationListed('Jumbo', listed))
+  assert.ok(!invitationListed('Sanne', listed))
+  assert.ok(!invitationListed('Jumbo', undefined))
+  assert.ok(offersPlanForVault('Wil je dit plan zo in je kluis zetten?'))
+  assert.ok(!offersPlanForVault('Zal ik je certificaat in je kluis zetten?'))
+  const ask = (text: string) => effortFor({ text, device: 'phone', input: 'text' } as any)
+  assert.equal(ask('Zet in mijn plan Scrum halen een stap om een proefexamen te doen'), 'normal')
+  assert.equal(ask('Maak een plan om mijn Scrum-certificaat te halen'), 'hard')
+  assert.equal(ask('Help me met mijn cv'), 'hard')
+})
+
+test('an answer to someone who did not invite you becomes a mail reply, not "Dat staat al zo"', async () => {
+  const fake = { complete: async () => ({ model: 'fake', content: JSON.stringify({ intent: 'act', text: 'Ik zet het klaar.', actions: [{ do: 'answerInvitation', target: 'Sanne', value: 'yes' }] }) }) }
+  const reply = await answer({ request: { text: 'Antwoord Sanne dat ik dinsdag kan', device: 'phone', input: 'text' }, conversationId: 'c', history: [] }, { complete: fake.complete, newId: () => 'x' })
+  assert.deepEqual(reply.actions, [{ do: 'replyMail', target: 'Sanne', value: 'Antwoord Sanne dat ik dinsdag kan' }])
+  assert.notEqual(reply.text, 'Dat staat al zo.')
+})
