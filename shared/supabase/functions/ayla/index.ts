@@ -3,6 +3,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { answer, CONSENT_HISTORY_LIMIT, type StoredMessage, titleFrom, toPastMessage } from './brain.ts'
 import { educationSearch } from './educations.ts'
+import { webLookup } from './lookups.ts'
 import { localizedReply } from './localize.ts'
 import { loadMemory } from './memory.ts'
 import { loadAllowedVault } from './vault.ts'
@@ -113,6 +114,7 @@ Deno.serve(async (req) => {
     complete: openRouterCompletion(openRouterKey, MODEL_OUTPUT_SCHEMA),
     searchVacancies: withSupport(firstThatFinds(apis), webSearch(openRouterKey)),
     searchEducations: educationSearch(openRouterKey),
+    lookUp: webLookup(openRouterKey),
     newId: () => crypto.randomUUID(),
     siteExists: siteChecker(),
     updatePlanStep: stepUpdater(supabase),

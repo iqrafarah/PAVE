@@ -5741,6 +5741,23 @@
         }
       }
     },
+    "Ayla zoekt het op: %@…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla is looking it up: %@…"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayla ta buska esaki: %@…"
+          }
+        }
+      }
+    },
     "Ayla zoekt je punten…": {
       "extractionState": "manual",
       "localizations": {
@@ -10382,6 +10399,23 @@
         }
       }
     },
+    "De mail staat klaar. Lees hem na en verstuur hem zelf.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The email is ready. Read it through and send it yourself."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E e-mail ta kla. Lesa é i manda é bo mes."
+          }
+        }
+      }
+    },
     "De map %@ bestond al. Ik open hem.": {
       "extractionState": "manual",
       "localizations": {
@@ -11687,6 +11721,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "No por a pone e imágen ei na bo prueba. Skohe un JPG òf PNG."
+          }
+        }
+      }
+    },
+    "Die datum kon ik niet lezen. Zeg de dag nog eens, bijvoorbeeld 3 december.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I couldn't read that date. Say the day again, for example 3 December."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi no por a lesa e fecha ei. Bisa e dia di nobo, por ehempel 3 di desèmber."
           }
         }
       }
@@ -23064,6 +23115,23 @@
         }
       }
     },
+    "Klaargezet door Ayla in PAVE.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set up by Ayla in PAVE."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prepará pa Ayla den PAVE."
+          }
+        }
+      }
+    },
     "Klaargezet door Ayla, vanaf je Watch.": {
       "extractionState": "manual",
       "localizations": {
@@ -29962,6 +30030,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ta habri e fòlder"
+          }
+        }
+      }
+    },
+    "Opent de pagina in Safari": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens the page in Safari"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta habri e página den Safari"
           }
         }
       }
@@ -43443,6 +43528,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sera buskadó"
+          }
+        }
+      }
+    },
+    "Zoekt het op": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Looking it up"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta buska"
           }
         }
       }

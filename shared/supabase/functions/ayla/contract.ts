@@ -108,7 +108,7 @@ export const ACTIONS = [
   'openVacancy', 'saveVacancy',
   'openNotifications', 'openApplications', 'openApplication', 'openProject', 'setFontStyle',
   'openPlan', 'addPlanStep', 'markPlanStep', 'renamePlanStep', 'describePlanStep', 'linkPlanToProject', 'makeVacancyPlan',
-  'addTalkToCalendar', 'openMail', 'summarizeMail', 'replyMail',
+  'addTalkToCalendar', 'addToCalendar', 'openMail', 'summarizeMail', 'replyMail', 'writeMail',
   'shareWith', 'stopSharing', 'showShares',
   'deleteChat', 'deleteEvidence', 'signOut', 'forgetAll', 'removePlanStep', 'answerInvitation', 'addProjectSource',
 ] as const
@@ -130,6 +130,7 @@ export type Status =
   /** chosen: how many vault items the user picked for this conversation, when that is what Ayla compares with. */
   | { kind: 'vacancyMatch'; count: number; withVault: boolean; chosen?: number }
   | { kind: 'educationSearch'; what: string; where: string }
+  | { kind: 'webLookup'; question: string }
 
 export interface RequirementLink { skill: string; requirement: string }
 
@@ -158,6 +159,8 @@ export type Block =
   | { type: 'skillSuggestions'; itemId: string; skills: { name: string; reason: string }[] }
   /** Studies and courses found on the web, each with its own page. */
   | { type: 'educations'; items: Education[]; search: { what: string; where: string } }
+  /** The pages a looked-up answer comes from, so every fact can be checked. */
+  | { type: 'sources'; items: { title: string; url: string }[] }
   | { type: 'cv'; profile: string; experience: { title: string; organisation: string; period: string; description?: string }[]; skills: string[] }
 
 /** An item Ayla proposes for the vault, in the fields of `vault_items`; dates as YYYY-MM-DD. */

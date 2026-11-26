@@ -21,6 +21,8 @@ public enum AylaActivity: Equatable, Sendable {
     case comparingVacancies(count: Int, withVault: Bool, chosen: Int? = nil)
     /// Studies and courses on the web.
     case searchingEducations(what: String, where: String)
+    /// A fact on the web, with its sources.
+    case lookingUp(question: String)
     /// She looks at what came of her own actions and goes on (set by the app, not by the server).
     case continuing
 }
@@ -329,6 +331,7 @@ public struct SupabaseAylaService: AylaService {
             let withVault: Bool?
             let also: String?
             let chosen: Int?
+            let question: String?
         }
         switch name {
         case "start":
@@ -341,6 +344,9 @@ public struct SupabaseAylaService: AylaService {
             case "vacancySearch":
                 guard let what = status.what, !what.isEmpty else { return nil }
                 return .success(.activity(.searchingVacancies(what: what, where: status.where ?? "", also: status.also.flatMap { $0.isEmpty ? nil : $0 })))
+            case "webLookup":
+                guard let question = status.question, !question.isEmpty else { return nil }
+                return .success(.activity(.lookingUp(question: question)))
             case "educationSearch":
                 guard let what = status.what, !what.isEmpty else { return nil }
                 return .success(.activity(.searchingEducations(what: what, where: status.where ?? "")))

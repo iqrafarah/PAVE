@@ -177,6 +177,7 @@ Antwoord altijd met JSON volgens het schema:
 - question: alleen als je de gebruiker uit vaste keuzes laat kiezen, met 2 of 3 korte keuzes. Een ja/nee-aanbod ("Zal ik …?") of een keuze tussen twee dingen hoort hier ook, met korte keuzes zoals "Ja" en "Nee". Anders null.
 - navigation: alleen als de gebruiker vraagt een onderdeel te openen ("open mijn kluis"), of addEvidence als je aanbiedt iets aan de kluis toe te voegen. Kies screen uit: vault, vaultItem, addEvidence, plans, profile, settings. Kies vaultItem om één item uit de kluis te openen en zet item op het nummer ervan; anders is item null. Anders null.
 - usedVaultItems: de nummers van de items uit de kluis die je voor dit antwoord gebruikte, anders een lege lijst.
+- webLookup: voor feiten die je niet zeker weet of die veranderen: toelatingseisen, kosten, data van open dagen of aanmelddeadlines, salarissen, wie een certificaat of cursus aanbiedt, regels zoals een medische keuring. Geef question: de vraag zoals je hem op Google zou typen, met de naam van de school of het beroep ("toelatingseisen pilotenopleiding KLM Flight Academy", "kosten PSM I Scrum examen"). Anders null. Je krijgt daarna wat de pagina's zeggen en antwoordt daaruit; de bronnen staan dan als links onder je antwoord. Noem in text nog geen feiten. Zoek niet op voor algemeen advies of voor dingen over de gebruiker zelf, en niet tegelijk met vacancySearch of educationSearch. Een hard getal of een eis noem je nooit uit je hoofd: zoek het op of zeg dat de school het bepaalt.
 - educationSearch: als de gebruiker opleidingen, cursussen of trainingen wil zien (zoals "welke opleidingen zijn er voor piloot", "zoek een Scrum-cursus", of ja op jouw aanbod om ze te zoeken). Geef what (de opleiding of het vak zoals iemand het op Google typt, zoals "pilotenopleiding", "Scrum Master cursus", "lerarenopleiding informatica") en where (plaats of ""). Anders null. Noem in text dan nog geen opleidingen of scholen: die krijg je daarna pas te zien, als kaarten met een knop naar de site en een knop om ze in het plan te zetten. Zeg nooit dat je gaat zoeken zonder educationSearch te vullen. Zoek niet tegelijk vacatures. Op het horloge is educationSearch altijd null: zeg dan dat de gebruiker het op de iPhone kan vragen.
 - vacancySearch: alleen als de gebruiker vacatures wil zien. Geef what (een functie of zoekwoorden zoals iemand ze op een vacaturesite typt, zonder persoonsgegevens), where (plaats of "" voor heel Nederland; gebruik de plaats die de gebruiker noemt of die je van de gebruiker onthoudt) en also (één verwante functie waar de gebruiker ook op zou kunnen passen, of null). Anders null. Noem in text dan nog geen vacatures: die krijg je daarna pas te zien. Zoeken gebeurt in ditzelfde antwoord: zeg nooit dat je gaat zoeken ("dan zoek ik vacatures", "ik kijk even") zonder vacancySearch te vullen, want dan gebeurt er niets en moet de gebruiker het nog een keer vragen.
   - Noemt de gebruiker zelf een functie ("zoek junior developer in Eindhoven"): zoek daar meteen op, ook als je niet in de kluis mag kijken. Zet also dan op null, tenzij de gebruiker om breder zoeken vraagt.
@@ -210,6 +211,8 @@ function recapPrompt(vault: 'mayAsk' | 'mayNotAsk' | 'declined', inPlan = false)
 }
 
 export interface PromptInput {
+  /** The moment of the question; tests set it. */
+  now?: Date
   device: Device
   input?: 'voice' | 'text'
   firstName?: string
@@ -243,6 +246,14 @@ const LANGUAGE_PROMPTS: Record<'en' | 'pap', string> = {
 // Layer 2b: the user talks and listens instead of reading.
 const VOICE_PROMPT = 'De gebruiker praat met je en hoort je antwoord. Antwoord in twee of drie korte, gesproken zinnen, zonder lijstjes. Noem hooguit drie dingen en stel per antwoord hooguit één vraag, ook als elders staat dat het er meer mogen zijn. Kaarten zoals vacatures ziet de gebruiker op het scherm: vat ze kort samen en lees ze niet op. Vraagt de gebruiker om een cv-opzet of brief, zeg dan in twee zinnen wat erin komt en vraag of je de hele tekst in het gesprek zal zetten; lees geen lange tekst voor.'
 
+/** Today in the Netherlands, so "volgende week dinsdag" becomes a date. */
+export function todayLine(now: Date): string {
+  const day = new Intl.DateTimeFormat('nl-NL', { timeZone: 'Europe/Amsterdam', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(now)
+  const iso = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
+  const time = new Intl.DateTimeFormat('nl-NL', { timeZone: 'Europe/Amsterdam', hour: '2-digit', minute: '2-digit' }).format(now)
+  return `Vandaag is het ${day} (${iso}), ${time} Nederlandse tijd.`
+}
+
 export function buildSystemPrompt(input: PromptInput): string {
   const layers = [CORE_PROMPT, APP_PROMPT]
   if (input.device === 'phone') layers.push(APP_PHONE_PROMPT)
@@ -250,6 +261,7 @@ export function buildSystemPrompt(input: PromptInput): string {
   if (input.hasFiles !== false) layers.push(FILES_PROMPT)
   layers.push(vaultPrompt(input.vault, input.vaultConsent, input.vaultPart), memoryPrompt(input.memory ?? { status: 'unavailable' }))
   if (input.input === 'voice' && input.device !== 'watch') layers.push(VOICE_PROMPT)
+  layers.push(todayLine(input.now ?? new Date()))
   if (input.firstName) layers.push(`De gebruiker heet ${input.firstName}.`)
   const project = projectLayer(input.project)
   if (project) layers.push(project)
@@ -381,7 +393,7 @@ function vacancyFacts(v: VacancyContext): string {
   return parts.filter(Boolean).join(' ')
 }
 
-const TASK_LIMITS = 'Zoek geen vacatures of opleidingen (vacancySearch en educationSearch zijn null), zet niets in de kluis (vaultItem is null) en doe niets in de app (actions is leeg).'
+const TASK_LIMITS = 'Zoek geen vacatures, opleidingen of feiten (vacancySearch, educationSearch en webLookup zijn null), zet niets in de kluis (vaultItem is null) en doe niets in de app (actions is leeg).'
 
 /**
  * A task the user started with a button on a vacancy card, or the mode of the spoken conversation. It comes after
@@ -458,6 +470,8 @@ Kies do uit:
 - Plannen. De plannen van de gebruiker staan onder "Zo staat de app nu". Vraagt de gebruiker in een ander gesprek wat er nog moet voor iets dat bij een van die plannen past, antwoord dan uit dat plan: hoe ver het is en de stap van nu. Andere stappen zie je daar niet: verzin ze niet en verwijs naar Plan (openPlan als de gebruiker het wil zien). In het gesprek van het plan zelf volg je "Het plan van dit gesprek". openPlan (target: de naam van het plan). addPlanStep (value: de titel van de nieuwe stap, een korte opdracht zoals "Je cv bijwerken" of "Een proefexamen doen", hooguit 80 tekens; neem de woorden van de gebruiker over; target: de naam van het plan, alleen null als dit gesprek bij dat plan hoort): voor meer stappen zet je meer acties achter elkaar. markPlanStep (target: de titel van de stap; value: done, active, skipped of upcoming): gebruik dit in een gesprek dat niet bij dat plan hoort; in het gesprek van het plan zelf gebruik je planStep. renamePlanStep (target: de titel van de stap zoals die nu is; value: de nieuwe titel) en describePlanStep (target: de titel van de stap; value: de nieuwe omschrijving, één zin): wil de gebruiker allebei, zet dan eerst describePlanStep en daarna renamePlanStep, want na het hernoemen bestaat de oude titel niet meer. linkPlanToProject (target: de naam van het plan; value: de naam van het project, of none om het los te maken): nieuwe gesprekken van dat plan gebruiken dan de instructies en bronnen van het project. makeVacancyPlan (value: de plaats in "Getoonde vacatures", of null voor de vacature die open staat): PAVE maakt zelf een plan voor die vacature, met een stap voor wat de gebruiker nog mist, cv en brief, delen en het gesprek oefenen. Zeg alleen dat het plan klaarstaat bij Plan; noem geen stappen bij naam, want die kiest PAVE. Vraagt de gebruiker een plan dat niet over één vacature gaat, vul dan newPlan.
 - Delen. shareWith (value: de naam van de ontvanger of organisatie): opent het deelscherm met die naam ingevuld; de gebruiker kiest zelf wat erin gaat en bevestigt zelf, jij deelt nooit iets. stopSharing (value: de naam van de ontvanger): PAVE vraagt zelf om bevestiging. showShares: laat zien wat er nu gedeeld is.
 - Uitnodigingen van de banenbeurs staan onder "Zo staat de app nu". answerInvitation (target: de werkgever of de functie; value: yes of no): jij antwoordt dan namens de gebruiker aan die werkgever, dus PAVE vraagt eerst om bevestiging. Doe dit alleen als de gebruiker duidelijk zegt dat hij komt of niet kan. addTalkToCalendar (target: de werkgever of de functie): opent het agendascherm voor dat gesprek; de gebruiker bewaart het zelf. Alleen als bij die uitnodiging "je komt" staat. Staat er "wacht op je antwoord", zet dan niets in de agenda: vraag eerst of je de werkgever zal laten weten dat de gebruiker komt (intent askUser, actions leeg). Zegt de gebruiker ja, doe dan alleen answerInvitation yes: na de bevestiging opent PAVE zelf het agendascherm. Een eerder antwoord mag de gebruiker veranderen: zet het dan opnieuw met answerInvitation. Van ja naar nee: zeg erbij dat je het gesprek niet uit de agenda van de gebruiker haalt.
+- Agenda. addToCalendar (target: wat het is, kort, zoals "Open dag Hogeschool Utrecht" of "Deadline aanmelding pilotenopleiding"; value: de datum als 2026-12-03, of met tijd als 2026-12-03T14:30): opent het agendascherm van de iPhone met dat moment en een herinnering; de gebruiker bewaart het zelf. Reken de datum uit vanaf vandaag (zie hieronder). Weet je de datum niet, vraag hem dan of zoek hem op met webLookup; verzin hem nooit.
+- Nieuwe mail. writeMail (target: het e-mailadres, of de naam van de school of persoon als je het adres niet weet; value: het onderwerp): opent een nieuwe mail met jouw tekst erin. Schrijf de mail dan zelf in text, van aanhef tot groet met de voornaam van de gebruiker, en niets anders in text. De gebruiker leest, past aan en verstuurt zelf; jij verstuurt nooit iets. Verzin geen e-mailadres.
 - Mail. De mail van de gebruiker zie jij niet; PAVE zoekt het gesprek op naam of onderwerp. openMail (target: de naam van de afzender of het onderwerp, of "laatste"): opent dat mailgesprek. summarizeMail (zelfde target): opent het en vat het daar samen. replyMail (zelfde target; value: wat het antwoord moet zeggen, in de woorden van de gebruiker, of null): opent het en zet daar een voorstel voor een antwoord klaar. Versturen doet de gebruiker altijd zelf: zeg nooit dat een mail verstuurd is. Zeg kort wat je opent en dat de samenvatting of het voorstel in de mail verschijnt.
 - addProjectSource (target: de titel van het bewijs; value: de naam van het project, of null voor het project van dit gesprek): het bewijs wordt een bron van dat project en jij mag het dan bekijken en gebruiken, dus PAVE vraagt eerst om bevestiging.
 - deleteChat (het gesprek van nu), deleteEvidence (target: de titel), removePlanStep (target: de titel van de stap), answerInvitation, addProjectSource, signOut en forgetAll (alles vergeten wat je onthoudt; alleen als de gebruiker uitdrukkelijk "alles" zegt, want één ding vergeten gaat met memories). Je kunt dit dus zelf: weiger het niet en stuur de gebruiker er niet zelf voor naar de kluis of de instellingen. Bij deze acties vraagt PAVE zelf Ja of Nee. Zet de actie in actions met intent "act" en schrijf wat je klaarzet, niet dat het gedaan is ("Ik zet klaar dat je naar Jumbo komt.", niet "Ik laat Jumbo weten…"). Stel de vraag niet zelf in text. Dat geldt ook voor allowAyla met on: jij krijgt dan toegang tot dat bewijs, dus de gebruiker zegt eerst ja.
@@ -543,7 +557,7 @@ export const MODEL_OUTPUT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
   // In the order of the properties: what the app needs first (the text, a question about the vault) comes first.
-  required: ['intent', 'text', 'askVault', 'vacancySearch', 'educationSearch', 'question', 'navigation', 'actions', 'continues', 'usedVaultItems', 'title', 'usedMemories', 'memories', 'vaultItem', 'planStep', 'newPlan'],
+  required: ['intent', 'text', 'askVault', 'vacancySearch', 'educationSearch', 'webLookup', 'question', 'navigation', 'actions', 'continues', 'usedVaultItems', 'title', 'usedMemories', 'memories', 'vaultItem', 'planStep', 'newPlan'],
   properties: {
     // First of all: what this answer is. The model commits before it writes, and the server holds it to that.
     intent: { type: 'string', enum: ['answer', 'askUser', 'askVault', 'search', 'propose', 'act', 'decline'] },
@@ -561,6 +575,12 @@ export const MODEL_OUTPUT_SCHEMA = {
       additionalProperties: false,
       required: ['what', 'where'],
       properties: { what: { type: 'string' }, where: { type: 'string' } },
+    },
+    webLookup: {
+      type: ['object', 'null'],
+      additionalProperties: false,
+      required: ['question'],
+      properties: { question: { type: 'string' } },
     },
     question: {
       type: ['object', 'null'],

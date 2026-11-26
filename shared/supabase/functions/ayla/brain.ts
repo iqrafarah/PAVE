@@ -1,5 +1,6 @@
 import { ACTIONS, type ActionKind, type ActionResult, type AppAction, type AppState, needsConfirmation, type AylaReply, type AylaRequest, type Block, type Status, CATEGORIES, type Category, type Context, type Device, type RequirementLink, type Screen, SCREENS, type Vacancy, type VacancyContext } from './contract.ts'
 import type { AllowedVault } from './vault.ts'
+import { describeLookup, type LookUp, LOOKUP_OUTPUT_SCHEMA, type LookupResult } from './lookups.ts'
 import { describeEducations, type Education, EDUCATION_OUTPUT_SCHEMA, type SearchEducations } from './educations.ts'
 import { cleanPurpose, CONSENT_QUESTION_CHOICES, grantsWholeVault, consentChoices, consentQuestion, mayLookInVault, saysNo, saysYes, type VaultConsent, vaultConsent, vaultRevoked, revokesVault } from './consent.ts'
 import { cleanMemories, type Memory, type MemorySuggestion, usedNotes } from './memory.ts'
@@ -42,6 +43,8 @@ export interface BrainDeps {
   searchVacancies?: SearchVacancies
   /** Missing when studies and courses cannot be looked up. */
   searchEducations?: SearchEducations
+  /** Looks a fact up on the web; missing when that is not possible. */
+  lookUp?: LookUp
   newId: () => string
   /** Whether a site the model named for a company really is there; without it no logos are shown. */
   siteExists?: (domain: string) => Promise<boolean>
@@ -111,6 +114,7 @@ interface ModelOutput {
   navigation: { screen: string; item?: number | null } | null
   vacancySearch: { what: string; where: string; also: string | null } | null
   educationSearch: { what: string; where: string } | null
+  webLookup: { question: string } | null
   vacancyMatches: unknown
   vacancySites: unknown
   title: string | null
@@ -305,7 +309,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
       // Under found vacancies she always asks to compare them with the vault, until the user answered that.
       askVault: fit === 'ask' && items.length ? cleanPurpose(second.askVault) ?? ASK_FOR_MATCHES : fit === 'ask' ? second.askVault : null,
       usedVaultItems: [...list(decided.usedVaultItems), ...list(second.usedVaultItems)],
-      vacancySearch: null, educationSearch: null, navigation: null, vaultItem: null, planStep: null, newPlan: null, actions: [], continues: false,
+      vacancySearch: null, educationSearch: null, webLookup: null, navigation: null, vaultItem: null, planStep: null, newPlan: null, actions: [], continues: false,
     }
     if (items.length && request.device !== 'watch') {
       // What fits and what is missing only with the vault allowed, and only what the vacancy text really says. The
@@ -339,6 +343,28 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
     output = { ...output, educationSearch: null, actions: [], navigation: null }
   } else if (decided.educationSearch && request.device === 'watch') {
     output = { ...output, text: EDUCATIONS_ON_PHONE_TEXT, educationSearch: null }
+  }
+
+  // A fact she looks up instead of answering from memory: her answer from what the pages say, with the pages as
+  // sources (not on the Watch, which has no room for them, but the answer is the same).
+  if (decided.webLookup && !decided.vacancySearch && !decided.educationSearch && !task) {
+    const question = decided.webLookup.question
+    input.onStatus?.({ kind: 'webLookup', question })
+    let found: LookupResult | null = null
+    try {
+      found = deps.lookUp ? await deps.lookUp(question) : null
+    } catch (error) {
+      if (input.signal?.aborted) throw error
+    }
+    messages.push({ role: 'assistant', content: JSON.stringify(output) }, { role: 'user', content: describeLookup(question, found) })
+    try {
+      const second = parseOutput((await deps.complete(messages, { ...options, schema: LOOKUP_OUTPUT_SCHEMA, maxTokens: 500 })).content)
+      if (second.text.trim()) output = { ...output, text: second.text.trim() }
+    } catch (error) {
+      if (input.signal?.aborted) throw error
+    }
+    if (found?.material && found.sources.length && request.device !== 'watch') blocks.push({ type: 'sources', items: found.sources })
+    output = { ...output, webLookup: null, navigation: null }
   }
 
   const reply = toReply(output, blocks, input.conversationId, deps.newId(), vault)
@@ -554,7 +580,7 @@ function nudgeFor(output: ModelOutput, turn: { searches: boolean; aboutWork: boo
       fixedBy: (again) => !!again.vacancySearch || (turn.mayAsk && !!cleanPurpose(again.askVault)),
     }
   }
-  const does = list(output.actions).length > 0 || !!output.navigation || !!output.vaultItem || !!output.newPlan || !!output.vacancySearch || !!output.educationSearch || list(output.memories).length > 0
+  const does = list(output.actions).length > 0 || !!output.navigation || !!output.vaultItem || !!output.newPlan || !!output.vacancySearch || !!output.educationSearch || !!output.webLookup || list(output.memories).length > 0
   if (turn.device === 'phone' && output.intent === 'act' && !does) {
     return {
       says: 'Je zegt dat je iets doet in de app, maar actions is leeg: er gebeurt nu niets. Kun je het zelf, zet de stappen dan in actions en zeg kort wat je doet. Kun je het niet zelf, zet intent dan op "answer" en zeg eerlijk waar de gebruiker het vindt.',
@@ -778,14 +804,14 @@ export function effortFor(request: AylaRequest, mayLook = false, turn: { justGra
 const NEEDS_TARGET: readonly ActionKind[] = [
   'openFolder', 'openChat', 'moveToFolder', 'archiveEvidence', 'allowAyla', 'requestVerification', 'deleteEvidence',
   'openPlan', 'openProject', 'markPlanStep', 'removePlanStep', 'linkPlanToProject',
-  'renamePlanStep', 'describePlanStep', 'answerInvitation', 'addTalkToCalendar', 'addProjectSource',
+  'renamePlanStep', 'describePlanStep', 'answerInvitation', 'addTalkToCalendar', 'addProjectSource', 'addToCalendar',
 ]
 /** Mail actions may leave out who: then the newest conversation is meant. */
 const NEEDS_VALUE: readonly ActionKind[] = [
   'openSettingsPage', 'renameChat', 'pinChat', 'setChatExpiry', 'setTheme', 'setTextSize', 'setDisplayMode', 'setVaultLayout', 'setVoiceText',
   'setChatsInSearch', 'setAnimations', 'setMemory', 'createFolder', 'moveToFolder', 'allowAyla', 'openVacancy', 'saveVacancy',
   'setFontStyle', 'addPlanStep', 'markPlanStep', 'linkPlanToProject', 'shareWith', 'stopSharing',
-  'renamePlanStep', 'describePlanStep', 'answerInvitation',
+  'renamePlanStep', 'describePlanStep', 'answerInvitation', 'addToCalendar', 'writeMail',
 ]
 
 /** The actions of an answer as the app gets them: known ones only, complete, at most 4, and only on the iPhone. */
@@ -795,6 +821,9 @@ export function moreThanOneRound(raw: unknown): boolean {
 }
 
 /** What Ayla may set up from the Watch: the Watch asks Ja or Nee itself, and the iPhone carries it out. */
+/** A day (2026-12-03) or a day and time (2026-12-03T14:30), as the app puts it in the calendar. */
+const CALENDAR_DATE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])(T([01]\d|2[0-3]):[0-5]\d)?$/
+
 export const WATCH_ACTIONS: readonly ActionKind[] = ['addPlanStep', 'markPlanStep', 'answerInvitation', 'openApplication', 'makeVacancyPlan', 'openPlan']
 
 export function cleanActions(raw: unknown, device: AylaRequest['device']): AppAction[] {
@@ -808,6 +837,8 @@ export function cleanActions(raw: unknown, device: AylaRequest['device']): AppAc
     const value = word(entry.value)
     const target = word(entry.target)
     if ((NEEDS_TARGET.includes(kind) && !target) || (NEEDS_VALUE.includes(kind) && !value)) continue
+    // A moment in the calendar is a real date, as the app reads it.
+    if (kind === 'addToCalendar' && !CALENDAR_DATE.test(value)) continue
     // On the Watch every action waits for Ja on the wrist, so it carries no question of its own.
     actions.push({ do: kind, ...(value ? { value } : {}), ...(target ? { target } : {}), ...(!onWatch && needsConfirmation(kind, value) ? { confirm: true as const } : {}) })
     if (actions.length === (onWatch ? 2 : 4)) break
@@ -1077,6 +1108,9 @@ function parseOutput(raw: string): ModelOutput {
       educationSearch: json.educationSearch && typeof json.educationSearch.what === 'string' && json.educationSearch.what.trim()
         ? { what: json.educationSearch.what.trim().slice(0, 120), where: String(json.educationSearch.where ?? '').trim().slice(0, 80) }
         : null,
+      webLookup: json.webLookup && typeof json.webLookup.question === 'string' && json.webLookup.question.trim()
+        ? { question: json.webLookup.question.trim().slice(0, 200) }
+        : null,
       vacancyMatches: Array.isArray(json.vacancyMatches) ? json.vacancyMatches : [],
       vacancySites: Array.isArray(json.vacancySites) ? json.vacancySites : [],
       title: typeof json.title === 'string' ? json.title : null,
@@ -1091,7 +1125,7 @@ function parseOutput(raw: string): ModelOutput {
       askVault: typeof json.askVault === 'string' ? json.askVault : null,
     }
   }
-  const empty: ModelOutput = { intent: null, text: '', question: null, navigation: null, vacancySearch: null, educationSearch: null, vacancyMatches: [], vacancySites: [], title: null, memories: [], usedMemories: [], usedVaultItems: [], vaultItem: null, planStep: null, newPlan: null, askVault: null, actions: [], continues: false }
+  const empty: ModelOutput = { intent: null, text: '', question: null, navigation: null, vacancySearch: null, educationSearch: null, webLookup: null, vacancyMatches: [], vacancySites: [], title: null, memories: [], usedMemories: [], usedVaultItems: [], vaultItem: null, planStep: null, newPlan: null, askVault: null, actions: [], continues: false }
   // Plain words instead of JSON: that is the answer. JSON that was cut off (a long answer ran out of room) never
   // shows as it is: what was complete is kept (her text, a search she asked for, the vacancies she had compared),
   // the rest is left out.

@@ -5,6 +5,11 @@ import PAVECore
 enum AylaMessages {
     /// Above Ja and Nee when Ayla offers to add something to the vault, as on the web (AYLA_VAULT_LABEL).
     static let thinking = "Ayla denkt na…"
+    static let sourcesTitle = "Bronnen"
+    static let sourceHint = "Opent de pagina in Safari"
+    static let calendarNotes = "Klaargezet door Ayla in PAVE."
+    static let actionBadDate = "Die datum kon ik niet lezen. Zeg de dag nog eens, bijvoorbeeld 3 december."
+    static let actionMailOpened = "De mail staat klaar. Lees hem na en verstuur hem zelf."
     /// On one line where "Ayla denkt na…" stands, so a long search is shortened in the middle.
     static func activity(_ activity: AylaActivity) -> String {
         switch activity {
@@ -18,6 +23,8 @@ enum AylaMessages {
             return "Ayla vergelijkt \(vacancies) met je kluis…"
         case .searchingEducations(let what, let place):
             return EducationMessages.searching(what, in: place)
+        case .lookingUp(let question):
+            return "Ayla zoekt het op: \(question)…"
         case .continuing:
             return "Ayla gaat verder…"
         }
@@ -72,6 +79,7 @@ enum AylaMessages {
         case .searchingVacancies: "Zoekt vacatures"
         case .comparingVacancies: "Vergelijkt vacatures"
         case .searchingEducations: EducationMessages.searchingShort
+        case .lookingUp: "Zoekt het op"
         case .continuing: "Gaat verder"
         }
     }

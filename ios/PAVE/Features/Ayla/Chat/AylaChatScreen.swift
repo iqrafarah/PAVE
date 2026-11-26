@@ -124,6 +124,8 @@ struct AylaChatScreen: View {
     @State private var confirmationItem: VaultItem?
     /// The talk Ayla puts in your calendar; you save it yourself in the sheet.
     @State private var calendarTalk: FairApplication?
+    @State private var calendarMoment: AylaCalendarMoment?
+    @State private var mailDraft: EmailDraft?
     @State private var practiceReport: PracticeReportRequest?
     @State private var reportVacancy: Vacancy?
     /// Making a CV and a letter for a vacancy ("Solliciteren").
@@ -437,6 +439,16 @@ struct AylaChatScreen: View {
                     practiceReport = nil
                     model.forgetFinishedPractice()
                 }
+            }
+        }
+        .sheet(item: $calendarMoment) { moment in
+            AylaCalendarEditor(moment: moment) { calendarMoment = nil }
+                .ignoresSafeArea()
+        }
+        .sheet(item: $mailDraft) { draft in
+            if let email {
+                EmailComposeSheet(draft: draft)
+                    .environment(email)
             }
         }
         .sheet(item: $calendarTalk) { application in
@@ -988,6 +1000,10 @@ struct AylaChatScreen: View {
                         openVacancies(from: entry.id)
                     }
                     .padding(.top, 3)
+                }
+                if let sources = Self.sources(in: entry), !sources.isEmpty {
+                    AylaSources(sources: sources) { openURL($0) }
+                        .padding(.top, 3)
                 }
                 let educations = Self.educations(in: entry)
                 if !educations.isEmpty {
@@ -2266,6 +2282,13 @@ struct AylaChatScreen: View {
         isChoosingFile = true
     }
 
+    static func sources(in entry: AylaChatModel.Entry) -> [AylaBlock.Source]? {
+        entry.reply?.blocks.lazy.compactMap { block -> [AylaBlock.Source]? in
+            if case .sources(let items) = block { return items }
+            return nil
+        }.first
+    }
+
     static func educations(in entry: AylaChatModel.Entry) -> [AylaEducation] {
         entry.reply?.blocks.lazy.compactMap { block -> [AylaEducation]? in
             if case .educations(let items, _) = block { return items }
@@ -3038,6 +3061,23 @@ struct AylaChatScreen: View {
             guard application.answer == .accepted, application.invitedFor != nil else { return .failed(AylaMessages.actionInvitationNotAccepted) }
             if isTalking { stopVoice() }
             closingShelf { calendarTalk = application }
+        case "addToCalendar":
+            guard let moment = AylaCalendarMoment(title: action.target ?? "", value: action.value ?? "") else { return .failed(AylaMessages.actionBadDate) }
+            if isTalking { stopVoice() }
+            closingShelf { calendarMoment = moment }
+        case "writeMail":
+            // Her answer is the mail itself; you read it, change it and send it yourself.
+            let target = action.target ?? ""
+            let draft = EmailDraft(to: target.contains("@") ? target : "", subject: action.value ?? "", text: model.lastReply?.text ?? "")
+            if isTalking { stopVoice() }
+            if let email, email.hasAccounts {
+                closingShelf { mailDraft = draft }
+            } else if let url = draft.mailtoURL {
+                openURL(url)
+            } else {
+                return .failed(AylaMessages.actionUnavailable)
+            }
+            return .said(AylaMessages.actionMailOpened)
         case "addProjectSource":
             guard let vault, let item = item() else { return .failed(AylaMessages.actionNoItem(action.target ?? "")) }
             let projects = model.conversationList.projects
