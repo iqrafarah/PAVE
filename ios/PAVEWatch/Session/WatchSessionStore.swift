@@ -12,8 +12,10 @@ final class WatchSessionStore: NSObject, WCSessionDelegate {
     private(set) var isSignedOut = false
     /// Signed in on the iPhone, but this Watch is not connected in Instellingen.
     private(set) var needsConnecting = false
-    /// A QR code of a share the iPhone put here; shown until it ends.
-    private(set) var sharedCode: WatchSharedCode? = WatchSharedCode.load()
+    /// The QR codes of shares the iPhone put here, newest first; each shown until it ends.
+    private(set) var sharedCodes: [WatchSharedCode] = WatchSharedCode.load()
+    /// The code that just arrived, to bring up by itself.
+    private(set) var newCodeID: String?
     /// The next step with your applications, from the iPhone.
     private(set) var nextStep: NextStep? = WatchNextStep.load()
 
@@ -87,15 +89,10 @@ final class WatchSessionStore: NSObject, WCSessionDelegate {
     nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
         let message = Message(value: userInfo)
         Task { @MainActor in
-            switch WatchSharedCode.update(from: message.value) {
-            case .show(let code):
-                self.sharedCode = code
-                WatchSharedCode.save(code)
-            case .clear:
-                self.sharedCode = nil
-                WatchSharedCode.save(nil)
-            case nil:
-                break
+            if let update = WatchSharedCode.update(from: message.value) {
+                self.sharedCodes = WatchSharedCode.applying(update, to: self.sharedCodes)
+                WatchSharedCode.save(self.sharedCodes)
+                if case .show(let code) = update { self.newCodeID = code.id }
             }
             switch WatchNextStep.update(from: message.value) {
             case .show(let step):

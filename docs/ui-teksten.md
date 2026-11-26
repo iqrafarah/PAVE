@@ -334,7 +334,7 @@ Delen is tijdelijk, per onderdeel te kiezen, te pauzeren en in te trekken (kick-
 | Waar | Tekst |
 |---|---|
 | Deelscherm | Snel delen (vanaf je profiel) of Delen / Wat deel je? Je profiel, je selecties / Of een sollicitatie: Solliciteren bij {bedrijf}, {functie} · cv en brief / Toon alle {n} / Cv en brief / Meer opties |
-| Bestanden | Met bestand / Met de {n} bestanden (standaard aan bij geverifieerd bewijs) / Bestanden: Bestanden die ze kunnen openen: {namen} / Er gaan geen bestanden mee. Ze zien alleen wat er over je bewijs staat. |
+| Bestanden | Met bestand / Met de {n} bestanden (standaard aan bij elk bewijsstuk met een bestand) / Bestanden: Bestanden die ze kunnen openen: {namen} / Er gaan geen bestanden mee. Ze zien alleen wat er over je bewijs staat. |
 | Ontvanger (web /gedeeld) | Geverifieerd door {organisatie} op {datum} / Bekijk {bestandsnaam} / Een bestand bekijken werkt een paar minuten; laad de pagina opnieuw als de link verlopen is. |
 | Sollicitaties | Alles / Ayla / Zelf / Beurs (filter en label) / Achtergelaten, Uitgenodigd, Je komt, Afgezegd, Niet gekozen (beurs) |
 

@@ -72,12 +72,17 @@ extension ShareTemplate {
     }
 }
 
-/// Which evidence takes its files along when you share: verified evidence that has a document, unless you say otherwise.
+/// Which evidence takes its files along when you share: every piece that has a document, unless you turn it off.
 public enum ShareFiles {
     public static func hasDocument(_ item: VaultItem) -> Bool { item.files.contains { $0.role == .document } }
 
     public static func byDefault(_ items: [VaultItem]) -> Set<String> {
-        Set(items.filter { $0.status == .verified && hasDocument($0) }.map(\.id))
+        Set(items.filter { $0.status != .rejected && hasDocument($0) }.map(\.id))
+    }
+
+    /// The files of a selection: what it says, or the default when it never chose (made before files could go along).
+    public static func of(_ profile: SavedProfile, items: [VaultItem]) -> Set<String> {
+        profile.fileIDs.isEmpty ? byDefault(items) : profile.fileIDs
     }
 }
 

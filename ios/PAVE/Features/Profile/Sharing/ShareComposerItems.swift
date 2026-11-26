@@ -107,7 +107,7 @@ struct ShareComposerItems: View {
         }
     }
 
-    /// The file of this evidence goes along, so the recipient can open it; on by default for verified evidence.
+    /// The file of this evidence goes along, so the recipient can open it; on by default.
     private func fileChip(_ item: VaultItem, files: Binding<Set<String>>) -> some View {
         let isOn = files.wrappedValue.contains(item.id)
         return Button {

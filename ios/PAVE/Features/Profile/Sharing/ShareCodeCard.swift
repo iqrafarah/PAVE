@@ -37,7 +37,7 @@ struct ShareCodeCard: View {
                 }
                 if ShareWatchBridge.isAvailable {
                     Button(onWatch ? SharingMessages.shownOnWatch : SharingMessages.showOnWatch) {
-                        onWatch = ShareWatchBridge.show(url: url, title: share.recipientName, until: share.expiresAt, name: share.content.profile.name, headline: share.content.profile.headline)
+                        onWatch = ShareWatchBridge.show(share, url: url)
                     }
                     .textStyle(.link)
                     .foregroundStyle(Color.paveAccent)

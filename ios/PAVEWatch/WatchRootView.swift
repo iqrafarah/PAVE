@@ -5,13 +5,13 @@ struct WatchRootView: View {
     @State private var sessions = WatchSessionStore()
     @State private var model: WatchAylaModel?
     @State private var isLoading = true
-    @State private var newCode: WatchSharedCode?
+    @State private var showsNewCode = false
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         themed(screen)
             .animation(.easeInOut(duration: 0.4), value: isLoading)
-            .onChange(of: sessions.sharedCode) { _, code in newCode = code?.isValid == true ? code : nil }
+            .onChange(of: sessions.newCodeID) { _, id in showsNewCode = id != nil }
             // Lowering your wrist only dims the screen, so Ayla finishes her answer; leaving the app stops her.
             .onChange(of: scenePhase) { _, phase in
                 if phase == .background { model?.pause() }
@@ -39,8 +39,8 @@ struct WatchRootView: View {
                 }
                 .environment(sessions)
                 // A code just approved on the iPhone comes up by itself.
-                .sheet(item: Binding(get: { newCode }, set: { if $0 == nil { newCode = nil } })) { code in
-                    WatchSharedCodeView(code: code)
+                .sheet(isPresented: $showsNewCode) {
+                    WatchSharedCodeView(codes: sessions.sharedCodes, startID: sessions.newCodeID)
                 }
             } else {
                 WatchSignedOutView(needsConnecting: sessions.needsConnecting)

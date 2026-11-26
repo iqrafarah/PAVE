@@ -37,11 +37,12 @@ struct WatchMenuView: View {
                     .accessibilityElement(children: .combine)
                 }
 
-                if let code = sessions.sharedCode, code.isValid {
+                let codes = sessions.sharedCodes.filter(\.isValid)
+                if !codes.isEmpty {
                     NavigationLink {
-                        WatchSharedCodeView(code: code)
+                        WatchSharedCodeView(codes: codes)
                     } label: {
-                        Text(code.name == nil ? "QR-code voor \(code.title)" : "Je kaartje")
+                        Text(codes.count == 1 ? "QR-code" : "QR-codes (\(codes.count))")
                     }
                 }
 

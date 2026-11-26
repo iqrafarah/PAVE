@@ -32,7 +32,7 @@ struct ShareComposer: View {
     @State private var includesPhoto = true
     /// Evidence shown briefly, from a saved profile.
     @State private var brief: Set<String> = []
-    /// Evidence whose files go along: verified evidence by default.
+    /// Evidence whose files go along: every piece with a document by default.
     @State private var files: Set<String> = []
     @State private var headline = ""
     @State private var recipientName = ""
@@ -443,7 +443,7 @@ struct ShareComposer: View {
         if let savedProfile {
             chosen = Set(savedProfile.itemIDs).intersection(vault.items.map(\.id))
             brief = savedProfile.briefIDs
-            files = savedProfile.fileIDs
+            files = ShareFiles.of(savedProfile, items: vault.items)
             if let kept = savedProfile.duration { duration = kept }
             includesEmail = savedProfile.includesEmail
             if !savedProfile.headline.isEmpty { headline = savedProfile.headline }

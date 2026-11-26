@@ -1,42 +1,41 @@
 import SwiftUI
 
-/// Your card on the wrist: PAVE and your name on top, the QR code as big as the screen allows, black on white so a
-/// phone reads it.
+/// The QR codes on the wrist: one per page, as big as the screen allows, black on white so a phone reads it, with only a
+/// short line above it saying which one it is. Swipe to the next one.
 struct WatchSharedCodeView: View {
-    let code: WatchSharedCode
+    let codes: [WatchSharedCode]
+    /// The code to start on, such as the one that just arrived.
+    var startID: String?
+
+    @State private var selection: String = ""
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 6) {
-                if let name = code.name {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("PAVE").font(.caption2.weight(.semibold))
-                        Text(name).font(.headline).lineLimit(2)
-                        if let headline = code.headline {
-                            Text(headline).font(.caption2).opacity(0.85).lineLimit(2)
-                        }
-                    }
-                    .foregroundStyle(.white)
-                    .padding(8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(WatchPreferences.shared.accentColor.gradient, in: .rect(cornerRadius: 10))
-                    .accessibilityElement(children: .combine)
-                }
-                if let image = UIImage(data: code.png) {
-                    Image(uiImage: image)
-                        .interpolation(.none)
-                        .resizable()
-                        .scaledToFit()
-                        .padding(6)
-                        .background(.white, in: .rect(cornerRadius: 8))
-                        .accessibilityLabel("QR-code voor \(code.title)")
-                }
-                Text("Tot \(code.until.formatted(.dateTime.day().month(.abbreviated).hour().minute().locale(Locale(identifier: "nl_NL"))))")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
+        TabView(selection: $selection) {
+            ForEach(codes) { code in
+                page(code).tag(code.id)
             }
-            .padding(.horizontal, 4)
         }
+        .tabViewStyle(.verticalPage)
+        .onAppear { selection = startID ?? codes.first?.id ?? "" }
+    }
+
+    private func page(_ code: WatchSharedCode) -> some View {
+        VStack(spacing: 4) {
+            Text(code.title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(WatchPreferences.shared.accentColor)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            if let image = UIImage(data: code.png) {
+                Image(uiImage: image)
+                    .interpolation(.none)
+                    .resizable()
+                    .scaledToFit()
+                    .padding(5)
+                    .background(.white, in: .rect(cornerRadius: 8))
+                    .accessibilityLabel("QR-code: \(code.title)")
+            }
+        }
+        .padding(.horizontal, 2)
     }
 }

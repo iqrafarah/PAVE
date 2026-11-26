@@ -96,8 +96,8 @@ struct QuickShareSheet: View {
     private var draft: ShareDraft {
         let ids = itemIDs
         let brief = application == nil ? (chosenProfile?.brief ?? ids) : []
-        // Verified evidence takes its file along, unless the selection says otherwise.
-        let fileIDs = customFiles ?? chosenProfile.map { Set($0.files) } ?? ShareFiles.byDefault(vault.items)
+        // Every file goes along, unless the selection or "Pas aan" says otherwise.
+        let fileIDs = customFiles ?? chosenProfile.map { ShareFiles.of($0, items: vault.items) } ?? ShareFiles.byDefault(vault.items)
         let files = vault.items.filter { ids.contains($0.id) && fileIDs.contains($0.id) && ShareFiles.hasDocument($0) }.map(\.id)
         let content = ShareContent(
             profile: ShareProfile(
@@ -413,7 +413,7 @@ struct QuickShareSheet: View {
                 onShared(share)
                 // Your card goes to the wrist too, to be scanned without taking out the phone.
                 if let url = model.link(for: share) {
-                    ShareWatchBridge.show(url: url, title: share.recipientName, until: share.expiresAt, name: name, headline: headline)
+                    ShareWatchBridge.show(share, url: url)
                 }
             }
         }
@@ -470,7 +470,7 @@ struct QuickShareSheet: View {
                     Button(SharingMessages.quickShareStop, role: .destructive) {
                         Task {
                             await model.revoke(share)
-                            ShareWatchBridge.clear()
+                            ShareWatchBridge.clear(share.id)
                             PaveHaptics.success()
                             withAnimation(.easeOut(duration: 0.2)) { isStopped = true }
                         }

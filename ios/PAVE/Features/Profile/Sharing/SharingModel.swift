@@ -253,7 +253,7 @@ final class SharingModel {
             let apply = try await work(service)
             if let index = shares.firstIndex(where: { $0.id == share.id }) { apply(&shares[index]) }
             ShareAlerts.update(with: shares)
-            if let changed = self.share(share.id), changed.state() != .active { ShareWatchBridge.clear() }
+            if let changed = self.share(share.id), changed.state() != .active { ShareWatchBridge.clear(share.id) }
             PaveHaptics.success()
         } catch {
             problem = SharingMessages.actionFailed
