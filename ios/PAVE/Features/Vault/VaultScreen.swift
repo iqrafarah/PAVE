@@ -14,6 +14,8 @@ struct VaultScreen: View {
     @State private var editedItem: VaultItem?
     @State private var confirmedItem: VaultItem?
     @State private var addFlow: VaultAddEvidenceModel?
+    /// Just added: it opens once the sheet is gone, or its verification request does.
+    @State private var added: (id: String, requestsVerification: Bool)?
     @State private var deletedItem: VaultItem?
     @State private var folderSheet: FolderSheet?
     @State private var deletedFolder: VaultFolder?
@@ -113,7 +115,6 @@ struct VaultScreen: View {
                     VaultRequestConfirmationSheet(
                         item: item,
                         documentCount: model.documents(of: item).count,
-                        onShowMenu: onShowMenu,
                         onSend: { request in
                             await model.requestValidation(for: item, request)
                         }
@@ -131,8 +132,8 @@ struct VaultScreen: View {
                     )
                     .ignoresSafeArea()
                 }
-                .sheet(item: $addFlow) { flow in
-                    VaultAddEvidenceSheet(flow: flow)
+                .sheet(item: $addFlow, onDismiss: openAdded) { flow in
+                    VaultAddEvidenceSheet(flow: flow) { added = ($0, $1) }
                         .paveSheet()
                 }
                 .sheet(item: $folderSheet) { sheet in
@@ -211,6 +212,13 @@ struct VaultScreen: View {
 
     /// A draft closed less than half a minute ago comes back; otherwise new evidence, in the open folder and in the
     /// folder of its kind. Adding from an example folder starts with its kind, such as Project in Projecten.
+    /// After adding: the new evidence opens, or straight away its verification request when that was asked.
+    private func openAdded() {
+        guard let added, let item = model.items.first(where: { $0.id == added.id }) else { return }
+        self.added = nil
+        if added.requestsVerification { confirmedItem = item } else { openedItem = item }
+    }
+
     private func add(_ folder: VaultFolder?) {
         if let draft = model.takeDraft() {
             addFlow = draft

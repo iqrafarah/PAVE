@@ -230,6 +230,8 @@ enum PaveAppearance {
         UserDefaults.standard.set(customColor.map(PaveThemeColor.hex), forKey: customColorKey)
         PaveThemeStore.shared.customColor = customColor
         PaveThemeStore.shared.theme = theme
+        // The Watch takes the same colour.
+        WatchBridge.shared.update()
     }
 
     /// Ayla's orb in the theme colour.

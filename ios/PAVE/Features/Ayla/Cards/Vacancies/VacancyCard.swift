@@ -26,9 +26,15 @@ struct VacancyCard: View {
                         .padding(.trailing, onToggleSave == nil ? 18 : 40)
                     if hasFit {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text(AylaMessages.vacancyFitCount(vacancy.matches.count, of: vacancy.matches.count + vacancy.skillGap.count))
-                                .textStyle(.caption)
-                                .foregroundStyle(Color.ink)
+                            HStack(spacing: 8) {
+                                Text(AylaMessages.vacancyFitCount(vacancy.matches.count, of: vacancy.matches.count + vacancy.skillGap.count))
+                                    .textStyle(.caption)
+                                    .foregroundStyle(Color.ink)
+                                Spacer(minLength: 0)
+                                if let percent = vacancy.matchPercent {
+                                    VacancyMatchBadge(percent: percent)
+                                }
+                            }
                             VacancySkillChips(matches: vacancy.matches, gaps: vacancy.skillGap)
                         }
                         .padding(.trailing, 18)

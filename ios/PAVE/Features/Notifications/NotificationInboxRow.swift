@@ -23,7 +23,7 @@ struct NotificationInboxRow: View {
                 Text(notification.title)
                     .textStyle(isUnread ? .listTitle : .bodyMedium)
                     .foregroundStyle(Color.ink)
-                    .lineLimit(1)
+                    .lineLimit(2)
                 Text(subtitle)
                     .textStyle(.caption)
                     .foregroundStyle(Color.inkMuted)
@@ -52,12 +52,13 @@ struct NotificationInboxRow: View {
     /// The time today, "gisteren", the weekday this week, otherwise the date.
     static func when(_ date: Date) -> String {
         let calendar = Calendar.current
-        if calendar.isDateInToday(date) { return date.formatted(date: .omitted, time: .shortened) }
+        let dutch = Locale(identifier: "nl_NL")
+        if calendar.isDateInToday(date) { return date.formatted(.dateTime.hour().minute().locale(dutch)) }
         if calendar.isDateInYesterday(date) { return "gisteren" }
         if let week = calendar.date(byAdding: .day, value: -6, to: calendar.startOfDay(for: .now)), date >= week {
-            return date.formatted(.dateTime.weekday(.abbreviated))
+            return date.formatted(.dateTime.weekday(.abbreviated).locale(dutch))
         }
-        return date.formatted(.dateTime.day().month(.abbreviated))
+        return date.formatted(.dateTime.day().month(.abbreviated).locale(dutch))
     }
 }
 

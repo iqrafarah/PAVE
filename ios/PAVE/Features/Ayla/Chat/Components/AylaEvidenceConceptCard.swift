@@ -15,6 +15,8 @@ struct AylaEvidenceConceptCard: View {
     var onToggleFile: (VaultUpload) -> Void = { _ in }
     /// Once it is in the vault: asking someone to confirm it.
     var onRequestConfirmation: (() -> Void)?
+    /// "Zelf invullen": the form, empty, with the files.
+    var onFillMyself: (() -> Void)?
     let onAdd: () -> Void
 
     /// The documents completed with the chat, or only the chat while the files are still being read.
@@ -111,6 +113,9 @@ struct AylaEvidenceConceptCard: View {
                         .foregroundStyle(Color.inkMuted)
                 }
                 PavePrimaryButton(title: AylaMessages.conceptAdd, action: onAdd)
+                if let onFillMyself {
+                    PaveSecondaryButton(title: AylaMessages.conceptFillMyself, action: onFillMyself)
+                }
             }
         }
         .padding(16)

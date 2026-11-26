@@ -16,6 +16,7 @@ struct AylaVacancyShelf: View {
     var onToggleCompare: (Vacancy) -> Void = { _ in }
     var onCompare: () -> Void = {}
     var onClearCompare: () -> Void = {}
+    var onOpenApplication: ((Vacancy) -> Void)?
     let onAsk: (Vacancy) -> Void
     let onAskGap: (String, Vacancy) -> Void
 
@@ -41,6 +42,7 @@ struct AylaVacancyShelf: View {
                     }
                     VacancyList(
                         vacancies: vacancies, model: model, tab: $tab, search: search, usedData: usedData, onChooseData: onChooseData,
+                        onOpenApplication: onOpenApplication,
                         onOpen: { driver.vacancy = $0 }, onAsk: onAsk
                     )
                 }

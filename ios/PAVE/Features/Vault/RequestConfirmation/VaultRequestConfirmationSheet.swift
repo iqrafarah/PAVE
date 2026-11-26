@@ -8,9 +8,9 @@ struct VaultRequestConfirmationSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.paveReduceMotion) private var reduceMotion
     @Environment(VaultModel.self) private var vault
+    @Environment(\.openDestination) private var openDestination
     let item: VaultItem
     let documentCount: Int
-    var onShowMenu: (() -> Void)?
     /// Nil sends it through the vault, so every way into this form (the vault, an item, Ayla) really sends.
     var onSend: ((VaultConfirmationRequest) async -> String?)?
 
@@ -39,10 +39,9 @@ struct VaultRequestConfirmationSheet: View {
     @State private var directoryError: String?
     @State private var evidenceLogo: VaultLogoLook?
 
-    init(item: VaultItem, documentCount: Int, onShowMenu: (() -> Void)? = nil, onSend: ((VaultConfirmationRequest) async -> String?)? = nil) {
+    init(item: VaultItem, documentCount: Int, onSend: ((VaultConfirmationRequest) async -> String?)? = nil) {
         self.item = item
         self.documentCount = documentCount
-        self.onShowMenu = onShowMenu
         self.onSend = onSend
         _request = State(initialValue: VaultConfirmationRequest(item: item))
     }
@@ -57,14 +56,23 @@ struct VaultRequestConfirmationSheet: View {
                 else { form.transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .leading))) }
             }
             .background(Color.canvas.ignoresSafeArea())
-            .mainScreenToolbar("Kluis", onShowMenu: onShowMenu)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if !isFinished {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button(VaultMessages.cancel) {
+                            if hasChanges { confirmsDiscard = true } else { dismiss() }
+                        }
+                    }
+                }
+            }
             .toolbarBackground(Color.panel, for: .navigationBar)
             .toolbarBackgroundVisibility(.visible, for: .navigationBar)
         }
         .animation(.snappy(duration: 0.35), value: isFinished)
         .tint(.paveAccent)
         .presentationDetents([.large])
-        .presentationDragIndicator(.hidden)
+        .presentationDragIndicator(.visible)
         .sheetDismissGuard(isBlocked: hasChanges) { confirmsDiscard = true }
         .confirmationDialog(VaultMessages.discardRequestTitle, isPresented: $confirmsDiscard, titleVisibility: .visible) {
             Button("Weggooien", role: .destructive) { dismiss() }
@@ -483,7 +491,18 @@ struct VaultRequestConfirmationSheet: View {
                     .textStyle(.bodyMedium).foregroundStyle(Color.inkMuted).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             }.frame(maxWidth: 380)
             Spacer(minLength: 0)
-            PavePrimaryButton(title: "Sluiten") { dismiss() }.frame(maxWidth: 560)
+            VStack(spacing: 10) {
+                if let openDestination {
+                    PavePrimaryButton(title: VaultMessages.seeInNotifications) {
+                        dismiss()
+                        openDestination(.notifications)
+                    }
+                    PaveSecondaryButton(title: "Sluiten") { dismiss() }
+                } else {
+                    PavePrimaryButton(title: "Sluiten") { dismiss() }
+                }
+            }
+            .frame(maxWidth: 560)
         }.padding(.horizontal, 24).padding(.bottom, 12).frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 

@@ -1,13 +1,17 @@
 import SwiftUI
 
-/// Ayla's answer while a page is open over the chat: her chat bubble above the page, so you read it without closing the
-/// page and without it covering anything. Tap it or drag it away, like her orb; the answer stays in the chat.
+/// Ayla's answer while a page is open over the chat: her chat bubble floating at the top, over the page or over the
+/// chat above it, so you read it without closing the page and nothing on the page moves. Tap it or drag it away, like
+/// her orb; the answer stays in the chat.
 struct AylaShelfReply: View {
     /// Nil while she is still thinking.
     let text: String?
     /// What shows while she thinks.
     var thinking = AylaMessages.thinking
     var choices: [String] = []
+    /// Room above it: past the grabber on a page, close under the status bar over the chat.
+    var topPadding: CGFloat = 26
+    var lineLimit = 6
     var onChoose: (String) -> Void = { _ in }
     let onDismiss: () -> Void
 
@@ -24,7 +28,7 @@ struct AylaShelfReply: View {
                 Text(text ?? thinking)
                     .textStyle(.bubble)
                     .foregroundStyle(Color.paveAccent.opacity(text == nil ? 0.6 : 1))
-                    .lineLimit(6)
+                    .lineLimit(lineLimit)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Image(.iconXMark)
                     .renderingMode(.template)
@@ -54,6 +58,7 @@ struct AylaShelfReply: View {
         .padding(.horizontal, 15)
         .padding(.vertical, 14)
         .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 18))
+        .shadow(color: .black.opacity(0.14), radius: 18, y: 8)
         .contentShape(.rect(cornerRadius: 18))
         .offset(drag)
         .opacity(1 - min(1, Double(abs(drag.width) + abs(drag.height)) / 240))
@@ -73,7 +78,7 @@ struct AylaShelfReply: View {
         .frame(maxWidth: 600)
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 20)
-        .padding(.top, 26)
+        .padding(.top, topPadding)
         .padding(.bottom, 4)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Antwoord van Ayla")

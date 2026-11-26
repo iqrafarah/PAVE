@@ -10,7 +10,7 @@ struct WatchRememberCard: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(WatchMessages.rememberQuestion)
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.brandGreen)
+                .foregroundStyle(WatchPreferences.shared.accentColor)
             Text(remember.suggestion.text)
                 .font(.footnote)
                 .fixedSize(horizontal: false, vertical: true)
@@ -19,7 +19,7 @@ struct WatchRememberCard: View {
                 HStack(spacing: 6) {
                     Button("Nee") { onAnswer(false) }
                     Button("Ja") { onAnswer(true) }
-                        .tint(.brandGreen)
+                        .tint(WatchPreferences.shared.accentColor)
                 }
                 .buttonStyle(.borderedProminent)
             case .saving:
@@ -36,7 +36,7 @@ struct WatchRememberCard: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.brandGreen.opacity(0.18), in: .rect(cornerRadius: 12))
+        .background(WatchPreferences.shared.accentColor.opacity(0.18), in: .rect(cornerRadius: 12))
     }
 
     private func status(_ text: String, icon: ImageResource) -> some View {

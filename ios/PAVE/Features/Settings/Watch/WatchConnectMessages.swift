@@ -1,8 +1,8 @@
 import Foundation
 
 enum WatchConnectMessages {
-    /// The Watch stays out of sight until it is presented; turn this on to show it in Ingelogde apparaten again.
-    static let isShown = false
+    /// Whether the Apple Watch shows in Ingelogde apparaten, the chat list and the texts that name it.
+    static let isShown = true
 
     static let title = "Apple Watch koppelen"
     static let message = "Praat met Ayla vanaf je pols. Je Watch krijgt toegang via deze iPhone en je kunt hem altijd weer ontkoppelen."

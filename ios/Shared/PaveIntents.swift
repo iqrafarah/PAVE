@@ -35,3 +35,28 @@ struct NewAylaConversationIntent: AppIntent {
         return .result()
     }
 }
+
+/// "Wie kan mijn gegevens zien?": opens Profiel with what you share now. Nothing is said outside the app, so who can see
+/// your data stays behind your PIN.
+struct ShowSharesIntent: AppIntent {
+    static let title: LocalizedStringResource = "Wie kan mijn gegevens zien?"
+    static let description = IntentDescription("Open PAVE op Profiel: wat je nu deelt, met wie en hoe lang nog.")
+    static let supportedModes: IntentModes = .foreground
+
+    func perform() async throws -> some IntentResult {
+        await PaveLinkInbox.send(.shares)
+        return .result()
+    }
+}
+
+/// Stops sharing in one go: PAVE opens and asks whether to pause or take back everything, confirmed with Face ID.
+struct StopSharingIntent: AppIntent {
+    static let title: LocalizedStringResource = "Stop met delen"
+    static let description = IntentDescription("Open PAVE en pauzeer of trek alles in wat je deelt. Je bevestigt het in de app.")
+    static let supportedModes: IntentModes = .foreground
+
+    func perform() async throws -> some IntentResult {
+        await PaveLinkInbox.send(.stopSharing)
+        return .result()
+    }
+}

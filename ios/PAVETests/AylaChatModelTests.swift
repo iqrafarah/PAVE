@@ -51,6 +51,10 @@ struct AylaChatModelTests {
             }
         }
         func searchMessages(_ text: String) async throws -> [AylaSearchHit] { hits }
+        var savedResults: [Result<[SavedVacancy], AylaError>] = []
+        func savedVacancies() async throws -> [SavedVacancy] {
+            try lock.withLock { savedResults.isEmpty ? [] : try savedResults.removeFirst().get() }
+        }
         var changes = AsyncStream<Void> { $0.finish() }
         func conversationChanges() -> AsyncStream<Void> { changes }
         var stored: [AylaStoredMessage] = []
@@ -528,6 +532,38 @@ struct AylaChatModelTests {
         #expect(model.addedReplies.contains("r2"))
         #expect(model.conversationUploads.isEmpty)
         #expect(ayla.requests.last?.text == "Toegevoegd aan mijn kluis: PSM I.")
+    }
+
+    @Test func aLoadThatWorksAgainClearsTheProblemWithSavedVacancies() async {
+        let ayla = FakeAyla()
+        let kept = SavedVacancy(vacancy: Self.appwerk, savedAt: .now)
+        ayla.savedResults = [.failure(.noConnection), .success([kept])]
+        let model = AylaChatModel(service: ayla)
+        await model.loadSavedVacancies()
+        #expect(model.vacancyProblem != nil)
+        await model.loadSavedVacancies()
+        #expect(model.vacancyProblem == nil)
+        #expect(model.savedVacancies == [kept])
+    }
+
+    @Test func savedVacanciesAreKnownFromTheStart() async {
+        let ayla = FakeAyla()
+        ayla.savedResults = [.success([SavedVacancy(vacancy: Self.appwerk, savedAt: .now)])]
+        let model = AylaChatModel(service: ayla, nameWait: .milliseconds(10))
+        await model.start()
+        #expect(model.isSaved(Self.appwerk))
+    }
+
+    @Test func anItemCanBeMarkedAddedBeforeAylaHearsIt() async {
+        let ayla = FakeAyla()
+        ayla.replies = [.success(AylaReply(id: "r1", conversationId: "c", text: "Mooi!"))]
+        let model = AylaChatModel(service: ayla)
+        model.noteAdded(replyID: "r0", itemID: "item", uploads: [])
+        #expect(model.addedReplies.contains("r0"))
+        #expect(ayla.requests.isEmpty)
+        model.tellAdded(title: "Eindstage")
+        await waitUntilIdle(model)
+        #expect(ayla.requests.last?.text == "Toegevoegd aan mijn kluis: Eindstage.")
     }
 
     @Test func theOfferOnACardHidesJaAndNee() async {

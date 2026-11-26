@@ -19,6 +19,9 @@ struct AylaVoiceVacancyDeck: View {
     let onToggleCompare: (Vacancy) -> Void
     let onCompare: () -> Void
     let onClearCompare: () -> Void
+    /// How many vacancies you kept, and the way to them: the panel opens on Bewaard while you keep talking.
+    var savedCount = 0
+    var onShowSaved: (() -> Void)?
 
     @Environment(\.paveReduceMotion) private var reduceMotion
     @State private var position: Int?
@@ -144,6 +147,30 @@ struct AylaVoiceVacancyDeck: View {
                 Text(AylaMessages.vacancyHint)
                     .textStyle(.meta)
                     .foregroundStyle(Color.inkMuted)
+            }
+            if let onShowSaved, savedCount > 0 {
+                Button(action: onShowSaved) {
+                    HStack(spacing: 6) {
+                        Image(.iconBookmarkOutline)
+                            .renderingMode(.template)
+                            .resizable()
+                            .scaledToFit()
+                            .paveIconFrame(14)
+                            .foregroundStyle(Color.paveAccent)
+                            .accessibilityHidden(true)
+                        Text("\(AylaMessages.vacancySavedTab) \(savedCount)")
+                            .textStyle(.chip)
+                            .foregroundStyle(Color.ink)
+                    }
+                    .padding(.horizontal, 12)
+                    .frame(minHeight: 36)
+                    .background(Color.panel, in: .capsule)
+                    .overlay { Capsule().strokeBorder(Color.cardBorder, lineWidth: 1) }
+                    .frame(minHeight: 44)
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.pave)
+                .accessibilityLabel("Bewaarde vacatures, \(savedCount)")
             }
         }
     }

@@ -12,6 +12,12 @@ final class WatchSessionStore: NSObject, WCSessionDelegate {
     private(set) var isSignedOut = false
     /// Signed in on the iPhone, but this Watch is not connected in Instellingen.
     private(set) var needsConnecting = false
+    /// The QR codes of shares the iPhone put here, newest first; each shown until it ends.
+    private(set) var sharedCodes: [WatchSharedCode] = WatchSharedCode.load()
+    /// The code that just arrived, to bring up by itself.
+    private(set) var newCodeID: String?
+    /// The next step with your applications, from the iPhone.
+    private(set) var nextStep: NextStep? = WatchNextStep.load()
 
     func start() {
         guard WCSession.isSupported() else {
@@ -50,6 +56,7 @@ final class WatchSessionStore: NSObject, WCSessionDelegate {
     }
 
     private func apply(_ message: [String: Any]) {
+        WatchPreferences.shared.apply(message)
         switch WatchLink.update(from: message) {
         case .session(let new):
             session = new
@@ -75,6 +82,27 @@ final class WatchSessionStore: NSObject, WCSessionDelegate {
                 if self.session == nil { self.isSignedOut = true }
             } else {
                 self.apply(context.value)
+            }
+        }
+    }
+
+    nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
+        let message = Message(value: userInfo)
+        Task { @MainActor in
+            if let update = WatchSharedCode.update(from: message.value) {
+                self.sharedCodes = WatchSharedCode.applying(update, to: self.sharedCodes)
+                WatchSharedCode.save(self.sharedCodes)
+                if case .show(let code) = update { self.newCodeID = code.id }
+            }
+            switch WatchNextStep.update(from: message.value) {
+            case .show(let step):
+                self.nextStep = step
+                WatchNextStep.save(step)
+            case .clear:
+                self.nextStep = nil
+                WatchNextStep.save(nil)
+            case nil:
+                break
             }
         }
     }

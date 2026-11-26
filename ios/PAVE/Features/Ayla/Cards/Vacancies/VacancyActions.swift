@@ -8,17 +8,39 @@ struct VacancyActions: View {
     let isChosen: Bool
     /// False when three others are picked already.
     var canChoose = true
+    /// Comparing works in the chat; the vacancies page leaves it out.
+    var showsCompare = true
+    /// Without Ayla only applying is left: the studio also works without her.
+    var usesAyla = true
     let onTask: (AylaRequest.VacancyTask) -> Void
     let onToggleCompare: () -> Void
 
     var body: some View {
+        if showsCompare { grid } else { page }
+    }
+
+    /// On the vacancy's own page: applying first and full width, the two other tasks under it.
+    private var page: some View {
+        VStack(spacing: 8) {
+            Button { onTask(.prepare) } label: { label(.iconDocumentTextSolid, AylaMessages.vacancyActionPrepare, isOn: true) }
+                .buttonStyle(.pave)
+            if usesAyla {
+                HStack(spacing: 8) {
+                    action(.iconPlus, AylaMessages.vacancyActionGaps) { onTask(.gaps) }
+                    action(.iconChatBubbleLeftEllipsisSolid, AylaMessages.vacancyActionPractice) { onTask(.interview) }
+                }
+            }
+        }
+    }
+
+    private var grid: some View {
         Grid(horizontalSpacing: 8, verticalSpacing: 8) {
             GridRow {
-                action(.iconPlusCircleOutline, AylaMessages.vacancyActionGaps) { onTask(.gaps) }
-                action(.iconDocumentTextOutline, AylaMessages.vacancyActionPrepare) { onTask(.prepare) }
+                action(.iconPlus, AylaMessages.vacancyActionGaps) { onTask(.gaps) }
+                action(.iconDocumentTextSolid, AylaMessages.vacancyActionPrepare) { onTask(.prepare) }
             }
             GridRow {
-                action(.iconChatBubbleLeftEllipsisOutline, AylaMessages.vacancyActionPractice) { onTask(.interview) }
+                action(.iconChatBubbleLeftEllipsisSolid, AylaMessages.vacancyActionPractice) { onTask(.interview) }
                 compare
             }
         }
@@ -27,7 +49,7 @@ struct VacancyActions: View {
     private var compare: some View {
         Button(action: onToggleCompare) {
             label(
-                isChosen ? .iconCheckCircleOutline : .iconArrowsRightLeftOutline,
+                isChosen ? .iconCheckBadgeSolid : .iconArrowsRightLeftSolid,
                 isChosen ? AylaMessages.vacancyActionCompareChosen : AylaMessages.vacancyActionCompare,
                 isOn: isChosen
             )

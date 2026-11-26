@@ -10,6 +10,7 @@ final class PaveAppDelegate: NSObject, UIApplicationDelegate {
         UNUserNotificationCenter.current().delegate = notificationDelegate
         NotificationAlerts.registerBackgroundRefresh()
         NotificationAlerts.scheduleRefresh()
+        ShareAlerts.registerCategories()
         return true
     }
 

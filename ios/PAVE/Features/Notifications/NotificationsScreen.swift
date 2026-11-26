@@ -131,6 +131,9 @@ struct NotificationsScreen: View {
     /// Both report whether the server saved it; the model puts the notification back if not.
     var onDelete: ((String) async -> Bool)?
     var onRestore: ((String) async -> Bool)?
+    /// Applications with the demo's invitation from the company, kept on this device; they open Mijn sollicitatie.
+    var invitations: [ApplicationDraft] = []
+    var onOpenApplication: ((Vacancy) -> Void)?
 
     @State private var searchText = ""
     @State private var alertStatus: UNAuthorizationStatus?
@@ -140,6 +143,8 @@ struct NotificationsScreen: View {
     @State private var readIDs: Set<String> = []
     /// The meldingen just deleted (a chat with several is one row), while "Ongedaan maken" is on screen.
     @State private var undoIDs: [String] = []
+    /// What was just done with a verification request, shown for a moment after coming back to the list.
+    @State private var resolved: String?
 
     /// Search only earns its place once the list is long enough to need it.
     private static let searchThreshold = 8
@@ -207,13 +212,32 @@ struct NotificationsScreen: View {
                 .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
+                if !invitations.isEmpty, searchText.isEmpty {
+                    Section {
+                        ForEach(invitations) { draft in
+                            if let invitation = draft.progress.invitation {
+                                Button { onOpenApplication?(draft.vacancy) } label: {
+                                    NotificationInvitationRow(draft: draft, invitation: invitation)
+                                }
+                                .buttonStyle(.plain)
+                                .listRowBackground(Color.panel)
+                                .listRowInsets(EdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14))
+                            }
+                        }
+                    } header: {
+                        Text(ApplyMessages.fromEmployers)
+                            .textStyle(.caption)
+                            .foregroundStyle(Color.paveAccent)
+                            .textCase(nil)
+                            .accessibilityAddTraits(.isHeader)
+                    }
+                }
                 notificationList
             }
             // One grouped list, like Instellingen: a panel per section with dividers, not a card per melding.
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
             .contentMargins(.top, 8, for: .scrollContent)
-            .contentMargins(.horizontal, 8, for: .scrollContent)
             .animation(.snappy, value: visibleNotifications.map(\.id))
             .refreshable { await onRefresh?() }
             .safeAreaInset(edge: .bottom, spacing: 12) {
@@ -222,9 +246,21 @@ struct NotificationsScreen: View {
                         .padding(.horizontal, 16)
                         .frame(maxWidth: 560)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
+                } else if let resolved {
+                    NotificationResolvedBar(message: resolved)
+                        .padding(.horizontal, 16)
+                        .frame(maxWidth: 560)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
             .animation(.snappy, value: undoIDs)
+            .animation(.snappy, value: resolved)
+            .task(id: resolved) {
+                guard resolved != nil else { return }
+                try? await Task.sleep(for: .seconds(4))
+                guard !Task.isCancelled else { return }
+                resolved = nil
+            }
             .task(id: undoIDs) {
                 guard !undoIDs.isEmpty else { return }
                 try? await Task.sleep(for: .seconds(5))
@@ -245,7 +281,15 @@ struct NotificationsScreen: View {
                         VerificationRequestNotificationDetail(
                             notification: notification,
                             onLoadReview: onLoadReview,
-                            onResolve: onResolveRequest
+                            onResolve: onResolveRequest.map { resolve in
+                                { id, status, reason in
+                                    let error = await resolve(id, status, reason)
+                                    if error == nil {
+                                        resolved = status == "verified" ? NotificationResolvedBar.verified : NotificationResolvedBar.rejected
+                                    }
+                                    return error
+                                }
+                            }
                         )
                     } else {
                         NotificationMessageDetail(notification: notification)
@@ -525,13 +569,6 @@ private struct VerificationRequestNotificationDetail: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                Button { dismiss() } label: {
-                    Label("Terug naar meldingen", image: .iconArrowLeft)
-                        .textStyle(.caption)
-                        .foregroundStyle(Color.paveAccent)
-                }
-                .buttonStyle(.pave)
-
                 Text("Verificatie aanvraag")
                     .textStyle(.calloutTitle)
                     .foregroundStyle(Color.ink)
@@ -580,7 +617,7 @@ private struct VerificationRequestNotificationDetail: View {
                                     Image(.iconDocumentText).frame(width: 18, height: 18)
                                     Text(file.name).lineLimit(1)
                                     Spacer()
-                                    Image(.iconEye).frame(width: 17, height: 17)
+                                    Image(.iconEyeSolid).renderingMode(.template).resizable().scaledToFit().frame(width: 17, height: 17)
                                 }
                                 .textStyle(.caption)
                                 .foregroundStyle(Color.ink)
@@ -624,8 +661,7 @@ private struct VerificationRequestNotificationDetail: View {
             .frame(maxWidth: .infinity)
         }
         .background(Color.canvas.ignoresSafeArea())
-        .navigationBarBackButtonHidden()
-        .toolbar(.hidden, for: .navigationBar)
+        .navigationBarTitleDisplayMode(.inline)
         .task(id: requestID) { await loadReview() }
         .sheet(isPresented: $writesRejection, onDismiss: {
             // Back to the notifications once the sheet is gone, not while it is still closing.

@@ -52,6 +52,43 @@ final class AylaChatModel {
         let navigation: AylaReply.Navigation
     }
     private(set) var screenRequest: ScreenRequest?
+
+    /// What the vacancies page asks of the chat: Ayla's help with a vacancy, or the application for it.
+    enum VacancyRequest: Equatable {
+        case task(AylaRequest.VacancyTask, Vacancy)
+        /// A task asked from an application, which the chat offers to go back to.
+        case applicationTask(AylaRequest.VacancyTask, Vacancy)
+        case ask(Vacancy)
+        case askGap(String, Vacancy)
+        case application(Vacancy)
+        case search
+    }
+
+    struct PendingVacancyRequest: Equatable {
+        let id = UUID()
+        let request: VacancyRequest
+    }
+
+    /// Picked up by the chat once it is on screen.
+    var vacancyRequest: PendingVacancyRequest?
+    /// Vacatures should open on the applications tab, as from the widget or a reminder.
+    var opensApplications = false
+
+    func request(_ request: VacancyRequest) {
+        vacancyRequest = PendingVacancyRequest(request: request)
+    }
+
+    /// Ayla's newest search in this chat: what she found, what she searched for and which data she used.
+    var latestVacancySearch: (vacancies: [Vacancy], search: VacancySearch?, usedData: [AylaVaultCategory]) {
+        for entry in entries.reversed() {
+            for block in entry.reply?.blocks ?? [] {
+                if case .vacancies(let items, let search) = block, !items.isEmpty {
+                    return (items, search, entry.reply?.usedData ?? [])
+                }
+            }
+        }
+        return ([], nil, [])
+    }
     private var opensPageAlready = false
 
     /// "Nieuwe chat in project": the next question starts the conversation inside this project.
@@ -251,6 +288,8 @@ final class AylaChatModel {
             guard !Task.isCancelled else { return }
             self?.isGreetingReady = true
         }
+        // Kept vacancies are known from the start, also while talking hands-free, when the panel is not opened.
+        async let saved: Void = loadSavedVacancies()
         let name = await service.firstName()
         timeout.cancel()
         // A name that comes in after the welcome is shown is left out, so the welcome does not jump.
@@ -259,6 +298,7 @@ final class AylaChatModel {
             isGreetingReady = true
         }
         await refreshConversations()
+        await saved
     }
 
     /// Ayla is thinking or writing; the send button is a stop button meanwhile.
@@ -595,10 +635,20 @@ final class AylaChatModel {
     /// item starts clean.
     /// `deliver` sends the notice another way, such as out loud in a spoken conversation.
     func markAdded(replyID: String, itemID: String? = nil, title: String, uploads: [VaultUpload], saying words: String? = nil, deliver: ((String) -> Void)? = nil) {
+        noteAdded(replyID: replyID, itemID: itemID, uploads: uploads)
+        tellAdded(title: title, saying: words, deliver: deliver)
+    }
+
+    /// The card shows it is in the vault and its files no longer go along; Ayla does not hear it yet.
+    func noteAdded(replyID: String, itemID: String?, uploads: [VaultUpload]) {
         addedReplies.insert(replyID)
         addedItemIDs[replyID] = itemID
         if let itemID { lastAddedItemID = itemID }
         sentUploads.removeAll { upload in uploads.contains(upload) }
+    }
+
+    /// Ayla hears it is in the vault, and goes on from there.
+    func tellAdded(title: String, saying words: String? = nil, deliver: ((String) -> Void)? = nil) {
         let name = title.trimmingCharacters(in: .whitespacesAndNewlines)
         let notice = AylaMessages.addedToVault(name.isEmpty ? nil : name)
         let message = words.map { "\($0)\n\(notice)" } ?? notice
@@ -1116,9 +1166,12 @@ final class AylaChatModel {
         do {
             savedVacancies = try await service.savedVacancies()
             canSaveVacancies = true
+            vacancyProblem = nil
         } catch AylaError.notSetUp {
             canSaveVacancies = false
         } catch {
+            // The panel closed or was built again while loading: that is not a failure, and the next load will do.
+            guard !Task.isCancelled else { return }
             vacancyProblem = AylaMessages.vacancySavedLoadFailed
         }
     }

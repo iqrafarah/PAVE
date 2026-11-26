@@ -13,6 +13,7 @@ struct AylaChatScreen: View {
     private static let toolbarOffset: CGFloat = 4
 
     @Environment(\.paveReduceMotion) private var reduceMotion
+    @Environment(\.shareFromAyla) private var shareFromAyla
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.hidesScreenButtons) private var hidesScreenButtons
     @Environment(VaultModel.self) private var vault: VaultModel?
@@ -116,6 +117,12 @@ struct AylaChatScreen: View {
     @State private var waveStartedAt: Date?
     @State private var isSavingForUser = false
     @State private var confirmationItem: VaultItem?
+    /// Making a CV and a letter for a vacancy ("Solliciteren").
+    @State private var application: ApplicationStudioModel?
+    /// The application a task came from, offered at the top until the user goes back or moves on.
+    @State private var backToApplication: Vacancy?
+    /// An application that is still a concept with its deadline within three days.
+    @State private var nearDeadline: ApplicationDraft?
     /// Ja and Nee by nodding or shaking the head with AirPods on, and what the last nod or shake answered.
     @State private var headGestures = AylaHeadGestures()
     @State private var headAnswer: Bool?
@@ -126,8 +133,16 @@ struct AylaChatScreen: View {
     @State private var vacancyIndex = 0
     /// Vacancies picked to compare, in the order they were picked.
     @State private var compareIDs: [String] = []
+    /// The answer whose choices are shown: they come a moment after it, once it can be read, instead of the text field
+    /// turning into buttons in the same instant.
+    @State private var shownChoicesID: String?
     /// Photos for an item that just went into the vault, after a Ja to Ayla's question for them.
     @State private var photosForItemID: String?
+    /// Evidence that went in from the chat without a logo or cover: choosing them comes first, as on the web, and Ayla
+    /// hears it is in the vault once that is done.
+    @State private var lookStep: LookStep?
+    @State private var logoSource: VaultFileSource?
+    @State private var coverSource: VaultFileSource?
     @State private var photoTargetID: String?
     @State private var itemPhotoItems: [PhotosPickerItem] = []
     @State private var mutedForPhotos = false
@@ -149,6 +164,54 @@ struct AylaChatScreen: View {
     }
 
     private static let savedVacanciesID = "saved-vacancies"
+
+    /// The concept whose deadline comes first, when that is today or within three days.
+    static func nearDeadline(in applications: [ApplicationDraft], now: Date = .now) -> ApplicationDraft? {
+        applications
+            .filter { draft in
+                guard draft.progress.status == .concept, let deadline = draft.progress.deadline else { return false }
+                return switch ApplicationDeadline.of(deadline, now: now) {
+                case .today: true
+                case .upcoming(let days): days <= 3
+                case .overdue: false
+                }
+            }
+            .min { ($0.progress.deadline ?? .distantFuture) < ($1.progress.deadline ?? .distantFuture) }
+    }
+
+    /// The vacancies over the chat; kept out of `body`, which is as large as the compiler will take.
+    private var vacancyShelf: some View {
+        let shown = model.entries.first { $0.id == openVacanciesID }
+        return AylaVacancyShelf(
+            vacancies: openVacancies ?? [], model: model, tab: $vacancyTab,
+            search: shown.flatMap(Self.search(in:)),
+            usedData: shown?.reply?.usedData ?? [],
+            onChooseData: vault == nil || !model.isAvailable ? nil : { pickVaultItems(then: AylaMessages.useChosen) },
+            compareIDs: compareIDs,
+            onTask: { task, vacancy in
+                closeShelf()
+                run(task, on: [vacancy])
+            },
+            onToggleCompare: toggleCompare,
+            onCompare: {
+                closeShelf()
+                compareChosen()
+            },
+            onClearCompare: { compareIDs = [] },
+            onOpenApplication: { vacancy in
+                closeShelf()
+                openApplication(for: vacancy)
+            },
+            onAsk: { vacancy in
+                closeShelf()
+                askAyla(AylaMessages.vacancyAsk(vacancy))
+            },
+            onAskGap: { skill, vacancy in
+                closeShelf()
+                askAyla(AylaMessages.vacancyGapAsk(skill, for: vacancy))
+            }
+        )
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -179,6 +242,19 @@ struct AylaChatScreen: View {
                 )
                 // The plan of this chat, just under the header; out of the way while talking.
                 .planBar(chat: model, isHidden: isTalking)
+
+                // Her answer while a page sits low over the chat: at the very top of the screen, over her name where
+                // the bar holds nothing else (the outer display of iPhone Duo keeps its buttons along the side), and
+                // right under the bar where the menu and chats buttons are in it.
+                if shelf != nil, replyFloatsOverChat {
+                    shelfReplyBubble(
+                        topPadding: toolbarIsBeside ? Self.windowTopInset + 16 : 6,
+                        lineLimit: fullHeight - sheetHeight - (toolbarIsBeside ? Self.windowTopInset : proxy.safeAreaInsets.top) < 250 ? 4 : 6
+                    )
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    .ignoresSafeArea(.container, edges: toolbarIsBeside ? .top : [])
+                    .zIndex(2)
+                }
 
                 if isAttachMenuOpen {
                     Color.clear
@@ -212,6 +288,7 @@ struct AylaChatScreen: View {
         .animation(.easeOut(duration: 0.4), value: isOutroRunning)
         .sensoryFeedback(trigger: dictation.isListening) { _, isListening in isListening ? .start : .stop }
         .animation(.spring(duration: 0.4), value: openVacanciesID)
+        .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.4, bounce: 0.15), value: showsShelfReply)
         .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.4), value: shelf)
         .animation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.35, bounce: 0.18), value: isAttachMenuOpen)
         .toolbar { toolbar }
@@ -265,30 +342,7 @@ struct AylaChatScreen: View {
                         onRestore: { await notifications.restore($0) }
                     )
                 } else if shelf == .vacancies {
-                    let shown = model.entries.first { $0.id == openVacanciesID }
-                    AylaVacancyShelf(
-                        vacancies: openVacancies ?? [], model: model, tab: $vacancyTab,
-                        search: shown.flatMap(Self.search(in:)),
-                        usedData: shown?.reply?.usedData ?? [],
-                        onChooseData: vault == nil || !model.isAvailable ? nil : { pickVaultItems(then: AylaMessages.useChosen) },
-                        compareIDs: compareIDs,
-                        onTask: { task, vacancy in
-                            closeShelf()
-                            run(task, on: [vacancy])
-                        },
-                        onToggleCompare: toggleCompare,
-                        onCompare: {
-                            closeShelf()
-                            compareChosen()
-                        },
-                        onClearCompare: { compareIDs = [] }
-                    ) { vacancy in
-                        closeShelf()
-                        askAyla(AylaMessages.vacancyAsk(vacancy))
-                    } onAskGap: { skill, vacancy in
-                        closeShelf()
-                        askAyla(AylaMessages.vacancyGapAsk(skill, for: vacancy))
-                    }
+                    vacancyShelf
                 } else if shelf == .plan, let plans {
                     AylaPlanShelf(chat: model, onLeave: { closingShelf(then: $0) }, onOpen: openShelf)
                         .environment(plans)
@@ -337,14 +391,10 @@ struct AylaChatScreen: View {
                     }
                 }
             }
-            .safeAreaInset(edge: .top, spacing: 0) {
-                // While talking the bubble follows "Tekst bij de stem" in Settings: off means her voice and the glow only.
-                if showsShelfReply, !isTalking || showsVoiceText, let reply = shelfReply {
-                    AylaShelfReply(text: reply.text, thinking: model.activity.map(AylaMessages.activity) ?? AylaMessages.thinking, choices: reply.choices, onChoose: { choose($0) }) {
-                        showsShelfReply = false
-                    }
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                }
+            // Over the top of a page that fills the screen, not in it: nothing on the page moves when she speaks. A
+            // page that sits low shows her answer above it instead, at the top of the chat.
+            .overlay(alignment: .top) {
+                if !replyFloatsOverChat { shelfReplyBubble(topPadding: 26, lineLimit: 6) }
             }
             .overlay {
                 if let voice, isTalking {
@@ -428,7 +478,12 @@ struct AylaChatScreen: View {
             // A new answer from Ayla replaces what she said about something she did in the app.
             localReply = nil
             guard !isVoiceActive, let last = model.entries.last, last.role == .ayla, !Self.vacancies(in: last).isEmpty else { return }
-            openVacancies(from: last.id)
+            // First the answer and its card in the chat, then the panel comes up over it.
+            Task {
+                try? await Task.sleep(for: .milliseconds(reduceMotion ? 0 : 700))
+                guard model.entries.last?.id == last.id, !isVoiceActive else { return }
+                openVacancies(from: last.id)
+            }
         }
         .onChange(of: model.conversationID) { old, _ in
             // A new conversation getting its id while Ayla answers is still the same chat: the page stays open.
@@ -448,6 +503,12 @@ struct AylaChatScreen: View {
             }
         }
         .onDisappear { headGestures.stop() }
+        .task(id: model.pendingQuestion == nil ? nil : model.entries.last?.id) {
+            guard let id = model.entries.last?.id, model.pendingQuestion != nil else { return }
+            try? await Task.sleep(for: .milliseconds(reduceMotion ? 0 : 450))
+            guard !Task.isCancelled else { return }
+            withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.4, bounce: 0.12)) { shownChoicesID = id }
+        }
         // A new search starts at its first vacancy, with nothing picked to compare.
         .onChange(of: voiceSearchID) {
             vacancyIndex = 0
@@ -485,6 +546,35 @@ struct AylaChatScreen: View {
             readAloud.stop()
         }
         .sheet(item: $selectingText) { ChatTextSelection(text: $0.text) }
+        // After a task from an application (practising, what is missing): one tap back to it.
+        .overlay(alignment: .top) {
+            if let vacancy = backToApplication, application == nil {
+                AylaBackToApplication(company: vacancy.company) {
+                    backToApplication = nil
+                    openApplication(for: vacancy)
+                } onDismiss: {
+                    backToApplication = nil
+                }
+                .padding(.top, 8)
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(reduceMotion ? nil : .snappy(duration: 0.25), value: backToApplication)
+        .onChange(of: model.conversationID) { old, new in
+            if old != nil, old != new { backToApplication = nil }
+        }
+        .fullScreenCover(item: $application) { studio in
+            ApplicationStudioView(
+                model: studio, photo: profile?.avatar,
+                onClose: { application = nil },
+                onTask: { task in
+                    let vacancy = studio.draft.vacancy
+                    application = nil
+                    run(task, on: [vacancy])
+                    backToApplication = vacancy
+                }
+            )
+        }
         // Handoff to your other devices, with only a general title: the chat's own title stays private.
         .userActivity(AylaHandoff.activityType, isActive: model.conversationID != nil && !isVoiceActive) { activity in
             guard let id = model.conversationID else { return }
@@ -603,6 +693,8 @@ struct AylaChatScreen: View {
         ToolbarItem(placement: .principal) {
             PaveTitle("Ayla")
                 .offset(y: Self.toolbarOffset)
+                .opacity(replyCoversTitle ? 0 : 1)
+                .animation(.easeOut(duration: 0.2), value: replyCoversTitle)
         }
         // With the menu on screen (iPad, open iPhone Duo) the chat button sits at the top left, next to the menu,
         // instead of on the right where the open iPhone Duo puts it right against the status bar.
@@ -635,6 +727,8 @@ struct AylaChatScreen: View {
                 // As in ChatGPT: gone at once when the orb jumps up, and only back once it has landed below.
                 .opacity(showsConversation ? 1 : 0)
                 .animation(showsConversation ? .easeOut(duration: 0.3) : .easeOut(duration: 0.08), value: showsConversation)
+                .opacity(replyIsOverChat ? 0 : 1)
+                .animation(.easeOut(duration: 0.2), value: replyIsOverChat)
                 .allowsHitTesting(!isTalking || orbMotion.isLow)
 
             if let voice, isTalking {
@@ -663,6 +757,27 @@ struct AylaChatScreen: View {
                 .accessibilityHidden(orbMotion.isLow)
             }
         }
+        // Asked from the vacancies page: done here, once the chat is on screen.
+        .task(id: model.vacancyRequest?.id) {
+            guard let pending = model.vacancyRequest else { return }
+            model.vacancyRequest = nil
+            try? await Task.sleep(for: .milliseconds(250))
+            switch pending.request {
+            case .task(let task, let vacancy): run(task, on: [vacancy])
+            case .applicationTask(let task, let vacancy):
+                run(task, on: [vacancy])
+                backToApplication = vacancy
+            case .ask(let vacancy): askAyla(AylaMessages.vacancyAsk(vacancy))
+            case .askGap(let skill, let vacancy): askAyla(AylaMessages.vacancyGapAsk(skill, for: vacancy))
+            case .application(let vacancy): openApplication(for: vacancy)
+            case .search: askAyla(AylaMessages.vacancySearchAsk)
+            }
+        }
+        // A deadline that is close shows on the empty chat; looked at again when an application closes.
+        .task(id: application == nil) {
+            guard application == nil else { return }
+            nearDeadline = Self.nearDeadline(in: ApplicationStore().all())
+        }
     }
 
     @ViewBuilder
@@ -681,7 +796,10 @@ struct AylaChatScreen: View {
             .transition(.opacity)
         } else if model.entries.isEmpty, !model.isLoadingConversation {
             ScrollView {
-                AylaWelcome(firstName: model.firstName, isAvailable: model.isAvailable, isTyping: model.isGreetingReady, onStarter: openShelf)
+                AylaWelcome(
+                    firstName: model.firstName, isAvailable: model.isAvailable, isTyping: model.isGreetingReady, onStarter: openShelf,
+                    deadline: nearDeadline, onOpenDeadline: { if let nearDeadline { openApplication(for: nearDeadline.vacancy) } }
+                )
                     .padding(.top, (height * 0.174).rounded())
                     .frame(maxWidth: .infinity)
                     // The orb falls apart right here during the outro; the welcome returns once its blocks are back in the button.
@@ -799,9 +917,11 @@ struct AylaChatScreen: View {
                             PaveHaptics.selection()
                             if excludedFiles[reply.id, default: []].remove(file.checksum) == nil { excludedFiles[reply.id, default: []].insert(file.checksum) }
                         },
-                        onRequestConfirmation: model.addedItemIDs[reply.id].flatMap { id in vault?.items.first { $0.id == id } }.map { saved in { confirmationItem = saved } }
+                        onRequestConfirmation: model.addedItemIDs[reply.id].flatMap { id in vault?.items.first { $0.id == id } }.map { saved in { confirmationItem = saved } },
+                        onFillMyself: { fillMyself(from: reply) }
                     ) {
-                        openProposedEvidence(from: reply)
+                        // As "Ayla vult het in" on the web: it goes in at once; with something missing the form opens.
+                        addEvidenceForUser(from: reply, saying: nil)
                     }
                     .padding(.top, 3)
                 }
@@ -1152,7 +1272,22 @@ struct AylaChatScreen: View {
                     .padding(.leading, 33)
                     .padding(.trailing, 31)
                     .transition(.opacity)
-            } else if let question = model.pendingQuestion, question.choices.count >= 2, !model.pendingQuestionIsOnCard {
+            } else if let lookStep {
+                VStack(spacing: 8) {
+                    Text(lookStep.problem ?? AylaMessages.lookMissing(logo: lookStep.needsLogo, cover: lookStep.needsCover))
+                        .textStyle(.caption)
+                        .foregroundStyle(lookStep.problem == nil ? Color.inkMuted : Color.statusRejected)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 33)
+                    AylaChoiceBar(choices: lookChoices, onChoose: chooseLook)
+                        .padding(.leading, 21)
+                        .padding(.trailing, 22)
+                }
+                .padding(.bottom, -11)
+                .vaultFilePicker(source: $logoSource, role: .logo) { lookPicked($0, role: .logo) }
+                .vaultFilePicker(source: $coverSource, role: .cover) { lookPicked($0, role: .cover) }
+                .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+            } else if let question = model.pendingQuestion, question.choices.count >= 2, !model.pendingQuestionIsOnCard, shownChoicesID == model.entries.last?.id {
                 AylaChoiceBar(
                     choices: question.choices.map { AylaChoice(id: $0.id, label: $0.label) },
                     isAboutVault: model.pendingOffersEvidence,
@@ -1165,6 +1300,10 @@ struct AylaChatScreen: View {
                 .padding(.leading, 21)
                 .padding(.trailing, 22)
                 .padding(.bottom, -11)
+                .transition(reduceMotion ? .opacity : .asymmetric(
+                    insertion: .move(edge: .bottom).combined(with: .opacity),
+                    removal: .opacity
+                ))
             } else {
                 if let title = model.contextTitle, !isVoiceActive {
                     AylaContextChip(title: title) { model.clearContext() }
@@ -1240,14 +1379,27 @@ struct AylaChatScreen: View {
     @ViewBuilder
     /// While talking, the orb and its field already show that Ayla is thinking, so the glow at the bottom stays away.
     private var background: some View {
-        switch isVoiceActive ? .idle : model.phase {
-        case .idle, .writing:
-            Color.canvas
-        case .thinking:
-            LinearGradient(stops: [.init(color: .canvas, location: 0.658), .init(color: .paveThinkingGlow, location: 1)], startPoint: .top, endPoint: .bottom)
-        case .failed:
-            LinearGradient(stops: [.init(color: .canvas, location: 0.658), .init(color: .errorGlow, location: 1)], startPoint: .top, endPoint: .bottom)
-        }
+        // The glow rises from the bottom as high as on an iPhone (a third of its screen), on every screen: on the open
+        // Duo or an iPad a share of the height turned half the screen dark.
+        Color.canvas
+            .overlay(alignment: .bottom) {
+                switch isVoiceActive ? .idle : model.phase {
+                case .idle, .writing:
+                    EmptyView()
+                case .thinking:
+                    glow(.paveThinkingGlow)
+                case .failed:
+                    glow(.errorGlow)
+                }
+            }
+    }
+
+    private static let glowHeight: CGFloat = 300
+
+    private func glow(_ color: Color) -> some View {
+        LinearGradient(colors: [.canvas, color], startPoint: .top, endPoint: .bottom)
+            .frame(height: Self.glowHeight)
+            .transition(.opacity)
     }
 
     // MARK: Actions
@@ -1643,7 +1795,9 @@ struct AylaChatScreen: View {
             onTask: { task, vacancy in run(task, on: [vacancy]) },
             onToggleCompare: toggleCompare,
             onCompare: compareChosen,
-            onClearCompare: { compareIDs = [] }
+            onClearCompare: { compareIDs = [] },
+            savedCount: model.canSaveVacancies ? model.savedVacancies.count : 0,
+            onShowSaved: openSavedVacancies
         )
     }
 
@@ -1659,11 +1813,25 @@ struct AylaChatScreen: View {
 
     /// A button on a vacancy: the question goes in the chat as yours, and Ayla answers it, out loud while talking.
     private func run(_ task: AylaRequest.VacancyTask, on vacancies: [Vacancy]) {
+        // "Solliciteren" opens the CV and the letter for this vacancy; without the vault Ayla helps in the chat instead.
+        if task == .prepare, let vacancy = vacancies.first, vault != nil {
+            openApplication(for: vacancy)
+            return
+        }
         guard let question = model.question(for: task, about: vacancies) else { return }
         PaveHaptics.tap(.medium)
         if task == .compare { compareIDs = [] }
         voice?.play(.tick)
         askAyla(question)
+    }
+
+    private func openApplication(for vacancy: Vacancy) {
+        guard let vault else { return }
+        PaveHaptics.tap(.medium)
+        if isTalking { stopVoice() }
+        Task {
+            application = await ApplicationStudioModel.open(for: vacancy, vault: vault, profile: profile, firstName: model.firstName, service: model.service)
+        }
     }
 
     private func toggleCompare(_ vacancy: Vacancy) {
@@ -1707,7 +1875,7 @@ struct AylaChatScreen: View {
 
     /// A yes in words to "Zal ik het in je kluis zetten?": Ayla puts it in the vault, without the form. When something
     /// required is missing, or the save fails, the form opens instead, so nothing is saved halfway out of sight.
-    private func addEvidenceForUser(from reply: AylaReply, saying words: String) {
+    private func addEvidenceForUser(from reply: AylaReply, saying words: String?) {
         guard let vault, !isSavingForUser else { return }
         isSavingForUser = true
         let analysis = model.analysis(for: reply)
@@ -1720,6 +1888,13 @@ struct AylaChatScreen: View {
             let flow = VaultAddEvidenceModel.proposed(by: reply, vault: vault, documents: documents, analysis: excluded.isEmpty ? analysis : nil)
             if flow.aylaFill != .reading, flow.aylaProposals.count <= 1, await flow.saveFromChat() {
                 let talking = isTalking ? voice : nil
+                // Without a logo or cover the bar asks for them first, as on the web; not while talking hands-free.
+                if talking == nil, let id = flow.savedItemID, let step = await lookStep(for: id, reply: reply, title: flow.draft.title, uploads: flow.documents, words: words) {
+                    model.noteAdded(replyID: reply.id, itemID: id, uploads: flow.documents)
+                    startWave()
+                    withAnimation(.spring(duration: 0.4, bounce: 0.12)) { lookStep = step }
+                    return
+                }
                 model.markAdded(
                     replyID: reply.id, itemID: flow.savedItemID, title: flow.draft.title, uploads: flow.documents, saying: words,
                     deliver: talking.map { voice in { voice.send(typed: $0, checksYes: false) } }
@@ -1731,6 +1906,87 @@ struct AylaChatScreen: View {
                 addingFromReplyID = reply.id
                 addEvidence = flow
             }
+        }
+    }
+
+    // MARK: Logo and cover after adding from the chat
+
+    struct LookStep: Equatable {
+        let itemID: String
+        let title: String
+        let words: String?
+        var needsLogo: Bool
+        var needsCover: Bool
+        var problem: String?
+    }
+
+    /// What the new item still lacks of its look; nil when it has a logo and a cover.
+    private func lookStep(for itemID: String, reply: AylaReply, title: String, uploads: [VaultUpload], words: String?) async -> LookStep? {
+        guard let vault else { return nil }
+        if !vault.items.contains(where: { $0.id == itemID }) { await vault.load() }
+        guard let item = vault.items.first(where: { $0.id == itemID }) else { return nil }
+        let needsLogo = vault.logo(of: item) == nil
+        let needsCover = vault.cover(of: item) == nil
+        guard needsLogo || needsCover else { return nil }
+        return LookStep(itemID: itemID, title: title, words: words, needsLogo: needsLogo, needsCover: needsCover)
+    }
+
+    private var lookChoices: [AylaChoice] {
+        guard let lookStep else { return [] }
+        return (lookStep.needsLogo ? [AylaChoice(id: "logo", label: AylaMessages.lookLogo)] : [])
+            + (lookStep.needsCover ? [AylaChoice(id: "cover", label: AylaMessages.lookCover)] : [])
+            + [AylaChoice(id: "done", label: AylaMessages.lookDone)]
+    }
+
+    private func chooseLook(_ choice: AylaChoice) {
+        switch choice.id {
+        case "logo": logoSource = .photos
+        case "cover": coverSource = .photos
+        default: finishLook()
+        }
+    }
+
+    /// A picked logo or cover goes onto the item; once both are there, the step is done by itself.
+    private func lookPicked(_ result: Result<VaultUpload, VaultUpload.Problem>, role: VaultFileRole) {
+        guard let step = lookStep, let vault, case .success(let upload) = result else {
+            if case .failure = result { lookStep?.problem = AylaMessages.lookFailed }
+            return
+        }
+        Task {
+            do {
+                try await vault.attach(upload, to: step.itemID)
+                PaveHaptics.success()
+                withAnimation(.snappy(duration: 0.25)) {
+                    if role == .logo { lookStep?.needsLogo = false } else { lookStep?.needsCover = false }
+                    lookStep?.problem = nil
+                }
+                if lookStep?.needsLogo == false, lookStep?.needsCover == false { finishLook() }
+            } catch {
+                lookStep?.problem = AylaMessages.lookFailed
+            }
+        }
+    }
+
+    /// The look step is done: only now does Ayla hear it is in the vault, and she asks what is next.
+    private func finishLook() {
+        guard let step = lookStep else { return }
+        withAnimation(.easeOut(duration: 0.2)) { lookStep = nil }
+        model.tellAdded(title: step.title, saying: step.words)
+    }
+
+    /// "Zelf invullen" on the card, as on the web: the form, empty, with the chat's files.
+    private func fillMyself(from reply: AylaReply) {
+        guard let vault else { return }
+        let analysis = model.analysis(for: reply)
+        let excluded = excludedFiles[reply.id] ?? []
+        let documents = (analysis?.uploads ?? model.uploads(for: reply.proposedAction?.vaultItem)).filter { !excluded.contains($0.checksum) }
+        let category = reply.proposedAction?.vaultItem?.category.category ?? .projects
+        PaveHaptics.tap(.light)
+        if isTalking { stopVoice() }
+        addingFromReplyID = reply.id
+        Task {
+            if vault.state != .ready { await vault.load() }
+            addEvidence = .filledByYou(vault: vault, category: category, documents: documents)
         }
     }
 
@@ -2231,6 +2487,41 @@ struct AylaChatScreen: View {
         openShelf(place)
     }
 
+    /// A page that sits low over the chat on a phone leaves the top of the chat free: her answer goes there. A page
+    /// that fills the screen, or a sheet in the middle of a wide screen, carries it on its own top edge.
+    private var replyFloatsOverChat: Bool { sizeClass == .compact && vaultDetent != .large }
+
+    /// Her answer shows at the top of the chat. The conversation under it says the same, so it steps back until the
+    /// answer is tapped away.
+    private var replyIsOverChat: Bool {
+        shelf != nil && replyFloatsOverChat && showsShelfReply && (!isTalking || showsVoiceText) && shelfReply != nil
+    }
+
+    /// Her answer lies over her name in the bar, so the name steps aside while it shows.
+    private var replyCoversTitle: Bool { replyIsOverChat && toolbarIsBeside }
+
+    /// The room the status bar takes at the top of the screen, without the navigation bar.
+    private static var windowTopInset: CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.keyWindow }
+            .first?.safeAreaInsets.top ?? 0
+    }
+
+    /// Ayla's answer while a page is open, floating over what is under it.
+    @ViewBuilder
+    private func shelfReplyBubble(topPadding: CGFloat, lineLimit: Int) -> some View {
+        // While talking the bubble follows "Tekst bij de stem" in Settings: off means her voice and the glow only.
+        if showsShelfReply, !isTalking || showsVoiceText, let reply = shelfReply {
+            AylaShelfReply(
+                text: reply.text, thinking: model.activity.map(AylaMessages.activity) ?? AylaMessages.thinking, choices: reply.choices,
+                topPadding: topPadding, lineLimit: lineLimit, onChoose: { choose($0) }
+            ) {
+                showsShelfReply = false
+            }
+            .transition(.move(edge: .top).combined(with: .opacity))
+        }
+    }
+
     /// What the card on top of an open page says: nothing yet while Ayla thinks, then her answer as it comes in.
     private var shelfReply: (text: String?, choices: [String])? {
         if let localReply, !model.isAnswering { return (localReply, []) }
@@ -2266,6 +2557,15 @@ struct AylaChatScreen: View {
             if missing == nil { Task { await run(waiting.actions) } }
             if !isTalking { AccessibilityNotification.Announcement(done).post() }
             return done
+        }
+        // Sharing: she opens it filled in, and you check and confirm it with Face ID; she never shares by herself.
+        if let shareCommand = AylaShareCommand.command(in: text), let shareFromAyla {
+            dictation.stop()
+            isComposerFocused = false
+            let said = AylaMessages.shareSaid(shareCommand)
+            shareFromAyla(shareCommand)
+            if !isTalking { AccessibilityNotification.Announcement(said).post() }
+            return said
         }
         let folders = vault?.folders.map { AylaAppCommand.Named(id: $0.id, name: $0.name) } ?? []
         let items = vault?.items.map { AylaAppCommand.Named(id: $0.id, name: $0.title) } ?? []
@@ -2456,7 +2756,7 @@ struct AylaChatScreen: View {
         case .vacancies?:
             if pageDriver.vacancy != nil { return "één vacature, helemaal open" }
             let shown = VacancyList.shown(vacancyTab, found: openVacancies ?? [], model: model)
-            return "de lijst met vacatures, tabblad \(vacancyTab == .saved ? AylaMessages.vacancySavedTab : AylaMessages.vacancyFound), \(shown.count) in de lijst"
+            return "de lijst met vacatures, tabblad \(vacancyTab == .saved ? AylaMessages.vacancySavedTab : vacancyTab == .applications ? AylaMessages.vacancyApplicationsTab : AylaMessages.vacancyFound), \(shown.count) in de lijst"
         case nil:
             guard isTalking else { return "de chat" }
             let vacancies = voiceVacancies
@@ -2612,7 +2912,10 @@ struct AylaChatScreen: View {
             inSettings(.appearance) { await profile?.setVaultLayout(layout) }
             return "Je kluis opent nu als \(layout == .list ? "lijst" : "raster")."
         case .voiceText(let isOn):
-            inSettings(.ayla) { showsVoiceText = isOn }
+            inSettings(.ayla) {
+                showsVoiceText = isOn
+                WatchBridge.shared.update()
+            }
             return "Tekst bij praten met Ayla staat nu \(isOn ? "aan" : "uit")."
         case .chatsInSearch(let isOn):
             inSettings(.privacy) { UserDefaults.standard.set(isOn, forKey: AylaSpotlight.settingKey) }

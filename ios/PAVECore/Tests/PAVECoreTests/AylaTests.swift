@@ -340,6 +340,25 @@ extension SupabaseAylaServiceTests {
         #expect((sent["vacancy"] as? [String: Any])?["company"] as? String == "Bedrijf")
     }
 
+    @Test func aylaWritesWithOnlyTheEvidenceSheGets() async throws {
+        let captured = Captured()
+        let ayla = service { urlRequest in
+            captured.request = urlRequest
+            return (200, Data(#"{"profile":"Ik bouw apps met Swift."}"#.utf8))
+        }
+        let vacancy = Vacancy(id: "v", title: "iOS-ontwikkelaar", company: "Appwerk", source: .adzuna)
+        let item = VaultItem(id: "i", category: .internships, title: "Stage", organisationName: "Pixelwerk", skills: ["Swift"])
+        let writing = try await ayla.writeApplication(.init(kind: .profile, vacancy: vacancy, name: "Daaf", items: [item]))
+        #expect(writing.profile == "Ik bouw apps met Swift.")
+        let request = try #require(captured.request)
+        #expect(request.url?.path() == "/functions/v1/ayla-document")
+        let sent = try #require(request.bodyData)
+        let body = try #require(try JSONSerialization.jsonObject(with: sent) as? [String: Any])
+        #expect(body["kind"] as? String == "profile")
+        #expect((body["items"] as? [[String: Any]])?.first?["organisation"] as? String == "Pixelwerk")
+        #expect((body["vacancy"] as? [String: Any])?["company"] as? String == "Appwerk")
+    }
+
     @Test func aCompanyLogoIsLookedUpByNameAndPlace() async throws {
         let captured = Captured()
         let ayla = service { urlRequest in

@@ -86,6 +86,11 @@ public protocol AylaService: Sendable {
     /// The logo of a company on a vacancy without one, from its own website (the `company-logo` function); nil when
     /// none was found. Only the name and place go out.
     func companyLogo(company: String, city: String?) async throws -> URL?
+    /// What is worth knowing about a company before applying, found on the web with sources (the `company-about`
+    /// function); nil when nothing reliable was found. Only the name and place go out.
+    func companyAbout(company: String, city: String?) async throws -> CompanyAbout?
+    /// Ayla writes along with a CV or a letter (the `ayla-document` function).
+    func writeApplication(_ request: ApplicationWritingRequest) async throws -> ApplicationWriting
     /// What Ayla remembers about the user, the newest first. `notSetUp` until the tables exist.
     func memories() async throws -> AylaMemories
     /// Saves a note the user kept or wrote.
@@ -156,6 +161,10 @@ extension AylaService {
     public func transcribe(_ audio: Data, hints: [String]) async throws -> String { throw AylaError.unavailable }
 
     public func companyLogo(company: String, city: String?) async throws -> URL? { nil }
+
+    public func companyAbout(company: String, city: String?) async throws -> CompanyAbout? { throw AylaError.unavailable }
+
+    public func writeApplication(_ request: ApplicationWritingRequest) async throws -> ApplicationWriting { throw AylaError.unavailable }
 
     public func memories() async throws -> AylaMemories { throw AylaError.notSetUp }
     public func remember(
@@ -408,6 +417,61 @@ public struct SupabaseAylaService: AylaService {
               let url = URL(string: address), url.scheme == "https"
         else { return nil }
         return url
+    }
+
+    public func writeApplication(_ request: ApplicationWritingRequest) async throws -> ApplicationWriting {
+        guard let token = await accessToken() else { throw AylaError.notSignedIn }
+        var urlRequest = URLRequest(url: projectURL.appending(path: "functions/v1/ayla-document"), timeoutInterval: 60)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue(publishableKey, forHTTPHeaderField: "apikey")
+        urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        urlRequest.httpBody = try JSONEncoder().encode(request)
+        let data = try await perform(urlRequest, accepting: [200])
+        guard let writing = try? JSONDecoder().decode(ApplicationWriting.self, from: data) else { throw AylaError.unavailable }
+        return writing
+    }
+
+    public func companyAbout(company: String, city: String?) async throws -> CompanyAbout? {
+        guard let token = await accessToken() else { throw AylaError.notSignedIn }
+        var urlRequest = URLRequest(url: projectURL.appending(path: "functions/v1/company-about"), timeoutInterval: 40)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue(publishableKey, forHTTPHeaderField: "apikey")
+        urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        urlRequest.httpBody = try JSONEncoder().encode(LogoQuestion(company: company, city: city))
+        let data = try await perform(urlRequest, accepting: [200])
+        return Self.companyAbout(from: data)
+    }
+
+    /// The function's answer; sources that are not https are dropped, and without any source it is not shown.
+    static func companyAbout(from data: Data) -> CompanyAbout? {
+        struct Answer: Decodable {
+            struct Found: Decodable {
+                let about: String
+                let sector: String?
+                let size: String?
+                let locations: [String]?
+                let website: String?
+                let facts: [CompanyAbout.Fact]?
+                let sources: [Source]?
+            }
+            struct Source: Decodable { let title: String?; let url: String }
+            let about: Found?
+            let foundAt: Date?
+        }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        guard let answer = try? decoder.decode(Answer.self, from: data), let found = answer.about else { return nil }
+        let sources = (found.sources ?? []).compactMap { source -> CompanyAbout.Source? in
+            guard let url = URL(string: source.url), url.scheme == "https" else { return nil }
+            return CompanyAbout.Source(title: source.title ?? url.host() ?? source.url, url: url)
+        }
+        guard !sources.isEmpty else { return nil }
+        return CompanyAbout(
+            about: found.about, sector: found.sector, size: found.size, locations: found.locations ?? [], website: found.website,
+            facts: found.facts ?? [], sources: sources, foundAt: answer.foundAt ?? .now
+        )
     }
 
     private struct LogoQuestion: Encodable {

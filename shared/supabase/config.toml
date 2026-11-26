@@ -2,3 +2,14 @@ project_id = "pave"
 
 [functions.vault-review]
 verify_jwt = true
+
+# Opened by whoever has the code of a share, without an account; the code is the key.
+[functions.share-view]
+verify_jwt = false
+
+# A QR code image of a PAVE link, for the fair page; no account needed.
+[functions.qr]
+verify_jwt = false
+
+[functions.fair-inbox]
+verify_jwt = false

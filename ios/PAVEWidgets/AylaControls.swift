@@ -27,3 +27,17 @@ struct NewConversationControl: ControlWidget {
         .description("Open PAVE met een nieuw gesprek met Ayla.")
     }
 }
+
+/// A button in Control Center or on the Lock Screen that stops sharing: PAVE opens and asks whether to pause or take back
+/// everything, after your PIN and with Face ID.
+struct StopSharingControl: ControlWidget {
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: "nl.fontys.pave.stop-sharing") {
+            ControlWidgetButton(action: StopSharingIntent()) {
+                Label("Stop met delen", systemImage: "hand.raised")
+            }
+        }
+        .displayName("Stop met delen")
+        .description("Open PAVE en pauzeer of trek alles in wat je deelt.")
+    }
+}
