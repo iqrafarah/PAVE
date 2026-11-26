@@ -75,9 +75,11 @@ struct PlanDynamicBar: View {
                         .lineLimit(1)
                 } else {
                     PlanProgressRing(plan: plan, size: 24)
+                    // A plan name cut to a few letters says nothing: without room it goes, and the step stays.
                     ViewThatFits(in: .horizontal) {
-                        pillText.fixedSize()
-                        pillText
+                        pillText(withName: true).fixedSize()
+                        pillText(withName: false).fixedSize()
+                        pillText(withName: false)
                     }
                     if plan.totalCount > 0 {
                         Text(PlanMessages.shortProgress(plan))
@@ -101,16 +103,20 @@ struct PlanDynamicBar: View {
         .accessibilityAddTraits(.isButton)
     }
 
-    private var pillText: some View {
+    private func pillText(withName: Bool) -> some View {
         HStack(spacing: 5) {
-            Text(plan.name)
-                .textStyle(.caption)
-                .foregroundStyle(Color.inkMuted)
-                .lineLimit(1)
-            if let step = plan.currentStep {
-                Text("·")
+            if withName || plan.currentStep == nil {
+                Text(plan.name)
                     .textStyle(.caption)
                     .foregroundStyle(Color.inkMuted)
+                    .lineLimit(1)
+            }
+            if let step = plan.currentStep {
+                if withName {
+                    Text("·")
+                        .textStyle(.caption)
+                        .foregroundStyle(Color.inkMuted)
+                }
                 Text(step.title)
                     .textStyle(.chip)
                     .foregroundStyle(Color.ink)
