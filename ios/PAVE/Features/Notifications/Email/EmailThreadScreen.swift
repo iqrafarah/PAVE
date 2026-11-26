@@ -487,10 +487,7 @@ struct EmailThreadScreen: View {
     private func summaryCard(_ text: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.paveAccent)
-                    .accessibilityHidden(true)
+                PaveMark(size: 3)
                 Text("Samenvatting van Ayla")
                     .textStyle(.meta)
                     .foregroundStyle(Color.inkMuted)
@@ -696,10 +693,9 @@ struct EmailReplyField: View {
                         .accessibilityLabel("Ayla is bezig")
                 } else if let onAyla, hasText {
                     Button { onAyla(.improve) } label: {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(Color.paveAccent)
+                        PaveMark()
                             .frame(width: 30, height: 30)
+                            .contentShape(.rect)
                     }
                     .buttonStyle(.pave)
                     .padding(.vertical, 4)
@@ -711,10 +707,9 @@ struct EmailReplyField: View {
                         Button { onAyla(.suggestReply) } label: { Label("Stel een antwoord voor", systemImage: "text.bubble") }
                         Button { onAyla(.summarize) } label: { Label("Vat samen", systemImage: "list.bullet") }
                     } label: {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(Color.paveAccent)
+                        PaveMark()
                             .frame(width: 30, height: 30)
+                            .contentShape(.rect)
                     }
                     .menuOrder(.fixed)
                     .padding(4)
@@ -728,17 +723,12 @@ struct EmailReplyField: View {
                             if isSending {
                                 ProgressView().controlSize(.small).tint(.white)
                             } else {
-                                Image(.iconArrowRight)
-                                    .renderingMode(.template)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 14, height: 14)
-                                    .rotationEffect(.degrees(-90))
+                                Image(.iconSend)
                             }
                         }
-                        .foregroundStyle(Color.white)
                         .frame(width: 30, height: 30)
                         .background(Color.paveAccentFill, in: .circle)
+                        .shadow(color: .black.opacity(0.25), radius: 2)
                     }
                     .buttonStyle(.pave)
                     .disabled(!canSend)
@@ -768,11 +758,6 @@ struct EmailAttachMenu: View {
             Button(action: onVault) { Label { Text(AylaMessages.sourcesFromVault) } icon: { Image(.iconFolderSolid) } }
         } label: {
             Image(.iconPlus)
-                .renderingMode(.template)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 14, height: 14)
-                .foregroundStyle(Color.inkMuted)
                 .frame(width: 34, height: 34)
                 .background(Color.bubbleUser, in: .circle)
                 .padding(.bottom, 2)

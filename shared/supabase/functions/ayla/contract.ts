@@ -165,13 +165,15 @@ export interface AylaReply {
   accessRequest?: { id: string; purpose: string; categories: Category[] }
   proposedAction?: {
     id: string
-    kind: 'addVaultItem' | 'updatePlan' | 'draftProfile' | 'requestValidation'
+    kind: 'addVaultItem' | 'updatePlan' | 'createPlan' | 'draftProfile' | 'requestValidation'
     summary: string
     expiresAt: string
     /** With `addVaultItem`: what to put in the vault once the user confirms. */
     vaultItem?: VaultItemProposal
     /** With `updatePlan`: the step of the conversation's plan Ayla changed. It is saved already; the apps show it. */
     planStep?: { planId: string; stepId: string; status: 'upcoming' | 'active' | 'done' | 'skipped' }
+    /** With `createPlan`: the plan the user asked for. The app saves it with the user's own session and puts the chat in it. */
+    newPlan?: { name: string; goal: string; steps: { title: string; summary: string; kind: string }[] }
   }
   blocks: Block[]
   navigation?: { screen: Screen; itemId?: string }

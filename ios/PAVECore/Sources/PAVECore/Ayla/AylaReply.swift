@@ -47,14 +47,17 @@ public struct AylaReply: Codable, Equatable, Sendable {
         public var vaultItem: VaultItemProposal?
         /// With `updatePlan`: the step of the chat's plan Ayla changed. The server already saved it; the app shows it.
         public var planStep: PlanStepUpdate?
+        /// With `createPlan`: the plan the user asked for. Not saved yet; the app saves it.
+        public var newPlan: NewPlan?
 
-        public init(id: String, kind: AylaActionKind, summary: String, expiresAt: Date, vaultItem: VaultItemProposal? = nil, planStep: PlanStepUpdate? = nil) {
+        public init(id: String, kind: AylaActionKind, summary: String, expiresAt: Date, vaultItem: VaultItemProposal? = nil, planStep: PlanStepUpdate? = nil, newPlan: NewPlan? = nil) {
             self.id = id
             self.kind = kind
             self.summary = summary
             self.expiresAt = expiresAt
             self.vaultItem = vaultItem
             self.planStep = planStep
+            self.newPlan = newPlan
         }
 
         public func isOpen(at now: Date = .now) -> Bool { expiresAt > now }
@@ -70,6 +73,36 @@ public struct AylaReply: Codable, Equatable, Sendable {
             self.planId = planId
             self.stepId = stepId
             self.status = status
+        }
+    }
+
+    /// A plan Ayla made because the user asked for one: a name, the goal and the steps in order.
+    public struct NewPlan: Codable, Equatable, Sendable {
+        public struct Step: Codable, Equatable, Sendable {
+            public var title: String
+            public var summary: String
+            public var kind: PavePlanStep.Kind
+
+            public init(title: String, summary: String = "", kind: PavePlanStep.Kind = .general) {
+                self.title = title
+                self.summary = summary
+                self.kind = kind
+            }
+        }
+
+        public var name: String
+        public var goal: String
+        public var steps: [Step]
+
+        public init(name: String, goal: String = "", steps: [Step]) {
+            self.name = name
+            self.goal = goal
+            self.steps = steps
+        }
+
+        /// The template the plan starts from: the first step is the one to work on.
+        public var template: PavePlanTemplate {
+            PavePlanTemplate(id: "ayla", name: name, goal: goal, steps: steps.map { .init($0.title, summary: $0.summary, kind: $0.kind) })
         }
     }
 

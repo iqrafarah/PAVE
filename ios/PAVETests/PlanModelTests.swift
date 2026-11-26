@@ -35,6 +35,34 @@ struct PlanModelTests {
         #expect(await model.create(name: "   ") == nil)
     }
 
+    @Test func aPlanAylaMadeHasTheChatAndIsMadeOnce() async throws {
+        let model = await loadedModel([])
+        let action = AylaReply.ProposedAction(
+            id: "proposal", kind: .createPlan, summary: "", expiresAt: .now.addingTimeInterval(60),
+            newPlan: .init(name: "Stage vinden", goal: "Een stage", steps: [.init(title: "Cv bijwerken", kind: .document), .init(title: "Solliciteren")])
+        )
+        let plan = try #require(await model.create(from: action, conversationID: "chat", title: "Mijn stage"))
+        #expect(plan.steps.count == 2)
+        #expect(model.plan(containing: "chat")?.id == plan.id)
+        #expect(await model.create(from: action, conversationID: "chat") == nil)
+        #expect(model.plans.count == 1)
+    }
+
+    @Test func aNewPlanInAPlansChatTakesTheChatAlong() async throws {
+        let model = await loadedModel()
+        let old = try #require(model.plans.first)
+        model.attach(conversationID: "chat", to: old.id)
+        await eventually { model.plan(containing: "chat") != nil }
+        let action = AylaReply.ProposedAction(
+            id: "proposal", kind: .createPlan, summary: "", expiresAt: .now.addingTimeInterval(60),
+            newPlan: .init(name: "Nieuw", steps: [.init(title: "Een"), .init(title: "Twee")])
+        )
+        let plan = try #require(await model.create(from: action, conversationID: "chat"))
+        await eventually { model.plan(id: old.id)?.contains(conversationID: "chat") == false }
+        #expect(model.plan(id: old.id)?.contains(conversationID: "chat") == false)
+        #expect(model.plan(containing: "chat")?.id == plan.id)
+    }
+
     @Test func renamingAndDeleting() async throws {
         let model = await loadedModel()
         let id = try #require(model.plans.first?.id)

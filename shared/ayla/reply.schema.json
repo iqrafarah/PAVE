@@ -295,7 +295,7 @@
           "additionalProperties": false,
           "properties": {
             "id": { "type": "string" },
-            "kind": { "enum": ["addVaultItem", "updatePlan", "draftProfile", "requestValidation"] },
+            "kind": { "enum": ["addVaultItem", "updatePlan", "createPlan", "draftProfile", "requestValidation"] },
             "summary": { "type": "string" },
             "expiresAt": { "type": "string", "format": "date-time" },
             "planStep": {
@@ -307,6 +307,31 @@
                 "planId": { "type": "string" },
                 "stepId": { "type": "string" },
                 "status": { "enum": ["upcoming", "active", "done", "skipped"] }
+              }
+            },
+            "newPlan": {
+              "type": "object",
+              "description": "With createPlan: the plan the user asked for. The app saves it and puts the conversation in it.",
+              "required": ["name", "goal", "steps"],
+              "additionalProperties": false,
+              "properties": {
+                "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+                "goal": { "type": "string", "maxLength": 280 },
+                "steps": {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 8,
+                  "items": {
+                    "type": "object",
+                    "required": ["title", "summary", "kind"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "title": { "type": "string", "minLength": 1, "maxLength": 80 },
+                      "summary": { "type": "string", "maxLength": 280 },
+                      "kind": { "type": "string" }
+                    }
+                  }
+                }
               }
             },
             "vaultItem": {
