@@ -72,11 +72,42 @@ export function toPastMessage(message: StoredMessage): PastMessage {
   }
   // The cards under an answer are not in its text: without them a later "de tweede" or "meer zoals die" means nothing.
   const shown = shownVacancies(message.reply?.blocks)
-  const said = [message.text, shown, actionsNote(message.reply?.actions)].filter(Boolean).join('\n')
+  const said = [message.text, shown, actionsNote(message.reply?.actions), madePlanNote(message.reply)].filter(Boolean).join('\n')
   const asked = !!message.reply?.accessRequest
   if (!asked) return { role: message.role, text: said }
   const question = message.reply?.question?.text
   return { role: 'ayla', text: question ? `${said}\n${question}` : said, askedVault: true }
+}
+
+const MADE_PLAN = /\(Je maakte bij dit antwoord het plan "([^"]*)"/
+
+/** A plan she made with an answer, so she knows later that it is there and does not make it again. */
+function madePlanNote(reply: Partial<AylaReply> | null | undefined): string | null {
+  const name = reply?.proposedAction?.kind === 'createPlan' ? reply.proposedAction.newPlan?.name : undefined
+  return name ? `(Je maakte bij dit antwoord het plan "${name.replace(/"/g, "'")}": het staat bij Plan en dit gesprek hoort erbij. Maak het niet opnieuw.)` : null
+}
+
+/** "Maak een plan", "een nieuw plan", "stappenplan", "opnieuw beginnen": the user asks for a plan in so many words. */
+const ASKS_PLAN = /\b(stappenplan|plan\w*)\b/i
+const MAKES_PLAN = /\b(maak|maken|start|begin|zet)\w*\b[^.?!]{0,40}\b(stappen)?plan\b|\b(stappen)?plan\b[^.?!]{0,40}\b(maken|starten|beginnen|opzetten)\b/i
+const ASKS_NEW_PLAN = /\bplan\b[^.?!]{0,60}\bnieuwe?\b|\b(nieuwe?|ander|tweede|nog een|extra)\b[^.?!]{0,20}\bplan|\bopnieuw\b|\bplan\b[^.?!]{0,30}\b(opnieuw|overnieuw)\b|\b(new|another) plan\b/i
+
+/**
+ * Whether a plan the model wants to make may be made. The model fills newPlan too easily, turn after turn: a plan with
+ * this name that is already there, a plan made earlier in this conversation or a conversation that already belongs to
+ * a plan all mean no, unless the user asks for a new plan in so many words.
+ */
+export function mayMakePlan(name: string | undefined, text: string, history: PastMessage[], plans: string[] | undefined, inPlan: boolean): boolean {
+  if (ASKS_NEW_PLAN.test(text)) return true
+  const made = history.flatMap((message) => (message.role === 'ayla' ? [message.text.match(MADE_PLAN)?.[1]] : [])).filter((n): n is string => !!n)
+  const existing = [...made, ...(plans ?? []).map((line) => line.replace(/\s*\(.*$/, ''))]
+  if (name && existing.some((other) => sameWords(other, name))) return false
+  // Another plan beside the one of this conversation only when asked for now, in so many words.
+  if (inPlan || made.length) return MAKES_PLAN.test(text)
+  // Asked for now or just before, or a yes to her offer to make one.
+  const offered = history.at(-1)?.role === 'ayla' && ASKS_PLAN.test(history.at(-1)!.text)
+  const askedBefore = history.filter((message) => message.role === 'user').slice(-2).some((message) => ASKS_PLAN.test(message.text))
+  return ASKS_PLAN.test(text) || offered || askedBefore
 }
 
 /** What Ayla did in the app with an answer, so a later "zet het terug" or "doe dat nog eens" has something to point at. */
@@ -451,9 +482,17 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   // changes. The apps hear it through updatePlan, unless a proposal for the vault already takes that place: then they
   // pick it up when they load the plan again.
   // A plan the user asked for: the iPhone saves it with the user's own session and puts this chat in it.
-  const created = purpose || sure || pointsAtNothing || request.device !== 'phone' ? undefined : newPlanProposal(decided.newPlan, deps.newId(), new Date())
+  const proposed = purpose || sure || pointsAtNothing || request.device !== 'phone' ? undefined : newPlanProposal(decided.newPlan, deps.newId(), new Date())
+  const created = proposed && mayMakePlan(proposed.newPlan?.name, request.text, input.history, request.app?.plans, !!input.plan) ? proposed : undefined
   if (created) reply.proposedAction ??= created
-  const change = purpose || sure || pointsAtNothing ? undefined : planChange(decided.planStep, input.plan)
+  // Asked for a plan that is already there: this chat goes on with that plan instead of a second one beside it.
+  const sameAsListed = proposed && !created && !input.plan && !reply.actions?.length && ASKS_PLAN.test(request.text)
+    ? (request.app?.plans ?? []).map((line) => line.replace(/\s*\(.*$/, '')).find((name) => sameWords(name, proposed.newPlan?.name ?? ''))
+    : undefined
+  if (sameAsListed) reply.actions = [{ do: 'workOnPlan', target: sameAsListed }]
+  const marked = purpose || sure || pointsAtNothing ? undefined : planChange(decided.planStep, input.plan)
+  // A step is done or skipped because the user says so, never because the model thinks so after an "oké".
+  const change = marked && saysStepIs(marked.status, request.text, input.history) ? marked : undefined
   if (change && input.plan && deps.updatePlanStep && await deps.updatePlanStep(change.step.id, change.status)) {
     reply.proposedAction ??= planProposal(input.plan, change, deps.newId(), new Date())
   }
@@ -461,7 +500,9 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   const edit = purpose || sure || pointsAtNothing || request.device !== 'phone' || declinedOffer(input.history, request.text) || declinedPlanEdit(input.history, request.text)
     ? undefined
     : planEditProposal(output.planEdit, input.plan, deps.newId())
-  if (edit) reply.planEdit = edit
+  // Only when it is about the plan now: asked for, after a step that is done, or after she looked something up.
+  const aboutPlan = !!change || !!decided.educationSearch || !!decided.webLookup || ASKS_ABOUT_PLAN.test(request.text)
+  if (edit && aboutPlan) reply.planEdit = edit
   return reply
 }
 
@@ -677,6 +718,25 @@ const OFFERS = /^(wil je|zal ik|zullen we|moet ik|mag ik|kan ik|heb je zin|lijkt
  * The user says no, and nothing else, to something Ayla offered in the last turn. A no to an ordinary question
  * ("Heb je al een cv?") is an answer, and a no with more words says what the user wants instead.
  */
+const SAYS_DONE = /\b(klaar|af|gedaan|gehaald|afgerond|afgemaakt|geregeld|gelukt|binnen|voltooid|geslaagd|ingeleverd|verstuurd|done|finished|completed|vink\w*|afvinken|kla)\b|\b(heb|ben|is|zijn|have|has)\b[^.?!]*\b\w{0,5}ge\w{2,}(d|t|en)\b/i
+const SAYS_SKIP = /\b(sla\b|overslaan|skip\w*|sla .* over|laat .* zitten|niet (meer )?nodig|hoeft niet|schrap)\b/i
+const ASKS_STEP_DONE = /\b(klaar|afgerond|afvinken|gelukt|gedaan|gehaald|overslaan)\b[^.!]*\?/i
+/** Words about the plan itself: what is in it, what is missing, whether it still reaches the goal. */
+const ASKS_ABOUT_PLAN = /\b(plan\w*|stap\w*|doel\w*|nakijken|kijk .* na|klopt|mis\w*|ontbreekt|ontbreken|aanpassen|pas .* aan|wat moet|wat nog|nog nodig|haal ik|toevoegen|weghalen|volgorde|eerst)\b/i
+
+/**
+ * Whether the user's own words carry the status the model gave a step: "ik heb de cursus af", "die sla ik over", or
+ * Ja to her question whether it is done. Going on with another step needs no such words.
+ */
+export function saysStepIs(status: PlanStepStatus, text: string, history: PastMessage[]): boolean {
+  if (status === 'active') return true
+  const last = history.at(-1)
+  if (saysYes(text) && last?.role === 'ayla' && ASKS_STEP_DONE.test(last.text)) return true
+  if (saysNo(text) && !/\b(niet (meer )?nodig|hoeft niet)\b/i.test(text)) return false
+  // "Ik heb het nog niet gedaan", "bijna klaar": not done.
+  return status === 'done' ? SAYS_DONE.test(text) && !/\b(niet|geen|nooit|bijna|not)\b/i.test(text) : SAYS_SKIP.test(text)
+}
+
 /** "Nee, laat maar zo" right after Ayla proposed changing the plan: the plan stays as it is. */
 export function declinedPlanEdit(history: PastMessage[], text: string): boolean {
   const last = history.at(-1)
@@ -708,17 +768,18 @@ export function endsWithOpenQuestion(text: string): boolean {
   return /^(wat|welke?|hoe|wanneer|waar\w*|wie|waarom|hoeveel|hoelang)\b/i.test(last)
 }
 
-/** The text without its last question when the question under it asks the same, so the user does not read it twice. */
+/**
+ * One question at a time: with a question under the answer, the text does not end on a question of its own, whether
+ * it asks the same in other words or something else ("Zal ik zoeken?" above "Waar wil je mee beginnen?"). What she
+ * says before it stays as it was written, lists and all.
+ */
 export function withoutRepeatedQuestion(text: string, question: string): string {
-  const words = (s: string) => new Set(s.toLocaleLowerCase('nl').split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 2))
-  const asked = words(question)
-  if (asked.size === 0) return text
-  const sentences = text.trim().split(/(?<=[.!?])\s+|\n+/).map((s) => s.trim()).filter(Boolean)
+  if (!question.trim()) return text
+  const whole = text.trim()
+  const sentences = whole.split(/(?<=[.!?])\s+|\n+/).map((s) => s.trim()).filter(Boolean)
   const last = sentences.at(-1) ?? ''
   if (sentences.length < 2 || !last.endsWith('?')) return text
-  const said = words(last)
-  const shared = [...asked].filter((w) => said.has(w)).length
-  return shared / Math.min(asked.size, said.size) >= 0.7 ? sentences.slice(0, -1).join(' ') : text
+  return whole.slice(0, whole.lastIndexOf(last)).trim()
 }
 
 /** Whether an invitation from the fair the app listed is meant: a word of the employer's name in the target. */

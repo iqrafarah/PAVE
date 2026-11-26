@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { answer } from '../brain.ts'
-import { describeEducations, type Education, fromEducationAnswer } from '../educations.ts'
+import { describeEducations, type Education, fromEducationAnswer, withoutMarkup } from '../educations.ts'
 
 const ids = () => { let n = 0; return () => `id_${++n}` }
 
@@ -69,4 +69,9 @@ test('no cards on the Watch, and a failed search is said instead of shown', asyn
   assert.deepEqual(failed.blocks, [])
   assert.match(fake.calls[1].at(-1)!.content, /lukte nu niet/)
   assert.match(describeEducations({ what: 'x', where: '' }, []), /geen opleidingen gevonden/)
+})
+
+test('a page\'s summary reads as words, without the marks of its layout', () => {
+  assert.equal(withoutMarkup('## Toelatingseisen > Piloten dragen veel verantwoordelijkheid. **Let op**: zie [de eisen](https://example.nl/eisen) [...]'), 'Toelatingseisen. Piloten dragen veel verantwoordelijkheid. Let op: zie de eisen')
+  assert.equal(withoutMarkup('- Wiskunde B\n- Natuurkunde'), 'Wiskunde B Natuurkunde')
 })

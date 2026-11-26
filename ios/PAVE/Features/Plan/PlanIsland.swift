@@ -82,6 +82,10 @@ struct PlanIsland: View {
     /// From the right edge of the screen to the right side of the camera, for the side island.
     private var trailingRoom: CGFloat { max(0, screenWidth - island.maxX) }
 
+    /// How far the side island tucks in behind the camera: to its middle. Black all the way under the camera made iOS
+    /// draw a grey shade around it in the column.
+    private var sideTuck: CGFloat { island.width / 2 }
+
     var body: some View {
         ZStack(alignment: isSide ? .topTrailing : .top) {
             if isExpanded {
@@ -96,7 +100,7 @@ struct PlanIsland: View {
             } else {
                 blackIsland
                     .padding(.top, island.minY)
-                    .padding(.trailing, isSide ? trailingRoom - Self.reachSide : 0)
+                    .padding(.trailing, isSide ? trailingRoom + island.width - sideTuck - Self.reachSide : 0)
                     .transition(.scale(scale: 0.85, anchor: anchor).combined(with: .opacity))
             }
         }
@@ -119,8 +123,8 @@ struct PlanIsland: View {
         // run into each other.
         let height = isSide ? island.width : island.height
         let radius: CGFloat = notice == nil ? height / 2 : 34
-        let compactWidth = isSide ? island.width + Self.sideReach : island.width + 2 * Self.side
-        let noticeWidth = isSide ? min(island.maxX - 12, 380) : screenWidth - 24
+        let compactWidth = isSide ? sideTuck + Self.sideReach : island.width + 2 * Self.side
+        let noticeWidth = isSide ? min(island.minX + sideTuck - 12, 380) : screenWidth - 24
         return Group {
             if notice == nil {
                 compact
@@ -200,7 +204,7 @@ struct PlanIsland: View {
                         .contentTransition(.numericText())
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
-                    Spacer(minLength: island.width)
+                    Spacer(minLength: sideTuck + 4)
                 }
                 .padding(.leading, 12)
                 .frame(height: island.width)
@@ -274,7 +278,7 @@ struct PlanIsland: View {
         }
         .padding(.leading, 18)
         // Clear of the camera: below it at the top, left of it in the column.
-        .padding(.trailing, isSide ? island.width + 12 : 18)
+        .padding(.trailing, isSide ? sideTuck + 12 : 18)
         .padding(.top, isSide ? 10 : island.height + 6)
         .padding(.bottom, 10)
     }

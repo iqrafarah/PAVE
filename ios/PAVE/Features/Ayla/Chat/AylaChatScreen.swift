@@ -64,6 +64,8 @@ struct AylaChatScreen: View {
     @State private var orbLandings = 0
     @State private var orbSpringBacks = 0
     @State private var voiceBarHeight: CGFloat = 0
+    /// The buttons that take the bar's place for a question while talking; with long answers they stand above each other.
+    @State private var voiceChoicesHeight: CGFloat = 0
     /// Where the line under the large orb is, so the field leaves it clear.
     @State private var captionFrame = CGRect.null
     @State private var openVacanciesID: String?
@@ -867,6 +869,21 @@ struct AylaChatScreen: View {
         }
     }
 
+    /// Where the conversation shows: it fades out just under the header, and while talking above the room of the orb.
+    private func transcriptMask(bottomMargin: CGFloat) -> some View {
+        VStack(spacing: 0) {
+            LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
+                .frame(height: 24)
+            Color.black
+            if isTalking {
+                LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
+                    .frame(height: 36)
+                Color.clear
+                    .frame(height: max(0, bottomMargin - 36))
+            }
+        }
+    }
+
     private func transcript(bottomMargin: CGFloat) -> some View {
         ScrollView {
             VStack(spacing: 0) {
@@ -903,6 +920,8 @@ struct AylaChatScreen: View {
                 .accessibilityHidden(true)
         }
         .scrollEdgeEffectStyle(.soft, for: .vertical)
+        // Nothing reads through her name at the top, and while talking nothing shows behind the orb and the bar.
+        .mask { transcriptMask(bottomMargin: bottomMargin) }
         .scrollPosition($scrollPosition)
         .defaultScrollAnchor(.bottom)
         .defaultScrollAnchor(.bottom, for: .alignment)
@@ -916,6 +935,7 @@ struct AylaChatScreen: View {
         .onChange(of: model.entries.count) { scrollToBottom() }
         .onChange(of: openVacanciesID) { scrollToBottom() }
         .onChange(of: bottomBarHeight) { scrollToBottom() }
+        .onChange(of: plans?.editDecisions.count) { scrollToBottom() }
         // The keyboard is still on its way down when the question is sent, so the first scroll can land too high and
         // leave the last message under the "Ayla denkt na" blocks: once more when that has settled.
         .onChange(of: model.phase) { _, phase in
@@ -1264,7 +1284,8 @@ struct AylaChatScreen: View {
                 // (the vacancy cards and their buttons), and would take every tap meant for that.
                 .allowsHitTesting(orbMotion.isLow)
                 .padding(.top, 36)
-                .padding(.bottom, 8)
+                // Choices higher than the bar push the orb up, so it never lies over them.
+                .padding(.bottom, 8 + (voiceChoices.isEmpty ? 0 : max(0, voiceChoicesHeight - voiceBarHeight)))
                 .accessibilityHidden(true)
 
             AylaVoiceBar(
@@ -1297,6 +1318,7 @@ struct AylaChatScreen: View {
                     ) { choice in
                         chooseWhileTalking(choice)
                     }
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { voiceChoicesHeight = $0 }
                     .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .bottom)))
                 }
             }

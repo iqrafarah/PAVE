@@ -17,6 +17,18 @@ public struct AylaEducation: Codable, Equatable, Hashable, Sendable, Identifiabl
     public var url: URL
     public var summary: String?
 
+    /// The summary as words to read: a page's layout marks ("## Kop > tekst", "**vet**") are not shown.
+    public var readableSummary: String? {
+        guard let summary else { return nil }
+        let text = summary
+            .replacing(#/(^|\s)#{1,6}\s+/#) { $0.output.1 }
+            .replacing(#/\*\*|__|`/#, with: "")
+            .replacing(#/\s[>|]\s/#, with: ". ")
+            .replacing(#/\s+/#, with: " ")
+            .trimmingCharacters(in: .whitespaces)
+        return text.isEmpty ? nil : text
+    }
+
     public init(id: String, name: String, school: String, level: Level? = nil, city: String? = nil, duration: String? = nil, url: URL, summary: String? = nil) {
         self.id = id
         self.name = name

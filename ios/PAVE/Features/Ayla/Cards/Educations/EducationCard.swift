@@ -29,7 +29,7 @@ struct EducationCard: View {
                 }
                 .padding(.top, 4)
             }
-            if let summary = education.summary, !summary.isEmpty {
+            if let summary = education.readableSummary {
                 Text(verbatim: summary)
                     .textStyle(.caption)
                     .foregroundStyle(Color.ink)

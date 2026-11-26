@@ -211,6 +211,14 @@ final class PlanModel {
         guard let made = action.newPlan, !madeFromAyla.contains(action.id),
               !plans.contains(where: { $0.metadata[Self.aylaProposalKey] == action.id }) else { return nil }
         guard let name = PavePlan.cleanName(made.name) else { return nil }
+        // A plan with this name that is still going is the plan she means: never a second one beside it. The chat
+        // joins it when it has no plan yet.
+        if let same = plans.first(where: { !$0.isFinished && Self.sameName($0.name, name) }) {
+            if let conversationID, plan(containing: conversationID) == nil {
+                attach(conversationID: conversationID, title: title, to: same.id)
+            }
+            return nil
+        }
         madeFromAyla.insert(action.id)
         defer { madeFromAyla.remove(action.id) }
         var template = made.template
@@ -226,6 +234,11 @@ final class PlanModel {
         }
         if let old, let conversationID { detach(conversationID: conversationID, from: old.id) }
         return plan
+    }
+
+    private static func sameName(_ a: String, _ b: String) -> Bool {
+        func key(_ text: String) -> String { text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil).filter { $0.isLetter || $0.isNumber } }
+        return key(a) == key(b)
     }
 
     private static let aylaProposalKey = "aylaProposal"

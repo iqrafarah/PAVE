@@ -55,3 +55,10 @@ struct PlainYesTests {
         #expect("en een nieuwe starten".firstMatch(of: AylaVaultOffer.startsOver) != nil)
     }
 }
+
+struct EducationSummaryTests {
+    @Test func layoutMarksOfAPageAreNotShown() {
+        let education = AylaEducation(id: "1", name: "Toelatingseisen", school: "KLM Flight Academy", url: URL(string: "https://example.nl")!, summary: "## Toelatingseisen > Piloten dragen **veel** verantwoordelijkheid.")
+        #expect(education.readableSummary == "Toelatingseisen. Piloten dragen veel verantwoordelijkheid.")
+    }
+}

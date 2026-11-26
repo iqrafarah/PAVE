@@ -30,6 +30,9 @@ struct PlanTimeline<Trailing: View>: View {
                     .foregroundStyle(step.status == .upcoming || step.status == .skipped ? Color.inkMuted : Color.ink)
                     .strikethrough(step.status == .skipped, color: Color.inkMuted)
                     .multilineTextAlignment(.leading)
+                    // The whole title: a step you cannot read is a step you cannot do.
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
                 if showsSummary, !step.summary.isEmpty {
                     Text(step.summary)
                         .textStyle(.caption)
