@@ -1,5 +1,6 @@
 import { ACTIONS, type ActionKind, type ActionResult, type AppAction, type AppState, needsConfirmation, type AylaReply, type AylaRequest, type Block, type Status, CATEGORIES, type Category, type Context, type Device, type RequirementLink, type Screen, SCREENS, type Vacancy, type VacancyContext } from './contract.ts'
 import type { AllowedVault } from './vault.ts'
+import { describeEducations, type Education, EDUCATION_OUTPUT_SCHEMA, type SearchEducations } from './educations.ts'
 import { cleanPurpose, CONSENT_QUESTION_CHOICES, grantsWholeVault, consentChoices, consentQuestion, mayLookInVault, saysNo, saysYes, type VaultConsent, vaultConsent, vaultRevoked, revokesVault } from './consent.ts'
 import { cleanMemories, type Memory, type MemorySuggestion, usedNotes } from './memory.ts'
 import type { ContentPart, ChatMessage, Complete, Effort } from './openrouter.ts'
@@ -39,6 +40,8 @@ export interface BrainDeps {
   complete: Complete
   /** Missing when no source for vacancies is configured. */
   searchVacancies?: SearchVacancies
+  /** Missing when studies and courses cannot be looked up. */
+  searchEducations?: SearchEducations
   newId: () => string
   /** Whether a site the model named for a company really is there; without it no logos are shown. */
   siteExists?: (domain: string) => Promise<boolean>
@@ -107,6 +110,7 @@ interface ModelOutput {
   question: { text: string; choices: { id: string; label: string }[] } | null
   navigation: { screen: string; item?: number | null } | null
   vacancySearch: { what: string; where: string; also: string | null } | null
+  educationSearch: { what: string; where: string } | null
   vacancyMatches: unknown
   vacancySites: unknown
   title: string | null
@@ -301,7 +305,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
       // Under found vacancies she always asks to compare them with the vault, until the user answered that.
       askVault: fit === 'ask' && items.length ? cleanPurpose(second.askVault) ?? ASK_FOR_MATCHES : fit === 'ask' ? second.askVault : null,
       usedVaultItems: [...list(decided.usedVaultItems), ...list(second.usedVaultItems)],
-      vacancySearch: null, navigation: null, vaultItem: null, planStep: null, newPlan: null, actions: [], continues: false,
+      vacancySearch: null, educationSearch: null, navigation: null, vaultItem: null, planStep: null, newPlan: null, actions: [], continues: false,
     }
     if (items.length && request.device !== 'watch') {
       // What fits and what is missing only with the vault allowed, and only what the vacancy text really says. The
@@ -311,6 +315,30 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
       const cards = canMatch ? bestFirst(withMatches(withLogo, output.vacancyMatches)) : withLogo.map((f) => f.vacancy)
       blocks.push({ type: 'vacancies', items: cards, search: { what: terms.what, where: terms.where, ...(terms.also ? { also: terms.also } : {}) } })
     }
+  }
+
+  // Studies and courses: the cards come from the search, her words about them from a second, short answer. Not on the
+  // Watch, which has no room for cards; and a vacancy search in the same answer goes first.
+  if (decided.educationSearch && !decided.vacancySearch && request.device !== 'watch' && !task) {
+    const terms = decided.educationSearch
+    input.onStatus?.({ kind: 'educationSearch', what: terms.what, where: terms.where })
+    let found: Education[] | null = null
+    try {
+      found = deps.searchEducations ? await deps.searchEducations(terms.what, terms.where) : null
+    } catch (error) {
+      if (input.signal?.aborted) throw error
+    }
+    if (found?.length) blocks.push({ type: 'educations', items: found, search: terms })
+    messages.push({ role: 'assistant', content: JSON.stringify(output) }, { role: 'user', content: describeEducations(terms, found) })
+    try {
+      const second = parseOutput((await deps.complete(messages, { ...options, schema: EDUCATION_OUTPUT_SCHEMA, maxTokens: 500 })).content)
+      if (second.text.trim()) output = { ...output, text: second.text.trim() }
+    } catch (error) {
+      if (input.signal?.aborted) throw error
+    }
+    output = { ...output, educationSearch: null, actions: [], navigation: null }
+  } else if (decided.educationSearch && request.device === 'watch') {
+    output = { ...output, text: EDUCATIONS_ON_PHONE_TEXT, educationSearch: null }
   }
 
   const reply = toReply(output, blocks, input.conversationId, deps.newId(), vault)
@@ -388,6 +416,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
 }
 
 const ALREADY_SO_TEXT = 'Dat staat al zo.'
+const EDUCATIONS_ON_PHONE_TEXT = 'Opleidingen zoeken doe ik op je iPhone. Vraag het daar, dan zie je ze met een link naar de school.'
 
 /** Words that ask for work or a search, also misspelt ("vacaturs zoekn") or as a follow-up ("ook in Utrecht"). */
 const WORK_REQUEST = /\b(vacat\w*|zoek\w*|banen|baan|bijbaan|jobs?|stage\w*|werk|werken|functies?|sollicit\w*|parttime|fulltime|meer|andere|ook in|ook als|in de buurt)\b/i
@@ -525,7 +554,7 @@ function nudgeFor(output: ModelOutput, turn: { searches: boolean; aboutWork: boo
       fixedBy: (again) => !!again.vacancySearch || (turn.mayAsk && !!cleanPurpose(again.askVault)),
     }
   }
-  const does = list(output.actions).length > 0 || !!output.navigation || !!output.vaultItem || !!output.newPlan || !!output.vacancySearch || list(output.memories).length > 0
+  const does = list(output.actions).length > 0 || !!output.navigation || !!output.vaultItem || !!output.newPlan || !!output.vacancySearch || !!output.educationSearch || list(output.memories).length > 0
   if (turn.device === 'phone' && output.intent === 'act' && !does) {
     return {
       says: 'Je zegt dat je iets doet in de app, maar actions is leeg: er gebeurt nu niets. Kun je het zelf, zet de stappen dan in actions en zeg kort wat je doet. Kun je het niet zelf, zet intent dan op "answer" en zeg eerlijk waar de gebruiker het vindt.',
@@ -1045,6 +1074,9 @@ function parseOutput(raw: string): ModelOutput {
           also: typeof json.vacancySearch.also === 'string' && json.vacancySearch.also.trim() ? json.vacancySearch.also.trim() : null,
         }
         : null,
+      educationSearch: json.educationSearch && typeof json.educationSearch.what === 'string' && json.educationSearch.what.trim()
+        ? { what: json.educationSearch.what.trim().slice(0, 120), where: String(json.educationSearch.where ?? '').trim().slice(0, 80) }
+        : null,
       vacancyMatches: Array.isArray(json.vacancyMatches) ? json.vacancyMatches : [],
       vacancySites: Array.isArray(json.vacancySites) ? json.vacancySites : [],
       title: typeof json.title === 'string' ? json.title : null,
@@ -1059,7 +1091,7 @@ function parseOutput(raw: string): ModelOutput {
       askVault: typeof json.askVault === 'string' ? json.askVault : null,
     }
   }
-  const empty: ModelOutput = { intent: null, text: '', question: null, navigation: null, vacancySearch: null, vacancyMatches: [], vacancySites: [], title: null, memories: [], usedMemories: [], usedVaultItems: [], vaultItem: null, planStep: null, newPlan: null, askVault: null, actions: [], continues: false }
+  const empty: ModelOutput = { intent: null, text: '', question: null, navigation: null, vacancySearch: null, educationSearch: null, vacancyMatches: [], vacancySites: [], title: null, memories: [], usedMemories: [], usedVaultItems: [], vaultItem: null, planStep: null, newPlan: null, askVault: null, actions: [], continues: false }
   // Plain words instead of JSON: that is the answer. JSON that was cut off (a long answer ran out of room) never
   // shows as it is: what was complete is kept (her text, a search she asked for, the vacancies she had compared),
   // the rest is left out.

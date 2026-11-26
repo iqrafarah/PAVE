@@ -1,3 +1,4 @@
+import type { Education } from './educations.ts'
 // The Ayla contract, see shared/ayla/reply.schema.json.
 import type { MemoryCategory } from './memory.ts'
 
@@ -128,6 +129,7 @@ export type Status =
   | { kind: 'vacancySearch'; what: string; where: string; also?: string }
   /** chosen: how many vault items the user picked for this conversation, when that is what Ayla compares with. */
   | { kind: 'vacancyMatch'; count: number; withVault: boolean; chosen?: number }
+  | { kind: 'educationSearch'; what: string; where: string }
 
 export interface RequirementLink { skill: string; requirement: string }
 
@@ -154,6 +156,8 @@ export type Block =
   /** search: what Ayla searched for, so the apps can show it and a later turn can search the same again. */
   | { type: 'vacancies'; items: Vacancy[]; search?: { what: string; where: string; also?: string } }
   | { type: 'skillSuggestions'; itemId: string; skills: { name: string; reason: string }[] }
+  /** Studies and courses found on the web, each with its own page. */
+  | { type: 'educations'; items: Education[]; search: { what: string; where: string } }
   | { type: 'cv'; profile: string; experience: { title: string; organisation: string; period: string; description?: string }[]; skills: string[] }
 
 /** An item Ayla proposes for the vault, in the fields of `vault_items`; dates as YYYY-MM-DD. */

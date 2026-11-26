@@ -13,6 +13,7 @@ const SENTENCES: [nl: string, en: string, pap: string][] = [
   ['Kies zelf', 'Choose myself', 'Skohe mi mes'],
   ['Sorry, dat lukte me even niet. Wil je het nog een keer vragen?', "Sorry, that didn't work just now. Could you ask again?", 'Despensá, esei no a bai awor. Bo por puntra di nobo?'],
   ['Dit heb ik gevonden. Er meer over vertellen lukte me nu niet; vraag gerust door over een van deze vacatures.', "This is what I found. I couldn't tell you more about it just now; feel free to ask about any of these vacancies.", 'Esaki mi a haña. Mi no por a konta mas awor; puntra tranki tokante un di e vakaturanan aki.'],
+  ['Opleidingen zoeken doe ik op je iPhone. Vraag het daar, dan zie je ze met een link naar de school.', "I look up studies on your iPhone. Ask me there and you'll see them with a link to the school.", 'Mi ta buska estudio riba bo iPhone. Puntra mi aya, i bo ta mira nan ku un link pa e skol.'],
   ['Dat staat al zo.', "That's already set.", 'Esei ta asina kaba.'],
   ['Wat bedoel je precies? Zeg even wat ik moet doen, dan regel ik het.', 'What do you mean exactly? Tell me what to do and I will take care of it.', 'Kiko bo ke men eksaktamente? Bisa mi kiko mi mester hasi, i mi ta regla esaki.'],
   ['Dat onthoud ik niet, dus er is niets om te vergeten.', "I don't remember that, so there is nothing to forget.", 'Mi no ta kòrda esei, p\'esei no tin nada pa lubidá.'],

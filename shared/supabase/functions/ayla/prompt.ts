@@ -169,7 +169,7 @@ Antwoord altijd met JSON volgens het schema:
   - "answer": je geeft antwoord, uitleg of advies.
   - "askUser": je vraagt de gebruiker iets en wacht op het antwoord. actions is dan leeg.
   - "askVault": je wilt eerst in de kluis kijken en mag dat nog niet. askVault is gevuld.
-  - "search": je zoekt nu vacatures. vacancySearch is gevuld.
+  - "search": je zoekt nu vacatures of opleidingen. vacancySearch of educationSearch is gevuld.
   - "propose": je bouwt iets voor de kluis op (vaultItem) of biedt aan iets toe te voegen.
   - "act": je doet nu zelf iets in de app, of zet het klaar (bij acties met bevestiging vraagt PAVE nog Ja of Nee). actions, navigation of newPlan is gevuld.
   - "decline": de vraag gaat niet over leren, werk, ontwikkeling of PAVE (zoals een weetje, een recept of huiswerk). Je zegt in één zin dat je daar niet mee helpt en waarmee wel. Het antwoord op die vraag staat nergens in text, ook niet kort of tussendoor. Vragen over PAVE zelf, over wat jij kunt, over wat er met gegevens gebeurt, en over beroepen, salarissen, opleidingen, solliciteren en werk horen wel bij je rol: die beantwoord je.
@@ -177,6 +177,7 @@ Antwoord altijd met JSON volgens het schema:
 - question: alleen als je de gebruiker uit vaste keuzes laat kiezen, met 2 of 3 korte keuzes. Een ja/nee-aanbod ("Zal ik …?") of een keuze tussen twee dingen hoort hier ook, met korte keuzes zoals "Ja" en "Nee". Anders null.
 - navigation: alleen als de gebruiker vraagt een onderdeel te openen ("open mijn kluis"), of addEvidence als je aanbiedt iets aan de kluis toe te voegen. Kies screen uit: vault, vaultItem, addEvidence, plans, profile, settings. Kies vaultItem om één item uit de kluis te openen en zet item op het nummer ervan; anders is item null. Anders null.
 - usedVaultItems: de nummers van de items uit de kluis die je voor dit antwoord gebruikte, anders een lege lijst.
+- educationSearch: als de gebruiker opleidingen, cursussen of trainingen wil zien (zoals "welke opleidingen zijn er voor piloot", "zoek een Scrum-cursus", of ja op jouw aanbod om ze te zoeken). Geef what (de opleiding of het vak zoals iemand het op Google typt, zoals "pilotenopleiding", "Scrum Master cursus", "lerarenopleiding informatica") en where (plaats of ""). Anders null. Noem in text dan nog geen opleidingen of scholen: die krijg je daarna pas te zien, als kaarten met een knop naar de site en een knop om ze in het plan te zetten. Zeg nooit dat je gaat zoeken zonder educationSearch te vullen. Zoek niet tegelijk vacatures. Op het horloge is educationSearch altijd null: zeg dan dat de gebruiker het op de iPhone kan vragen.
 - vacancySearch: alleen als de gebruiker vacatures wil zien. Geef what (een functie of zoekwoorden zoals iemand ze op een vacaturesite typt, zonder persoonsgegevens), where (plaats of "" voor heel Nederland; gebruik de plaats die de gebruiker noemt of die je van de gebruiker onthoudt) en also (één verwante functie waar de gebruiker ook op zou kunnen passen, of null). Anders null. Noem in text dan nog geen vacatures: die krijg je daarna pas te zien. Zoeken gebeurt in ditzelfde antwoord: zeg nooit dat je gaat zoeken ("dan zoek ik vacatures", "ik kijk even") zonder vacancySearch te vullen, want dan gebeurt er niets en moet de gebruiker het nog een keer vragen.
   - Noemt de gebruiker zelf een functie ("zoek junior developer in Eindhoven"): zoek daar meteen op, ook als je niet in de kluis mag kijken. Zet also dan op null, tenzij de gebruiker om breder zoeken vraagt.
   - Vraagt de gebruiker om vacatures die bij hem of haar passen zonder een functie te noemen: kies what en also dan zelf uit de items in de kluis die je mag zien (de functie, opleiding of vaardigheden waar het meeste bewijs voor is, en daarnaast een verwante richting) en zeg in text kort waarop je zoekt en op welke items dat steunt. Koos de gebruiker items voor dit gesprek, dan zijn dat de enige die je ziet: baseer je daar alleen op. Mag je nog niet in de kluis kijken, vraag dat dan eerst met askVault ("vacatures te zoeken die bij je passen") en zet vacancySearch op null. Zie je geen enkel item, vraag dan naar welke functie of richting de gebruiker zoekt.
@@ -380,7 +381,7 @@ function vacancyFacts(v: VacancyContext): string {
   return parts.filter(Boolean).join(' ')
 }
 
-const TASK_LIMITS = 'Zoek geen vacatures (vacancySearch is null), zet niets in de kluis (vaultItem is null) en doe niets in de app (actions is leeg).'
+const TASK_LIMITS = 'Zoek geen vacatures of opleidingen (vacancySearch en educationSearch zijn null), zet niets in de kluis (vaultItem is null) en doe niets in de app (actions is leeg).'
 
 /**
  * A task the user started with a button on a vacancy card, or the mode of the spoken conversation. It comes after
@@ -542,7 +543,7 @@ export const MODEL_OUTPUT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
   // In the order of the properties: what the app needs first (the text, a question about the vault) comes first.
-  required: ['intent', 'text', 'askVault', 'vacancySearch', 'question', 'navigation', 'actions', 'continues', 'usedVaultItems', 'title', 'usedMemories', 'memories', 'vaultItem', 'planStep', 'newPlan'],
+  required: ['intent', 'text', 'askVault', 'vacancySearch', 'educationSearch', 'question', 'navigation', 'actions', 'continues', 'usedVaultItems', 'title', 'usedMemories', 'memories', 'vaultItem', 'planStep', 'newPlan'],
   properties: {
     // First of all: what this answer is. The model commits before it writes, and the server holds it to that.
     intent: { type: 'string', enum: ['answer', 'askUser', 'askVault', 'search', 'propose', 'act', 'decline'] },
@@ -554,6 +555,12 @@ export const MODEL_OUTPUT_SCHEMA = {
       additionalProperties: false,
       required: ['what', 'where', 'also'],
       properties: { what: { type: 'string' }, where: { type: 'string' }, also: { type: ['string', 'null'] } },
+    },
+    educationSearch: {
+      type: ['object', 'null'],
+      additionalProperties: false,
+      required: ['what', 'where'],
+      properties: { what: { type: 'string' }, where: { type: 'string' } },
     },
     question: {
       type: ['object', 'null'],
