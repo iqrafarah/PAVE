@@ -191,9 +191,9 @@ struct EmailThreadScreen: View {
     private func moreMenu(_ thread: EmailThread) -> some View {
         Menu {
             Section {
-                Button { askAyla(.summarize) } label: { Label("Laat Ayla samenvatten", systemImage: "sparkles") }
+                Button { askAyla(.summarize) } label: { Label("Laat Ayla samenvatten", tinted: .iconAyla) }
                     .disabled(ayla?.service == nil || aylaWorking != nil)
-                Button { askAyla(.suggestReply) } label: { Label("Laat Ayla een antwoord voorstellen", systemImage: "text.bubble.fill") }
+                Button { askAyla(.suggestReply) } label: { Label("Laat Ayla een antwoord voorstellen", tinted: .iconAyla) }
                     .disabled(ayla?.service == nil || aylaWorking != nil)
             }
             Section {

@@ -173,18 +173,18 @@ struct PlanScreen: View {
             Button {
                 deletedPlan = plan
             } label: {
-                Label(PlanMessages.delete, systemImage: "trash")
+                Label(PlanMessages.delete, tinted: .iconTrashSolid)
             }
             .tint(.red)
         }
         .contextMenu {
-            Button(PlanMessages.rename, systemImage: "pencil") { editedPlan = plan }
+            Button { editedPlan = plan } label: { Label(PlanMessages.rename, tinted: .iconPencilSolid) }
             if !plan.isFinished {
-                Button(PlanMessages.newConversation, systemImage: "square.and.pencil") { actions.start(plan, plan.currentStep) }
+                Button { actions.start(plan, plan.currentStep) } label: { Label(PlanMessages.newConversation, tinted: .iconChatBubbleLeftEllipsisSolid) }
             }
             finishButton(plan)
             Divider()
-            Button(PlanMessages.delete, systemImage: "trash", role: .destructive) { deletedPlan = plan }
+            Button(role: .destructive) { deletedPlan = plan } label: { Label(PlanMessages.delete, tinted: .iconTrashSolid) }
         }
     }
 
@@ -194,7 +194,7 @@ struct PlanScreen: View {
             Button {
                 model.reopen(plan.id)
             } label: {
-                Label(PlanMessages.reopen, systemImage: "arrow.uturn.backward")
+                Label(PlanMessages.reopen, tinted: .iconArrowUturnLeftSolid)
             }
             .tint(.gray)
         } else {
@@ -202,7 +202,7 @@ struct PlanScreen: View {
                 PaveHaptics.success()
                 model.complete(plan.id)
             } label: {
-                Label(PlanMessages.complete, systemImage: "checkmark")
+                Label(PlanMessages.complete, tinted: .iconCheckCircleSolid)
             }
             .tint(Color.paveAccent)
         }

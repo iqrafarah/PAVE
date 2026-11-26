@@ -252,7 +252,7 @@ struct PlanChatsMenu: View {
     var body: some View {
         let others = conversations.filter { $0.id != currentConversationID }
         Menu {
-            Button(PlanMessages.newConversation, systemImage: "square.and.pencil", action: onNew)
+            Button(action: onNew) { Label(PlanMessages.newConversation, tinted: .iconChatBubbleLeftEllipsisSolid) }
             if !others.isEmpty {
                 Section(PlanMessages.conversations) {
                     ForEach(Array(others.enumerated()), id: \.element.id) { index, chat in
