@@ -1867,6 +1867,18 @@ struct AylaChatScreen: View {
         guard let question = model.question(for: task, about: vacancies) else { return }
         PaveHaptics.tap(.medium)
         if task == .compare { compareIDs = [] }
+        // With AirPods in, practising is talking: Ayla asks out loud, you answer out loud, hands free.
+        if task == .interview, !isTalking, AylaHeadGestures.hasBluetoothHeadphones {
+            startVoice()
+            Task {
+                for _ in 0..<30 where voice?.isActive != true {
+                    try? await Task.sleep(for: .milliseconds(100))
+                }
+                guard isTalking else { return }
+                askAyla(question)
+            }
+            return
+        }
         voice?.play(.tick)
         askAyla(question)
     }

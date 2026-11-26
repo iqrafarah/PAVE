@@ -78,7 +78,7 @@ final class AylaHeadGestures {
         onGesture?(gesture)
     }
 
-    private static var hasBluetoothHeadphones: Bool {
+    static var hasBluetoothHeadphones: Bool {
         AVAudioSession.sharedInstance().currentRoute.outputs.contains { output in
             [.bluetoothA2DP, .bluetoothHFP, .bluetoothLE].contains(output.portType)
         }
