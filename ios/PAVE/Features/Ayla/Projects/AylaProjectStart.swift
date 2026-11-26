@@ -354,7 +354,7 @@ struct AylaProjectStart: View {
                             .textStyle(.listTitle)
                             .foregroundStyle(Color.ink)
                             .lineLimit(1)
-                        Text([item.category.singularTitle, item.createdAt.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "nl_NL")))].joined(separator: " · "))
+                        Text([item.category.singularTitle, item.createdAt.formatted(.dateTime.day().month(.abbreviated).locale(PaveLanguageStore.current.locale))].joined(separator: " · "))
                             .textStyle(.caption)
                             .foregroundStyle(Color.inkMuted)
                             .lineLimit(1)

@@ -77,7 +77,7 @@ nonisolated final class WatchVoicePlayer: @unchecked Sendable {
 
     private func speakWithDeviceVoice(_ text: String) async {
         let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: "nl-NL")
+        utterance.voice = AVSpeechSynthesisVoice(language: WatchPreferences.language == "en" ? "en-GB" : "nl-NL")
         let delegate = SpeechEnd()
         synthesizer.delegate = delegate
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in

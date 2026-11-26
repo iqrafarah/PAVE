@@ -1,3 +1,4 @@
+import PAVECore
 import Testing
 @testable import PAVE
 
@@ -18,8 +19,8 @@ struct PaveTranslatorTests {
     }
 
     @Test func fillsValuesInOrderOrByNumber() {
-        #expect(PaveTranslator.Table.fill("%@ at %@", with: ["Cv", "Kade"]) == "Cv at Kade")
-        #expect(PaveTranslator.Table.fill("%2$@, %1$@", with: ["a", "b"]) == "b, a")
-        #expect(PaveTranslator.Table.fill("100% match", with: []) == "100% match")
+        #expect(TranslationTable.fill("%@ at %@", with: ["Cv", "Kade"]) == "Cv at Kade")
+        #expect(TranslationTable.fill("%2$@, %1$@", with: ["a", "b"]) == "b, a")
+        #expect(TranslationTable.fill("100% match", with: []) == "100% match")
     }
 }

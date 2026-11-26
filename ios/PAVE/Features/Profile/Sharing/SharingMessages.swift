@@ -25,13 +25,13 @@ enum SharingMessages {
     static func whoLookedWhat(_ downloaded: Bool, title: String) -> String { downloaded ? "Downloadde je cv of brief · \(title)" : "Bekeek \(title)" }
     static func whoLookedSaid(_ recipient: String) -> String { "Noemde zichzelf zo; je deelde dit met \(recipient)." }
     static func whoLookedUntil(_ date: Date, looks: Int) -> String {
-        "Tot \(date.formatted(.dateTime.day().month(.wide).locale(Locale(identifier: "nl_NL")))) · \(looks == 0 ? "nog niet bekeken" : looks == 1 ? "1 keer bekeken" : "\(looks) keer bekeken")"
+        "Tot \(date.formatted(.dateTime.day().month(.wide).locale(PaveLanguageStore.current.locale))) · \(looks == 0 ? "nog niet bekeken" : looks == 1 ? "1 keer bekeken" : "\(looks) keer bekeken")"
     }
     static func whoLookedDay(_ date: Date) -> String {
         let calendar = Calendar.current
         if calendar.isDateInToday(date) { return "Vandaag" }
         if calendar.isDateInYesterday(date) { return "Gisteren" }
-        let text = date.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(Locale(identifier: "nl_NL")))
+        let text = date.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(PaveLanguageStore.current.locale))
         return text.prefix(1).uppercased() + text.dropFirst()
     }
     static let howItWorks = "Zo gaan we met je gegevens om"
@@ -170,7 +170,7 @@ enum SharingMessages {
     static let fairDetailWithProfile = "Meegestuurd. Stoppen kan bij Profiel, onder wat je deelt."
     static let fairDetailNoProfile = "Niet meegestuurd."
     static func fairDetailFooter(_ date: Date) -> String {
-        "Achtergelaten op \(date.formatted(.dateTime.day().month(.wide).locale(Locale(identifier: "nl_NL")))). Alles van je beursdag staat bij Profiel › Mijn beursdag."
+        "Achtergelaten op \(date.formatted(.dateTime.day().month(.wide).locale(PaveLanguageStore.current.locale))). Alles van je beursdag staat bij Profiel › Mijn beursdag."
     }
     static let fairDetailGone = "Niet meer gevonden"
     static let fairDetailGoneHint = "Deze sollicitatie staat niet meer in je lijst."
@@ -292,11 +292,11 @@ enum SharingMessages {
     static let quickShareSeesLink = "Bekijk wat zij zien"
     static let quickShareWaiting = "Nog niet bekeken"
     static func quickShareLooked(_ date: Date, by name: String?) -> String {
-        let time = date.formatted(.dateTime.hour().minute().locale(Locale(identifier: "nl_NL")))
+        let time = date.formatted(.dateTime.hour().minute().locale(PaveLanguageStore.current.locale))
         return name.map { "Bekeken door \($0) om \(time)" } ?? "Bekeken om \(time)"
     }
     static func quickShareEnds(_ date: Date) -> String {
-        "Stopt vanzelf op \(date.formatted(.dateTime.weekday(.wide).day().month(.wide).hour().minute().locale(Locale(identifier: "nl_NL"))))"
+        "Stopt vanzelf op \(date.formatted(.dateTime.weekday(.wide).day().month(.wide).hour().minute().locale(PaveLanguageStore.current.locale)))"
     }
     static let quickShareStop = "Stop met delen"
     static func quickShareGoes(_ items: Int, files: Int) -> String {
@@ -388,7 +388,7 @@ enum SharingMessages {
             .joined(separator: ", ")
     }
     static func checkUntilValue(_ date: Date) -> String {
-        date.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(Locale(identifier: "nl_NL")))
+        date.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(PaveLanguageStore.current.locale))
     }
     static func checkRightsValue(_ allowsDownload: Bool) -> String { allowsDownload ? "Bekijken en downloaden" : "Alleen bekijken" }
 
@@ -399,7 +399,7 @@ enum SharingMessages {
         if draft.content.letter != nil { parts.append("je brief") }
         let what = parts.isEmpty ? "je gegevens" : parts.joined(separator: ", ").replacingLast(", ", with: " en ")
         let who = draft.recipientOrganisation.isEmpty ? draft.recipientName : "\(draft.recipientName) van \(draft.recipientOrganisation)"
-        let when = until.formatted(.dateTime.day().month(.wide).locale(Locale(identifier: "nl_NL")))
+        let when = until.formatted(.dateTime.day().month(.wide).locale(PaveLanguageStore.current.locale))
         let rights = draft.allowsDownload ? "mag ze bekijken en downloaden" : "mag ze alleen bekijken"
         return "\(who) kan \(what) zien tot en met \(when), en \(rights). Je ziet wanneer iemand kijkt, en je kunt het altijd intrekken."
     }

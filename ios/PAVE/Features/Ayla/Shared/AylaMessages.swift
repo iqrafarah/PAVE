@@ -146,7 +146,7 @@ enum AylaMessages {
     /// "Geplaatst op 20 november", from the day the source gives ("2026-11-20"); nil when that is not a day.
     static func vacancyPosted(_ day: String) -> String? {
         guard let date = try? Date(day, strategy: .iso8601.year().month().day()) else { return nil }
-        return "Geplaatst op \(date.formatted(.dateTime.day().month(.wide).locale(Locale(identifier: "nl_NL"))))"
+        return "Geplaatst op \(date.formatted(.dateTime.day().month(.wide).locale(PaveLanguageStore.current.locale)))"
     }
     static let vacancyTitle = "Vacature"
     static let vacancyFromText = "Uit de vacaturetekst"

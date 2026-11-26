@@ -242,7 +242,7 @@ struct ArchiveScreen: View {
                         .textStyle(.listTitle)
                         .foregroundStyle(Color.ink)
                         .lineLimit(1)
-                    Text(date.formatted(.dateTime.day().month(.abbreviated).year().locale(Locale(identifier: "nl_NL"))))
+                    Text(date.formatted(.dateTime.day().month(.abbreviated).year().locale(PaveLanguageStore.current.locale)))
                         .textStyle(.caption)
                         .foregroundStyle(Color.inkMuted)
                 }

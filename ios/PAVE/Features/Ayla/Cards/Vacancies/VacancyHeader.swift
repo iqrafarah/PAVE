@@ -59,7 +59,7 @@ struct VacancyHeader: View {
 
     static func salaryText(_ salary: Vacancy.Salary) -> String {
         let range = salary.monthlyRange
-        let format = IntegerFormatStyle<Int>().locale(Locale(identifier: "nl_NL"))
+        let format = IntegerFormatStyle<Int>().locale(PaveLanguageStore.current.locale)
         let text = range.lowerBound == range.upperBound
             ? "€\(range.lowerBound.formatted(format)) p/m"
             : "€\(range.lowerBound.formatted(format)) - €\(range.upperBound.formatted(format)) p/m"

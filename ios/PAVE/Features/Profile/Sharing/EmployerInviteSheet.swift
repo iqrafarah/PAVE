@@ -17,7 +17,7 @@ struct EmployerInviteSheet: View {
             Form {
                 Section(SharingMessages.inviteWhen) {
                     DatePicker(SharingMessages.inviteWhen, selection: $moment, in: Date.now.addingTimeInterval(3600)...Date.now.addingTimeInterval(60 * 86_400), displayedComponents: [.date, .hourAndMinute])
-                        .environment(\.locale, Locale(identifier: "nl_NL"))
+                        .environment(\.locale, PaveLanguageStore.current.locale)
                 }
                 Section(SharingMessages.inviteMessage) {
                     TextField(SharingMessages.inviteMessage, text: $message, prompt: Text(SharingMessages.inviteMessagePrompt), axis: .vertical)

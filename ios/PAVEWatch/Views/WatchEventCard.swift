@@ -73,7 +73,7 @@ struct WatchEventCard: View {
         switch event {
         case .look(_, let what): "Opent nu \(what)"
         case .invitation(_, _, _, let at):
-            at.map { $0.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute().locale(Locale(identifier: "nl_NL"))) }
+            at.map { $0.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute().locale(WatchPreferences.locale)) }
                 .map { "Gesprek \($0). Kom je?" } ?? "Kom je?"
         case .standTip(_, let line): line
         case .handoff(_, let detail): detail

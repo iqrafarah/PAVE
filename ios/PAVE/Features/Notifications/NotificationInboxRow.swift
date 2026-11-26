@@ -138,13 +138,13 @@ struct NotificationInboxRow: View {
     /// The time today, "gisteren", the weekday this week, otherwise the date.
     static func when(_ date: Date) -> String {
         let calendar = Calendar.current
-        let dutch = Locale(identifier: "nl_NL")
-        if calendar.isDateInToday(date) { return date.formatted(.dateTime.hour().minute().locale(dutch)) }
+        let locale = PaveLanguageStore.current.locale
+        if calendar.isDateInToday(date) { return date.formatted(.dateTime.hour().minute().locale(locale)) }
         if calendar.isDateInYesterday(date) { return "gisteren" }
         if let week = calendar.date(byAdding: .day, value: -6, to: calendar.startOfDay(for: .now)), date >= week {
-            return date.formatted(.dateTime.weekday(.abbreviated).locale(dutch))
+            return date.formatted(.dateTime.weekday(.abbreviated).locale(locale))
         }
-        return date.formatted(.dateTime.day().month(.abbreviated).locale(dutch))
+        return date.formatted(.dateTime.day().month(.abbreviated).locale(locale))
     }
 }
 

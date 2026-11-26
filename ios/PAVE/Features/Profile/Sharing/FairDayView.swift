@@ -25,7 +25,7 @@ struct FairDayView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                Text(Date.now.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(Locale(identifier: "nl_NL"))))
+                Text(Date.now.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(PaveLanguageStore.current.locale)))
                     .textStyle(.bodyMedium).foregroundStyle(Color.inkMuted)
                 // Answer first; where you left your card and what is left to do next to it on a wide screen.
                 PaveColumns {

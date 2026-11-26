@@ -35,7 +35,7 @@ nonisolated struct EmailBubbleLayout: Equatable {
     /// "Vandaag 21:59", "Gisteren 14:02", "di 14:02" this week, otherwise "24 nov. 14:02".
     static func timeLabel(_ date: Date, now: Date = .now) -> String {
         let calendar = Calendar.current
-        let locale = Locale(identifier: "nl_NL")
+        let locale = PaveLanguageStore.current.locale
         let time = date.formatted(.dateTime.hour().minute().locale(locale))
         if calendar.isDate(date, inSameDayAs: now) { return "Vandaag \(time)" }
         if let yesterday = calendar.date(byAdding: .day, value: -1, to: now), calendar.isDate(date, inSameDayAs: yesterday) {

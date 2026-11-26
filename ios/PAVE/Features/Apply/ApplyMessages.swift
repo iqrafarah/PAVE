@@ -58,7 +58,7 @@ enum ApplyMessages {
     static let notePrompt = "Bijvoorbeeld: contactpersoon of wat je nog wilt doen"
     static let yourDocuments = "Je cv en brief"
     static func lastChanged(_ date: Date) -> String {
-        "Laatst gewijzigd op \(date.formatted(.dateTime.day().month(.wide).year().locale(Locale(identifier: "nl_NL"))))"
+        "Laatst gewijzigd op \(date.formatted(.dateTime.day().month(.wide).year().locale(PaveLanguageStore.current.locale)))"
     }
     static let nextSteps = "Volgende stappen"
     static func stillMissing(_ count: Int) -> String { count == 1 ? "1 eis staat nog niet op je cv" : "\(count) eisen staan nog niet op je cv" }
@@ -84,15 +84,15 @@ enum ApplyMessages {
         }
     }
     static func timelineDate(_ date: Date, isAhead: Bool) -> String {
-        let dutch = Locale(identifier: "nl_NL")
+        let locale = PaveLanguageStore.current.locale
         let calendar = Calendar.current
-        let time = date.formatted(.dateTime.hour().minute().locale(dutch))
+        let time = date.formatted(.dateTime.hour().minute().locale(locale))
         if calendar.isDateInToday(date) { return "Vandaag \(time)" }
         if calendar.isDateInYesterday(date) { return "Gisteren \(time)" }
         if calendar.isDateInTomorrow(date) { return "Morgen \(time)" }
         return isAhead
-            ? date.formatted(.dateTime.weekday(.wide).day().month(.abbreviated).hour().minute().locale(dutch))
-            : date.formatted(.dateTime.day().month(.abbreviated).locale(dutch))
+            ? date.formatted(.dateTime.weekday(.wide).day().month(.abbreviated).hour().minute().locale(locale))
+            : date.formatted(.dateTime.day().month(.abbreviated).locale(locale))
     }
 
     // Going back, stopping and sharing
@@ -110,7 +110,7 @@ enum ApplyMessages {
     }
     static let invitationDemoNote = "Dit bericht is nagespeeld: er is geen echte werkgever bij betrokken."
     static func slot(_ date: Date) -> String {
-        date.formatted(.dateTime.weekday(.wide).day().month(.wide).hour().minute().locale(Locale(identifier: "nl_NL")))
+        date.formatted(.dateTime.weekday(.wide).day().month(.wide).hour().minute().locale(PaveLanguageStore.current.locale))
     }
     static func talkPlanned(_ date: Date) -> String { "Je gesprek is op \(slot(date))" }
     static let talkToCalendar = "Zet in je agenda"
@@ -189,7 +189,7 @@ enum ApplyMessages {
     static let openApplicationHint = "Opent je sollicitatie"
     static let foundDeadline = "In de vacature staat een sluitingsdatum"
     static func useDeadline(_ date: Date) -> String {
-        "Gebruik \(date.formatted(.dateTime.day().month(.wide).locale(Locale(identifier: "nl_NL")))) als deadline"
+        "Gebruik \(date.formatted(.dateTime.day().month(.wide).locale(PaveLanguageStore.current.locale))) als deadline"
     }
     static let addToCalendar = "Zet in je agenda"
     static func calendarTitle(_ vacancy: Vacancy) -> String { "Deadline sollicitatie \(vacancy.title) bij \(vacancy.company)" }
@@ -239,7 +239,7 @@ enum ApplyMessages {
     static let ownStart = "Maak cv en brief"
     static func statusCount(_ status: ApplicationStatus, _ count: Int) -> String { "\(Self.status(status)) · \(count)" }
     static func changedOn(_ date: Date) -> String {
-        "Gewijzigd op \(date.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "nl_NL"))))"
+        "Gewijzigd op \(date.formatted(.dateTime.day().month(.abbreviated).locale(PaveLanguageStore.current.locale)))"
     }
 
     // What goes in
@@ -375,7 +375,7 @@ enum ApplyMessages {
     static let done = "Klaar"
     static let practiceReportTitle = "Verslag van je oefengesprek"
     static func practiceReportFor(_ vacancy: Vacancy) -> String { "Oefengesprek voor \(vacancy.title)\(vacancy.company.isEmpty ? "" : " bij \(vacancy.company)")" }
-    static func practiceReportDate(_ date: Date) -> String { date.formatted(.dateTime.day().month(.wide).hour().minute().locale(Locale(identifier: "nl_NL"))) }
+    static func practiceReportDate(_ date: Date) -> String { date.formatted(.dateTime.day().month(.wide).hour().minute().locale(PaveLanguageStore.current.locale)) }
     static let practiceStrengths = "Wat goed ging"
     static let practiceImprove = "Wat beter kan"
     static let practiceExamples = "Zo kun je het zeggen"

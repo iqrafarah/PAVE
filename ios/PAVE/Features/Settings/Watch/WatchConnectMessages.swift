@@ -44,13 +44,13 @@ enum WatchConnectMessages {
         guard let lastActive = connection.lastActiveAt else { return "Nog niet gebruikt" }
         guard now.timeIntervalSince(lastActive) >= 5 * 60 else { return "Nu actief" }
         let formatter = RelativeDateTimeFormatter()
-        formatter.locale = Locale(identifier: "nl_NL")
+        formatter.locale = PaveLanguageStore.current.locale
         formatter.unitsStyle = .full
         return "Actief \(formatter.localizedString(for: lastActive, relativeTo: now))"
     }
 
     /// "Via deze iPhone, gekoppeld op 12 nov".
     static func connectedVia(_ connection: WatchConnection) -> String {
-        "Via deze iPhone, gekoppeld op \(connection.connectedAt.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "nl_NL"))))"
+        "Via deze iPhone, gekoppeld op \(connection.connectedAt.formatted(.dateTime.day().month(.abbreviated).locale(PaveLanguageStore.current.locale)))"
     }
 }

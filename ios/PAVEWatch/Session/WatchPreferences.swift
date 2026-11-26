@@ -13,7 +13,17 @@ final class WatchPreferences {
     nonisolated private static let languageKey = "watchLanguage"
     /// The language of the iPhone app ("nl", "en", "pap"), so Ayla answers on the wrist in it too.
     nonisolated static var language: String? { UserDefaults.standard.string(forKey: languageKey) }
+    /// Dates and numbers in that language; Papiamentu uses the Dutch formats of Curaçao.
+    nonisolated static var locale: Locale {
+        switch language {
+        case "en": Locale(identifier: "en_NL")
+        case "pap": Locale(identifier: "nl_CW")
+        default: Locale(identifier: "nl_NL")
+        }
+    }
 
+    /// The language of the iPhone app, kept here too so the Watch's own words draw again when it changes.
+    private(set) var languageCode: String?
     /// The theme colour as 0xRRGGBB; nil is PAVE green.
     private(set) var accent: UInt32?
     /// Show what Ayla says as text; off shows only the orb (and the choices she asks).
@@ -23,6 +33,7 @@ final class WatchPreferences {
         let defaults = UserDefaults.standard
         accent = (defaults.object(forKey: Self.accentKey) as? Int).map { UInt32(truncatingIfNeeded: $0) }
         showsVoiceText = defaults.object(forKey: Self.voiceTextKey) as? Bool ?? true
+        languageCode = defaults.string(forKey: Self.languageKey)
     }
 
     /// From the iPhone's message; keys it does not carry leave things as they are.
@@ -30,6 +41,7 @@ final class WatchPreferences {
         let defaults = UserDefaults.standard
         if let language = message["language"] as? String {
             defaults.set(language, forKey: Self.languageKey)
+            if languageCode != language { languageCode = language }
         }
         if let shows = message["voiceText"] as? Bool {
             showsVoiceText = shows

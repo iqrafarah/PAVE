@@ -97,7 +97,7 @@ struct ShareReportSheet: View {
                     }
                 }
                 Spacer(minLength: 8)
-                Text(entry.look.date.formatted(.dateTime.hour().minute().locale(Locale(identifier: "nl_NL"))))
+                Text(entry.look.date.formatted(.dateTime.hour().minute().locale(PaveLanguageStore.current.locale)))
                     .textStyle(.caption)
                     .monospacedDigit()
                     .foregroundStyle(Color.inkMuted)

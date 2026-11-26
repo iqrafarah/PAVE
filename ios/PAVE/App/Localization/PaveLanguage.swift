@@ -38,6 +38,14 @@ nonisolated enum PaveLanguage: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    /// What speech is heard and read in. iOS has no Papiamentu voice, so Papiamentu uses the Dutch one.
+    var speechIdentifier: String {
+        switch self {
+        case .english: "en-GB"
+        case .dutch, .papiamentu: "nl-NL"
+        }
+    }
+
     /// The language of the device when PAVE has it, otherwise Dutch.
     static var device: PaveLanguage {
         for identifier in Locale.preferredLanguages {
