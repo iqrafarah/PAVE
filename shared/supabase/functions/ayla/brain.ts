@@ -590,7 +590,7 @@ export function confirmable(actions: AppAction[]): { actions: AppAction[]; quest
   return { actions: [first], question: CONFIRM_QUESTIONS[first.do]?.(first) ?? 'Weet je het zeker?' }
 }
 
-const OFFERS = /^(wil je|zal ik|zullen we|moet ik|mag ik|kan ik|heb je zin|lijkt het je|is het goed)\b/i
+const OFFERS = /^(wil je|zal ik|zullen we|moet ik|mag ik|kan ik|heb je zin|lijkt het je|is het goed|shall i|should i|do you want|would you like|may i|can i|shall we)\b/i
 
 /**
  * The user says no, and nothing else, to something Ayla offered in the last turn. A no to an ordinary question
@@ -638,7 +638,9 @@ export function withoutRepeatedQuestion(text: string, question: string): string 
 export function withoutConsentAsk(text: string): string {
   const sentences = text.split(/(?<=[.!?])\s+|\n+/).map((s) => s.trim()).filter(Boolean)
   const asksVault = (s: string) =>
-    /\bkluis\b/i.test(s) && (/^(mag|kan|zal|zou) ik\b|^(wil je dat|vind je het goed|is het goed)\b|\bin je kluis\b.*\bkijken\b/i.test(s))
+    (/\bkluis\b/i.test(s) && (/^(mag|kan|zal|zou) ik\b|^(wil je dat|vind je het goed|is het goed)\b|\bin je kluis\b.*\bkijken\b/i.test(s)))
+    || (/\bvault\b/i.test(s) && /^(may|can|shall|could) i\b|^(do you want me|would you like me|is it ok)\b/i.test(s))
+    || (/\bkaha fuerte\b/i.test(s) && /^(mi por|bo ke pa mi)\b/i.test(s))
   return sentences.filter((s) => !asksVault(s)).join(' ')
 }
 

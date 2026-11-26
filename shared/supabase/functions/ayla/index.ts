@@ -2,6 +2,7 @@
 // It runs with the user's own session, so row level security applies to every query.
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { answer, CONSENT_HISTORY_LIMIT, type StoredMessage, titleFrom, toPastMessage } from './brain.ts'
+import { localizedReply } from './localize.ts'
 import { loadMemory } from './memory.ts'
 import { loadAllowedVault } from './vault.ts'
 import { loadPlan, planExists, stepUpdater } from './plan.ts'
@@ -161,12 +162,12 @@ Deno.serve(async (req) => {
         }
         send('start', { conversationId })
         try {
-          const reply = await answer({
+          const reply = localizedReply(await answer({
             ...input,
             signal: stop.signal,
             onText: (text) => { written = text; send('text', { text }) },
             onStatus: (status) => send('status', status),
-          }, deps)
+          }, deps), request.language)
           // The answer shows as soon as it is stored; the list of conversations catches up after.
           if (await store(reply)) {
             send('reply', reply)
@@ -196,7 +197,7 @@ Deno.serve(async (req) => {
 
   let reply: AylaReply
   try {
-    reply = await answer(input, deps)
+    reply = localizedReply(await answer(input, deps), request.language)
   } catch {
     return json({ error: 'unavailable' }, 502)
   }
