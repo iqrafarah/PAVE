@@ -219,49 +219,11 @@ public struct SupabaseAylaService: AylaService {
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
-                    guard let token = await accessToken() else { throw AylaError.notSignedIn }
-                    var urlRequest = URLRequest(url: endpoint, timeoutInterval: 60)
-                    urlRequest.httpMethod = "POST"
-                    urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                    urlRequest.setValue("text/event-stream", forHTTPHeaderField: "Accept")
-                    urlRequest.setValue(publishableKey, forHTTPHeaderField: "apikey")
-                    urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-                    urlRequest.httpBody = try AylaCoding.encoder.encode(request)
-
-                    let (bytes, response): (URLSession.AsyncBytes, URLResponse)
                     do {
-                        (bytes, response) = try await session.bytes(for: urlRequest)
-                    } catch is URLError {
-                        throw AylaError.noConnection
+                        try await streamOnce(request, into: continuation)
+                    } catch PlanFieldsRejected.byServer where request.planId != nil {
+                        try await streamOnce(request.withoutPlan, into: continuation)
                     }
-                    switch (response as? HTTPURLResponse)?.statusCode ?? 0 {
-                    case 200: break
-                    case 401: throw AylaError.notSignedIn
-                    case 403: throw AylaError.insufficientAssurance
-                    case 404: throw AylaError.conversationNotFound
-                    default: throw AylaError.unavailable
-                    }
-
-                    var event = ""
-                    var finished = false
-                    do {
-                        for try await line in bytes.lines {
-                            if line.hasPrefix("event:") {
-                                event = line.dropFirst(6).trimmingCharacters(in: .whitespaces)
-                            } else if line.hasPrefix("data:"), let parsed = Self.streamEvent(event, data: Data(line.dropFirst(5).utf8)) {
-                                switch parsed {
-                                case .success(let streamEvent):
-                                    continuation.yield(streamEvent)
-                                    if case .reply = streamEvent { finished = true }
-                                case .failure(let error):
-                                    throw error
-                                }
-                            }
-                        }
-                    } catch is URLError {
-                        throw AylaError.noConnection
-                    }
-                    guard finished else { throw AylaError.unavailable }
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)
@@ -269,6 +231,67 @@ public struct SupabaseAylaService: AylaService {
             }
             continuation.onTermination = { _ in task.cancel() }
         }
+    }
+
+    /// An Ayla function from before plans (deployed earlier than the app) does not know `planId`: the question then
+    /// goes once more without it, and the app puts the chat in the plan itself.
+    enum PlanFieldsRejected: Error { case byServer }
+
+    static func rejectsPlanFields(status: Int, body: Data) -> Bool {
+        guard status == 400, let payload = try? JSONSerialization.jsonObject(with: body) as? [String: Any] else { return false }
+        let detail = payload["detail"] as? String ?? ""
+        return payload["error"] as? String == "invalid_request" && (detail.contains("planId") || detail.contains("planStepId"))
+    }
+
+    private func streamOnce(_ request: AylaRequest, into continuation: AsyncThrowingStream<AylaStreamEvent, any Error>.Continuation) async throws {
+        guard let token = await accessToken() else { throw AylaError.notSignedIn }
+        var urlRequest = URLRequest(url: endpoint, timeoutInterval: 60)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        urlRequest.setValue(publishableKey, forHTTPHeaderField: "apikey")
+        urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        urlRequest.httpBody = try AylaCoding.encoder.encode(request)
+
+        let (bytes, response): (URLSession.AsyncBytes, URLResponse)
+        do {
+            (bytes, response) = try await session.bytes(for: urlRequest)
+        } catch is URLError {
+            throw AylaError.noConnection
+        }
+        switch (response as? HTTPURLResponse)?.statusCode ?? 0 {
+        case 200: break
+        case 400 where request.planId != nil:
+            var body = Data()
+            for try await byte in bytes { body.append(byte) }
+            if Self.rejectsPlanFields(status: 400, body: body) { throw PlanFieldsRejected.byServer }
+            throw AylaError.unavailable
+        case 401: throw AylaError.notSignedIn
+        case 403: throw AylaError.insufficientAssurance
+        case 404: throw AylaError.conversationNotFound
+        default: throw AylaError.unavailable
+        }
+
+        var event = ""
+        var finished = false
+        do {
+            for try await line in bytes.lines {
+                if line.hasPrefix("event:") {
+                    event = line.dropFirst(6).trimmingCharacters(in: .whitespaces)
+                } else if line.hasPrefix("data:"), let parsed = Self.streamEvent(event, data: Data(line.dropFirst(5).utf8)) {
+                    switch parsed {
+                    case .success(let streamEvent):
+                        continuation.yield(streamEvent)
+                        if case .reply = streamEvent { finished = true }
+                    case .failure(let error):
+                        throw error
+                    }
+                }
+            }
+        } catch is URLError {
+            throw AylaError.noConnection
+        }
+        guard finished else { throw AylaError.unavailable }
     }
 
     /// One server-sent event of the Ayla function: `start`, `text`, `status`, `reply` or `error`.
@@ -311,6 +334,14 @@ public struct SupabaseAylaService: AylaService {
     }
 
     public func send(_ request: AylaRequest) async throws -> AylaReply {
+        do {
+            return try await sendOnce(request)
+        } catch PlanFieldsRejected.byServer where request.planId != nil {
+            return try await sendOnce(request.withoutPlan)
+        }
+    }
+
+    private func sendOnce(_ request: AylaRequest) async throws -> AylaReply {
         guard let token = await accessToken() else { throw AylaError.notSignedIn }
 
         var urlRequest = URLRequest(url: endpoint, timeoutInterval: 60)
@@ -335,6 +366,8 @@ public struct SupabaseAylaService: AylaService {
             } catch {
                 throw AylaError.unavailable
             }
+        case 400 where Self.rejectsPlanFields(status: 400, body: data) && request.planId != nil:
+            throw PlanFieldsRejected.byServer
         case 401:
             throw AylaError.notSignedIn
         case 403:

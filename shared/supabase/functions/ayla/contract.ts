@@ -17,6 +17,9 @@ export interface AylaRequest {
   conversationId?: string
   /** Starts a new conversation inside this project. Ignored when conversationId is given. */
   projectId?: string
+  /** Starts a new conversation inside this plan, for this step of it. Ignored when conversationId is given. */
+  planId?: string
+  planStepId?: string
   text: string
   device: Device
   input: 'voice' | 'text'
@@ -167,6 +170,8 @@ export interface AylaReply {
     expiresAt: string
     /** With `addVaultItem`: what to put in the vault once the user confirms. */
     vaultItem?: VaultItemProposal
+    /** With `updatePlan`: the step of the conversation's plan Ayla changed. It is saved already; the apps show it. */
+    planStep?: { planId: string; stepId: string; status: 'upcoming' | 'active' | 'done' | 'skipped' }
   }
   blocks: Block[]
   navigation?: { screen: Screen; itemId?: string }
@@ -197,7 +202,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 export function parseRequest(body: unknown): AylaRequest | string {
   if (typeof body !== 'object' || body === null) return 'body must be an object'
   const b = body as Record<string, unknown>
-  const allowed = new Set(['conversationId', 'projectId', 'text', 'device', 'input', 'context', 'attachments', 'app', 'results'])
+  const allowed = new Set(['conversationId', 'projectId', 'planId', 'planStepId', 'text', 'device', 'input', 'context', 'attachments', 'app', 'results'])
   const extra = Object.keys(b).find((key) => !allowed.has(key))
   if (extra) return `unknown field ${extra}`
   if (typeof b.text !== 'string' || !b.text.trim()) return 'text is required'
@@ -209,6 +214,10 @@ export function parseRequest(body: unknown): AylaRequest | string {
   }
   if (b.projectId !== undefined && (typeof b.projectId !== 'string' || !UUID.test(b.projectId))) {
     return 'projectId is not valid'
+  }
+  if (b.planId !== undefined && (typeof b.planId !== 'string' || !UUID.test(b.planId))) return 'planId is not valid'
+  if (b.planStepId !== undefined && (typeof b.planStepId !== 'string' || !UUID.test(b.planStepId) || !b.planId)) {
+    return 'planStepId is not valid'
   }
   let context: AylaRequest['context']
   if (b.context !== undefined) {
@@ -293,6 +302,8 @@ export function parseRequest(body: unknown): AylaRequest | string {
     ...(results ? { results } : {}),
     ...(b.conversationId ? { conversationId: b.conversationId as string } : {}),
     ...(b.projectId && !b.conversationId ? { projectId: b.projectId as string } : {}),
+    ...(b.planId && !b.conversationId ? { planId: b.planId as string } : {}),
+    ...(b.planStepId && b.planId && !b.conversationId ? { planStepId: b.planStepId as string } : {}),
     ...(context ? { context } : {}),
     ...(attachments?.length ? { attachments } : {}),
   }

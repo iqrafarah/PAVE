@@ -35,7 +35,8 @@ struct RootView: View {
                     devicesService: DevicesServiceFactory.make(auth: appState.authService),
                     profileService: ProfileServiceFactory.make(auth: appState.authService),
                     notificationsService: NotificationsServiceFactory.make(auth: appState.authService),
-                    shareService: ShareServiceFactory.make(auth: appState.authService)
+                    shareService: ShareServiceFactory.make(auth: appState.authService),
+                    planService: PlanServiceFactory.make(auth: appState.authService)
                 )
                     // Back after being away too long: the PIN screen over the app, which stays as it was.
                     .overlay {

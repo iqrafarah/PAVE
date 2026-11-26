@@ -379,3 +379,37 @@ Een flow met stappen heeft linksboven een pijl terug naar de vorige stap, en op 
 | Mijn beursdag | Mijn beursdag / Wat je vandaag scande en waar je solliciteerde / Uitnodigingen: Gesprek: {vacature}, {moment}, Ik kom, Kan niet, Je hebt gezegd dat je komt., Oefen met Ayla / Hier liet je je kaartje achter: Achtergelaten, Uitgenodigd, Je komt, Afgezegd / Nog te doen: Je scande {bedrijf} (Stand X), maar solliciteerde nog niet / Nog niets vandaag / melding: Je bent uitgenodigd — Voor een gesprek over {vacature} op {moment}. |
 | Werkgever-modus (demo, app en web /inbox/{slug}?sleutel=) | Werkgever-modus · demo / Zo ziet de werkgever wie er bij de stand solliciteerde. In de demo speelt een medespeler de recruiter. / Nog niemand / Uitnodigen voor een gesprek / Wanneer, Bericht (Bijvoorbeeld: meld je bij de servicebalie), Verstuur / Uitgenodigd voor {moment}, wacht op antwoord / Komt op {moment} / Kan niet op dat moment / Deze werkgeverssleutel klopt niet. |
 | Posters (pdf) | Wij zoeken jou! / Scan met je camera en solliciteer in één minuut met PAVE / Geen cv nodig: laat je kaartje achter, met wanneer je kunt werken. |
+
+## Plannen en de Dynamic Bar (iOS)
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Leeg scherm | Je hebt nog geen plan |
+| Uitleg leeg scherm | Maak een plan voor een doel waar je naartoe wilt werken. Ayla helpt je stap voor stap. |
+| Knop | Nieuw plan |
+| Velden | Naam / Doel / Beginnen met |
+| Uitleg doel | Waar wil je naartoe werken? Ayla gebruikt dit in de gesprekken van dit plan. |
+| Sjablonen | Leeg plan / Een baan vinden / Een stage vinden / Mijn loopbaan ontdekken / Een vervolgopleiding kiezen / Een vaardigheid ontwikkelen / Een certificaat behalen / Een carrièreswitch maken |
+| Uitleg leeg plan | Begin met een doel en voeg zelf stappen toe. |
+| Soort stap | Algemeen / Gesprek met Ayla / Uitzoeken / Bewijs in je kluis / Laten verifiëren / Schrijven / Profiel / Contact / Zelf doen / Terugkijken / Mijlpaal |
+| Knop bij een stap | Open je kluis / Open je profiel / Open Meldingen |
+| Overgeslagen | Overgeslagen stappen tellen niet mee. |
+| Stap klaar (Dynamic Bar) | Stap afgerond |
+| Dynamic Bar ingeklapt | {plannaam} · {huidige stap}  {afgerond}/{totaal} |
+| Dynamic Island (iPhone met eiland) | compact: ring en {afgerond}/{totaal}; even open: {plannaam} / {huidige stap} of Stap afgerond / {stap} |
+| Tip bij het eiland (eerste keer) | Je plan staat hier — Tik net onder het eiland of veeg omlaag voor je stappen. Houd vast om het hele plan te openen. |
+| Plan voltooien | Voltooien / Weer openen / Actief / Voltooid |
+| Plan verwijderen met gesprekken | Verwijderen, gesprekken bewaren / Verwijderen met gesprekken / Wil je de {n} gesprekken met Ayla van dit plan bewaren? Ze komen dan in je gewone chats. Bewijs in je kluis blijft altijd bewaard. |
+| Plan in Ayla (plusknop) | Plan toevoegen / Nu: {plannaam} / Kies een plan / Ayla helpt je in deze chat met de stappen van het plan. |
+| Toegangsscherm (menu) | Toegangsscherm en Dynamic Island / Volg op toegangsscherm / Niet meer volgen / Naam en stap tonen |
+| Live Activity | Je plan / Stap {n} van {totaal} · {soort stap} / {afgerond}/{totaal} / Klaar / Alle stappen afgerond |
+| Nog niet beschikbaar | Plannen zijn nog niet beschikbaar. Probeer het later nog eens. |
+| Plan verwijderen | Plan verwijderen? — De stappen van dit plan verdwijnen. Bewijs in je kluis blijft altijd bewaard. |
+| Voortgang | {x} van {y} afgerond / Stap {n} van {totaal} (overgeslagen stappen tellen niet mee) |
+| Plan klaar | Klaar! Je hebt alle stappen afgerond. |
+| Acties bij een stap | Bespreken met Ayla / Afronden / Hier verder / Nog te doen / Overslaan / Gesprek van deze stap openen / Stap aanpassen |
+| Gesprekken | Gesprekken met Ayla / Nog geen gesprekken in dit plan. / Uit plan halen |
+| Knoppen plan | Verder met Ayla / Nieuw gesprek |
+| Dynamic Bar | Open plan / {n} gesprekken |
+| Tekst bij een nieuw gesprek voor een stap | Help me met de stap "{stap}". |
+| Fout | Je plan kon niet worden bewaard. Probeer het nog eens. |

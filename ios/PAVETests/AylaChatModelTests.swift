@@ -101,6 +101,47 @@ struct AylaChatModelTests {
         #expect(ayla.requests.allSatisfy { $0.device == .phone })
     }
 
+    @Test func aChatStartedInAPlanTellsAylaThePlanAndStepOnce() async {
+        let ayla = FakeAyla()
+        ayla.replies = [.success(AylaReply(id: "r1", conversationId: "conv", text: "Zullen we beginnen?")), .success(AylaReply(id: "r2", conversationId: "conv", text: "Prima"))]
+        let model = AylaChatModel(service: ayla)
+
+        model.newConversation(plan: "plan-1", step: "step-2")
+        model.send("Help me met deze stap")
+        await waitUntilIdle(model)
+        model.send("En nu?")
+        await waitUntilIdle(model)
+
+        #expect(ayla.requests.first?.planId == "plan-1")
+        #expect(ayla.requests.first?.planStepId == "step-2")
+        // Once the chat exists, Ayla reads its plan herself.
+        #expect(ayla.requests.last?.planId == nil)
+        // Any other new chat leaves the plan.
+        model.newConversation()
+        #expect(model.newChatPlan == nil)
+    }
+
+    @Test func addingAPlanToANewChatKeepsWhatWasTyped() async {
+        let ayla = FakeAyla()
+        ayla.replies = [.success(AylaReply(id: "r1", conversationId: "conv", text: "Goed plan!"))]
+        let model = AylaChatModel(service: ayla)
+        model.draft = "Waar begin ik?"
+
+        model.startInPlan("plan-1")
+        #expect(model.draft == "Waar begin ik?")
+        #expect(model.newChatPlan?.planID == "plan-1")
+        model.startInPlan(nil)
+        #expect(model.newChatPlan == nil)
+        model.startInPlan("plan-1")
+        model.send(model.draft)
+        await waitUntilIdle(model)
+
+        #expect(ayla.requests.first?.planId == "plan-1")
+        // Once the chat exists it moves into a plan through the plan itself, not through the next question.
+        model.startInPlan("plan-2")
+        #expect(model.newChatPlan?.planID == "plan-1")
+    }
+
     @Test func aFailurePutsTheQuestionBackAndSendingAgainDoesNotRepeatIt() async {
         let ayla = FakeAyla()
         ayla.replies = [.failure(.noConnection), .success(AylaReply(id: "r", conversationId: "c", text: "Daar ben ik"))]

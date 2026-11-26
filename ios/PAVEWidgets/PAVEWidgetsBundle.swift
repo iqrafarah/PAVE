@@ -10,5 +10,6 @@ struct PAVEWidgetsBundle: WidgetBundle {
         NewConversationControl()
         StopSharingControl()
         AylaVoiceLiveActivity()
+        PlanLiveActivity()
     }
 }

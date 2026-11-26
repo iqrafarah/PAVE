@@ -593,6 +593,24 @@ Turned off, Ayla uses none of the notes and suggests nothing; the notes stay unt
 - Show "Gebaseerd op" whenever `usedMemories` is there; it is a promise of PAVE, not decoration.
 - Use the texts of the iPhone where they exist (`ios/PAVE/Features/Ayla/Shared/AylaMessages.swift`), so both apps say the same.
 
+## Plans (migration 20261125130000)
+
+A plan is a goal with ordered steps (`plans`, `plan_steps`, both with row level security and two-step verification).
+Chats belong to a plan through `ayla_conversations.plan_id` (and `plan_step_id` for a chat about one step), as chats
+belong to projects.
+
+- **Saving.** The apps save a whole plan with `rpc/save_plan(p_plan)`: the plan, its steps in order and which chats are
+  in it, in one transaction. One step at a time is `active`; skipped steps do not count for the progress.
+- **Ayla knows the plan.** A new chat in a plan sends `planId` (and `planStepId`); the server stores them on the
+  conversation. For every turn the server reads the plan of the conversation itself and gives the model its goal, its
+  steps with their status and the step to help with (`plan.ts`, `planLayer`).
+- **Ayla changes a step.** The model answers `planStep: { step, status }` (a number from the list; `done`, `skipped` or
+  `active`). The server checks it and saves it with `rpc/set_plan_step_status`, which keeps one step active. The reply
+  carries `proposedAction: { kind: "updatePlan", planStep: { planId, stepId, status } }` so the apps show it at once;
+  the apps also load the plan again after every answer in a plan's chat.
+- **Other flows** (such as finding work) make a plan from their own `PavePlanTemplate` with kinds of their own; ids of
+  steps are UUIDs. `metadata` on a plan and a step is free room for that flow.
+
 ## Privacy: things to be honest about
 
 - The chat models are hosted by Mistral and requests are pinned to it (`provider.only`), but they still pass through OpenRouter, which does not guarantee that data stays in Europe; and the voice model is from OpenAI. Until 2026-11-23 ordinary turns went to DeepInfra, Parasail or Venice without anyone having chosen that (see "Which models, and where the data goes"). The demo prompt says that data stays in Europe and that conversations are not used for training. **Only keep claims in the prompt that are true for this setup.**

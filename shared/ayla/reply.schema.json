@@ -298,6 +298,17 @@
             "kind": { "enum": ["addVaultItem", "updatePlan", "draftProfile", "requestValidation"] },
             "summary": { "type": "string" },
             "expiresAt": { "type": "string", "format": "date-time" },
+            "planStep": {
+              "type": "object",
+              "description": "With updatePlan: the step of the conversation's plan Ayla changed. Already saved; the apps show it.",
+              "required": ["planId", "stepId", "status"],
+              "additionalProperties": false,
+              "properties": {
+                "planId": { "type": "string" },
+                "stepId": { "type": "string" },
+                "status": { "enum": ["upcoming", "active", "done", "skipped"] }
+              }
+            },
             "vaultItem": {
               "type": "object",
               "description": "With addVaultItem: what to put in the vault once the user confirms. Dates as YYYY-MM-DD.",

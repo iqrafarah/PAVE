@@ -29,6 +29,7 @@ struct MainView: View {
     @State private var employerInbox: EmployerInboxKey?
     /// Applications whose demo invitation has arrived, for Meldingen and the bell; read again when you move around.
     @State private var invitations: [ApplicationDraft] = []
+    @State private var plans: PlanModel
     @State private var destination = MainDestination.ayla
     /// Demo: the Camera Control button steers PAVE while "knopmodus" is on.
     @State private var cameraControl = PaveCameraControl()
@@ -50,7 +51,11 @@ struct MainView: View {
     private static let sidebarWidth: CGFloat = 800
     private static let sidebarSize: CGFloat = 320
 
-    init(service: (any AylaService)?, vaultService: (any VaultService)?, devicesService: (any DevicesService)? = nil, profileService: (any ProfileService)? = nil, notificationsService: SupabaseNotificationsService? = nil, shareService: (any ShareService)? = nil) {
+    init(
+        service: (any AylaService)?, vaultService: (any VaultService)?, devicesService: (any DevicesService)? = nil,
+        profileService: (any ProfileService)? = nil, notificationsService: SupabaseNotificationsService? = nil,
+        shareService: (any ShareService)? = nil, planService: (any PlanService)? = nil
+    ) {
         _sharing = State(initialValue: SharingModel(service: shareService, webURL: ShareServiceFactory.webURL()))
         _model = State(initialValue: AylaChatModel(service: service, drafts: .standard, pendingFiles: .standard))
         _memory = State(initialValue: AylaMemoryModel(service: service))
@@ -58,6 +63,7 @@ struct MainView: View {
         _devices = State(initialValue: SignedInDevicesModel(service: devicesService))
         _profile = State(initialValue: ProfileModel(service: profileService))
         _notificationsModel = State(initialValue: NotificationsModel(service: notificationsService))
+        _plans = State(initialValue: PlanModel(service: planService, liveActivity: PlanActivityController()))
     }
 
     var body: some View {
@@ -76,6 +82,7 @@ struct MainView: View {
         .focusedSceneValue(\.paveActions, keyboardActions)
         .tint(.paveAccent)
         .environment(memory)
+        .environment(plans)
         .environment(cameraControl)
         .environment(\.unreadNotifications, notificationsModel.unreadCount + invitations.filter { $0.progress.invitation?.isRead == false }.count)
         .task(id: destination) { invitations = Self.arrivedInvitations() }
@@ -145,6 +152,8 @@ struct MainView: View {
             }
         }
         .task { await model.start() }
+        .followsPlans(plans, chat: model)
+        .keepsOpenChat(destination == .ayla && scenePhase == .active && appState.isOpen ? model.conversationID : nil, in: notificationsModel)
         .task { await memory.load() }
         .task { await model.followConversationChanges() }
         .onChange(of: hasSidebar) { isMenuOpen = false }
@@ -303,6 +312,11 @@ struct MainView: View {
             isMenuOpen = false
             open(.profile)
             sharing.showsFairDay = true
+        case .plan:
+            // The plan on the Lock Screen opens on the Plan screen.
+            plans.openPlanID = plans.followedPlanID
+            isMenuOpen = false
+            open(.plan)
         case .talk, .newConversation:
             startNewConversation()
             if link == .talk { talk() }
@@ -413,6 +427,10 @@ struct MainView: View {
                         open(.profile)
                     }
                 }
+                .environment(\.openPlan) { id in
+                    plans.openPlanID = id
+                    open(.plan)
+                }
         case .vault:
             VaultScreen(onShowMenu: onShowMenu)
                 .environment(vault)
@@ -427,7 +445,15 @@ struct MainView: View {
             }
             .environment(vault)
         case .plan:
-            PlanScreen(onShowMenu: onShowMenu)
+            PlanScreen(
+                onShowMenu: onShowMenu,
+                chats: model.conversationList,
+                chatsAreComplete: model.hasLoadedList && !model.canLoadMore && !model.listFailed,
+                actions: PlanChatActions(open: openFromSearch, start: startConversation(in:for:), go: { destination in
+                    isMenuOpen = false
+                    open(destination)
+                }, deleteChats: deleteChats)
+            )
         case .profile:
             ProfileScreen(model: sharing, onShowMenu: onShowMenu)
                 .environment(vault)
@@ -547,6 +573,25 @@ struct MainView: View {
         }
         let conversation = known ?? AylaConversation(id: id, title: "", updatedAt: .now)
         Task { await model.open(conversation) }
+    }
+
+    /// "Nieuw gesprek" in a plan: an empty chat that joins the plan with its first message. For a step, the text field
+    /// already asks Ayla about it.
+    private func startConversation(in plan: PavePlan, for step: PavePlanStep?) {
+        model.newConversation(plan: plan.id, step: step?.id)
+        if let step { model.draft = PlanMessages.stepPrompt(step) }
+        destination = .ayla
+        isMenuOpen = false
+        if !isWide { showsChats = false }
+    }
+
+    /// A plan deleted together with its chats: they go as when deleted from the list of chats.
+    private func deleteChats(_ ids: [String]) {
+        let chats = model.conversationList.conversations.filter { ids.contains($0.id) }
+        guard !chats.isEmpty else { return }
+        model.delete(chats)
+        // Asked and confirmed already: no undo window in a list that is not on screen.
+        model.commitPendingDeletion()
     }
 
     /// From the menu, wherever you are: back to Ayla with an empty chat.

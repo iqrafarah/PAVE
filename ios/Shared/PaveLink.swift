@@ -13,6 +13,8 @@ nonisolated enum PaveLink: String, CaseIterable, Sendable {
     case applications = "sollicitaties"
     /// Profiel › Mijn beursdag, from an invitation at the fair.
     case fairDay = "beursdag"
+    /// The plan you follow on the Lock Screen.
+    case plan = "plan"
 
     static let scheme = "pave"
 

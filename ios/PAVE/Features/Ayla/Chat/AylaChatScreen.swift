@@ -20,6 +20,8 @@ struct AylaChatScreen: View {
     @Environment(AppState.self) private var appState
     @Environment(NotificationsModel.self) private var notifications: NotificationsModel?
     @Environment(ProfileModel.self) private var profile: ProfileModel?
+    @Environment(PlanModel.self) private var plans: PlanModel?
+    @State private var picksPlan = false
     /// Adding evidence after Ja to Ayla's "Wil je iets toevoegen?", filled with what she proposed.
     @State private var addEvidence: VaultAddEvidenceModel?
     @State private var dictation = SpeechDictation()
@@ -238,6 +240,8 @@ struct AylaChatScreen: View {
                     height: proxy.size.height,
                     bottomMargin: isOverVacancies ? sheetHeight - proxy.safeAreaInsets.bottom : bottomBarHeight + bottomGap + offlineNoticeHeight
                 )
+                // The plan of this chat, just under the header; out of the way while talking.
+                .planBar(chat: model, isHidden: isTalking)
 
                 // Her answer while a page sits low over the chat: at the very top of the screen, over her name where
                 // the bar holds nothing else (the outer display of iPhone Duo keeps its buttons along the side), and
@@ -339,6 +343,9 @@ struct AylaChatScreen: View {
                     )
                 } else if shelf == .vacancies {
                     vacancyShelf
+                } else if shelf == .plan, let plans {
+                    AylaPlanShelf(chat: model, onLeave: { closingShelf(then: $0) }, onOpen: openShelf)
+                        .environment(plans)
                 } else if shelf == .vault {
                     if let vault {
                         VaultScreen(onShowMenu: nil)
@@ -427,6 +434,13 @@ struct AylaChatScreen: View {
             } else if !isPicking, heldForPicking {
                 if voice.isMuted { voice.toggleMute() }
                 heldForPicking = false
+            }
+        }
+        .sheet(isPresented: $picksPlan) {
+            if let plans {
+                PlanPickerSheet(currentPlanID: chatPlan?.id, onPick: putChat(in:), onLeavePlan: takeChatOutOfPlan)
+                    .environment(plans)
+                    .paveSheet()
             }
         }
         .sheet(isPresented: $picksVaultItem, onDismiss: { afterPick = nil }) {
@@ -2194,13 +2208,40 @@ struct AylaChatScreen: View {
         isChoosingFile = true
     }
 
+    /// The plan this chat is in, or that it will start in.
+    private var chatPlan: PavePlan? {
+        plans?.activePlan(conversationID: model.conversationID, newChatPlanID: model.newChatPlan?.planID)
+    }
+
+    /// "Plan toevoegen": a chat that exists moves into the plan; a new one starts in it with its first message.
+    private func putChat(in plan: PavePlan) {
+        if let id = model.conversationID {
+            if let old = chatPlan, old.id != plan.id { plans?.detach(conversationID: id, from: old.id) }
+            let title = model.conversationList.conversations.first { $0.id == id }?.title ?? ""
+            plans?.attach(conversationID: id, title: title, to: plan.id)
+        } else {
+            model.startInPlan(plan.id)
+        }
+    }
+
+    private func takeChatOutOfPlan() {
+        guard let plan = chatPlan else { return }
+        if let id = model.conversationID {
+            plans?.detach(conversationID: id, from: plan.id)
+        } else {
+            model.startInPlan(nil)
+        }
+    }
+
     private var attachMenu: some View {
         AylaAttachMenu(
             onAddFile: { chooseFile() },
             onPhoto: { isAttachMenuOpen = false; isChoosingPhotos = true },
             onPickItem: vault == nil || vault?.state == .ready && vault?.items.isEmpty == true ? nil : { isAttachMenuOpen = false; picksVaultItem = true },
             onScan: scanAction,
-            onPaste: { addPasted() }
+            onPaste: { addPasted() },
+            onPickPlan: plans == nil ? nil : { isAttachMenuOpen = false; picksPlan = true },
+            planName: chatPlan?.name
         )
     }
 
