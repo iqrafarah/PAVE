@@ -142,3 +142,11 @@ test('an answer to someone who did not invite you becomes a mail reply, not "Dat
   assert.deepEqual(reply.actions, [{ do: 'replyMail', target: 'Sanne', value: 'Antwoord Sanne dat ik dinsdag kan' }])
   assert.notEqual(reply.text, 'Dat staat al zo.')
 })
+
+test('going on with a plan joins the chat to it instead of opening it', async () => {
+  const { buildSystemPrompt } = await import('../prompt.ts')
+  const prompt = buildSystemPrompt({ device: 'phone', input: 'text' } as any)
+  assert.match(prompt, /verder met een plan[^.]*\), doe dan workOnPlan/)
+  assert.deepEqual(cleanActions([{ do: 'workOnPlan', target: 'Piloot worden' }], 'phone'), [{ do: 'workOnPlan', target: 'Piloot worden' }])
+  assert.deepEqual(cleanActions([{ do: 'workOnPlan', target: 'Piloot worden' }], 'watch'), [])
+})

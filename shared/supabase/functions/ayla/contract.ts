@@ -113,7 +113,7 @@ export const ACTIONS = [
   'addTalkToCalendar', 'addToCalendar', 'openMail', 'summarizeMail', 'replyMail', 'writeMail',
   'shareWith', 'stopSharing', 'showShares',
   'editEvidence', 'restoreEvidence', 'addSkill', 'linkEvidenceToStep', 'setStepDue', 'moveStep',
-  'setApplicationStatus', 'startPractice', 'setLanguage', 'attachToEvidence', 'makeSelection',
+  'setApplicationStatus', 'startPractice', 'setLanguage', 'attachToEvidence', 'makeSelection', 'workOnPlan',
   'deleteChat', 'deleteEvidence', 'signOut', 'forgetAll', 'removePlanStep', 'answerInvitation', 'addProjectSource',
 ] as const
 export type ActionKind = (typeof ACTIONS)[number]

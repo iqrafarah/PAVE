@@ -828,7 +828,7 @@ const NEEDS_TARGET: readonly ActionKind[] = [
   'openPlan', 'openProject', 'markPlanStep', 'removePlanStep', 'linkPlanToProject',
   'renamePlanStep', 'describePlanStep', 'answerInvitation', 'addTalkToCalendar', 'addProjectSource', 'addToCalendar',
   'editEvidence', 'restoreEvidence', 'addSkill', 'linkEvidenceToStep', 'setStepDue', 'moveStep', 'setApplicationStatus', 'startPractice',
-  'attachToEvidence', 'makeSelection',
+  'attachToEvidence', 'makeSelection', 'workOnPlan',
 ]
 /** Mail actions may leave out who: then the newest conversation is meant. */
 const NEEDS_VALUE: readonly ActionKind[] = [

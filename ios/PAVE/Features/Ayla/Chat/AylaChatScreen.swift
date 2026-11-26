@@ -565,9 +565,9 @@ struct AylaChatScreen: View {
         }
         // What Ayla chose to do in the app with her answer: carried out here, one thing at a time.
         .task(id: model.actionRequest?.id) {
-            guard let request = model.actionRequest else { return }
+            guard model.actionRequest != nil else { return }
             try? await Task.sleep(for: .milliseconds(400))
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, let request = model.takeActionRequest() else { return }
             await run(request.actions, continues: request.continues)
         }
         .onChange(of: model.activity) { _, activity in
@@ -3056,6 +3056,13 @@ struct AylaChatScreen: View {
         case "setFontStyle":
             guard let style = PaveFontStyle(rawValue: action.value?.lowercased() ?? "") else { return .failed(AylaMessages.actionUnknownValue) }
             inSettings(.appearance) { PaveFontStore.shared.style = style }
+        case "workOnPlan":
+            // On with a plan here: this chat joins it, so from her next answer she sees every step of it.
+            guard let plans else { return .failed(AylaMessages.actionUnavailable) }
+            guard let plan = AylaPlanActions(plans: plans, chatPlan: chatPlan).plan(named: action.target) else {
+                return .failed(AylaMessages.actionNoPlan(action.target))
+            }
+            if chatPlan?.id != plan.id { putChat(in: plan) }
         case "openPlan":
             guard let plans, let openPlan else { return .failed(AylaMessages.actionUnavailable) }
             guard let plan = AylaPlanActions(plans: plans, chatPlan: plans.plan(containing: model.conversationID)).plan(named: action.target) else {

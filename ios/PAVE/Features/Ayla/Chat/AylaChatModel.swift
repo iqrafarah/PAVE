@@ -583,6 +583,13 @@ final class AylaChatModel {
     private(set) var actionRequest: ActionRequest?
     private var confirmedActionReplies: Set<String> = []
 
+    /// The actions to carry out now, handed over once: coming back to the chat later never runs them again (it opened
+    /// a plan over and over when "Verder met Ayla" brought you back to the chat that opened it).
+    func takeActionRequest() -> ActionRequest? {
+        defer { actionRequest = nil }
+        return actionRequest
+    }
+
     private func requestActions(of reply: AylaReply) {
         guard let actions = reply.actions, !actions.isEmpty, !actions.contains(where: \.needsConfirmation) else { return }
         actionRequest = ActionRequest(id: reply.id, actions: actions, continues: reply.continues == true)

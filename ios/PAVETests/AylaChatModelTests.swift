@@ -101,6 +101,20 @@ struct AylaChatModelTests {
         #expect(ayla.requests.allSatisfy { $0.device == .phone })
     }
 
+    @Test func herActionsAreHandedOverOnceSoComingBackNeverRunsThemAgain() async {
+        let ayla = FakeAyla()
+        ayla.replies = [.success(AylaReply(id: "r1", conversationId: "conv", text: "Ik open je plan.", actions: [AylaAppAction("openPlan", target: "Piloot worden")]))]
+        let model = AylaChatModel(service: ayla)
+
+        model.send("Open mijn plan")
+        await waitUntilIdle(model)
+
+        #expect(model.actionRequest?.actions.first?.kind == "openPlan")
+        #expect(model.takeActionRequest()?.id == "r1")
+        #expect(model.actionRequest == nil)
+        #expect(model.takeActionRequest() == nil)
+    }
+
     @Test func aChatStartedInAPlanTellsAylaThePlanAndStepOnce() async {
         let ayla = FakeAyla()
         ayla.replies = [.success(AylaReply(id: "r1", conversationId: "conv", text: "Zullen we beginnen?")), .success(AylaReply(id: "r2", conversationId: "conv", text: "Prima"))]
