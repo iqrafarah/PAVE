@@ -69,7 +69,18 @@ struct FairEmployerView: View {
                         }
                     }
                 }
-                PavePrimaryButton(title: SharingMessages.fairShareBack, action: onShareBack)
+                VStack(alignment: .leading, spacing: 8) {
+                    PavePrimaryButton(title: SharingMessages.leaveProfile) { applying = employer.openApplication }
+                    Text(SharingMessages.leaveProfileHint(employer.name))
+                        .textStyle(.caption)
+                        .foregroundStyle(Color.inkMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button(SharingMessages.shareByCode, action: onShareBack)
+                        .textStyle(.link)
+                        .foregroundStyle(Color.paveAccent)
+                        .frame(minHeight: 44)
+                        .buttonStyle(.pave)
+                }
             }
             .padding(20)
             .frame(maxWidth: 680)

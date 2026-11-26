@@ -155,6 +155,12 @@ enum SharingMessages {
     static let quickApplyNeedsWhy = "Schrijf kort waarom je hier wilt werken, of spreek het in."
     static let fairVacancies = "Vacatures"
     static let fairShareBack = "Deel je profiel"
+    static let leaveProfile = "Laat je profiel achter"
+    static func leaveProfileHint(_ employer: String) -> String { "\(employer) ziet je kaartje en je profiel in de postbus van de stand, ook zonder vacature." }
+    static let leaveProfileTitle = "Profiel achterlaten"
+    static let leaveProfileWhy = "Wat zoek je? (niet verplicht)"
+    static func leaveProfileSend(_ employer: String) -> String { "Laat achter bij \(employer)" }
+    static let shareByCode = "Of deel met een QR-code"
     static let quickApplySentTitle = "Achtergelaten"
     static func quickApplySentText(_ employer: String, vacancy: String) -> String {
         "Je kaartje voor \(vacancy) staat klaar bij \(employer). Je krijgt een melding als je wordt uitgenodigd; alles staat in Mijn beursdag."
