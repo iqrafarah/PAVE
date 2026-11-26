@@ -179,13 +179,13 @@ struct EmailMessageRow: View {
     @ViewBuilder
     private func messageMenu(copy: String) -> some View {
         if let onReply {
-            Button(action: onReply) { Label("Antwoord", systemImage: "arrowshape.turn.up.left") }
+            Button(action: onReply) { Label("Antwoord", systemImage: "arrowshape.turn.up.left.fill") }
         }
         if let onReplyAll {
-            Button(action: onReplyAll) { Label("Allen antwoorden", systemImage: "arrowshape.turn.up.left.2") }
+            Button(action: onReplyAll) { Label("Allen antwoorden", systemImage: "arrowshape.turn.up.left.2.fill") }
         }
         if let onForward {
-            Button(action: onForward) { Label("Doorsturen", systemImage: "arrowshape.turn.up.right") }
+            Button(action: onForward) { Label("Doorsturen", systemImage: "arrowshape.turn.up.right.fill") }
         }
         Button { UIPasteboard.general.string = copy } label: {
             Label("Kopiëren", tinted: .iconDocumentDuplicate)
@@ -206,12 +206,12 @@ struct EmailMessageRow: View {
 
     @ViewBuilder
     private func attachmentMenu(_ attachment: EmailAttachment) -> some View {
-        Button { onOpenAttachment(attachment) } label: { Label("Openen", tinted: .iconEye) }
+        Button { onOpenAttachment(attachment) } label: { Label("Openen", tinted: .iconEyeSolid) }
         if canSave(attachment), let onSaveToVault {
             Button { onSaveToVault(attachment) } label: { Label("Bewaar in kluis", tinted: .iconFolderArrowDownSolid) }
         }
         if let onForward {
-            Button(action: onForward) { Label("Doorsturen", systemImage: "arrowshape.turn.up.right") }
+            Button(action: onForward) { Label("Doorsturen", systemImage: "arrowshape.turn.up.right.fill") }
         }
         if let onDelete {
             Button(role: .destructive, action: onDelete) { Label("Verwijderen", tinted: .iconTrash) }

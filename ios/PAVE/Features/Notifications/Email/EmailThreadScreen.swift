@@ -15,6 +15,9 @@ struct EmailThreadScreen: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isLoading = true
     @State private var draft = ""
+    /// Speaking into the reply field, as in Ayla's chat: the words show in the field and you send them yourself.
+    @State private var dictation = SpeechDictation()
+    @State private var draftBeforeDictation = ""
     @State private var files: [EmailOutgoingAttachment] = []
     @State private var isSending = false
     @State private var sendError: String?
@@ -54,7 +57,7 @@ struct EmailThreadScreen: View {
                     conversation(thread)
                 }
             } else {
-                PaveEmptyState(icon: .iconMail, title: "Gesprek niet gevonden", message: "Het staat niet meer in je mailbox.")
+                PaveEmptyState(icon: .iconEnvelopeSolid, title: "Gesprek niet gevonden", message: "Het staat niet meer in je mailbox.")
                     .padding(24)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -190,12 +193,12 @@ struct EmailThreadScreen: View {
             Section {
                 Button { askAyla(.summarize) } label: { Label("Laat Ayla samenvatten", systemImage: "sparkles") }
                     .disabled(ayla?.service == nil || aylaWorking != nil)
-                Button { askAyla(.suggestReply) } label: { Label("Laat Ayla een antwoord voorstellen", systemImage: "text.bubble") }
+                Button { askAyla(.suggestReply) } label: { Label("Laat Ayla een antwoord voorstellen", systemImage: "text.bubble.fill") }
                     .disabled(ayla?.service == nil || aylaWorking != nil)
             }
             Section {
                 Button { forwarding = EmailForwarding(messages: thread.messages) } label: {
-                    Label(thread.messages.count == 1 ? "Doorsturen" : "Gesprek doorsturen", systemImage: "arrowshape.turn.up.right")
+                    Label(thread.messages.count == 1 ? "Doorsturen" : "Gesprek doorsturen", systemImage: "arrowshape.turn.up.right.fill")
                 }
                 Button {
                     PaveHaptics.selection()
@@ -293,7 +296,16 @@ struct EmailThreadScreen: View {
             Task { await email.open(threadID) }
         }
         .onAppear { email.openThreadID = threadID }
-        .onDisappear { if email.openThreadID == threadID { email.openThreadID = nil } }
+        .onDisappear {
+            dictation.stop()
+            if email.openThreadID == threadID { email.openThreadID = nil }
+        }
+        .alert("Inspreken", isPresented: Binding(get: { dictation.problem != nil }, set: { if !$0 { dictation.problem = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(dictation.problem == .notAllowed ? AylaMessages.speechNotAllowed : AylaMessages.speechUnavailable)
+        }
+        .sensoryFeedback(trigger: dictation.isListening) { _, isListening in isListening ? .start : .stop }
         // On the conversation, not on the bar: laid out inside the safe area the bar below leaves, its bottom edge is the
         // top of the reply bar, so the button sits just above the field.
         .overlay(alignment: .bottom) {
@@ -386,7 +398,8 @@ struct EmailThreadScreen: View {
                 }
                 Spacer(minLength: 0)
             }
-            .padding(.leading, 42)
+            // In line with the rounded edge of the field below.
+            .padding(.leading, 12)
         }
     }
 
@@ -397,32 +410,56 @@ struct EmailThreadScreen: View {
             }
             if let summary { summaryCard(summary) }
             recipientsBar(thread)
-            HStack(alignment: .bottom, spacing: 8) {
-                EmailAttachMenu(
-                    onPhotos: { isChoosingPhotos = true },
-                    onFile: { isChoosingFile = true },
-                    onVault: { isChoosingFromVault = true }
-                )
-                .disabled(isSending)
+            if dictation.isListening, let startedAt = dictation.startedAt {
+                // While you speak the recording bar takes the field's place, as in Ayla's chat. ✓ keeps the text in the
+                // field to read and send yourself; ✕ throws it away.
+                AylaDictationBar(text: draft, meter: dictation.meter, startedAt: startedAt, onCancel: cancelDictation, onDone: { dictation.stop() })
+                    .transition(.opacity)
+            } else {
                 EmailReplyField(
                     text: $draft, files: $files, isSending: isSending, canSend: canSend,
                     label: "Antwoord aan \(recipientsLabel(thread))", focus: $isReplyFocused,
                     aylaWorking: aylaWorking,
-                    onAyla: ayla?.service == nil ? nil : { askAyla($0) }
+                    onAyla: ayla?.service == nil ? nil : { askAyla($0) },
+                    attach: EmailAttachMenu(
+                        onPhotos: { isChoosingPhotos = true },
+                        onFile: { isChoosingFile = true },
+                        onVault: { isChoosingFromVault = true }
+                    ),
+                    isListening: dictation.isListening,
+                    onMicrophone: toggleDictation
                 ) {
                     Task { await send() }
                 }
             }
         }
-        .padding(.horizontal, 12)
+        .animation(.easeOut(duration: 0.2), value: dictation.isListening)
+        // Where Ayla's composer is in her chat: the glass field floats over the conversation, without a bar behind it.
+        .padding(.leading, 33)
+        .padding(.trailing, 31)
         .padding(.vertical, 8)
         .frame(maxWidth: 680)
         .frame(maxWidth: .infinity)
-        .background(.bar)
+    }
+
+    private func toggleDictation() {
+        if dictation.isListening {
+            dictation.stop()
+            return
+        }
+        draftBeforeDictation = draft
+        let prefix = draft.isEmpty ? "" : draft + " "
+        Task { await dictation.start { text in draft = prefix + text } }
+    }
+
+    private func cancelDictation() {
+        dictation.stop()
+        draft = draftBeforeDictation
     }
 
     private func send() async {
         guard canSend else { return }
+        dictation.stop()
         isSending = true
         sendError = nil
         do {
@@ -645,7 +682,9 @@ nonisolated enum EmailVaultCategory {
     }
 }
 
-/// The rounded field as in Messages: files you add on top, and the send arrow inside on the right once there is something.
+/// The reply field, built exactly like Ayla's composer (AylaComposer): the plus, Ayla's mark, the text and send, in one
+/// glass field. Files you add show above the text. Ayla's mark is her button here: with an empty field she suggests a
+/// reply or summarises, with text she words it better.
 struct EmailReplyField: View {
     @Binding var text: String
     @Binding var files: [EmailOutgoingAttachment]
@@ -656,8 +695,12 @@ struct EmailReplyField: View {
     var focus: FocusState<Bool>.Binding?
     /// What Ayla is doing now, if anything.
     var aylaWorking: EmailAylaTask?
-    /// The ✨ in the field while there is nothing to send: Ayla summarises or writes a reply. Nil leaves it out.
+    /// Ayla's mark in the field. Nil leaves it out.
     var onAyla: ((EmailAylaTask) -> Void)?
+    let attach: EmailAttachMenu
+    var isListening = false
+    /// The microphone, as in Ayla's composer: you speak, the words show in the field, and you send them yourself.
+    var onMicrophone: (() -> Void)?
     let onSend: () -> Void
 
     private var hasText: Bool { !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
@@ -665,87 +708,139 @@ struct EmailReplyField: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if !files.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
+                // As in Ayla's composer: the row stops short of the rounded corners, and a chip that runs on fades out.
+                ScrollView(.horizontal) {
                     HStack(spacing: 8) {
                         ForEach(files) { file in
-                            EmailAttachmentChip(attachment: file) { files.removeAll { $0.id == file.id } }
+                            AylaAttachmentChip(name: file.name) { files.removeAll { $0.id == file.id } }
                         }
                     }
-                    .padding(8)
+                    .padding(.horizontal, Self.chipFade)
                 }
+                .scrollIndicators(.hidden)
+                .mask {
+                    HStack(spacing: 0) {
+                        LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing).frame(width: Self.chipFade)
+                        Color.black
+                        LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing).frame(width: Self.chipFade)
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.top, 10)
             }
-            HStack(alignment: .bottom, spacing: 6) {
-                TextField(aylaWorking == .suggestReply ? "Ayla schrijft een antwoord…" : "Bericht", text: $text, axis: .vertical)
-                    .textStyle(.input)
-                    .lineLimit(1...6)
-                    .padding(.leading, 14)
-                    .padding(.vertical, 9)
-                    // Ayla's text replaces what is here, so nothing typed meanwhile gets lost.
-                    .disabled(isSending || aylaWorking != nil)
-                    .accessibilityLabel(label)
-                    .modifier(EmailOptionalFocus(focus: focus))
-                if aylaWorking != nil {
-                    ProgressView()
-                        .controlSize(.small)
-                        .tint(.paveAccent)
-                        .frame(width: 30, height: 30)
-                        .padding(4)
-                        .accessibilityLabel("Ayla is bezig")
-                } else if let onAyla, hasText {
-                    Button { onAyla(.improve) } label: {
-                        PaveMark()
-                            .frame(width: 30, height: 30)
-                            .contentShape(.rect)
-                    }
-                    .buttonStyle(.pave)
-                    .padding(.vertical, 4)
-                    .transition(.scale.combined(with: .opacity))
-                    .accessibilityLabel("Beter formuleren met Ayla")
-                    .accessibilityHint("Ayla maakt van je tekst een net antwoord op deze mail")
-                } else if let onAyla {
-                    Menu {
-                        Button { onAyla(.suggestReply) } label: { Label("Stel een antwoord voor", systemImage: "text.bubble") }
-                        Button { onAyla(.summarize) } label: { Label("Vat samen", systemImage: "list.bullet") }
-                    } label: {
-                        PaveMark()
-                            .frame(width: 30, height: 30)
-                            .contentShape(.rect)
-                    }
-                    .menuOrder(.fixed)
-                    .padding(4)
-                    .transition(.scale.combined(with: .opacity))
-                    .accessibilityLabel("Vraag Ayla")
-                    .accessibilityHint("Laat Ayla een antwoord voorstellen of het gesprek samenvatten")
-                }
-                if canSend || isSending {
-                    Button(action: onSend) {
-                        Group {
-                            if isSending {
-                                ProgressView().controlSize(.small).tint(.white)
-                            } else {
-                                Image(.iconSend)
-                            }
-                        }
-                        .frame(width: 30, height: 30)
-                        .background(Color.paveAccentFill, in: .circle)
-                        .shadow(color: .black.opacity(0.25), radius: 2)
-                    }
-                    .buttonStyle(.pave)
-                    .disabled(!canSend)
-                    .padding(4)
-                    .transition(.scale.combined(with: .opacity))
-                    .accessibilityLabel(isSending ? "Bezig met versturen" : "Versturen")
-                }
-            }
+            field
         }
-        .background(Color.panel, in: .rect(cornerRadius: 20, style: .continuous))
-        .overlay { RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.cardBorder) }
-        .animation(.snappy(duration: 0.2), value: canSend)
-        .animation(.snappy(duration: 0.2), value: hasText)
+        .glassEffect(.clear, in: .rect(cornerRadius: 25))
+    }
+
+    private static let chipFade: CGFloat = 12
+
+    private var field: some View {
+        HStack(spacing: 0) {
+            attach
+                .disabled(isSending)
+
+            mark
+
+            TextField(aylaWorking == .suggestReply ? "Ayla schrijft een antwoord…" : "Bericht", text: $text,
+                      prompt: Text(aylaWorking == .suggestReply ? "Ayla schrijft een antwoord…" : "Bericht").foregroundStyle(Color.inkMuted.opacity(0.41)),
+                      axis: .vertical)
+                .textStyle(.bodyMedium)
+                .foregroundStyle(Color.ink)
+                .tint(.paveAccent)
+                .lineLimit(1...6)
+                .padding(.vertical, 16)
+                // Ayla's text replaces what is here, so nothing typed meanwhile gets lost.
+                .disabled(isSending || aylaWorking != nil)
+                .accessibilityLabel(label)
+                .modifier(EmailOptionalFocus(focus: focus))
+
+            if let onMicrophone {
+                Button(action: onMicrophone) {
+                    Image(.iconMicrophone)
+                        .renderingMode(.template)
+                        .foregroundStyle(isListening ? Color.paveAccent : .ink)
+                        .frame(width: 31, height: 53)
+                        .padding(.leading, 13)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.pave)
+                .disabled(isSending || aylaWorking != nil)
+                .accessibilityLabel(isListening ? "Stop met inspreken" : "Inspreken")
+            }
+
+            Button(action: send) {
+                Group {
+                    if isSending {
+                        ProgressView().controlSize(.small).tint(.white)
+                    } else {
+                        Image(.iconSend)
+                    }
+                }
+                .paveIconFrame(30)
+                .background(Color.paveAccentFill, in: .circle)
+                .shadow(color: .black.opacity(0.25), radius: 2)
+                .frame(width: AylaComposer.roundButtonWidth, height: 53)
+                .contentShape(.rect)
+            }
+            .buttonStyle(.pave)
+            .disabled(isSending)
+            .padding(.leading, onMicrophone == nil ? 6 : 0)
+            .accessibilityLabel(isSending ? "Bezig met versturen" : "Versturen")
+        }
+        .padding(.leading, 4.5)
+        .padding(.trailing, 7)
+        .frame(minHeight: 53)
+        // Tapping anywhere in the field, also next to the text, puts the cursor in it.
+        .contentShape(.rect)
+        .onTapGesture { if !isSending, aylaWorking == nil { focus?.wrappedValue = true } }
+    }
+
+    /// Ayla's mark between the plus and the text, where it is in her composer.
+    @ViewBuilder
+    private var mark: some View {
+        if aylaWorking != nil {
+            ProgressView()
+                .controlSize(.mini)
+                .tint(.paveAccent)
+                .frame(width: markSize.width, height: 53)
+                .padding(.leading, 1.5)
+                .padding(.trailing, 9.4)
+                .accessibilityLabel("Ayla is bezig")
+        } else if let onAyla, hasText {
+            Button { onAyla(.improve) } label: { markLabel }
+                .buttonStyle(.pave)
+                .accessibilityLabel("Beter formuleren met Ayla")
+                .accessibilityHint("Ayla maakt van je tekst een net antwoord op deze mail")
+        } else if let onAyla {
+            Menu {
+                Button { onAyla(.suggestReply) } label: { Label("Stel een antwoord voor", systemImage: "text.bubble.fill") }
+                Button { onAyla(.summarize) } label: { Label("Vat samen", tinted: .iconListBulletSolid) }
+            } label: { markLabel }
+                .menuOrder(.fixed)
+                .accessibilityLabel("Vraag Ayla")
+                .accessibilityHint("Laat Ayla een antwoord voorstellen of het gesprek samenvatten")
+        }
+    }
+
+    /// The default PaveMark: four squares of 4.25 pt, each half a square further right.
+    private let markSize = CGSize(width: 4.25 + 3 * 4.25 / 2, height: 4 * 4.25)
+
+    private var markLabel: some View {
+        PaveMark()
+            .padding(.leading, 1.5)
+            .padding(.trailing, 9.4)
+            .frame(height: 53)
+            .contentShape(.rect)
+    }
+
+    private func send() {
+        guard canSend else { return }
+        onSend()
     }
 }
 
-/// The round plus button left of the reply field: a photo, a file, or something from your vault.
+/// The plus at the start of the reply field, as in Ayla's composer: a photo, a file, or something from your vault.
 struct EmailAttachMenu: View {
     let onPhotos: () -> Void
     let onFile: () -> Void
@@ -754,13 +849,12 @@ struct EmailAttachMenu: View {
     var body: some View {
         Menu {
             Button(action: onPhotos) { Label("Foto's", tinted: .iconPhotoSolid) }
-            Button(action: onFile) { Label("Bestand", tinted: .iconPaperclip) }
+            Button(action: onFile) { Label("Bestand", tinted: .iconPaperclipSolid) }
             Button(action: onVault) { Label { Text(AylaMessages.sourcesFromVault) } icon: { Image(.iconFolderSolid) } }
         } label: {
             Image(.iconPlus)
-                .frame(width: 34, height: 34)
-                .background(Color.bubbleUser, in: .circle)
-                .padding(.bottom, 2)
+                .frame(width: 44, height: 53)
+                .contentShape(.rect)
         }
         // Top to bottom as written, also though the menu opens upward from the bottom of the screen.
         .menuOrder(.fixed)

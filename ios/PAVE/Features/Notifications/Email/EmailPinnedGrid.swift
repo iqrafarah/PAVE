@@ -18,7 +18,7 @@ struct EmailPinnedGrid: View {
                     .contentShape(.contextMenuPreview, .rect(cornerRadius: 16))
                     .onTapGesture { onOpen(id) }
                     .contextMenu {
-                        Button { onUnpin(id) } label: { Label("Losmaken", tinted: .iconBookmarkOutline) }
+                        Button { onUnpin(id) } label: { Label("Losmaken", tinted: .iconBookmarkSolid) }
                         Button(role: .destructive) { onDelete(id) } label: { Label("Verwijderen", tinted: .iconTrash) }
                     }
                     .accessibilityElement(children: .ignore)

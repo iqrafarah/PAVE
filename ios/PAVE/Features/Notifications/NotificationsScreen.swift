@@ -44,9 +44,9 @@ enum PaveNotificationKind: String, CaseIterable, Hashable, Identifiable, Sendabl
         switch self {
         case .conversation: .iconChat
         case .verifiedEvidence: .iconCheckBadgeSolid
-        case .rejectedEvidence: .iconExclamationCircle
+        case .rejectedEvidence: .iconExclamationCircleSolid
         case .verificationRequest: .iconDocumentTextSolid
-        case .email: .iconMail
+        case .email: .iconEnvelopeSolid
         }
     }
 
@@ -469,7 +469,7 @@ struct NotificationsScreen: View {
     /// Your e-mail in Meldingen: offered once, and always reachable from the menu.
     private var emailCard: some View {
         HStack(spacing: 11) {
-            Image(.iconMail)
+            Image(.iconEnvelopeSolid)
                 .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
@@ -521,7 +521,7 @@ struct NotificationsScreen: View {
                 Button {
                     markAllRead()
                 } label: {
-                    Label("Alles als gelezen markeren", tinted: .iconMailOpen)
+                    Label("Alles als gelezen markeren", tinted: .iconEnvelopeOpenSolid)
                 }
                 .disabled(!hasUnread)
                 Button { showsTrash = true } label: {
@@ -534,7 +534,7 @@ struct NotificationsScreen: View {
             if email != nil {
                 Section {
                     Button { showsEmailAccounts = true } label: {
-                        Label(email?.hasAccounts == true ? "E-mailaccounts" : "E-mailaccount koppelen", tinted: .iconMail)
+                        Label(email?.hasAccounts == true ? "E-mailaccounts" : "E-mailaccount koppelen", tinted: .iconEnvelopeSolid)
                     }
                 }
             }
@@ -555,7 +555,7 @@ struct NotificationsScreen: View {
         if visibleNotifications.isEmpty {
             if searchText.isEmpty {
                 PaveEmptyState(
-                    icon: .iconMailOpen,
+                    icon: .iconEnvelopeOpenSolid,
                     title: tab.emptyTitle,
                     message: emptyMessage
                 )
@@ -633,7 +633,7 @@ struct NotificationsScreen: View {
             }
             if isUnread(notification) {
                 Button { markRead(notification) } label: {
-                    Label("Gelezen", tinted: .iconMailOpen)
+                    Label("Gelezen", tinted: .iconEnvelopeOpenSolid)
                 }
                 .tint(.paveAccent)
             }
@@ -647,7 +647,7 @@ struct NotificationsScreen: View {
     private func menu(for notification: PaveNotification) -> some View {
         if isUnread(notification) {
             Button { markRead(notification) } label: {
-                Label("Markeer als gelezen", tinted: .iconMailOpen)
+                Label("Markeer als gelezen", tinted: .iconEnvelopeOpenSolid)
             }
         }
         if let id = notification.emailThreadID, email?.canPinMore == true, !notification.emailIsLocked {

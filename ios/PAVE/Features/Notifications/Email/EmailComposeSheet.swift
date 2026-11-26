@@ -152,10 +152,10 @@ struct EmailComposeSheet: View {
                     }
                     Menu {
                         Button { isChoosingPhotos = true } label: { Label("Foto's", tinted: .iconPhotoSolid) }
-                        Button { isChoosingFile = true } label: { Label("Bestand", tinted: .iconPaperclip) }
+                        Button { isChoosingFile = true } label: { Label("Bestand", tinted: .iconPaperclipSolid) }
                         Button { isChoosingFromVault = true } label: { Label { Text(AylaMessages.sourcesFromVault) } icon: { Image(.iconFolderSolid) } }
                     } label: {
-                        Label("Bijlage toevoegen", tinted: .iconPaperclip)
+                        Label("Bijlage toevoegen", tinted: .iconPaperclipSolid)
                             .textStyle(.bodyMedium)
                             .foregroundStyle(Color.paveAccent)
                     }
