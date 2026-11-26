@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import Observation
 import PAVECore
 
@@ -30,7 +31,54 @@ final class PlanModel {
         // "Stap klaar" on the Lock Screen while PAVE runs.
         if liveActivity != nil {
             PlanStepCompletion.handler = { [weak self] planID in self?.completeCurrentStep(in: planID) }
+            PlanProgress.handler = { [weak self] event in self?.notice(event) }
         }
+    }
+
+    // MARK: Done with this step?
+
+    /// What you just did fits the step a plan is on: "Klaar met deze stap?". Nothing is marked done without your tap.
+    struct StepSuggestion: Equatable {
+        let planID: String
+        let stepID: String
+        let planName: String
+        let stepTitle: String
+        let evidenceID: String?
+    }
+
+    private(set) var suggestion: StepSuggestion?
+
+    /// The suggestion while its step is still the one the plan is on.
+    func suggestion(for planID: String) -> StepSuggestion? {
+        guard let suggestion, suggestion.planID == planID, plan(id: planID)?.currentStep?.id == suggestion.stepID else { return nil }
+        return suggestion
+    }
+
+    /// The plan for the vacancy it was about first, then the plan followed on the Lock Screen, then the others.
+    func notice(_ event: PlanProgressEvent) {
+        let forVacancy = event.vacancyID.map { id in activePlans.filter { PlanVacancy.vacancyID(of: $0) == id } } ?? []
+        let followed = followedPlanID.flatMap { plan(id: $0) }.map { [$0] } ?? []
+        for plan in forVacancy + followed + activePlans {
+            guard let step = plan.stepFinished(by: event) else { continue }
+            suggestion = StepSuggestion(planID: plan.id, stepID: step.id, planName: plan.name, stepTitle: step.title, evidenceID: event.itemID)
+            return
+        }
+    }
+
+    /// The step is done, its evidence kept with it; says which step is next.
+    func acceptSuggestion() {
+        guard let suggestion else { return }
+        self.suggestion = nil
+        Task {
+            guard await change(suggestion.planID, { $0.finishStep(id: suggestion.stepID, evidenceID: suggestion.evidenceID) }) else { return }
+            PaveHaptics.success()
+            let next = plan(id: suggestion.planID)?.currentStep?.title
+            AccessibilityNotification.Announcement(PaveTranslator.translate(next.map { PlanMessages.nextStepIs($0) } ?? PlanMessages.finished)).post()
+        }
+    }
+
+    func dismissSuggestion() {
+        suggestion = nil
     }
 
     // MARK: Lock Screen
@@ -233,6 +281,10 @@ final class PlanModel {
 
     func updateStep(_ step: PavePlanStep, in planID: String) {
         Task { await change(planID) { $0.updateStep(step) } }
+    }
+
+    func addStepAfterCurrent(_ step: PavePlanStep, to planID: String) {
+        Task { await change(planID) { $0.addStepAfterCurrent(step) } }
     }
 
     func moveStep(_ stepID: String, before otherID: String?, in planID: String) {

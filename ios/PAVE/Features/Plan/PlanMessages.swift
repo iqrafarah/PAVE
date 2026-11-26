@@ -137,6 +137,10 @@ enum PlanMessages {
     }
     static let finished = "Klaar! Je hebt alle stappen afgerond."
     static let stepFinished = "Stap afgerond"
+    static let suggestionTitle = "Klaar met deze stap?"
+    static let notYet = "Nog niet"
+    static func nextStepIs(_ title: String) -> String { "Volgende stap: \(title)" }
+    static func fromPlan(_ name: String) -> String { "Uit je plan \(name)" }
 
     static let conversations = "Gesprekken met Ayla"
     static let noConversations = "Nog geen gesprekken in dit plan."

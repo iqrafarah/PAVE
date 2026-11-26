@@ -38,14 +38,14 @@ enum DynamicIslandFrame {
         return CGRect(x: (width - size.width) / 2, y: top, width: size.width, height: size.height)
     }
 
-    /// The closed iPhone Duo: no status bar on top but a column on the right, with the camera at the top of it, in the
-    /// middle of the column (measured on the Duo: 53 pt, its centre 40 pt from the top). `width` is the width beside
-    /// the column. Nil on every other screen.
+    /// The closed iPhone Duo: no status bar on top but a column on the right, with the camera at the top of it (measured
+    /// on Daaf's Duo: a capsule of 37 × 63 pt, its centre 6 pt left of the column's middle and 57 pt from the top; the
+    /// Simulator draws a round one elsewhere). `width` is the width beside the column. Nil on every other screen.
     static func sideFrame(topInset: CGFloat, trailingInset: CGFloat, width: CGFloat) -> CGRect? {
         guard UIDevice.current.userInterfaceIdiom == .phone, topInset < 20, trailingInset >= 60, width < 500 else { return nil }
-        let size = min(53, trailingInset * 0.64)
-        let centerX = width + trailingInset / 2 + 2
-        return CGRect(x: centerX - size / 2, y: 40 - size / 2, width: size, height: size)
+        let size = CGSize(width: 37, height: 63)
+        let center = CGPoint(x: width + trailingInset / 2 - 6, y: 57)
+        return CGRect(x: center.x - size.width / 2, y: center.y - size.height / 2, width: size.width, height: size.height)
     }
 }
 
@@ -96,8 +96,8 @@ struct PlanIsland: View {
     /// Where it grows from: the middle of the top, or the camera in the column on the right.
     private var anchor: UnitPoint { isSide ? .topTrailing : .top }
 
-    /// From the right edge of the screen to just right of the camera, for the side island.
-    private var trailingRoom: CGFloat { max(0, screenWidth - island.maxX - 3) }
+    /// From the right edge of the screen to the right side of the camera, for the side island.
+    private var trailingRoom: CGFloat { max(0, screenWidth - island.maxX) }
 
     var body: some View {
         ZStack(alignment: isSide ? .topTrailing : .top) {
@@ -112,7 +112,7 @@ struct PlanIsland: View {
                     ))
             } else {
                 blackIsland
-                    .padding(.top, isSide ? island.minY - 2 : island.minY)
+                    .padding(.top, island.minY)
                     .padding(.trailing, isSide ? trailingRoom - Self.reachSide : 0)
                     .transition(.scale(scale: 0.85, anchor: anchor).combined(with: .opacity))
             }
@@ -132,10 +132,12 @@ struct PlanIsland: View {
     // MARK: The island, black as the camera
 
     private var blackIsland: some View {
-        let height = isSide ? island.height + 4 : island.height
+        // On the Duo a slim capsule from the top of the camera, as high as the camera is wide, so the two black shapes
+        // run into each other.
+        let height = isSide ? island.width : island.height
         let radius: CGFloat = notice == nil ? height / 2 : 34
         let compactWidth = isSide ? island.width + Self.sideReach : island.width + 2 * Self.side
-        let noticeWidth = isSide ? min(island.maxX + 3 - 12, 380) : screenWidth - 24
+        let noticeWidth = isSide ? min(island.maxX - 12, 380) : screenWidth - 24
         return Group {
             if notice == nil {
                 compact
@@ -220,7 +222,7 @@ struct PlanIsland: View {
                     Spacer(minLength: island.width)
                 }
                 .padding(.leading, 12)
-                .frame(height: island.height + 4)
+                .frame(height: island.width)
             } else {
                 topCompact
             }
@@ -292,7 +294,7 @@ struct PlanIsland: View {
         .padding(.leading, 18)
         // Clear of the camera: below it at the top, left of it in the column.
         .padding(.trailing, isSide ? island.width + 12 : 18)
-        .padding(.top, isSide ? 12 : island.height + 6)
+        .padding(.top, isSide ? 10 : island.height + 6)
         .padding(.bottom, 10)
     }
 

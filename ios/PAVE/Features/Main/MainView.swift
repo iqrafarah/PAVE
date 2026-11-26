@@ -115,6 +115,29 @@ struct MainView: View {
         }
     }
 
+    /// "Klaar met deze stap?" over the app, after the melding when both are there. It waits for an answer: what you
+    /// did often happens in a sheet, and the question should still be there when it closes. Not on the page of that
+    /// plan, where the plan itself asks.
+    @ViewBuilder
+    private var suggestionView: some View {
+        if shownBanner == nil, let suggestion = plans.suggestion, plans.suggestion(for: suggestion.planID) != nil,
+           !(destination == .plan && plans.openPlanID == suggestion.planID) {
+            PlanStepSuggestionCard(suggestion: suggestion) {
+                plans.acceptSuggestion()
+            } onDismiss: {
+                plans.dismissSuggestion()
+            }
+            .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
+            .gesture(DragGesture(minimumDistance: 12).onEnded { value in
+                if value.translation.height < -10 { plans.dismissSuggestion() }
+            })
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .id(suggestion.stepID)
+            .transition(.fromIsland)
+        }
+    }
+
     private func dismissBanners() {
         notificationsModel.dismissBanner()
         emailModel.dismissBanner()
@@ -160,7 +183,8 @@ struct MainView: View {
         .environment(emailModel)
         .task(id: destination) { invitations = Self.arrivedInvitations() }
         // A container that is always there, so the card's insertion and removal have something to animate in.
-        .overlay(alignment: .top) { ZStack(alignment: .top) { bannerView } }
+        .overlay(alignment: .top) { ZStack(alignment: .top) { bannerView; suggestionView } }
+        .animation(.island, value: plans.suggestion)
         .onChange(of: visibleBanner?.id, initial: true) {
             withAnimation(.island) { shownBanner = visibleBanner }
         }

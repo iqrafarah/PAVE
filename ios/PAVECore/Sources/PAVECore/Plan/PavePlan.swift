@@ -147,6 +147,14 @@ public struct PavePlan: Codable, Equatable, Sendable, Identifiable {
         normalize()
     }
 
+    /// Adds a step right after the step you are on, where it belongs to what you are doing now; at the end without one.
+    public mutating func addStepAfterCurrent(_ step: PavePlanStep, at date: Date = .now) {
+        let next = currentStep.flatMap { current in steps.firstIndex { $0.id == current.id } }.map { $0 + 1 }
+        addStep(step, at: date)
+        guard let next, next < steps.count - 1 else { return }
+        moveStep(id: step.id, before: steps[next].id, at: date)
+    }
+
     /// Puts a step before another one, or at the end when `otherID` is nil. Which step is active stays the same.
     public mutating func moveStep(id: String, before otherID: String?, at date: Date = .now) {
         guard id != otherID, let from = steps.firstIndex(where: { $0.id == id }) else { return }

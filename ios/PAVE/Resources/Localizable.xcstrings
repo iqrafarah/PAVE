@@ -23166,6 +23166,23 @@
         }
       }
     },
+    "Klaar met deze stap?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done with this step?"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kla ku e paso aki?"
+          }
+        }
+      }
+    },
     "Klaar op je iPhone.": {
       "extractionState": "manual",
       "localizations": {
@@ -28330,6 +28347,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ainda niun hende no a wak"
+          }
+        }
+      }
+    },
+    "Nog niet": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not yet"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ainda no"
           }
         }
       }
@@ -36868,6 +36902,23 @@
         }
       }
     },
+    "Uit je plan %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From your plan %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For di bo plan %@"
+          }
+        }
+      }
+    },
     "Uit kluis halen": {
       "extractionState": "manual",
       "localizations": {
@@ -39397,6 +39448,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Siguiente paso"
+          }
+        }
+      }
+    },
+    "Volgende stap: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next step: %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siguiente paso: %@"
           }
         }
       }

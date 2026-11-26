@@ -409,6 +409,9 @@ final class AylaChatModel {
     /// The answer while it is written. The words grow in a message of their own, which becomes the real answer once
     /// it is complete.
     private func stream(_ turn: Turn) async {
+        // Leaving PAVE while she answers: iOS gives some time, enough for most answers and searches to finish.
+        let time = BackgroundTime()
+        defer { time.end() }
         if let removal {
             self.removal = nil
             guard await removal.value else {
@@ -914,6 +917,15 @@ final class AylaChatModel {
     private func savePendingFiles() {
         guard let conversationID else { return }
         pendingFiles.save(sentUploads, for: conversationID)
+    }
+
+    /// Back in PAVE after her answer broke off in the background: what the server kept takes the place of the error.
+    func reloadIfInterrupted() async {
+        guard case .failed = phase, !isAnswering, let id = conversationID, entries.last?.role == .user, let service else { return }
+        guard let stored = try? await service.messages(in: id), stored.last?.role == .ayla else { return }
+        let conversation = currentConversation ?? AylaConversation(id: id, title: "", updatedAt: .now)
+        phase = .idle
+        await open(conversation)
     }
 
     func open(_ conversation: AylaConversation) async {
@@ -1494,5 +1506,23 @@ final class AylaChatModel {
         case .conversationNotFound: AylaMessages.conversationGone
         case .unavailable, .notSetUp: AylaMessages.unavailable
         }
+    }
+}
+
+/// A little time from iOS after you leave PAVE, so an answer that is still coming in can finish.
+@MainActor
+private final class BackgroundTime {
+    private var id = UIBackgroundTaskIdentifier.invalid
+
+    init() {
+        id = UIApplication.shared.beginBackgroundTask(withName: "Ayla antwoordt") { [weak self] in
+            MainActor.assumeIsolated { self?.end() }
+        }
+    }
+
+    func end() {
+        guard id != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(id)
+        id = .invalid
     }
 }

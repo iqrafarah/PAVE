@@ -223,7 +223,8 @@ final class VaultModel {
             if let itemID {
                 try await service.update(draft, itemID: itemID)
             } else {
-                try await service.add(draft)
+                let id = try await service.add(draft)
+                PlanProgress.report(.evidenceAdded(itemID: id))
             }
         }
     }
@@ -263,7 +264,9 @@ final class VaultModel {
     /// The steps of adding evidence report their own errors, so these throw instead of setting `problem`.
     func addItem(_ draft: VaultItemDraft) async throws -> String {
         guard let service else { throw VaultError.unavailable }
-        return try await service.add(draft)
+        let id = try await service.add(draft)
+        PlanProgress.report(.evidenceAdded(itemID: id))
+        return id
     }
 
     func attach(_ upload: VaultUpload, to itemID: String) async throws {
@@ -450,6 +453,7 @@ final class VaultModel {
             )
             problem = nil
             PaveHaptics.success()
+            PlanProgress.report(.verificationRequested(itemID: item.id))
             // So the item shows "In afwachting" straight away.
             await load()
             return nil

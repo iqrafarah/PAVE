@@ -132,5 +132,6 @@ struct PracticeReportSheet: View {
         store.save(draft)
         PaveHaptics.success()
         isKept = true
+        PlanProgress.report(.practiceFinished(vacancyID: vacancy.id))
     }
 }

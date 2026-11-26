@@ -167,6 +167,7 @@ final class ApplicationStudioModel: Identifiable {
             if status == .sent { tracking.send() } else { tracking.set(status) }
             draft.tracking = tracking
         }
+        if status == .sent { PlanProgress.report(.applicationSent(vacancyID: draft.vacancy.id)) }
         // The demo invitation arrives as a notification: ask now, when it is about to matter.
         if firstSend {
             Task {

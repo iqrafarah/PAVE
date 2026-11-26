@@ -136,6 +136,14 @@ struct PlanDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 header(plan)
+                if let suggestion = model.suggestion(for: plan.id) {
+                    PlanStepSuggestionCard(suggestion: suggestion, showsPlan: false) {
+                        model.acceptSuggestion()
+                    } onDismiss: {
+                        model.dismissSuggestion()
+                    }
+                    .transition(.scale(scale: 0.96, anchor: .top).combined(with: .opacity))
+                }
                 PlanProjectRow(plan: plan, projects: chats.projects) { projectID in
                     model.setProject(projectID, of: planID)
                     if projectID != nil { actions.moveChats(plan, projectID) }
@@ -150,6 +158,7 @@ struct PlanDetailView: View {
             .frame(maxWidth: .infinity)
         }
         .animation(.snappy, value: plan)
+        .animation(.snappy, value: model.suggestion)
     }
 
     private func header(_ plan: PavePlan) -> some View {

@@ -5,11 +5,11 @@ import Testing
 @MainActor
 struct DynamicIslandFrameTests {
     @Test func theClosedDuoHasItsIslandAtTheCameraInTheColumn() throws {
-        // Measured on the closed iPhone Duo: 382 pt beside an 84 pt status column, no status bar on top.
+        // Measured on Daaf's closed iPhone Duo: 382 pt beside an 84 pt status column, no status bar on top.
         let frame = try #require(DynamicIslandFrame.sideFrame(topInset: 0, trailingInset: 84, width: 382))
-        #expect(abs(frame.midX - 426) < 1)
-        #expect(abs(frame.midY - 40) < 1)
-        #expect(frame.width == 53)
+        #expect(abs(frame.midX - 418) < 1)
+        #expect(abs(frame.midY - 57) < 1)
+        #expect(frame.size == CGSize(width: 37, height: 63))
         #expect(DynamicIslandFrame.frame(topInset: 0, width: 382) == nil)
     }
 

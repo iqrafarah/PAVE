@@ -68,6 +68,8 @@ struct AylaRootView: View {
         // The locked chats hide again when PAVE goes to the background.
         .onChange(of: scenePhase) { _, phase in
             if phase == .background { model.showsLockedChats = false }
+            // Her answer broke off while PAVE was away: show what the server kept instead of the error.
+            if phase == .active { Task { await model.reloadIfInterrupted() } }
         }
     }
 

@@ -26,4 +26,12 @@ struct PlanStepExtrasTests {
         step.evidenceIDs = []
         #expect(step.metadata[PavePlanStep.evidenceKey] == nil)
     }
+
+    @Test func aStepForWhatYouAreDoingComesRightAfterIt() {
+        var plan = plan()
+        plan.normalize()
+        plan.addStepAfterCurrent(PavePlanStep(id: "x", title: "Aviation bij HvA bekijken"))
+        #expect(plan.steps.map(\.id) == ["a", "x", "b", "c"])
+        #expect(plan.currentStep?.id == "a")
+    }
 }

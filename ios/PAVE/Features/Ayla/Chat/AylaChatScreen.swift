@@ -2344,7 +2344,7 @@ struct AylaChatScreen: View {
         guard let plans else { return }
         if let plan = chatPlan {
             guard !plan.steps.contains(where: { $0.metadata[AylaEducation.idKey] == education.id }) else { return }
-            withAnimation(.easeOut(duration: 0.2)) { plans.addStep(EducationMessages.step(for: education), to: plan.id) }
+            withAnimation(.easeOut(duration: 0.2)) { plans.addStepAfterCurrent(EducationMessages.step(for: education), to: plan.id) }
             PaveHaptics.success()
             AccessibilityNotification.Announcement(EducationMessages.addedTo(plan.name)).post()
             return
