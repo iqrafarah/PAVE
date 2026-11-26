@@ -3,6 +3,8 @@ import SwiftUI
 /// Summarises the selected vault items and offers to continue.
 struct VaultSelectionBar: View {
     let count: Int
+    /// Shown instead of the count for a moment, such as when the maximum is reached.
+    var note: String?
     let onContinue: () -> Void
 
     var body: some View {
@@ -14,9 +16,10 @@ struct VaultSelectionBar: View {
                 .paveIconHeight(18)
                 .foregroundStyle(Color.paveAccent)
                 .accessibilityHidden(true)
-            Text(count == 1 ? "1 item geselecteerd" : "\(count) items geselecteerd")
+            Text(note ?? (count == 1 ? "1 item geselecteerd" : "\(count) items geselecteerd"))
                 .textStyle(.chip)
-                .foregroundStyle(Color.ink)
+                .foregroundStyle(note == nil ? Color.ink : Color.warning)
+                .contentTransition(.opacity)
                 .padding(.leading, 8)
             Spacer(minLength: 12)
             Button(action: onContinue) {

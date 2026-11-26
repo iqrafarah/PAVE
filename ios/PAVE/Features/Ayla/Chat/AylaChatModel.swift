@@ -766,7 +766,7 @@ final class AylaChatModel {
     func attach(_ items: [VaultItem]) {
         guard let first = items.first else { return }
         // Chosen items are all Ayla uses in this conversation, also when it is one: she sees nothing else of the vault.
-        context = AylaRequest.Context(screen: .vault, itemIds: items.map(\.id), vacancy: context?.vacancy)
+        context = AylaRequest.Context(screen: .vault, itemIds: Array(items.map(\.id).prefix(AylaRequest.maximumChosenItems)), vacancy: context?.vacancy)
         contextTitle = items.count == 1 ? first.title : AylaMessages.contextItems(items.count)
     }
 

@@ -13,6 +13,9 @@ struct AylaVaultSelectionSheet: View {
     @State private var selected: Set<String> = []
     @State private var asksPermission: [VaultItem]?
     @State private var detent = PresentationDetent.fraction(0.62)
+    /// The maximum was reached: said for a moment instead of the count.
+    @State private var limitNote: String?
+    private let maximum = AylaRequest.maximumChosenItems
 
     private var chosen: [VaultItem] { vault.items.filter { selected.contains($0.id) } }
 
@@ -84,7 +87,7 @@ struct AylaVaultSelectionSheet: View {
         .scrollIndicators(.hidden)
         // The choice floats over the list, as in Figma, and the list scrolls on under it.
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            VaultSelectionBar(count: selected.count, onContinue: continueWithChosen)
+            VaultSelectionBar(count: selected.count, note: limitNote, onContinue: continueWithChosen)
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)
                 .background {
@@ -118,7 +121,7 @@ struct AylaVaultSelectionSheet: View {
         return VaultFolderTile(title: title, icon: icon, color: color, surface: surface, count: items.count, isSelected: isOn, checkbox: isOn) {
             guard !ids.isEmpty else { return }
             PaveHaptics.selection()
-            if isOn { selected.subtract(ids) } else { selected.formUnion(ids) }
+            if isOn { selected.subtract(ids) } else { add(ids) }
         }
         .accessibilityValue(isOn ? "Gekozen" : "Niet gekozen")
     }
@@ -127,7 +130,7 @@ struct AylaVaultSelectionSheet: View {
         let isOn = selected.contains(item.id)
         return Button {
             PaveHaptics.selection()
-            if isOn { selected.remove(item.id) } else { selected.insert(item.id) }
+            if isOn { selected.remove(item.id) } else { add([item.id]) }
         } label: {
             VaultLibraryCard(item: item, isGrid: false, isSelected: isOn)
         }
@@ -144,7 +147,7 @@ struct AylaVaultSelectionSheet: View {
                 guard items.indices.contains(index) else { return }
                 PaveHaptics.selection()
                 let id = items[index].id
-                if selected.contains(id) { selected.remove(id) } else { selected.insert(id) }
+                if selected.contains(id) { selected.remove(id) } else { add([id]) }
             }))
         }
         if !folders.isEmpty {
@@ -153,10 +156,25 @@ struct AylaVaultSelectionSheet: View {
                 let ids = Set(vault.items.filter { $0.folderIDs.contains(folders[index].id) }.map(\.id))
                 guard !ids.isEmpty else { return }
                 PaveHaptics.selection()
-                if ids.isSubset(of: selected) { selected.subtract(ids) } else { selected.formUnion(ids) }
+                if ids.isSubset(of: selected) { selected.subtract(ids) } else { add(ids) }
             }))
         }
         return menus
+    }
+
+    /// Ayla takes at most ten per conversation: what would go over it is not ticked, and the bar says so.
+    private func add(_ ids: Set<String>) {
+        let all = selected.union(ids)
+        guard all.count <= maximum else {
+            PaveHaptics.error()
+            withAnimation(.easeOut(duration: 0.2)) { limitNote = AylaMessages.pickLimit(maximum) }
+            Task {
+                try? await Task.sleep(for: .seconds(2.5))
+                withAnimation(.easeOut(duration: 0.2)) { limitNote = nil }
+            }
+            return
+        }
+        selected = all
     }
 
     private func continueWithChosen() {
