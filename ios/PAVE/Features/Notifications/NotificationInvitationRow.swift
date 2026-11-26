@@ -26,12 +26,6 @@ struct NotificationInvitationRow: View {
                     .textStyle(.caption)
                     .foregroundStyle(Color.inkMuted)
                     .lineLimit(2)
-                Text(ApplyMessages.demo)
-                    .textStyle(.caption)
-                    .foregroundStyle(Color.inkMuted)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 1)
-                    .background(Color.canvas, in: .capsule)
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 6) {

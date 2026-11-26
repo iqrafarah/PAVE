@@ -7,20 +7,21 @@ extension PavePlanStep.Kind {
         .general, .conversation, .research, .evidence, .verification, .document, .profile, .contact, .action, .reflection, .milestone,
     ]
 
-    /// The icon of a kind of step; a kind the app does not know yet looks like a general step.
+    /// The icon of a kind of step, all from the filled family so a row of them reads as one set; a kind the app does
+    /// not know yet looks like a general step.
     @MainActor var icon: ImageResource {
         switch self {
-        case .conversation: .iconChat
-        case .research: .iconSearch
-        case .evidence: .iconFolder
-        case .verification: .iconShieldCheck
-        case .document: .iconDocumentTextOutline
-        case .action: .iconRocketLaunchOutline
-        case .reflection: .iconLightBulbOutline
-        case .milestone: .iconFlag
-        case .profile: .iconPerson
-        case .contact: .iconMail
-        default: .iconMap
+        case .conversation: .iconChatBubbleLeftEllipsisSolid
+        case .research: .iconMagnifyingGlassSolid
+        case .evidence: .iconFolderSolid
+        case .verification: .iconShieldCheckSolid
+        case .document: .iconDocumentTextSolid
+        case .action: .iconRocketLaunchSolid
+        case .reflection: .iconLightBulbSolid
+        case .milestone: .iconFlagSolid
+        case .profile: .iconUserSolid
+        case .contact: .iconEnvelopeSolid
+        default: .iconMapSolid
         }
     }
 
@@ -63,6 +64,8 @@ extension PavePlanStep.Kind {
         case .evidence, .verification: .vault
         case .profile: .profile
         case .contact: .notifications
+        // Looking for work and writing an application both happen under Vacatures.
+        case .research, .document: .vacancies
         default: nil
         }
     }
@@ -75,6 +78,7 @@ extension MainDestination {
         case .vault: "Open je kluis"
         case .profile: "Open je profiel"
         case .notifications: "Open Meldingen"
+        case .vacancies: "Open Vacatures en sollicitaties"
         default: "Open \(title)"
         }
     }

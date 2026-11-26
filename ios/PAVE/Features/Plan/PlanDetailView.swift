@@ -11,9 +11,11 @@ struct PlanDetailView: View {
 
     @Environment(PlanModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.vacancyRequest) private var vacancyRequest
     @State private var selectedStep: PavePlanStep?
     @State private var editedStep: PavePlanStep?
     @State private var addsStep = false
+    @State private var proposesSteps = false
     @State private var editsPlan = false
     @State private var deletedPlan: PavePlan?
     @State private var deleteAfterEdit = false
@@ -39,29 +41,32 @@ struct PlanDetailView: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    Button(PlanMessages.rename, systemImage: "pencil") { editsPlan = true }
-                    Button(PlanMessages.addStep, systemImage: "plus") { addsStep = true }
+                    Button { editsPlan = true } label: { Label(PlanMessages.rename, tinted: .iconPencilSolid) }
+                    Button { addsStep = true } label: { Label(PlanMessages.addStep, tinted: .iconPlusCircleSolid) }
+                    Button { proposesSteps = true } label: { Label(PlanMessages.proposeSteps, tinted: .iconAyla) }
                     if plan?.isFinished == true {
-                        Button(PlanMessages.reopen, systemImage: "arrow.uturn.backward") { model.reopen(planID) }
+                        Button { model.reopen(planID) } label: { Label(PlanMessages.reopen, tinted: .iconArrowUturnLeftSolid) }
                     } else {
-                        Button(PlanMessages.complete, systemImage: "checkmark") {
+                        Button {
                             PaveHaptics.success()
                             model.complete(planID)
+                        } label: {
+                            Label(PlanMessages.complete, tinted: .iconCheckCircleSolid)
                         }
                     }
                     if model.canFollow, plan?.isFinished == false {
                         Section(PlanMessages.lockScreenSection) {
                             if model.isFollowed(planID) {
-                                Button(PlanMessages.stopFollowing, systemImage: "lock.slash") { model.stopFollowing() }
+                                Button { model.stopFollowing() } label: { Label(PlanMessages.stopFollowing, tinted: .iconLockOpenSolid) }
                             } else {
-                                Button(PlanMessages.followOnLockScreen, systemImage: "lock.iphone") { model.follow(planID) }
+                                Button { model.follow(planID) } label: { Label(PlanMessages.followOnLockScreen, tinted: .iconLockClosedSolid) }
                             }
                             // Others can see the Lock Screen: names only when you choose so.
-                            Toggle(PlanMessages.showNamesOnLockScreen, systemImage: "textformat", isOn: $showsNamesOnLockScreen)
+                            Toggle(isOn: $showsNamesOnLockScreen) { Label(PlanMessages.showNamesOnLockScreen, tinted: .iconEyeSolid) }
                         }
                     }
                     Divider()
-                    Button(PlanMessages.delete, systemImage: "trash", role: .destructive) { deletedPlan = plan }
+                    Button(role: .destructive) { deletedPlan = plan } label: { Label(PlanMessages.delete, tinted: .iconTrashSolid) }
                 } label: {
                     Image(.iconEllipsis)
                         .renderingMode(.template)
@@ -92,6 +97,19 @@ struct PlanDetailView: View {
             PlanStepEditor(step: nil) { step in model.addStep(step, to: planID) }
                 .paveSheet()
         }
+        .sheet(isPresented: $proposesSteps) {
+            if let plan {
+                PlanStepProposalSheet(plan: plan) { steps in model.addSteps(steps, to: planID) }
+                    .paveSheet()
+            }
+        }
+        .task(id: model.proposesStepsFor) {
+            // A plan made "with Ayla" opens her proposal as soon as its page shows.
+            guard model.proposesStepsFor == planID else { return }
+            model.proposesStepsFor = nil
+            try? await Task.sleep(for: .milliseconds(450))
+            proposesSteps = true
+        }
         .sheet(item: $editedStep) { step in
             PlanStepEditor(step: step) { changed in
                 model.updateStep(changed, in: planID)
@@ -109,6 +127,10 @@ struct PlanDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 header(plan)
+                PlanProjectRow(plan: plan, projects: chats.projects) { projectID in
+                    model.setProject(projectID, of: planID)
+                    if projectID != nil { actions.moveChats(plan, projectID) }
+                }
                 steps(plan)
                 conversations(plan)
             }
@@ -194,6 +216,18 @@ struct PlanDetailView: View {
                 .frame(minHeight: 44)
             }
             .buttonStyle(.pave)
+            Button {
+                proposesSteps = true
+            } label: {
+                Label {
+                    Text(PlanMessages.proposeSteps).textStyle(.action)
+                } icon: {
+                    AylaLetter(color: Color.paveAccent).frame(width: 12, height: 12)
+                }
+                .foregroundStyle(Color.paveAccent)
+                .frame(minHeight: 44)
+            }
+            .buttonStyle(.pave)
         }
     }
 
@@ -244,8 +278,10 @@ struct PlanDetailView: View {
                         }
                         .buttonStyle(.pave)
                         .contextMenu {
-                            Button(PlanMessages.detachConversation, systemImage: "minus.circle", role: .destructive) {
+                            Button(role: .destructive) {
                                 model.detach(conversationID: chat.id, from: plan.id)
+                            } label: {
+                                Label(PlanMessages.detachConversation, tinted: .iconMinusCircleSolid)
                             }
                         }
                         if index < chats.count - 1 {
@@ -281,6 +317,15 @@ struct PlanDetailView: View {
             }
             if step.status != .skipped, step.status != .done {
                 Button(PlanMessages.markSkipped) { model.setStatus(.skipped, of: step.id, in: planID) }
+            }
+            if let vacancy = PlanVacancy.vacancy(of: plan), let vacancyRequest {
+                // A plan for a vacancy: its steps lead straight to that application and that talk.
+                if step.kind == .document {
+                    Button(PlanMessages.openApplication) { vacancyRequest(.application(ApplicationStore().load(vacancy.id)?.vacancy ?? vacancy)) }
+                }
+                if step.kind == .conversation, step.metadata[PlanVacancy.idKey] != nil {
+                    Button(PlanMessages.practiseTalk) { vacancyRequest(.task(.interview, vacancy)) }
+                }
             }
             if let destination = step.kind.destination {
                 Button(destination.planStepAction) { actions.go(destination) }

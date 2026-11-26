@@ -38,6 +38,38 @@ enum PlanMessages {
     static let steps = "Stappen"
     static let noSteps = "Dit plan heeft nog geen stappen."
     static let addStep = "Stap toevoegen"
+    static let proposeSteps = "Laat Ayla stappen voorstellen"
+    static let proposalTitle = "Voorstel van Ayla"
+    static let proposalThinking = "Ayla denkt na over je stappen…"
+    static let proposalFailed = "Ayla kon nu geen stappen voorstellen. Probeer het opnieuw."
+    static let proposalAgain = "Probeer opnieuw"
+    static let proposalOthers = "Andere stappen voorstellen"
+    static let proposalEmpty = "Ayla heeft geen nieuwe stappen voor dit plan. Vul je doel aan en probeer het opnieuw, of voeg zelf een stap toe."
+    static func proposalAdd(_ count: Int) -> String { count == 1 ? "Voeg 1 stap toe" : "Voeg \(count) stappen toe" }
+    static func proposalReads(evidence: Int, hasVacancy: Bool) -> String {
+        let seen = evidence == 0
+            ? "Ze ziet geen bewijs uit je kluis: daar gaf je geen toestemming voor."
+            : "Van je kluis ziet ze alleen de titels van de \(evidence == 1 ? "1 bewijsstuk" : "\(evidence) bewijsstukken") die ze mag bekijken."
+        return "Ayla gebruikt de naam en het doel van je plan\(hasVacancy ? " en de vacature waar het om gaat" : ""). \(seen) Er wordt niets toegevoegd tot jij kiest."
+    }
+    static let vacancyPlanMake = "Maak een plan voor deze vacature"
+    static let vacancyPlanOpen = "Open je plan voor deze vacature"
+    static func vacancyPlanHint(_ missing: Int) -> String {
+        missing == 0
+            ? "Stappen van de vacature lezen tot het gesprek oefenen."
+            : "Met een stap voor \(missing == 1 ? "wat je nog mist" : "elk van de \(min(missing, 3)) dingen die je nog mist"), je cv en brief, en het gesprek."
+    }
+    static let openApplication = "Open cv en brief"
+    static let practiseTalk = "Oefen het gesprek met Ayla"
+    static let project = "Project"
+    static let noProject = "Geen project"
+    static let linkProject = "Koppel aan een project"
+    static let linkProjectHint = "De gesprekken van dit plan komen dan in dat project en gebruiken de instructies en bronnen ervan."
+    static let linkedProjectHint = "De gesprekken van dit plan staan in dit project en gebruiken de instructies en bronnen ervan."
+    static let projectPlan = "Plan in dit project"
+    static let projectPlans = "Plannen in dit project"
+    static let withAylaTitle = "Stappen van Ayla"
+    static let withAylaSummary = "Ayla stelt stappen voor bij je doel. Jij kiest welke je houdt."
     static let stepTitleLabel = "Stap"
     static let stepTitlePlaceholder = "Wat ga je doen?"
     static let stepSummaryLabel = "Omschrijving"

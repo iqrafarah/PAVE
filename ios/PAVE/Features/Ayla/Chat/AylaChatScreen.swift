@@ -21,6 +21,9 @@ struct AylaChatScreen: View {
     @Environment(NotificationsModel.self) private var notifications: NotificationsModel?
     @Environment(ProfileModel.self) private var profile: ProfileModel?
     @Environment(PlanModel.self) private var plans: PlanModel?
+    @Environment(SharingModel.self) private var sharing: SharingModel?
+    @Environment(\.openPlan) private var openPlan
+    @Environment(\.openDestination) private var openDestination
     @State private var picksPlan = false
     /// Adding evidence after Ja to Ayla's "Wil je iets toevoegen?", filled with what she proposed.
     @State private var addEvidence: VaultAddEvidenceModel?
@@ -117,6 +120,8 @@ struct AylaChatScreen: View {
     @State private var waveStartedAt: Date?
     @State private var isSavingForUser = false
     @State private var confirmationItem: VaultItem?
+    /// The talk Ayla puts in your calendar; you save it yourself in the sheet.
+    @State private var calendarTalk: FairApplication?
     /// Making a CV and a letter for a vacancy ("Solliciteren").
     @State private var application: ApplicationStudioModel?
     /// The application a task came from, offered at the top until the user goes back or moves on.
@@ -421,6 +426,12 @@ struct AylaChatScreen: View {
             guard !items.isEmpty, let itemID = photoTargetID else { return }
             itemPhotoItems = []
             Task { await addItemPhotos(items, to: itemID) }
+        }
+        .sheet(item: $calendarTalk) { application in
+            if let moment = application.invitedFor {
+                ApplicationCalendarEditor(vacancy: FairApplicationDetail.vacancy(of: application), deadline: moment, isTalk: true) { calendarTalk = nil }
+                    .ignoresSafeArea()
+            }
         }
         .sheet(item: $confirmationItem) { item in
             VaultRequestConfirmationSheet(item: item, documentCount: vault?.documents(of: item).count ?? 0)
@@ -2736,7 +2747,11 @@ struct AylaChatScreen: View {
             memory: memory.state == .ready ? memory.memories.isEnabled : nil,
             chatTitle: chat?.title,
             chatPinned: chat?.isPinned,
-            seeing: seeingNow
+            seeing: seeingNow,
+            font: PaveFontStore.shared.style.rawValue,
+            plans: plans.map { AylaPlanActions.lines($0.plans) },
+            projects: model.conversationList.projects.map(\.name),
+            invitations: sharing?.fairApplications.map(AylaPlanActions.invitationLines)
         )
     }
 
@@ -2874,6 +2889,124 @@ struct AylaChatScreen: View {
         case "signOut":
             try? await Task.sleep(for: .milliseconds(900))
             appState.signOut()
+        case "openNotifications":
+            guard let openDestination else { return .failed(AylaMessages.actionUnavailable) }
+            closeShelf()
+            openDestination(.notifications)
+        case "openApplications":
+            guard let openDestination else { return .failed(AylaMessages.actionUnavailable) }
+            closeShelf()
+            openDestination(.vacancies)
+        case "openApplication":
+            // An application you already have by its job or company; else the vacancy that is open or the one counted.
+            let drafts = ApplicationStore().all()
+            let named = drafts.map { AylaAppCommand.Named(id: $0.id, name: "\($0.vacancy.title) \($0.vacancy.company)") }
+            let known = AylaAppAction.best(action.target, in: named).flatMap { found in drafts.first { $0.id == found.id }?.vacancy }
+            let shown = shownVacancies
+            let counted = action.place.flatMap { place in shown.indices.contains(place == -1 ? shown.count - 1 : place) ? shown[place == -1 ? shown.count - 1 : place] : nil }
+            guard let vacancy = known ?? counted ?? pageDriver.vacancy ?? (drafts.count == 1 ? drafts[0].vacancy : nil) else {
+                return .failed(AylaMessages.actionNoApplication(action.target ?? "die vacature"))
+            }
+            closeShelf()
+            model.request(.application(vacancy))
+        case "openProject":
+            let projects = model.conversationList.projects
+            guard let found = AylaAppAction.best(action.target, in: projects.map { AylaAppCommand.Named(id: $0.id, name: $0.name) }),
+                  let project = projects.first(where: { $0.id == found.id }) else { return .failed(AylaMessages.actionNoProject(action.target ?? "")) }
+            closeShelf()
+            model.openPage(of: project)
+        case "setFontStyle":
+            guard let style = PaveFontStyle(rawValue: action.value?.lowercased() ?? "") else { return .failed(AylaMessages.actionUnknownValue) }
+            inSettings(.appearance) { PaveFontStore.shared.style = style }
+        case "openPlan":
+            guard let plans, let openPlan else { return .failed(AylaMessages.actionUnavailable) }
+            guard let plan = AylaPlanActions(plans: plans, chatPlan: plans.plan(containing: model.conversationID)).plan(named: action.target) else {
+                return .failed(AylaMessages.actionNoPlan(action.target))
+            }
+            closeShelf()
+            openPlan(plan.id)
+        case "renamePlanStep", "describePlanStep":
+            guard let plans else { return .failed(AylaMessages.actionUnavailable) }
+            let planActions = AylaPlanActions(plans: plans, chatPlan: plans.plan(containing: model.conversationID))
+            let problem = action.kind == "renamePlanStep"
+                ? planActions.editStep(action.target, newTitle: action.value)
+                : planActions.editStep(action.target, summary: action.value ?? "")
+            if let problem { return .failed(problem) }
+        case "answerInvitation":
+            guard let sharing, let isOn = action.isOn ?? (action.value?.lowercased() == "yes" ? true : action.value?.lowercased() == "no" ? false : nil) else {
+                return .failed(AylaMessages.actionUnknownValue)
+            }
+            guard let application = AylaPlanActions.invitation(action.target, in: sharing.fairApplications ?? []) else {
+                return .failed(AylaMessages.actionNoInvitation(action.target ?? ""))
+            }
+            await sharing.answer(application, accepted: isOn)
+            // Said yes to a talk at a set moment: the calendar opens at once, and you save it there yourself.
+            if isOn, application.invitedFor != nil, let answered = sharing.fairApplications?.first(where: { $0.id == application.id }), answered.answer == .accepted {
+                if isTalking { stopVoice() }
+                closingShelf { calendarTalk = answered }
+                return .said(AylaMessages.actionInvitationAccepted(FairApplicationDetail.employerName(application)))
+            }
+            return .said(AylaMessages.actionInvitationAnswered(FairApplicationDetail.employerName(application), accepted: isOn))
+        case "addTalkToCalendar":
+            guard let sharing, let application = AylaPlanActions.invitation(action.target, in: sharing.fairApplications ?? []) else {
+                return .failed(AylaMessages.actionNoInvitation(action.target ?? ""))
+            }
+            guard application.answer == .accepted, application.invitedFor != nil else { return .failed(AylaMessages.actionInvitationNotAccepted) }
+            if isTalking { stopVoice() }
+            closingShelf { calendarTalk = application }
+        case "addProjectSource":
+            guard let vault, let item = item() else { return .failed(AylaMessages.actionNoItem(action.target ?? "")) }
+            let projects = model.conversationList.projects
+            let here = model.currentConversation?.projectID.flatMap { id in projects.first { $0.id == id } } ?? model.openProject
+            let named = action.value.flatMap { name in AylaAppAction.best(name, in: projects.map { AylaAppCommand.Named(id: $0.id, name: $0.name) }) }
+            let project = named.flatMap { found in projects.first { $0.id == found.id } } ?? (action.value == nil ? here : nil)
+            guard let project else { return .failed(action.value.map(AylaMessages.actionNoProject) ?? AylaMessages.actionNoProjectHere) }
+            // A source is only of use when she may see it; you said yes to that with this action.
+            if item.aylaAllowedAt == nil {
+                do {
+                    try await vault.setAylaAllowed(true, itemID: item.id)
+                } catch {
+                    return .failed(AylaMessages.actionUnavailable)
+                }
+            }
+            await model.addSources([item.id], to: project)
+            if model.sourcesProblem != nil { return .failed(AylaMessages.actionUnavailable) }
+        case "addPlanStep", "markPlanStep", "removePlanStep", "linkPlanToProject":
+            guard let plans else { return .failed(AylaMessages.actionUnavailable) }
+            let planActions = AylaPlanActions(plans: plans, chatPlan: plans.plan(containing: model.conversationID))
+            let problem: String? = switch action.kind {
+            case "addPlanStep": planActions.addStep(action.value, toPlanNamed: action.target)
+            case "markPlanStep": planActions.markStep(action.target, as: action.value)
+            case "removePlanStep": planActions.removeStep(action.target)
+            default:
+                planActions.link(planNamed: action.target, toProjectNamed: action.value, projects: model.conversationList.projects) { plan, project in
+                    for chat in model.conversationList.conversations where plan.conversations.contains(where: { $0.id == chat.id }) && chat.projectID != project?.id {
+                        model.move(chat, to: project)
+                    }
+                }
+            }
+            if let problem { return .failed(problem) }
+        case "makeVacancyPlan":
+            guard let plans, plans.isAvailable else { return .failed(AylaMessages.actionUnavailable) }
+            let shown = shownVacancies
+            let counted = action.place.flatMap { place in shown.indices.contains(place == -1 ? shown.count - 1 : place) ? shown[place == -1 ? shown.count - 1 : place] : nil }
+            guard let vacancy = counted ?? pageDriver.vacancy ?? (shown.count == 1 ? shown[0] : nil) else { return .failed(AylaMessages.actionNoVacancyForPlan) }
+            if let existing = plans.plans.first(where: { PlanVacancy.vacancyID(of: $0) == vacancy.id }) { return .said(AylaMessages.actionPlanMade(existing.name)) }
+            let template = PlanVacancy.template(for: vacancy)
+            guard let made = await plans.create(name: template.name, goal: template.goal, from: template) else { return .failed(AylaMessages.actionUnavailable) }
+            return .said(AylaMessages.actionPlanMade(made.name))
+        case "shareWith":
+            guard let shareFromAyla, let who = action.value, !who.isEmpty else { return .failed(AylaMessages.actionUnavailable) }
+            closeShelf()
+            shareFromAyla(.share(organisation: who, duration: nil, withApplication: false))
+        case "stopSharing":
+            guard let shareFromAyla, let who = action.value, !who.isEmpty else { return .failed(AylaMessages.actionUnavailable) }
+            closeShelf()
+            shareFromAyla(.stop(organisation: who))
+        case "showShares":
+            guard let shareFromAyla else { return .failed(AylaMessages.actionUnavailable) }
+            closeShelf()
+            shareFromAyla(.showShares)
         default:
             return .failed(AylaMessages.actionUnavailable)
         }

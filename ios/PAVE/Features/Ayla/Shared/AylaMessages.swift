@@ -27,6 +27,18 @@ enum AylaMessages {
     static let actionNoCurrentChat = "Dit gesprek staat nog niet in je lijst, dus dat lukt nu nog niet. Probeer het zo opnieuw."
     static let actionUnknownValue = "Dat kon ik niet instellen: die keuze ken ik niet."
     static let actionUnavailable = "Dat lukt nu niet."
+    static func actionNoPlan(_ name: String?) -> String { name.map { "Ik kon het plan \($0) niet vinden." } ?? "Ik weet niet welk plan je bedoelt. Noem de naam van het plan." }
+    static func actionNoStep(_ title: String) -> String { "Ik kon de stap \(title) niet vinden in je plannen." }
+    static func actionStepExists(_ title: String) -> String { "De stap \(title) staat al in dat plan." }
+    static func actionNoProject(_ name: String) -> String { "Ik kon het project \(name) niet vinden." }
+    static func actionNoApplication(_ name: String) -> String { "Ik kon geen sollicitatie vinden voor \(name). Open eerst de vacature, dan begin ik er een." }
+    static let actionNoVacancyForPlan = "Ik weet niet voor welke vacature. Open de vacature of zeg welke van de getoonde vacatures je bedoelt."
+    static func actionNoInvitation(_ name: String) -> String { "Ik kon geen uitnodiging vinden van \(name)." }
+    static func actionInvitationAccepted(_ employer: String) -> String { "Ik heb \(employer) laten weten dat je komt. Ik open je agenda: bewaar het gesprek daar als je wilt." }
+    static let actionInvitationNotAccepted = "Zeg eerst dat je komt, dan zet ik het gesprek in je agenda."
+    static func actionInvitationAnswered(_ employer: String, accepted: Bool) -> String { accepted ? "Ik heb \(employer) laten weten dat je komt." : "Ik heb \(employer) laten weten dat je niet kunt." }
+    static let actionNoProjectHere = "Dit gesprek hoort niet bij een project. Zeg in welk project het moet."
+    static func actionPlanMade(_ name: String) -> String { "Het plan \(name) staat klaar bij Plan." }
     static func actionFolderExists(_ name: String) -> String { "De map \(name) bestond al. Ik open hem." }
     static func actionDeletedEvidence(_ title: String) -> String { "Ik heb \(title) uit je kluis verwijderd." }
     static let actionDeletedChat = "Ik heb het gesprek verwijderd."
@@ -366,6 +378,8 @@ enum AylaMessages {
     static let sourcesFromVault = "Uit kluis halen"
     static let sourcesRemove = "Verwijderen uit project"
     static let sourcesFailed = "Dit is niet gelukt. Probeer het opnieuw."
+    static let sourcesNoConnection = "Geen verbinding. Kijk of je internet hebt en probeer het opnieuw."
+    static let sourcesSignInAgain = "Je bent te lang ingelogd geweest. Log opnieuw in en probeer het dan nog eens."
     static let sourcesLoading = "Bronnen laden…"
     static let sourcesNoMatch = "Geen bronnen met dit filter."
     static let sourcesSortLabel = "Sorteren"

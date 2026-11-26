@@ -61,7 +61,7 @@ struct SettingsAylaScreen: View {
                 get: { _ = cameraControl.enabledChanged; return cameraControl.isEnabled },
                 set: { cameraControl.isEnabled = $0 }
             )) {
-                Text("Knopmodus (demo)")
+                Text("Knopmodus")
                     .textStyle(.listTitle)
                     .foregroundStyle(Color.ink)
             }

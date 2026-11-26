@@ -196,6 +196,29 @@ final class PlanModel {
         Task { await change(planID) { $0.addStep(step) } }
     }
 
+    /// Puts the plan in a project of Ayla, or takes it out (nil).
+    func setProject(_ projectID: String?, of planID: String) {
+        Task {
+            await change(planID) { plan in
+                plan.projectID = projectID
+                plan.updatedAt = .now
+            }
+        }
+    }
+
+    /// Several steps at once, in order: the ones picked from Ayla's proposal.
+    func addSteps(_ steps: [PavePlanTemplate.Step], to planID: String) {
+        guard !steps.isEmpty else { return }
+        Task {
+            await change(planID) { plan in
+                for step in steps { plan.addStep(PavePlanStep(title: step.title, summary: step.summary, kind: step.kind, metadata: step.metadata)) }
+            }
+        }
+    }
+
+    /// The plan whose page should open Ayla's proposal for steps at once: a plan just made "with Ayla".
+    var proposesStepsFor: String?
+
     func updateStep(_ step: PavePlanStep, in planID: String) {
         Task { await change(planID) { $0.updateStep(step) } }
     }

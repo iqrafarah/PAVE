@@ -10,7 +10,7 @@ enum VaultMessages {
     static let noResultsTitle = "Niets gevonden"
     static let noResultsMessage = "Probeer een ander woord of zet de filters uit."
     static let emptyFolderMessage = "Houd een item ingedrukt en kies Verplaatsen naar map."
-    static let notInDemoTitle = "Geen kluis in de demo"
+    static let notInDemoTitle = "Geen kluis bij dit voorbeeldaccount"
     static let notInDemoMessage = "Log in met je eigen account om je kluis te gebruiken."
     static let loadFailedTitle = "Je kluis kon niet laden"
     static let newFolderTitle = "Nieuwe map"

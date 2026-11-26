@@ -470,6 +470,7 @@ export function alreadySo(action: AppAction, app: AppState | undefined): boolean
   const now: Partial<Record<ActionKind, string | undefined>> = {
     setTheme: app.theme, setTextSize: app.textSize, setDisplayMode: app.displayMode, setVaultLayout: app.vaultLayout,
     setVoiceText: onOff(app.voiceText), setAnimations: onOff(app.animations), setMemory: onOff(app.memory), pinChat: onOff(app.chatPinned),
+    setFontStyle: app.font,
     renameChat: app.chatTitle,
   }
   return now[action.do] !== undefined && now[action.do] === action.value
@@ -558,6 +559,11 @@ const CONFIRM_QUESTIONS: Partial<Record<ActionKind, (action: AppAction) => strin
   signOut: () => 'Zal ik je uitloggen?',
   forgetAll: () => 'Zal ik alles vergeten wat ik over je onthoud? Dat kan niet ongedaan worden gemaakt.',
   allowAyla: (action) => `Mag ik "${action.target}" voortaan bekijken en gebruiken?`,
+  removePlanStep: (action) => `Zal ik de stap "${action.target}" uit je plan halen?`,
+  answerInvitation: (action) => /^(no|nee)$/i.test(action.value ?? '')
+    ? `Zal ik ${action.target} laten weten dat je niet kunt?`
+    : `Zal ik ${action.target} laten weten dat je komt?`,
+  addProjectSource: (action) => `Zal ik "${action.target}" als bron toevoegen${action.value ? ` aan ${action.value}` : ''}? Dan mag ik het bekijken en gebruiken in dat project.`,
 }
 
 function named(actions: AppAction[]): string {
@@ -725,10 +731,16 @@ export function effortFor(request: AylaRequest, mayLook = false, turn: { justGra
   return 'normal'
 }
 
-const NEEDS_TARGET: readonly ActionKind[] = ['openFolder', 'openChat', 'moveToFolder', 'archiveEvidence', 'allowAyla', 'requestVerification', 'deleteEvidence']
+const NEEDS_TARGET: readonly ActionKind[] = [
+  'openFolder', 'openChat', 'moveToFolder', 'archiveEvidence', 'allowAyla', 'requestVerification', 'deleteEvidence',
+  'openPlan', 'openProject', 'markPlanStep', 'removePlanStep', 'linkPlanToProject',
+  'renamePlanStep', 'describePlanStep', 'answerInvitation', 'addTalkToCalendar', 'addProjectSource',
+]
 const NEEDS_VALUE: readonly ActionKind[] = [
   'openSettingsPage', 'renameChat', 'pinChat', 'setChatExpiry', 'setTheme', 'setTextSize', 'setDisplayMode', 'setVaultLayout', 'setVoiceText',
   'setChatsInSearch', 'setAnimations', 'setMemory', 'createFolder', 'moveToFolder', 'allowAyla', 'openVacancy', 'saveVacancy',
+  'setFontStyle', 'addPlanStep', 'markPlanStep', 'linkPlanToProject', 'shareWith', 'stopSharing',
+  'renamePlanStep', 'describePlanStep', 'answerInvitation',
 ]
 
 /** The actions of an answer as the app gets them: known ones only, complete, at most 4, and only on the iPhone. */

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { test } from 'node:test'
 import { alreadySo, asksAboutShown, shownNames, asksForWork, asksToSave, moreThanOneRound, writesEnglish, announcesSearchOnly, answer, asksBeforeDoing, confirmable, declinedOffer, entriesSoFar, ownWords, vaultScope, bestFirst, sitesFromName, cleanActions, cleanTitle, effortFor, resultsMessage, siteFits, withLogos, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
-import { parseRequest } from '../contract.ts'
+import { needsConfirmation, parseRequest } from '../contract.ts'
 import { cleanPurpose, grantsWholeVault, revokesVault, saysNo, saysYes, vaultConsent } from '../consent.ts'
 import { MODELS, modelsFor, openRouterCompletion } from '../openrouter.ts'
 import { buildSystemPrompt, contextNote, MATCH_OUTPUT_SCHEMA, MODEL_OUTPUT_SCHEMA } from '../prompt.ts'
@@ -1566,7 +1566,8 @@ test('each task has its own layer, with the question itself, and only applying a
   const gaps = prompt({ vacancy: appwerk, task: 'gaps' })
   assert.match(gaps, /## Taak: wat mist er nog/)
   assert.match(gaps, /altijd twee tot vijf stappen/)
-  assert.match(gaps, /bied niet aan dit als plan te bewaren/)
+  assert.match(gaps, /zeg niet dat ze bewaard zijn/)
+  assert.match(gaps, /bij Plan een plan van kan maken/)
   const prepare = prompt({ vacancy: appwerk, task: 'prepare' })
   assert.match(prepare, /zet askVault op "je te helpen solliciteren op deze vacature"/)
   assert.match(prepare, /Heb je meer nodig, vraag het dan met askVault/)
@@ -1646,4 +1647,13 @@ test('a spoken follow-up about the cards answers without searching again', async
   // Pointing at nothing is still asked back.
   const unclear = await answer({ request: { ...request, text: 'zet hem uit' }, conversationId: 'c', history: [] }, { complete: model(say('Ik zet het uit.', { intent: 'act', actions: [{ do: 'setAnimations', value: 'off', target: null }] })).complete, newId: ids() })
   assert.equal(unclear.text, 'Wat bedoel je precies? Zeg even wat ik moet doen, dan regel ik het.')
+})
+
+test('the new actions that act for the user ask with their own words first', () => {
+  assert.equal(confirmable([{ do: 'removePlanStep', target: 'Cursus kiezen', confirm: true }])?.question, 'Zal ik de stap "Cursus kiezen" uit je plan halen?')
+  assert.equal(confirmable([{ do: 'answerInvitation', target: 'Jumbo', value: 'yes', confirm: true }])?.question, 'Zal ik Jumbo laten weten dat je komt?')
+  assert.equal(confirmable([{ do: 'answerInvitation', target: 'Jumbo', value: 'no', confirm: true }])?.question, 'Zal ik Jumbo laten weten dat je niet kunt?')
+  assert.match(confirmable([{ do: 'addProjectSource', target: 'Eindstage', value: 'Afstuderen', confirm: true }])?.question ?? '', /bron toevoegen aan Afstuderen\? Dan mag ik het bekijken/)
+  assert.equal(needsConfirmation('answerInvitation', 'yes'), true)
+  assert.equal(needsConfirmation('addTalkToCalendar', ''), false)
 })

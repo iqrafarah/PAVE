@@ -52,6 +52,8 @@ struct VacancyDetail: View {
                     .padding(.top, -12)
                 }
 
+                VacancyPlanLink(vacancy: vacancy)
+
                 if !vacancy.matches.isEmpty {
                     section(AylaMessages.vacancyFits) { VacancyFitGroup(links: vacancy.matches, isGap: false) }
                 }

@@ -141,3 +141,21 @@ test('only the iPhone is told it can make a plan', () => {
   assert.match(buildSystemPrompt({ device: 'watch' }), /newPlan is altijd null/)
   assert.ok(MODEL_OUTPUT_SCHEMA.required.includes('newPlan'))
 })
+
+test('a plan made for a vacancy tells her which one, what is missing, and where each kind of step is done', () => {
+  const plan = toPlan({
+    id: 'p1', name: 'Junior IT-consultant bij Kade', goal: 'Solliciteren bij Kade.',
+    metadata: { vacancyID: 'v1', vacancyTitle: 'Junior IT-consultant', vacancyCompany: 'Kade', vacancyMissing: 'Scrum\u001fCI/CD' },
+    plan_steps: [
+      { id: 's1', position: 0, title: 'Schrijf je cv en brief', summary: '', kind: 'document', status: 'active' },
+      { id: 's2', position: 1, title: 'Zet passend bewijs in je kluis', summary: '', kind: 'evidence', status: 'upcoming' },
+    ],
+  })
+  assert.deepEqual(plan.vacancy, { title: 'Junior IT-consultant', company: 'Kade', missing: ['Scrum', 'CI/CD'] })
+  const layer = planLayer(plan)!
+  assert(layer.includes('vacature "Junior IT-consultant" bij Kade'))
+  assert(layer.includes('nog mist: Scrum, CI/CD'))
+  assert(layer.includes('(soort: cv of brief schrijven)'))
+  assert(layer.includes('(soort: bewijs in de Kluis zetten)'))
+  assert.equal(toPlan({ id: 'p2', name: 'Plan', goal: '', plan_steps: [] }).vacancy, undefined)
+})

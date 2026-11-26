@@ -13,7 +13,7 @@ enum SharingMessages {
     static let reportHint = "Wie wat de afgelopen 30 dagen heeft bekeken."
     static let howItWorks = "Zo gaan we met je gegevens om"
     static let notSetUp = "Delen is nog niet beschikbaar in dit account."
-    static let demoOnly = "Delen werkt alleen met een echt account, niet in de demo."
+    static let demoOnly = "Delen werkt alleen met een echt account."
     static let loadFailed = "Je gedeelde profielen konden niet worden geladen. Probeer het zo opnieuw."
     static let actionFailed = "Dat lukte niet. Probeer het zo opnieuw."
     static let nothingShared = "Je deelt nu niets"
@@ -98,8 +98,8 @@ enum SharingMessages {
         default: "Achtergelaten"
         }
     }
-    static let inboxTitle = "Werkgever-modus · demo"
-    static let inboxHint = "Zo ziet de werkgever wie er bij de stand solliciteerde. In de demo speelt een medespeler de recruiter."
+    static let inboxTitle = "Werkgever-modus"
+    static let inboxHint = "Zo ziet de werkgever wie er bij de stand solliciteerde. Hier speelt een medespeler de recruiter."
     static let inboxEmpty = "Nog niemand"
     static let inboxEmptyHint = "Laat iemand de poster of de stand scannen en snel solliciteren."
     static let inboxWrongKey = "Deze werkgeverssleutel klopt niet."
@@ -126,7 +126,7 @@ enum SharingMessages {
     static let quickApplyPitchStop = "Stop"
     static let quickApplyPitchHint = "Vertel in een halve minuut wie je bent. Het wordt tekst die je kunt aanpassen; de opname zelf wordt niet bewaard."
     static func quickApplyHonest(_ employer: String) -> String {
-        "Je kaartje blijft in PAVE. \(employer) doet niet echt mee: in de demo bekijkt een medespeler het als werkgever."
+        "Je kaartje blijft in PAVE. \(employer) doet niet echt mee: een medespeler bekijkt het als werkgever."
     }
     static let quickApplySend = "Laat je kaartje achter"
     static let quickApplyAlso = "Wat ze verder mogen zien"
@@ -139,6 +139,7 @@ enum SharingMessages {
     static func quickApplyShareTitle(_ employer: String) -> String { "Kaartje bij \(employer)" }
     static let inboxOpenProfile = "Bekijk profiel"
     static let notificationsFair = "Van de beurs"
+    static let fairOpenApplication = "Opent je sollicitatie"
     static let fairDetailTitle = "Sollicitatie van de beurs"
     static let fairDetailInvitation = "Uitnodiging"
     static let fairDetailLeft = "Wat je achterliet"
@@ -190,7 +191,7 @@ enum SharingMessages {
     static func fairFoundAnnouncement(_ name: String) -> String { "Gevonden: \(name)" }
     static let fairNotFound = "Niet gevonden"
     static let fairLoadFailed = "Deze werkgever kon niet worden geladen. Probeer het opnieuw."
-    static let fairNoService = "De beurs werkt alleen met een echt account, niet in de demo."
+    static let fairNoService = "De beurs werkt alleen met een echt account."
     static let saving = "Bewaren…"
     static let detailTitle = "Hoeveel laat je zien"
     static let detailFull = "Uitgebreid"

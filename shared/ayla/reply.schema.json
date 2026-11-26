@@ -128,7 +128,11 @@
             "setTheme", "setTextSize", "setDisplayMode", "setVaultLayout", "setVoiceText", "setChatsInSearch", "setAnimations", "setMemory",
             "createFolder", "moveToFolder", "archiveEvidence", "allowAyla", "requestVerification",
             "openVacancy", "saveVacancy",
-            "deleteChat", "deleteEvidence", "signOut", "forgetAll"
+            "openNotifications", "openApplications", "openApplication", "openProject", "setFontStyle",
+            "openPlan", "addPlanStep", "markPlanStep", "renamePlanStep", "describePlanStep", "linkPlanToProject", "makeVacancyPlan",
+            "addTalkToCalendar",
+            "shareWith", "stopSharing", "showShares",
+            "deleteChat", "deleteEvidence", "signOut", "forgetAll", "removePlanStep", "answerInvitation", "addProjectSource"
           ]
         },
         "value": { "type": "string" },

@@ -12,7 +12,7 @@ enum DevicesMessages {
     static let signOutMessage = "Op dat apparaat moet je daarna opnieuw inloggen. Is PAVE daar nu open, dan kan dat tot een uur duren."
     static let notSetUpTitle = "Nog niet beschikbaar"
     static let notSetUpMessage = "Deze lijst werkt zodra PAVE er klaar voor is. Je kunt hieronder wel alvast overal anders uitloggen."
-    static let unavailableTitle = "Geen apparaten in de demo"
+    static let unavailableTitle = "Geen apparaten bij dit voorbeeldaccount"
     static let unavailableMessage = "Log in met je eigen account om te zien waar je bent ingelogd."
     static let loadFailedTitle = "De lijst kon niet laden"
     static let settingsRowMessage = "Bekijk waar je bent ingelogd en koppel je Apple Watch"

@@ -9,6 +9,8 @@ struct PlanChatActions {
     let start: (PavePlan, PavePlanStep?) -> Void
     /// Opens the place in PAVE where a step is done: the vault, the profile or Meldingen.
     var go: (MainDestination) -> Void = { _ in }
+    /// The plan went into a project (or out of it, nil): its chats so far move along, so the project shows them too.
+    var moveChats: (PavePlan, String?) -> Void = { _, _ in }
     /// Deletes these chats, when a plan is deleted together with its chats.
     var deleteChats: ([String]) -> Void = { _ in }
 }
@@ -70,6 +72,7 @@ struct PlanScreen: View {
         .sheet(isPresented: $createsPlan) {
             PlanEditor(plan: nil) { name, goal, template in
                 guard let plan = await model.create(name: name, goal: goal, from: template) else { return false }
+                if template.id == PlanTemplates.withAyla.id { model.proposesStepsFor = plan.id }
                 model.openPlanID = plan.id
                 return true
             }
@@ -172,18 +175,18 @@ struct PlanScreen: View {
             Button {
                 deletedPlan = plan
             } label: {
-                Label(PlanMessages.delete, systemImage: "trash")
+                Label(PlanMessages.delete, tinted: .iconTrashSolid)
             }
             .tint(.red)
         }
         .contextMenu {
-            Button(PlanMessages.rename, systemImage: "pencil") { editedPlan = plan }
+            Button { editedPlan = plan } label: { Label(PlanMessages.rename, tinted: .iconPencilSolid) }
             if !plan.isFinished {
-                Button(PlanMessages.newConversation, systemImage: "square.and.pencil") { actions.start(plan, plan.currentStep) }
+                Button { actions.start(plan, plan.currentStep) } label: { Label(PlanMessages.newConversation, tinted: .iconChatBubbleLeftEllipsisSolid) }
             }
             finishButton(plan)
             Divider()
-            Button(PlanMessages.delete, systemImage: "trash", role: .destructive) { deletedPlan = plan }
+            Button(role: .destructive) { deletedPlan = plan } label: { Label(PlanMessages.delete, tinted: .iconTrashSolid) }
         }
     }
 
@@ -193,7 +196,7 @@ struct PlanScreen: View {
             Button {
                 model.reopen(plan.id)
             } label: {
-                Label(PlanMessages.reopen, systemImage: "arrow.uturn.backward")
+                Label(PlanMessages.reopen, tinted: .iconArrowUturnLeftSolid)
             }
             .tint(.gray)
         } else {
@@ -201,7 +204,7 @@ struct PlanScreen: View {
                 PaveHaptics.success()
                 model.complete(plan.id)
             } label: {
-                Label(PlanMessages.complete, systemImage: "checkmark")
+                Label(PlanMessages.complete, tinted: .iconCheckCircleSolid)
             }
             .tint(Color.paveAccent)
         }

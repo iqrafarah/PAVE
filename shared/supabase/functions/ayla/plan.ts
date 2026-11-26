@@ -6,7 +6,15 @@ export const PLAN_STEP_STATUSES = ['upcoming', 'active', 'done', 'skipped'] as c
 export type PlanStepStatus = (typeof PLAN_STEP_STATUSES)[number]
 
 export interface PlanStep { id: string; title: string; summary: string; kind: string; status: PlanStepStatus }
-export interface PlanContext { id: string; name: string; goal: string; steps: PlanStep[]; stepId?: string }
+export interface PlanContext {
+  id: string
+  name: string
+  goal: string
+  steps: PlanStep[]
+  stepId?: string
+  /** The vacancy the plan was made for, when it was. */
+  vacancy?: { title: string; company: string; missing: string[] }
+}
 
 /** What the model may say about the plan: a step by its number in the list, and what it now is. */
 export const PLAN_STEP_SCHEMA = {
@@ -27,6 +35,8 @@ interface PlanRow {
   id: string
   name: string
   goal: string
+  /** Free room of the apps; a plan made for a vacancy keeps which one and what the user still misses for it. */
+  metadata?: Record<string, unknown> | null
   plan_steps: { id: string; position: number; title: string; summary: string; kind: string; status: string }[] | null
 }
 
@@ -40,7 +50,7 @@ type Client = { from: (table: string) => any; rpc: (fn: string, args: Record<str
 export async function loadPlan(supabase: Client, conversationId: string): Promise<PlanContext | undefined> {
   const { data, error } = await supabase
     .from('ayla_conversations')
-    .select('plan_id, plan_step_id, plans(id, name, goal, plan_steps(id, position, title, summary, kind, status))')
+    .select('plan_id, plan_step_id, plans(id, name, goal, metadata, plan_steps(id, position, title, summary, kind, status))')
     .eq('id', conversationId)
     .maybeSingle()
   const row = error ? null : (data as { plan_step_id: string | null; plans: PlanRow | null } | null)
@@ -64,7 +74,30 @@ export function toPlan(row: PlanRow, stepId?: string): PlanContext {
       kind: step.kind ?? 'general',
       status: (PLAN_STEP_STATUSES as readonly string[]).includes(step.status) ? step.status as PlanStepStatus : 'upcoming',
     }))
-  return { id: row.id, name: row.name, goal: row.goal ?? '', steps, ...(stepId ? { stepId } : {}) }
+  const vacancy = planVacancy(row.metadata)
+  return { id: row.id, name: row.name, goal: row.goal ?? '', steps, ...(stepId ? { stepId } : {}), ...(vacancy ? { vacancy } : {}) }
+}
+
+/** The vacancy a plan was made for, as the apps keep it in the plan's metadata (PlanVacancy on iOS). */
+function planVacancy(metadata: Record<string, unknown> | null | undefined): PlanContext['vacancy'] {
+  const text = (key: string) => (typeof metadata?.[key] === 'string' ? (metadata[key] as string).trim() : '')
+  const title = text('vacancyTitle')
+  if (!title) return undefined
+  return { title: title.slice(0, 160), company: text('vacancyCompany').slice(0, 120), missing: text('vacancyMissing').split('\u001f').map((skill) => skill.trim()).filter(Boolean).slice(0, 8) }
+}
+
+/** What each kind of step is, and where in PAVE it is done, so she can point there. */
+const KIND_WORDS: Record<string, string> = {
+  conversation: 'uitpraten of oefenen met jou',
+  research: 'uitzoeken, of vacatures bekijken onder Vacatures',
+  evidence: 'bewijs in de Kluis zetten',
+  verification: 'bewijs laten verifiëren, bij het bewijsstuk in de Kluis',
+  document: 'cv of brief schrijven',
+  profile: 'delen bij Profiel',
+  contact: 'iemand mailen of bellen',
+  action: 'iets doen buiten PAVE',
+  reflection: 'terugkijken',
+  milestone: 'een moment dat je haalt',
 }
 
 /** Marks a step in the database, with the user's own rights; the plan stays in order (`set_plan_step_status`). */
@@ -84,13 +117,18 @@ export function planLayer(plan: PlanContext | undefined): string | null {
   const current = plan.steps.findIndex((step) => step.status === 'active')
   const chosen = plan.stepId ? plan.steps.findIndex((step) => step.id === plan.stepId) : -1
   const lines = plan.steps.map((step, index) =>
-    `${index + 1}. [${STATUS_WORDS[step.status]}] ${clean(step.title)}${step.summary.trim() ? ` — ${clean(step.summary)}` : ''}`
+    `${index + 1}. [${STATUS_WORDS[step.status]}] ${clean(step.title)}${step.summary.trim() ? ` — ${clean(step.summary)}` : ''}${KIND_WORDS[step.kind] ? ` (soort: ${KIND_WORDS[step.kind]})` : ''}`
   )
+  const vacancy = plan.vacancy
+    ? `Het plan is gemaakt voor de vacature "${clean(plan.vacancy.title)}"${plan.vacancy.company ? ` bij ${clean(plan.vacancy.company)}` : ''}.${plan.vacancy.missing.length ? ` Wat de gebruiker daarvoor volgens de app nog mist: ${plan.vacancy.missing.map(clean).join(', ')}.` : ''} Help de gebruiker bij elke stap met díe vacature voor ogen.`
+    : null
   const focus = chosen >= 0 ? chosen : current
   return [
     `## Het plan van dit gesprek`,
     `Dit gesprek hoort bij het plan "${clean(plan.name)}" van de gebruiker.${plan.goal.trim() ? ` Het doel, in de woorden van de gebruiker: "${clean(plan.goal)}".` : ''}`,
-    lines.length ? `De stappen:\n${lines.join('\n')}` : 'Het plan heeft nog geen stappen.',
+    ...(vacancy ? [vacancy] : []),
+    lines.length ? `De stappen:\n${lines.join('\n')}` : 'Het plan heeft nog geen stappen: de gebruiker kan bij Plan zelf stappen toevoegen of jou stappen laten voorstellen ("Laat Ayla stappen voorstellen").',
+    'Bij een stap hoort vaak een plek in PAVE (zie "soort"). Zeg waar de gebruiker het doet, en help met de inhoud: wat erin moet, wat de gebruiker al heeft in de kluis die je mag zien, en wat de eerstvolgende kleine handeling is. Is een stap te groot, deel hem dan in dit gesprek op in twee of drie kleinere handelingen; de stappen van het plan zelf verander je niet.',
     focus >= 0
       ? `Help de gebruiker vooral met stap ${focus + 1} ("${clean(plan.steps[focus].title)}"), tenzij de gebruiker iets anders vraagt. Verwijs naar de stappen bij hun naam, niet bij hun nummer.`
       : 'Alle stappen zijn afgerond of overgeslagen: help de gebruiker terugkijken of een volgende stap kiezen.',
@@ -149,7 +187,7 @@ export const NEW_PLAN_SCHEMA = {
   },
 } as const
 
-export const NEW_PLAN_RULE = 'newPlan: vraagt de gebruiker je een plan te maken (zoals "maak een plan", "help me een plan maken om ..."), vul dan newPlan. name: kort, hooguit 80 tekens, zoals "Stage vinden in Utrecht". goal: het doel in één zin, in de woorden van de gebruiker. steps: 3 tot 6 stappen in de volgorde waarin de gebruiker ze doet, elk met een korte title (hooguit 80 tekens, begint met een werkwoord, zoals "Je cv bijwerken"), een summary van één zin en het kind dat het best past. Gebruik wat je uit dit gesprek, de kluis en je notities weet. Zeg in text kort dat je het plan hebt gemaakt en dat het bovenaan dit gesprek staat, en noem de eerste stap. Weet je nog niet waar het plan over gaat, vraag dan eerst naar het doel en zet newPlan op null. Hoort dit gesprek al bij een plan, maak dan alleen een nieuw plan als de gebruiker uitdrukkelijk om een nieuw of ander plan vraagt. Anders is newPlan null.'
+export const NEW_PLAN_RULE = 'newPlan: vraagt de gebruiker je een plan te maken (zoals "maak een plan", "help me een plan maken om ..."), vul dan newPlan. name: kort, hooguit 80 tekens, zoals "Stage vinden in Utrecht". goal: het doel in één zin, in de woorden van de gebruiker. steps: 3 tot 6 stappen in de volgorde waarin de gebruiker ze doet, elk met een korte title (hooguit 80 tekens, een korte opdracht zoals "Je cv bijwerken"), een summary van één zin en het kind dat het best past: conversation (uitpraten of oefenen met jou), research (uitzoeken, vacatures bekijken), evidence (bewijs in de kluis), verification (laten verifiëren), document (cv of brief), profile (delen), contact (iemand mailen of bellen), action (iets doen buiten PAVE), reflection (terugkijken), milestone (een moment dat je haalt) of general. Gebruik wat je uit dit gesprek, de kluis en je notities weet. Zeg in text kort dat het plan klaarstaat bovenaan dit gesprek, en noem de eerste stap. Weet je nog niet waar het plan over gaat, vraag dan eerst naar het doel en zet newPlan op null. Hoort dit gesprek al bij een plan, maak dan alleen een nieuw plan als de gebruiker uitdrukkelijk om een nieuw of ander plan vraagt. Heeft een plan onder "Zo staat de app nu" hetzelfde soort doel (ook als plaats of details anders zijn), vraag dan één keer of de gebruiker een nieuw plan wil of dat plan wil openen (intent askUser, newPlan null). Kiest de gebruiker een nieuw plan, vul dan meteen newPlan en vraag het niet opnieuw. Vul je newPlan, schrijf de stappen dan niet ook uit in text: alleen de eerste. Anders is newPlan null.'
 
 /** Where the apps cannot make a plan, the model never proposes one. */
 export const NO_NEW_PLAN_RULE = 'newPlan is altijd null.'
