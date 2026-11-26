@@ -117,12 +117,21 @@ public struct AylaRequest: Codable, Equatable, Sendable {
         public var chatPinned: Bool?
         /// What is on screen right now, in a few words, so "deze" and "hier" need no asking back.
         public var seeing: String?
+        public var font: String?
+        /// The plans still going, one line each: name, how far, the step you are on. So she can open, change and link them.
+        public var plans: [String]?
+        /// The names of the projects in Ayla.
+        public var projects: [String]?
 
         public init(
             theme: String? = nil, textSize: String? = nil, displayMode: String? = nil, vaultLayout: String? = nil,
             voiceText: Bool? = nil, animations: Bool? = nil, memory: Bool? = nil, chatTitle: String? = nil, chatPinned: Bool? = nil,
-            seeing: String? = nil
+            seeing: String? = nil, font: String? = nil, plans: [String]? = nil, projects: [String]? = nil
         ) {
+            self.font = font
+            // The server takes at most 8 plans of 200 characters and 12 projects of 80.
+            self.plans = plans.map { $0.prefix(8).map { String($0.prefix(200)) } }
+            self.projects = projects.map { $0.prefix(12).map { String($0.prefix(80)) } }
             self.theme = theme
             self.textSize = textSize
             self.displayMode = displayMode

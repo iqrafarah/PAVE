@@ -27,6 +27,13 @@ enum AylaMessages {
     static let actionNoCurrentChat = "Dit gesprek staat nog niet in je lijst, dus dat lukt nu nog niet. Probeer het zo opnieuw."
     static let actionUnknownValue = "Dat kon ik niet instellen: die keuze ken ik niet."
     static let actionUnavailable = "Dat lukt nu niet."
+    static func actionNoPlan(_ name: String?) -> String { name.map { "Ik kon het plan \($0) niet vinden." } ?? "Ik weet niet welk plan je bedoelt. Noem de naam van het plan." }
+    static func actionNoStep(_ title: String) -> String { "Ik kon de stap \(title) niet vinden in je plannen." }
+    static func actionStepExists(_ title: String) -> String { "De stap \(title) staat al in dat plan." }
+    static func actionNoProject(_ name: String) -> String { "Ik kon het project \(name) niet vinden." }
+    static func actionNoApplication(_ name: String) -> String { "Ik kon geen sollicitatie vinden voor \(name). Open eerst de vacature, dan begin ik er een." }
+    static let actionNoVacancyForPlan = "Ik weet niet voor welke vacature. Open de vacature of zeg welke van de getoonde vacatures je bedoelt."
+    static func actionPlanMade(_ name: String) -> String { "Het plan \(name) staat klaar bij Plan." }
     static func actionFolderExists(_ name: String) -> String { "De map \(name) bestond al. Ik open hem." }
     static func actionDeletedEvidence(_ title: String) -> String { "Ik heb \(title) uit je kluis verwijderd." }
     static let actionDeletedChat = "Ik heb het gesprek verwijderd."

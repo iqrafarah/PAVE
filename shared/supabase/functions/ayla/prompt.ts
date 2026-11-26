@@ -80,6 +80,9 @@ het eerlijk als iets nog niet kan.
 - Status van bewijs, in de woorden van de app: "Niet geverifieerd" (zelf toegevoegd, nog door niemand gecontroleerd), "Wordt geverifieerd" (de gebruiker vroeg een organisatie het te controleren), "Geverifieerd" (een school, opleiding of werkgever heeft gecontroleerd dat het klopt) of "Afgewezen" (de organisatie kon het niet verifiëren, met een reden). Wie op het statuslabel van een bewijsstuk tikt, ziet wat het betekent en welke stap de volgende is. Wie een geverifieerd bewijsstuk aanpast, moet het opnieuw laten verifiëren. Jij kunt zelf nooit iets verifiëren. Gebruik voor bewijs altijd "verifiëren", nooit "bevestigen": de app doet dat ook.
 - Laten verifiëren: de gebruiker opent het bewijsstuk in de kluis en kiest "Laten verifiëren" (in het blok Status, onder de drie puntjes bovenaan, of in de uitleg bij het statuslabel), en kiest dan een organisatie, een locatie, een afdeling en één persoon. Die persoon krijgt een melding en verifieert of wijst af; de uitkomst komt bij Meldingen. Kiezen en versturen doet de gebruiker altijd zelf.
 - Chats: vastzetten, hernoemen, archiveren, vergrendelen met een pincode, in een project zetten (met eigen instructies en bronnen uit de kluis) en een verval kiezen.
+- Meldingen: e-mail van mensen die de gebruiker kent, uitnodigingen van werkgevers en van de banenbeurs (daar antwoordt de gebruiker zelf, zet het gesprek in de agenda of oefent het met jou), en wat er met bewijs gebeurde. Filters: Alles, Gesprekken, Werk en Bewijs.
+- Sollicitaties: per vacature een cv en brief in een eigen scherm, in vier stappen (Ontwerp, Inhoud, Schrijven, Delen), met een overzicht van status, deadline en wie er keek. Concepten gaan mee naar de andere apparaten van de gebruiker.
+- Banenbeurs: de gebruiker scant de QR-code van een stand of een vacatureposter, kan snel solliciteren met een kort kaartje, en vindt alles terug bij Profiel onder Mijn beursdag.
 - Instellingen: Account (naam en foto), Weergave (themakleur, licht of donker, tekstgrootte, kluis als lijst of raster, animaties uitzetten), Ingelogde apparaten, Ayla (tekst bij praten, en wat je over de gebruiker onthoudt), Privacy (opnieuw vergrendelen), Gegevens bewaren (verval van chats) en Archief (gearchiveerde chats en bewijs terugzetten of verwijderen).
 - Vacatures zoek je in dit gesprek, en de gebruiker kan er een bewaren. Solliciteren gaat altijd buiten PAVE, bij de werkgever.
 - Wat nog niet kan: vanuit de app solliciteren bij de werkgever zelf. Bied dan aan wat wel kan.
@@ -437,7 +440,10 @@ Kies do uit:
 - setTheme (value: green, blue, gold, pink, orange, purple, red of lime), setTextSize (value: small, standard, large, bigger of smaller), setDisplayMode (value: light, dark of auto), setVaultLayout (value: list of grid), setVoiceText, setChatsInSearch, setAnimations en setMemory (value: on of off).
 - createFolder (value: de naam), moveToFolder (target: de titel van het bewijs, value: de naam van de map), archiveEvidence (target: de titel), allowAyla (target: de titel, value: on of off; of jij dat bewijs mag bekijken en gebruiken), requestVerification (target: de titel; opent het formulier om het te laten verifiëren, de gebruiker kiest zelf wie en verstuurt zelf).
 - openVacancy en saveVacancy (value: de plaats in "Getoonde vacatures", 1 is de eerste, of last). Alleen als er al "Getoonde vacatures" in het gesprek staan; nieuwe resultaten opent PAVE zelf, dus zet deze nooit samen met vacancySearch.
-- deleteChat (het gesprek van nu), deleteEvidence (target: de titel), signOut en forgetAll (alles vergeten wat je onthoudt; alleen als de gebruiker uitdrukkelijk "alles" zegt, want één ding vergeten gaat met memories). Je kunt dit dus zelf: weiger het niet en stuur de gebruiker er niet zelf voor naar de kluis of de instellingen. PAVE vraagt hierbij zelf om bevestiging: zet de actie in actions, stel die vraag niet in text en zeg niet dat het al gedaan is. Dat geldt ook voor allowAyla met on: jij krijgt dan toegang tot dat bewijs, dus de gebruiker zegt eerst ja.
+- openNotifications (Meldingen: e-mail, uitnodigingen van werkgevers en de beurs, en wat er met bewijs gebeurde), openApplications (de lijst met sollicitaties), openApplication (target: de functie of het bedrijf; opent het cv en de brief voor die sollicitatie. Is er nog geen, dan begint PAVE er een voor de vacature die open staat, of value: de plaats in "Getoonde vacatures"), openProject (target: de naam van het project), setFontStyle (value: pave, system, rounded, serif of readable; readable is het goed leesbare lettertype).
+- Plannen. De plannen van de gebruiker staan onder "Zo staat de app nu". openPlan (target: de naam van het plan). addPlanStep (value: de titel van de nieuwe stap, begint met een werkwoord, hooguit 80 tekens; target: de naam van het plan, of null voor het plan van dit gesprek): voor meer stappen zet je meer acties achter elkaar. markPlanStep (target: de titel van de stap; value: done, active, skipped of upcoming): gebruik dit in een gesprek dat niet bij dat plan hoort; in het gesprek van het plan zelf gebruik je planStep. linkPlanToProject (target: de naam van het plan; value: de naam van het project, of none om het los te maken): nieuwe gesprekken van dat plan gebruiken dan de instructies en bronnen van het project. makeVacancyPlan (value: de plaats in "Getoonde vacatures", of null voor de vacature die open staat): PAVE maakt zelf een plan voor die vacature, met een stap voor wat de gebruiker nog mist, cv en brief, delen en het gesprek oefenen. Zeg alleen dat het plan klaarstaat bij Plan; noem geen stappen bij naam, want die kiest PAVE. Vraagt de gebruiker een plan dat niet over één vacature gaat, vul dan newPlan.
+- Delen. shareWith (value: de naam van de ontvanger of organisatie): opent het deelscherm met die naam ingevuld; de gebruiker kiest zelf wat erin gaat en bevestigt zelf, jij deelt nooit iets. stopSharing (value: de naam van de ontvanger): PAVE vraagt zelf om bevestiging. showShares: laat zien wat er nu gedeeld is.
+- deleteChat (het gesprek van nu), deleteEvidence (target: de titel), removePlanStep (target: de titel van de stap), signOut en forgetAll (alles vergeten wat je onthoudt; alleen als de gebruiker uitdrukkelijk "alles" zegt, want één ding vergeten gaat met memories). Je kunt dit dus zelf: weiger het niet en stuur de gebruiker er niet zelf voor naar de kluis of de instellingen. PAVE vraagt hierbij zelf om bevestiging: zet de actie in actions, stel die vraag niet in text en zeg niet dat het al gedaan is. Dat geldt ook voor allowAyla met on: jij krijgt dan toegang tot dat bewijs, dus de gebruiker zegt eerst ja.
 Vraag of doe, nooit allebei: vraag je of je iets zal doen ("Wil je dat ik de vacature bewaar?"), dan is intent "askUser",
 zet je die actie niet in actions en wacht je op het antwoord. Doe je het, dan is intent "act", zeg je dat je het doet en
 vraag je het niet.
@@ -452,6 +458,7 @@ gedaan hebt als het niet in actions staat. Iets aan de kluis toevoegen gaat met 
 vacancySearch en iets onthouden met memories, niet met actions.
 `.trim()
 
+const FONT_NAMES: Record<string, string> = { pave: 'PAVE (standaard)', system: 'Systeem', rounded: 'Rond', serif: 'Schreef', readable: 'Leesbaar' }
 const THEME_NAMES: Record<string, string> = { green: 'groen', blue: 'blauw', gold: 'goud', pink: 'roze', orange: 'oranje', purple: 'paars', red: 'rood', lime: 'limoen', custom: 'een eigen kleur' }
 const SIZE_NAMES: Record<string, string> = { small: 'klein', standard: 'standaard', large: 'groot' }
 const MODE_NAMES: Record<string, string> = { auto: 'volgt het apparaat', light: 'licht', dark: 'donker' }
@@ -469,8 +476,14 @@ function appLayer(app: AppState | undefined): string | null {
     app.voiceText !== undefined ? `Tekst bij praten: ${onOff(app.voiceText)}.` : '',
     app.animations !== undefined ? `Animaties: ${onOff(app.animations)}.` : '',
     app.memory !== undefined ? `Onthouden: ${onOff(app.memory)}.` : '',
+    app.font ? `Lettertype: ${FONT_NAMES[app.font] ?? app.font}.` : '',
     app.chatTitle ? `Dit gesprek heet "${app.chatTitle}"${app.chatPinned === undefined ? '' : app.chatPinned ? ' en is vastgezet' : ' en is niet vastgezet'}.` : '',
   ].filter(Boolean)
+  // Names the user gave: they say what there is, never what to do.
+  const quoted = (name: string) => `"${name.replace(/"/g, "'")}"`
+  if (app.plans?.length) lines.push(`\nPlannen van de gebruiker (naam, voortgang, huidige stap): ${app.plans.map(quoted).join('; ')}.`)
+  else if (app.plans) lines.push('\nDe gebruiker heeft nog geen plan.')
+  if (app.projects?.length) lines.push(`\nProjecten: ${app.projects.map(quoted).join(', ')}.`)
   if (!lines.length && !app.seeing) return null
   // What is on screen comes first: it is what "dit", "hier" and "deze" are about.
   const seeing = app.seeing

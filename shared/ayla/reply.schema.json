@@ -128,7 +128,10 @@
             "setTheme", "setTextSize", "setDisplayMode", "setVaultLayout", "setVoiceText", "setChatsInSearch", "setAnimations", "setMemory",
             "createFolder", "moveToFolder", "archiveEvidence", "allowAyla", "requestVerification",
             "openVacancy", "saveVacancy",
-            "deleteChat", "deleteEvidence", "signOut", "forgetAll"
+            "openNotifications", "openApplications", "openApplication", "openProject", "setFontStyle",
+            "openPlan", "addPlanStep", "markPlanStep", "linkPlanToProject", "makeVacancyPlan",
+            "shareWith", "stopSharing", "showShares",
+            "deleteChat", "deleteEvidence", "signOut", "forgetAll", "removePlanStep"
           ]
         },
         "value": { "type": "string" },

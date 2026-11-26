@@ -127,7 +127,10 @@ struct PlanDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 header(plan)
-                PlanProjectRow(plan: plan, projects: chats.projects) { model.setProject($0, of: planID) }
+                PlanProjectRow(plan: plan, projects: chats.projects) { projectID in
+                    model.setProject(projectID, of: planID)
+                    if projectID != nil { actions.moveChats(plan, projectID) }
+                }
                 steps(plan)
                 conversations(plan)
             }

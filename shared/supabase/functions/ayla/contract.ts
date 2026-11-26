@@ -51,6 +51,11 @@ export interface AppState {
   chatPinned?: boolean
   /** What is on screen right now, in a few words the app writes itself ("de lijst met vacatures, tabblad Bewaard"). */
   seeing?: string
+  font?: string
+  /** The user's plans, one line each as the app writes it: name, how far, and the step they are on. At most 8. */
+  plans?: string[]
+  /** The names of the user's projects in Ayla. At most 12. */
+  projects?: string[]
 }
 
 /** The vacancy the user has open in the app, as the card shows it, so "past deze bij mij?" is about that one. */
@@ -93,12 +98,15 @@ export const ACTIONS = [
   'setTheme', 'setTextSize', 'setDisplayMode', 'setVaultLayout', 'setVoiceText', 'setChatsInSearch', 'setAnimations', 'setMemory',
   'createFolder', 'moveToFolder', 'archiveEvidence', 'allowAyla', 'requestVerification',
   'openVacancy', 'saveVacancy',
-  'deleteChat', 'deleteEvidence', 'signOut', 'forgetAll',
+  'openNotifications', 'openApplications', 'openApplication', 'openProject', 'setFontStyle',
+  'openPlan', 'addPlanStep', 'markPlanStep', 'linkPlanToProject', 'makeVacancyPlan',
+  'shareWith', 'stopSharing', 'showShares',
+  'deleteChat', 'deleteEvidence', 'signOut', 'forgetAll', 'removePlanStep',
 ] as const
 export type ActionKind = (typeof ACTIONS)[number]
 
 /** What cannot be undone: PAVE asks Ja or Nee first, and the app only acts after Ja. */
-export const CONFIRMED_ACTIONS: readonly ActionKind[] = ['deleteChat', 'deleteEvidence', 'signOut', 'forgetAll']
+export const CONFIRMED_ACTIONS: readonly ActionKind[] = ['deleteChat', 'deleteEvidence', 'signOut', 'forgetAll', 'removePlanStep']
 
 export interface AppAction { do: ActionKind; value?: string; target?: string; confirm?: true }
 
@@ -313,13 +321,14 @@ export function parseRequest(body: unknown): AylaRequest | string {
   }
 }
 
-const APP_WORDS = ['theme', 'textSize', 'displayMode', 'vaultLayout', 'chatTitle', 'seeing'] as const
+const APP_WORDS = ['theme', 'textSize', 'displayMode', 'vaultLayout', 'chatTitle', 'seeing', 'font'] as const
+const APP_LISTS = { plans: { count: 8, length: 200 }, projects: { count: 12, length: 80 } } as const
 const APP_SWITCHES = ['voiceText', 'animations', 'memory', 'chatPinned'] as const
 
 function parseAppState(raw: unknown): AppState | null {
   const a = raw as Record<string, unknown>
   if (typeof a !== 'object' || a === null || Array.isArray(a)) return null
-  const known = new Set<string>([...APP_WORDS, ...APP_SWITCHES])
+  const known = new Set<string>([...APP_WORDS, ...APP_SWITCHES, ...Object.keys(APP_LISTS)])
   if (Object.keys(a).some((key) => !known.has(key))) return null
   const state: AppState = {}
   for (const key of APP_WORDS) {
@@ -332,6 +341,13 @@ function parseAppState(raw: unknown): AppState | null {
     if (a[key] === undefined) continue
     if (typeof a[key] !== 'boolean') return null
     state[key] = a[key] as boolean
+  }
+  for (const [key, limit] of Object.entries(APP_LISTS) as [keyof typeof APP_LISTS, { count: number; length: number }][]) {
+    if (a[key] === undefined) continue
+    const list = a[key]
+    if (!Array.isArray(list) || list.length > limit.count || list.some((line) => typeof line !== 'string' || line.length > limit.length)) return null
+    const lines = (list as string[]).map((line) => line.replace(/\s+/g, ' ').trim()).filter(Boolean)
+    if (lines.length) state[key] = lines
   }
   return state
 }

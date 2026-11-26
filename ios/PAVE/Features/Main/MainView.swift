@@ -527,6 +527,11 @@ struct MainView: View {
                 actions: PlanChatActions(open: openFromSearch, start: startConversation(in:for:), go: { destination in
                     isMenuOpen = false
                     open(destination)
+                }, moveChats: { plan, projectID in
+                    let project = model.conversationList.projects.first { $0.id == projectID }
+                    for chat in model.conversationList.conversations where plan.conversations.contains(where: { $0.id == chat.id }) && chat.projectID != projectID {
+                        model.move(chat, to: project)
+                    }
                 }, deleteChats: deleteChats)
             )
             // Ayla's proposal for steps reads the evidence she may see and asks her service.

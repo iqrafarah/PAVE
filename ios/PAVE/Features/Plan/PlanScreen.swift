@@ -9,6 +9,8 @@ struct PlanChatActions {
     let start: (PavePlan, PavePlanStep?) -> Void
     /// Opens the place in PAVE where a step is done: the vault, the profile or Meldingen.
     var go: (MainDestination) -> Void = { _ in }
+    /// The plan went into a project (or out of it, nil): its chats so far move along, so the project shows them too.
+    var moveChats: (PavePlan, String?) -> Void = { _, _ in }
     /// Deletes these chats, when a plan is deleted together with its chats.
     var deleteChats: ([String]) -> Void = { _ in }
 }

@@ -470,6 +470,7 @@ export function alreadySo(action: AppAction, app: AppState | undefined): boolean
   const now: Partial<Record<ActionKind, string | undefined>> = {
     setTheme: app.theme, setTextSize: app.textSize, setDisplayMode: app.displayMode, setVaultLayout: app.vaultLayout,
     setVoiceText: onOff(app.voiceText), setAnimations: onOff(app.animations), setMemory: onOff(app.memory), pinChat: onOff(app.chatPinned),
+    setFontStyle: app.font,
     renameChat: app.chatTitle,
   }
   return now[action.do] !== undefined && now[action.do] === action.value
@@ -725,10 +726,14 @@ export function effortFor(request: AylaRequest, mayLook = false, turn: { justGra
   return 'normal'
 }
 
-const NEEDS_TARGET: readonly ActionKind[] = ['openFolder', 'openChat', 'moveToFolder', 'archiveEvidence', 'allowAyla', 'requestVerification', 'deleteEvidence']
+const NEEDS_TARGET: readonly ActionKind[] = [
+  'openFolder', 'openChat', 'moveToFolder', 'archiveEvidence', 'allowAyla', 'requestVerification', 'deleteEvidence',
+  'openPlan', 'openProject', 'markPlanStep', 'removePlanStep', 'linkPlanToProject',
+]
 const NEEDS_VALUE: readonly ActionKind[] = [
   'openSettingsPage', 'renameChat', 'pinChat', 'setChatExpiry', 'setTheme', 'setTextSize', 'setDisplayMode', 'setVaultLayout', 'setVoiceText',
   'setChatsInSearch', 'setAnimations', 'setMemory', 'createFolder', 'moveToFolder', 'allowAyla', 'openVacancy', 'saveVacancy',
+  'setFontStyle', 'addPlanStep', 'markPlanStep', 'linkPlanToProject', 'shareWith', 'stopSharing',
 ]
 
 /** The actions of an answer as the app gets them: known ones only, complete, at most 4, and only on the iPhone. */
