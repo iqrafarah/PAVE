@@ -416,6 +416,10 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
     .map((action) => action.do === 'answerInvitation' && request.device === 'phone' && !invitationListed(action.target, request.app?.invitations)
       ? { do: 'replyMail' as const, ...(action.target ? { target: action.target } : {}), value: request.text.slice(0, 120) }
       : action)
+    // A whole plan by its name is not a step of it: the plan goes, after Ja.
+    .map((action) => action.do === 'removePlanStep' && namesPlan(action.target, request.app?.plans) && !input.plan?.steps.some((step) => sameWords(step.title, action.target ?? ''))
+      ? { do: 'deletePlan' as const, target: action.target, confirm: true as const }
+      : action)
     // Going on with a plan happens here in the chat; the plan's page only opens when the user asks to see it.
     .map((action) => action.do === 'openPlan' && request.device === 'phone' && !asksToSeePlan(request.text)
       ? { do: 'workOnPlan' as const, ...(action.target ? { target: action.target } : {}) }
@@ -635,6 +639,7 @@ const CONFIRM_QUESTIONS: Partial<Record<ActionKind, (action: AppAction) => strin
   forgetAll: () => 'Zal ik alles vergeten wat ik over je onthoud? Dat kan niet ongedaan worden gemaakt.',
   allowAyla: (action) => `Mag ik "${action.target}" voortaan bekijken en gebruiken?`,
   removePlanStep: (action) => `Zal ik de stap "${action.target}" uit je plan halen?`,
+  deletePlan: (action) => `Zal ik je plan "${action.target}" verwijderen? Je gesprekken blijven bewaard.`,
   answerInvitation: (action) => /^(no|nee)$/i.test(action.value ?? '')
     ? `Zal ik ${action.target} laten weten dat je niet kunt?`
     : `Zal ik ${action.target} laten weten dat je komt?`,
@@ -713,10 +718,21 @@ export function withoutRepeatedQuestion(text: string, question: string): string 
   if (sentences.length < 2 || !last.endsWith('?')) return text
   const said = words(last)
   const shared = [...asked].filter((w) => said.has(w)).length
-  return shared / asked.size >= 0.7 ? sentences.slice(0, -1).join(' ') : text
+  return shared / Math.min(asked.size, said.size) >= 0.7 ? sentences.slice(0, -1).join(' ') : text
 }
 
 /** Whether an invitation from the fair the app listed is meant: a word of the employer's name in the target. */
+function sameWords(a: string, b: string): boolean {
+  const key = (text: string) => text.toLocaleLowerCase('nl').normalize('NFD').replace(/[^a-z0-9]/g, '')
+  return key(a) === key(b)
+}
+
+/** The target is one of the user's plans, as the app lists them ("Piloot worden (1 van 7 stappen, nu: ...)"). */
+export function namesPlan(target: string | undefined, plans: string[] | undefined): boolean {
+  if (!target || !plans?.length) return false
+  return plans.some((line) => sameWords(line.replace(/\s*\(.*$/, ''), target))
+}
+
 /** "Open mijn plan", "laat het plan zien", "show my plan": to see the plan's page, not to go on with it in the chat. */
 const SEES_PLAN = /\b(open\w*|bekijk\w*|toon\w*|zien|laat .{0,30}zien|ga naar|naar (het|mijn) plan|show\w*|see|view|habri\w*|mustra\w*|wak\w*)\b/i
 
@@ -852,7 +868,7 @@ export function effortFor(request: AylaRequest, mayLook = false, turn: { justGra
 
 const NEEDS_TARGET: readonly ActionKind[] = [
   'openFolder', 'openChat', 'moveToFolder', 'archiveEvidence', 'allowAyla', 'requestVerification', 'deleteEvidence',
-  'openPlan', 'openProject', 'markPlanStep', 'removePlanStep', 'linkPlanToProject',
+  'openPlan', 'openProject', 'markPlanStep', 'removePlanStep', 'deletePlan', 'linkPlanToProject',
   'renamePlanStep', 'describePlanStep', 'answerInvitation', 'addTalkToCalendar', 'addProjectSource', 'addToCalendar',
   'editEvidence', 'restoreEvidence', 'addSkill', 'linkEvidenceToStep', 'setStepDue', 'moveStep', 'setApplicationStatus', 'startPractice',
   'attachToEvidence', 'makeSelection', 'workOnPlan',

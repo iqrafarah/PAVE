@@ -180,6 +180,15 @@ public enum AylaVaultOffer {
         return !last.contains(openWords) && !last.lowercased().contains(" of ")
     }
 
+    nonisolated(unsafe) private static let butWords: Regex<Substring> = #/\b(?:maar|niet|nee|wacht|behalve|toch|liever|eerst)\b/#.ignoresCase()
+    nonisolated(unsafe) public static let startsOver: Regex<Substring> = #/\b(?:nieuw\w*|opnieuw|ander\w*|overnieuw)\b/#.ignoresCase()
+
+    /// A Ja to a question PAVE asks itself, also with a few words after it ("Ja, dat had ik net ook al gevraagd"); not a
+    /// Ja with a but ("ja maar niet die").
+    public static func isPlainYes(_ text: String) -> Bool {
+        isYes(text) && text.split(separator: " ").count <= 12 && text.firstMatch(of: butWords) == nil
+    }
+
     public static func isYes(_ label: String) -> Bool {
         label.trimmingCharacters(in: .whitespacesAndNewlines).prefixMatch(of: yesLabel) != nil
     }

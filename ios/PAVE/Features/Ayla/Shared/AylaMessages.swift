@@ -63,6 +63,8 @@ enum AylaMessages {
     static func actionFolderExists(_ name: String) -> String { "De map \(name) bestond al. Ik open hem." }
     static func actionDeletedEvidence(_ title: String) -> String { "Ik heb \(title) uit je kluis verwijderd." }
     static let actionDeletedChat = "Ik heb het gesprek verwijderd."
+    static func actionDeletedPlan(_ name: String) -> String { "Ik heb je plan \(name) verwijderd." }
+    static let askNewPlanGoal = "Waar moet je nieuwe plan over gaan?"
     static let actionForgotAll = "Ik heb alles vergeten wat ik over je onthield."
     static let actionSignsOut = "Ik log je uit."
     static let actionDone = "Gedaan."

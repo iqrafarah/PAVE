@@ -2714,17 +2714,20 @@ struct AylaChatScreen: View {
             return AylaMessages.chooseYourself
         }
         // Ja to "Zal ik dit gesprek verwijderen?": now she does it, once.
-        if let waiting = model.actionsWaitingForYes, AylaVaultOffer.isYes(text), text.split(separator: " ").count <= 3 {
+        if let waiting = model.actionsWaitingForYes, AylaVaultOffer.isPlainYes(text) {
             // She only says it is done when it can be done: evidence that is not there, or a chat not in the list yet.
             let items = (vault?.items ?? []).map { AylaAppCommand.Named(id: $0.id, name: $0.title) }
             let missing = waiting.actions.lazy.compactMap { action -> String? in
                 switch action.kind {
                 case "deleteEvidence", "allowAyla": AylaAppAction.best(action.target, in: items) == nil ? AylaMessages.actionNoItem(action.target ?? "") : nil
                 case "deleteChat": model.currentConversation == nil ? AylaMessages.actionNoCurrentChat : nil
+                case "deletePlan": plans.flatMap { AylaPlanActions(plans: $0, chatPlan: nil).plan(named: action.target) } == nil ? AylaMessages.actionNoPlan(action.target) : nil
                 default: nil
                 }
             }.first
-            let done = missing ?? AylaActionWords.done(waiting.actions)
+            // "Verwijder mijn plan en begin een nieuw": once the old one is gone, she asks what the new one is about.
+            let startsOver = waiting.actions.contains { $0.kind == "deletePlan" } && model.asked(matching: AylaVaultOffer.startsOver)
+            let done = missing ?? (AylaActionWords.done(waiting.actions) + (startsOver ? " " + AylaMessages.askNewPlanGoal : ""))
             model.confirmActions(replyID: waiting.replyID, saying: text.trimmingCharacters(in: .whitespacesAndNewlines), done: done)
             if missing == nil { Task { await run(waiting.actions) } }
             if !isTalking { AccessibilityNotification.Announcement(done).post() }
@@ -3247,6 +3250,11 @@ struct AylaChatScreen: View {
             }
             await model.addSources([item.id], to: project)
             if model.sourcesProblem != nil { return .failed(AylaMessages.actionUnavailable) }
+        case "deletePlan":
+            guard let plans, let plan = AylaPlanActions(plans: plans, chatPlan: nil).plan(named: action.target) else {
+                return .failed(AylaMessages.actionNoPlan(action.target))
+            }
+            await plans.delete(plan.id)
         case "addPlanStep", "markPlanStep", "removePlanStep", "linkPlanToProject":
             guard let plans else { return .failed(AylaMessages.actionUnavailable) }
             let planActions = AylaPlanActions(plans: plans, chatPlan: plans.plan(containing: model.conversationID))

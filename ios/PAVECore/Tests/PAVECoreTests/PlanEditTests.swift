@@ -43,3 +43,15 @@ struct PlanEditTests {
         #expect(reply.planEdit?.changes.last?.op == .remove)
     }
 }
+
+struct PlainYesTests {
+    @Test func aJaWithAFewWordsCountsButAJaWithAButDoesNot() {
+        #expect(AylaVaultOffer.isPlainYes("Ja"))
+        #expect(AylaVaultOffer.isPlainYes("Ja, dat had ik net ook al gevraagd."))
+        #expect(AylaVaultOffer.isPlainYes("ja graag"))
+        #expect(!AylaVaultOffer.isPlainYes("Ja maar niet dat plan"))
+        #expect(!AylaVaultOffer.isPlainYes("Nee"))
+        #expect(!AylaVaultOffer.isPlainYes("Ja, wacht even"))
+        #expect("en een nieuwe starten".firstMatch(of: AylaVaultOffer.startsOver) != nil)
+    }
+}

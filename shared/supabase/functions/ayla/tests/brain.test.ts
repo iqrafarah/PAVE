@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { test } from 'node:test'
-import { alreadySo, asksAboutShown, shownNames, asksForWork, asksToSave, moreThanOneRound, writesEnglish, announcesSearchOnly, answer, asksBeforeDoing, confirmable, declinedOffer, entriesSoFar, ownWords, vaultScope, bestFirst, sitesFromName, cleanActions, cleanTitle, effortFor, resultsMessage, siteFits, withLogos, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk, withoutRepeatedQuestion } from '../brain.ts'
+import { alreadySo, asksAboutShown, shownNames, asksForWork, asksToSave, moreThanOneRound, writesEnglish, announcesSearchOnly, answer, asksBeforeDoing, confirmable, declinedOffer, entriesSoFar, ownWords, vaultScope, bestFirst, sitesFromName, cleanActions, cleanTitle, effortFor, resultsMessage, siteFits, withLogos, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk, withoutRepeatedQuestion, namesPlan } from '../brain.ts'
 import { needsConfirmation, parseRequest } from '../contract.ts'
 import { cleanPurpose, grantsWholeVault, revokesVault, saysNo, saysYes, vaultConsent } from '../consent.ts'
 import { MODELS, modelsFor, openRouterCompletion } from '../openrouter.ts'
@@ -979,6 +979,25 @@ test('going on with a plan stays in the chat; only asking to see it opens the pl
     const reply = await answer({ request: { ...request, text }, conversationId: 'c', history: [] }, { complete: fake.complete, newId: ids() })
     assert.deepEqual(reply.actions, [{ do: kind, target: 'Piloot worden' }], text)
   }
+})
+
+test('deleting a whole plan is deletePlan after Ja, also when the model calls it a step', async () => {
+  const app = { plans: ['Piloot worden (0 van 7 stappen, nu: Opleidingen vergelijken)'] }
+  assert.equal(namesPlan('piloot worden', app.plans), true)
+  assert.equal(namesPlan('Opleidingen vergelijken', app.plans), false)
+  for (const kind of ['removePlanStep', 'deletePlan']) {
+    const fake = model(say('Ik zet klaar dat je plan weg gaat.', { intent: 'act', actions: [{ do: kind, value: null, target: 'Piloot worden' }] }))
+    const reply = await answer({ request: { ...request, text: 'Kunnen we mijn plan van piloot verwijderen en een nieuwe starten?', app }, conversationId: 'c', history: [] }, { complete: fake.complete, newId: ids() })
+    assert.deepEqual(reply.actions, [{ do: 'deletePlan', target: 'Piloot worden', confirm: true }])
+    assert.equal(reply.text, 'Zal ik je plan "Piloot worden" verwijderen? Je gesprekken blijven bewaard.')
+  }
+})
+
+test('a question in the text that the question below repeats in other words goes', () => {
+  assert.equal(
+    withoutRepeatedQuestion("Je hebt al een plan 'Piloot worden' met 7 stappen. Wil je dat plan verwijderen en een nieuw plan starten?", "Wil je het plan 'Piloot worden' verwijderen en een nieuw plan starten?"),
+    "Je hebt al een plan 'Piloot worden' met 7 stappen.",
+  )
 })
 
 test('what cannot be undone waits for a Ja to a question with fixed words', async () => {

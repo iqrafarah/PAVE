@@ -18049,6 +18049,23 @@
         }
       }
     },
+    "Ik heb je plan %@ verwijderd.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I deleted your plan %@."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi a kita bo plan %@."
+          }
+        }
+      }
+    },
     "Ik hoorde niets. Probeer het nog een keer.": {
       "extractionState": "manual",
       "localizations": {
@@ -31836,6 +31853,23 @@
         }
       }
     },
+    "Plan %@ verwijderen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete plan %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kita plan %@"
+          }
+        }
+      }
+    },
     "Plan aangepast": {
       "extractionState": "manual",
       "localizations": {
@@ -40723,6 +40757,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Yena bo kontraseña un biaha mas"
+          }
+        }
+      }
+    },
+    "Waar moet je nieuwe plan over gaan?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What should your new plan be about?"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Di kiko bo plan nobo mester trata?"
           }
         }
       }

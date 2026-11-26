@@ -264,6 +264,11 @@ final class AylaChatModel {
     }
 
     /// The user's question that an answer is about.
+    /// Whether one of your last few messages says this, such as wanting to start over with a new plan.
+    func asked(matching words: Regex<Substring>) -> Bool {
+        entries.reversed().filter { $0.role == .user }.prefix(3).contains { $0.text.firstMatch(of: words) != nil }
+    }
+
     private func askedText(before entry: Entry) -> String {
         guard let index = entries.firstIndex(where: { $0.id == entry.id }), index > 0, entries[index - 1].role == .user else { return "" }
         return entries[index - 1].text
