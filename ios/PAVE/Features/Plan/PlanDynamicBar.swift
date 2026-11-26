@@ -172,7 +172,7 @@ struct PlanDynamicBar: View {
                     } else {
                         PlanTimeline(steps: plan.steps, spacing: 12) { step in
                             if step.status == .active {
-                                Button(PlanMessages.markDone, action: onCompleteStep)
+                                Button(action: onCompleteStep) { Text(PlanMessages.markDone) }
                                     .textStyle(.tag)
                                     .foregroundStyle(Color.paveAccent)
                                     .padding(.horizontal, 10)

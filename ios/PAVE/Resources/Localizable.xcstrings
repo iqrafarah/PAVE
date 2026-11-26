@@ -35780,6 +35780,23 @@
         }
       }
     },
+    "Tik op het eiland of veeg naar links voor je stappen. Houd vast om het hele plan te openen.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap the island or swipe left for your steps. Hold to open the whole plan."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tòk riba e isla of supla na banda robes pa bo pasonan. Tene pa habri henter e plan."
+          }
+        }
+      }
+    },
     "Tik op het logo om het te verplaatsen, te vervangen of weg te halen.": {
       "extractionState": "manual",
       "localizations": {
