@@ -417,3 +417,4 @@ Een flow met stappen heeft linksboven een pijl terug naar de vorige stap, en op 
 | Snel solliciteren, meedelen | Wat ze verder mogen zien / Je profiel met bewijs / Ze kunnen je {n} bewijsstukken en de bestanden inzien, twee weken lang. Stoppen kan altijd bij Profiel. / Je kluis is nog leeg, dus er is geen profiel om te laten zien. / Kaartje bij {bedrijf} |
 | Postvak werkgever | Bekijk profiel / web: Bekijk profiel en bewijs |
 | Meldingen, beurs | Van de beurs |
+| Werkgever op de beurs, kop in eigen stijl | OGD: > werken bij ogd / Start je ict-carrière_ · Sioux: // engineering / Engineers gezocht · Catharina: Werken in de zorg? · Jumbo: Kom bij Jumbo · Eindhoven: Werk aan je eigen stad (zelfde regels als op de posters) |

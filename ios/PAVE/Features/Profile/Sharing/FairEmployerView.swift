@@ -22,9 +22,13 @@ struct FairEmployerView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(employer.name).textStyle(.emptyTitle).foregroundStyle(Color.ink)
-                    Text([employer.city, employer.stand].compactMap { $0 }.joined(separator: " · ")).textStyle(.caption).foregroundStyle(Color.inkMuted)
+                if let brand = FairBrand.of(employer.slug) {
+                    FairBrandHero(employer: employer, brand: brand)
+                } else {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(employer.name).textStyle(.emptyTitle).foregroundStyle(Color.ink)
+                        Text([employer.city, employer.stand].compactMap { $0 }.joined(separator: " · ")).textStyle(.caption).foregroundStyle(Color.inkMuted)
+                    }
                 }
                 Text(employer.about).textStyle(.bodyMedium).foregroundStyle(Color.ink).fixedSize(horizontal: false, vertical: true)
                 if !employer.vacancies.isEmpty {
