@@ -51,7 +51,6 @@ struct VaultItemDetailView: View {
                     VaultRequestConfirmationSheet(
                         item: item,
                         documentCount: model.documents(of: item).count,
-                        onShowMenu: onShowMenu,
                         onSend: { request in
                             await model.requestValidation(for: item, request)
                         }

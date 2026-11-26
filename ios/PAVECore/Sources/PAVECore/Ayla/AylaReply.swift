@@ -45,16 +45,32 @@ public struct AylaReply: Codable, Equatable, Sendable {
         public var expiresAt: Date
         /// With `addVaultItem`: what to put in the vault once the user confirms.
         public var vaultItem: VaultItemProposal?
+        /// With `updatePlan`: the step of the chat's plan Ayla changed. The server already saved it; the app shows it.
+        public var planStep: PlanStepUpdate?
 
-        public init(id: String, kind: AylaActionKind, summary: String, expiresAt: Date, vaultItem: VaultItemProposal? = nil) {
+        public init(id: String, kind: AylaActionKind, summary: String, expiresAt: Date, vaultItem: VaultItemProposal? = nil, planStep: PlanStepUpdate? = nil) {
             self.id = id
             self.kind = kind
             self.summary = summary
             self.expiresAt = expiresAt
             self.vaultItem = vaultItem
+            self.planStep = planStep
         }
 
         public func isOpen(at now: Date = .now) -> Bool { expiresAt > now }
+    }
+
+    /// A step of a plan that Ayla marked done, skipped or as the one to work on now.
+    public struct PlanStepUpdate: Codable, Equatable, Sendable {
+        public var planId: String
+        public var stepId: String
+        public var status: PavePlanStep.Status
+
+        public init(planId: String, stepId: String, status: PavePlanStep.Status) {
+            self.planId = planId
+            self.stepId = stepId
+            self.status = status
+        }
     }
 
     /// An item Ayla proposes for the vault, with only what the user said; dates as YYYY-MM-DD.

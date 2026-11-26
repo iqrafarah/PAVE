@@ -84,6 +84,16 @@ enum AylaMessages {
     static let conceptReady = "Bewijs"
     static let conceptHint = "Vertel verder en Ayla vult het aan."
     static let conceptAdd = "Zet in de kluis"
+    static let conceptFillMyself = "Zelf invullen"
+    /// After it went in without a logo or cover, the same words as on the web.
+    static func lookMissing(logo: Bool, cover: Bool) -> String {
+        if logo, cover { return "Ayla vond geen logo of omslag. Wil je er zelf een kiezen?" }
+        return logo ? "Ayla vond geen logo. Wil je er zelf een kiezen?" : "Nog geen omslag. Wil je er een kiezen?"
+    }
+    static let lookLogo = "Logo kiezen"
+    static let lookCover = "Omslag kiezen"
+    static let lookDone = "Klaar"
+    static let lookFailed = "Die afbeelding kon niet bij je bewijs worden gezet. Kies een JPG of PNG."
     static let headHint = "Knik ja of schud nee"
     static let siriGoOn = "Zeg \"Praat met Ayla in PAVE\" om verder te gaan."
     static let siriSignInFirst = "Log eerst in bij PAVE, dan kan Ayla je vragen beantwoorden."
@@ -143,6 +153,7 @@ enum AylaMessages {
         default: nil
         }
     }
+    static let selectChatsHint = "Tik op de chats die je wilt vastzetten of verwijderen."
     static let vacancyNoMatch = "Ayla heeft deze vacature nog niet met je kluis vergeleken. Vraag het haar hieronder."
     static let vacancyAskButton = "Vraag Ayla"
     static let vacancyActionGaps = "Wat mis ik?"
@@ -180,9 +191,43 @@ enum AylaMessages {
     static let vacancyMatchNote = "Ayla vergeleek je kluis met een stukje van de vacaturetekst. Het is een inschatting, geen oordeel."
     static let vacancyFound = "Gevonden"
     static let vacancySavedTab = "Bewaard"
+    static func shareSaid(_ command: AylaShareCommand) -> String {
+        switch command {
+        case .share(let organisation, _, _): "Ik zet het klaar voor \(organisation). Controleer wat erin staat en bevestig het; ik deel niets zelf."
+        case .stop(let organisation): "Ik open het delen met \(organisation). Tik op Intrekken om het te stoppen."
+        case .showShares: "Hier zie je wat je nu deelt, met wie en hoe lang nog."
+        }
+    }
+    static let vacancyApplicationsTab = "Sollicitaties"
     static let vacancySavedEmptyTitle = "Nog niets bewaard"
+    // Filtering and ordering vacancies
+    static let vacancyOrderAsFound = "Zoals gevonden"
+    static let vacancyOrderBestMatch = "Beste match eerst"
+    static let vacancyFilter = "Filter"
+    static func vacancyFilterCount(_ count: Int) -> String { "Filter (\(count))" }
+    static func vacancyShown(_ shown: Int, of total: Int) -> String { shown == total ? (total == 1 ? "1 vacature" : "\(total) vacatures") : "\(shown) van \(total) vacatures" }
+    static let vacancyFilterPlace = "Plaats"
+    static let vacancyFilterHours = "Uren"
+    static let vacancyFilterEmployer = "Werkgever"
+    static let vacancyFilterAll = "Alle"
+    static let vacancyFullTime = "Fulltime"
+    static let vacancyPartTime = "Part-time"
+    static let vacancyEmployerDirect = "Direct bij het bedrijf"
+    static let vacancyEmployerAgency = "Uitzendbureau of bemiddelaar"
+    static let vacancyEmployerHint = "Herkend aan de naam van het bedrijf; dat kan een keer mis zijn."
+    static let vacancyFilterClear = "Wis filters"
+    static func vacancyFilterShow(_ count: Int) -> String { count == 1 ? "Toon 1 vacature" : "Toon \(count) vacatures" }
+    static let vacancyFilterNone = "Geen vacature past bij deze filters."
+    static let vacancyFilterNoneHint = "Zet een filter weer op Alle om meer te zien."
+    static func vacancyMatch(_ percent: Int) -> String { "\(percent)% match" }
+    static let vacancyMatchHint = "Een inschatting uit een stukje van de vacaturetekst"
+
     static let vacancySavedEmpty = "Tik op Bewaren bij een vacature om hem hier terug te vinden, ook op je andere apparaten."
+    static let vacancySearchAsk = "Zoek vacatures die bij me passen"
+    static let vacancySearchWithAyla = "Zoek met Ayla"
+    static let vacanciesPageHint = "Wat Ayla laatst vond, wat je bewaarde en je sollicitaties."
     static let vacancyFoundEmptyTitle = "Nog geen vacatures"
+    static let vacancyFoundEmptyOnPage = "Vraag Ayla om vacatures te zoeken die bij je passen. Wat ze vindt, staat daarna ook hier."
     static let vacancyFoundEmpty = "Vraag Ayla hieronder bijvoorbeeld: zoek vacatures die bij me passen."
     static let vacancySaved = "Vacature bewaard"
     static let vacancyUnsaved = "Niet meer bewaard"

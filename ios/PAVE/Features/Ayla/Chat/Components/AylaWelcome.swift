@@ -1,3 +1,4 @@
+import PAVECore
 import SwiftUI
 
 /// The empty chat: greeting (typed out), explanation and three chips. A chip opens Kluis, Plan or Profiel over the
@@ -8,6 +9,9 @@ struct AylaWelcome: View {
     /// The title types itself out once this is true.
     var isTyping = true
     let onStarter: (AylaShelf) -> Void
+    /// An application whose deadline is close, to open from here.
+    var deadline: ApplicationDraft?
+    var onOpenDeadline: () -> Void = {}
 
     private struct Starter {
         let icon: ImageResource
@@ -45,6 +49,11 @@ struct AylaWelcome: View {
                     }
                 }
                 .padding(.top, 26)
+                if let deadline {
+                    AylaDeadlineCard(draft: deadline, action: onOpenDeadline)
+                        .padding(.top, 22)
+                        .transition(.opacity)
+                }
             }
         }
         .padding(.horizontal, 24)

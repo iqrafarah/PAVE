@@ -68,7 +68,15 @@ final class WatchBridge: NSObject, WCSessionDelegate {
     private func currentMessage() async -> [String: Any] {
         let session = await currentSession()
         let isConnected = WatchConnection.current(accountID: await accountID()) != nil
-        return WatchLink.message(for: session, isConnected: isConnected)
+        var message = WatchLink.message(for: session, isConnected: isConnected)
+        // How PAVE looks and talks on the iPhone, so the Watch follows: the theme colour and Ayla's text.
+        message["voiceText"] = UserDefaults.standard.object(forKey: AylaVoiceTextSetting.key) as? Bool ?? true
+        if let accent = await MainActor.run(body: { PaveThemeStore.shared.themeAccent }) {
+            message["accent"] = Int(accent)
+        } else {
+            message["accentIsGreen"] = true
+        }
+        return message
     }
 
     /// Nothing with the demo account: its token means nothing to the server.

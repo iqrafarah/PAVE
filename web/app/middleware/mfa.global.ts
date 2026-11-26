@@ -11,7 +11,7 @@ function isAllowedBeforeMfa(path: string, status: MfaStatus | null) {
 }
 
 export default defineNuxtRouteMiddleware(async (to) => {
-  if (PATHS_WITHOUT_MFA.includes(to.path)) return;
+  if (PATHS_WITHOUT_MFA.includes(to.path) || isPublicSharePath(to.path)) return;
 
   const session = useSupabaseSession();
   if (!session.value) return;

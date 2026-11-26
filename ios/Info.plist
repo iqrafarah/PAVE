@@ -37,6 +37,8 @@
 	<string>$(AppIdentifierPrefix)$(APP_BUNDLE_IDENTIFIER).shared</string>
 	<key>SupabasePublishableKey</key>
 	<string>$(SUPABASE_PUBLISHABLE_KEY)</string>
+	<key>PaveWebURL</key>
+	<string>$(PAVE_WEB_URL)</string>
 	<key>SupabaseURL</key>
 	<string>$(SUPABASE_URL)</string>
 	<key>UIAppFonts</key>

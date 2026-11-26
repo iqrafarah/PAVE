@@ -45,8 +45,8 @@ struct VacancyHeader: View {
 
     private var employmentText: String? {
         switch vacancy.employment {
-        case .fullTime?: "Fulltime"
-        case .partTime?: "Part-time"
+        case .fullTime?: AylaMessages.vacancyFullTime
+        case .partTime?: AylaMessages.vacancyPartTime
         default: nil
         }
     }

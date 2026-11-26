@@ -68,6 +68,10 @@ public struct AylaRequest: Codable, Equatable, Sendable {
     public var conversationId: String?
     /// Starts a new conversation inside this project; ignored when `conversationId` is given.
     public var projectId: String?
+    /// Starts a new conversation inside this plan, for this step of it; ignored when `conversationId` is given. Ayla
+    /// reads the plan of an existing conversation herself.
+    public var planId: String?
+    public var planStepId: String?
     public var text: String
     public var device: AylaDevice
     public var input: AylaInput
@@ -131,6 +135,14 @@ public struct AylaRequest: Codable, Equatable, Sendable {
         }
     }
 
+    /// The same question without the plan, for an Ayla function from before plans.
+    public var withoutPlan: AylaRequest {
+        var request = self
+        request.planId = nil
+        request.planStepId = nil
+        return request
+    }
+
     public init(
         conversationId: String? = nil,
         text: String,
@@ -139,11 +151,15 @@ public struct AylaRequest: Codable, Equatable, Sendable {
         context: Context? = nil,
         attachments: [AylaAttachment] = [],
         projectId: String? = nil,
+        planId: String? = nil,
+        planStepId: String? = nil,
         app: AppState? = nil,
         results: [ActionResult]? = nil
     ) {
         self.conversationId = conversationId
         self.projectId = conversationId == nil ? projectId : nil
+        self.planId = conversationId == nil ? planId : nil
+        self.planStepId = conversationId == nil && planId != nil ? planStepId : nil
         self.text = text
         self.device = device
         self.input = input

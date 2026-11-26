@@ -184,6 +184,14 @@ final class NotificationCenterDelegate: NSObject, UNUserNotificationCenterDelega
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        // Shares and applications have their own notifications; the rest are meldingen, a mail opening its conversation.
+        let identifier = response.notification.request.identifier
+        if await FairAlerts.handle(response) { return }
+        if await ShareAlerts.handle(response) { return }
+        if identifier.hasPrefix("application.") {
+            await MainActor.run { PaveLinkInbox.send(.applications) }
+            return
+        }
         let threadID = response.notification.request.content.userInfo[NotificationAlerts.emailThreadKey] as? String
         await MainActor.run { NotificationAlerts.onTap?(threadID) }
     }

@@ -34,7 +34,9 @@ struct RootView: View {
                     vaultService: VaultServiceFactory.make(auth: appState.authService),
                     devicesService: DevicesServiceFactory.make(auth: appState.authService),
                     profileService: ProfileServiceFactory.make(auth: appState.authService),
-                    notificationsService: NotificationsServiceFactory.make(auth: appState.authService)
+                    notificationsService: NotificationsServiceFactory.make(auth: appState.authService),
+                    shareService: ShareServiceFactory.make(auth: appState.authService),
+                    planService: PlanServiceFactory.make(auth: appState.authService)
                 )
                     // Back after being away too long: the PIN screen over the app, which stays as it was.
                     .overlay {
@@ -92,7 +94,12 @@ struct RootView: View {
             appState.conversationToOpen = AylaHandoff.conversationID(in: activity)
         }
         .onOpenURL { url in
-            appState.link = PaveLink(url: url)
+            switch ShareLinks.scanned(url.absoluteString) {
+            case .employer?, .vacancy?, .inbox?:
+                appState.fairToOpen = ShareLinks.scanned(url.absoluteString)
+            default:
+                appState.link = PaveLink(url: url)
+            }
         }
         .paveAnimationsSwitch()
     }
