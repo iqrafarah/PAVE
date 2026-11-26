@@ -38,6 +38,8 @@ struct QuickShareSheet: View {
     @State private var includesPhoto = true
     @State private var created: ProfileShare?
     @State private var isStopped = false
+    @State private var isStopping = false
+    @Environment(\.paveReduceMotion) private var reduceMotion
     @State private var showsPreview = false
     @State private var showsAllApplications = false
     /// What you changed by hand under "Pas aan"; nil follows the choice above.
@@ -469,7 +471,7 @@ struct QuickShareSheet: View {
                 if isStopped {
                     stopped
                 } else {
-                    ShareCodeCard(model: model, share: share)
+                    ShareCodeCard(model: model, share: share, showsCode: !isStopping)
                     QuickShareLookStatus(share: share)
                     Text(SharingMessages.quickShareEnds(share.expiresAt))
                         .textStyle(.caption)
@@ -477,10 +479,14 @@ struct QuickShareSheet: View {
                         .multilineTextAlignment(.center)
                     Button(SharingMessages.quickShareStop, role: .destructive) {
                         Task {
+                            isStopping = true
                             await model.revoke(share)
                             ShareWatchBridge.clear(share.id)
                             PaveHaptics.success()
+                            // The code falls apart into Ayla's blocks first: you see it stop working.
+                            try? await Task.sleep(for: .milliseconds(reduceMotion ? 0 : 650))
                             withAnimation(.easeOut(duration: 0.2)) { isStopped = true }
+                            isStopping = false
                         }
                     }
                     .textStyle(.link)
