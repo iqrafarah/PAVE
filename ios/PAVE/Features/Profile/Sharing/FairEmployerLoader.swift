@@ -43,7 +43,12 @@ struct FairEmployerLoader: View {
             }
             do {
                 employer = try await service.employer(slug: slug)
-                if let employer { FairDay.record(.scanned(employer: employer.name, slug: employer.slug, stand: employer.stand)) }
+                if let employer {
+                    FairDay.record(.scanned(employer: employer.name, slug: employer.slug, stand: employer.stand))
+                    // The stand in one line on your wrist, so you know what they look for while you walk up.
+                    let jobs = employer.vacancies.prefix(2).map(\.title).joined(separator: ", ")
+                    WatchEventBridge.send(.standTip(employer: employer.name, line: jobs.isEmpty ? employer.about : "Zoekt: \(jobs)"))
+                }
                 // A moment to see what was found.
                 try? await Task.sleep(for: .milliseconds(reduceMotion ? 300 : 1100))
                 isShown = true

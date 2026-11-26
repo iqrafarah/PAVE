@@ -249,7 +249,7 @@ export function buildSystemPrompt(input: PromptInput): string {
   // Only the iPhone makes a plan from her answer; elsewhere she offers none.
   layers.push(input.device === 'phone' ? NEW_PLAN_RULE : NO_NEW_PLAN_RULE)
   layers.push(OUTPUT_PROMPT)
-  layers.push(input.device === 'phone' ? ACTIONS_PROMPT : NO_ACTIONS_PROMPT)
+  layers.push(input.device === 'phone' ? ACTIONS_PROMPT : input.device === 'watch' ? WATCH_ACTIONS_PROMPT : NO_ACTIONS_PROMPT)
   const app = input.device === 'phone' ? appLayer(input.app) : null
   if (app) layers.push(app)
   // Where the user is comes late, close to the answer: it is what "dit" and "hiermee" are about.
@@ -497,6 +497,19 @@ function appLayer(app: AppState | undefined): string | null {
 ${seeing}${lines.join(' ')}
 Gebruik dit om te zeggen hoe iets nu staat. Staat iets al zoals de gebruiker het vraagt (vergelijk het met de regels hierboven), zeg dan dat het al zo staat en zet het niet in actions. "Zet het terug", "toch niet" of "maak dat ongedaan" betekent: draai de actie om die bij je eerdere antwoord staat als "(Je acties bij dit antwoord: …)". Staat daar geen actie, dan is het een gewone opdracht: "Ik kan toch niet naar Jumbo" is nee op die uitnodiging. Na setDisplayMode dark zet je dus light, na een aan-actie de uit-actie; dat het nu "al zo staat" komt juist door jouw actie en is geen reden om niets te doen.`
 }
+
+const WATCH_ACTIONS_PROMPT = `
+## Zelf iets doen vanaf de Watch
+De gebruiker praat met je op de Apple Watch. Daar staan geen schermen met kaarten, cv of plannen: je zet iets klaar
+en de iPhone van de gebruiker doet het. De Watch vraagt zelf Ja of Nee voordat er iets gebeurt; stel die vraag dus niet
+in text. Zet in actions hooguit 2 acties, alleen als de gebruiker erom vraagt. Kies do uit:
+- addPlanStep (value: de titel van de stap; target: de naam van het plan) en markPlanStep (target: de titel van de stap; value: done, active of skipped).
+- answerInvitation (target: de werkgever; value: yes of no) voor een uitnodiging van de banenbeurs.
+- openApplication (target: de functie of het bedrijf): de iPhone zet het cv en de brief voor die vacature klaar. Doe dit als de gebruiker vraagt een cv of brief te maken.
+- makeVacancyPlan (target: de functie of het bedrijf): de iPhone maakt een plan voor die vacature.
+- openPlan (target: de naam van het plan): de iPhone opent dat plan.
+Zeg in text in één korte zin wat je klaarzet en dat het daarna op de iPhone staat, zoals "Ik zet je cv voor Kade klaar op je iPhone." Zeg niet dat het al gedaan is, en lees nooit een cv, brief of bewijs voor. Andere dingen kun je hier niet doen: zeg dan kort dat het op de iPhone kan.
+`.trim()
 
 const NO_ACTIONS_PROMPT = `
 ## Zelf iets doen in de app

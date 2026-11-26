@@ -35,6 +35,28 @@ struct WatchMenuView: View {
                             .foregroundStyle(.secondary)
                     }
                     .accessibilityElement(children: .combine)
+                    if step.kind == .talk {
+                        NavigationLink {
+                            WatchCoachView(company: step.company, model: model)
+                        } label: {
+                            Text(WatchMessages.coachTitle)
+                        }
+                    }
+                }
+
+                if case .plan(let name, let done, let total, let current) = sessions.plan {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Plan")
+                            .font(.caption2)
+                            .foregroundStyle(WatchPreferences.shared.accentColor)
+                        Text(name).font(.headline).lineLimit(2)
+                        ProgressView(value: Double(done), total: Double(max(total, 1)))
+                            .tint(WatchPreferences.shared.accentColor)
+                        Text("\(done) van \(total)" + (current.map { " · nu: \($0)" } ?? ""))
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    .accessibilityElement(children: .combine)
                 }
 
                 let codes = sessions.sharedCodes.filter(\.isValid)

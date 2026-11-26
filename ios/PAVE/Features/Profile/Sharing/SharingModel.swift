@@ -95,7 +95,9 @@ final class SharingModel {
         await loadFairApplications()
         if shares.isEmpty { state = .loading }
         do {
-            shares = try await service.shares()
+            let found = try await service.shares()
+            tellWatch(newLooksIn: found)
+            shares = found
             state = .ready
             ShareAlerts.update(with: shares)
             ApplicationWidgetSnapshot.update(shares: shares)
@@ -169,9 +171,38 @@ final class SharingModel {
         }
     }
 
+    // MARK: The Watch
+
+    @ObservationIgnored private var knownLooks: Set<String>?
+    @ObservationIgnored private var knownInvitations: Set<String>?
+
+    /// A look you had not seen yet taps your wrist: who opened what. The first load only learns what is there.
+    private func tellWatch(newLooksIn found: [ProfileShare]) {
+        let all = Set(found.flatMap { $0.looks.map(\.id) })
+        defer { knownLooks = all }
+        guard let known = knownLooks else { return }
+        for entry in ShareTimeline.entries(found) where !known.contains(entry.look.id) {
+            WatchEventBridge.send(.look(who: entry.who, what: entry.share.title))
+        }
+    }
+
+    /// A new invitation from the fair comes to the wrist, to answer there.
+    private func tellWatch(newInvitationsIn found: [FairApplication]) {
+        let waiting = found.filter(\.awaitsAnswer)
+        defer { knownInvitations = Set(waiting.map(\.id)) }
+        guard let known = knownInvitations else { return }
+        for application in waiting where !known.contains(application.id) {
+            WatchEventBridge.send(.invitation(
+                id: application.id, employer: FairApplicationDetail.employerName(application),
+                vacancy: application.vacancyTitle, at: application.invitedFor
+            ))
+        }
+    }
+
     /// Reads your fair applications again; a new invitation is announced once.
     func loadFairApplications() async {
         guard let service, let found = try? await service.fairApplications() else { return }
+        tellWatch(newInvitationsIn: found)
         fairApplications = found
         FairAlerts.announce(found)
         WatchNextStepBridge.update(fair: found)
