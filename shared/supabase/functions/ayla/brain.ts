@@ -7,7 +7,7 @@ import { cleanMemories, type Memory, type MemorySuggestion, usedNotes } from './
 import type { ContentPart, ChatMessage, Complete, Effort } from './openrouter.ts'
 import { buildSystemPrompt, contextNote, MATCH_OUTPUT_SCHEMA } from './prompt.ts'
 import { vaultProposal } from './proposal.ts'
-import { newPlanProposal, type PlanContext, planChange, planProposal, type PlanStepStatus } from './plan.ts'
+import { newPlanProposal, type PlanContext, planChange, PLAN_EDIT_SCHEMA, planEditProposal, planProposal, type PlanStepStatus } from './plan.ts'
 import { type FoundVacancy, logoUrl, mergeFound, type SearchVacancies } from './vacancies.ts'
 
 /** A message so far. An Ayla turn says whether it asked to look in the vault, for the consent of this conversation. */
@@ -123,6 +123,7 @@ interface ModelOutput {
   usedVaultItems: unknown
   vaultItem: unknown
   planStep: unknown
+  planEdit: unknown
   newPlan: unknown
   askVault: unknown
   actions: unknown
@@ -309,7 +310,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
       // Under found vacancies she always asks to compare them with the vault, until the user answered that.
       askVault: fit === 'ask' && items.length ? cleanPurpose(second.askVault) ?? ASK_FOR_MATCHES : fit === 'ask' ? second.askVault : null,
       usedVaultItems: [...list(decided.usedVaultItems), ...list(second.usedVaultItems)],
-      vacancySearch: null, educationSearch: null, webLookup: null, navigation: null, vaultItem: null, planStep: null, newPlan: null, actions: [], continues: false,
+      vacancySearch: null, educationSearch: null, webLookup: null, navigation: null, vaultItem: null, planStep: null, planEdit: decided.planEdit, newPlan: null, actions: [], continues: false,
     }
     if (items.length && request.device !== 'watch') {
       // What fits and what is missing only with the vault allowed, and only what the vacancy text really says. The
@@ -321,6 +322,8 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
     }
   }
 
+  // In a plan on the iPhone, what she finds can change the plan: the round about it may propose that too.
+  const editsPlan = !!input.plan && request.device === 'phone'
   // Studies and courses: the cards come from the search, her words about them from a second, short answer. Not on the
   // Watch, which has no room for cards; and a vacancy search in the same answer goes first.
   if (decided.educationSearch && !decided.vacancySearch && request.device !== 'watch' && !task) {
@@ -335,8 +338,9 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
     if (found?.length) blocks.push({ type: 'educations', items: found, search: terms })
     messages.push({ role: 'assistant', content: JSON.stringify(output) }, { role: 'user', content: describeEducations(terms, found) })
     try {
-      const second = parseOutput((await deps.complete(messages, { ...options, schema: EDUCATION_OUTPUT_SCHEMA, maxTokens: 500 })).content)
+      const second = parseOutput((await deps.complete(messages, { ...options, schema: withPlanEdit(EDUCATION_OUTPUT_SCHEMA, editsPlan), maxTokens: editsPlan ? 900 : 500 })).content)
       if (second.text.trim()) output = { ...output, text: second.text.trim() }
+      if (second.planEdit) output = { ...output, planEdit: second.planEdit }
     } catch (error) {
       if (input.signal?.aborted) throw error
     }
@@ -358,8 +362,9 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
     }
     messages.push({ role: 'assistant', content: JSON.stringify(output) }, { role: 'user', content: describeLookup(question, found) })
     try {
-      const second = parseOutput((await deps.complete(messages, { ...options, schema: LOOKUP_OUTPUT_SCHEMA, maxTokens: 500 })).content)
+      const second = parseOutput((await deps.complete(messages, { ...options, schema: withPlanEdit(LOOKUP_OUTPUT_SCHEMA, editsPlan), maxTokens: editsPlan ? 900 : 500 })).content)
       if (second.text.trim()) output = { ...output, text: second.text.trim() }
+      if (second.planEdit) output = { ...output, planEdit: second.planEdit }
     } catch (error) {
       if (input.signal?.aborted) throw error
     }
@@ -411,6 +416,10 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
     .map((action) => action.do === 'answerInvitation' && request.device === 'phone' && !invitationListed(action.target, request.app?.invitations)
       ? { do: 'replyMail' as const, ...(action.target ? { target: action.target } : {}), value: request.text.slice(0, 120) }
       : action)
+    // Going on with a plan happens here in the chat; the plan's page only opens when the user asks to see it.
+    .map((action) => action.do === 'openPlan' && request.device === 'phone' && !asksToSeePlan(request.text)
+      ? { do: 'workOnPlan' as const, ...(action.target ? { target: action.target } : {}) }
+      : action)
   // What already is so is not done again, and a vacancy is only saved when the user said so, whatever the model says.
   const notYet = asked.filter((action) => !alreadySo(action, request.app))
   const wanted = notYet.filter((action) => action.do !== 'saveVacancy' || asksToSave(request.text, lastAyla))
@@ -444,6 +453,11 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   if (change && input.plan && deps.updatePlanStep && await deps.updatePlanStep(change.step.id, change.status)) {
     reply.proposedAction ??= planProposal(input.plan, change, deps.newId(), new Date())
   }
+  // Changes to the plan she proposes: only on the iPhone, which shows the card, and not right after a no.
+  const edit = purpose || sure || pointsAtNothing || request.device !== 'phone' || declinedOffer(input.history, request.text) || declinedPlanEdit(input.history, request.text)
+    ? undefined
+    : planEditProposal(output.planEdit, input.plan, deps.newId())
+  if (edit) reply.planEdit = edit
   return reply
 }
 
@@ -586,7 +600,7 @@ function nudgeFor(output: ModelOutput, turn: { searches: boolean; aboutWork: boo
       fixedBy: (again) => !!again.vacancySearch || (turn.mayAsk && !!cleanPurpose(again.askVault)),
     }
   }
-  const does = list(output.actions).length > 0 || !!output.navigation || !!output.vaultItem || !!output.newPlan || !!output.vacancySearch || !!output.educationSearch || !!output.webLookup || list(output.memories).length > 0
+  const does = list(output.actions).length > 0 || !!output.navigation || !!output.vaultItem || !!output.newPlan || !!output.planEdit || !!output.vacancySearch || !!output.educationSearch || !!output.webLookup || list(output.memories).length > 0
   if (turn.device === 'phone' && output.intent === 'act' && !does) {
     return {
       says: 'Je zegt dat je iets doet in de app, maar actions is leeg: er gebeurt nu niets. Kun je het zelf, zet de stappen dan in actions en zeg kort wat je doet. Kun je het niet zelf, zet intent dan op "answer" en zeg eerlijk waar de gebruiker het vindt.',
@@ -658,6 +672,12 @@ const OFFERS = /^(wil je|zal ik|zullen we|moet ik|mag ik|kan ik|heb je zin|lijkt
  * The user says no, and nothing else, to something Ayla offered in the last turn. A no to an ordinary question
  * ("Heb je al een cv?") is an answer, and a no with more words says what the user wants instead.
  */
+/** "Nee, laat maar zo" right after Ayla proposed changing the plan: the plan stays as it is. */
+export function declinedPlanEdit(history: PastMessage[], text: string): boolean {
+  const last = history.at(-1)
+  return last?.role === 'ayla' && /\b(plan|stap|stappen)\b/i.test(last.text) && text.trim().split(/\s+/).length <= 6 && saysNo(text)
+}
+
 export function declinedOffer(history: PastMessage[], text: string): boolean {
   if (text.trim().split(/\s+/).length > 3 || !saysNo(text)) return false
   const last = history.at(-1)
@@ -697,6 +717,13 @@ export function withoutRepeatedQuestion(text: string, question: string): string 
 }
 
 /** Whether an invitation from the fair the app listed is meant: a word of the employer's name in the target. */
+/** "Open mijn plan", "laat het plan zien", "show my plan": to see the plan's page, not to go on with it in the chat. */
+const SEES_PLAN = /\b(open\w*|bekijk\w*|toon\w*|zien|laat .{0,30}zien|ga naar|naar (het|mijn) plan|show\w*|see|view|habri\w*|mustra\w*|wak\w*)\b/i
+
+export function asksToSeePlan(text: string): boolean {
+  return SEES_PLAN.test(text)
+}
+
 export function invitationListed(target: string | undefined, invitations: string[] | undefined): boolean {
   if (!target || !invitations?.length) return false
   const words = target.toLocaleLowerCase('nl').split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 2)
@@ -1150,11 +1177,12 @@ function parseOutput(raw: string): ModelOutput {
       continues: json.continues === true,
       vaultItem: json.vaultItem ?? null,
       planStep: json.planStep ?? null,
+      planEdit: json.planEdit ?? null,
       newPlan: json.newPlan ?? null,
       askVault: typeof json.askVault === 'string' ? json.askVault : null,
     }
   }
-  const empty: ModelOutput = { intent: null, text: '', question: null, navigation: null, vacancySearch: null, educationSearch: null, webLookup: null, vacancyMatches: [], vacancySites: [], title: null, memories: [], usedMemories: [], usedVaultItems: [], vaultItem: null, planStep: null, newPlan: null, askVault: null, actions: [], continues: false }
+  const empty: ModelOutput = { intent: null, text: '', question: null, navigation: null, vacancySearch: null, educationSearch: null, webLookup: null, vacancyMatches: [], vacancySites: [], title: null, memories: [], usedMemories: [], usedVaultItems: [], vaultItem: null, planStep: null, planEdit: null, newPlan: null, askVault: null, actions: [], continues: false }
   // Plain words instead of JSON: that is the answer. JSON that was cut off (a long answer ran out of room) never
   // shows as it is: what was complete is kept (her text, a search she asked for, the vacancies she had compared),
   // the rest is left out.
@@ -1287,4 +1315,10 @@ function cleanText(text: string): string {
     .replace(/^#{1,6}\s+/gm, '')
     .replace(/\s*\((Getoonde vacatures|Je acties bij dit antwoord|PAVE vroeg hiervoor|Bericht van PAVE)[^)]*\)?/g, '')
     .trim()
+}
+
+/** The schema of a round after a search, with room for changes to the plan when there is one. */
+export function withPlanEdit(schema: { type: string; additionalProperties: boolean; required: string[]; properties: Record<string, unknown> }, editsPlan: boolean) {
+  if (!editsPlan) return schema
+  return { ...schema, required: [...schema.required, 'planEdit'], properties: { ...schema.properties, planEdit: PLAN_EDIT_SCHEMA } }
 }

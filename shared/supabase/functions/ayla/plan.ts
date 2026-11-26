@@ -134,13 +134,13 @@ export function planLayer(plan: PlanContext | undefined, device: 'phone' | 'watc
     `## Het plan van dit gesprek`,
     `Dit gesprek hoort bij het plan "${clean(plan.name)}" van de gebruiker.${plan.goal.trim() ? ` Het doel, in de woorden van de gebruiker: "${clean(plan.goal)}".` : ''}`,
     ...(vacancy ? [vacancy] : []),
-    lines.length ? `De stappen:\n${lines.join('\n')}` : 'Het plan heeft nog geen stappen: de gebruiker kan bij Plan zelf stappen toevoegen of jou stappen laten voorstellen ("Laat Ayla stappen voorstellen").',
-    'Zo help je bij dit plan, in hooguit vier zinnen: (1) wat het doel vraagt, (2) wat de kluis en de bronnen van het project al hebben, bij titel, (3) wat ontbreekt, (4) één handeling met een termijn, en bij welke stap van het plan die hoort. Noem bij (1) alleen soorten bewijs die je zeker weet (zoals een lerarenopleiding of een pedagogisch-didactisch getuigschrift, een ICT-opleiding, een certificaat); noem geen niveaus, graden, aantallen jaren of vrijstellingen, en zeg dat de school, de werkgever of de opleiding de precieze eisen bepaalt. Vraagt de gebruiker wat er nodig is of wat ontbreekt en zie je de kluis niet, noem dan in één zin wat het doel meestal vraagt en vraag in hetzelfde antwoord met askVault om in de kluis te kijken; de vergelijking volgt na de toestemming. Vraag dat niet opnieuw als de gebruiker nee zei. De handeling is concreet, zoals "Zoek deze week op de site van een lerarenopleiding welke vooropleiding ze vragen en schrijf op wat je nog mist."; niet "doe onderzoek" of "kijk wat bij je past". Geef in dit gesprek geen eigen stappenlijst: je helpt bij de stap van nu. ' + PLAN_TOOLS[device] + ' Zegt de gebruiker nee op een voorstel, stel dan het volgende uit dit rijtje voor in plaats van een open vraag.',
-    'Bij een stap hoort vaak een plek in PAVE (zie "soort"). Zeg waar de gebruiker het doet, en help met de inhoud: wat erin moet, wat de gebruiker al heeft in de kluis die je mag zien, en wat de eerstvolgende kleine handeling is. Is een stap te groot, deel hem dan in dit gesprek op in twee of drie kleinere handelingen. Een stap toevoegen mag als de gebruiker ja zegt (addPlanStep); bestaande stappen hernoem of verwijder je alleen als de gebruiker erom vraagt. Staat er al een stap met dezelfde inhoud, noem die en voeg niets toe.',
+    lines.length ? `De stappen (wat de gebruiker nog moet doen of al deed; een stap is geen bewijs: staat in de kluis al wat een open stap oplevert, zoals een stap "Rijbewijs halen" terwijl de kluis een rijbewijs heeft, dan is die stap eigenlijk al klaar):\n${lines.join('\n')}` : 'Het plan heeft nog geen stappen: de gebruiker kan bij Plan zelf stappen toevoegen of jou stappen laten voorstellen ("Laat Ayla stappen voorstellen").',
+    'Zo help je bij dit plan, in hooguit vier zinnen: (1) wat het doel vraagt, (2) wat de kluis en de bronnen van het project al hebben, bij titel, (3) wat ontbreekt, (4) één handeling met een termijn, en bij welke stap van het plan die hoort. Noem bij (1) alleen soorten bewijs die je zeker weet (zoals een lerarenopleiding of een pedagogisch-didactisch getuigschrift, een ICT-opleiding, een certificaat); noem geen niveaus, graden, aantallen jaren of vrijstellingen, en zeg dat de school, de werkgever of de opleiding de precieze eisen bepaalt. Vraagt de gebruiker wat er nodig is of wat ontbreekt en zie je de kluis niet, noem dan in één zin wat het doel meestal vraagt en vraag in hetzelfde antwoord met askVault om in de kluis te kijken; de vergelijking volgt na de toestemming. Vraag dat niet opnieuw als de gebruiker nee zei. De handeling is concreet, zoals "Zoek deze week op de site van een lerarenopleiding welke vooropleiding ze vragen en schrijf op wat je nog mist."; niet "doe onderzoek" of "kijk wat bij je past". Schrijf in text geen eigen stappenlijst: je helpt bij de stap van nu' + (device === 'phone' ? ', en wat er aan het plan moet veranderen stel je voor met planEdit' : '') + '. ' + PLAN_TOOLS[device] + ' Zegt de gebruiker nee op een voorstel, stel dan het volgende uit dit rijtje voor in plaats van een open vraag.',
+    'Bij een stap hoort vaak een plek in PAVE (zie "soort"). Zeg waar de gebruiker het doet, en help met de inhoud: wat erin moet, wat de gebruiker al heeft in de kluis die je mag zien, en wat de eerstvolgende kleine handeling is. Is een stap te groot, deel hem dan in dit gesprek op in twee of drie kleinere handelingen. ' + (device === 'phone' ? 'Je loopt samen met de gebruiker door de stappen en houdt het doel in het oog: stappen toevoegen, weghalen of verplaatsen stel je voor met planEdit, en de gebruiker beslist op de kaart. Vraagt de gebruiker zelf om één stap toe te voegen, doe dan addPlanStep. Hernoemen doe je alleen als de gebruiker erom vraagt.' : 'Een stap toevoegen mag als de gebruiker ja zegt (addPlanStep); bestaande stappen hernoem of verwijder je alleen als de gebruiker erom vraagt.') + ' Staat er al een stap met dezelfde inhoud, noem die en voeg niets toe.',
     focus >= 0
       ? `Help de gebruiker vooral met stap ${focus + 1} ("${clean(plan.steps[focus].title)}"), tenzij de gebruiker iets anders vraagt. Verwijs naar de stappen bij hun naam, niet bij hun nummer.`
       : 'Alle stappen zijn afgerond of overgeslagen: help de gebruiker terugkijken of een volgende stap kiezen.',
-    'planStep: zegt de gebruiker dat een stap klaar is, of is het in dit gesprek zeker dat een stap af is, zet dan planStep op het nummer van die stap met status "done". Wil de gebruiker een stap overslaan: "skipped". Wil de gebruiker met een andere stap verder: "active". Alleen voor een stap uit deze lijst die nog niet zo staat, en alleen als de gebruiker het zegt of het zeker is; vraag het anders eerst. Anders is planStep null. Zeg in text kort wat je in het plan hebt bijgewerkt.',
+    'planStep: zegt de gebruiker dat een stap klaar is, of is het in dit gesprek zeker dat een stap af is, zet dan planStep op het nummer van die stap met status "done". Wil de gebruiker een stap overslaan: "skipped". Wil de gebruiker met een andere stap verder: "active". Alleen voor een stap uit deze lijst die nog niet zo staat, en alleen als de gebruiker het zegt of het zeker is; vraag het anders eerst. Anders is planStep null. Zeg in text kort wat je in het plan hebt bijgewerkt. Rond je een stap af, noem dan in hetzelfde antwoord de volgende stap en begin die meteen met één concrete vraag of handeling: zo lopen jullie samen naar het doel.',
   ].join('\n')
 }
 
@@ -240,4 +240,100 @@ function line(raw: unknown, max: number): string | undefined {
 /** The user's words on one line, without quotes that could end the quote around them. */
 function clean(text: string): string {
   return text.replace(/\s+/g, ' ').replace(/"/g, "'").trim().slice(0, 280)
+}
+
+/**
+ * Changes Ayla proposes to the plan of the conversation, so it reaches its goal: steps to add, steps that can go, and
+ * steps in another order. Steps are named by their number in the list; `after` is the step a new or moved step comes
+ * after (0: at the start). Nothing changes before the user taps "Pas plan aan" on the card.
+ */
+export const PLAN_EDIT_SCHEMA = {
+  type: ['object', 'null'],
+  additionalProperties: false,
+  required: ['changes'],
+  properties: {
+    changes: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['op', 'step', 'title', 'kind', 'after', 'why'],
+        properties: {
+          op: { type: 'string', enum: ['add', 'remove', 'move'] },
+          step: { type: 'integer' },
+          title: { type: 'string' },
+          kind: { type: 'string', enum: [...PLAN_STEP_KINDS] },
+          after: { type: 'integer' },
+          why: { type: 'string' },
+        },
+      },
+    },
+  },
+} as const
+
+export const PLAN_EDIT_RULE = 'planEdit: stel wijzigingen aan het plan voor als het plan zo het doel niet haalt: een stap die ontbreekt (op "add", title: een korte opdracht van hooguit 80 tekens, kind, after: het nummer van de stap waarna hij komt, of 0 voor het begin), een stap die niet meer nodig is omdat de kluis of dit gesprek laat zien dat het al klaar is of omdat hij niet bij het doel past (op "remove", step: het nummer), of een stap die eerder of later moet (op "move", step en after). why: in één korte zin waarom, op basis van wat je echt weet (het doel, de kluis, wat je opzocht); verzin geen eisen. Loop bij het nakijken elke stap die nog open is langs en leg hem naast de kluis die je ziet: laat de kluis al zien wat een stap moet opleveren (zoals een taalcertificaat voor een taalcursus, of een diploma voor een opleiding), stel dan voor die stap weg te halen en noem het item bij titel in why. Hooguit vier wijzigingen, alleen voor stappen die nog niet afgerond zijn, nooit een stap die er al staat (ook niet in andere woorden). Doe het als de gebruiker vraagt het plan na te kijken of aan te passen, als een stap net is afgerond en er daardoor iets verandert, of als je net iets nieuws weet (opgezocht, opleidingen gevonden, de kluis gezien) waar een stap uit volgt of waardoor een stap wegvalt. Zeg in text in één zin dat je een aanpassing van het plan voorstelt; de kaart eronder laat de wijzigingen zien, dus noem ze niet allemaal. Klopt het plan, zeg dat dan en laat planEdit null. Zei de gebruiker net nee of nog niet op een aanpassing van het plan, zeg dan kort dat het plan blijft zoals het is, zoek niets en stel niets nieuws voor; vraag alleen of de gebruiker verder wil met de stap van nu. Anders is planEdit null.'
+
+export const NO_PLAN_EDIT_RULE = 'planEdit is altijd null.'
+
+export interface PlanEditChange {
+  op: 'add' | 'remove' | 'move'
+  /** The step removed or moved. */
+  stepId?: string
+  /** For a new step its title; for one removed or moved, its title as it is now. */
+  title: string
+  kind?: string
+  /** The step it comes after; null: at the start. Not for a removed step. */
+  afterStepId?: string | null
+  why: string
+}
+
+const MAX_PLAN_EDITS = 4
+
+/** Only the changes that are real and do something; nothing when none is left. */
+export function planEditProposal(raw: unknown, plan: PlanContext | undefined, id: string): AylaReply['planEdit'] {
+  if (!plan || !raw || typeof raw !== 'object') return undefined
+  const changes = (raw as { changes?: unknown }).changes
+  if (!Array.isArray(changes)) return undefined
+  const key = (text: string) => text.toLocaleLowerCase('nl').normalize('NFD').replace(/[^a-z0-9]/g, '')
+  const titles = new Set(plan.steps.map((step) => key(step.title)))
+  const touched = new Set<string>()
+  const open = (number: unknown) => {
+    if (typeof number !== 'number' || !Number.isInteger(number)) return undefined
+    const step = plan.steps[number - 1]
+    return step && step.status !== 'done' && !touched.has(step.id) ? step : undefined
+  }
+  const afterOf = (number: unknown, self?: string): string | null | undefined => {
+    if (number === 0) return null
+    if (typeof number !== 'number' || !Number.isInteger(number)) return undefined
+    const step = plan.steps[number - 1]
+    return step && step.id !== self ? step.id : undefined
+  }
+  const out: PlanEditChange[] = []
+  for (const entry of changes as Record<string, unknown>[]) {
+    const why = line(entry?.why, 160) ?? ''
+    if (entry?.op === 'add') {
+      const title = line(entry.title, 80)
+      if (!title || titles.has(key(title))) continue
+      const after = afterOf(entry.after)
+      const kind = (PLAN_STEP_KINDS as readonly unknown[]).includes(entry.kind) ? entry.kind as string : 'general'
+      titles.add(key(title))
+      out.push({ op: 'add', title, kind, afterStepId: after === undefined ? plan.steps.at(-1)?.id ?? null : after, why })
+    } else if (entry?.op === 'remove') {
+      const step = open(entry.step)
+      if (!step) continue
+      touched.add(step.id)
+      out.push({ op: 'remove', stepId: step.id, title: step.title, why })
+    } else if (entry?.op === 'move') {
+      const step = open(entry.step)
+      if (!step) continue
+      const after = afterOf(entry.after, step.id)
+      const index = plan.steps.indexOf(step)
+      const now = index === 0 ? null : plan.steps[index - 1].id
+      if (after === undefined || after === now) continue
+      touched.add(step.id)
+      out.push({ op: 'move', stepId: step.id, title: step.title, afterStepId: after, why })
+    }
+    if (out.length === MAX_PLAN_EDITS) break
+  }
+  return out.length ? { id, planId: plan.id, changes: out } : undefined
 }

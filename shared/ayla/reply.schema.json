@@ -292,6 +292,34 @@
             "categories": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/category" } }
           }
         },
+        "planEdit": {
+          "type": "object",
+          "description": "Changes to the conversation's plan Ayla proposes so it reaches its goal. Nothing is saved: the app shows a card and the user applies what they keep. iPhone only.",
+          "required": ["id", "planId", "changes"],
+          "additionalProperties": false,
+          "properties": {
+            "id": { "type": "string" },
+            "planId": { "type": "string" },
+            "changes": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 4,
+              "items": {
+                "type": "object",
+                "required": ["op", "title", "why"],
+                "additionalProperties": false,
+                "properties": {
+                  "op": { "enum": ["add", "remove", "move"] },
+                  "stepId": { "type": "string", "description": "The step removed or moved." },
+                  "title": { "type": "string" },
+                  "kind": { "type": "string" },
+                  "afterStepId": { "type": ["string", "null"], "description": "The step it comes after; null: at the start. Not for remove." },
+                  "why": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
         "proposedAction": {
           "type": "object",
           "description": "Something that changes data. It only happens after the user confirms.",

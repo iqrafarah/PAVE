@@ -252,8 +252,9 @@ struct AylaChatScreen: View {
                     height: proxy.size.height,
                     bottomMargin: isOverVacancies ? sheetHeight - proxy.safeAreaInsets.bottom : bottomBarHeight + bottomGap + offlineNoticeHeight
                 )
-                // The plan of this chat, just under the header; out of the way while talking.
-                .planBar(chat: model, isHidden: isTalking)
+                // The plan of this chat, just under the header; it stays while talking, so you go through the steps
+                // hands-free with Ayla and still see where you are.
+                .planBar(chat: model, isHidden: false)
 
                 // Her answer while a page sits low over the chat: at the very top of the screen, over her name where
                 // the bar holds nothing else (the outer display of iPhone Duo keeps its buttons along the side), and
@@ -1024,6 +1025,28 @@ struct AylaChatScreen: View {
                     )
                     .padding(.top, 3)
                 }
+                if let edit = entry.reply?.planEdit {
+                    planEditCard(edit, isLast: entry.id == model.lastAylaEntryID)
+                }
+            }
+        }
+    }
+
+    /// Ayla proposes changes to the plan: you decide on the newest answer; on older ones only a change made shows.
+    @ViewBuilder
+    private func planEditCard(_ edit: AylaReply.PlanEdit, isLast: Bool) -> some View {
+        if let plans, let plan = plans.plan(id: edit.planId) {
+            let decision = plans.editDecisions[edit.id]
+            if decision == .applied || (decision == nil && isLast) {
+                AylaPlanEditCard(
+                    edit: edit,
+                    plan: plan,
+                    decision: decision,
+                    onApply: { plans.apply(edit, keeping: $0) },
+                    onDecline: { plans.decline(edit) },
+                    onOpenPlan: { openPlan?(plan.id) }
+                )
+                .padding(.top, 3)
             }
         }
     }

@@ -1,21 +1,5 @@
 import PAVECore
 import SwiftUI
-import TipKit
-
-/// The first time the plan shows in the Dynamic Island: how to open it.
-struct PlanIslandTip: Tip {
-    /// Out of the camera in the column on the right (closed iPhone Duo), where you swipe to the left instead.
-    var isSide = false
-
-    // Written out here (see docs/ui-teksten.md): a tip is read off the main actor.
-    var title: Text { Text("Je plan staat hier") }
-    var message: Text? {
-        Text(isSide
-            ? "Tik op het eiland of veeg naar links voor je stappen. Houd vast om het hele plan te openen."
-            : "Tik net onder het eiland of veeg omlaag voor je stappen. Houd vast om het hele plan te openen.")
-    }
-    var image: Image? { Image(systemName: "hand.tap") }
-}
 
 extension EnvironmentValues {
     /// The plan of the chat shows around the iPhone's Dynamic Island instead of as a pill under Ayla's header.
@@ -71,7 +55,6 @@ struct PlanIsland: View {
     @Environment(\.paveReduceMotion) private var reduceMotion
     @State private var notice: Notice?
     @State private var stepsHeight: CGFloat = 0
-    private var tip: PlanIslandTip { PlanIslandTip(isSide: isSide) }
 
     /// How far the compact island reaches out on each side of the camera: as a Live Activity of the system, so the
     /// clock and the signal icons stay free.
@@ -164,7 +147,6 @@ struct PlanIsland: View {
                 if drag.translation.height > 12 || isSide && drag.translation.width < -12 { toggle() }
             }
         )
-        .popoverTip(tip, arrowEdge: .top)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityHint(PlanMessages.islandHint)
@@ -189,7 +171,6 @@ struct PlanIsland: View {
 
     private func toggle() {
         PaveHaptics.tap(.light)
-        tip.invalidate(reason: .actionPerformed)
         withAnimation(animation) {
             notice = nil
             isExpanded.toggle()

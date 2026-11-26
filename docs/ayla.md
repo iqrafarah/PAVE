@@ -608,6 +608,16 @@ belong to projects.
   `active`). The server checks it and saves it with `rpc/set_plan_step_status`, which keeps one step active. The reply
   carries `proposedAction: { kind: "updatePlan", planStep: { planId, stepId, status } }` so the apps show it at once;
   the apps also load the plan again after every answer in a plan's chat.
+- **Ayla proposes changes to the plan** (2026-11-26, iPhone only). In a plan's chat the model may answer `planEdit:
+  { changes: [{ op: add | remove | move, step, title, kind, after, why }] }`: when the user asks to check the plan,
+  after a step is done, or after a search or lookup that adds or removes a step. The server keeps only real changes
+  (`planEditProposal`: no done step removed, no step that is already there, at most four) and sends `planEdit: { id,
+  planId, changes: [{ op, stepId?, title, kind?, afterStepId?, why }] }` (`afterStepId` null: at the start). Nothing is
+  saved: the app shows a card, the user unticks what they do not want and taps "Pas plan aan". Not sent right after a
+  no, nor to the Watch or the web, which can ignore the field. "Laat Ayla nakijken" on the plan's page asks it in the
+  plan's latest chat.
+- **Going on with a plan stays in the chat.** `openPlan` only opens the plan's page when the user asks to see it ("open",
+  "laat zien", "bekijk"); otherwise the server turns it into `workOnPlan` (`asksToSeePlan`).
 - **Other flows** (such as finding work) make a plan from their own `PavePlanTemplate` with kinds of their own; ids of
   steps are UUIDs. `metadata` on a plan and a step is free room for that flow.
 

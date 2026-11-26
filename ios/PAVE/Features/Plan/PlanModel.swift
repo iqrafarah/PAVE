@@ -81,6 +81,35 @@ final class PlanModel {
         suggestion = nil
     }
 
+    // MARK: Ayla's proposal for the plan
+
+    enum EditDecision: String { case applied, declined }
+
+    private static let editDecisionsKey = "aylaPlanEditDecisions"
+    private(set) var editDecisions: [String: EditDecision] = (UserDefaults.standard.dictionary(forKey: PlanModel.editDecisionsKey) as? [String: String] ?? [:])
+        .compactMapValues(EditDecision.init(rawValue:))
+
+    /// The changes you kept from Ayla's proposal, in her order; the card then says the plan was changed.
+    func apply(_ edit: AylaReply.PlanEdit, keeping changes: [AylaReply.PlanEdit.Change]) {
+        decide(edit.id, .applied)
+        Task {
+            guard await change(edit.planId, { $0.apply(changes) }) else {
+                decide(edit.id, nil)
+                return
+            }
+            PaveHaptics.success()
+        }
+    }
+
+    func decline(_ edit: AylaReply.PlanEdit) {
+        decide(edit.id, .declined)
+    }
+
+    private func decide(_ id: String, _ decision: EditDecision?) {
+        editDecisions[id] = decision
+        UserDefaults.standard.set(editDecisions.mapValues(\.rawValue), forKey: Self.editDecisionsKey)
+    }
+
     // MARK: Lock Screen
 
     var canFollow: Bool { liveActivity?.isAvailable == true }

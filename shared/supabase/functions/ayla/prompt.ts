@@ -3,7 +3,7 @@ import type { VaultConsent } from './consent.ts'
 import { ACTIONS, type AppState, type Context, type Device, type Screen, type VacancyContext } from './contract.ts'
 import { MEMORY_CATEGORIES, type Memory, memoryPrompt } from './memory.ts'
 import { VAULT_ITEM_SCHEMA } from './proposal.ts'
-import { NEW_PLAN_RULE, NEW_PLAN_SCHEMA, NO_NEW_PLAN_RULE, NO_PLAN_RULE, PLAN_STEP_SCHEMA, type PlanContext, planLayer } from './plan.ts'
+import { NEW_PLAN_RULE, NEW_PLAN_SCHEMA, NO_NEW_PLAN_RULE, NO_PLAN_EDIT_RULE, NO_PLAN_RULE, PLAN_EDIT_RULE, PLAN_EDIT_SCHEMA, PLAN_STEP_SCHEMA, type PlanContext, planLayer } from './plan.ts'
 
 // Layer 1: who Ayla is and her rules. Adapted from the voice demo, without
 // the demo parts and without privacy claims that are not true for this setup.
@@ -201,7 +201,7 @@ function recapPrompt(vault: 'mayAsk' | 'mayNotAsk' | 'declined', inPlan = false,
   const actRule = device === 'phone'
     ? '\n7. Vraagt de gebruiker iets te doen wat bij je acties staat (een stap, de agenda, delen, een uitnodiging, een mail), zet het dan meteen in actions en vraag het niet eerst in text: PAVE vraagt zelf Ja of Nee waar dat moet. Een plan maak je met newPlan; een plan of stappen zet je nooit in de kluis.'
     : ''
-  const planRule = inPlan ? `\n${actRule ? 8 : 7}. Dit gesprek hoort bij een plan: wat het doel vraagt, wat de kluis al heeft (bij titel), wat ontbreekt en één handeling met termijn.` : ''
+  const planRule = inPlan ? `\n${actRule ? 8 : 7}. Dit gesprek hoort bij een plan: wat het doel vraagt, wat de kluis al heeft (bij titel), wat ontbreekt en één handeling met termijn.${device === 'phone' ? ' Haalt het plan zo het doel niet, of valt er door wat je net weet een stap weg of bij, stel dat dan voor met planEdit.' : ''}` : ''
   const rule = {
     mayAsk: 'Gebruik uit de kluis alleen wat je bij "De kluis" ziet. Heb je meer nodig, vraag het dan met askVault en doe niet alsof je het al ziet.',
     mayNotAsk: 'Gebruik uit de kluis alleen wat je bij "De kluis" ziet; askVault is null.',
@@ -279,6 +279,8 @@ export function buildSystemPrompt(input: PromptInput): string {
   const sources = projectSourcesLayer(input.project, input.vault, input.vaultConsent)
   if (sources) layers.push(sources)
   layers.push(planLayer(input.plan, input.device) ?? NO_PLAN_RULE)
+  // Only the iPhone shows the card with changes to a plan.
+  layers.push(input.plan && input.device === 'phone' ? PLAN_EDIT_RULE : NO_PLAN_EDIT_RULE)
   const app = input.device === 'phone' ? appLayer(input.app) : null
   if (app) layers.push(app)
   // Where the user is comes late, close to the answer: it is what "dit" and "hiermee" are about.
@@ -574,7 +576,7 @@ export const MODEL_OUTPUT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
   // In the order of the properties: what the app needs first (the text, a question about the vault) comes first.
-  required: ['intent', 'text', 'askVault', 'vacancySearch', 'educationSearch', 'webLookup', 'question', 'navigation', 'actions', 'continues', 'usedVaultItems', 'title', 'usedMemories', 'memories', 'vaultItem', 'planStep', 'newPlan'],
+  required: ['intent', 'text', 'askVault', 'vacancySearch', 'educationSearch', 'webLookup', 'question', 'navigation', 'actions', 'continues', 'usedVaultItems', 'title', 'usedMemories', 'memories', 'vaultItem', 'planStep', 'planEdit', 'newPlan'],
   properties: {
     // First of all: what this answer is. The model commits before it writes, and the server holds it to that.
     intent: { type: 'string', enum: ['answer', 'askUser', 'askVault', 'search', 'propose', 'act', 'decline'] },
@@ -651,6 +653,8 @@ export const MODEL_OUTPUT_SCHEMA = {
     vaultItem: VAULT_ITEM_SCHEMA,
     // Last: a step of the plan that is done, skipped or the one to go on with; null without a plan.
     planStep: PLAN_STEP_SCHEMA,
+    // Changes to that plan she proposes, so it reaches its goal; null without a plan or when it is fine.
+    planEdit: PLAN_EDIT_SCHEMA,
     // A new plan the user asked for; null otherwise.
     newPlan: NEW_PLAN_SCHEMA,
   },

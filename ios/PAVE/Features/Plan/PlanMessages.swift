@@ -139,6 +139,16 @@ enum PlanMessages {
     static let stepFinished = "Stap afgerond"
     static let suggestionTitle = "Klaar met deze stap?"
     static let notYet = "Nog niet"
+    static let editTitle = "Zo haal je je doel beter"
+    static let editApply = "Pas plan aan"
+    static let editDone = "Plan aangepast"
+    static let editAdd = "Nieuwe stap"
+    static let editRemove = "Kan weg"
+    static let editMove = "Verplaatsen"
+    static let editAtStart = "aan het begin"
+    static func editAfter(_ title: String) -> String { "na \(title)" }
+    static let reviewPlan = "Laat Ayla nakijken"
+    static let reviewPrompt = "Kijk mijn plan na: haal ik zo mijn doel? Stel voor wat erbij moet of weg kan."
     static func nextStepIs(_ title: String) -> String { "Volgende stap: \(title)" }
     static func fromPlan(_ name: String) -> String { "Uit je plan \(name)" }
 

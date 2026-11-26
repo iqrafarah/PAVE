@@ -22350,6 +22350,23 @@
         }
       }
     },
+    "Kan weg": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can go"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Por kita"
+          }
+        }
+      }
+    },
     "Kennismaking %@": {
       "extractionState": "manual",
       "localizations": {
@@ -23077,6 +23094,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Wak ku Ayla kiko bo por kaba, tambe den bo kaha fuerte."
+          }
+        }
+      }
+    },
+    "Kijk mijn plan na: haal ik zo mijn doel? Stel voor wat erbij moet of weg kan.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review my plan: will this get me to my goal? Suggest what should be added or can go."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisá mi plan: lo mi logra mi meta asina? Proponé kiko mester bin aden of por kita."
           }
         }
       }
@@ -24029,6 +24063,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Laga Ayla skirbi bo perfil"
+          }
+        }
+      }
+    },
+    "Laat Ayla nakijken": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Let Ayla review"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laga Ayla revisá"
           }
         }
       }
@@ -27773,6 +27824,23 @@
         }
       }
     },
+    "Nieuwe stap": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New step"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paso nobo"
+          }
+        }
+      }
+    },
     "Nieuwe verificatieaanvragen en beslissingen verschijnen hier.": {
       "extractionState": "manual",
       "localizations": {
@@ -31343,6 +31411,23 @@
         }
       }
     },
+    "Pas plan aan": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update plan"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adaptá plan"
+          }
+        }
+      }
+    },
     "Past bij %@": {
       "extractionState": "manual",
       "localizations": {
@@ -31747,6 +31832,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Habri plan %@"
+          }
+        }
+      }
+    },
+    "Plan aangepast": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan updated"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan adaptá"
           }
         }
       }
@@ -38551,6 +38653,23 @@
         }
       }
     },
+    "Verplaatsen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kambia di lugá"
+          }
+        }
+      }
+    },
     "Verplaatsen en schalen": {
       "extractionState": "manual",
       "localizations": {
@@ -43175,6 +43294,23 @@
         }
       }
     },
+    "Zo haal je je doel beter": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A better way to your goal"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Asina bo ta logra bo meta mihó"
+          }
+        }
+      }
+    },
     "Zo kun je het zeggen": {
       "extractionState": "manual",
       "localizations": {
@@ -43940,6 +44076,23 @@
         }
       }
     },
+    "aan het begin": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "at the start"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "na kuminsamentu"
+          }
+        }
+      }
+    },
     "bezig": {
       "extractionState": "manual",
       "localizations": {
@@ -44395,6 +44548,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "mañan"
+          }
+        }
+      }
+    },
+    "na %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "after %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "despues di %@"
           }
         }
       }

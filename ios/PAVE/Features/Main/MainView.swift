@@ -567,7 +567,7 @@ struct MainView: View {
                     for chat in model.conversationList.conversations where plan.conversations.contains(where: { $0.id == chat.id }) && chat.projectID != projectID {
                         model.move(chat, to: project)
                     }
-                }, deleteChats: deleteChats)
+                }, deleteChats: deleteChats, ask: askInPlan)
             )
             // Ayla's proposal for steps reads the evidence she may see and asks her service.
             .environment(vault)
@@ -722,6 +722,24 @@ struct MainView: View {
         destination = .ayla
         isMenuOpen = false
         if !isWide { showsChats = false }
+    }
+
+    /// A question to Ayla about a plan, such as "Laat Ayla nakijken": in its latest chat, or a new one in the plan.
+    private func askInPlan(_ plan: PavePlan, chatID: String?, text: String) {
+        destination = .ayla
+        isMenuOpen = false
+        if !isWide { showsChats = false }
+        if let chatID {
+            let conversation = model.conversationList.conversations.first { $0.id == chatID } ?? AylaConversation(id: chatID, title: "", updatedAt: .now)
+            Task {
+                if model.conversationID != chatID { await model.open(conversation) }
+                model.send(text)
+            }
+        } else {
+            let project = model.conversationList.projects.first { $0.id == plan.projectID }
+            model.newConversation(in: project, plan: plan.id, step: nil)
+            model.send(text)
+        }
     }
 
     /// A plan deleted together with its chats: they go as when deleted from the list of chats.

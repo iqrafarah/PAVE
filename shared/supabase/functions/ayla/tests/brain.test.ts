@@ -967,6 +967,20 @@ test('the Watch only sets up what the iPhone carries out, and asks Ja itself', a
   assert.match(fake.calls[0][0].content, /Zelf iets doen vanaf de Watch/)
 })
 
+test('going on with a plan stays in the chat; only asking to see it opens the plan', async () => {
+  for (const [text, kind] of [
+    ['kunnen we verder met mijn plan om piloot te worden?', 'workOnPlan'],
+    ['ga maar weer verder', 'workOnPlan'],
+    ['open mijn plan piloot', 'openPlan'],
+    ['laat me het plan even zien', 'openPlan'],
+    ['show my pilot plan', 'openPlan'],
+  ] as const) {
+    const fake = model(say('Je bent bij de medische keuring.', { actions: [{ do: 'openPlan', value: null, target: 'Piloot worden' }] }))
+    const reply = await answer({ request: { ...request, text }, conversationId: 'c', history: [] }, { complete: fake.complete, newId: ids() })
+    assert.deepEqual(reply.actions, [{ do: kind, target: 'Piloot worden' }], text)
+  }
+})
+
 test('what cannot be undone waits for a Ja to a question with fixed words', async () => {
   const fake = model(say('Ik heb het verwijderd!', { actions: [{ do: 'deleteEvidence', value: null, target: 'Eindstage' }], navigation: { screen: 'vault', item: null } }))
   const reply = await answer({ request, conversationId: 'c', history: [] }, { complete: fake.complete, newId: ids() })

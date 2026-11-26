@@ -42,7 +42,7 @@ const jobs: FoundVacancy[] = [
 type Turn = Partial<AylaRequest> & { text: string; consent?: boolean }
 interface Search { what: string; where: string }
 interface Check { what: string; ok: (reply: AylaReply, all: AylaReply[], searches: Search[]) => boolean }
-interface Scenario { name: string; turns: Turn[]; checks: Check[]; history?: PastMessage[]; noVault?: boolean; notes?: string[]; vault?: AllowedVault }
+interface Scenario { name: string; turns: Turn[]; checks: Check[]; history?: PastMessage[]; noVault?: boolean; notes?: string[]; vault?: AllowedVault; plan?: typeof scrumPlan }
 
 const has = (reply: AylaReply, re: RegExp) => re.test(reply.text + ' ' + (reply.question?.text ?? ''))
 const vacancies = (reply: AylaReply) => reply.blocks.some((b) => b.type === 'vacancies' && b.items.length > 0)
@@ -79,6 +79,14 @@ const fakeLookUp = async (question: string) => ({
 const fakeEducations = async (_what: string) => [
   { id: 'e1', name: 'Aviation', school: 'Hogeschool van Amsterdam', level: 'hbo' as const, city: 'Amsterdam', duration: '4 jaar', url: 'https://example.nl/aviation', summary: 'Een hbo-opleiding over de luchtvaart.' },
 ]
+const PLAN = '11111111-1111-4111-8111-111111111111'
+const scrumPlan = { id: PLAN, name: 'Scrum halen', goal: 'Mijn PSM I-certificaat halen voor de baan bij Studio Noord', steps: [
+  { id: 'p1', title: 'Cursus kiezen', summary: '', kind: 'research', status: 'active' as 'active' | 'done' | 'upcoming' | 'skipped' },
+  { id: 'p2', title: 'Cursus Engels B2', summary: 'Het examen is in het Engels', kind: 'action', status: 'upcoming' as 'active' | 'done' | 'upcoming' | 'skipped' },
+  { id: 'p3', title: 'Examen doen', summary: '', kind: 'milestone', status: 'upcoming' as 'active' | 'done' | 'upcoming' | 'skipped' },
+] }
+const englishVault: AllowedVault = { status: 'on', items: [...vault.items, { id: 'i4', kind: 'certificates', category: 'Certificaat', title: 'Cambridge English B2 First', organisation: 'Cambridge', period: '2024', status: 'geverifieerd', skills: ['Engels'], files: [] }] }
+const proposes = (r: AylaReply, op?: string) => (r.planEdit?.changes ?? []).some((c) => !op || c.op === op)
 const evalPlan = { id: '11111111-1111-4111-8111-111111111111', name: 'Piloot worden', goal: 'Piloot worden', steps: [{ id: 's1', title: 'Onderzoek opleidingen voor piloot', summary: '', kind: 'research', status: 'active' as const }] }
 const steps = (r: AylaReply) => (r.text.match(/(^|\s)\d[.)]\s/g) ?? []).length
 
@@ -200,6 +208,14 @@ const scenarios: Scenario[] = [
   { name: 'r4 stap verplaatsen', turns: [{ text: 'Zet de stap Cursus kiezen als laatste in mijn plan Scrum halen', app: myPlans }], checks: [clean, { what: 'verplaatst naar achteren', ok: (r) => (r.actions ?? []).some((a) => a.do === 'moveStep' && /cursus kiezen/i.test(a.target ?? '') && a.value === 'last') }] },
   { name: 'r4 opzoeken met bronnen', turns: [{ text: 'Wat kost het PSM I-examen?' }], checks: [clean, { what: 'zoekt het op', ok: (r) => r.blocks.some((b) => b.type === 'sources') }, { what: 'noemt het bedrag uit de bron', ok: (r) => has(r, /200/) }] },
   { name: 'r4 opleidingen zoeken', turns: [{ text: 'Welke opleidingen zijn er om piloot te worden?' }], checks: [clean, { what: 'toont opleidingen', ok: (r) => r.blocks.some((b) => b.type === 'educations') }, { what: 'biedt niet alleen aan', ok: (r) => !has(r, /wil je dat ik .*(zoek|opzoek)/i) }] },
+  // Ronde 5 (2026-11-26): Ayla als coach bij een plan: nakijken, stappen voorstellen en weghalen, doorgaan na een stap.
+  { name: 'r5 plan nakijken', plan: scrumPlan, vault: englishVault, history: allowed, turns: [{ text: 'Kijk mijn plan na: haal ik zo mijn doel? Stel voor wat erbij moet of weg kan.', planId: PLAN }], checks: [clean, { what: 'stelt een aanpassing voor met de kaart', ok: (r) => proposes(r) }, { what: 'haalt de cursus Engels weg (B2 staat in de kluis)', ok: (r) => (r.planEdit?.changes ?? []).some((c) => c.op === 'remove' && c.stepId === 'p2') }, { what: 'geen nieuw plan', ok: (r) => r.proposedAction?.kind !== 'createPlan' }] },
+  { name: 'r5 plan nakijken: oefenen ontbreekt', plan: scrumPlan, history: allowed, turns: [{ text: 'Mis ik nog iets in mijn plan om het examen te halen?', planId: PLAN }], checks: [clean, { what: 'stelt een nieuwe stap voor', ok: (r) => proposes(r, 'add') }, { what: 'herhaalt geen stap die er al is', ok: (r) => !(r.planEdit?.changes ?? []).some((c) => c.op === 'add' && /^(cursus kiezen|examen doen)$/i.test(c.title)) }] },
+  { name: 'r5 stap klaar en door', plan: scrumPlan, history: allowed, turns: [{ text: 'Ik heb de cursus gekozen: de PSM I-training van Scrum.org.', planId: PLAN }], checks: [clean, { what: 'rondt de stap af', ok: (r) => r.proposedAction?.kind === 'updatePlan' && r.proposedAction.planStep?.status === 'done' }, { what: 'gaat door met de volgende stap', ok: (r) => has(r, /engels|examen|volgende/i) }] },
+  { name: 'r5 nee op voorstel', plan: scrumPlan, history: [...allowed, { role: 'user', text: 'Kijk mijn plan na' }, { role: 'ayla', text: 'Ik stel voor om een stap Proefexamen doen toe te voegen. Zal ik het plan zo aanpassen?' }], turns: [{ text: 'Nee, laat maar zo', planId: PLAN }], checks: [clean, { what: 'stelt het niet opnieuw voor', ok: (r) => !proposes(r) }] },
+  { name: 'r5 opzoeken in plan', plan: scrumPlan, history: allowed, turns: [{ text: 'Wat kost het PSM I-examen en hoeveel vragen zijn het?', planId: PLAN }], checks: [clean, { what: 'noemt de prijs uit de bron', ok: (r) => has(r, /200/) }] },
+  { name: 'r5 verder met plan blijft in de chat', turns: [{ text: 'Kunnen we weer verder gaan met mijn plan Scrum halen?', app: myPlans }], checks: [clean, { what: 'workOnPlan, opent het plan niet', ok: (r) => does(r, 'workOnPlan') && !does(r, 'openPlan') }] },
+  { name: 'r5 Watch: geen kaart', plan: scrumPlan, history: allowed, turns: [{ text: 'Kijk mijn plan na', planId: PLAN, device: 'watch' }], checks: [{ what: 'geen planEdit op de Watch', ok: (r) => !r.planEdit }] },
   { name: 'r4 plan: zoekt zelf', turns: [{ text: 'Welke opleiding past bij deze stap?', planId: '11111111-1111-4111-8111-111111111111' }], checks: [clean, { what: 'zoekt opleidingen', ok: (r) => r.blocks.some((b) => b.type === 'educations') }] },
   { name: 'r4 sollicitatie verstuurd', turns: [{ text: 'Ik heb mijn sollicitatie bij Appwerk vandaag verstuurd', app: { applications: ['iOS developer bij Appwerk, concept', 'Junior frontend developer bij Studio Noord, sent'] } }], checks: [clean, { what: 'zet de status op verstuurd', ok: (r) => (r.actions ?? []).some((a) => a.do === 'setApplicationStatus' && /appwerk/i.test(a.target ?? '') && a.value === 'sent') }, { what: 'zegt niet dat PAVE iets stuurde', ok: (r) => !has(r, /heb (ik )?.*(verstuurd|gestuurd) naar/i) }] },
   { name: 'r4 selectie', history: allowed, turns: [{ text: 'Maak een selectie voor IT-sollicitaties met mijn propedeuse en mijn eindstage' }], checks: [clean, { what: 'maakt de selectie', ok: (r) => (r.actions ?? []).some((a) => a.do === 'makeSelection' && /propedeuse/i.test(a.target ?? '') && /eindstage/i.test(a.target ?? '')) }, { what: 'deelt niets', ok: (r) => !does(r, 'shareWith') }] },
@@ -223,8 +239,8 @@ async function run(scenario: Scenario, complete: ReturnType<typeof openRouterCom
       const request = { device: 'phone', input: 'text', ...rest } as AylaRequest
       searches = []
       const reply = await answer(
-        { request, conversationId: 'eval', history, firstName: 'Ravi', memory: { status: 'on', notes: (scenario.notes ?? []).map((text) => ({ text, category: 'personal' as const })) }, vault: scenario.noVault ? undefined : scenario.vault ?? vault, plan: request.planId ? evalPlan : undefined },
-        { complete, newId: () => `id_${++n}`, searchVacancies: async (what: string, where: string) => { searches.push({ what, where }); return jobs }, siteExists: async () => false, lookUp: fakeLookUp, searchEducations: fakeEducations },
+        { request, conversationId: 'eval', history, firstName: 'Ravi', memory: { status: 'on', notes: (scenario.notes ?? []).map((text) => ({ text, category: 'personal' as const })) }, vault: scenario.noVault ? undefined : scenario.vault ?? vault, plan: request.planId ? scenario.plan ?? evalPlan : undefined },
+        { complete, newId: () => `id_${++n}`, searchVacancies: async (what: string, where: string) => { searches.push({ what, where }); return jobs }, siteExists: async () => false, lookUp: fakeLookUp, searchEducations: fakeEducations, updatePlanStep: async () => true },
       )
       replies.push(reply)
       if (!request.results?.length) history.push({ role: 'user', text: request.text })

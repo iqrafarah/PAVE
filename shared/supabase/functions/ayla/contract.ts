@@ -205,6 +205,15 @@ export interface AylaReply {
     newPlan?: { name: string; goal: string; steps: { title: string; summary: string; kind: string }[] }
   }
   blocks: Block[]
+  /**
+   * Changes to the conversation's plan Ayla proposes so it reaches its goal. Nothing is saved: the app shows them on a
+   * card, the user takes out what they do not want and taps "Pas plan aan".
+   */
+  planEdit?: {
+    id: string
+    planId: string
+    changes: { op: 'add' | 'remove' | 'move'; stepId?: string; title: string; kind?: string; afterStepId?: string | null; why: string }[]
+  }
   navigation?: { screen: Screen; itemId?: string }
   /** What Ayla does in the app with this answer, in order. With `confirm`, only after the user says Ja. */
   actions?: AppAction[]

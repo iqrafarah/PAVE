@@ -53,6 +53,9 @@ struct PlanDetailView: View {
                     Button { editsPlan = true } label: { Label(PlanMessages.rename, tinted: .iconPencilSolid) }
                     Button { addsStep = true } label: { Label(PlanMessages.addStep, tinted: .iconPlusCircleSolid) }
                     Button { proposesSteps = true } label: { Label(PlanMessages.proposeSteps, tinted: .iconAyla) }
+                    if let plan, !plan.isFinished, !plan.steps.isEmpty {
+                        Button { review(plan) } label: { Label(PlanMessages.reviewPlan, tinted: .iconAyla) }
+                    }
                     if plan?.isFinished == true {
                         Button { model.reopen(planID) } label: { Label(PlanMessages.reopen, tinted: .iconArrowUturnLeftSolid) }
                     } else {
@@ -206,6 +209,12 @@ struct PlanDetailView: View {
         }
     }
 
+    /// "Laat Ayla nakijken": in the plan's latest chat, Ayla checks the whole plan against its goal.
+    private func review(_ plan: PavePlan) {
+        let latest = plan.liveConversations(in: chats, isComplete: chatsAreComplete).first
+        actions.ask(plan, latest?.id, PaveTranslator.translate(PlanMessages.reviewPrompt))
+    }
+
     private func steps(_ plan: PavePlan) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionTitle(PlanMessages.steps)
@@ -254,6 +263,20 @@ struct PlanDetailView: View {
                 .frame(minHeight: 44)
             }
             .buttonStyle(.pave)
+            if !plan.isFinished, !plan.steps.isEmpty {
+                Button {
+                    review(plan)
+                } label: {
+                    Label {
+                        Text(PlanMessages.reviewPlan).textStyle(.action)
+                    } icon: {
+                        AylaLetter(color: Color.paveAccent).frame(width: 12, height: 12)
+                    }
+                    .foregroundStyle(Color.paveAccent)
+                    .frame(minHeight: 44)
+                }
+                .buttonStyle(.pave)
+            }
         }
     }
 
