@@ -208,13 +208,17 @@ public struct SupabaseAylaService: AylaService {
     private let publishableKey: String
     private let session: URLSession
     private let accessToken: @Sendable () async -> String?
+    /// The language the app is in right now, so every question asks Ayla to answer in it; nil or "nl" is Dutch.
+    private let language: @Sendable () -> String?
 
     public init(
         projectURL: URL,
         publishableKey: String,
         session: URLSession = .shared,
+        language: @escaping @Sendable () -> String? = { nil },
         accessToken: @escaping @Sendable () async -> String?
     ) {
+        self.language = language
         endpoint = projectURL.appending(path: "functions/v1/ayla")
         voiceEndpoint = projectURL.appending(path: "functions/v1/ayla-voice")
         restURL = projectURL.appending(path: "rest/v1")
@@ -222,6 +226,14 @@ public struct SupabaseAylaService: AylaService {
         self.publishableKey = publishableKey
         self.session = session
         self.accessToken = accessToken
+    }
+
+    /// The question in the language of the app, unless it says one itself.
+    private func inLanguage(_ request: AylaRequest) -> AylaRequest {
+        guard request.language == nil, let language = language(), language != "nl" else { return request }
+        var request = request
+        request.language = language
+        return request
     }
 
     public func stream(_ request: AylaRequest) -> AsyncThrowingStream<AylaStreamEvent, any Error> {
@@ -260,7 +272,7 @@ public struct SupabaseAylaService: AylaService {
         urlRequest.setValue("text/event-stream", forHTTPHeaderField: "Accept")
         urlRequest.setValue(publishableKey, forHTTPHeaderField: "apikey")
         urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        urlRequest.httpBody = try AylaCoding.encoder.encode(request)
+        urlRequest.httpBody = try AylaCoding.encoder.encode(inLanguage(request))
 
         let (bytes, response): (URLSession.AsyncBytes, URLResponse)
         do {
@@ -358,7 +370,7 @@ public struct SupabaseAylaService: AylaService {
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         urlRequest.setValue(publishableKey, forHTTPHeaderField: "apikey")
         urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        urlRequest.httpBody = try AylaCoding.encoder.encode(request)
+        urlRequest.httpBody = try AylaCoding.encoder.encode(inLanguage(request))
 
         let data: Data
         let response: URLResponse

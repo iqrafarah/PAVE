@@ -16,6 +16,9 @@ public struct AylaHeadTurnDetector: Sendable {
     static let middle = 0.15
     /// How fast the middle follows a head that stays turned a little, per second.
     static let follow = 0.5
+    /// Coming back from a turn, the head often swings on past the middle to the other side: that rebound is no turn.
+    /// The other side counts again only after the head was this long in the middle.
+    static let rebound: TimeInterval = 0.7
 
     private var center: Double?
     private var lastYaw: Double?
@@ -23,6 +26,9 @@ public struct AylaHeadTurnDetector: Sendable {
     private var sideSince: TimeInterval?
     private var side: Turn?
     private var waitsForMiddle = false
+    private var lastTurn: Turn?
+    /// When the head came back to the middle after the last turn.
+    private var backInMiddleSince: TimeInterval?
 
     public init() {}
 
@@ -43,6 +49,7 @@ public struct AylaHeadTurnDetector: Sendable {
         }
         let offset = yaw - center
         if abs(offset) < Self.middle {
+            if waitsForMiddle || backInMiddleSince == nil { backInMiddleSince = time }
             waitsForMiddle = false
             if let lastTime { center += offset * min(1, Self.follow * (time - lastTime)) }
             self.center = center
@@ -56,6 +63,12 @@ public struct AylaHeadTurnDetector: Sendable {
             return nil
         }
         let now: Turn = offset > 0 ? .left : .right
+        // The swing back past the middle right after a turn.
+        if let lastTurn, now != lastTurn, let backInMiddleSince, time - backInMiddleSince < Self.rebound {
+            side = nil
+            sideSince = nil
+            return nil
+        }
         if side != now {
             side = now
             sideSince = time
@@ -65,6 +78,8 @@ public struct AylaHeadTurnDetector: Sendable {
         waitsForMiddle = true
         side = nil
         self.sideSince = nil
+        lastTurn = now
+        backInMiddleSince = nil
         return now
     }
 

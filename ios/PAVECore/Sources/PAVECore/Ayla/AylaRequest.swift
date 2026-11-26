@@ -85,6 +85,8 @@ public struct AylaRequest: Codable, Equatable, Sendable {
     /// What came of the actions of Ayla's previous answer. The app sends this itself, so she can go on; it is not
     /// something you said, and no message of yours is stored for it.
     public var results: [ActionResult]?
+    /// The language the app is in ("en", "pap"); Ayla answers in it. Nil is Dutch.
+    public var language: String?
 
     public struct ActionResult: Codable, Equatable, Sendable {
         public var kind: String

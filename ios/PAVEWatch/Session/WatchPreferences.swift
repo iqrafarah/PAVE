@@ -10,6 +10,9 @@ final class WatchPreferences {
 
     private static let accentKey = "watchAccent"
     private static let voiceTextKey = "watchVoiceText"
+    nonisolated private static let languageKey = "watchLanguage"
+    /// The language of the iPhone app ("nl", "en", "pap"), so Ayla answers on the wrist in it too.
+    nonisolated static var language: String? { UserDefaults.standard.string(forKey: languageKey) }
 
     /// The theme colour as 0xRRGGBB; nil is PAVE green.
     private(set) var accent: UInt32?
@@ -25,6 +28,9 @@ final class WatchPreferences {
     /// From the iPhone's message; keys it does not carry leave things as they are.
     func apply(_ message: [String: Any]) {
         let defaults = UserDefaults.standard
+        if let language = message["language"] as? String {
+            defaults.set(language, forKey: Self.languageKey)
+        }
         if let shows = message["voiceText"] as? Bool {
             showsVoiceText = shows
             defaults.set(shows, forKey: Self.voiceTextKey)

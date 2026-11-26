@@ -97,7 +97,7 @@ final class WatchAylaModel {
         let store = sessions
         let token: @Sendable () async -> String? = { await store.accessToken() }
         return (
-            SupabaseAylaService(projectURL: session.projectURL, publishableKey: session.publishableKey, accessToken: token),
+            SupabaseAylaService(projectURL: session.projectURL, publishableKey: session.publishableKey, language: { WatchPreferences.language }, accessToken: token),
             SupabaseAylaListenService(projectURL: session.projectURL, publishableKey: session.publishableKey, accessToken: token),
             SupabaseVaultService(projectURL: session.projectURL, publishableKey: session.publishableKey, accessToken: token)
         )

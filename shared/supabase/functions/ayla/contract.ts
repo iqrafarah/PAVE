@@ -34,7 +34,12 @@ export interface AylaRequest {
    * goes on with what was asked. Such a turn stores no user message.
    */
   results?: ActionResult[]
+  /** The language the app is in (Instellingen › Taal): Ayla answers in it. Missing means Dutch. */
+  language?: Language
 }
+
+export const LANGUAGES = ['nl', 'en', 'pap'] as const
+export type Language = (typeof LANGUAGES)[number]
 
 export interface ActionResult { do: ActionKind; ok: boolean; said?: string }
 
@@ -217,13 +222,14 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 export function parseRequest(body: unknown): AylaRequest | string {
   if (typeof body !== 'object' || body === null) return 'body must be an object'
   const b = body as Record<string, unknown>
-  const allowed = new Set(['conversationId', 'projectId', 'planId', 'planStepId', 'text', 'device', 'input', 'context', 'attachments', 'app', 'results'])
+  const allowed = new Set(['conversationId', 'projectId', 'planId', 'planStepId', 'text', 'device', 'input', 'context', 'attachments', 'app', 'results', 'language'])
   const extra = Object.keys(b).find((key) => !allowed.has(key))
   if (extra) return `unknown field ${extra}`
   if (typeof b.text !== 'string' || !b.text.trim()) return 'text is required'
   if (b.text.length > MAX_TEXT_LENGTH) return 'text is too long'
   if (!DEVICES.includes(b.device as Device)) return 'device is not valid'
   if (b.input !== 'voice' && b.input !== 'text') return 'input is not valid'
+  if (b.language !== undefined && !LANGUAGES.includes(b.language as Language)) return 'language is not valid'
   if (b.conversationId !== undefined && (typeof b.conversationId !== 'string' || !UUID.test(b.conversationId))) {
     return 'conversationId is not valid'
   }
@@ -313,6 +319,7 @@ export function parseRequest(body: unknown): AylaRequest | string {
     text: b.text.trim(),
     device: b.device as Device,
     input: b.input,
+    ...(b.language && b.language !== 'nl' ? { language: b.language as Language } : {}),
     ...(app ? { app } : {}),
     ...(results ? { results } : {}),
     ...(b.conversationId ? { conversationId: b.conversationId as string } : {}),

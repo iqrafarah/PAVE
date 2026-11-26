@@ -71,6 +71,7 @@ final class WatchBridge: NSObject, WCSessionDelegate {
         var message = WatchLink.message(for: session, isConnected: isConnected)
         // How PAVE looks and talks on the iPhone, so the Watch follows: the theme colour and Ayla's text.
         message["voiceText"] = UserDefaults.standard.object(forKey: AylaVoiceTextSetting.key) as? Bool ?? true
+        message["language"] = PaveLanguageStore.current.rawValue
         if let accent = await MainActor.run(body: { PaveThemeStore.shared.themeAccent }) {
             message["accent"] = Int(accent)
         } else {

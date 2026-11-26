@@ -228,6 +228,14 @@ export interface PromptInput {
   hasFiles?: boolean
   /** The user's message is in English. */
   english?: boolean
+  /** The language the app is in; Ayla answers in it. */
+  language?: 'nl' | 'en' | 'pap'
+}
+
+/** The app is in another language: she answers in it, and calls the parts of PAVE what the app calls them there. */
+const LANGUAGE_PROMPTS: Record<'en' | 'pap', string> = {
+  en: 'De app staat in het Engels. Schrijf text, de keuzes bij question, title, memories en alles wat de gebruiker leest in het Engels, ook als deze instructies Nederlands zijn en de gebruiker Nederlands schrijft. Noem de onderdelen van PAVE zoals de app ze in het Engels toont: Vault (Kluis), Plan, Profile (Profiel), Notifications (Meldingen), Settings (Instellingen), Vacancies (Vacatures), Applications (Sollicitaties). Namen van bewijs, vacatures en bedrijven laat je zoals ze zijn. askVault en de zoektermen in vacancySearch blijven Nederlands.',
+  pap: 'De app staat in het Papiamentu (de spelling van Curaçao). Schrijf text, de keuzes bij question, title, memories en alles wat de gebruiker leest in het Papiamentu, ook als deze instructies Nederlands zijn. Noem de onderdelen van PAVE zoals de app ze toont: Kaha fuerte (Kluis), Plan, Perfil (Profiel), Notifikashonnan (Meldingen), Konfigurashon (Instellingen), Vakaturanan (Vacatures). Weet je een woord niet zeker, gebruik dan het Nederlandse woord. Namen van bewijs, vacatures en bedrijven laat je zoals ze zijn. askVault en de zoektermen in vacancySearch blijven Nederlands.',
 }
 
 // Layer 2b: the user talks and listens instead of reading.
@@ -263,7 +271,8 @@ export function buildSystemPrompt(input: PromptInput): string {
   const asksForVault = !input.context?.task || input.context.task === 'prepare'
   layers.push(recapPrompt(consent === 'declined' ? 'declined' : whole || input.vaultPart?.mayAskMore === false || !asksForVault ? 'mayNotAsk' : 'mayAsk'))
   // A prompt in Dutch pulls the answer to Dutch: said last, and in English, it holds.
-  if (input.english) layers.push('The user writes in English. Write text, the labels of question and memories in English. The fixed questions PAVE asks itself stay Dutch; askVault stays Dutch.')
+  if (input.language && input.language !== 'nl') layers.push(LANGUAGE_PROMPTS[input.language])
+  else if (input.english) layers.push('The user writes in English. Write text, the labels of question and memories in English. The fixed questions PAVE asks itself stay Dutch; askVault stays Dutch.')
   return layers.join('\n\n')
 }
 

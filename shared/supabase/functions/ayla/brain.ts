@@ -183,7 +183,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
       role: 'system',
       content: buildSystemPrompt({
         device: request.device, input: request.input, firstName: input.firstName, context: request.context, memory, project: input.project, plan: input.plan,
-        vault, vaultConsent: consent, vaultPart: part ? { mayAskMore } : undefined, app: request.app, hasFiles, english: writesEnglish(request.text),
+        vault, vaultConsent: consent, vaultPart: part ? { mayAskMore } : undefined, app: request.app, hasFiles, english: writesEnglish(request.text), language: request.language,
       }),
     },
     ...pastMessages(input.history.slice(-HISTORY_LIMIT)),
