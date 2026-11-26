@@ -35,9 +35,11 @@ struct EducationCard: View {
                     .foregroundStyle(Color.ink)
                     .lineLimit(3)
             }
+            // Side by side when they fit; otherwise under each other, and then a label may wrap rather than push the
+            // whole chat wider than the screen at large text sizes.
             ViewThatFits(in: .horizontal) {
-                HStack(spacing: 8) { buttons }
-                VStack(alignment: .leading, spacing: 8) { buttons }
+                HStack(spacing: 8) { buttons(fixed: true) }
+                VStack(alignment: .leading, spacing: 8) { buttons(fixed: false) }
             }
         }
         .padding(13)
@@ -49,9 +51,9 @@ struct EducationCard: View {
     }
 
     @ViewBuilder
-    private var buttons: some View {
+    private func buttons(fixed: Bool) -> some View {
         PaveChip(icon: .iconGlobeEuropeAfricaSolid, title: EducationMessages.openSite, action: onOpenSite)
-            .fixedSize()
+            .fixedSize(horizontal: fixed, vertical: true)
             .accessibilityHint(EducationMessages.openSiteHint)
         if isInPlan {
             HStack(spacing: 6) {
@@ -71,7 +73,7 @@ struct EducationCard: View {
             .transition(.opacity.combined(with: .scale(scale: 0.96)))
         } else {
             PaveChip(icon: planAction == .add ? .iconPlusCircleSolid : .iconMapSolid, title: planAction == .add ? EducationMessages.addToPlan : EducationMessages.makePlan, action: onPlan)
-                .fixedSize()
+                .fixedSize(horizontal: fixed, vertical: true)
                 .accessibilityHint(planAction == .add ? EducationMessages.addToPlanHint : EducationMessages.makePlanHint)
         }
     }

@@ -29,7 +29,7 @@ struct AylaVoiceBar: View {
                 .buttonStyle(.pave)
                 .accessibilityLabel("Toevoegen aan je bericht")
 
-                TextField("Vraag het aan Ayla", text: $text, prompt: Text("Vraag het aan Ayla").foregroundStyle(Color.inkMuted.opacity(0.6)), axis: .vertical)
+                TextField("Vraag het aan Ayla", text: $text, prompt: Text("Vraag het aan Ayla").foregroundStyle(Color.inkMuted), axis: .vertical)
                     .textStyle(.bodyMedium)
                     .foregroundStyle(Color.ink)
                     .tint(.paveAccent)

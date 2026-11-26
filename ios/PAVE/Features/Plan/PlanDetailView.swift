@@ -269,6 +269,7 @@ struct PlanDetailView: View {
                                     .scaledToFit()
                                     .paveIconFrame(16)
                                     .foregroundStyle(Color.paveAccent)
+                                    .accessibilityHidden(true)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(chat.title.isEmpty ? PlanMessages.untitledConversation(chats.count - index) : chat.title)
                                         .textStyle(.listTitle)
@@ -288,6 +289,7 @@ struct PlanDetailView: View {
                                     .scaledToFit()
                                     .frame(width: 10, height: 10)
                                     .foregroundStyle(Color.inkMuted)
+                                    .accessibilityHidden(true)
                             }
                             .padding(.horizontal, 16)
                             .frame(minHeight: 56)

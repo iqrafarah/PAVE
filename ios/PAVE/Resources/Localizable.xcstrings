@@ -33264,6 +33264,23 @@
         }
       }
     },
+    "Selecteert of deselecteert dit gesprek": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selects or deselects this chat"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta selekshoná of deselekshoná e kombersashon aki"
+          }
+        }
+      }
+    },
     "Selecteren": {
       "extractionState": "manual",
       "localizations": {

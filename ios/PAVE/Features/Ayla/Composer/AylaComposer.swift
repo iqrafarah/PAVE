@@ -14,7 +14,7 @@ struct AylaComposer: View {
     var isAnswering = false
     var onStop: (() -> Void)?
     var isListening = false
-    var placeholderColor = Color.inkMuted.opacity(0.41)
+    var placeholderColor = Color.inkMuted
     /// Over the white panel the field is almost white (Figma), elsewhere it is clear glass.
     var isFocused: FocusState<Bool>.Binding
     let onAdd: () -> Void

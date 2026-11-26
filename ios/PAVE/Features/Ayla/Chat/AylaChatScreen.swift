@@ -575,6 +575,7 @@ struct AylaChatScreen: View {
             if actionSteps.isEmpty || showsSearchSteps { voice?.doingNote = activity.map(AylaMessages.voiceNote) }
             followSearch(activity)
         }
+        .transform(announcements)
         .onChange(of: model.phase) { _, phase in
             // The search is over: the steps that are left are ticked off, or go when nothing came of it.
             guard showsSearchSteps, phase == .idle || phase != .thinking && phase != .writing else { return }
@@ -1080,6 +1081,26 @@ struct AylaChatScreen: View {
 
     /// What the spoken conversation reacts to: the orb's haptics, the orb changing place, and the conversation
     /// ending by itself. Apart from `body`, so the compiler can keep up.
+    /// VoiceOver hears that Ayla thinks, what she answered and when it failed, without looking for it; spoken, she
+    /// says it herself.
+    private func announcements(_ content: some View) -> some View {
+        content.onChange(of: model.phase) { old, phase in
+            guard !isTalking else { return }
+            switch phase {
+            case .thinking:
+                AccessibilityNotification.Announcement(AylaMessages.thinking).post()
+            case .idle where old == .writing || old == .thinking:
+                if let last = model.entries.last, last.role == .ayla, !last.text.isEmpty {
+                    AccessibilityNotification.Announcement(AylaMessages.answered(last.text)).post()
+                }
+            case .failed(let message):
+                AccessibilityNotification.Announcement(message).post()
+            default:
+                break
+            }
+        }
+    }
+
     private func voiceReactions(_ content: some View) -> some View {
         content
             // Your message is sent: a firm tap. Ayla's answer comes in: a soft one. Opening an old chat is neither.
@@ -1415,7 +1436,7 @@ struct AylaChatScreen: View {
                 if !isVoiceActive {
                     Text(AylaMessages.disclaimer)
                         .textStyle(.caption)
-                        .foregroundStyle(Color.inkMuted)
+                        .foregroundStyle(model.phase == .thinking ? Self.onThinkingGlow : Color.inkMuted)
                         .frame(maxWidth: .infinity)
                         .padding(.top, 6)
                 }
@@ -1435,8 +1456,13 @@ struct AylaChatScreen: View {
         }
     }
 
+    /// Text right on the glow while Ayla thinks: the glow is deep green in light mode and light mint in dark mode.
+    private static let onThinkingGlow = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark ? UIColor.black.withAlphaComponent(0.7) : UIColor.white.withAlphaComponent(0.85)
+    })
+
     private var placeholderColor: Color {
-        model.phase == .idle || model.phase == .writing ? Color.inkMuted.opacity(0.41) : Color.white.opacity(0.41)
+        model.phase == .idle || model.phase == .writing ? Color.inkMuted : Color.white.opacity(0.85)
     }
 
     @ViewBuilder
@@ -1548,6 +1574,9 @@ struct AylaChatScreen: View {
     }
 
     private func startWave(fromOrb: Bool = false) {
+        // A ring across the whole screen is the kind of motion Reduce Motion asks to leave out; the haptic and the
+        // tick that come with it still say it worked.
+        guard !reduceMotion else { return }
         let started = Date()
         waveFromOrb = fromOrb
         waveStartedAt = started
@@ -1677,6 +1706,12 @@ struct AylaChatScreen: View {
         mutedForPhotos = false
     }
 
+    /// A photo as JPEG at its full size, as before, but off the main thread: decoding a 48 MP photo there froze the chat.
+    @concurrent
+    nonisolated private static func jpeg(from data: Data) async -> Data? {
+        UIImage(data: data)?.jpegData(compressionQuality: 0.85)
+    }
+
     private func addItemPhotos(_ items: [PhotosPickerItem], to itemID: String) async {
         guard let vault else { return }
         isAddingItemPhotos = true
@@ -1684,7 +1719,7 @@ struct AylaChatScreen: View {
         let day = Date.now.formatted(.iso8601.year().month().day())
         var added = 0
         for item in items {
-            guard let data = try? await item.loadTransferable(type: Data.self), let jpeg = UIImage(data: data)?.jpegData(compressionQuality: 0.85) else { continue }
+            guard let data = try? await item.loadTransferable(type: Data.self), let jpeg = await Self.jpeg(from: data) else { continue }
             let upload = VaultUpload(data: jpeg, fileName: "Foto \(day) \(added + 1).jpeg", mimeType: "image/jpeg")
             do {
                 try await vault.attach(upload, to: itemID)
@@ -2369,7 +2404,7 @@ struct AylaChatScreen: View {
                 fileProblem = AylaMessages.tooManyFiles
                 return
             }
-            guard let data = try? await item.loadTransferable(type: Data.self), let jpeg = UIImage(data: data)?.jpegData(compressionQuality: 0.85) else {
+            guard let data = try? await item.loadTransferable(type: Data.self), let jpeg = await Self.jpeg(from: data) else {
                 fileProblem = AylaMessages.fileUnreadable
                 continue
             }

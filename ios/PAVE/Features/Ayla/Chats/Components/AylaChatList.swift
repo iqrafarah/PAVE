@@ -375,6 +375,10 @@ struct AylaChatList: View {
 
     // MARK: Rows
 
+    private func toggle(_ id: String) {
+        if selection.contains(id) { selection.remove(id) } else { selection.insert(id) }
+    }
+
     private func row(_ conversation: AylaConversation, showsIcon: Bool = false) -> some View {
         let isChosen = selection.contains(conversation.id)
         return HStack(spacing: 4) {
@@ -388,14 +392,19 @@ struct AylaChatList: View {
             }
             // While selecting, a tap selects the row instead of opening it.
             .allowsHitTesting(!isSelecting)
+            // VoiceOver does not tap: its double-tap selects too while selecting, instead of opening the chat.
+            .accessibilityAction {
+                if isSelecting { toggle(conversation.id) } else { actions.open(conversation) }
+            }
+            .accessibilityAddTraits(isSelecting && isChosen ? .isSelected : [])
+            .accessibilityHint(isSelecting ? AylaMessages.selectChatHint : "")
         }
         .contentShape(.rect)
         .onTapGesture {
             guard isSelecting else { return }
-            if isChosen { selection.remove(conversation.id) } else { selection.insert(conversation.id) }
+            toggle(conversation.id)
         }
         .animation(.snappy(duration: 0.2), value: isSelecting)
-        .accessibilityAddTraits(isSelecting && isChosen ? .isSelected : [])
         .plainRow()
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             if list.canPin {

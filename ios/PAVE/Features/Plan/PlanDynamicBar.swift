@@ -99,6 +99,7 @@ struct PlanDynamicBar: View {
         .buttonStyle(.pave)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
+        .accessibilityValue(PlanMessages.folded)
         .accessibilityHint(PlanMessages.showSteps)
         .accessibilityAddTraits(.isButton)
     }
@@ -158,6 +159,7 @@ struct PlanDynamicBar: View {
             }
             .buttonStyle(.pave)
             .accessibilityLabel(accessibilityLabel)
+            .accessibilityValue(PlanMessages.unfolded)
             .accessibilityHint(PlanMessages.hideSteps)
 
             ScrollView {
@@ -208,6 +210,10 @@ struct PlanDynamicBar: View {
                     .padding(.horizontal, 14)
                     .frame(minHeight: 34)
                     .background(Color.paveAccentFill, in: .capsule)
+                    // 44 pt to tap, while the capsule keeps its size.
+                    .padding(.vertical, 5)
+                    .contentShape(.rect)
+                    .padding(.vertical, -5)
                 }
                 .buttonStyle(.pave)
             }
@@ -286,6 +292,9 @@ struct PlanChatsMenu: View {
             .padding(.horizontal, 12)
             .frame(minHeight: 34)
             .background(Color.paveSurfaceTint, in: .capsule)
+            .padding(.vertical, 5)
+            .contentShape(.rect)
+            .padding(.vertical, -5)
         }
         .accessibilityLabel("\(PlanMessages.conversations), \(PlanMessages.conversationCount(conversations.count))")
     }

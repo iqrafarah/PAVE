@@ -28,7 +28,10 @@ struct AylaUsedMemories: View {
             .foregroundStyle(Color.inkMuted)
             .padding(.leading, 4)
             .frame(minHeight: 28)
+            // 44 pt to tap, without more room under Ayla's answer.
+            .padding(.vertical, 8)
             .contentShape(.rect)
+            .padding(.vertical, -8)
         }
         .buttonStyle(.pave)
         .accessibilityLabel("Gebaseerd op wat Ayla over je weet: \(categories.map(\.title).joined(separator: ", "))")

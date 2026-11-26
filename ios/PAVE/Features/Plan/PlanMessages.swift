@@ -3,6 +3,8 @@ import PAVECore
 
 /// The words of the plans, the same as in docs/ui-teksten.md.
 enum PlanMessages {
+    static let folded = "Ingeklapt"
+    static let unfolded = "Uitgeklapt"
     /// Under a step: its deadline and the evidence that shows it, such as "Voor 15 dec. · 1 bewijsstuk".
     static func stepExtras(_ step: PavePlanStep) -> String? {
         var parts: [String] = []

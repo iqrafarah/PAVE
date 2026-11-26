@@ -61,6 +61,8 @@ struct PlanTimeline<Trailing: View>: View {
         }
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
+        // What the row combines would swallow its buttons, such as Klaar: they stay reachable as actions.
+        .accessibilityActions { trailing(step) }
         .accessibilityLabel("\(step.title), \(PlanMessages.status(step.status))\(step.summary.isEmpty ? "" : ". \(step.summary)")\(PlanMessages.stepExtras(step).map { ". \($0)" } ?? "")")
 
         if let onSelect {

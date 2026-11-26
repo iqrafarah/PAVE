@@ -5,6 +5,12 @@ import PAVECore
 enum AylaMessages {
     /// Above Ja and Nee when Ayla offers to add something to the vault, as on the web (AYLA_VAULT_LABEL).
     static let thinking = "Ayla denkt na…"
+    /// For VoiceOver when her answer is in: her words, cut short when long, since the bubble itself has all of it.
+    static func answered(_ text: String) -> String {
+        let short = text.count > 220 ? String(text.prefix(220)).components(separatedBy: " ").dropLast().joined(separator: " ") + "…" : text
+        return "Ayla: \(short)"
+    }
+    static let selectChatHint = "Selecteert of deselecteert dit gesprek"
     static let sourcesTitle = "Bronnen"
     static let sourceHint = "Opent de pagina in Safari"
     static let calendarNotes = "Klaargezet door Ayla in PAVE."
