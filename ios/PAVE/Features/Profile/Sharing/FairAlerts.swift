@@ -37,9 +37,10 @@ enum FairAlerts {
         case acceptAction, declineAction:
             let accepted = response.actionIdentifier == acceptAction
             if let id, let onAnswer, await onAnswer(id, accepted) { return true }
-            PaveLinkInbox.send(.fairDay)
+            NotificationAlerts.onTap?()
         default:
-            PaveLinkInbox.send(.fairDay)
+            // The invitation is in Meldingen, with every other message.
+            NotificationAlerts.onTap?()
         }
         return true
     }

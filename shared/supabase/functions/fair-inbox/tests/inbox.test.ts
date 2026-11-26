@@ -1,5 +1,5 @@
 import { assertEquals } from 'jsr:@std/assert@1'
-import { inboxView, parseInboxRequest, sameHash, sha256 } from '../inbox.ts'
+import { type ApplicationRow, inboxView, parseInboxRequest, photoPath, profileCode, sameHash, sha256 } from '../inbox.ts'
 
 const now = new Date('2026-11-25T12:00:00Z')
 const key = 'abcdefghijklmnop1234'
@@ -36,4 +36,23 @@ Deno.test('the employer sees only the card', () => {
   assertEquals(view.name, 'Sam')
   assertEquals(view.availability, { days: ['zaterdag'], maxHours: 12 })
   assertEquals('email' in view, false)
+})
+
+Deno.test('the photo and the shared profile go along only when the applicant chose them', () => {
+  const owner = '11111111-1111-1111-1111-111111111111'
+  const row: ApplicationRow = {
+    id: 'a', user_id: owner, employer_slug: 'jumbo', vacancy_id: 'v', vacancy_title: 'Bijbaan',
+    card: { name: 'Ravi', showsPhoto: true, profileCode: 'a'.repeat(32) }, status: 'new', invited_for: null,
+    invitation_message: null, answer: null, created_at: '2026-11-26T09:00:00Z',
+  }
+  assertEquals(photoPath(row, `${owner}/foto.jpg`), `${owner}/foto.jpg`)
+  assertEquals(photoPath(row, 'someone-else/foto.jpg'), undefined)
+  assertEquals(photoPath(row, `${owner}/../x.jpg`), undefined)
+  assertEquals(photoPath({ ...row, card: { name: 'Ravi' } }, `${owner}/foto.jpg`), undefined)
+  assertEquals(profileCode(row), 'a'.repeat(32))
+  assertEquals(profileCode({ ...row, card: { profileCode: '../gedeeld' } }), undefined)
+  const view = inboxView(row, 'https://signed')
+  assertEquals(view.photo, 'https://signed')
+  assertEquals(view.profileCode, 'a'.repeat(32))
+  assertEquals(inboxView({ ...row, card: { name: 'Ravi' } }).photo, undefined)
 })

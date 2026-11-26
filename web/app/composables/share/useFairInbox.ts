@@ -9,6 +9,10 @@ export interface InboxApplication {
   why?: string;
   pitch?: string;
   availability: { days: string[]; maxHours?: number };
+  /** A link to the applicant's photo that works for a few minutes, when they showed it. */
+  photo?: string;
+  /** The code of the profile they shared along with the card. */
+  profileCode?: string;
   status: 'new' | 'invited' | 'declined';
   invitedFor?: string;
   answer?: 'accepted' | 'declined';

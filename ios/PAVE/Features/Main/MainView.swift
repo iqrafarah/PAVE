@@ -84,7 +84,12 @@ struct MainView: View {
         .environment(memory)
         .environment(plans)
         .environment(cameraControl)
-        .environment(\.unreadNotifications, notificationsModel.unreadCount + invitations.filter { $0.progress.invitation?.isRead == false }.count)
+        // The bell counts what waits for you: meldingen, demo invitations, and invitations from the fair.
+        .environment(
+            \.unreadNotifications,
+            notificationsModel.unreadCount + invitations.filter { $0.progress.invitation?.isRead == false }.count
+                + (sharing.fairApplications?.filter(\.awaitsAnswer).count ?? 0)
+        )
         .task(id: destination) { invitations = Self.arrivedInvitations() }
         .overlay(alignment: .top) {
             if let banner = notificationsModel.banner, destination != .notifications {
@@ -106,6 +111,7 @@ struct MainView: View {
             guard scenePhase == .active, appState.isOpen else { return }
             while !Task.isCancelled {
                 await notificationsModel.refresh()
+                await sharing.loadFairApplications()
                 try? await Task.sleep(for: .seconds(30))
             }
         }

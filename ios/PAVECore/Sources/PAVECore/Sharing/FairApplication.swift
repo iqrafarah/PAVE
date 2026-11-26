@@ -25,8 +25,17 @@ public struct FairApplicationCard: Codable, Equatable, Sendable {
     public var why: String
     public var pitch: String
     public var availability: Availability
+    /// Your profile photo goes along, for the employer's inbox.
+    public var showsPhoto: Bool?
+    /// The code of the profile you shared along with the card, so the employer can open your evidence.
+    public var profileCode: String?
 
-    public init(name: String, headline: String = "", why: String = "", pitch: String = "", availability: Availability = Availability()) {
+    public init(
+        name: String, headline: String = "", why: String = "", pitch: String = "", availability: Availability = Availability(),
+        showsPhoto: Bool? = nil, profileCode: String? = nil
+    ) {
+        self.showsPhoto = showsPhoto
+        self.profileCode = profileCode
         self.name = name
         self.headline = headline
         self.why = why
@@ -92,6 +101,10 @@ public struct InboxApplication: Identifiable, Equatable, Sendable, Decodable {
     public let why: String?
     public let pitch: String?
     public let availability: Days
+    /// A link to the applicant's photo that works for a few minutes; nil when they did not show it.
+    public let photo: URL?
+    /// The code of the profile they shared along, to open on the web.
+    public let profileCode: String?
     public let status: String
     public let invitedFor: Date?
     public let answer: String?

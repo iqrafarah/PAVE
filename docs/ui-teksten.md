@@ -413,3 +413,7 @@ Een flow met stappen heeft linksboven een pijl terug naar de vorige stap, en op 
 | Dynamic Bar | Open plan / {n} gesprekken |
 | Tekst bij een nieuw gesprek voor een stap | Help me met de stap "{stap}". |
 | Fout | Je plan kon niet worden bewaard. Probeer het nog eens. |
+| Snel solliciteren, beschikbaarheid | Tik op de dagen dat je kunt en kies hoeveel uur. / {dagen} of Alle dagen, hoogstens {n} uur per week |
+| Snel solliciteren, meedelen | Wat ze verder mogen zien / Je profiel met bewijs / Ze kunnen je {n} bewijsstukken en de bestanden inzien, twee weken lang. Stoppen kan altijd bij Profiel. / Je kluis is nog leeg, dus er is geen profiel om te laten zien. / Kaartje bij {bedrijf} |
+| Postvak werkgever | Bekijk profiel / web: Bekijk profiel en bewijs |
+| Meldingen, beurs | Van de beurs |

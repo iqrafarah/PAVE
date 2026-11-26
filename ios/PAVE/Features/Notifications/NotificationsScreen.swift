@@ -133,6 +133,7 @@ struct NotificationsScreen: View {
     var onRestore: ((String) async -> Bool)?
     /// Applications with the demo's invitation from the company, kept on this device; they open Mijn sollicitatie.
     var invitations: [ApplicationDraft] = []
+    @Environment(SharingModel.self) private var sharing: SharingModel?
     var onOpenApplication: ((Vacancy) -> Void)?
 
     @State private var searchText = ""
@@ -212,6 +213,7 @@ struct NotificationsScreen: View {
                 .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
+                if let sharing, searchText.isEmpty { NotificationFairSection(sharing: sharing) }
                 if !invitations.isEmpty, searchText.isEmpty {
                     Section {
                         ForEach(invitations) { draft in

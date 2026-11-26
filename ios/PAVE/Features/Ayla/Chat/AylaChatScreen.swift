@@ -369,15 +369,6 @@ struct AylaChatScreen: View {
             .environment(pageDriver)
             // Keep talking with Ayla while the page is open: her answer shows on top of the page.
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                // What she is doing floats just above where she lives, as in the chat.
-                if !actionSteps.isEmpty {
-                    AylaActivityPill(steps: actionSteps)
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 6)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-            }
-            .safeAreaInset(edge: .bottom, spacing: 0) {
                 // While you talk she stays with you on the page, as the small orb; typing is the text field.
                 if let voice, isTalking {
                     AylaShelfVoiceBar(
@@ -394,7 +385,17 @@ struct AylaChatScreen: View {
             // Over the top of a page that fills the screen, not in it: nothing on the page moves when she speaks. A
             // page that sits low shows her answer above it instead, at the top of the chat.
             .overlay(alignment: .top) {
-                if !replyFloatsOverChat { shelfReplyBubble(topPadding: 26, lineLimit: 6) }
+                // What she is doing (searching, opening) at the very top of the page, clear of the search and the
+                // field below; her answer comes under it.
+                VStack(spacing: 8) {
+                    if !actionSteps.isEmpty {
+                        AylaActivityPill(steps: actionSteps)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 10)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+                    if !replyFloatsOverChat { shelfReplyBubble(topPadding: actionSteps.isEmpty ? 26 : 0, lineLimit: 6) }
+                }
             }
             .overlay {
                 if let voice, isTalking {
