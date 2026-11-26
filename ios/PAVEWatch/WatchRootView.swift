@@ -17,6 +17,9 @@ struct WatchRootView: View {
                     WatchVoiceView(model: model)
                 }
                 .environment(sessions)
+                // The colour of the iPhone's theme, in the orb and everything around it.
+                .environment(\.paveOrbPalette, WatchPreferences.shared.orbPalette)
+                .tint(WatchPreferences.shared.accentColor)
                 // A code just approved on the iPhone comes up by itself.
                 .sheet(item: Binding(get: { newCode }, set: { if $0 == nil { newCode = nil } })) { code in
                     WatchSharedCodeView(code: code)

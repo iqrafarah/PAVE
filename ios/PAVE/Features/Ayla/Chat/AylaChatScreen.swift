@@ -2871,7 +2871,10 @@ struct AylaChatScreen: View {
             inSettings(.appearance) { await profile?.setVaultLayout(layout) }
             return "Je kluis opent nu als \(layout == .list ? "lijst" : "raster")."
         case .voiceText(let isOn):
-            inSettings(.ayla) { showsVoiceText = isOn }
+            inSettings(.ayla) {
+                showsVoiceText = isOn
+                WatchBridge.shared.update()
+            }
             return "Tekst bij praten met Ayla staat nu \(isOn ? "aan" : "uit")."
         case .chatsInSearch(let isOn):
             inSettings(.privacy) { UserDefaults.standard.set(isOn, forKey: AylaSpotlight.settingKey) }

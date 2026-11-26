@@ -54,6 +54,7 @@ final class WatchSessionStore: NSObject, WCSessionDelegate {
     }
 
     private func apply(_ message: [String: Any]) {
+        WatchPreferences.shared.apply(message)
         switch WatchLink.update(from: message) {
         case .session(let new):
             session = new

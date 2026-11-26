@@ -21,13 +21,13 @@ struct WatchMenuView: View {
                         Image(.watchIconPlus).renderingMode(.template)
                     }
                 }
-                .listItemTint(.brandGreen)
+                .listItemTint(WatchPreferences.shared.accentColor)
 
                 if let step = sessions.nextStep, step.date > .now {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Volgende stap")
                             .font(.caption2)
-                            .foregroundStyle(Color.brandGreen)
+                            .foregroundStyle(WatchPreferences.shared.accentColor)
                         Text(WatchNextStep.title(step))
                             .font(.headline)
                         Text(WatchNextStep.when(step))

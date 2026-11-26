@@ -19,7 +19,7 @@ struct WatchSharedCodeView: View {
                     .foregroundStyle(.white)
                     .padding(8)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.brandGreen.gradient, in: .rect(cornerRadius: 10))
+                    .background(WatchPreferences.shared.accentColor.gradient, in: .rect(cornerRadius: 10))
                     .accessibilityElement(children: .combine)
                 }
                 if let image = UIImage(data: code.png) {
