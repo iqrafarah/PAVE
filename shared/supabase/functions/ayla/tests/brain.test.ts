@@ -1032,6 +1032,38 @@ test('a step is done or skipped on the user\'s words, not on an okay', () => {
   assert.equal(saysStepIs('active', 'Oké', []), true)
 })
 
+test('Ayla reads the files of evidence after a Ja, once per conversation, and gets them in her next round', async () => {
+  const asks = model(say('Daarvoor moet ik op je cijferlijst kijken.', { intent: 'act', actions: [{ do: 'readEvidence', value: null, target: 'Cijferlijst vwo' }] }))
+  const first = await answer({ request: { ...request, text: 'Heb ik natuurkunde gehaald?' }, conversationId: 'c', history: [] }, { complete: asks.complete, newId: ids() })
+  assert.deepEqual(first.actions, [{ do: 'readEvidence', target: 'Cijferlijst vwo', confirm: true }])
+  assert.equal(first.text, 'Mag ik in de bestanden van "Cijferlijst vwo" kijken? Ik lees ze alleen voor dit gesprek en bewaar ze niet.')
+  assert.ok(first.question)
+
+  // Let in before in this conversation: no second Ja.
+  const again = model(say('Ik kijk nog eens.', { intent: 'act', actions: [{ do: 'readEvidence', value: null, target: 'cijferlijst VWO' }] }))
+  const second = await answer({ request: { ...request, text: 'En scheikunde?', app: { readFiles: ['Cijferlijst vwo'] } }, conversationId: 'c', history: [] }, { complete: again.complete, newId: ids() })
+  assert.deepEqual(second.actions, [{ do: 'readEvidence', target: 'cijferlijst VWO' }])
+  assert.equal(second.question, undefined)
+
+  // The round after the Ja carries the files, marked as material from the vault.
+  const reads = model(say('Op je cijferlijst staat natuurkunde met een 7,2: dat heb je gehaald.'))
+  const round = await answer({
+    request: { ...request, conversationId: 'c', text: '(vervolg)', results: [{ do: 'readEvidence', ok: true }], attachments: [{ name: 'cijferlijst.pdf', text: 'Natuurkunde 7,2\nScheikunde 6,8' }] },
+    conversationId: 'c', history: [],
+  }, { complete: reads.complete, newId: ids() })
+  assert.match(round.text, /7,2/)
+  const sent = JSON.stringify(reads.calls.at(-1))
+  assert.match(sent, /Natuurkunde 7,2/)
+  assert.match(sent, /bestanden van het bewijs uit de kluis/)
+  assert.match(sent, /stel niet voor ze toe te voegen/)
+})
+
+test('the app may tell which evidence Ayla may read in this conversation', () => {
+  const parsed = parseRequest({ ...request, app: { readFiles: ['Cijferlijst vwo'] } })
+  assert.ok(typeof parsed !== 'string')
+  assert.deepEqual(parsed.app?.readFiles, ['Cijferlijst vwo'])
+})
+
 test('what cannot be undone waits for a Ja to a question with fixed words', async () => {
   const fake = model(say('Ik heb het verwijderd!', { actions: [{ do: 'deleteEvidence', value: null, target: 'Eindstage' }], navigation: { screen: 'vault', item: null } }))
   const reply = await answer({ request, conversationId: 'c', history: [] }, { complete: fake.complete, newId: ids() })

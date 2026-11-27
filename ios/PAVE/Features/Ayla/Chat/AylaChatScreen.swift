@@ -2873,7 +2873,9 @@ struct AylaChatScreen: View {
         // Only then: when all went well she has said what she did, and a round of her own would be her talking again
         // without being asked. A job too big for one go shows by a full list of steps.
         let hasMore = continues && actions.count >= AylaChatModel.stepsPerRound
-        let goesOn = (hasMore || results.contains { !$0.ok }) && model.canContinue && !actions.contains(where: \.needsConfirmation)
+        // Reading evidence is the start of her answer: with the files she goes on at once, also after your Ja.
+        let reads = actions.contains { $0.kind == "readEvidence" } && results.contains { $0.kind == "readEvidence" && $0.ok }
+        let goesOn = ((hasMore || results.contains { !$0.ok }) && !actions.contains(where: \.needsConfirmation) || reads) && model.canContinue
         if goesOn {
             try? await Task.sleep(for: .milliseconds(500))
             guard actionRun == token else { return }
@@ -2937,7 +2939,8 @@ struct AylaChatScreen: View {
             plans: plans.map { AylaPlanActions.lines($0.plans) },
             projects: model.conversationList.projects.map(\.name),
             invitations: sharing?.fairApplications.map(AylaPlanActions.invitationLines),
-            applications: AylaPlanActions.applicationLines(ApplicationStore().all())
+            applications: AylaPlanActions.applicationLines(ApplicationStore().all()),
+            readFiles: model.readFileTitles
         )
     }
 
@@ -3272,6 +3275,19 @@ struct AylaChatScreen: View {
             }
             await model.addSources([item.id], to: project)
             if model.sourcesProblem != nil { return .failed(AylaMessages.actionUnavailable) }
+        case "readEvidence":
+            // After your Ja: the files of that evidence go with her next round, read on this iPhone, and are not kept.
+            guard let vault, let found = item() else { return .failed(AylaMessages.actionNoItem(action.target ?? "")) }
+            let files = Array((vault.documents(of: found) + [vault.cover(of: found)].compactMap { $0 }).prefix(4))
+            guard !files.isEmpty else { return .failed(AylaMessages.actionNoFiles(found.title)) }
+            var read: [AylaAttachment] = []
+            for file in files {
+                guard let data = await vault.data(of: file),
+                      let attachment = try? await AttachmentReader.read(data: data, name: file.name, mimeType: file.mimeType) else { continue }
+                read.append(attachment)
+            }
+            guard !read.isEmpty else { return .failed(AylaMessages.actionFilesUnreadable(found.title)) }
+            model.letRead(read, of: found.title)
         case "deletePlan":
             guard let plans, let plan = AylaPlanActions(plans: plans, chatPlan: nil).plan(named: action.target) else {
                 return .failed(AylaMessages.actionNoPlan(action.target))

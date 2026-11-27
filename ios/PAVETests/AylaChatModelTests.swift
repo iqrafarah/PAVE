@@ -655,6 +655,30 @@ struct AylaChatModelTests {
         #expect(model.draft.isEmpty)
     }
 
+    @Test func theFilesOfEvidenceGoWithHerNextRoundOnlyAndSheRemembersSheMayRead() async throws {
+        let ayla = FakeAyla()
+        let first = AylaReply(id: "r1", conversationId: "c", text: "Mag ik in de bestanden van \"Cijferlijst vwo\" kijken?", actions: [AylaAppAction("readEvidence", target: "Cijferlijst vwo", confirm: true)])
+        let second = AylaReply(id: "r2", conversationId: "c", text: "Je hebt natuurkunde gehaald met een 7,2.")
+        let third = AylaReply(id: "r3", conversationId: "c", text: "Graag gedaan.")
+        ayla.replies = [.success(first), .success(second), .success(third)]
+        let model = AylaChatModel(service: ayla)
+        model.send("Heb ik natuurkunde gehaald?")
+        await waitUntilIdle(model)
+        let file = try #require(AylaAttachment(name: "cijferlijst.pdf", text: "Natuurkunde 7,2"))
+        model.letRead([file], of: "Cijferlijst vwo")
+        model.continueAfter([AylaRequest.ActionResult("readEvidence", ok: true)], spoken: false, otherwise: nil)
+        await waitUntilIdle(model)
+        #expect(ayla.requests.last?.attachments == [file])
+        #expect(model.readFileTitles == ["Cijferlijst vwo"])
+        // The next question goes without the files: they were for that one round.
+        model.send("Bedankt")
+        await waitUntilIdle(model)
+        #expect(ayla.requests.last?.attachments?.isEmpty ?? true)
+        // A new conversation starts without the permission.
+        model.newConversation()
+        #expect(model.readFileTitles.isEmpty)
+    }
+
     @Test func anOpenVacancyGoesAlongWithTheChosenItems() async {
         let model = AylaChatModel(service: FakeAyla())
         let vacancy = Vacancy(id: "v", title: "Developer", company: "Bedrijf", source: .jooble)
