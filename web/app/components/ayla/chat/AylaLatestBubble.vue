@@ -37,7 +37,7 @@ const emit = defineEmits<{
       <AylaSlashIcon :blocks="4" class="mt-0.5 h-4 w-2.5" />
       <p class="min-w-0 flex-1 whitespace-pre-wrap break-words text-xs font-semibold text-brand">
         <span class="sr-only">{{ AYLA_NAME }}:</span>
-        {{ shownText }}
+        <span translate="no">{{ shownText }}</span>
       </p>
     </div>
   </div>

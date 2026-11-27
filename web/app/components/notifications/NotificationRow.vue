@@ -20,6 +20,8 @@ const notification = computed(() => props.entry.notification);
 const isUnread = computed(() => props.entry.isUnread && !props.isTrash);
 const subtitle = computed(() => entrySubtitle(props.entry));
 const time = computed(() => notificationTime(notification.value.date));
+// An e-mail's people and subject, and the title of a chat, are what people wrote: never translated.
+const isOwnText = computed(() => notification.value.kind === 'email' || notification.value.kind === 'conversation');
 
 const actionButton =
   'flex size-8 items-center justify-center rounded-lg text-subtle hover:bg-tint hover:text-heading focus-visible:outline-2 focus-visible:outline-brand';
@@ -37,10 +39,10 @@ const actionButton =
     >
       <NotificationKindIcon :kind="notification.kind" class="mt-0.5" />
       <span class="min-w-0 flex-1">
-        <span :class="isUnread ? 'font-semibold' : 'font-medium'" class="line-clamp-2 text-sm text-heading">
+        <span :translate="isOwnText ? 'no' : undefined" :class="isUnread ? 'font-semibold' : 'font-medium'" class="line-clamp-2 text-sm text-heading">
           {{ notification.title }}
         </span>
-        <span v-if="subtitle" class="mt-0.5 block truncate text-xs text-subtle">{{ subtitle }}</span>
+        <span v-if="subtitle" :translate="notification.kind === 'email' ? 'no' : undefined" class="mt-0.5 block truncate text-xs text-subtle">{{ subtitle }}</span>
         <span v-if="hint" class="mt-1 block text-xs font-medium text-brand">{{ hint }}</span>
       </span>
       <span class="flex shrink-0 flex-col items-end gap-1.5 group-hover:invisible group-focus-within:invisible">

@@ -39,7 +39,7 @@ function handleMenuChoice(id: string) {
       class="flex min-w-0 flex-1 flex-col gap-0.5 rounded-lg py-1 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       @click="emit('edit')"
     >
-      <span :class="isEnabled ? 'text-heading' : 'text-subtle'" class="break-words text-sm font-medium leading-snug">
+      <span translate="no" :class="isEnabled ? 'text-heading' : 'text-subtle'" class="break-words text-sm font-medium leading-snug">
         {{ note.text }}
       </span>
       <span class="text-xs/normal text-subtle">{{ sourceLine }}</span>

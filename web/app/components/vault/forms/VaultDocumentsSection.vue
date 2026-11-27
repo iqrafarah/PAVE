@@ -33,7 +33,7 @@ const count = computed(() => props.saved.length + props.files.length);
       class="flex min-h-14 items-center gap-3.5 rounded-xl bg-tint py-2 pl-3 pr-2"
     >
       <VaultIcon src="/images/vault/icons/DocumentSolid.svg" class="size-6 text-brand" />
-      <span class="min-w-0 flex-1 truncate text-sm font-semibold text-heading">{{ file.name }}</span>
+      <span translate="no" class="min-w-0 flex-1 truncate text-sm font-semibold text-heading">{{ file.name }}</span>
       <button
         type="button"
         :aria-label="`${VAULT_REMOVE_FILE}: ${file.name}`"

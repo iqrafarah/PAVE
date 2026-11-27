@@ -33,7 +33,7 @@ const isExample = computed(() => props.vacancy.source === 'example');
 
     <div class="min-w-0 flex-1">
       <p v-if="isExample" class="mb-1 text-xs font-medium text-warning">{{ AYLA_EXAMPLE_LABEL }}</p>
-      <h3 class="text-base font-semibold text-ink">{{ vacancy.title }}</h3>
+      <h3 translate="no" class="text-base font-semibold text-ink">{{ vacancy.title }}</h3>
       <ul class="mt-2 space-y-1.5 text-sm text-muted">
         <li class="flex items-center gap-2">
           <LayoutIcon name="building" />
@@ -77,6 +77,7 @@ const isExample = computed(() => props.vacancy.source === 'example');
         <LayoutIcon name="external" />
         <span class="sr-only">(opent in een nieuw tabblad)</span>
       </a>
+      <PlanVacancyLink :vacancy="vacancy" />
     </div>
   </article>
 </template>

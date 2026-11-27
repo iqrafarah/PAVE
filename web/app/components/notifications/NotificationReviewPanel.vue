@@ -82,7 +82,7 @@ watch(() => props.notification.id, load, { immediate: true });
             </div>
             <div class="flex flex-col gap-2 p-4 pt-10">
               <div class="flex flex-wrap items-start justify-between gap-2">
-                <p class="font-heading text-lg font-semibold text-heading">{{ item.title }}</p>
+                <p translate="no" class="font-heading text-lg font-semibold text-heading">{{ item.title }}</p>
                 <VaultStatusBadge status="toVerify" is-awaiting />
               </div>
               <p class="text-xs text-subtle">{{ categoryTitle }}</p>
@@ -98,7 +98,7 @@ watch(() => props.notification.id, load, { immediate: true });
           </section>
           <section v-if="item.description">
             <h3 class="text-xs font-medium text-subtle">{{ REVIEW_DESCRIPTION }}</h3>
-            <p class="mt-1 whitespace-pre-wrap text-sm text-heading">{{ item.description }}</p>
+            <p translate="no" class="mt-1 whitespace-pre-wrap text-sm text-heading">{{ item.description }}</p>
           </section>
           <section v-if="item.skills.length">
             <h3 class="text-xs font-medium text-subtle">{{ REVIEW_SKILLS }}</h3>
@@ -120,7 +120,7 @@ watch(() => props.notification.id, load, { immediate: true });
               class="flex items-center gap-2.5 rounded-xl border border-card-line bg-white p-3 text-sm font-medium text-heading hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand"
             >
               <VaultIcon src="/images/vault/icons/DocumentSolid.svg" class="size-5 text-brand" />
-              <span class="min-w-0 flex-1 truncate">{{ file.name }}</span>
+              <span translate="no" class="min-w-0 flex-1 truncate">{{ file.name }}</span>
               <LayoutIcon name="external" class="size-4 text-subtle" />
             </a>
           </li>

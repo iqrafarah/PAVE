@@ -126,7 +126,7 @@ async function remove(item: VaultItem) {
     <ul v-else-if="items.length" class="mt-2">
       <li v-for="item in items" :key="item.id" class="group flex items-center gap-2 rounded-bubble px-4 py-3 transition-colors hover:bg-tint">
         <VaultIcon :src="CATEGORY_FOLDER_ICONS[item.category]" class="size-4 text-brand" />
-        <span class="min-w-0 flex-1 truncate text-sm font-medium text-heading">{{ item.title }}</span>
+        <span translate="no" class="min-w-0 flex-1 truncate text-sm font-medium text-heading">{{ item.title }}</span>
         <span class="shrink-0 text-xs text-subtle">{{ formatDate(item.updatedAt) }}</span>
         <button
           type="button"

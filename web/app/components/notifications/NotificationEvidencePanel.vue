@@ -38,7 +38,7 @@ const secondaryButton =
         <VaultLogo :name="item.organisationName ?? item.title" :logo-url="item.logoUrl" :size="52" />
         <div class="min-w-0 flex-1">
           <div class="flex flex-wrap items-center gap-2">
-            <p class="truncate font-semibold text-heading">{{ item.title }}</p>
+            <p translate="no" class="truncate font-semibold text-heading">{{ item.title }}</p>
             <VaultStatusBadge :status="item.status" :is-awaiting="isAwaitingReview(item)" />
           </div>
           <div class="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs font-medium text-subtle">

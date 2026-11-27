@@ -2,7 +2,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js';
 
 const FUNCTION_NAME = 'vault-review';
 
-export type VaultReviewAction = 'inbox' | 'detail' | 'create' | 'resolve';
+export type VaultReviewAction = 'inbox' | 'detail' | 'create' | 'resolve' | 'contactPhotos';
 
 type VaultReviewResult<T> = { data: T; errorCode: null } | { data: null; errorCode: string };
 

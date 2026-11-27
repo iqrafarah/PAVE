@@ -1,18 +1,17 @@
 <script setup lang="ts">
-import type { NotificationKind, NotificationTab } from '~/types/notifications';
+import type { NotificationTab } from '~/types/notifications';
 
-// The bar above the inbox, in the style of the vault's toolbar: Alle and Ongelezen, Soort, search, "Alles gelezen"
-// and "Recent verwijderd". With e-mail: "Nieuw bericht" once a mailbox is connected, and E-mail to connect one.
-const props = defineProps<{
-  kinds: NotificationKind[];
-  totalCount: number;
+// The bar above the inbox, in the style of the vault's toolbar: the tabs Alles, Gesprekken, Werk and Bewijs (as on
+// iOS), search, "Alles gelezen" and "Recent verwijderd". With e-mail: "Nieuw bericht" once a mailbox is connected, and
+// E-mail to connect one.
+defineProps<{
   unreadCount: number;
   trashCount: number;
   hasEmail?: boolean;
+  showsEmail?: boolean;
 }>();
 
 const tab = defineModel<NotificationTab>('tab', { required: true });
-const kind = defineModel<NotificationKind | null>('kind', { required: true });
 const searchText = defineModel<string>('searchText', { required: true });
 
 const emit = defineEmits<{
@@ -23,18 +22,7 @@ const emit = defineEmits<{
 }>();
 
 const searchId = useId();
-const kindOptions = computed(() => [
-  { id: '', label: NOTIFICATIONS_FILTER_ALL_KINDS, isChecked: kind.value === null },
-  ...props.kinds.map((entry) => ({ id: entry, label: NOTIFICATION_KIND_TITLES[entry], isChecked: kind.value === entry })),
-]);
-const tabs = computed(() => [
-  { id: 'all' as const, label: NOTIFICATIONS_TAB_ALL, count: props.totalCount },
-  { id: 'unread' as const, label: NOTIFICATIONS_UNREAD, count: props.unreadCount },
-]);
-
-function chooseKind(id: string) {
-  kind.value = (id || null) as NotificationKind | null;
-}
+const TABS: NotificationTab[] = ['all', 'conversations', 'applications', 'evidence'];
 
 const textButton =
   'flex h-9 items-center gap-2 rounded-lg px-2.5 text-sm font-medium text-heading hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand disabled:text-subtle disabled:hover:bg-transparent';
@@ -43,31 +31,17 @@ const filterTab = 'flex h-9 items-center gap-1 rounded-lg px-2.5 text-[0.9375rem
 
 <template>
   <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-    <div class="flex flex-wrap items-center gap-1.5">
+    <div class="flex flex-wrap items-center gap-1.5" role="group" :aria-label="NOTIFICATION_TABS_LABEL">
       <button
-        v-for="option in tabs"
-        :key="option.id"
+        v-for="option in TABS"
+        :key="option"
         type="button"
-        :aria-pressed="tab === option.id"
-        :class="[filterTab, tab === option.id ? 'bg-tint' : 'hover:bg-surface']"
-        @click="tab = option.id"
+        :aria-pressed="tab === option"
+        :class="[filterTab, tab === option ? 'bg-tint' : 'hover:bg-surface']"
+        @click="tab = option"
       >
-        {{ option.label }}
-        <span class="min-w-5 rounded-full bg-white px-1.5 text-center text-xs text-subtle">{{ option.count }}</span>
+        {{ NOTIFICATION_TABS[option] }}
       </button>
-      <VaultMenu
-        class="ml-1.5"
-        :label="NOTIFICATIONS_FILTER_TYPE"
-        :options="kindOptions"
-        :summary="kind ? NOTIFICATION_KIND_TITLES[kind] : undefined"
-        :toggle-class="[filterTab, kind ? 'bg-tint' : 'hover:bg-surface'].join(' ')"
-        @select="chooseKind"
-      >
-        <template #label>
-          {{ kind ? NOTIFICATION_KIND_TITLES[kind] : NOTIFICATIONS_FILTER_TYPE }}
-          <LayoutIcon name="chevronDown" class="size-3.5" />
-        </template>
-      </VaultMenu>
     </div>
 
     <div class="flex flex-wrap items-center gap-1.5">
@@ -80,7 +54,7 @@ const filterTab = 'flex h-9 items-center gap-1 rounded-lg px-2.5 text-[0.9375rem
         <LayoutPaveIcon name="compose" class="size-4" />
         {{ EMAIL_NEW_MESSAGE }}
       </button>
-      <button type="button" :class="textButton" @click="emit('openEmail')">
+      <button v-if="showsEmail" type="button" :class="textButton" @click="emit('openEmail')">
         <VaultIcon src="/images/notifications/envelope.svg" class="size-4" />
         {{ EMAIL_ACCOUNT_BUTTON }}
       </button>

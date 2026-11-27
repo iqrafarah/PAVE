@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { NotificationEntry, NotificationKind, NotificationTab, ReviewOutcome } from '~/types/notifications';
+import type { NotificationEntry, NotificationTab, ReviewOutcome } from '~/types/notifications';
 
 // The inbox as on a desktop mail app: the list on the left, the opened notification on the right (on a small screen one
 // at a time). Which one is open is in the address (?melding=), so the back button and a link from the banner work.
@@ -16,11 +16,11 @@ const route = useRoute();
 const router = useRouter();
 const notifications = useNotifications();
 const vault = useVault();
+const fair = useFairInvitations();
 const email = useEmail();
 const isEmailOpen = ref(false);
 const isComposeOpen = ref(false);
 const tab = ref<NotificationTab>('all');
-const kind = ref<NotificationKind | null>(null);
 const searchText = ref('');
 const isTrashOpen = ref(false);
 const openedItemId = ref<string | null>(null);
@@ -35,14 +35,32 @@ let resolvedTimer: ReturnType<typeof setTimeout> | undefined;
 const state = computed(() => notifications.state.value);
 const inbox = computed(() => [...inboxOf(state.value.notifications), ...email.threads.value.map(threadAsNotification)]);
 const kinds = computed(() => availableKinds(state.value.audience, inbox.value));
-const shownInbox = computed(() => applyNotificationFilter(inbox.value, kinds.value, { tab: 'all', searchText: '', kind: null }));
+const shownInbox = computed(() => applyNotificationFilter(inbox.value, kinds.value, { tab: 'all', searchText: '' }));
 const visible = computed(() =>
-  applyNotificationFilter(inbox.value, kinds.value, { tab: tab.value, searchText: searchText.value, kind: kind.value }),
+  applyNotificationFilter(inbox.value, kinds.value, { tab: tab.value, searchText: searchText.value }),
 );
 const sections = computed(() => groupEntries(visible.value));
 const unreadCount = computed(() => shownInbox.value.filter((entry) => entry.isUnread).length);
 const trash = computed(() => trashOf(state.value.notifications));
-const isFiltered = computed(() => Boolean(searchText.value.trim()) || kind.value !== null || tab.value === 'unread');
+const isFiltered = computed(() => Boolean(searchText.value.trim()));
+/** The fair's invitations above the list, under Alles and Werk, while not searching (iOS). */
+const showsFair = computed(() => !isFiltered.value && tabShowsApplications(tab.value) && fair.shown.value.length > 0);
+/** "Je bent helemaal bij", or what the tab is for. */
+const emptyText = computed(() => {
+  switch (tab.value) {
+    case 'conversations':
+      return {
+        title: NOTIFICATIONS_EMPTY_CONVERSATIONS_TITLE,
+        message: email.hasAccount.value ? NOTIFICATIONS_EMPTY_CONVERSATIONS_MESSAGE : NOTIFICATIONS_EMPTY_CONVERSATIONS_NO_ACCOUNT,
+      };
+    case 'applications':
+      return { title: NOTIFICATIONS_EMPTY_APPLICATIONS_TITLE, message: NOTIFICATIONS_EMPTY_APPLICATIONS_MESSAGE };
+    case 'evidence':
+      return { title: NOTIFICATIONS_EMPTY_EVIDENCE_TITLE, message: NOTIFICATIONS_EMPTY_MESSAGE[state.value.audience] };
+    default:
+      return { title: NOTIFICATIONS_EMPTY_TITLE, message: NOTIFICATIONS_EMPTY_MESSAGE[state.value.audience] };
+  }
+});
 const selectedId = computed(() => (typeof route.query[QUERY_KEY] === 'string' ? route.query[QUERY_KEY] : null));
 const selected = computed(() => inbox.value.find((entry) => entry.id === selectedId.value) ?? null);
 
@@ -168,13 +186,11 @@ onBeforeUnmount(() => {
 
       <NotificationToolbar
         v-model:tab="tab"
-        v-model:kind="kind"
         v-model:search-text="searchText"
-        :kinds="kinds"
-        :total-count="shownInbox.length"
         :unread-count="unreadCount"
         :trash-count="trash.length"
         :has-email="email.hasAccount.value"
+        :shows-email="email.state.value.isAvailable"
         @mark-all-read="markAllRead"
         @open-trash="isTrashOpen = true"
         @compose="isComposeOpen = true"
@@ -200,14 +216,18 @@ onBeforeUnmount(() => {
             {{ state.loadError }}
             <button type="button" class="ml-1 font-semibold underline" @click="notifications.load()">{{ NOTIFICATIONS_RETRY }}</button>
           </div>
-          <LayoutEmptyState
-            v-else-if="!visible.length"
-            :icon="isFiltered ? 'search' : 'mailOpen'"
-            :title="isFiltered ? NOTIFICATIONS_NONE_FOUND_TITLE : NOTIFICATIONS_EMPTY_TITLE"
-            :message="isFiltered ? NOTIFICATIONS_NONE_FOUND_MESSAGE : NOTIFICATIONS_EMPTY_MESSAGE[state.audience]"
-            class="py-16"
-          />
-          <NotificationList v-else :sections="sections" :selected-id="selectedId" class="py-2" @open="open" @action="handleAction" />
+          <template v-else>
+            <NotificationFairSection v-show="showsFair" class="px-1 pb-2 pt-2" />
+            <!-- The invitations above are what there is: no "nothing here" under them. -->
+            <LayoutEmptyState
+              v-if="!visible.length && !(showsFair && tab === 'applications')"
+              :icon="isFiltered ? 'search' : 'mailOpen'"
+              :title="isFiltered ? NOTIFICATIONS_NONE_FOUND_TITLE : emptyText.title"
+              :message="isFiltered ? NOTIFICATIONS_NONE_FOUND_MESSAGE : emptyText.message"
+              class="py-16"
+            />
+            <NotificationList v-else-if="visible.length" :sections="sections" :selected-id="selectedId" class="py-2" @open="open" @action="handleAction" />
+          </template>
         </div>
 
         <div :class="selected ? '' : 'max-lg:hidden'" class="min-w-0 flex-1 overflow-y-auto">

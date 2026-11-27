@@ -502,7 +502,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateShelfFade));
           <div class="flex w-full items-center gap-3">
             <VaultFolderBadge v-if="openEntry" :icon="openEntry.iconSrc" :color="openEntry.hex" :icon-color="openEntry.iconColor" size="large" />
             <div class="flex min-w-0 flex-1 flex-col">
-              <h3 class="truncate font-heading text-xl font-semibold text-heading">{{ shelfFolder?.name }}</h3>
+              <h3 translate="no" class="truncate font-heading text-xl font-semibold text-heading">{{ shelfFolder?.name }}</h3>
               <p class="text-xs font-medium text-ink-soft">{{ itemCount(vault.count(filter.shelf)) }}</p>
             </div>
             <AylaRowMenu

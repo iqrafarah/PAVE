@@ -35,7 +35,11 @@ export interface NotificationEntry {
   isUnread: boolean;
 }
 
-export type NotificationTab = 'all' | 'unread';
+/**
+ * The tabs above Meldingen (iOS NotificationTab): everything, the people you write with (e-mail), what employers
+ * answered (the fair, above the list), and what happens to your evidence.
+ */
+export type NotificationTab = 'all' | 'conversations' | 'applications' | 'evidence';
 
 /** "Actie nodig" first (open verification requests), then Vandaag, Deze week and Eerder. */
 export interface NotificationSection {

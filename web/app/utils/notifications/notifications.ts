@@ -27,8 +27,25 @@ const USUAL_KINDS: Record<NotificationAudience, NotificationKind[]> = {
 export interface NotificationFilter {
   tab: NotificationTab;
   searchText: string;
-  // Null: every kind; otherwise only this one.
-  kind: NotificationKind | null;
+}
+
+/** Which kinds a tab shows; Ayla's chats live in Ayla, so their meldingen stay under Alles (iOS NotificationTab.includes). */
+export function tabIncludes(tab: NotificationTab, kind: NotificationKind) {
+  switch (tab) {
+    case 'all':
+      return true;
+    case 'conversations':
+      return kind === 'email';
+    case 'applications':
+      return false;
+    case 'evidence':
+      return kind === 'evidence_verified' || kind === 'evidence_rejected' || kind === 'verification_request';
+  }
+}
+
+/** Invitations from the fair are no meldingen of their own but a section above the list, under Alles and Werk. */
+export function tabShowsApplications(tab: NotificationTab) {
+  return tab === 'all' || tab === 'applications';
 }
 
 /** What the role normally gets, plus what is in the inbox: a reviewer still sees the decisions on their own evidence. */
@@ -90,7 +107,7 @@ export function applyNotificationFilter(inbox: PaveNotification[], kinds: Notifi
   const entries: NotificationEntry[] = [];
   const matching = inbox
     .filter((notification) => kinds.includes(notification.kind))
-    .filter((notification) => !filter.kind || notification.kind === filter.kind)
+    .filter((notification) => tabIncludes(filter.tab, notification.kind))
     .filter((notification) => matchesSearch(notification, filter.searchText))
     .sort((a, b) => b.date.localeCompare(a.date));
   for (const notification of matching) {
@@ -103,7 +120,7 @@ export function applyNotificationFilter(inbox: PaveNotification[], kinds: Notifi
     const isUnread = inbox.some((entry) => ids.includes(entry.id) && entry.isUnread);
     entries.push({ notification, ids, isUnread });
   }
-  return filter.tab === 'unread' ? entries.filter((entry) => entry.isUnread) : entries;
+  return entries;
 }
 
 function startOfDay(date: Date) {

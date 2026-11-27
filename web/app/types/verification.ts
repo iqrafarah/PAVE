@@ -11,6 +11,26 @@ export interface ValidationOrganization {
 }
 
 /**
+ * One location of an organisation, chosen in one go: "Albert Heijn · Breda" (validation_search_places). A location can
+ * be run by other people than the rest of the organisation, so the request goes to someone there.
+ */
+export interface ValidationPlace {
+  organizationId: string;
+  organizationName: string;
+  kind: ValidationOrganizationKind;
+  // organizations.logo_url, only an https address.
+  logoUrl: string | null;
+  locationId: string;
+  city: string;
+  // "Westermarkt", when the organisation has more than one location in the city.
+  locationName: string | null;
+  // The street address, so the learner knows which location it is.
+  address: string | null;
+  // How many persons here may confirm this kind of evidence; 0 when nobody may any more.
+  availableContacts: number;
+}
+
+/**
  * A person a learner can ask, with where they work (validation_search_contacts). Which PAVE account is behind them
  * stays hidden (reviewer_id).
  */
@@ -24,6 +44,8 @@ export interface ValidationContact {
   departmentName: string;
   locationId: string;
   city: string;
+  // The name of their location ("Westermarkt"), when it has one.
+  locationName: string | null;
   organizationId: string;
   // Only for someone asked before, who may be of another organisation.
   organizationName: string | null;
@@ -34,14 +56,15 @@ export interface ValidationFilterOption {
   filter: 'location' | 'department' | 'function';
   value: string;
   label: string;
-  // For a department: the location it belongs to.
+  // The location it belongs to (functions too, since migration 20261124150000).
   locationId: string | null;
+  // How many persons it has.
+  people: number;
 }
 
-/** Only narrow the list of persons; they are never sent. */
+/** Only narrow the persons at the chosen location; never sent. The department goes by name: "ICT" is one choice. */
 export interface ValidationFilters {
-  locationId: string;
-  departmentId: string;
+  department: string;
   function: string;
 }
 
@@ -58,6 +81,7 @@ export interface ValidationChoice {
 export interface VaultValidationRequest {
   status: 'pending' | 'verified' | 'rejected' | 'cancelled';
   organizationId: string | null;
+  locationId: string | null;
   organisationName: string;
   requestedAt: string;
   response: string | null;

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { VaultItem } from '~/types/vault';
-import type { ValidationContact, ValidationFilters, ValidationOrganization, ValidationOrganizationKind } from '~/types/verification';
+import type { ValidationContact, ValidationFilters, ValidationOrganizationKind, ValidationPlace } from '~/types/verification';
 
 // "Bevestiging aanvragen", as iOS VaultRequestConfirmationSheet: the evidence and what comes with it on top, then the
-// organisation (from the evidence by its ID, a "Bedoel je …?" from the typed name, or found with the search and its
-// kinds), then one person from the list of those who may confirm this kind of evidence, and the button with the name.
+// organisation with one of its locations ("McDonald's · Westermarkt, Tilburg": from an earlier request or the evidence
+// by ID, a "Bedoel je …?" from the typed name, or found with the search and its kinds), then one person there from
+// those who may confirm this kind of evidence, with their photo, and the button with the name.
 // Closing with something chosen asks first. vault-review checks the choice again (docs/verificatie.md).
 const props = defineProps<{
   itemId: string | null;
@@ -14,12 +15,6 @@ const emit = defineEmits<{
   close: [];
 }>();
 
-const KIND_ICONS: Record<ValidationOrganizationKind, 'academicCap' | 'briefcase' | 'flag' | 'userGroup'> = {
-  school: 'academicCap',
-  company: 'briefcase',
-  government: 'flag',
-  other: 'userGroup',
-};
 const KINDS: ValidationOrganizationKind[] = ['school', 'company', 'government', 'other'];
 
 const vault = useVault();
@@ -52,31 +47,18 @@ const sendTitle = computed(() => {
   if (isSending.value) return REQUEST_SENDING;
   return form.contact.value ? REQUEST_SEND_TO(form.contact.value.name) : REQUEST_SEND;
 });
-const showsContactSection = computed(() => Boolean(form.organization.value) || form.previousPeople.value.length > 0);
+const showsContactSection = computed(() => Boolean(form.place.value) || form.previousPeople.value.length > 0);
+const searchTitle = computed(() => {
+  if (form.suggestion.value) return REQUEST_ORGANISATION_SEARCH_OTHER;
+  if (form.suggestedSearch.value) return REQUEST_ORGANISATION_SEARCH_PLACE(form.suggestedSearch.value);
+  return REQUEST_ORGANISATION_SEARCH;
+});
 
-/** Only filters that narrow something: one location means no location filter (as on iOS). */
+/** Only filters that narrow something at this location. The location itself is chosen, not filtered. */
 const filterFields = computed(() => {
-  const options = form.filterOptions.value;
-  const locationId = form.filters.value.locationId;
   const fields: { key: keyof ValidationFilters; label: string; all: string; options: { value: string; label: string }[] }[] = [
-    {
-      key: 'locationId',
-      label: REQUEST_FILTER_LOCATION,
-      all: REQUEST_FILTER_LOCATION_ALL,
-      options: options.filter((option) => option.filter === 'location'),
-    },
-    {
-      key: 'departmentId',
-      label: REQUEST_FILTER_DEPARTMENT,
-      all: REQUEST_FILTER_DEPARTMENT_ALL,
-      options: options.filter((option) => option.filter === 'department' && (!locationId || option.locationId === locationId)),
-    },
-    {
-      key: 'function',
-      label: REQUEST_FILTER_FUNCTION,
-      all: REQUEST_FILTER_FUNCTION_ALL,
-      options: options.filter((option) => option.filter === 'function'),
-    },
+    { key: 'department', label: REQUEST_FILTER_DEPARTMENT, all: REQUEST_FILTER_DEPARTMENT_ALL, options: form.departmentOptions.value },
+    { key: 'function', label: REQUEST_FILTER_FUNCTION, all: REQUEST_FILTER_FUNCTION_ALL, options: form.functionOptions.value },
   ];
   return fields.filter((field) => field.options.length > 1);
 });
@@ -96,12 +78,12 @@ function problem(field: ValidationField) {
 
 function openOrganizationSearch() {
   choosesOrganization.value = true;
-  form.openOrganizationSearch();
+  form.openPlaceSearch();
   nextTick(() => document.getElementById(ids.organizationSearch)?.focus());
 }
 
-function chooseOrganization(organization: ValidationOrganization) {
-  form.pickOrganization(organization);
+function chooseOrganization(place: ValidationPlace) {
+  form.pickPlace(place);
   choosesOrganization.value = false;
 }
 
@@ -159,11 +141,11 @@ watch(
         <span class="sr-only">{{ REQUEST_ORGANISATION_PROMPT }}</span>
         <input
           :id="ids.organizationSearch"
-          :value="form.organizationQuery.value"
+          :value="form.placeQuery.value"
           type="search"
           :placeholder="REQUEST_ORGANISATION_PROMPT"
           class="min-w-0 flex-1 bg-transparent text-sm font-medium text-heading outline-none placeholder:text-subtle"
-          @input="form.searchOrganizations(($event.target as HTMLInputElement).value)"
+          @input="form.searchPlaces(($event.target as HTMLInputElement).value)"
         />
       </label>
       <div class="flex flex-wrap gap-2" role="group" :aria-label="REQUEST_ORGANISATION">
@@ -171,57 +153,60 @@ watch(
           v-for="option in [null, ...KINDS]"
           :key="option ?? 'all'"
           type="button"
-          :aria-pressed="form.organizationKind.value === option"
-          :class="form.organizationKind.value === option ? 'border-brand bg-brand text-white' : 'border-card-border bg-white text-heading hover:bg-surface'"
+          :aria-pressed="form.placeKind.value === option"
+          :class="form.placeKind.value === option ? 'border-brand bg-brand text-white' : 'border-card-border bg-white text-heading hover:bg-surface'"
           class="h-8 rounded-full border px-3.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-          @click="form.setOrganizationKind(option)"
+          @click="form.setPlaceKind(option)"
         >
           {{ option ? REQUEST_KIND_FILTERS[option] : REQUEST_KIND_ALL }}
         </button>
       </div>
 
-      <p v-if="form.isLoadingOrganizations.value && !form.organizations.value.length" role="status" class="py-6 text-center text-sm text-subtle">
+      <p v-if="form.isLoadingPlaces.value && !form.places.value.length" role="status" class="py-6 text-center text-sm text-subtle">
         {{ REQUEST_LOADING }}
       </p>
       <LayoutEmptyState
-        v-else-if="form.organizationsFailed.value"
+        v-else-if="form.placesFailed.value"
         icon="search"
         :title="REQUEST_ORGANISATION_FAILED_TITLE"
         :message="REQUEST_ORGANISATION_FAILED_MESSAGE"
         class="py-6"
       />
       <LayoutEmptyState
-        v-else-if="!form.organizations.value.length"
+        v-else-if="!form.places.value.length"
         icon="search"
         :title="REQUEST_ORGANISATION_NONE_TITLE"
         :message="REQUEST_ORGANISATION_NONE_MESSAGE"
         class="py-6"
       />
-      <ul v-else class="flex flex-col divide-y divide-card-line rounded-2xl border border-card-border bg-white" :aria-busy="form.isLoadingOrganizations.value">
-        <li v-for="organization in form.organizations.value" :key="organization.id">
+      <ul v-else class="flex flex-col divide-y divide-card-line rounded-2xl border border-card-border bg-white" :aria-busy="form.isLoadingPlaces.value">
+        <li v-for="entry in form.places.value" :key="entry.locationId">
           <button
             type="button"
-            :aria-pressed="form.organization.value?.id === organization.id"
+            :aria-pressed="form.place.value?.locationId === entry.locationId"
+            :aria-label="[placeTitle(entry), entry.address].filter(Boolean).join(', ')"
             class="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
-            @click="chooseOrganization(organization)"
+            @click="chooseOrganization(entry)"
           >
+            <VaultLogo :name="entry.organizationName" :logo-url="entry.logoUrl" :size="34" />
             <span class="flex min-w-0 flex-1 flex-col gap-0.5">
-              <span class="text-sm font-medium text-heading">{{ organization.name }}</span>
-              <span class="text-xs text-subtle">{{ organizationDetails(organization, !form.organizationKind.value) }}</span>
+              <span class="text-sm font-medium text-heading">{{ entry.organizationName }}</span>
+              <span class="text-xs text-subtle">{{ placeDetails(entry, !form.placeKind.value) }}</span>
+              <span v-if="entry.address" class="truncate text-xs text-subtle">{{ entry.address }}</span>
             </span>
-            <LayoutIcon v-if="form.organization.value?.id === organization.id" name="check" class="size-4 shrink-0 text-brand" />
+            <LayoutIcon v-if="form.place.value?.locationId === entry.locationId" name="check" class="size-4 shrink-0 text-brand" />
           </button>
         </li>
       </ul>
       <button
-        v-if="form.organizations.value.length < form.organizationTotal.value"
+        v-if="form.places.value.length < form.placeTotal.value"
         type="button"
-        :disabled="form.isLoadingMoreOrganizations.value"
+        :disabled="form.isLoadingMorePlaces.value"
         :class="linkButton"
         class="h-10 self-center"
-        @click="form.loadMoreOrganizations()"
+        @click="form.loadMorePlaces()"
       >
-        {{ form.isLoadingMoreOrganizations.value ? REQUEST_LOADING : REQUEST_LOAD_MORE(form.organizations.value.length, form.organizationTotal.value) }}
+        {{ form.isLoadingMorePlaces.value ? REQUEST_LOADING : REQUEST_LOAD_MORE(form.places.value.length, form.placeTotal.value) }}
       </button>
     </div>
 
@@ -232,7 +217,7 @@ watch(
       <div class="flex items-center gap-3 rounded-2xl border border-card-border bg-white p-3.5">
         <VaultLogo :name="item.organisationName ?? item.title" :logo-url="item.logoUrl" :size="52" />
         <div class="flex min-w-0 flex-col gap-1">
-          <p class="line-clamp-2 text-sm font-semibold text-heading">{{ item.title }}</p>
+          <p translate="no" class="line-clamp-2 text-sm font-semibold text-heading">{{ item.title }}</p>
           <p v-if="period" class="flex items-center gap-1.5 text-xs font-medium text-heading">
             <VaultIcon src="/images/vault/calendar.svg" class="size-4 shrink-0 text-subtle" />{{ period }}
           </p>
@@ -242,13 +227,12 @@ watch(
 
       <section :aria-labelledby="ids.organization" :class="sectionCard">
         <h3 :id="ids.organization" :class="sectionTitle">{{ REQUEST_ORGANISATION }}</h3>
-        <div v-if="form.organization.value" class="flex items-center gap-3">
-          <span class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-tint text-brand" aria-hidden="true">
-            <LayoutPaveIcon :name="KIND_ICONS[form.organization.value.kind]" class="size-4.5" />
-          </span>
+        <div v-if="form.place.value" class="flex items-center gap-3">
+          <VaultLogo :name="form.place.value.organizationName" :logo-url="form.place.value.logoUrl" :size="40" />
           <span class="flex min-w-0 flex-1 flex-col gap-0.5">
-            <span class="line-clamp-2 text-sm font-semibold text-heading">{{ form.organization.value.name }}</span>
-            <span class="truncate text-xs text-subtle">{{ organizationDetails(form.organization.value) }}</span>
+            <span class="line-clamp-2 text-sm font-semibold text-heading">{{ form.place.value.organizationName }}</span>
+            <span class="line-clamp-2 text-xs text-subtle">{{ placeDetails(form.place.value) }}</span>
+            <span v-if="form.place.value.address" class="truncate text-xs text-subtle">{{ form.place.value.address }}</span>
           </span>
           <button type="button" :class="linkButton" :aria-label="REQUEST_ORGANISATION_CHANGE_LABEL" @click="openOrganizationSearch">
             {{ REQUEST_ORGANISATION_CHANGE }}
@@ -257,18 +241,17 @@ watch(
         <p v-else-if="form.isStarting.value" role="status" class="py-1.5 text-sm text-subtle">{{ REQUEST_LOADING }}</p>
         <template v-else>
           <div v-if="form.suggestion.value" class="flex items-center gap-3">
-            <span class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-tint text-brand" aria-hidden="true">
-              <LayoutPaveIcon :name="KIND_ICONS[form.suggestion.value.kind]" class="size-4.5" />
-            </span>
+            <VaultLogo :name="form.suggestion.value.organizationName" :logo-url="form.suggestion.value.logoUrl" :size="40" />
             <span class="flex min-w-0 flex-1 flex-col gap-0.5">
-              <span class="line-clamp-2 text-sm font-semibold text-heading">{{ REQUEST_SUGGESTION(form.suggestion.value.name) }}</span>
-              <span class="truncate text-xs text-subtle">{{ organizationDetails(form.suggestion.value) }}</span>
+              <span class="line-clamp-2 text-sm font-semibold text-heading">{{ REQUEST_SUGGESTION(form.suggestion.value.organizationName) }}</span>
+              <span class="line-clamp-2 text-xs text-subtle">{{ placeDetails(form.suggestion.value) }}</span>
+              <span v-if="form.suggestion.value.address" class="truncate text-xs text-subtle">{{ form.suggestion.value.address }}</span>
             </span>
             <button
               type="button"
               :class="linkButton"
-              :aria-label="REQUEST_SUGGESTION_CHOOSE_LABEL(form.suggestion.value.name)"
-              @click="form.pickOrganization(form.suggestion.value)"
+              :aria-label="REQUEST_SUGGESTION_CHOOSE_LABEL(placeTitle(form.suggestion.value))"
+              @click="form.pickPlace(form.suggestion.value)"
             >
               {{ REQUEST_SUGGESTION_CHOOSE }}
             </button>
@@ -280,7 +263,7 @@ watch(
             @click="openOrganizationSearch"
           >
             <LayoutPaveIcon name="search" class="size-4 shrink-0" />
-            {{ form.suggestion.value ? REQUEST_ORGANISATION_SEARCH_OTHER : REQUEST_ORGANISATION_SEARCH }}
+            <span class="truncate">{{ searchTitle }}</span>
           </button>
         </template>
         <p v-if="problem('organization')" class="text-xs text-danger">{{ problem('organization') }}</p>
@@ -290,7 +273,7 @@ watch(
         <h3 :id="ids.contact" :class="sectionTitle">{{ REQUEST_CONTACT }}</h3>
 
         <!-- No organisation yet: whom you asked before, with their organisation. -->
-        <div v-if="!form.organization.value" role="radiogroup" :aria-labelledby="ids.contact" class="flex flex-col gap-2">
+        <div v-if="!form.place.value" role="radiogroup" :aria-labelledby="ids.contact" class="flex flex-col gap-2">
           <p :class="subheading">{{ REQUEST_PREVIOUS }}</p>
           <VaultRequestPerson
             v-for="person in form.previousPeople.value"
@@ -298,11 +281,12 @@ watch(
             :person="person"
             :details="contactDetails(person, true)"
             :is-chosen="isChosen(person)"
+            :photo-url="form.photos.value[person.id]"
             @choose="form.choosePerson(person)"
           />
         </div>
 
-        <p v-else-if="form.organization.value.availableContacts === 0" class="text-xs text-subtle">{{ REQUEST_NOBODY_CAN_CONFIRM }}</p>
+        <p v-else-if="form.place.value.availableContacts === 0" class="text-xs text-subtle">{{ REQUEST_NOBODY_CAN_CONFIRM }}</p>
 
         <template v-else>
           <label :for="ids.contactSearch" class="flex h-11 items-center gap-2 rounded-field border border-field-line bg-white px-3 has-focus-visible:border-brand">
@@ -347,6 +331,7 @@ watch(
                 :person="person"
                 :details="contactDetails(person)"
                 :is-chosen="isChosen(person)"
+            :photo-url="form.photos.value[person.id]"
                 @choose="form.choosePerson(person)"
               />
               <p v-if="form.otherPeople.value.length" :class="subheading">{{ REQUEST_ALL_CONTACTS }}</p>
@@ -367,6 +352,7 @@ watch(
                   :person="person"
                   :details="contactDetails(person)"
                   :is-chosen="isChosen(person)"
+            :photo-url="form.photos.value[person.id]"
                   @choose="form.choosePerson(person)"
                 />
               </div>

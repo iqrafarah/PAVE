@@ -115,7 +115,7 @@ watch(
       <div class="flex items-start gap-3.5">
         <VaultLogo :name="item.organisationName ?? item.title" :logo-url="item.logoUrl" :file-name="documents[0]?.name" :size="56" />
         <div class="flex min-w-0 flex-1 flex-col items-start gap-2">
-          <p class="font-heading text-xl font-semibold text-heading">{{ item.title }}</p>
+          <p translate="no" class="font-heading text-xl font-semibold text-heading">{{ item.title }}</p>
           <VaultStatusBadge :status="item.status" :is-awaiting="isAwaitingReview(item)" />
         </div>
       </div>
@@ -163,7 +163,7 @@ watch(
 
       <section v-if="item.description" class="flex flex-col gap-2.5">
         <h3 class="text-xs font-semibold text-subtle">{{ VAULT_DETAIL_DESCRIPTION }}</h3>
-        <p class="whitespace-pre-wrap rounded-2xl border border-card-border bg-white p-4 text-sm font-medium text-heading">
+        <p translate="no" class="whitespace-pre-wrap rounded-2xl border border-card-border bg-white p-4 text-sm font-medium text-heading">
           {{ item.description }}
         </p>
       </section>
@@ -197,7 +197,7 @@ watch(
               @click="preview.open(file)"
             >
               <VaultIcon src="/images/vault/icons/DocumentSolid.svg" class="size-5 text-brand" />
-              <span class="min-w-0 flex-1 truncate">{{ file.name }}</span>
+              <span translate="no" class="min-w-0 flex-1 truncate">{{ file.name }}</span>
             </button>
             <button
               type="button"

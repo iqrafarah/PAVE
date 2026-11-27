@@ -208,7 +208,7 @@ const row =
               >
                 <LayoutPaveIcon v-if="item.folderIds.includes(entry.folder.id)" name="check" class="size-3" />
               </span>
-              <span class="min-w-0 flex-1 truncate">{{ entry.folder.name }}</span>
+              <span translate="no" class="min-w-0 flex-1 truncate">{{ entry.folder.name }}</span>
             </button>
           </div>
         </div>

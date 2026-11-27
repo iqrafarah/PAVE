@@ -20,7 +20,7 @@ const EXAMPLE_FOLDERS_KEY = 'pave-vault-example-folders-made';
 // Pinned folders while the database cannot keep them yet (before migration 20261119120000): folder id → when pinned.
 const PINNED_FOLDERS_KEY = 'pave-vault-pinned-folders';
 const ITEM_SELECT = '*,vault_item_skills(name,status),vault_item_files(*)';
-const REQUEST_SELECT = 'vault_validation_requests(status,organization_id,organisation_name,requested_at,response)';
+const REQUEST_SELECT = 'vault_validation_requests(status,organization_id,location_id,organisation_name,requested_at,response)';
 const REQUEST_STATUSES: VaultValidationRequest['status'][] = ['pending', 'verified', 'rejected', 'cancelled'];
 
 export type VaultLoadStatus = 'loading' | 'ready' | 'failed';
@@ -72,6 +72,8 @@ interface ItemRow {
 interface RequestRow {
   status: string;
   organization_id: string | null;
+  // Added by migration 20261124150000.
+  location_id?: string | null;
   organisation_name: string;
   requested_at: string;
   response: string | null;
@@ -102,6 +104,7 @@ function toLastRequest(rows: RequestRow[] | null | undefined): VaultValidationRe
   return {
     status: newest.status as VaultValidationRequest['status'],
     organizationId: newest.organization_id,
+    locationId: newest.location_id ?? null,
     organisationName: newest.organisation_name,
     requestedAt: newest.requested_at,
     response: newest.response,

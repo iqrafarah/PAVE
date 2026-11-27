@@ -3,7 +3,6 @@ import type { NotificationAudience, NotificationKind } from '~/types/notificatio
 // The inbox (iOS NotificationsScreen, NotificationTrashScreen and NotificationRejectSheet; docs/ui-teksten.md).
 
 export const NOTIFICATIONS_TITLE = 'Meldingen';
-export const NOTIFICATIONS_TAB_ALL = 'Alle meldingen';
 export const NOTIFICATIONS_SEARCH = 'Zoek in meldingen';
 export const NOTIFICATIONS_LOADING = 'Meldingen laden…';
 export const NOTIFICATIONS_RETRY = 'Opnieuw proberen';
@@ -113,8 +112,6 @@ export function functionErrorMessage(code: string | null, fallback: string) {
 }
 
 // Web: the inbox as a list beside the opened notification.
-export const NOTIFICATIONS_FILTER_TYPE = 'Soort';
-export const NOTIFICATIONS_FILTER_ALL_KINDS = 'Alle soorten';
 export const NOTIFICATIONS_MARK_ALL_READ = 'Alles gelezen';
 export const NOTIFICATIONS_MARK_ALL_READ_LABEL = 'Markeer alle meldingen als gelezen';
 export const NOTIFICATIONS_LIST = 'Lijst met meldingen';
@@ -130,3 +127,38 @@ export const NOTIFICATION_VERIFIED_MESSAGE = (organisation: string) =>
   `${organisation} heeft je bewijs bevestigd. Het staat nu als Geverifieerd in je kluis.`;
 export const NOTIFICATION_REJECTED_MESSAGE = (organisation: string) =>
   `${organisation} kon je bewijs niet bevestigen. Lees de reden, pas het zo nodig aan en vraag opnieuw bevestiging aan.`;
+
+// The tabs above Meldingen (iOS NotificationTab).
+export const NOTIFICATION_TABS = {
+  all: 'Alles',
+  conversations: 'Gesprekken',
+  applications: 'Werk',
+  evidence: 'Bewijs',
+} as const;
+export const NOTIFICATION_TABS_LABEL = 'Toon';
+export const NOTIFICATIONS_EMPTY_CONVERSATIONS_TITLE = 'Geen gesprekken';
+export const NOTIFICATIONS_EMPTY_CONVERSATIONS_MESSAGE = 'E-mails van mensen die je kent staan hier. Begin een gesprek via Nieuw bericht.';
+export const NOTIFICATIONS_EMPTY_CONVERSATIONS_NO_ACCOUNT = 'Koppel je e-mail via E-mail om je gesprekken hier te zien.';
+export const NOTIFICATIONS_EMPTY_APPLICATIONS_TITLE = 'Geen uitnodigingen';
+export const NOTIFICATIONS_EMPTY_APPLICATIONS_MESSAGE = 'Nodigt een werkgever je uit, dan staat dat hier.';
+export const NOTIFICATIONS_EMPTY_EVIDENCE_TITLE = 'Niets over je bewijs';
+
+// A group that folds away (iOS NotificationSectionHeader).
+export const SECTION_COLLAPSED = (title: string, count: number) => `${title} · ${count}`;
+
+// Meldingen › Van de beurs (iOS NotificationFairSection and FairInvitationRow).
+export const FAIR_SECTION_TITLE = 'Van de beurs';
+export const FAIR_INVITED_FOR = (vacancy: string) => `Gesprek: ${vacancy}`;
+export const FAIR_ACCEPT = 'Ik kom';
+export const FAIR_DECLINE = 'Kan niet';
+export const FAIR_ACCEPTED = 'Je hebt gezegd dat je komt.';
+export const FAIR_DECLINED = 'Je hebt laten weten dat je niet kunt.';
+export const FAIR_TO_CALENDAR = 'Zet in je agenda';
+export const FAIR_CALENDAR_TITLE = (employer: string) => `Kennismaking ${employer}`;
+export const FAIR_CALENDAR_NOTES = 'Kennismakingsgesprek, gepland in PAVE. Neem je cv mee.';
+export const FAIR_ANSWER_FAILED = 'Je antwoord kon niet worden verstuurd. Probeer het opnieuw.';
+
+/** "vrijdag 28 november om 11:00", as iOS ApplyMessages.slot. */
+export function fairSlot(isoDate: string) {
+  return new Date(isoDate).toLocaleString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+}

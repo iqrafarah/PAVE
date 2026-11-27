@@ -307,7 +307,7 @@ onBeforeUnmount(() => clearTimeout(dropTimer));
             @click="openProject(project.id)"
           >
             <VaultIcon :src="projectIconSrc(project, isOpen(project.id))" :style="{ color: projectLook(project).hex ?? undefined }" class="size-4 shrink-0 text-brand" />
-            <span class="min-w-0 flex-1 truncate text-sm font-medium text-heading">{{ project.name }}</span>
+            <span translate="no" class="min-w-0 flex-1 truncate text-sm font-medium text-heading">{{ project.name }}</span>
           </button>
           <!-- Like ChatGPT: on hover the ⋯ menu and a new chat in this project show over the end of the row, so
                nothing moves. -->
