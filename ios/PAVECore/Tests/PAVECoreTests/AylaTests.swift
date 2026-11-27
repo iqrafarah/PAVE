@@ -57,7 +57,7 @@ struct AylaReplyTests {
     @Test(.enabled(if: AylaReplyTests.examplesAreAvailable))
     func vacanciesExampleKeepsEveryField() throws {
         let reply = try AylaReply.decode(Data(contentsOf: Self.examples.appending(path: "03-vacancies.json")))
-        guard case .vacancies(let items) = reply.blocks.first else {
+        guard case .vacancies(let items, _) = reply.blocks.first else {
             Issue.record("expected vacancies")
             return
         }
@@ -323,6 +323,104 @@ extension SupabaseAylaServiceTests {
         await #expect(throws: AylaError.notSetUp) { try await missing.projectSources(projectID: "p1") }
     }
 
+    @Test func anOpenVacancyGoesAlongWithinTheLimits() throws {
+        let vacancy = Vacancy(
+            id: "a", title: " Tester ", company: "Bedrijf", city: "", source: .adzuna, summary: String(repeating: "x", count: 700),
+            matches: (0..<10).map { .init(skill: "Vaardigheid \($0)", requirement: "r") }, skillGap: [.init(skill: "  ", requirement: "r")]
+        )
+        let open = AylaRequest.OpenVacancy(vacancy)
+        #expect(open.title == "Tester")
+        #expect(open.city == nil)
+        #expect(open.summary?.count == 600)
+        #expect(open.matches.count == 8)
+        #expect(open.skillGap.isEmpty)
+        let json = try JSONEncoder().encode(AylaRequest.Context(screen: .vacancies, vacancy: open))
+        let sent = try #require(try JSONSerialization.jsonObject(with: json) as? [String: Any])
+        #expect(sent["screen"] as? String == "vacancies")
+        #expect((sent["vacancy"] as? [String: Any])?["company"] as? String == "Bedrijf")
+    }
+
+    @Test func aylaWritesWithOnlyTheEvidenceSheGets() async throws {
+        let captured = Captured()
+        let ayla = service { urlRequest in
+            captured.request = urlRequest
+            return (200, Data(#"{"profile":"Ik bouw apps met Swift."}"#.utf8))
+        }
+        let vacancy = Vacancy(id: "v", title: "iOS-ontwikkelaar", company: "Appwerk", source: .adzuna)
+        let item = VaultItem(id: "i", category: .internships, title: "Stage", organisationName: "Pixelwerk", skills: ["Swift"])
+        let writing = try await ayla.writeApplication(.init(kind: .profile, vacancy: vacancy, name: "Daaf", items: [item]))
+        #expect(writing.profile == "Ik bouw apps met Swift.")
+        let request = try #require(captured.request)
+        #expect(request.url?.path() == "/functions/v1/ayla-document")
+        let sent = try #require(request.bodyData)
+        let body = try #require(try JSONSerialization.jsonObject(with: sent) as? [String: Any])
+        #expect(body["kind"] as? String == "profile")
+        #expect((body["items"] as? [[String: Any]])?.first?["organisation"] as? String == "Pixelwerk")
+        #expect((body["vacancy"] as? [String: Any])?["company"] as? String == "Appwerk")
+    }
+
+    @Test func aCompanyLogoIsLookedUpByNameAndPlace() async throws {
+        let captured = Captured()
+        let ayla = service { urlRequest in
+            captured.request = urlRequest
+            return (200, Data(#"{"logoUrl":"https://appwerk.nl/apple-touch-icon.png","site":"appwerk.nl"}"#.utf8))
+        }
+        let logo = try await ayla.companyLogo(company: "Appwerk", city: "Eindhoven")
+        #expect(logo == URL(string: "https://appwerk.nl/apple-touch-icon.png"))
+        let request = try #require(captured.request)
+        #expect(request.url?.path() == "/functions/v1/company-logo")
+        let sent = try #require(request.bodyData)
+        let body = try #require(try JSONSerialization.jsonObject(with: sent) as? [String: String])
+        #expect(body == ["company": "Appwerk", "city": "Eindhoven"])
+        let none = service { _ in (200, Data("{}".utf8)) }
+        #expect(try await none.companyLogo(company: "Bakkerij", city: nil) == nil)
+    }
+
+    @Test func aTaskAndTheVacanciesToCompareGoAlong() throws {
+        let one = AylaRequest.OpenVacancy(Vacancy(id: "a", title: "iOS-ontwikkelaar", company: "Appwerk", source: .adzuna))
+        let two = AylaRequest.OpenVacancy(Vacancy(id: "b", title: "Front-end developer", company: "Pixelwerk", source: .adzuna))
+        let json = try JSONEncoder().encode(AylaRequest.Context(screen: .vacancies, compare: [one, two], task: .compare))
+        let sent = try #require(try JSONSerialization.jsonObject(with: json) as? [String: Any])
+        #expect(sent["task"] as? String == "compare")
+        #expect((sent["compare"] as? [[String: Any]])?.map { $0["company"] as? String } == ["Appwerk", "Pixelwerk"])
+        #expect(sent["vacancy"] == nil)
+        let plain = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(AylaRequest.Context(screen: .vacancies))) as? [String: Any])
+        #expect(plain["task"] == nil && plain["compare"] == nil)
+    }
+
+    @Test func aSavedVacancyKeepsHowAylaShowedIt() async throws {
+        let captured = Captured()
+        let ayla = service { urlRequest in
+            captured.request = urlRequest
+            if urlRequest.httpMethod == "GET" {
+                return (200, Data(#"""
+                [{"vacancy_id":"adzuna_1","saved_at":"2026-11-20T10:00:00+00:00","vacancy":{"id":"adzuna_1","title":"Junior developer","company":"Bedrijf","source":"adzuna","matches":[{"skill":"React","requirement":"Ervaring met React"}],"skillGap":[]}},
+                 {"vacancy_id":"broken","saved_at":"2026-11-19T10:00:00+00:00","vacancy":{"oops":true}}]
+                """#.utf8))
+            }
+            if urlRequest.httpMethod == "DELETE" { return (204, Data()) }
+            return (201, Data(#"[{"vacancy_id":"adzuna_2","saved_at":"2026-11-20T11:00:00+00:00","vacancy":{"id":"adzuna_2","title":"Tester","company":"B","source":"adzuna","matches":[],"skillGap":[]}}]"#.utf8))
+        }
+        let saved = try await ayla.savedVacancies()
+        #expect(saved.map(\.id) == ["adzuna_1"])
+        #expect(saved.first?.vacancy.matches.first?.skill == "React")
+
+        let vacancy = Vacancy(id: "adzuna_2", title: "Tester", company: "B", source: .adzuna, skillGap: [.init(skill: "Scrum", requirement: "Scrum")])
+        let result = try await ayla.saveVacancy(vacancy)
+        #expect(result.id == "adzuna_2")
+        let request = try #require(captured.request)
+        #expect(request.httpMethod == "POST")
+        #expect(request.value(forHTTPHeaderField: "Prefer")?.contains("ignore-duplicates") == true)
+        let body = try #require(request.bodyData)
+        let json = try #require(try JSONSerialization.jsonObject(with: body) as? [String: Any])
+        #expect(json["vacancy_id"] as? String == "adzuna_2")
+        #expect((json["vacancy"] as? [String: Any])?["title"] as? String == "Tester")
+
+        try await ayla.removeSavedVacancy(id: "adzuna_2")
+        #expect(captured.request?.httpMethod == "DELETE")
+        #expect(captured.request?.url?.query?.contains("vacancy_id=eq.adzuna_2") == true)
+    }
+
     @Test func movingAChatSetsOnlyItsProject() async throws {
         let captured = Captured()
         let ayla = service { urlRequest in
@@ -458,6 +556,25 @@ extension SupabaseAylaServiceTests {
         #expect(events[2] == .text("Hoi Daaf"))
         if case .reply(let reply) = events.last { #expect(reply.text == "Hoi Daaf") } else { Issue.record("no reply") }
         #expect(captured.request?.value(forHTTPHeaderField: "Accept") == "text/event-stream")
+    }
+
+    @Test func whatAylaIsBusyWithComesAlong() {
+        let search = streamEvent("status", #"{"kind":"vacancySearch","what":"developer","where":"Eindhoven"}"#)
+        #expect(search == .success(.activity(.searchingVacancies(what: "developer", where: "Eindhoven"))))
+        let match = streamEvent("status", #"{"kind":"vacancyMatch","count":5,"withVault":true}"#)
+        #expect(match == .success(.activity(.comparingVacancies(count: 5, withVault: true))))
+        let both = streamEvent("status", #"{"kind":"vacancySearch","what":"developer","where":"","also":"tester"}"#)
+        #expect(both == .success(.activity(.searchingVacancies(what: "developer", where: "", also: "tester"))))
+        let chosen = streamEvent("status", #"{"kind":"vacancyMatch","count":3,"withVault":true,"chosen":2}"#)
+        #expect(chosen == .success(.activity(.comparingVacancies(count: 3, withVault: true, chosen: 2))))
+        let block = try? JSONDecoder().decode(AylaBlock.self, from: Data(#"{"type":"vacancies","items":[],"search":{"what":"developer","where":"Eindhoven","also":"tester"}}"#.utf8))
+        #expect(block == .vacancies([], search: VacancySearch(what: "developer", where: "Eindhoven", also: "tester")))
+        #expect(streamEvent("status", #"{"kind":"somethingNew"}"#) == nil)
+        #expect(streamEvent("status", #"{"kind":"vacancySearch","what":""}"#) == nil)
+    }
+
+    private func streamEvent(_ name: String, _ json: String) -> Result<AylaStreamEvent, AylaError>? {
+        SupabaseAylaService.streamEvent(name, data: Data(json.utf8))
     }
 
     @Test func aStreamWithoutAReplyFails() async {
@@ -655,7 +772,7 @@ extension SupabaseAylaServiceTests {
         #expect(body == ["text": "Hoi Daaf"])
     }
 
-    @Test func warmingUpOnlyWakesBothFunctions() async {
+    @Test func warmingUpOnlyWakesTheVoiceFunctions() async {
         let captured = CapturedList()
         let ayla = service { urlRequest in
             captured.append(urlRequest)
@@ -666,6 +783,7 @@ extension SupabaseAylaServiceTests {
         #expect(Set(requests.compactMap(\.url?.absoluteString)) == [
             "https://example.supabase.co/functions/v1/ayla",
             "https://example.supabase.co/functions/v1/ayla-voice",
+            "https://example.supabase.co/functions/v1/ayla-listen",
         ])
         #expect(requests.allSatisfy { $0.httpMethod == "OPTIONS" && $0.bodyData == nil })
         #expect(requests.allSatisfy { $0.value(forHTTPHeaderField: "Authorization") == "Bearer token" })
@@ -756,7 +874,7 @@ struct AylaConversationListTests {
             canPin: true
         )
         let sections = list.sections(now: now, calendar: calendar)
-        #expect(sections.map(\.title) == ["Vastgezet", "Vandaag", "Gisteren", "Afgelopen 7 dagen", "Afgelopen 30 dagen", "Eerder"])
+        #expect(sections.map(\.title) == ["Vastgezet", "Vandaag", "Gisteren", "Recent", "Afgelopen 30 dagen", "Eerder"])
         #expect(sections.map { $0.conversations.map(\.id) } == [["pin"], ["today"], ["yesterday"], ["week"], ["month"], ["old"]])
     }
 

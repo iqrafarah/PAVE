@@ -45,16 +45,65 @@ public struct AylaReply: Codable, Equatable, Sendable {
         public var expiresAt: Date
         /// With `addVaultItem`: what to put in the vault once the user confirms.
         public var vaultItem: VaultItemProposal?
+        /// With `updatePlan`: the step of the chat's plan Ayla changed. The server already saved it; the app shows it.
+        public var planStep: PlanStepUpdate?
+        /// With `createPlan`: the plan the user asked for. Not saved yet; the app saves it.
+        public var newPlan: NewPlan?
 
-        public init(id: String, kind: AylaActionKind, summary: String, expiresAt: Date, vaultItem: VaultItemProposal? = nil) {
+        public init(id: String, kind: AylaActionKind, summary: String, expiresAt: Date, vaultItem: VaultItemProposal? = nil, planStep: PlanStepUpdate? = nil, newPlan: NewPlan? = nil) {
             self.id = id
             self.kind = kind
             self.summary = summary
             self.expiresAt = expiresAt
             self.vaultItem = vaultItem
+            self.planStep = planStep
+            self.newPlan = newPlan
         }
 
         public func isOpen(at now: Date = .now) -> Bool { expiresAt > now }
+    }
+
+    /// A step of a plan that Ayla marked done, skipped or as the one to work on now.
+    public struct PlanStepUpdate: Codable, Equatable, Sendable {
+        public var planId: String
+        public var stepId: String
+        public var status: PavePlanStep.Status
+
+        public init(planId: String, stepId: String, status: PavePlanStep.Status) {
+            self.planId = planId
+            self.stepId = stepId
+            self.status = status
+        }
+    }
+
+    /// A plan Ayla made because the user asked for one: a name, the goal and the steps in order.
+    public struct NewPlan: Codable, Equatable, Sendable {
+        public struct Step: Codable, Equatable, Sendable {
+            public var title: String
+            public var summary: String
+            public var kind: PavePlanStep.Kind
+
+            public init(title: String, summary: String = "", kind: PavePlanStep.Kind = .general) {
+                self.title = title
+                self.summary = summary
+                self.kind = kind
+            }
+        }
+
+        public var name: String
+        public var goal: String
+        public var steps: [Step]
+
+        public init(name: String, goal: String = "", steps: [Step]) {
+            self.name = name
+            self.goal = goal
+            self.steps = steps
+        }
+
+        /// The template the plan starts from: the first step is the one to work on.
+        public var template: PavePlanTemplate {
+            PavePlanTemplate(id: "ayla", name: name, goal: goal, steps: steps.map { .init($0.title, summary: $0.summary, kind: $0.kind) })
+        }
     }
 
     /// An item Ayla proposes for the vault, with only what the user said; dates as YYYY-MM-DD.
@@ -140,7 +189,13 @@ public struct AylaReply: Codable, Equatable, Sendable {
     public var accessRequest: AccessRequest?
     public var proposedAction: ProposedAction?
     public var blocks: [AylaBlock]
+    /// Changes to the conversation's plan Ayla proposes so it reaches its goal; nothing changes before the user agrees.
+    public var planEdit: PlanEdit?
     public var navigation: Navigation?
+    /// What Ayla does in the app with this answer, in order.
+    public var actions: [AylaAppAction]?
+    /// She is not done yet: the app tells her what came of these actions and she goes on.
+    public var continues: Bool?
     /// Ayla suggests remembering these facts, one per item; they are saved only after the user confirms (`AylaMemory`).
     public var memories: [MemorySuggestion]?
     /// One suggestion, as the first version of the Ayla function sent it. Still read for older messages.
@@ -186,6 +241,40 @@ public struct AylaReply: Codable, Equatable, Sendable {
         }
     }
 
+    public struct PlanEdit: Codable, Equatable, Hashable, Sendable {
+        public var id: String
+        public var planId: String
+        public var changes: [Change]
+
+        public init(id: String, planId: String, changes: [Change]) {
+            self.id = id
+            self.planId = planId
+            self.changes = changes
+        }
+
+        public struct Change: Codable, Equatable, Hashable, Sendable {
+            public enum Operation: String, Codable, Sendable { case add, remove, move }
+            public var op: Operation
+            /// The step removed or moved.
+            public var stepId: String?
+            /// A new step's title, or the title of the step removed or moved.
+            public var title: String
+            public var kind: String?
+            /// The step it comes after; nil: at the start.
+            public var afterStepId: String?
+            public var why: String
+
+            public init(op: Operation, stepId: String? = nil, title: String, kind: String? = nil, afterStepId: String? = nil, why: String = "") {
+                self.op = op
+                self.stepId = stepId
+                self.title = title
+                self.kind = kind
+                self.afterStepId = afterStepId
+                self.why = why
+            }
+        }
+    }
+
     /// Everything Ayla suggests remembering or taking away in this reply.
     public var suggestedMemories: [MemorySuggestion] {
         (memories ?? memory.map { [$0] } ?? []).filter { !$0.text.isEmpty || $0.replaces != nil }
@@ -199,7 +288,10 @@ public struct AylaReply: Codable, Equatable, Sendable {
         accessRequest: AccessRequest? = nil,
         proposedAction: ProposedAction? = nil,
         blocks: [AylaBlock] = [],
+        planEdit: PlanEdit? = nil,
         navigation: Navigation? = nil,
+        actions: [AylaAppAction]? = nil,
+        continues: Bool? = nil,
         memories: [MemorySuggestion]? = nil,
         memory: MemorySuggestion? = nil,
         usedMemories: [UsedMemory]? = nil,
@@ -213,7 +305,10 @@ public struct AylaReply: Codable, Equatable, Sendable {
         self.accessRequest = accessRequest
         self.proposedAction = proposedAction
         self.blocks = blocks
+        self.planEdit = planEdit
         self.navigation = navigation
+        self.actions = actions
+        self.continues = continues
         self.memories = memories
         self.memory = memory
         self.usedMemories = usedMemories

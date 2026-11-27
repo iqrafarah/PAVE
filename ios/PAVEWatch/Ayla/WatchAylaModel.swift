@@ -34,7 +34,15 @@ final class WatchAylaModel {
         var state: State
     }
 
+    /// What Ayla wants to do on the iPhone for you, such as a plan step or your CV: nothing happens without Ja.
+    struct Handoff: Equatable {
+        enum State: Equatable { case asking, sending, done(String), declined, queued }
+        var actions: [AylaAppAction]
+        var state: State
+    }
+
     private(set) var phase = Phase.ready
+    private(set) var handoff: Handoff?
     private(set) var proposal: Proposal?
     private(set) var question = ""
     private(set) var reply: AylaReply?
@@ -89,7 +97,7 @@ final class WatchAylaModel {
         let store = sessions
         let token: @Sendable () async -> String? = { await store.accessToken() }
         return (
-            SupabaseAylaService(projectURL: session.projectURL, publishableKey: session.publishableKey, accessToken: token),
+            SupabaseAylaService(projectURL: session.projectURL, publishableKey: session.publishableKey, language: { WatchPreferences.language }, accessToken: token),
             SupabaseAylaListenService(projectURL: session.projectURL, publishableKey: session.publishableKey, accessToken: token),
             SupabaseVaultService(projectURL: session.projectURL, publishableKey: session.publishableKey, accessToken: token)
         )
@@ -193,6 +201,7 @@ final class WatchAylaModel {
 
     private func ask(_ text: String, ayla: any AylaService) async {
         question = text
+        handoff = nil
         phase = .thinking
         do {
             let reply = try await ayla.send(AylaRequest(conversationId: conversationID, text: text, device: .watch, input: .voice))
@@ -205,6 +214,7 @@ final class WatchAylaModel {
                 guard action.kind == .addVaultItem, action.isOpen(), let draft = action.vaultItem?.draft else { return nil }
                 return Proposal(action: action, draft: draft, state: .asking)
             }
+            handoff = (reply.actions ?? []).isEmpty ? nil : Handoff(actions: reply.actions ?? [], state: .asking)
             WKInterfaceDevice.current().play(.success)
             speak(reply.text, ayla: ayla)
         } catch {
@@ -233,6 +243,39 @@ final class WatchAylaModel {
         player.stop()
         speakingSince = nil
         if phase == .speaking { phase = .answer }
+    }
+
+    /// Three short points for a talk, from Ayla, outside your chats: what to say, built on what she may see.
+    func coachPoints(for company: String) async -> String? {
+        guard let ayla = services?.ayla else { return nil }
+        let request = AylaRequest(text: WatchMessages.coachQuestion(company), device: .watch, input: .text)
+        guard let reply = try? await ayla.send(request) else { return nil }
+        try? await ayla.delete(conversationID: reply.conversationId)
+        let text = reply.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.isEmpty ? nil : text
+    }
+
+    /// Ja: the iPhone carries it out and says what came of it; Nee: nothing happens.
+    func answerHandoff(_ yes: Bool) {
+        guard var handoff, handoff.state == .asking else { return }
+        guard yes else {
+            handoff.state = .declined
+            self.handoff = handoff
+            WKInterfaceDevice.current().play(.click)
+            return
+        }
+        handoff.state = .sending
+        self.handoff = handoff
+        let actions = handoff.actions
+        Task {
+            if let said = await sessions.send(.actions(actions)) {
+                self.handoff?.state = .done(said.isEmpty ? WatchMessages.handoffDone : said)
+                WKInterfaceDevice.current().play(.success)
+            } else {
+                self.handoff?.state = .queued
+                WKInterfaceDevice.current().play(.retry)
+            }
+        }
     }
 
     /// Ja: put the item in your vault with your own session, as added by you and not yet confirmed. Nee: nothing happens.

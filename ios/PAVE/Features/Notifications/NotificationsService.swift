@@ -93,7 +93,7 @@ struct NotificationReviewItem: Decodable, Sendable {
 
     private func monthYear(_ raw: String) -> String {
         guard let date = ISO8601DateFormatter().date(from: raw + "T00:00:00Z") else { return raw }
-        return date.formatted(.dateTime.month(.abbreviated).year().locale(Locale(identifier: "nl_NL")))
+        return date.formatted(.dateTime.month(.abbreviated).year().locale(PaveLanguageStore.current.locale))
     }
 }
 
@@ -201,12 +201,27 @@ struct SupabaseNotificationsService: Sendable {
         _ = try await call(components.url!, method: "PATCH", body: ["read_at": ISO8601DateFormatter().string(from: .now)])
     }
 
+    /// Everything unread in the inbox at once; only your own rows are reachable (RLS), so no id list is needed.
+    func markAllRead() async throws {
+        var components = URLComponents(url: projectURL.appending(path: "rest/v1/user_notifications"), resolvingAgainstBaseURL: false)!
+        components.queryItems = [URLQueryItem(name: "read_at", value: "is.null"), URLQueryItem(name: "deleted_at", value: "is.null")]
+        _ = try await call(components.url!, method: "PATCH", body: ["read_at": ISO8601DateFormatter().string(from: .now)])
+    }
+
     /// Deleting is soft: the database sets the time itself, and restoring works for 7 days (`guard_user_notification_update`).
     func setDeleted(notificationID: String, _ isDeleted: Bool) async throws {
         var components = URLComponents(url: projectURL.appending(path: "rest/v1/user_notifications"), resolvingAgainstBaseURL: false)!
         components.queryItems = [URLQueryItem(name: "id", value: "eq.\(notificationID)")]
         let deletedAt: Any = isDeleted ? ISO8601DateFormatter().string(from: .now) : NSNull()
         _ = try await call(components.url!, method: "PATCH", body: ["deleted_at": deletedAt])
+    }
+
+    /// Which chat is on screen on this device, so Ayla's answers in it give no melding (migration 20261125120000).
+    func setOpenChat(device: String, conversationID: String, isOpen: Bool) async throws {
+        _ = try await call(
+            projectURL.appending(path: "rest/v1/rpc/set_open_chat"), method: "POST",
+            body: ["p_device": device, "p_conversation_id": conversationID, "p_open": isOpen]
+        )
     }
 
     private func function(_ body: [String: Any]) async throws -> Data {
@@ -241,8 +256,24 @@ final class NotificationsModel {
     private(set) var audience: NotificationAudience = .learner
     private(set) var notifications: [PaveNotification] = []
     private(set) var problem: String?
+    /// A melding that arrived while the app was open: shown as a small banner until it is dismissed or tapped.
+    private(set) var banner: PaveNotification?
+    /// The chat that is open on screen. A melding about it needs no banner: you are already reading it.
+    var openConversationID: String? {
+        didSet {
+            guard let openConversationID, banner?.kind == .conversation, banner?.conversationID == openConversationID else { return }
+            banner = nil
+        }
+    }
+    /// Ids seen so far; the first load is never "new", so opening the app does not announce your whole inbox.
+    @ObservationIgnored private var knownIDs: Set<String>?
 
     init(service: SupabaseNotificationsService?) { self.service = service }
+
+    /// Not deleted, not read: what the bell and the icon badge show.
+    var unreadCount: Int { notifications.filter { $0.deletedAt == nil && $0.isUnread }.count }
+
+    func dismissBanner() { banner = nil }
 
     func refresh() async {
         guard let service else {
@@ -254,6 +285,7 @@ final class NotificationsModel {
             audience = newAudience
             notifications = rows
             problem = nil
+            announceArrivals(in: rows)
         } catch let error as LocalizedError {
             problem = error.errorDescription ?? "Meldingen konden niet worden geladen. Probeer opnieuw."
         } catch {
@@ -261,7 +293,66 @@ final class NotificationsModel {
         }
     }
 
-    func markRead(_ id: String) async { try? await service?.markRead(notificationID: id) }
+    /// What counts as new: unread, not deleted and not seen on an earlier refresh. While the app is open this becomes an
+    /// in-app banner; the ids are also stored so the background refresh (`NotificationAlerts`) does not announce them again.
+    private func announceArrivals(in rows: [PaveNotification]) {
+        let ids = Set(rows.map(\.id))
+        defer {
+            knownIDs = ids
+            NotificationAlerts.seenIDs = ids
+        }
+        guard let knownIDs else { return }
+        let arrived = rows.filter { !knownIDs.contains($0.id) && $0.isUnread && $0.deletedAt == nil }
+        // About the chat you are in: no banner, and read at once, since you see it happen.
+        let inOpenChat = arrived.filter(isAboutOpenChat)
+        for notification in inOpenChat {
+            Task { await markRead(notification.id) }
+        }
+        let fresh = arrived.filter { !isAboutOpenChat($0) }
+        if let newest = fresh.max(by: { $0.date < $1.date }) {
+            banner = newest
+            PaveHaptics.success()
+        }
+    }
+
+    /// Tells the database this chat is on screen, every 20 seconds until the task stops, and then lets go of it. While
+    /// it is open, Ayla's answers in it give no melding. Fails quietly before the migration has run.
+    func keepOpen(_ conversationID: String) async {
+        guard let service else { return }
+        let device = Self.device
+        while !Task.isCancelled {
+            try? await service.setOpenChat(device: device, conversationID: conversationID, isOpen: true)
+            try? await Task.sleep(for: .seconds(20))
+        }
+        // In a task of its own: this one is cancelled, and closing must still reach the database.
+        Task { try? await service.setOpenChat(device: device, conversationID: conversationID, isOpen: false) }
+    }
+
+    /// This installation, so a phone and a browser of the same account never take each other's open chat.
+    private static var device: String {
+        let key = "openChatDeviceID"
+        if let id = UserDefaults.standard.string(forKey: key) { return id }
+        let id = "ios-\(UUID().uuidString)"
+        UserDefaults.standard.set(id, forKey: key)
+        return id
+    }
+
+    private func isAboutOpenChat(_ notification: PaveNotification) -> Bool {
+        guard let openConversationID else { return false }
+        return notification.kind == .conversation && notification.conversationID == openConversationID
+    }
+
+    func markRead(_ id: String) async {
+        if let index = notifications.firstIndex(where: { $0.id == id }) { notifications[index].isUnread = false }
+        if banner?.id == id { banner = nil }
+        try? await service?.markRead(notificationID: id)
+    }
+
+    func markAllRead() async {
+        for index in notifications.indices { notifications[index].isUnread = false }
+        banner = nil
+        try? await service?.markAllRead()
+    }
 
     /// The last save per notification, so a quick "Ongedaan maken" never reaches the server before the delete itself.
     @ObservationIgnored private var changes: [String: Task<Bool, Never>] = [:]

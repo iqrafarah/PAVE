@@ -1,8 +1,110 @@
+import Foundation
 import PAVECore
 
 /// Texts the chat shows. They have no web counterpart yet; agree on them with the web team.
 enum AylaMessages {
     /// Above Ja and Nee when Ayla offers to add something to the vault, as on the web (AYLA_VAULT_LABEL).
+    static let thinking = "Ayla denkt na…"
+    /// For VoiceOver when her answer is in: her words, cut short when long, since the bubble itself has all of it.
+    static func answered(_ text: String) -> String {
+        let short = text.count > 220 ? String(text.prefix(220)).components(separatedBy: " ").dropLast().joined(separator: " ") + "…" : text
+        return "Ayla: \(short)"
+    }
+    static let selectChatHint = "Selecteert of deselecteert dit gesprek"
+    static let sourcesTitle = "Bronnen"
+    static let sourceHint = "Opent de pagina in Safari"
+    static let calendarNotes = "Klaargezet door Ayla in PAVE."
+    static let actionBadDate = "Die datum kon ik niet lezen. Zeg de dag nog eens, bijvoorbeeld 3 december."
+    static func actionNotArchived(_ name: String) -> String { "Ik kon \(name) niet vinden in het archief." }
+    static func actionSkillThere(_ skill: String) -> String { "\(skill) staat er al bij." }
+    static func actionNoApplicationFound(_ name: String) -> String { "Ik kon geen sollicitatie of vacature vinden bij \(name)." }
+    static let actionNoChatFile = "Ik zie geen bestand in dit gesprek. Stuur de foto of het bestand eerst hier."
+    static let actionMailOpened = "De mail staat klaar. Lees hem na en verstuur hem zelf."
+    /// On one line where "Ayla denkt na…" stands, so a long search is shortened in the middle.
+    static func activity(_ activity: AylaActivity) -> String {
+        switch activity {
+        case .searchingVacancies(let what, let place, let also):
+            let terms = also.map { "\(what) en \($0)" } ?? what
+            return place.isEmpty ? "Ayla zoekt vacatures: \(terms)…" : "Ayla zoekt vacatures: \(terms) in \(place)…"
+        case .comparingVacancies(let count, let withVault, let chosen):
+            let vacancies = count == 1 ? "1 vacature" : "\(count) vacatures"
+            guard withVault else { return "Ayla bekijkt \(vacancies)…" }
+            if let chosen, chosen > 0 { return "Ayla vergelijkt \(vacancies) met wat je koos…" }
+            return "Ayla vergelijkt \(vacancies) met je kluis…"
+        case .searchingEducations(let what, let place):
+            return EducationMessages.searching(what, in: place)
+        case .lookingUp(let question):
+            return "Ayla zoekt het op: \(question)…"
+        case .continuing:
+            return "Ayla gaat verder…"
+        }
+    }
+    // What the app says when something Ayla set out to do could not be done, or was done after your Ja.
+    static func actionNoFolder(_ name: String) -> String { "Ik kon de map \(name) niet vinden." }
+    static func actionNoItem(_ name: String) -> String { "Ik kon \(name) niet vinden in je kluis." }
+    static func actionNoFiles(_ title: String) -> String { "Bij \(title) staan geen bestanden om in te kijken." }
+    static func actionFilesUnreadable(_ title: String) -> String { "Ik kon de bestanden van \(title) nu niet lezen." }
+    static func actionReadsFiles(_ title: String) -> String { "Ik kijk in de bestanden van \(title)." }
+    static func actionNoChat(_ name: String) -> String { "Ik kon geen gesprek vinden over \(name)." }
+    static let actionNoCurrentChat = "Dit gesprek staat nog niet in je lijst, dus dat lukt nu nog niet. Probeer het zo opnieuw."
+    static let actionUnknownValue = "Dat kon ik niet instellen: die keuze ken ik niet."
+    static let actionUnavailable = "Dat lukt nu niet."
+    static func actionNoPlan(_ name: String?) -> String { name.map { "Ik kon het plan \($0) niet vinden." } ?? "Ik weet niet welk plan je bedoelt. Noem de naam van het plan." }
+    static func actionNoStep(_ title: String) -> String { "Ik kon de stap \(title) niet vinden in je plannen." }
+    static func actionStepExists(_ title: String) -> String { "De stap \(title) staat al in dat plan." }
+    static func actionNoProject(_ name: String) -> String { "Ik kon het project \(name) niet vinden." }
+    static func actionNoApplication(_ name: String) -> String { "Ik kon geen sollicitatie vinden voor \(name). Open eerst de vacature, dan begin ik er een." }
+    static let actionNoVacancyForPlan = "Ik weet niet voor welke vacature. Open de vacature of zeg welke van de getoonde vacatures je bedoelt."
+    static func actionNoMail(_ words: String) -> String { words.isEmpty ? "Ik weet niet welke mail je bedoelt. Noem de naam of het onderwerp." : "Ik kon geen mail vinden van of over \(words)." }
+    static let actionNoMailbox = "Er is nog geen e-mail gekoppeld. Dat doe je bij Meldingen, onder de drie puntjes."
+    static func actionNoInvitation(_ name: String) -> String { "Ik kon geen uitnodiging vinden van \(name)." }
+    static func actionInvitationAccepted(_ employer: String) -> String { "Ik heb \(employer) laten weten dat je komt. Ik open je agenda: bewaar het gesprek daar als je wilt." }
+    static let actionInvitationNotAccepted = "Zeg eerst dat je komt, dan zet ik het gesprek in je agenda."
+    static func actionInvitationAnswered(_ employer: String, accepted: Bool) -> String { accepted ? "Ik heb \(employer) laten weten dat je komt." : "Ik heb \(employer) laten weten dat je niet kunt." }
+    static let actionNoProjectHere = "Dit gesprek hoort niet bij een project. Zeg in welk project het moet."
+    static func actionPlanMade(_ name: String) -> String { "Het plan \(name) staat klaar bij Plan." }
+    static func actionFolderExists(_ name: String) -> String { "De map \(name) bestond al. Ik open hem." }
+    static func actionDeletedEvidence(_ title: String) -> String { "Ik heb \(title) uit je kluis verwijderd." }
+    static let actionDeletedChat = "Ik heb het gesprek verwijderd."
+    static func actionDeletedPlan(_ name: String) -> String { "Ik heb je plan \(name) verwijderd." }
+    static let askNewPlanGoal = "Waar moet je nieuwe plan over gaan?"
+    static let actionForgotAll = "Ik heb alles vergeten wat ik over je onthield."
+    static let actionSignsOut = "Ik log je uit."
+    static let actionDone = "Gedaan."
+    static let actionCouldNotContinue = "Verder gaan lukte nu niet. Probeer het zo opnieuw."
+    static func actionAllowed(_ title: String) -> String { "Ik mag \(title) nu bekijken en gebruiken." }
+    static let searchStepFind = "Vacatures zoeken"
+    static func searchStepFound(_ count: Int) -> String { count == 1 ? "1 vacature gevonden" : "\(count) vacatures gevonden" }
+    static func searchStepCompare(withVault: Bool) -> String { withVault ? "Vergelijken met je kluis" : "Vacatures bekijken" }
+    static let searchStepShow = "Lijst openen"
+    static let actionsBusy = "Ayla doet dit voor je"
+    static let actionsDone = "Ayla deed dit voor je"
+    static func actionState(_ state: AylaActionStep.State) -> String {
+        switch state {
+        case .waiting: "nog niet gedaan"
+        case .running: "bezig"
+        case .done: "gedaan"
+        case .failed: "niet gelukt"
+        }
+    }
+    /// For the Lock Screen and the Dynamic Island: how far she is, and what kind of thing she does, without names.
+    static func voiceStep(_ step: Int, of total: Int) -> String { total == 1 ? "Doet iets in PAVE" : "Stap \(step) van \(total)" }
+    static func voiceNote(_ activity: AylaActivity) -> String {
+        switch activity {
+        case .searchingVacancies: "Zoekt vacatures"
+        case .comparingVacancies: "Vergelijkt vacatures"
+        case .searchingEducations: EducationMessages.searchingShort
+        case .lookingUp: "Zoekt het op"
+        case .continuing: "Gaat verder"
+        }
+    }
+    static let voiceListening = "Ayla luistert…"
+    static let voiceSpeaking = "Ayla praat"
+    static let voiceMuted = "Je microfoon staat uit"
+    static let voiceHolds = "Ayla wacht tot je klaar bent"
+    static let voiceStarting = "Microfoon aanzetten…"
+    /// What she says when you want to choose the items yourself and the picker opens.
+    static let chooseYourself = "Kies maar. Ik gebruik alleen wat je kiest."
     static let vaultLabel = "Kluis"
     static let attachItem = "Item uit je kluis"
     static let vaultEmpty = "Je kluis is nog leeg"
@@ -22,14 +124,161 @@ enum AylaMessages {
     static let conceptReady = "Bewijs"
     static let conceptHint = "Vertel verder en Ayla vult het aan."
     static let conceptAdd = "Zet in de kluis"
+    static let conceptFillMyself = "Zelf invullen"
+    /// After it went in without a logo or cover, the same words as on the web.
+    static func lookMissing(logo: Bool, cover: Bool) -> String {
+        if logo, cover { return "Ayla vond geen logo of omslag. Wil je er zelf een kiezen?" }
+        return logo ? "Ayla vond geen logo. Wil je er zelf een kiezen?" : "Nog geen omslag. Wil je er een kiezen?"
+    }
+    static let lookLogo = "Logo kiezen"
+    static let lookCover = "Omslag kiezen"
+    static let lookDone = "Klaar"
+    static let lookFailed = "Die afbeelding kon niet bij je bewijs worden gezet. Kies een JPG of PNG."
     static let headHint = "Knik ja of schud nee"
     static let siriGoOn = "Zeg \"Praat met Ayla in PAVE\" om verder te gaan."
     static let siriSignInFirst = "Log eerst in bij PAVE, dan kan Ayla je vragen beantwoorden."
     static let siriUnavailable = "Ayla is er nu even niet. Probeer het straks nog eens in PAVE."
     static let siriFailed = "Ayla kon nu geen antwoord geven. Probeer het zo nog eens."
-    static let vacancyHint = "Draai je hoofd voor de volgende, knik om te kiezen"
-    static let vacancyChoose = "Kies deze"
+    static let vacancyHint = "Draai je hoofd voor de volgende, knik om er meer over te horen"
     static func vacancyPosition(_ index: Int, of count: Int) -> String { "\(index + 1) van \(count)" }
+    static let vacancySave = "Bewaren"
+    static let vacancySavedLabel = "Bewaard"
+    static let vacancyOpen = "Lees de hele vacature"
+    /// What you say after "Kies zelf": the items are sent along, these words say what they are for.
+    static func useChosen(_ count: Int) -> String {
+        count == 1 ? "Gebruik het item dat ik koos." : "Gebruik de \(count) gegevens die ik koos."
+    }
+    static func vacancySearchedFor(_ search: VacancySearch) -> String {
+        let terms = search.also.map { "\(search.what) en \($0)" } ?? search.what
+        return search.where.isEmpty ? "Gezocht op: \(terms)" : "Gezocht op: \(terms) in \(search.where)"
+    }
+    static let vacancyNoData = "Zonder je kluis"
+    static func vacancyChosenData(_ count: Int) -> String {
+        count == 1 ? "Met 1 gekozen item" : "Met \(count) gekozen gegevens"
+    }
+    static let vacancyChooseData = "Kies"
+    static let vacancyChangeData = "Wijzig"
+    /// "2 van 3 vaardigheden passen": of the skills Ayla found in the piece of text she saw.
+    static func vacancyFitCount(_ fits: Int, of total: Int) -> String {
+        total == 1 ? (fits == 1 ? "De vaardigheid die Ayla vond past" : "De vaardigheid die Ayla vond mis je nog") : "\(fits) van \(total) vaardigheden passen"
+    }
+    /// "Licht aanzetten lukte niet": with one step that failed, which one, so you know what to try again.
+    static func actionsSummary(done: Int, failed: Int, failedStep: String? = nil) -> String {
+        let did = done == 1 ? "1 ding gedaan" : "\(done) dingen gedaan"
+        guard failed > 0 else { return did }
+        if failed == 1, let failedStep { return done == 0 ? "\(failedStep) lukte niet" : "\(did), \(failedStep.lowercasedFirst) lukte niet" }
+        return done == 0 ? (failed == 1 ? "Dat lukte niet" : "\(failed) dingen lukten niet") : "\(did), \(failed) niet gelukt"
+    }
+    /// "Geplaatst op 20 november", from the day the source gives ("2026-11-20"); nil when that is not a day.
+    static func vacancyPosted(_ day: String) -> String? {
+        guard let date = try? Date(day, strategy: .iso8601.year().month().day()) else { return nil }
+        return "Geplaatst op \(date.formatted(.dateTime.day().month(.wide).locale(PaveLanguageStore.current.locale)))"
+    }
+    static let vacancyTitle = "Vacature"
+    static let vacancyFromText = "Uit de vacaturetekst"
+    static func vacancyTextNote(_ source: Vacancy.Source) -> String {
+        switch source {
+        case .web: "Een stukje van de pagina waar Ayla deze vacature vond. Controleer de hele vacature op die site."
+        case .jooble: "Een stukje van de tekst, zoals Jooble het geeft. De hele vacature lees je bij de werkgever."
+        default: "Een stukje van de tekst, zoals Adzuna het geeft. De hele vacature lees je bij de werkgever."
+        }
+    }
+    /// Where the vacancies come from, under the list and the vacancy.
+    static func vacancySource(_ source: Vacancy.Source) -> String? {
+        switch source {
+        case .adzuna: "Vacatures via Adzuna"
+        case .jooble: "Vacatures via Jooble"
+        case .web: "Gevonden op internet"
+        case .example: "Voorbeeldvacature"
+        default: nil
+        }
+    }
+    static func pickLimit(_ maximum: Int) -> String { "Je kunt er maximaal \(maximum) kiezen" }
+    static let selectChatsHint = "Tik op de chats die je wilt vastzetten of verwijderen."
+    static let vacancyNoMatch = "Ayla heeft deze vacature nog niet met je kluis vergeleken. Vraag het haar hieronder."
+    static let vacancyAskButton = "Vraag Ayla"
+    static let vacancyActionGaps = "Wat mis ik?"
+    static let vacancyActionPrepare = "Solliciteren"
+    static let vacancyActionPractice = "Oefen gesprek"
+    static let vacancyActionCompare = "Vergelijk"
+    static let vacancyActionCompareChosen = "Gekozen"
+    static func vacancyCompareButton(_ count: Int) -> String { "Vergelijk \(count) vacatures" }
+    static let vacancyCompareHint = "Kies nog een vacature om te vergelijken"
+    static let vacancyCompareFull = "Je kunt er 3 tegelijk vergelijken"
+    static func vacancyCompareQuestion(_ vacancies: [Vacancy]) -> String {
+        let names = vacancies.map { "\($0.title) bij \($0.company)" }
+        let list = names.count > 2 ? names.dropLast().joined(separator: ", ") + " en " + (names.last ?? "") : names.joined(separator: " met ")
+        return "Vergelijk \(list). Welke past het best bij mij?"
+    }
+    static func vacancyGapsQuestion(_ vacancy: Vacancy) -> String {
+        "Wat mis ik nog voor \(vacancy.title) bij \(vacancy.company), en hoe kom ik daar?"
+    }
+    static func vacancyPrepareQuestion(_ vacancy: Vacancy) -> String {
+        "Help me solliciteren op \(vacancy.title) bij \(vacancy.company)."
+    }
+    static func vacancyPracticeQuestion(_ vacancy: Vacancy) -> String {
+        "Oefen een sollicitatiegesprek met mij voor \(vacancy.title) bij \(vacancy.company)."
+    }
+    static let practiceStopQuestion = "Ik wil stoppen met oefenen."
+    static func practiceTitle(_ vacancy: Vacancy) -> String { "Oefengesprek · \(vacancy.company)" }
+    static let practiceStop = "Stoppen"
+    /// "Stop", "ik ben klaar", "genoeg zo": the practice ends after this answer.
+    static func endsPractice(_ text: String) -> Bool {
+        let said = text.lowercased().trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters))
+        return said.range(of: #"^(stop|stoppen|klaar|genoeg|ik ben klaar|ik wil stoppen|genoeg zo|laten we stoppen)\b"#, options: .regularExpression) != nil
+    }
+    static let vacancyFits = "Past bij jou"
+    static let vacancyMissing = "Wat je nog mist"
+    static let vacancyMatchNote = "Ayla vergeleek je kluis met een stukje van de vacaturetekst. Het is een inschatting, geen oordeel."
+    static let vacancyFound = "Gevonden"
+    static let vacancySavedTab = "Bewaard"
+    static func shareSaid(_ command: AylaShareCommand) -> String {
+        switch command {
+        case .share(let organisation, _, _): "Ik zet het klaar voor \(organisation). Controleer wat erin staat en bevestig het; ik deel niets zelf."
+        case .stop(let organisation): "Ik open het delen met \(organisation). Tik op Intrekken om het te stoppen."
+        case .showShares: "Hier zie je wat je nu deelt, met wie en hoe lang nog."
+        case .selection(let name, _, _): "De selectie \(name) staat klaar bij Profiel. Kijk hem na en bewaar hem."
+        }
+    }
+    static let vacancyApplicationsTab = "Sollicitaties"
+    static let vacancySavedEmptyTitle = "Nog niets bewaard"
+    // Filtering and ordering vacancies
+    static let vacancyOrderAsFound = "Zoals gevonden"
+    static let vacancyOrderBestMatch = "Beste match eerst"
+    static let vacancyFilter = "Filter"
+    static func vacancyFilterCount(_ count: Int) -> String { "Filter (\(count))" }
+    static func vacancyShown(_ shown: Int, of total: Int) -> String { shown == total ? (total == 1 ? "1 vacature" : "\(total) vacatures") : "\(shown) van \(total) vacatures" }
+    static let vacancyFilterPlace = "Plaats"
+    static let vacancyFilterHours = "Uren"
+    static let vacancyFilterEmployer = "Werkgever"
+    static let vacancyFilterAll = "Alle"
+    static let vacancyFullTime = "Fulltime"
+    static let vacancyPartTime = "Part-time"
+    static let vacancyEmployerDirect = "Direct bij het bedrijf"
+    static let vacancyEmployerAgency = "Uitzendbureau of bemiddelaar"
+    static let vacancyEmployerHint = "Herkend aan de naam van het bedrijf; dat kan een keer mis zijn."
+    static let vacancyFilterClear = "Wis filters"
+    static func vacancyFilterShow(_ count: Int) -> String { count == 1 ? "Toon 1 vacature" : "Toon \(count) vacatures" }
+    static let vacancyFilterNone = "Geen vacature past bij deze filters."
+    static let vacancyFilterNoneHint = "Zet een filter weer op Alle om meer te zien."
+    static func vacancyMatch(_ percent: Int) -> String { "\(percent)% match" }
+    static let vacancyMatchHint = "Een inschatting uit een stukje van de vacaturetekst"
+
+    static let vacancySavedEmpty = "Tik op Bewaren bij een vacature om hem hier terug te vinden, ook op je andere apparaten."
+    static let vacancySearchAsk = "Zoek vacatures die bij me passen"
+    static let vacancySearchWithAyla = "Zoek met Ayla"
+    static let vacanciesPageHint = "Wat Ayla laatst vond, wat je bewaarde en je sollicitaties."
+    static let vacancyFoundEmptyTitle = "Nog geen vacatures"
+    static let vacancyFoundEmptyOnPage = "Vraag Ayla om vacatures te zoeken die bij je passen. Wat ze vindt, staat daarna ook hier."
+    static let vacancyFoundEmpty = "Vraag Ayla hieronder bijvoorbeeld: zoek vacatures die bij me passen."
+    static let vacancySaved = "Vacature bewaard"
+    static let vacancyUnsaved = "Niet meer bewaard"
+    static let vacancySaveFailed = "Bewaren lukte niet. Probeer het opnieuw."
+    static let vacancyUnsaveFailed = "Dat lukte niet. Probeer het opnieuw."
+    static let vacancySavedLoadFailed = "Je bewaarde vacatures konden niet worden geladen."
+    static func vacancyGapAsk(_ skill: String, for vacancy: Vacancy) -> String {
+        "Hoe kan ik \(skill) halen voor \(vacancy.title) bij \(vacancy.company)?"
+    }
     static func vacancyAsk(_ vacancy: Vacancy) -> String {
         "Vertel meer over \(vacancy.title) bij \(vacancy.company): waarom past die bij mij, en wat mis ik nog?"
     }
@@ -96,6 +345,9 @@ enum AylaMessages {
     static let disclaimer = "Ayla is AI en kan fouten maken."
     static let panelResize = "Breedte van de chatlijst aanpassen"
     static let projects = "Projecten"
+    static let pinned = "Vastgezet"
+    static let recent = "Recent"
+    static let startedOnPhone = "Op iPhone"
     static let newProject = "Nieuw project"
     static let projectNameLabel = "Naam van het project"
     static let projectNamePlaceholder = "Bijvoorbeeld: Stage zoeken"
@@ -119,6 +371,9 @@ enum AylaMessages {
     static let moveFailed = "De chat kon niet worden verplaatst. Probeer het opnieuw."
     static let moveToProject = "Naar project verplaatsen"
     static let removeFromProject = "Uit project halen"
+    static let projectBackToChats = "Terug naar alle chats"
+    static let projectDeleteChatQuestion = "Gesprek verwijderen?"
+    static let projectDeleteChatHint = "Het gesprek met Ayla verdwijnt. Bewijs in je kluis blijft altijd bewaard."
     static let moveEmpty = "Je hebt nog geen projecten. Maak er een met de + bij Projecten."
     static let lockMenu = "Chat vergrendelen"
     static let unlockMenu = "Ontgrendelen"
@@ -155,6 +410,8 @@ enum AylaMessages {
     static let sourcesFromVault = "Uit kluis halen"
     static let sourcesRemove = "Verwijderen uit project"
     static let sourcesFailed = "Dit is niet gelukt. Probeer het opnieuw."
+    static let sourcesNoConnection = "Geen verbinding. Kijk of je internet hebt en probeer het opnieuw."
+    static let sourcesSignInAgain = "Je bent te lang ingelogd geweest. Log opnieuw in en probeer het dan nog eens."
     static let sourcesLoading = "Bronnen laden…"
     static let sourcesNoMatch = "Geen bronnen met dit filter."
     static let sourcesSortLabel = "Sorteren"
@@ -194,4 +451,9 @@ enum AylaMessages {
     static let accountPinNotReady = "Dit komt beschikbaar zodra PAVE is bijgewerkt."
     static let accountPinVerifyAgain = "Bevestig opnieuw met je authenticator-app en probeer het nog een keer."
     static let tooManyFiles = "Je kunt \(AylaAttachment.maxCount) bestanden tegelijk toevoegen."
+}
+
+private extension String {
+    /// "Licht aanzetten" in the middle of a sentence: "licht aanzetten".
+    var lowercasedFirst: String { prefix(1).lowercased() + dropFirst() }
 }

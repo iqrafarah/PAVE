@@ -24,6 +24,13 @@ final class AppState {
     var conversationToOpen: String?
     /// Something asked from outside the app (Siri, a widget, Control Center); done once the app is unlocked.
     var link: PaveLink?
+    /// A fair code scanned with the iPhone's own camera ("Open in PAVE"): an employer, a poster or an employer's
+    /// inbox. Opens once the app is unlocked.
+    var fairToOpen: ShareLinks.Scanned?
+    /// A melding banner was tapped; PAVE opens on Meldingen once it is unlocked.
+    var opensNotifications = false
+    /// The banner was for new mail: this conversation opens in Meldingen.
+    var emailThreadToOpen: String?
     /// The app came back after being away too long: the PIN screen lies over it, so the open chat and what you were
     /// typing stay where they are.
     private(set) var isRelocked = false
@@ -45,6 +52,10 @@ final class AppState {
         self.pinVault = pinVault
         self.biometrics = biometrics
         PaveLinkInbox.receive = { [weak self] link in self?.link = link }
+        NotificationAlerts.onTap = { [weak self] threadID in
+            self?.emailThreadToOpen = threadID
+            self?.opensNotifications = true
+        }
     }
 
     /// Signed in on this iPhone, also while the PIN screen is up; the Watch may then ask for the session.
@@ -91,12 +102,17 @@ final class AppState {
             return
         }
         phase = pinVault.hasPin ? .locked : .pinSetup
+        // Signed in before PAVE kept which account: ask the session, before anything of the account is opened.
+        if PaveAccount.current(in: defaults) == nil {
+            Task { PaveAccount.set(await authService.accountID(), in: defaults) }
+        }
     }
 
     func signIn(accountID: String?) {
         guard phase == .signedOut else { return }
         defaults.set(true, forKey: Self.signedInKey)
         signedInAccountID = accountID
+        PaveAccount.set(accountID, in: defaults)
         if let accountID, pinVault.belongs(to: accountID) {
             phase = .main
         } else {
@@ -166,7 +182,17 @@ final class AppState {
         AylaSpotlight.forget(in: defaults)
         AylaDrafts.forget(in: defaults)
         AylaPendingFiles.forget()
+        NotificationAlerts.forgetEverything()
+        // What this account keeps on the iPhone goes out of sight: it stays in its own folder for when it signs in
+        // again, and the next account sees none of it, also not on the Lock Screen, in a widget or on the Watch.
+        PaveAccount.set(nil, in: defaults)
+        ApplicationWidgetSnapshot.clear()
+        WatchNextStepBridge.clear()
+        PlanActivityController.endAll()
+        // The iCloud Mail connection stays until you disconnect it yourself (Meldingen › E-mailaccounts).
         conversationToOpen = nil
+        opensNotifications = false
+        emailThreadToOpen = nil
         link = nil
         isRelocked = false
         self.phase = phase

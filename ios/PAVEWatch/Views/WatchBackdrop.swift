@@ -20,8 +20,8 @@ struct WatchBackdrop: View {
     private var glow: Color {
         if isLuminanceReduced { return .black }
         return switch phase {
-        case .ready, .answer: .brandGreen.opacity(0.7)
-        case .listening, .speaking: .brandGreen
+        case .ready, .answer: WatchPreferences.shared.accentColor.opacity(0.7)
+        case .listening, .speaking: WatchPreferences.shared.accentColor
         case .understanding, .thinking: .thinkingGlow
         case .failed: .errorGlow
         }

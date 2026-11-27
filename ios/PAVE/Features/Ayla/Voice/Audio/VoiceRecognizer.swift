@@ -1,14 +1,23 @@
 import AVFoundation
 import Speech
 
-/// Turns the user's speech into Dutch text: on the device when its Dutch speech model is installed, otherwise
+/// Turns the user's speech into text in the app's language: on the device when its speech model is installed, otherwise
 /// through Apple (the iOS permission prompt says so). Only the text goes to Ayla.
 /// One recognition runs per turn; the microphone audio is handed in from the audio thread.
 nonisolated final class VoiceRecognizer: @unchecked Sendable {
     /// Words that come up a lot in PAVE, so the recognizer expects them (as in the voice demo).
     static let hints = ["Ayla", "PAVE", "kluis", "cv", "vacature", "stage", "plan", "profiel", "diploma", "certificaat"]
 
-    private let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "nl-NL"))
+    /// The recognizer for the language the app is in now, so a change in Instellingen counts from the next turn.
+    private var recognizer: SFSpeechRecognizer? {
+        let identifier = PaveLanguageStore.current.speechIdentifier
+        return lock.withLock {
+            if let cached, cached.locale.identifier == identifier { return cached }
+            cached = SFSpeechRecognizer(locale: Locale(identifier: identifier))
+            return cached
+        }
+    }
+    private var cached: SFSpeechRecognizer?
     private let lock = NSLock()
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?

@@ -1,3 +1,4 @@
+import PAVECore
 import SwiftUI
 
 /// The empty chat: greeting (typed out), explanation and three chips. A chip opens Kluis, Plan or Profiel over the
@@ -8,6 +9,9 @@ struct AylaWelcome: View {
     /// The title types itself out once this is true.
     var isTyping = true
     let onStarter: (AylaShelf) -> Void
+    /// An application whose deadline is close, to open from here.
+    var deadline: ApplicationDraft?
+    var onOpenDeadline: () -> Void = {}
 
     private struct Starter {
         let icon: ImageResource
@@ -25,11 +29,14 @@ struct AylaWelcome: View {
         if let firstName { "Wat wil je vandaag doen, \(firstName)" } else { "Wat wil je vandaag doen?" }
     }
 
+    /// 313 pt at the standard text size, growing with it.
+    @ScaledMetric(relativeTo: .body) private var textWidth: CGFloat = 313
+
     var body: some View {
         VStack(spacing: 0) {
             AylaTypingTitle(text: title, isTyping: isTyping)
 
-            MaxWidthLayout(maxWidth: 313) {
+            MaxWidthLayout(maxWidth: textWidth) {
                 Text(isAvailable ? "Ontdek kansen, krijg persoonlijk advies en werk met AI direct in jouw PAVE-omgeving. Van je kluis en ontwikkelplan tot vacatures en sollicitaties." : AylaMessages.notAvailableInDemo)
                     .textStyle(.bodyMedium)
                     .foregroundStyle(Color.inkMuted)
@@ -45,6 +52,11 @@ struct AylaWelcome: View {
                     }
                 }
                 .padding(.top, 26)
+                if let deadline {
+                    AylaDeadlineCard(draft: deadline, action: onOpenDeadline)
+                        .padding(.top, 22)
+                        .transition(.opacity)
+                }
             }
         }
         .padding(.horizontal, 24)

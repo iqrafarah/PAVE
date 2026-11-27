@@ -83,6 +83,26 @@ struct AylaHeadTurnTests {
         #expect(feed(&detector, seconds: 1.2, yaw: { 0.45 * sin(2 * .pi * $0 / 0.25) * ($0 < 0.5 ? 1 : 0) }).isEmpty)
     }
 
+    /// Right, then back with a swing past the middle to the left: one turn, not a turn and back again.
+    @Test func theSwingBackAfterATurnIsNoTurn() {
+        var detector = AylaHeadTurnDetector()
+        let found = feed(&detector, seconds: 2, yaw: { t in
+            if t < 0.3 { return 0 }
+            if t < 0.8 { return -0.5 }
+            if t < 0.9 { return 0 }
+            if t < 1.25 { return 0.45 }
+            return 0
+        })
+        #expect(found == [.right])
+    }
+
+    /// Going back on purpose, after a moment in the middle, still works.
+    @Test func turningBackAfterAPauseIsATurn() {
+        var detector = AylaHeadTurnDetector()
+        let found = feed(&detector, seconds: 3, yaw: { t in (0.3..<0.8).contains(t) ? -0.5 : (1.8..<2.4).contains(t) ? 0.5 : 0 })
+        #expect(found == [.right, .left])
+    }
+
     @Test func sittingALittleSidewaysIsNoTurn() {
         var detector = AylaHeadTurnDetector()
         #expect(feed(&detector, seconds: 3, yaw: { min(0.12, $0 * 0.1) }).isEmpty)

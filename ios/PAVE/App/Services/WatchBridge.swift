@@ -68,7 +68,16 @@ final class WatchBridge: NSObject, WCSessionDelegate {
     private func currentMessage() async -> [String: Any] {
         let session = await currentSession()
         let isConnected = WatchConnection.current(accountID: await accountID()) != nil
-        return WatchLink.message(for: session, isConnected: isConnected)
+        var message = WatchLink.message(for: session, isConnected: isConnected)
+        // How PAVE looks and talks on the iPhone, so the Watch follows: the theme colour and Ayla's text.
+        message["voiceText"] = UserDefaults.standard.object(forKey: AylaVoiceTextSetting.key) as? Bool ?? true
+        message["language"] = PaveLanguageStore.current.rawValue
+        if let accent = await MainActor.run(body: { PaveThemeStore.shared.themeAccent }) {
+            message["accent"] = Int(accent)
+        } else {
+            message["accentIsGreen"] = true
+        }
+        return message
     }
 
     /// Nothing with the demo account: its token means nothing to the server.
@@ -108,6 +117,10 @@ final class WatchBridge: NSObject, WCSessionDelegate {
 
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
         let reply = Reply(send: replyHandler)
+        if let request = WatchRequest.from(message) {
+            Task { @MainActor in reply.send(await WatchEventBridge.handle(request)) }
+            return
+        }
         guard WatchLink.isSessionRequest(message) else {
             reply.send([:])
             return
@@ -120,6 +133,12 @@ final class WatchBridge: NSObject, WCSessionDelegate {
             }
             reply.send(answer)
         }
+    }
+
+    /// A request from the Watch that was queued while the iPhone could not be reached.
+    nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
+        guard let request = WatchRequest.from(userInfo) else { return }
+        Task { @MainActor in _ = await WatchEventBridge.handle(request) }
     }
 
     /// WatchConnectivity's reply handler may be called from any thread.

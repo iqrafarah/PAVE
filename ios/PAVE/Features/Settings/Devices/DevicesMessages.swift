@@ -12,10 +12,10 @@ enum DevicesMessages {
     static let signOutMessage = "Op dat apparaat moet je daarna opnieuw inloggen. Is PAVE daar nu open, dan kan dat tot een uur duren."
     static let notSetUpTitle = "Nog niet beschikbaar"
     static let notSetUpMessage = "Deze lijst werkt zodra PAVE er klaar voor is. Je kunt hieronder wel alvast overal anders uitloggen."
-    static let unavailableTitle = "Geen apparaten in de demo"
+    static let unavailableTitle = "Geen apparaten bij dit voorbeeldaccount"
     static let unavailableMessage = "Log in met je eigen account om te zien waar je bent ingelogd."
     static let loadFailedTitle = "De lijst kon niet laden"
-    static let settingsRowMessage = "Bekijk waar je bent ingelogd"
+    static let settingsRowMessage = "Bekijk waar je bent ingelogd en koppel je Apple Watch"
 
     static func signOutQuestion(_ device: SignedInDevice) -> String {
         "Uitloggen op \(name(of: device))?"
@@ -45,17 +45,17 @@ enum DevicesMessages {
     }
 
     /// "Nu actief" or "Actief 2 uur geleden".
-    static func activity(of device: SignedInDevice, now: Date = .now) -> String {
+    static func activity(of device: SignedInDevice, now: Date = .now, locale: Locale = PaveLanguageStore.current.locale) -> String {
         guard !device.isCurrent, now.timeIntervalSince(device.lastActiveAt) >= 5 * 60 else { return "Nu actief" }
         let formatter = RelativeDateTimeFormatter()
-        formatter.locale = Locale(identifier: "nl_NL")
+        formatter.locale = locale
         formatter.unitsStyle = .full
         return "Actief \(formatter.localizedString(for: device.lastActiveAt, relativeTo: now))"
     }
 
     /// "Ingelogd op 10 nov".
-    static func signedIn(of device: SignedInDevice) -> String {
-        "Ingelogd op \(device.signedInAt.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "nl_NL"))))"
+    static func signedIn(of device: SignedInDevice, locale: Locale = PaveLanguageStore.current.locale) -> String {
+        "Ingelogd op \(device.signedInAt.formatted(.dateTime.day().month(.abbreviated).locale(locale)))"
     }
 
     static func message(for error: DevicesError) -> String {

@@ -22,36 +22,48 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => null) as {
     action?: string; requestId?: string; itemId?: string; organizationId?: string
     locationId?: string; departmentId?: string | null; contactId?: string
-    message?: string; outcome?: string; response?: string
+    message?: string; outcome?: string; response?: string; contactIds?: unknown
   } | null
-  if (!body || !['inbox', 'detail', 'create', 'resolve'].includes(body.action ?? '')) return json({ error: 'invalid_request' }, 400)
+  if (!body || !['inbox', 'detail', 'create', 'resolve', 'contactPhotos'].includes(body.action ?? '')) return json({ error: 'invalid_request' }, 400)
 
   try {
     if (body.action === 'create') {
-      if (!body.itemId || !body.organizationId || !body.locationId || !body.departmentId || !body.contactId) return json({ error: 'invalid_request' }, 400)
+      // Only the organisation and the person are chosen. Location and department follow from the person here, from
+      // the directory, so nothing the app sends decides where the request goes.
+      if (!body.itemId || !body.organizationId || !body.contactId) return json({ error: 'invalid_request' }, 400)
       if (body.message !== undefined && body.message !== null && typeof body.message !== 'string') return json({ error: 'invalid_request' }, 400)
       if (body.message && body.message.length > 2000) return json({ error: 'message_too_long' }, 400)
-      const [{ data: item }, { data: organization, error: organizationError }, { data: location, error: locationError }] = await Promise.all([
-        authClient.from('vault_items').select('id,user_id,title,verification_status').eq('id', body.itemId).eq('user_id', user.id).maybeSingle(),
+      const [{ data: item }, { data: organization, error: organizationError }, { data: contact, error: contactError }] = await Promise.all([
+        authClient.from('vault_items').select('id,user_id,title,category,verification_status').eq('id', body.itemId).eq('user_id', user.id).maybeSingle(),
         admin.from('organizations').select('id,name,kind').eq('id', body.organizationId).not('kind', 'is', null).maybeSingle(),
-        admin.from('organization_locations').select('id,organization_id,city').eq('id', body.locationId).eq('organization_id', body.organizationId).maybeSingle(),
+        admin.from('organization_contacts').select('id,reviewer_id,department_id').eq('id', body.contactId).eq('is_active', true).maybeSingle(),
       ])
       if (organizationError) throw organizationError
-      if (locationError) throw locationError
+      if (contactError) throw contactError
       // Rejected evidence may be sent again; verified evidence first has to change (which makes it toVerify).
       if (!item || !['toVerify', 'rejected'].includes(item.verification_status)) return json({ error: 'item_not_awaiting_verification' }, 409)
       if (!organization) return json({ error: 'organization_not_found' }, 404)
-      if (!location) return json({ error: 'invalid_choice' }, 400)
+      // May this person confirm it: active, with a PAVE account, and not the learner.
+      if (!contact?.reviewer_id || contact.reviewer_id === user.id) return json({ error: 'invalid_choice' }, 400)
 
-      // A department of that location, then one person there who has a PAVE account and is not the learner.
-      const [{ data: department, error: departmentError }, { data: contact, error: contactError }] = await Promise.all([
-        admin.from('organization_departments').select('id').eq('id', body.departmentId).eq('location_id', location.id).maybeSingle(),
-        admin.from('organization_contacts').select('id,reviewer_id')
-          .eq('id', body.contactId).eq('department_id', body.departmentId).eq('is_active', true).maybeSingle(),
-      ])
+      // The person's department, and its location, which must belong to the chosen organisation.
+      const { data: department, error: departmentError } = await admin.from('organization_departments')
+        .select('id,location_id').eq('id', contact.department_id).maybeSingle()
       if (departmentError) throw departmentError
-      if (contactError) throw contactError
-      if (!department || !contact?.reviewer_id || contact.reviewer_id === user.id) return json({ error: 'invalid_choice' }, 400)
+      if (!department) return json({ error: 'invalid_choice' }, 400)
+      const { data: location, error: locationError } = await admin.from('organization_locations')
+        .select('id,organization_id').eq('id', department.location_id).eq('organization_id', organization.id).maybeSingle()
+      if (locationError) throw locationError
+      if (!location) return json({ error: 'invalid_choice' }, 400)
+      // Older apps still send location and department; they have to be the person's own.
+      if ((body.locationId && body.locationId !== location.id) || (body.departmentId && body.departmentId !== department.id)) {
+        return json({ error: 'invalid_choice' }, 400)
+      }
+      // An account is not enough: the person has to be authorised for this kind of evidence.
+      const { data: authorised, error: authorisedError } = await admin.from('organization_contact_evidence_types')
+        .select('contact_id').eq('contact_id', contact.id).eq('category', item.category).maybeSingle()
+      if (authorisedError) throw authorisedError
+      if (!authorised) return json({ error: 'not_authorized' }, 403)
 
       const { data: activeRequest, error: activeError } = await admin.from('vault_validation_requests')
         .select('id').eq('user_id', user.id).eq('item_id', item.id).eq('organization_id', organization.id).eq('status', 'pending').maybeSingle()
@@ -87,6 +99,35 @@ Deno.serve(async (req) => {
         }
       }
       return json({ id: request.id, requestedAt: request.requested_at })
+    }
+
+    // The profile photos of contact persons a learner can choose, as links valid for an hour. Only of active persons
+    // with an account, never the learner's own, and never which account it is.
+    if (body.action === 'contactPhotos') {
+      const ids = Array.isArray(body.contactIds) ? body.contactIds.filter((id): id is string => typeof id === 'string') : []
+      if (ids.length === 0 || ids.length > 50) return json({ error: 'invalid_request' }, 400)
+      const { data: contacts, error: contactsError } = await admin.from('organization_contacts')
+        .select('id,reviewer_id').in('id', ids).eq('is_active', true).not('reviewer_id', 'is', null).neq('reviewer_id', user.id)
+      if (contactsError) throw contactsError
+      const accounts = [...new Set((contacts ?? []).map((contact) => contact.reviewer_id as string))]
+      if (accounts.length === 0) return json({ photos: {} })
+      const { data: profiles, error: profilesError } = await admin.from('profiles')
+        .select('id,avatar_path,avatar_url').in('id', accounts)
+      if (profilesError) throw profilesError
+      const photoOf = new Map<string, string>()
+      for (const profile of profiles ?? []) {
+        if (profile.avatar_path) {
+          const { data } = await admin.storage.from('pave-avatars').createSignedUrl(profile.avatar_path, 3600)
+          if (data?.signedUrl) { photoOf.set(profile.id, data.signedUrl); continue }
+        }
+        if (typeof profile.avatar_url === 'string' && profile.avatar_url.startsWith('https://')) photoOf.set(profile.id, profile.avatar_url)
+      }
+      const photos: Record<string, string> = {}
+      for (const contact of contacts ?? []) {
+        const url = photoOf.get(contact.reviewer_id as string)
+        if (url) photos[contact.id] = url
+      }
+      return json({ photos })
     }
 
     if (body.action === 'resolve') {

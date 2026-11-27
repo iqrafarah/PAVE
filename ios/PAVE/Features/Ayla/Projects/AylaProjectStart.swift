@@ -11,6 +11,8 @@ struct AylaProjectStart: View {
     let project: AylaProject
     let model: AylaChatModel
     let onOpenChat: (AylaConversation) -> Void
+    /// Back to all chats; nil where the list is beside the page already.
+    var onBack: (() -> Void)?
 
     @Environment(VaultModel.self) private var vault: VaultModel?
     @State private var tab = Tab.chats
@@ -20,7 +22,11 @@ struct AylaProjectStart: View {
     @State private var picksSources = false
     @State private var fileSource: VaultFileSource?
     @State private var uploadFlow: VaultAddEvidenceModel?
+    @State private var uploading: VaultAddEvidenceModel?
     @State private var openedItem: VaultItem?
+    @State private var renaming: AylaConversation?
+    @State private var newTitle = ""
+    @State private var deleting: AylaConversation?
 
     private var chats: [AylaConversation] {
         model.conversationList.visible.filter { $0.projectID == project.id }.sorted { $0.updatedAt > $1.updatedAt }
@@ -51,6 +57,7 @@ struct AylaProjectStart: View {
                     .lineLimit(3)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+            ProjectPlansList(project: project)
             if model.canUseSources {
                 Picker("Weergave", selection: $tab) {
                     Text(AylaMessages.projectTabChats).tag(Tab.chats)
@@ -78,6 +85,22 @@ struct AylaProjectStart: View {
             // The kind that was filtered on is gone: show everything again.
             if let kind, let categories, !categories.contains(kind) { self.kind = nil }
         }
+        .alert("Naam wijzigen", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
+            TextField("Naam", text: $newTitle)
+            Button(ApplyMessages.cancel, role: .cancel) { renaming = nil }
+            Button("Bewaren") {
+                if let renaming, !newTitle.trimmingCharacters(in: .whitespaces).isEmpty { model.rename(renaming, to: newTitle) }
+                renaming = nil
+            }
+        }
+        .confirmationDialog(AylaMessages.projectDeleteChatQuestion, isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible, presenting: deleting) { chat in
+            Button("Verwijderen", role: .destructive) {
+                PaveHaptics.tap(.heavy)
+                model.delete([chat])
+            }
+        } message: { _ in
+            Text(AylaMessages.projectDeleteChatHint)
+        }
         .sheet(isPresented: $editsProject) {
             AylaProjectEditor(project: project, canStyle: model.conversationList.canStyleProjects) { name, instructions, icon, color in
                 var changed = project
@@ -104,6 +127,7 @@ struct AylaProjectStart: View {
             flow.pick(result)
             if case .success = result { flow.fillWithAyla() }
             uploadFlow = flow
+            uploading = flow
         }
         .sheet(item: $uploadFlow, onDismiss: addUploadedSource) { flow in
             VaultAddEvidenceSheet(flow: flow)
@@ -119,6 +143,10 @@ struct AylaProjectStart: View {
 
     private var header: some View {
         HStack(spacing: 14) {
+            if let onBack {
+                PaveBackButton(label: AylaMessages.projectBackToChats, action: onBack)
+                    .padding(.leading, -12)
+            }
             AylaProjectBadge(project: project, size: 48)
             Text(project.name)
                 .textStyle(.emptyTitle)
@@ -152,6 +180,9 @@ struct AylaProjectStart: View {
             VStack(spacing: 2) {
                 ForEach(chats) { chat in
                     AylaChatRow(conversation: chat, isCurrent: false) { onOpenChat(chat) }
+                        // The same as in the list of chats: hold a chat to rename, pin, take out or delete it.
+                        .contextMenu { chatMenu(chat) }
+                        .accessibilityActions { chatMenu(chat) }
                 }
             }
             .padding(.horizontal, -8)
@@ -260,8 +291,11 @@ struct AylaProjectStart: View {
         HStack(spacing: 6) {
             Text(text)
                 .lineLimit(1)
-            Image(systemName: "chevron.down")
-                .font(.system(size: 10, weight: .semibold))
+            Image(.iconChevronDown)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .paveIconHeight(6)
                 .accessibilityHidden(true)
         }
         .textStyle(.caption)
@@ -320,7 +354,7 @@ struct AylaProjectStart: View {
                             .textStyle(.listTitle)
                             .foregroundStyle(Color.ink)
                             .lineLimit(1)
-                        Text([item.category.singularTitle, item.createdAt.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "nl_NL")))].joined(separator: " · "))
+                        Text([item.category.singularTitle, item.createdAt.formatted(.dateTime.day().month(.abbreviated).locale(PaveLanguageStore.current.locale))].joined(separator: " · "))
                             .textStyle(.caption)
                             .foregroundStyle(Color.inkMuted)
                             .lineLimit(1)
@@ -352,6 +386,27 @@ struct AylaProjectStart: View {
         .background(Color.panel, in: .rect(cornerRadius: 14))
     }
 
+    @ViewBuilder
+    private func chatMenu(_ chat: AylaConversation) -> some View {
+        Button {
+            newTitle = chat.title
+            renaming = chat
+        } label: {
+            Label("Naam wijzigen", tinted: .iconPencilSolid)
+        }
+        if model.conversationList.canPin {
+            Button { model.togglePin(chat) } label: {
+                Label { Text(chat.isPinned ? "Losmaken" : "Vastzetten") } icon: { Image(chat.isPinned ? .iconBookmarkSlashSolid : .iconBookmarkSolid).renderingMode(.template) }
+            }
+        }
+        Button { model.move(chat, to: nil) } label: { Label(AylaMessages.removeFromProject, tinted: .iconMinusCircleSolid) }
+        if model.conversationList.canArchive {
+            Button { model.setArchived(true, [chat]) } label: { Label(RetentionMessages.archive, tinted: .iconArchiveBoxSolid) }
+        }
+        Divider()
+        Button(role: .destructive) { deleting = chat } label: { Label("Verwijderen", tinted: .iconTrashSolid) }
+    }
+
     private func emptyText(_ text: String) -> some View {
         Text(text)
             .textStyle(.bodyMedium)
@@ -361,8 +416,10 @@ struct AylaProjectStart: View {
             .fixedSize(horizontal: false, vertical: true)
     }
 
+    /// The sheet's own item is already nil when it closes, so the flow is kept apart to read what it saved.
     private func addUploadedSource() {
-        guard let id = uploadFlow?.savedItemID else { return }
+        guard let id = uploading?.savedItemID else { return }
+        uploading = nil
         Task { await model.addSources([id], to: project) }
     }
 }
@@ -417,7 +474,7 @@ struct AylaSourcePicker: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuleren") { dismiss() }
+                    Button(ApplyMessages.cancel) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(picked.isEmpty ? "Toevoegen" : "Toevoegen (\(picked.count))", action: add)
@@ -441,7 +498,7 @@ struct AylaSourcePicker: View {
                 Button(AylaMessages.askWithoutThem) {
                     finish(Array(picked.subtracting(notAllowed.map(\.id))))
                 }
-                Button("Annuleren", role: .cancel) {}
+                Button(ApplyMessages.cancel, role: .cancel) {}
             } message: { _ in
                 Text(AylaMessages.askNotAllowedMessage)
             }
@@ -486,9 +543,7 @@ struct AylaSourcePicker: View {
                         .foregroundStyle(Color.inkMuted)
                 }
                 Spacer(minLength: 8)
-                Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 22))
-                    .foregroundStyle(isOn ? Color.paveAccent : Color.inkMuted)
+                PaveCheckbox(isOn: isOn, size: 20)
                     .opacity(isSource ? 0.5 : 1)
                     .accessibilityHidden(true)
             }

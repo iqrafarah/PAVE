@@ -4,8 +4,9 @@ import WatchKit
 
 /// PAVE on the Watch: Ayla's pixel orb, the same as in the voice mode on the iPhone. Tap it and talk; it moves with
 /// your voice while it listens, swirls while Ayla thinks, and moves with her voice while she answers. What she says is
-/// only heard, not shown: text comes under the orb only when she asks you something, with her choices such as Ja and
-/// Nee, a proposal or "Zal ik dit onthouden?". A new conversation starts from the menu (long press).
+/// heard, and shown as text only when "Tekst bij praten met Ayla" is on in Instellingen › Ayla on the iPhone. Her choices
+/// such as Ja and Nee, a proposal or "Zal ik dit onthouden?" always show, as you answer them here. A new conversation
+/// starts from the menu (long press).
 struct WatchVoiceView: View {
     @Bindable var model: WatchAylaModel
     @State private var showsMenu = false
@@ -14,10 +15,12 @@ struct WatchVoiceView: View {
     /// Long pressing is easy to miss, so a hint shows until the menu has been opened once.
     @AppStorage("watchMenuDiscovered") private var menuDiscovered = false
 
+    private var showsText: Bool { WatchPreferences.shared.showsVoiceText }
+
     /// Ayla asks something you answer on the screen; otherwise her answer is only spoken.
     private var hasAnswer: Bool {
         guard let reply = model.reply else { return false }
-        return !(reply.question?.choices.isEmpty ?? true) || model.proposal != nil || model.remember != nil
+        return !(reply.question?.choices.isEmpty ?? true) || model.proposal != nil || model.remember != nil || model.handoff != nil
     }
 
     var body: some View {
@@ -39,6 +42,13 @@ struct WatchVoiceView: View {
                     .contentTransition(.opacity)
                 if hasAnswer, let reply = model.reply {
                     answer(reply)
+                } else if showsText, let reply = model.reply, !reply.text.isEmpty, model.phase == .speaking || model.phase == .answer {
+                    // Reading along with what she says, as on the iPhone when the setting is on.
+                    Text(reply.text)
+                        .font(.body)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .transition(.opacity)
                 }
                 if !menuDiscovered {
                     Text("Houd ingedrukt voor je gesprekken")
@@ -111,10 +121,12 @@ struct WatchVoiceView: View {
     private func answer(_ reply: AylaReply) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             if let choices = reply.question?.choices, !choices.isEmpty {
-                // Her question itself, so you know what Ja or Nee answers.
-                Text(reply.text)
-                    .font(.body)
-                    .fixedSize(horizontal: false, vertical: true)
+                // Her question itself, so you know what Ja or Nee answers; only heard when text is off.
+                if showsText {
+                    Text(reply.text)
+                        .font(.body)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 ForEach(choices.prefix(3), id: \.id) { choice in
                     Button(choice.label) { model.choose(choice) }
                         .buttonStyle(.bordered)
@@ -122,6 +134,9 @@ struct WatchVoiceView: View {
             }
             if let proposal = model.proposal {
                 WatchProposalCard(proposal: proposal) { model.answerProposal($0) }
+            }
+            if let handoff = model.handoff {
+                WatchHandoffCard(handoff: handoff) { model.answerHandoff($0) }
             }
             if let remember = model.remember {
                 WatchRememberCard(remember: remember) { model.answerRemember($0) }

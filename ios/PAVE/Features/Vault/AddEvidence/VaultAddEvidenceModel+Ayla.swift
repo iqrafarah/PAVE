@@ -1,6 +1,15 @@
 import PAVECore
 
 extension VaultAddEvidenceModel {
+    /// "Zelf invullen" in the chat, as on the web: the form with the chat's files attached, empty, and Ayla reads
+    /// nothing.
+    static func filledByYou(vault: VaultModel, category: VaultCategory, documents: [VaultUpload]) -> VaultAddEvidenceModel {
+        let flow = VaultAddEvidenceModel(vault: vault, category: category, folderID: nil)
+        for upload in documents { flow.pick(.success(upload)) }
+        flow.go(to: .details)
+        return flow
+    }
+
     /// Adding evidence from the chat: the item as Ayla understood it so far, her skills, and the files that belong to
     /// it. When the chat already read those files (the same reading as "Laat Ayla invullen"), the form opens filled in
     /// with that, logo and cover included, without reading them again; otherwise with files she reads them now, and

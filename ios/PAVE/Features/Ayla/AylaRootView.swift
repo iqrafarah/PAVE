@@ -13,6 +13,13 @@ struct AylaRootView: View {
     @Binding var showsChats: Bool
 
     @State private var isSelectingInColumn = false
+    /// For the plan around the Dynamic Island: the top safe area and width of the screen, and whether the chat asks
+    /// the plan to step aside (while talking).
+    @State private var topInset: CGFloat = 0
+    @State private var screenWidth: CGFloat = 0
+    /// The status column on the right of the closed iPhone Duo.
+    @State private var trailingInset: CGFloat = 0
+    @State private var planIslandHidden = false
     /// The width of the chats column on a wide screen, dragged by its edge.
     @AppStorage("aylaChatsColumnWidth") private var columnWidth = 300.0
     @Environment(\.scenePhase) private var scenePhase
@@ -23,6 +30,15 @@ struct AylaRootView: View {
         Binding(get: { showsChats ? .all : .detailOnly }, set: { showsChats = $0 != .detailOnly })
     }
 
+    private var island: CGRect? {
+        isWide ? nil : DynamicIslandFrame.frame(topInset: topInset, width: screenWidth)
+    }
+
+    /// The camera in the column on the right of the closed iPhone Duo.
+    private var sideIsland: CGRect? {
+        isWide ? nil : DynamicIslandFrame.sideFrame(topInset: topInset, trailingInset: trailingInset, width: screenWidth)
+    }
+
     var body: some View {
         Group {
             if isWide {
@@ -31,9 +47,29 @@ struct AylaRootView: View {
                 stackLayout
             }
         }
+        .environment(\.plansInIsland, island != nil || sideIsland != nil)
+        .onGeometryChange(for: [CGFloat].self) { [$0.size.width, $0.safeAreaInsets.top, $0.safeAreaInsets.trailing] } action: { values in
+            screenWidth = values[0]
+            topInset = values[1]
+            trailingInset = values[2]
+        }
+        .onPreferenceChange(PlanIslandHiddenKey.self) { planIslandHidden = $0 }
+        // Above the header, so unfolding it never slides under Ayla's buttons.
+        .overlay(alignment: .top) {
+            if let island, !showsChats, !planIslandHidden {
+                PlanIslandOverlay(chat: model, island: island, screenWidth: screenWidth)
+                    .ignoresSafeArea()
+            } else if let sideIsland, !showsChats, !planIslandHidden {
+                // The whole screen, column included: the island grows out of the camera in it.
+                PlanIslandOverlay(chat: model, island: sideIsland, screenWidth: screenWidth + trailingInset, isSide: true)
+                    .ignoresSafeArea()
+            }
+        }
         // The locked chats hide again when PAVE goes to the background.
         .onChange(of: scenePhase) { _, phase in
             if phase == .background { model.showsLockedChats = false }
+            // Her answer broke off while PAVE was away: show what the server kept instead of the error.
+            if phase == .active { Task { await model.reloadIfInterrupted() } }
         }
     }
 

@@ -14,8 +14,11 @@ struct VaultEvidenceEditor: View {
     @State private var isTyping = false
     @State private var height: CGFloat = 800
 
-    init(vault: VaultModel, item: VaultItem) {
-        _edit = State(initialValue: VaultEditEvidenceModel(vault: vault, item: item))
+    /// `changes` are what Ayla filled in ("eind: 2026-06-30; titel: …"): they show as changes, and you save them.
+    init(vault: VaultModel, item: VaultItem, changes: String? = nil) {
+        let edit = VaultEditEvidenceModel(vault: vault, item: item)
+        if let changes { edit.draft.apply(aylaChanges: changes) }
+        _edit = State(initialValue: edit)
     }
 
     private var isShort: Bool { verticalSizeClass == .compact || height < 720 }
@@ -147,5 +150,30 @@ struct VaultEvidenceEditor: View {
 
     private func save() async {
         if await edit.save() { dismiss() }
+    }
+}
+
+extension VaultItemDraft {
+    /// Ayla's changes, as "veld: waarde" separated by semicolons. Fields she cannot name stay as they are.
+    mutating func apply(aylaChanges: String) {
+        for part in aylaChanges.split(separator: ";") {
+            let pair = part.split(separator: ":", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
+            guard pair.count == 2, !pair[1].isEmpty else { continue }
+            let value = pair[1]
+            switch pair[0].lowercased() {
+            case "titel", "title": title = value
+            case "omschrijving", "beschrijving", "description": description = value
+            case "organisatie", "organisation", "organization": organisationName = value
+            case "plaats", "locatie", "location": organisationLocation = value
+            case "start", "begin": if let day = VaultDay(value) { startDate = day }
+            case "eind", "einde", "end":
+                if let day = VaultDay(value) {
+                    endDate = day
+                    isCurrent = false
+                }
+            case "uitgegeven", "issued": if let day = VaultDay(value) { issuedOn = day }
+            default: continue
+            }
+        }
     }
 }

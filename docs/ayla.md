@@ -51,7 +51,7 @@ Speech recognition stays on each device (watchOS, iOS, browser). Only text goes 
 | Retention | Conversations are kept until the user deletes them, one at a time or all at once. Deleting removes them on every device. |
 | Offline | The Watch says clearly that Ayla is not reachable. It does not queue or guess. |
 | Cost limits | No limit during the prototype, but an emergency cap on credits in OpenRouter. |
-| Model provider | OpenRouter, with the same Mistral models as in the demo (see below). |
+| Model provider | OpenRouter, with Mistral models that Mistral hosts itself (see below). |
 | Where Ayla runs | A Supabase Edge Function (`ayla`) in the shared project. It runs with the user's own session, so row level security and two-step verification apply. |
 | Real data only | No example data in the apps. Ayla only knows what the user tells her and, later, the vault items the user allows. |
 | Consent | Per item: "Ayla mag dit bekijken en gebruiken" on the evidence, which the user can switch off at any time. In a conversation Ayla first asks whether she may look in the vault; only after Ja does she use the allowed items. |
@@ -93,7 +93,7 @@ Conclusions:
 - The API gives clean card data but only a snippet of the text. The skill-gap needs the full requirements. Fetching the full text through the vacancy link needs a check of the terms of Adzuna and of the employers first.
 - LinkedIn is not possible (no public job search API, scraping breaks its terms).
 
-Decision (2026-11-05): **Adzuna**, no example vacancies. Ayla only discusses what Adzuna returned and says honestly that she saw part of the text. The skill-gap stays empty until the vault exists. Full vacancy texts only if the terms allow it.
+Decision (2026-11-05): **Adzuna**, no example vacancies. Ayla only discusses what Adzuna returned and says honestly that she saw part of the text. Full vacancy texts only if the terms allow it; see "Vacancies in the chat" for the match against the vault.
 
 Rules for the card:
 
@@ -101,6 +101,161 @@ Rules for the card:
 - Without a logo the card shows a monogram.
 - Every item in the skill-gap shows which requirement of the vacancy it comes from, so the user can check it. It is a possibility, not a fact.
 - Only search terms leave the system, never personal data. The API key stays on the server.
+
+### Vacancies in the chat (2026-11-20)
+
+**Sources (2026-11-20).** Adzuna registration did not work out, so the server uses the job API that has a key, with the web search beside it (see below): Adzuna (only with `ADZUNA_APP_ID` and `ADZUNA_APP_KEY`), Jooble (only with `JOOBLE_API_KEY`, host `JOOBLE_HOST`, default `nl.jooble.org`; key through the form on jooble.org/api/about), and a web search through OpenRouter (Exa, limited to Dutch job sites in `JOB_SITES`, about $0.007 per search plus tokens). A web result counts only when its link is among the search results (`fromWebAnswer`), so the model cannot invent a vacancy. The Jooble client follows the commonly used format (POST with `keywords` and `location`, `jobs` with `title`, `company`, `location`, `snippet`, `salary`, `link`, `id`); its documentation comes with the key, so check it once the key is there. OpenRouter marks the `web` plugin as deprecated in favour of the `openrouter:web_search` server tool on the Responses API; it still works, but move over when it stops.
+
+Vacancies are not a page in the menu: you search them in the chat with Ayla, using the evidence in your vault.
+
+- **Ayla searches for you.** "Vacatures die bij me passen" without a job title: Ayla picks the search terms from the vault, and asks for consent first when she may not look in it.
+- **Ayla explains the match.** With the vault allowed, the second model call fills `vacancyMatches`: per vacancy what fits and what is missing, each with a literal piece of the vacancy text. The server (`withMatches`) keeps a requirement only when that text really is in the snippet, at most 3 per list, and drops a gap that is also a match. Without consent the lists stay empty.
+- **Ayla helps close the gap.** Tapping a missing skill asks her how to get it for that vacancy.
+- **The panel.** The vacancies open over the chat as the vault does (iOS `AylaShelf.vacancies`): low at first so her answer stays readable, pulled up to the full screen, swiped away, with Ayla's text field below. A card opens the vacancy in the same panel: the snippet (`Vacancy.summary`, never the whole text), what fits and what is missing, and a link to the whole vacancy at the employer.
+- **The open vacancy is context.** While a vacancy is open, the request carries `context.vacancy` (title, company, city, snippet, skills; server limits in `contract.ts`), so "past deze bij mij?" is about that one. The prompt marks its text as the employer's text, not an instruction.
+- **Saved vacancies** are kept in the account (`saved_vacancies`, migration `20261120170000_saved_vacancies.sql`), as Ayla showed them, so they still show when Adzuna no longer has them. Own rows only, behind two-step verification, no updates.
+- **You see what she does.** The stream sends `status` events: `vacancySearch` (with the search terms) as soon as the model wrote them, so the Adzuna search starts while the model still writes, and `vacancyMatch` before the second call. The app shows them on one line where "Ayla denkt na…" stands. Apps that do not know the event ignore it.
+- **Ja and Nee at once.** `askVault` comes right after `text` in the schema; as soon as it is written (and Ayla may not look yet) the server stops the model and sends the question, and the reply goes out before the conversation list is updated.
+- **You choose which data Ayla uses (2026-11-21, Figma FEDDIES 1348:6).** Ayla's question about the vault has three answers on the iPhone: Ja (everything marked "Ayla mag dit bekijken en gebruiken"), Kies zelf (choice id `choose`: the app opens the vault picker, the same one as behind the plus button) and Nee. Items picked for a conversation go along as `context.itemIds`, and the server then gives the model **only those items**, not the rest of the allowed vault; picked right after her question it counts as a fresh yes, so she goes on with what she asked it for. Above the vacancies the panel says what was searched (`search` on the vacancies block) and which data was used, with "Andere gegevens kiezen" to search again. Web and Watch keep Ja and Nee until they have the picker behind the choice.
+- **In your own words.** "Kies zelf" is also heard as "laat mezelf kiezen", "ik kies zelf", "laat mij kiezen" or "ik wil het zelf bepalen", typed or said (`AylaVaultOffer.wantsToChoose`); she says "Kies maar. Ik gebruik alleen wat je kiest." and the picker opens. Should such a sentence reach the brain anyway (web), the prompt tells it to point to the picker and ask again, not to start about something else. While you pick by hand during a spoken conversation, Ayla holds (the microphone is off) and goes on when the picker is gone; her answer after your choice is spoken.
+- **Answers always fit.** The answers to her question stand next to each other when each fits on one line, and under each other when they do not (three answers on the closed iPhone Duo, or large text), so a label is never cut off (`AylaChoiceBar`).
+- **She acts in the same turn (found on the iPhone Duo, 2026-11-21).** After a Ja to the vault the model sometimes only announced ("dan zoek ik vacatures") and waited, so the user had to say "ga". The prompt now forbids announcing a search without `vacancySearch`, and the server checks it (`announcesSearchOnly`): she is told so and searches in that turn. `vacancySearch` stands right after the text in the schema, the answer gets more room (900 tokens), and an answer that was cut off all the same never shows as raw JSON: what was complete is kept (her text, a search), the rest is left out. Actions that open or save a vacancy are dropped from a turn that searches, because those cards are not there yet.
+- **She knows what is on screen.** `app.seeing` says in a few words what you look at (the page, the tab, "vacature 2 van 6 op de kaart"), and the vacancy on the card under the orb goes along as the open vacancy, so "past deze bij mij?" needs no asking back. No vault content and no names from the vault are in it.
+- **A tap asks out loud too.** What the app asks for you after a tap (Vraag Ayla, a missing skill, what you picked) goes through the spoken conversation while you talk with her, so she answers with her voice.
+- **Ask or do, never both, and no talking on unprompted (found on the Duo).** An answer that asks "wil je dat ik …?" carries no actions (the server drops them), and her own round after her actions only comes when a step failed or a job filled all four steps, not when everything simply worked.
+- **More logos.** A vacancy without a company shows the icon of the job site it names ("Via werkzoeken.nl"); a company the model named no site for gets its own name tried as a site (`sitesFromName`: "synseltechniek.nl", or the name itself when it is a domain); the icon is asked at 256 pixels and shown from 32 pixels up, smaller when it is small.
+- **Her tasks, ticked off.** The activity pill is open from the start when there is more than one step, with a tick per step as she finishes it and a red mark for what did not work. Searching vacancies shows as steps too (search, compare with your vault, open the list), moved along by the server's status.
+- **A setting she changes.** Instellingen comes up, you see it change, and it goes down again by itself; it stays when you asked to see the page or had it open yourself.
+- **"Met alles uit mijn kluis".** Said in so many words, that is a yes to the vault without her asking (`grantsWholeVault`), and it lifts a choice of items made earlier in the conversation (`usesWholeVault` in the app).
+- **Per scenario.** (1) "Zoek vacatures die bij me passen": she asks for the vault first (Ja, Kies zelf, Nee), then picks the search terms from what she may see. (2) "Zoek junior developer in Eindhoven": she searches at once, and asks under the results whether she may show what fits. (3) Items picked first with the plus button: only those are used. (4) Nee: she searches on what you say and shows no match, and does not ask again. (5) Nothing in the vault she may see: she asks which job or direction you look for. (6) Follow-ups ("ook in Utrecht", "meer zoals die bij Bedrijf", "wat mis ik voor de tweede"): her earlier answers carry a line "(Getoonde vacatures …)" that the server adds from the stored cards, so she knows what was shown and searched.
+- **Smarter search.** `vacancySearch.also` is one related job she searches beside the first; the results are merged in turn, each vacancy once, at most 6 cards. With the vault allowed the cards are ordered by fit (`bestFirst`: more that fits, less that is missing). She names vacancies by job and company, never by number.
+- **The web search supports the job API** (`withSupport`): Jooble's vacancies first, the web's after them, and a vacancy both found keeps the longer piece of text, which gives the match more to go on. The web gets 6 seconds after the API answered; when the API fails or finds nothing, the web is the source. Jooble's `updated` shows as "Geplaatst op" in the vacancy.
+- **Company logos (2026-11-21).** Jooble gives no logos. In the second model call the model names the company's own site per vacancy (`vacancySites`), only when it is sure. The server shows a logo only when the domain fits the company's name (`siteFits`: "ogd.nl" for "OGD ict-diensten", never a job site or social media, never for "Via …") and the site really answers (`siteChecker`, 2 seconds). `logoUrl` is then the icon of that site through Google's favicon service at 128 pixels, with no key. The app (`CompanyLogo`) shows it on a white badge and keeps the letter when there is no logo or it is smaller than 48 pixels. To be honest about: the phone loads the logo from Google, so Google sees which company's icon is asked for; the employer's own site is only touched by the server.
+- **Hands-free**, typed or spoken: "toon de vacatures", "open de tweede vacature", "bewaar deze" (the open one), "bewaar de laatste", "open mijn bewaarde vacatures", "terug".
+
+## What Ayla does in the app herself (2026-11-21)
+
+Ayla has to be able to do nearly everything for you, also hands-off (typed or spoken, no tapping). There are two ways, and they end in the same code in the app:
+
+1. **Fixed sentences, at once** (`AylaAppCommand` in PAVECore): "open de map Stages", "zet het thema op blauw", "ga terug". The app recognises them itself, so they work at once and mostly without a connection. Two things in one sentence ("zet donker aan en open mijn stages") are not handled here but go to the brain.
+2. **Actions her brain chooses** (`actions` in the reply, `ACTIONS` in `contract.ts`, `AylaAppAction` in PAVECore): any wording, up to four in a row, alongside her answer. The app carries them out one after the other so you see it happen (`run` in `AylaChatScreen`), and says so in the chat when something cannot be done (a folder that does not exist).
+
+Rules:
+
+- **Names are yours.** A folder, a piece of evidence or a chat is named in your own words; the app looks it up (`AylaAppAction.best`). The model never gets a list of your folders, evidence or chats for this.
+- **What cannot be undone asks first.** `deleteChat`, `deleteEvidence`, `signOut` and `forgetAll` come with `confirm`: the server replaces her text with a question in fixed words and Ja and Nee, and the app only acts after Ja, once. A model that says "gedaan" too soon changes nothing.
+- **She never says it is done when it is not.** The prompt forbids it, and after a Ja the app checks that the thing exists before she says so.
+- **Only on the iPhone for now.** Web and Watch get no actions and the prompt tells the model so; they can adopt the list (`reply.schema.json`, `$defs.action`).
+
+- **You follow what she does.** One compact glass pill shows the step she is on, with her own pixel blocks as progress and how far she is (`AylaActivityPill`); a tap opens the steps. It floats just above where she lives (the text field or the small orb), in the chat and on an open page, and stays a few seconds after she is done. This follows what ChatGPT, Claude and Perplexity do (one status line, steps on request) rather than a permanent list. It is not shaped or placed like the Dynamic Island: Apple asks apps not to imitate it.
+- **While you talk, she stays with you as the small orb.** A page that opens during a spoken conversation has one floating glass capsule at its bottom: the orb, what she is doing, the microphone and stop (`AylaShelfVoiceBar`), next to the glow along the edge. Typed, that place is the text field. Glass is only used for this layer of controls over the page, tinted so text under it does not run through.
+- **Outside the app** the Live Activity of the spoken conversation (Lock Screen and Dynamic Island, `PAVEWidgets`) also says that she is busy: "Stap 2 van 3", "Zoekt vacatures". Never names of folders, evidence or chats and never search terms, because the Lock Screen can be seen by others.
+- **She goes on after her own actions (the loop).** When she set `continues`, or a step did not work, the app sends what came of her actions (`results` in the request: per action whether it worked and what the app said) and she takes another way or does the next steps. At most three rounds per question; such a round stores no message of the user, and it works spoken too. If she cannot be reached for it, the app says itself what failed.
+- **A model by how hard the turn is** (`effortFor`, `modelsFor`): a greeting starts with Mistral Small (`mistral-small-2603`), an ordinary question with `mistral-large-2512`, and real work (writing or comparing, files, a long or compound request, comparing vacancies with the vault, a round after her own actions, a question about data and privacy, the turn right after a yes to the vault) with `mistral-medium-3-5`, which also gets longer to start before the next model joins. When a model is slow or refuses (Mistral answers 429 when it is busy), the next one takes the turn at once; the small model is the last resort outside a greeting, because it follows the prompt least well.
+- **She knows how the app is set.** Every question carries `app` (theme, text size, light or dark, vault layout, text while talking, animations, memory on or off, the title of this chat and whether it is pinned): no vault content and no names of folders or evidence. So she can say how something stands and does not do what is already so.
+- **Her own access asks first.** `allowAyla` with `on` gives Ayla the use of a piece of evidence, so it is asked with Ja and Nee like the things that cannot be undone; taking access away is done at once.
+
+### Which models, and where the data goes (found 2026-11-23)
+
+Running the scenarios against the real models showed that the live function had been answering ordinary questions with the wrong model for some time:
+
+- `mistralai/mistral-medium-3.1`, the model for ordinary questions, was retired by Mistral (error 400, "Invalid model"). Every such turn fell back at once to `mistral-small-3.2-24b-instruct`, the weakest of the three, which explains many of the careless answers seen on the Duo.
+- OpenRouter does not serve `mistral-small-3.2` through Mistral at all, only through DeepInfra, Parasail and Venice. So what people told Ayla on those turns went to those companies, not to Mistral. The same holds for `ayla-evidence` and `ayla-skills`, which use the same list (`MODELS`).
+- That model also sometimes wrote only spaces and tabs after a field until its room ran out: 20 seconds of waiting and an answer that lost its actions and the vault items it used.
+
+What `openrouter.ts` does now:
+
+- Only models Mistral hosts itself (`mistral-small-2603`, `mistral-large-2512`, `mistral-medium-3-5`), and every request carries `provider: { only: ['mistral'] }`, so OpenRouter cannot route it elsewhere. `mistral-large-4-0` was tried and left out: it has the same whitespace problem.
+- A model that answers with an error is logged by name and status (never the question), so a retired model shows in the function's logs.
+- A stream that only writes whitespace any more is cut there (`MAX_TRAILING_SPACE`), and JSON that stopped between two fields is read as whole up to there (`parsed` in `brain.ts`).
+- Costs: the prompt is about 7,600 tokens per call. An ordinary turn costs roughly $0.004 on `mistral-large-2512`; a hard turn or a fallback on `mistral-medium-3-5` roughly $0.012.
+
+`node evals/run.ts` prints which model answered how often; run it when answers get worse, because models are retired without notice.
+
+### Intelligence round 2 (2026-11-23)
+
+29 new scenarios in `evals/run.ts` (names starting with "r2"): unexpected questions (a joke, "help", typos, English words in a Dutch sentence, fear of not finding work, salary, a BSN, an attempt to make her delete everything), several tasks at once, five folders in two rounds, an order that points at nothing ("zet hem uit"), a one-year plan, preparing an application, a motivation letter, interview questions, and vacancy follow-ups (another city, part-time, compare two, why one fits less, more like one, save the second, what to learn and how long, an internship, search then open the second). The harness now records what she searched for, so a check can see that "ook in Utrecht" searches in Utrecht and keeps the job.
+
+First run 24 of 29. What changed:
+
+- **Answer the question asked.** Questions about a job, salary, study or applying are answered (salary as a rough range that differs per employer), not turned into a search; "welke banen passen bij mij" still searches at once.
+- **A search nobody asked for does not start** (`asksForWork`): when neither the message nor a yes to her own offer is about work or searching, a search she wants is held back and she is told to answer instead. A question about vacancies already shown ("wat mis ik voor de tweede?", `asksAboutShown`) is answered from "Getoonde vacatures", never searched again.
+- **"Zet hem uit" with nothing to point at** gets "Wat bedoel je precies?" instead of a guess.
+- **Plans** are numbered steps, at most five, with "maand 1-3" when a term is named; she no longer offers to save a plan. **A big job** (an application, a cv, a switch) starts with the plan for that situation, including what is missing for that vacancy, before she asks where to begin. **Comparing** names each option by job and company and ends with which fits best and why. **"Schrijf …"** gets a draft at once.
+- **Found vacancies that do not match the search** (looked for UX, found developers) are said so in the first sentence, with an offer of other words, never a promise that she already searches again.
+- **More than four steps** asked at once always go on in a next round, even when the model forgot to say so.
+- **Feelings and worries** are not proposed as memories.
+
+Result: all 68 scenarios twice, 135 of 136 (the one miss was a check, not her answer), median 2.7 s per scenario.
+
+### Vacatures met de stem en vier taken (2026-11-23)
+
+**Two new fields on `context`** (`contract.ts`, checked in `parseRequest`):
+
+```jsonc
+"context": {
+  "screen": "vacancies",                  // compare is allowed where vacancy is: vacancies, vault, vaultItem
+  "vacancy": { "title": "…", "company": "…", "city": "…", "summary": "…", "matches": ["…"], "skillGap": ["…"] },
+  "compare": [ /* 2 or 3 vacancies in the same shape as vacancy */ ],
+  "task": "compare" | "gaps" | "prepare" | "interview"
+}
+```
+
+`task: "compare"` needs `compare`; `gaps`, `prepare` and `interview` need `vacancy`. Anything else is `context is not valid`. The visible message stays a plain Dutch sentence ("Vergelijk deze vacatures", "Wat mis ik voor deze baan?", "Help me solliciteren op deze vacature", "Oefen een sollicitatiegesprek met mij"); the task tells the brain what the button meant.
+
+**The four tasks** are a prompt layer (`taskLayer` in `prompt.ts`, after where the user is) plus a note with the question (`contextNote`):
+
+- `compare`: each vacancy by job and company, what fits (`matches`), what is missing (`skillGap`), practical points only when they are in the data, and an advice which fits best and why. No made-up salary or hours. Spoken: three to five sentences, no lists.
+- `gaps`: what is still missing, checked against the vault she may see, then two to five numbered steps with a rough timeline ("maand 1-2"). She never offers to save it as a plan: Plan does not exist yet.
+- `prepare`: which vault items to mention (by title, only items she may see), what to stress, and the opening of a motivation letter (three to five honest sentences). Without the vault she asks for it with the usual question (Ja, Kies zelf, Nee); after a no she writes with `[je opleiding]`-style gaps to fill in. Nothing is sent and nobody has applied. Spoken: she names the items and asks whether to put the letter in the chat.
+- `interview`: she plays a recruiter of that company. First turn: one sentence about the practice and the first question; then feedback on the answer and the next question, one at a time, at most five; after the fifth answer or "stop", "klaar" or "genoeg" a summary with two strengths and one point to improve. The app keeps sending `task: "interview"` while practice mode is on.
+
+The server keeps them to it (`brain.ts`): a task never searches (a `vacancySearch` is dropped, no nudge), only `prepare` may ask for the vault (the others go on with what she sees, so interview practice also works without the vault), and `compare`, `gaps` and `prepare` use the hard model while an interview turn is normal (`effortFor`).
+
+**Follow-ups about the cards, also spoken** (`asksAboutShown`): anything that points at the cards shown last or the card that is open (`context.vacancy`) is answered from them and never searched again: places in the list ("en die tweede?", "de vorige", "de laatste"), "naast elkaar", "vergelijk", "welke van", "die/deze vacature", a company or a distinctive word of a title from "(Getoonde vacatures …)" ("is die van Appwerk beter?", "die iOS-baan"), "deze" or "die" while a card is open, and short follow-ups such as "en qua reistijd?". Asking for other results ("zoek", "ook in Utrecht", "nog meer", "andere vacatures", "parttime", "en in Utrecht?") is still a search. Travel times are not made up: she names the places and says what is closer only when she is sure.
+
+**Listening with Voxtral** (`ayla-listen`): the recording goes to `mistralai/voxtral-small-24b-2507`, only on Mistral's servers (`provider: { only: ['mistral'] }`), about a second per sentence. The app may send `X-Ayla-Hints`: a percent-encoded, comma-separated list of names the user may say (companies, job titles, skills, vault titles). The server keeps at most 40 names of at most 80 characters, 1000 characters in all, and only letters, digits, spaces and `-'.&+#/()`, so the list cannot carry an instruction; the model is told it is only a list. With hints "Appwerk" is heard as Appwerk, without them as "Upwork". The limit is about 60 seconds (2 MB of 16 kHz mono 16-bit WAV).
+
+What testing against the real model showed, and what the function does about it:
+
+- A system message, or the instruction before the recording, makes Voxtral answer or make up a story instead of writing out short sentences ("Stop maar" became "Ik ben klaar om te beginnen"). So there is one user message: the recording first, then the instruction.
+- For silence or steady noise it writes whole made-up sentences, with the hint names in them. A recording without speech (`hasSpeech`: at least 150 ms clearly louder than the quietest part) is not sent and gives empty text, and a transcript with more words than fit in the recording (`plausibleTranscript`, five words a second) counts as nothing heard. The answer gets room for what fits in the recording (`max_tokens`).
+- Without hints it sometimes answers a spoken question instead of writing it out; with hints that did not happen in the tests. Tested with the macOS voice Xander, not with real people yet.
+
+**Evals.** 17 scenarios starting with "r3" in `evals/run.ts`: each task typed and spoken, applying without the vault, an interview of three turns ending in "stop", and the spoken follow-ups above. First run 15 of 17: steps were checked too strictly (a check bug), and "stop" in an interview gave only "Het is goed" (her mistake). Fixed since: the summary after "stop", steps that are always given (they were sometimes left out), and no made-up travel times ("20 minuten met de auto"). The "wat mis ik" scenarios then passed 6 of 6; a full run with all r3 scenarios after the last changes is still to do (the OpenRouter credit ran out during it).
+
+### How the server holds her to her word (review round, 2026-11-22)
+
+The model is not trusted to be consistent; `brain.ts` checks each answer against what it says it is.
+
+- **`intent` comes first.** The first field of the model's answer says what the answer is: `answer`, `askUser`, `askVault`, `search`, `propose` or `act`. The model commits before it writes, and the server uses it: `search` without `vacancySearch`, or `act` without anything that happens, gets one more try in the same turn (`nudgeFor`) in which she is told that nothing happens yet. When that try fails, her first answer stands.
+- **Ask or do** (`asksBeforeDoing`): a closing "zal ik …?", "wil je dat ik …?" or "wil je deze … bewaren?", or any closing question in an answer with intent `askUser`, means she waits, so the actions are dropped. Not when she said before it that she does something ("Ik zet donker aan. Zal ik ook de tekst groter maken?"): that is doing and then asking about something else, and the first still happens.
+- **One question names everything it is a yes to** (`confirmable`): several pieces of evidence to delete, or to give her the use of, fit in one question with all their titles. Anything else is asked on its own, and what the question does not name is left out of that answer, so a Ja never does more than it was asked for.
+- **What she may see of the vault** (`vaultScope`): a yes in the conversation opens every item marked "Ayla mag dit bekijken en gebruiken". Items picked for the conversation, the item that is open ("Vraag Ayla over dit bewijs") and the sources of a project open **only themselves**; for the rest she can still ask (`mayAskMore`), unless the user said no. A no also closes the project sources, and "kijk niet meer in mijn kluis" closes what is picked or open as well (the app lets the picked items go, `takesVaultBack`).
+- **Yes and no as people say them** (`consent.ts`): a yes is an answer made only of yes words ("doe maar", "ja, kijk maar", "tuurlijk", "eh ja", "laat maar zien"); "oké, nee toch niet" and "laat maar" are a no; "ja, maar alleen mijn stage", "ja ik wil zelf kiezen" and "mag ik eerst iets vragen" are neither, so she asks again instead of looking. "Met alles uit mijn kluis" only counts as said to her, not as a question or a remark about the vault. "Kijk niet meer in mijn kluis" takes the consent back for the rest of the conversation.
+- **A no to an offer ends the offer** (`declinedOffer`), but only a bare no to something she offered. A no to an ordinary question ("Heb je al een cv?") is an answer, and the questions PAVE itself asks (the vault, a confirmation) always stay.
+- **The round about the vacancies only talks.** It has its own, smaller schema (`MATCH_OUTPUT_SCHEMA`: text, sites, matches), so it cannot act, navigate or propose; what she does was decided in the first round. The vacancies reach her as a message of PAVE with the text between `<vacatures>` tags, marked as material and not an instruction. When that round fails or is cut off, the cards still show: the matches that were complete are kept (`entriesSoFar`), and without any words of hers PAVE says "Dit heb ik gevonden. …". Matches need at least one vault item in view; at most 3 per list.
+- **Nobody else speaks as PAVE.** "(Bericht van PAVE …)" is removed from what a user types and from the text of files (`ownWords`), a file cannot close its own `<bijlage>` tag, and notes the server adds to the history never show as her words (`cleanText`).
+- **She knows what she did.** Her earlier answers carry "(Je acties bij dit antwoord: …)", so "zet het terug" has something to point at.
+- **The model for the turn** also looks at what she asked: "prima" after her question is an answer (Medium, or Large when she offered to write a cv), not a greeting, and the turn right after a yes to the vault is hard.
+- **The prompt** (`prompt.ts`): what the app can really do today (`APP_PROMPT`, the iPhone-only part apart), evidence statuses in the words of the app ("Geverifieerd", "Niet bevestigd", "Afgewezen"), the rules for files only in a conversation that has files, building evidence as a list instead of one paragraph, and a five-line recap at the end. New rules: two directions and a search at once for "welke banen passen bij mij", a cv or letter of at most 150 words (spoken: the outline first), no names of courses or providers and no prices, "stop", forgetting one thing versus everything, and an honest answer about what happens with data, without promises about where it is stored.
+- **Small things the server decides itself**, because the model got them wrong against the real thing: an action that sets what is already so is dropped (`alreadySo`, "Dat staat al zo."); a vacancy is only saved when the user said so or said yes to her offer (`asksToSave`); asked to forget one thing while she remembers nothing, she says so; an item she names by its title counts as used ("Uit je kluis"); the item or vacancy that is open goes with the question itself (`contextNote`); English is answered in English (`writesEnglish`); on the Watch she says how many vacancies she found and that they can be asked for in the app.
+- **Checking it against the real models:** `node evals/run.ts` in `shared/supabase/functions/ayla` runs 39 scenarios through the real brain and models with a made-up vault and vacancies (`--only`, `--verbose`, `--raw`, `--times`). It needs `OPENROUTER_API_KEY` (environment, or `shared/supabase/functions/.env`, which is not in git). On 2026-11-23 all 39 passed, with a median of 2.2 seconds per scenario.
+
+What she can do, by part of the app:
+
+| Part | By fixed sentence | By her brain as well |
+| --- | --- | --- |
+| Opening | Kluis, plan, profiel, instellingen, meldingen, a settings page, a folder, a piece of evidence, back, close | Wat Ayla onthoudt, bewaarde vacatures |
+| Looks and settings | Theme, text size, light or dark, vault as list or grid, text while talking, chats in iPhone search | Animations on or off, memory on or off |
+| Chats | | New chat, open a chat by its title, rename, pin, archive, expiry of this chat, delete (asks first) |
+| Vault | Open a folder or evidence | New folder, put evidence in a folder, archive evidence, let Ayla use a piece of evidence or not, open the form to have it confirmed, delete evidence (asks first) |
+| Adding evidence | | From a file, a photo or what you tell her (`vaultItem`, since 2026-11-10) |
+| Vacancies | Save one, open one, the saved ones | Search, a related job, choosing which data, the same by place in the list |
+| Memory | | Remember and forget single facts (`memories`), forget everything (asks first) |
+| Account | | Sign out (asks first) |
+
+Not by Ayla, on purpose: sending a verification request (you choose who and send it yourself), the PIN for locked chats, and changing a password. She says where you find them.
 
 ## What belongs to the account (shared state)
 
@@ -149,8 +304,8 @@ Each message also carries `device`, `input` (voice or text) and optionally `cont
 
 | Job | Model |
 | --- | --- |
-| Answers | `mistralai/mistral-medium-3.1` |
-| Fallback | `mistralai/mistral-small-3.2-24b-instruct`, `mistralai/mistral-large-2512` |
+| Answers | `mistralai/mistral-large-2512` (ordinary), `mistralai/mistral-small-2603` (greeting), `mistralai/mistral-medium-3-5` (hard) |
+| Fallback | the other two, the small one last |
 | Voice | `openai/gpt-audio-mini`, voice `coral` |
 
 ## Voice mode
@@ -190,7 +345,7 @@ Details and the reasons behind each choice are in `ios/README.md` (section Ayla)
 - **Client** (`ios/PAVECore`): `SupabaseAylaService` sends questions, reads, pins, renames, deletes and searches conversations, and streams the voice. Renaming and deleting ask for the changed row back (`Prefer: return=representation`): an empty answer means a policy refused it, and the app puts the chat back with a message. `AylaRealtime` listens to `ayla_conversations` over Supabase Realtime so the list updates by itself.
 - **Chat:** a welcome that types itself out, files read on the phone (only their text is sent, for that one message), dictation, vacancy cards in a sheet from below.
 - **Voice mode:** speech is recognised on the phone in Dutch and sent as text after 1.2 seconds of silence; the answer is read out by `ayla-voice` while it streams in; echo cancellation lets you interrupt Ayla. The pixel orb can be dragged between full screen and the conversation, as in ChatGPT.
-- **Chats:** grouped by date (Vastgezet, Vandaag, Gisteren, Afgelopen 7 dagen, Afgelopen 30 dagen, Eerder), swipe to pin, rename or delete, delete with a few seconds to undo, select several, search in titles and in messages, live updates, and an opt-in (off by default) to put chat titles in the iPhone's own search.
+- **Chats:** grouped by date (Vastgezet, Vandaag, Gisteren, Recent, Afgelopen 30 dagen, Eerder), swipe to pin, rename or delete, delete with a few seconds to undo, select several, search in titles and in messages, live updates, and an opt-in (off by default) to put chat titles in the iPhone's own search.
 - **Menu:** laid out like ChatGPT, a sidebar on iPad and the open iPhone Duo held sideways, and a layout around the fold of a partly folded iPhone Duo.
 - **Messages:** press and hold to copy, select text, have Ayla read it out, get a new answer to the last question, or change your last question. The last two first remove the last question and answer from `ayla_messages` (`removeLastTurn`, allowed by the policy "Delete own messages"), so Ayla does not see the old answer in the history.
 - **Around the chat:** a half-typed message is kept per chat on the device, a button jumps back to the newest message, and offline the app says so calmly instead of failing.
@@ -438,9 +593,46 @@ Turned off, Ayla uses none of the notes and suggests nothing; the notes stay unt
 - Show "Gebaseerd op" whenever `usedMemories` is there; it is a promise of PAVE, not decoration.
 - Use the texts of the iPhone where they exist (`ios/PAVE/Features/Ayla/Shared/AylaMessages.swift`), so both apps say the same.
 
+## Plans (migration 20261125130000)
+
+A plan is a goal with ordered steps (`plans`, `plan_steps`, both with row level security and two-step verification).
+Chats belong to a plan through `ayla_conversations.plan_id` (and `plan_step_id` for a chat about one step), as chats
+belong to projects.
+
+- **Saving.** The apps save a whole plan with `rpc/save_plan(p_plan)`: the plan, its steps in order and which chats are
+  in it, in one transaction. One step at a time is `active`; skipped steps do not count for the progress.
+- **Ayla knows the plan.** A new chat in a plan sends `planId` (and `planStepId`); the server stores them on the
+  conversation. For every turn the server reads the plan of the conversation itself and gives the model its goal, its
+  steps with their status and the step to help with (`plan.ts`, `planLayer`).
+- **Ayla changes a step.** The model answers `planStep: { step, status }` (a number from the list; `done`, `skipped` or
+  `active`). The server checks it and saves it with `rpc/set_plan_step_status`, which keeps one step active. The reply
+  carries `proposedAction: { kind: "updatePlan", planStep: { planId, stepId, status } }` so the apps show it at once;
+  the apps also load the plan again after every answer in a plan's chat.
+- **Ayla proposes changes to the plan** (2026-11-26, iPhone only). In a plan's chat the model may answer `planEdit:
+  { changes: [{ op: add | remove | move, step, title, kind, after, why }] }`: when the user asks to check the plan,
+  after a step is done, or after a search or lookup that adds or removes a step. The server keeps only real changes
+  (`planEditProposal`: no done step removed, no step that is already there, at most four) and sends `planEdit: { id,
+  planId, changes: [{ op, stepId?, title, kind?, afterStepId?, why }] }` (`afterStepId` null: at the start). Nothing is
+  saved: the app shows a card, the user unticks what they do not want and taps "Pas plan aan". Not sent right after a
+  no, nor to the Watch or the web, which can ignore the field. "Laat Ayla nakijken" on the plan's page asks it in the
+  plan's latest chat.
+- **Going on with a plan stays in the chat.** `openPlan` only opens the plan's page when the user asks to see it ("open",
+  "laat zien", "bekijk"); otherwise the server turns it into `workOnPlan` (`asksToSeePlan`).
+- **Other flows** (such as finding work) make a plan from their own `PavePlanTemplate` with kinds of their own; ids of
+  steps are UUIDs. `metadata` on a plan and a step is free room for that flow.
+
+### Steps proposed by Ayla, vacancies and projects (2026-11-26)
+
+- **`ayla-plan` function** (`shared/supabase/functions/ayla-plan`): proposes up to six steps for a plan. It gets the plan's name and goal, the titles of the steps it already has, and of the vault only the title, kind and verified-or-not of evidence with "Ayla mag dit bekijken en gebruiken" on; with a plan for a vacancy also that vacancy and what the user still misses. Nothing is stored: the app shows the steps and the user picks which go into the plan. Same models and two-step verification as `ayla-skills`.
+- **A plan for a vacancy** is made in the app (`PlanVacancy` in PAVECore), not by the model: a step per missing skill (at most three), evidence, CV and letter, sharing, practising the talk. The plan keeps the vacancy in `plans.metadata` (`vacancyID`, `vacancyTitle`, `vacancyCompany`, `vacancySummary`, `vacancyMissing` joined with U+001F). `loadPlan` reads that, and the prompt tells Ayla which vacancy the plan is for and what is missing.
+- **The prompt** now says of each step what kind it is and where in PAVE it is done, and no longer claims that Plan and Profiel are empty or that plans cannot be saved. The evals `plan`, `r2 stappenplan …` and `r3 wat mis ik` were written for the old wording: run them again before deploying.
+- **Actions for the new parts of the app** (2026-11-26, iPhone only): `openNotifications`, `openApplications`, `openApplication`, `openProject`, `setFontStyle`, `openPlan`, `addPlanStep`, `markPlanStep`, `linkPlanToProject`, `makeVacancyPlan`, `shareWith`, `stopSharing`, `showShares`, `renamePlanStep`, `describePlanStep`, `addTalkToCalendar` (only for a talk the user said yes to; opens the calendar sheet, the user saves), and `removePlanStep`, `answerInvitation` and `addProjectSource` (these three ask Ja or Nee first, with their own question; a source also lets Ayla see that evidence). The app looks plans, steps and projects up by the user's own words (`AylaPlanActions`). Sharing only opens the share screen: the user chooses and confirms there.
+- **What the app tells her** (`app` in the request): next to the settings now also `font`, `plans` (at most 8 lines: name, how far, current step; never goals or summaries) and `projects` (names) and `invitations` (at most 6 lines: employer, job, moment, answered or not). An older server rejects unknown keys in `app`, so deploy the function before the app.
+- **A plan in a project**: `plans.metadata.projectID`. New chats of the plan start in that project (the apps send `projectId` next to `planId`), so the project's instructions and sources apply. Existing chats stay where they are.
+
 ## Privacy: things to be honest about
 
-- OpenRouter does not guarantee that data stays in Europe, and the voice model is from OpenAI. The demo prompt says that data stays in Europe and that conversations are not used for training. **Only keep claims in the prompt that are true for this setup.**
+- The chat models are hosted by Mistral and requests are pinned to it (`provider.only`), but they still pass through OpenRouter, which does not guarantee that data stays in Europe; and the voice model is from OpenAI. Until 2026-11-23 ordinary turns went to DeepInfra, Parasail or Venice without anyone having chosen that (see "Which models, and where the data goes"). The demo prompt says that data stays in Europe and that conversations are not used for training. **Only keep claims in the prompt that are true for this setup.**
 - The server must not log what people say.
 - Memory notes are personal data: the user can see, change and delete them, and can turn memory off.
 - Real personal data should only go through a provider we have checked against the AVG.
@@ -474,3 +666,29 @@ Not reused: the pixel orb and icons, the audience questions with QR code, the de
 4. Conversations and messages in Supabase, with live sync.
 5. Chat in the apps, then voice.
 6. Consent and the vault, then memory, then proposals.
+
+### Studies and courses (2026-11-26)
+
+`educationSearch` (`{ what, where }`) makes Ayla look up studies and courses through OpenRouter's web plugin (Exa), in
+`ayla/educations.ts`. Only pages the search returned count, as with vacancies, so a school or page cannot be invented.
+The results come as an `educations` block (`name`, `school`, `level` mbo/hbo/wo/cursus/overig, `city`, `duration`,
+`url`, `summary`), with a second short answer about which fits and what to check on the site. Not on the Watch: there
+she says to ask on the iPhone. On the iPhone each card has "Bekijk de site" and "Zet in plan" (a research step with the
+page in `metadata.educationURL`) or, without a plan, "Maak er een plan van" (look, admission, open day, evidence,
+apply). In a plan chat she searches instead of only offering to.
+
+### Language
+
+Fixed sentences the server writes itself (confirm questions, the vault question, Ja/Nee, fallbacks, plan updates) are
+translated in `ayla/localize.ts` just before the reply leaves, so the checks in `brain.ts` keep working on the Dutch
+words. Yes, Si and Nò count as answers.
+
+### More actions (2026-11-26)
+
+`editEvidence` (opens the evidence form with Ayla's changes filled in, as "veld: waarde; …"; the user saves, and a
+verified item says it needs verifying again), `restoreEvidence`, `addSkill`, `linkEvidenceToStep` (step metadata
+`evidenceIDs`), `setStepDue` (step metadata `due`, shown under the step, red when passed) and `moveStep`,
+`setApplicationStatus` (the user's own record; PAVE sends nothing) and `startPractice`, `setLanguage`, `addToCalendar`
+(also from the Watch: the calendar opens on the iPhone), `writeMail`, and `shareWith` with a duration in days as
+target. The app sends its applications as lines in `app.applications`. What she can do for a plan depends on the
+device (`PLAN_TOOLS` in plan.ts), so she never promises something that does not happen there.

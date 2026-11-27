@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 
 /// What the plus button adds to a message (Figma "iPhone 16 & 17 Pro Max - 2", in the current style).
 /// It grows out of the text field and covers its left side. An item from the vault becomes what the conversation is
-/// about; plans can be added once they exist, until then the row says why not. "Plakken" only shows while a photo or
+/// about; "Plan toevoegen" puts the chat in a plan, so Ayla helps with its steps. "Plakken" only shows while a photo or
 /// pdf is on the clipboard.
 struct AylaAttachMenu: View {
     let onAddFile: () -> Void
@@ -12,8 +12,14 @@ struct AylaAttachMenu: View {
     var onPickItem: (() -> Void)?
     var onScan: (() -> Void)?
     var onPaste: (() -> Void)?
+    /// Puts the chat in a plan, or makes one first.
+    var onPickPlan: (() -> Void)?
+    /// The plan the chat is in, if any.
+    var planName: String?
 
     @State private var canPaste = Self.clipboardHasFile
+    /// Figma's 255 pt at the standard text size; it grows with larger text instead of cutting the rows off.
+    @ScaledMetric(relativeTo: .body) private var width: CGFloat = 255
 
     /// Asking whether there is something does not trigger the "allow paste" question; only reading it does.
     private static var clipboardHasFile: Bool {
@@ -27,7 +33,11 @@ struct AylaAttachMenu: View {
             } else {
                 AylaAttachMenuRow(icon: .iconFolder, title: AylaMessages.attachItem, note: AylaMessages.vaultEmpty)
             }
-            AylaAttachMenuRow(icon: .iconMap, title: "Plan toevoegen", note: "Je hebt nog geen plan")
+            if let onPickPlan {
+                AylaAttachMenuRow(icon: .iconMap, title: PlanMessages.attachPlan, note: planName.map(PlanMessages.inPlan), action: onPickPlan)
+            } else {
+                AylaAttachMenuRow(icon: .iconMap, title: PlanMessages.attachPlan, note: PlanMessages.emptyTitle)
+            }
             AylaAttachMenuRow(icon: .iconPaperclip, title: "Bestand toevoegen", action: onAddFile)
             if let onPhoto {
                 AylaAttachMenuRow(icon: .iconPhotoSolid, title: "Foto toevoegen", action: onPhoto)
@@ -43,8 +53,11 @@ struct AylaAttachMenu: View {
         .padding(.trailing, 20)
         .padding(.top, 20)
         .padding(.bottom, 21)
-        .frame(width: 255, alignment: .leading)
+        // As wide as that, but never wider than the screen.
+        .frame(maxWidth: width, alignment: .leading)
         .glassEffect(.regular, in: .rect(cornerRadius: 25))
+        // Over the chat like a menu: VoiceOver stays in it until it closes (the chat adds the escape action).
+        .accessibilityAddTraits(.isModal)
         .onReceive(NotificationCenter.default.publisher(for: UIPasteboard.changedNotification)) { _ in
             canPaste = Self.clipboardHasFile
         }

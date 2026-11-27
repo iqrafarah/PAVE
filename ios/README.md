@@ -9,6 +9,7 @@ Bij een compileerfout op een MacBook: controleer eerst dat Xcode 26 of nieuwer a
 ```
 PAVE/
   App/            PAVEApp, AppState (loading → login → pincode → main), RootView, PaveAppDelegate
+    Localization/ Taal: Nederlands, English, Papiamentu (Instellingen › Taal). Zie "Talen" hieronder
     Services/     Keuze tussen echte en demo-diensten (AuthServiceFactory, AylaServiceFactory), Face ID, internetverbinding
     Shortcuts/    Sneltoetsen (PaveCommands) en Siri/Opdrachten (PaveAppShortcuts)
   DesignSystem/   Herbruikbare UI voor de hele app
@@ -34,7 +35,8 @@ PAVE/
     Plan/         Plannen (nu nog leeg)
     Profile/      Profiel (nu nog leeg: delen bestaat nog niet)
     Settings/     Instellingen: je account en uitloggen
-    Notifications/ Meldingen, filters, rolgebonden overzicht en aanvraagdetail (data-aansluiting volgt)
+    Notifications/ Meldingen: overzicht, banner, lokale meldingen en aanvraagdetail
+      Email/      E-mail in Meldingen: iCloud Mail (IMAP/SMTP), live opgehaald; gesprek als chat
   Resources/      AppIcon.icon, Assets.xcassets (iconen)
 PAVEWatch/        Apple Watch-app (spraakbot, geen volledige interface)
 PAVEWidgets/      Widgets en knoppen voor het Bedieningspaneel (WidgetKit-extensie)
@@ -203,7 +205,9 @@ De iOS-uitwerking gebruikt de twee mobiele Figma-prototypes als basis: de lijst 
 
 ## Meldingen
 
-`NotificationsScreen` bevat het iOS-overzicht volgens de aangeleverde wireframe: alle/ongelezen, zoeken, typefilter, groepering per dag en een detail voor verificatieaanvragen. Lerende accounts zien gesprekken en geverifieerd of afgewezen bewijs; de adminweergave toont gesprekken en verificatieaanvragen. Een gesprek kan terug naar Ayla navigeren; geverifieerd of afgewezen bewijs opent het eigen item in de kluis.
+`NotificationsScreen` is het iOS-overzicht: geen tabs, filters of kop, alleen de lijst. Bovenaan staat "Actie nodig" met de open verificatieaanvragen (de inbox bevat alleen aanvragen die nog lopen), daaronder de rest per Vandaag, Deze week en Eerder. Een stip markeert ongelezen. Zoeken verschijnt pas bij 8 meldingen of meer. "Alles als gelezen markeren" en "Recent verwijderd" staan in het menu rechtsboven. Lerende accounts zien gesprekken en geverifieerd of afgewezen bewijs; de adminweergave toont gesprekken en verificatieaanvragen. Een gesprek kan terug naar Ayla navigeren; geverifieerd of afgewezen bewijs opent het eigen item in de kluis.
+
+**Nieuwe meldingen zien.** Zonder betaald Apple Developer-account is er geen echte push (APNs). Daarom: (1) terwijl PAVE open is, ververst `MainView` elke 30 seconden, toont een kleine banner (`NotificationBanner`) en een cijfer op de bel; (2) het cijfer staat ook op het app-icoon; (3) is PAVE dicht, dan vraagt `NotificationAlerts` iOS om af en toe een korte achtergrondverversing (`BGAppRefreshTask`, minimaal elke 15 minuten, iOS bepaalt de rest) en toont een lokale melding voor wat nieuw is. Dat laatste kan dus vertraagd zijn. Een melding bevat alleen de titel, nooit bewijs of chattekst. Toestemming vraagt de kaart bovenaan Meldingen of Instellingen › Meldingen, niet bij het opstarten. Tikken op een banner opent Meldingen. `push_devices` (migratie `20261120160000`) is de voorbereiding voor echte push: pas als er een betaald account en een APNs-sleutel zijn, komt er een verzendstap in `vault-review` bij en registreert de app zijn token.
 
 **Beslissing over je aanvraag.** Na goedkeuren of afwijzen krijgt de lerende "Bewijs geverifieerd" of "Bewijs afgewezen", met de titel van het bewijs en de organisatie. Het scherm toont naast de soorten van je rol ook elke soort die echt in je inbox staat: wie zelf beoordelaar is (beheerdersweergave), zag eerder de beslissingen over het eigen bewijs niet. De melding blijft staan, ook als je het bewijs daarna aanpast of opnieuw laat bevestigen.
 
@@ -239,7 +243,7 @@ Na het ontgrendelen opent `MainView` (`PAVE/Features/Main`) met Ayla. Ayla zelf 
   - De chats blijven achter de chatknop (keuze Daaf). Plan en Profiel tonen eerlijk een lege staat. Meldingen hebben het iOS-overzicht, zoeken, ongelezen-filter, typefilter, aanvraagdetail en doorklik naar een chat of eigen bewijs; zonder meldingenbron toont het scherm een lege staat en geen verzonnen aantal.
 - `AylaRootView`: de chat (`AylaChatScreen`) en je chats (`AylaChatList`: zoeken, "Nieuw gesprek", Vastgezet en Chats). De chatknop rechtsboven opent ze.
 - **Chats** (`AylaChatsScreen`, `AylaChatList`), achter de chatknop rechtsboven, zoals Mail en ChatGPT:
-  - **Groepen:** Vastgezet, Vandaag, Gisteren, Afgelopen 7 dagen, Afgelopen 30 dagen en Eerder (`AylaConversationList.sections`). Onder elke titel de tijd of de dag, en "Op web" of "Op Apple Watch" als het gesprek daar begon (`started_on`).
+  - **Groepen:** Vastgezet, Vandaag, Gisteren, Recent, Afgelopen 30 dagen en Eerder (`AylaConversationList.sections`). Een rij toont alleen de titel, net als op web.
   - **Acties:** veeg een chat naar rechts om hem vast te zetten of los te maken, naar links om de naam te wijzigen of hem te verwijderen (helemaal doorvegen verwijdert meteen). Houd hem ingedrukt voor een voorbeeld met de laatste berichten (`AylaChatPreview`) en dezelfde acties. VoiceOver heeft ze als acties op de rij. Een vastgezette chat staat meteen bovenaan, met een verse rij: de rij waarop je veegde is nog bezig zijn veegknoppen weg te werken en toont dan even geen tekst. Een verversing die niets zichtbaars verandert (vaak de echo van je eigen actie via live bijwerken) laat de lijst met rust (`looksTheSame`), zodat rijen niet opnieuw worden getekend. Tot de chats voor het eerst geladen zijn staan er grijze rijen, niet "Nog geen chats".
   - **Verwijderen en ongedaan maken:** een verwijderde chat verdwijnt meteen uit de lijst, met een balk "Chat verwijderd · Ongedaan maken" (`AylaUndoBar`), zoals Gmail. Pas na 5 seconden (of als je een volgende verwijdert, of de app naar de achtergrond gaat) verwijdert de app hem echt: het gesprek en de berichten gaan dan voorgoed weg uit de database (`on delete cascade`), ook op web. De app vraagt de verwijderde rij terug (`Prefer: return=representation`); komt er niets terug, dan heeft de database geweigerd en komt de chat terug met een melding. Hernoemen werkt net zo. Is het het open gesprek, dan begint de chat opnieuw.
   - **Selecteren:** onder de knop met drie puntjes rechtsboven (`AylaChatsMoreMenu`), op iPhone en in de brede kolom. Tik chats aan en zet ze in één keer vast of verwijder ze, met dezelfde balk om het ongedaan te maken.
@@ -326,3 +330,18 @@ Alles hieronder opent alleen de app. PAVE vraagt dus eerst je pincode of Face ID
 
 - De kluiskeuze uit Figma ("Alle items", kaarten met vinkjes, "Verder") en de kaart "2 gegevens geselecteerd" zijn gebouwd (`VaultSelectionList`, `VaultSelectionBar`, `ChatAttachmentCard`), maar alleen te zien in de Xcode-voorbeelden. Ze gaan aan zodra de kluis bestaat.
 - Bedrijfslogo's: Adzuna levert die niet, dus de kaarten tonen de eerste letter van het bedrijf.
+
+## Talen
+
+PAVE is er in het Nederlands, Engels en Papiamentu; je kiest in Instellingen › Taal en de app verandert meteen. Teksten
+blijven in het Nederlands in de code (zie `docs/ui-teksten.md`). De vertalingen staan in
+`PAVE/Resources/Localizable.xcstrings`, met de Nederlandse tekst als sleutel.
+
+- `Text`, `Button`, `Label`, `Toggle`, `TextField`, `navigationTitle`, `alert` en de andere teksten van SwiftUI
+  vertalen een `String` vanzelf (`App/Localization/PaveLocalizedViews.swift`). Een naam of iets wat de gebruiker
+  schreef en nooit mag veranderen: `Text(verbatim:)`.
+- Een tekst met een waarde erin krijgt `%@` in de sleutel, zoals `Na %@ minuten`.
+- Buiten SwiftUI (meldingen, vragen aan Ayla) gebruik je `.translated`.
+- Een nieuwe tekst: voeg hem toe aan de catalogus met een Engelse en Papiamentse vertaling. Zonder vertaling blijft
+  hij Nederlands.
+- Schrijf hele zinnen; plak geen losse stukken aan elkaar, want elke taal zet de woorden in een andere volgorde.

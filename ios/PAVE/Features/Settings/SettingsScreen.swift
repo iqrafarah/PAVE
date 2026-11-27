@@ -17,8 +17,10 @@ struct SettingsScreen: View {
     /// The pages the Camera Control button can open, as the rows do.
     enum SettingsDestination: String, CaseIterable, Hashable {
         case appearance
+        case language
         case devices
         case ayla
+        case notifications
         case privacy
         case retention
         case archive
@@ -26,8 +28,10 @@ struct SettingsScreen: View {
         var title: String {
             switch self {
             case .appearance: SettingsMessages.appearance
+            case .language: SettingsMessages.language
             case .devices: DevicesMessages.title
             case .ayla: "Ayla"
+            case .notifications: "Meldingen"
             case .privacy: "Privacy"
             case .retention: RetentionMessages.title
             case .archive: RetentionMessages.archiveTitle
@@ -44,6 +48,8 @@ struct SettingsScreen: View {
                     SettingsSectionTitle(title: SettingsMessages.general)
                     SettingsGroup {
                         SettingsRow(icon: .iconPaintBrushSolid, title: SettingsMessages.appearance, value: SettingsMessages.title(profile.theme), opens: .appearance)
+                        SettingsRow(icon: .iconGlobeEuropeAfricaSolid, title: SettingsMessages.language, value: PaveLanguageStore.shared.language.nativeName, opens: .language)
+                        SettingsRow(icon: .iconBellSolid, title: "Meldingen", opens: .notifications)
                         SettingsRow(icon: .iconDevicePhoneMobileSolid, title: DevicesMessages.title, opens: .devices)
                     }
 
@@ -74,8 +80,10 @@ struct SettingsScreen: View {
             .navigationDestination(for: SettingsDestination.self) { destination in
                 switch destination {
                 case .appearance: SettingsAppearanceScreen()
+                case .language: SettingsLanguageScreen()
                 case .devices: SignedInDevicesScreen()
                 case .ayla: SettingsAylaScreen()
+                case .notifications: SettingsNotificationsScreen()
                 case .privacy: SettingsPrivacyScreen()
                 case .retention: SettingsRetentionScreen()
                 case .archive: ArchiveScreen()

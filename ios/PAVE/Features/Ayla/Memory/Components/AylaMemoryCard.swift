@@ -56,21 +56,25 @@ struct AylaMemoryCard: View {
     }
 
     private var question: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 8) {
                 PaveMark()
                 Text(title)
                     .textStyle(.label)
                     .foregroundStyle(Color.ink)
             }
-            VStack(alignment: .leading, spacing: 10) {
+            // The facts in a soft tinted block, apart from the question and the buttons.
+            VStack(alignment: .leading, spacing: 12) {
                 ForEach(changes) { change in
                     line(change)
                 }
             }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.paveSurfaceTint, in: .rect(cornerRadius: 12))
             if removals > 0, !isRemovalExplained {
                 Text("Laat je het weghalen uit, dan blijft het gewoon staan.")
-                    .textStyle(.caption)
+                    .textStyle(.meta)
                     .foregroundStyle(Color.inkMuted)
             }
             if decision == .failed {
@@ -79,6 +83,21 @@ struct AylaMemoryCard: View {
                     .foregroundStyle(Color.criticalInk)
             }
             HStack(spacing: 8) {
+                Button {
+                    PaveHaptics.tap(.light)
+                    markExplained()
+                    onDecline()
+                } label: {
+                    Text("Niet nodig")
+                        .textStyle(.label)
+                        .foregroundStyle(Color.ink)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .background(Color.railBorder, in: .capsule)
+                        .contentShape(.capsule)
+                }
+                .buttonStyle(.pave)
+                .disabled(decision == .saving)
+
                 Button {
                     PaveHaptics.tap(.medium)
                     markExplained()
@@ -92,39 +111,25 @@ struct AylaMemoryCard: View {
                         }
                     }
                     .textStyle(.label)
-                    .foregroundStyle(Color.white)
-                    .frame(minWidth: 96, minHeight: 36)
-                    .padding(.horizontal, 14)
-                    .background(Color.paveAccentFill, in: .capsule)
-                    .opacity(chosen.isEmpty ? 0.4 : 1)
+                    .foregroundStyle(chosen.isEmpty ? Color.inkMuted : .white)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(chosen.isEmpty ? Color.controlDisabled : .paveAccentFill, in: .capsule)
+                    .contentShape(.capsule)
                 }
                 .buttonStyle(.pave)
                 .disabled(decision == .saving || chosen.isEmpty)
-
-                Button {
-                    PaveHaptics.tap(.light)
-                    markExplained()
-                    onDecline()
-                } label: {
-                    Text("Nee, niet nodig")
-                        .textStyle(.label)
-                        .foregroundStyle(Color.ink)
-                        .frame(minHeight: 36)
-                        .padding(.horizontal, 14)
-                        .background(Color.panel, in: .capsule)
-                }
-                .buttonStyle(.pave)
-                .disabled(decision == .saving)
             }
             if !isExplained {
                 Text("Je ziet en wist alles wat Ayla onthoudt in Instellingen.")
-                    .textStyle(.caption)
+                    .textStyle(.meta)
                     .foregroundStyle(Color.inkMuted)
+                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.center)
             }
         }
-        .padding(14)
-        .frame(maxWidth: 320, alignment: .leading)
-        .background(Color.paveSurfaceTint.opacity(0.6), in: .rect(cornerRadius: 18))
+        .padding(16)
+        .frame(maxWidth: 340, alignment: .leading)
+        .background(Color.panel, in: .rect(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.cardBorder, lineWidth: 1))
         .accessibilityElement(children: .contain)
     }
@@ -141,7 +146,7 @@ struct AylaMemoryCard: View {
         let goes = change.isRemoval && !unticked.contains(change)
         let label = VStack(alignment: .leading, spacing: 3) {
             Text(change.isRemoval ? "Weghalen uit \(change.suggestion.category.title.lowercased())" : change.suggestion.category.title)
-                .textStyle(.caption)
+                .textStyle(.meta)
                 .foregroundStyle(change.isRemoval ? Color.criticalInk : .paveAccent)
             Text(change.text)
                 .textStyle(.bodyMedium)

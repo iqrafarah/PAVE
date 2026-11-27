@@ -26,7 +26,7 @@ struct AylaMemoryEditor: View {
                             if new.count > AylaMemory.maxLength { text = String(new.prefix(AylaMemory.maxLength)) }
                         }
                 } footer: {
-                    Text("Ayla gebruikt dit in je gesprekken op je iPhone en op het web.")
+                    Text("Ayla gebruikt dit in je gesprekken op je iPhone, het web en je Apple Watch.")
                         .textStyle(.caption)
                 }
                 Section {
@@ -70,7 +70,7 @@ struct AylaMemoryEditor: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuleren") { dismiss() }
+                    Button(ApplyMessages.cancel) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Bewaren") {

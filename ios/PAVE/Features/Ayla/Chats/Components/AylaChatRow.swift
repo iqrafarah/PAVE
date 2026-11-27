@@ -1,33 +1,48 @@
 import PAVECore
 import SwiftUI
 
-/// One conversation in the list: its name, and underneath when it was last used and, when it began elsewhere, where.
+/// One conversation in the list, as on the web: its name, a chat icon in front under Vastgezet, and "Op iPhone" under
+/// it when it was begun on the iPhone.
 struct AylaChatRow: View {
     let conversation: AylaConversation
     let isCurrent: Bool
+    var showsIcon = false
     let onOpen: () -> Void
 
     var body: some View {
         Button(action: onOpen) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(conversation.title)
-                    .textStyle(.listTitle)
-                    .foregroundStyle(Color.ink)
-                    .lineLimit(1)
-                HStack(spacing: 6) {
-                    Text(Self.when(conversation.updatedAt))
-                    if let place = Self.place(conversation.startedOn) {
-                        Image(systemName: place.symbol)
-                            .imageScale(.small)
-                            .accessibilityHidden(true)
-                        Text(place.label)
+            HStack(spacing: 12) {
+                if showsIcon {
+                    Image(.iconChat)
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .paveIconFrame(16)
+                        .foregroundStyle(Color.paveAccent)
+                        .accessibilityHidden(true)
+                }
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(conversation.title)
+                        .textStyle(.listTitle)
+                        .foregroundStyle(Color.ink)
+                        .lineLimit(1)
+                    if conversation.startedOn == .phone {
+                        Label {
+                            Text(AylaMessages.startedOnPhone)
+                        } icon: {
+                            Image(.iconDevicePhoneMobile)
+                                .renderingMode(.template)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 12, height: 12)
+                        }
+                        .labelStyle(.titleAndIcon)
+                        .textStyle(.caption)
+                        .foregroundStyle(Color.inkMuted)
                     }
                 }
-                .textStyle(.caption)
-                .foregroundStyle(Color.inkMuted)
-                .lineLimit(1)
             }
-            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             .padding(.horizontal, 12)
             .background {
                 if isCurrent {
@@ -42,7 +57,7 @@ struct AylaChatRow: View {
         .accessibilityAddTraits(isCurrent ? [.isButton, .isSelected] : .isButton)
     }
 
-    private static let dutch = Locale(identifier: "nl_NL")
+    private static var locale: Locale { PaveLanguageStore.current.locale }
 
     /// The time today and yesterday (the group above already says which day), the day of the week this week,
     /// otherwise the date.
@@ -50,24 +65,15 @@ struct AylaChatRow: View {
         let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: date), to: calendar.startOfDay(for: now)).day ?? 0
         switch days {
         case ...1:
-            return date.formatted(Date.FormatStyle(date: .omitted, time: .shortened).locale(dutch))
+            return date.formatted(Date.FormatStyle(date: .omitted, time: .shortened).locale(locale))
         case 2...6:
-            return date.formatted(Date.FormatStyle().weekday(.wide).locale(dutch)).capitalized(with: dutch)
+            return date.formatted(Date.FormatStyle().weekday(.wide).locale(locale)).capitalized(with: locale)
         default:
             let sameYear = calendar.component(.year, from: date) == calendar.component(.year, from: now)
             let style = sameYear
                 ? Date.FormatStyle().day().month(.abbreviated)
                 : Date.FormatStyle().day().month(.abbreviated).year()
-            return date.formatted(style.locale(dutch))
-        }
-    }
-
-    /// Only conversations that began somewhere else than on this phone say so.
-    static func place(_ device: AylaDevice?) -> (symbol: String, label: String)? {
-        switch device {
-        case .web: ("globe.europe.africa.fill", "Op web")
-        case .watch: WatchConnectMessages.isShown ? ("applewatch", "Op Apple Watch") : nil
-        case .phone, nil: nil
+            return date.formatted(style.locale(locale))
         }
     }
 }

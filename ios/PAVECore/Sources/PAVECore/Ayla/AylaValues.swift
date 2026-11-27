@@ -49,6 +49,8 @@ public struct AylaActionKind: AylaValue {
 
     public static let addVaultItem = Self(rawValue: "addVaultItem")
     public static let updatePlan = Self(rawValue: "updatePlan")
+    /// Ayla made the plan the user asked for; the app saves it and puts the chat in it.
+    public static let createPlan = Self(rawValue: "createPlan")
     public static let draftProfile = Self(rawValue: "draftProfile")
     public static let requestValidation = Self(rawValue: "requestValidation")
 }

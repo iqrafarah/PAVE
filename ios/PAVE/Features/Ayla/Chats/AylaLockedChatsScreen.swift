@@ -78,7 +78,7 @@ struct AylaLockedChatsScreen: View {
                 Button("Bewaren") {
                     if let renaming { locks.model.rename(renaming, to: newTitle) }
                 }
-                Button("Annuleren", role: .cancel) {}
+                Button(ApplyMessages.cancel, role: .cancel) {}
             }
             .confirmationDialog(
                 "Chat verwijderen?",
@@ -136,7 +136,7 @@ struct AylaLockedChatsScreen: View {
                             newTitle = chat.title
                             renaming = chat
                         } label: {
-                            Label("Naam wijzigen", image: .iconPencil)
+                            Label("Naam wijzigen", tinted: .iconPencil)
                         }
                         Button {
                             Task { _ = await locks.unlock(chat) }
@@ -146,7 +146,7 @@ struct AylaLockedChatsScreen: View {
                         Button(role: .destructive) {
                             deleting = chat
                         } label: {
-                            Label("Verwijderen", image: .iconTrash)
+                            Label("Verwijderen", tinted: .iconTrash)
                         }
                     }
                 }

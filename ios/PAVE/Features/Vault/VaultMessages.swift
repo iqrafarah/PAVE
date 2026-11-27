@@ -2,13 +2,15 @@ import PAVECore
 
 /// The texts of the vault in one place, so web can use the same words.
 enum VaultMessages {
+    static let cancel = "Annuleer"
+    static let seeInNotifications = "Bekijk in meldingen"
     static let scanFailed = "Je scan kon niet gelezen worden. Probeer het nog eens of voeg een bestand toe."
     static let emptyTitle = "Je kluis is nog leeg"
     static let emptyMessage = "Bewaar hier je diploma's, certificaten, projecten en ervaringen. Dan heb je alles op één plek."
     static let noResultsTitle = "Niets gevonden"
     static let noResultsMessage = "Probeer een ander woord of zet de filters uit."
     static let emptyFolderMessage = "Houd een item ingedrukt en kies Verplaatsen naar map."
-    static let notInDemoTitle = "Geen kluis in de demo"
+    static let notInDemoTitle = "Geen kluis bij dit voorbeeldaccount"
     static let notInDemoMessage = "Log in met je eigen account om je kluis te gebruiken."
     static let loadFailedTitle = "Je kluis kon niet laden"
     static let newFolderTitle = "Nieuwe map"
@@ -59,7 +61,8 @@ enum VaultMessages {
         case .validationOrganisationNotFound: "Deze organisatie is niet bekend bij PAVE. Controleer de naam of neem contact op met je organisatie."
         case .validationAlreadyPending: "Voor dit bewijs staat al een verificatieaanvraag open."
         case .validationItemUnavailable: "Dit bewijs kan niet meer worden aangevraagd. Vernieuw de kluis en probeer opnieuw."
-        case .validationInvalidChoice: "Deze organisatie-, vestigings- of contactkeuze is niet meer geldig. Kies de gegevens opnieuw."
+        case .validationInvalidChoice: "Deze organisatie- of contactkeuze is niet meer geldig. Kies opnieuw."
+        case .validationNotAuthorized: "Deze persoon mag dit soort bewijs niet bevestigen. Kies iemand anders."
         case .fileRejected: "Dit bestand kan niet in je kluis. Kies een PDF, Word-bestand, tekst of foto tot 20 MB."
         case .unavailable, .missingColumn: "Er ging iets mis. Probeer het zo nog een keer."
         }
@@ -283,8 +286,6 @@ enum VaultMessages {
     static func requestMissing(_ field: VaultConfirmationRequest.Field) -> String {
         switch field {
         case .organisation: "Kies een organisatie."
-        case .location: "Kies een vestigingsplaats."
-        case .department: "Kies een afdeling of opleiding."
         case .contact: "Kies de persoon die je bewijs kan verifiëren."
         }
     }

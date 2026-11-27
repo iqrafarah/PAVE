@@ -14,7 +14,7 @@ struct WatchOrbAura: View {
 
     var body: some View {
         if reduceMotion || isLuminanceReduced {
-            RadialGradient(colors: [Color.brandGreen.opacity(isLuminanceReduced ? 0.15 : 0.35), .clear], center: .center, startRadius: 0, endRadius: 80)
+            RadialGradient(colors: [WatchPreferences.shared.accentColor.opacity(isLuminanceReduced ? 0.15 : 0.35), .clear], center: .center, startRadius: 0, endRadius: 80)
                 .accessibilityHidden(true)
         } else {
             TimelineView(.animation) { context in
@@ -42,7 +42,6 @@ final class WatchOrbAuraAnimator {
     }
 
     private static let moteCount = 22
-    private static let palette: [Color] = [.orbShade1, .orbShade2, .orbShade3, .orbShade4, .brandGreen]
 
     private var lastDate: Date?
     private var angle = 0.0
@@ -76,7 +75,8 @@ final class WatchOrbAuraAnimator {
 
         let center = CGPoint(x: size.width / 2, y: size.height / 2)
         let radius = min(size.width, size.height) / 2
-        let tint: Color = if case .failed = phase { .errorGlow } else { .brandGreen }
+        let tint: Color = if case .failed = phase { .errorGlow } else { WatchPreferences.shared.accentColor }
+        let palette = WatchPreferences.shared.auraPalette
         let time = date.timeIntervalSinceReferenceDate
 
         // Glow behind everything, breathing slowly when nothing happens.
@@ -105,7 +105,7 @@ final class WatchOrbAuraAnimator {
                 let point = CGPoint(x: center.x + cos(theta) * ringRadius, y: center.y + sin(theta) * ringRadius)
                 graphics.fill(
                     Path(CGRect(x: point.x - side / 2, y: point.y - side / 2, width: side, height: side)),
-                    with: .color(Color.orbShade2.opacity((1 - age) * ring.strength * 0.9))
+                    with: .color(palette[1].opacity((1 - age) * ring.strength * 0.9))
                 )
             }
         }
@@ -122,7 +122,7 @@ final class WatchOrbAuraAnimator {
             let point = CGPoint(x: center.x + cos(theta) * distance, y: center.y + sin(theta) * distance)
             let twinkle = 0.45 + 0.55 * max(0, sin(time * 2.2 + seed * 3))
             let side = 2 + (seed.truncatingRemainder(dividingBy: 1)) * 1.8
-            let color: Color = if case .failed = phase { .errorGlow } else { Self.palette[index % Self.palette.count] }
+            let color: Color = if case .failed = phase { .errorGlow } else { palette[index % palette.count] }
             graphics.fill(
                 Path(CGRect(x: point.x - side / 2, y: point.y - side / 2, width: side, height: side)),
                 with: .color(color.opacity(twinkle * 0.85))

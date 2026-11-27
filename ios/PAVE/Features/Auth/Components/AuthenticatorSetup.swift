@@ -128,7 +128,7 @@ struct SetupPreviewPlaceholder: View {
                     .textStyle(.label)
                     .foregroundStyle(Color.paveAccent)
                 if !isLoading {
-                    Text("Demo-account. Er wordt geen echte verificatiecode gemaakt.")
+                    Text("Voorbeeldaccount. Er wordt geen echte verificatiecode gemaakt.")
                         .textStyle(.footnote)
                         .foregroundStyle(Color.ink)
                 }

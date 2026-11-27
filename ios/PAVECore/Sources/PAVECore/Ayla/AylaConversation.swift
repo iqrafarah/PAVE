@@ -101,7 +101,7 @@ public struct AylaConversationSection: Equatable, Sendable, Identifiable {
         case .pinned: "Vastgezet"
         case .today: "Vandaag"
         case .yesterday: "Gisteren"
-        case .lastWeek: "Afgelopen 7 dagen"
+        case .lastWeek: "Recent"
         case .lastMonth: "Afgelopen 30 dagen"
         case .earlier: "Eerder"
         }

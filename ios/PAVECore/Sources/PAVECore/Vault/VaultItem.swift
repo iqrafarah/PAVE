@@ -31,12 +31,20 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
         public let requestedAt: Date
         /// The reviewer's reason; required when a request is rejected.
         public let response: String?
+        /// The organisation and location it went to, by their IDs in the directory.
+        public let organizationID: String?
+        public let locationID: String?
 
-        public init(status: Status, organisationName: String, requestedAt: Date, response: String? = nil) {
+        public init(
+            status: Status, organisationName: String, requestedAt: Date, response: String? = nil,
+            organizationID: String? = nil, locationID: String? = nil
+        ) {
             self.status = status
             self.organisationName = organisationName
             self.requestedAt = requestedAt
             self.response = response
+            self.organizationID = organizationID
+            self.locationID = locationID
         }
     }
 
@@ -82,6 +90,9 @@ public struct VaultItem: Identifiable, Equatable, Sendable {
     /// "Archiveren": out of the vault, kept until it is put back or deleted. Not shared meanwhile.
     public var archivedAt: Date?
     public var lastRequest: ValidationRequest?
+    /// The organisation in the directory this evidence comes from, when it was issued or imported by one. Set by the
+    /// server, never typed: `organisationName` is what the learner typed.
+    public var organizationID: String?
 
     public init(
         id: String,

@@ -127,6 +127,15 @@ struct AylaVaultOfferTests {
 struct AylaScreenRequestTests {
     @Test func aShortRequestOpensThatPage() {
         #expect(AylaScreenRequest.screen(askedIn: "Open mijn kluis") == .vault)
+        #expect(AylaScreenRequest.screenToOpenAtOnce(askedIn: "Open mijn kluis") == .vault)
+        let opens = AylaReply(id: "r", conversationId: "c", text: "Ik zet licht aan en open je kluis.", navigation: .init(screen: .vault))
+        #expect(!AylaVaultOffer.offersToAddEvidence(opens, asked: "Zet donkermodus uit en open je kluis"))
+        #expect(AylaScreenRequest.screenToOpen(after: opens, asked: "Zet donkermodus uit en open je kluis")?.screen == .vault)
+        let adds = AylaReply(id: "r", conversationId: "c", text: "Dat is je stage bij Pixelwerk.")
+        #expect(AylaVaultOffer.offersToAddEvidence(adds, asked: "Zet mijn stage in mijn kluis"))
+        #expect(AylaScreenRequest.screenToOpenAtOnce(askedIn: "Open instellingen en help me kiezen") == .settings)
+        #expect(AylaScreenRequest.screenToOpenAtOnce(askedIn: "Zet donkermodus uit en open je kluis") == nil)
+        #expect(AylaScreenRequest.screenToOpenAtOnce(askedIn: "Open je kluis en verander het thema naar blauw") == nil)
         #expect(AylaScreenRequest.screen(askedIn: "ga naar mijn plan") == .plans)
         #expect(AylaScreenRequest.screen(askedIn: "Breng me naar mijn profiel") == .profile)
     }
@@ -236,10 +245,107 @@ struct AylaAppCommandTests {
         #expect(command("Laat eindstage bij philips zien") == .vaultItem(id: "i1"))
         #expect(command("Selecteer scrum-certificaat") == .vaultItem(id: "i2"))
         #expect(command("Kun je het bewijs Scrum-certificaat openen") == .vaultItem(id: "i2"))
+        #expect(command("Bewaar deze vacature") == .saveVacancy(nil))
+        #expect(command("Bewaar de tweede") == .saveVacancy(1))
+        #expect(command("Bewaar vacature 3") == .saveVacancy(2))
+        #expect(command("Sla de laatste vacature op") == .saveVacancy(-1))
+        #expect(command("Bewaar hem") == .saveVacancy(nil))
+        #expect(command("Open mijn bewaarde vacatures") == .openSavedVacancies)
+        #expect(command("Bewaarde vacatures") == .openSavedVacancies)
+        #expect(command("Open de tweede vacature") == .openVacancy(1))
+        #expect(command("Laat vacature 3 zien") == .openVacancy(2))
+        #expect(command("Bekijk de laatste vacature") == .openVacancy(-1))
+        #expect(command("Toon de vacatures") == .openVacancies)
+        #expect(command("Kun je de vacatures weer openen") == .openVacancies)
         #expect(command("Ga terug") == .back)
         #expect(command("Terug") == .back)
         #expect(command("Sluit maar") == .close)
         #expect(command("Sluit de instellingen") == .close)
+    }
+
+    @Test func choosingYourselfIsHeardInYourOwnWords() {
+        for said in ["Kies zelf", "Laat mezelf kiezen", "Ik kies zelf", "Laat mij zelf kiezen.", "Ik wil het zelf bepalen", "Zelf kiezen",
+                     "Laat mij kiezen", "Ik wil zelf selecteren welke", "Nee, ik kies zelf", "Ja maar ik kies zelf wat je ziet", "Mijn eigen keuze"] {
+            #expect(AylaVaultOffer.wantsToChoose(said), "\(said)")
+        }
+        for said in ["Ja", "Nee", "Ik wil niet zelf kiezen", "Kies jij maar", "Zoek vacatures als developer", "Welke kies jij?", ""] {
+            #expect(!AylaVaultOffer.wantsToChoose(said), "\(said)")
+        }
+    }
+
+    @Test func theWholeVaultIsAskedForInSoManyWords() {
+        #expect(AylaVaultOffer.usesWholeVault("Kun je nog een zoekronde doen, maar dan met alles uit mijn kluis?"))
+        #expect(AylaVaultOffer.usesWholeVault("Gebruik mijn hele kluis"))
+        #expect(!AylaVaultOffer.usesWholeVault("Kijk niet in mijn hele kluis"))
+        #expect(!AylaVaultOffer.usesWholeVault("Open mijn kluis"))
+        // A question about the vault gives nothing away, and "niet alleen" asks for more.
+        #expect(!AylaVaultOffer.usesWholeVault("Staat mijn diploma al in mijn kluis?"))
+        #expect(!AylaVaultOffer.usesWholeVault("Is alles in mijn kluis veilig?"))
+        #expect(AylaVaultOffer.usesWholeVault("Zoek met alles uit mijn kluis, niet alleen mijn diploma"))
+        #expect(!AylaVaultOffer.usesWholeVault("Gebruik je alles uit mijn kluis?"))
+        #expect(!AylaVaultOffer.usesWholeVault("Ik heb gisteren met mijn docent mijn hele kluis doorgenomen"))
+        #expect(AylaVaultOffer.usesWholeVault("Je mag mijn hele kluis gebruiken"))
+        // Taking it back needs a word for looking or using.
+        #expect(AylaVaultOffer.takesVaultBack("Kijk niet meer in mijn kluis"))
+        #expect(AylaVaultOffer.takesVaultBack("Ik trek mijn toestemming in"))
+        #expect(!AylaVaultOffer.takesVaultBack("Mijn diploma staat niet meer in mijn kluis"))
+        #expect(!AylaVaultOffer.takesVaultBack("Ik weet niet meer wat er in mijn kluis staat"))
+    }
+
+    @Test func twoThingsInOneSentenceGoToAylasBrain() {
+        #expect(command("Zet donkere modus aan en open mijn stages") == nil)
+        #expect(command("Maak het thema blauw en zet de tekst groter") == nil)
+        #expect(command("Open de map stages en daarna mijn diploma's") == nil)
+        #expect(command("Zet de donkere modus aan") == .displayMode(.dark))
+        #expect(command("Open de map stages") == .vaultFolder(id: "f1"))
+    }
+
+    @Test func anActionFromAylaBecomesWhatTheAppAlreadyDoes() {
+        let folders = [AylaAppCommand.Named(id: "f1", name: "Stages"), AylaAppCommand.Named(id: "f2", name: "Diploma’s")]
+        #expect(AylaAppAction("setDisplayMode", value: "dark").command() == .displayMode(.dark))
+        #expect(AylaAppAction("setTheme", value: "blue").command() == .theme(.blue))
+        #expect(AylaAppAction("setTheme", value: "custom").command() == nil)
+        #expect(AylaAppAction("setTextSize", value: "bigger").command() == .textSizeStep(1))
+        #expect(AylaAppAction("setTextSize", value: "large").command() == .textSize(.large))
+        #expect(AylaAppAction("setVoiceText", value: "off").command() == .voiceText(false))
+        #expect(AylaAppAction("openSettingsPage", value: "privacy").command() == .settingsPage(.privacy))
+        #expect(AylaAppAction("openFolder", target: "de map stages").command(folders: folders) == .vaultFolder(id: "f1"))
+        #expect(AylaAppAction("openFolder", target: "diplomas").command(folders: folders) == .vaultFolder(id: "f2"))
+        #expect(AylaAppAction("openFolder", target: "Certificaten").command(folders: folders) == nil)
+        #expect(AylaAppAction("openVacancy", value: "2").command() == .openVacancy(1))
+        #expect(AylaAppAction("saveVacancy", value: "last").command() == .saveVacancy(-1))
+        #expect(AylaAppAction("newChat").command() == nil)
+    }
+
+    @Test func aNameFindsTheClosestThingOrNothingWhenItIsUnclear() {
+        let items = [
+            AylaAppCommand.Named(id: "1", name: "Eindstage bij Philips"), AylaAppCommand.Named(id: "2", name: "Stage LiveWall"),
+            AylaAppCommand.Named(id: "3", name: "Scrum-certificaat"), AylaAppCommand.Named(id: "4", name: "Scrum"),
+        ]
+        #expect(AylaAppAction.best("eindstage", in: items)?.id == "1")
+        #expect(AylaAppAction.best("mijn stage bij livewall", in: items)?.id == "2")
+        #expect(AylaAppAction.best("Scrum", in: items)?.id == "4")
+        #expect(AylaAppAction.best("scrum certificaat", in: items)?.id == "3")
+        #expect(AylaAppAction.best("diploma", in: items) == nil)
+        #expect(AylaAppAction.best("s", in: items) == nil)
+    }
+
+    @Test func actionsComeWithTheReplyAndABrokenOneDoesNotBreakIt() throws {
+        let json = #"{"version":1,"id":"r","conversationId":"c","text":"Zal ik je uitloggen?","blocks":[],"usedData":[],"actions":[{"do":"signOut","confirm":true},{"do":"setChatExpiry","value":"7"}]}"#
+        let reply = try AylaReply.decode(Data(json.utf8))
+        #expect(reply.actions == [AylaAppAction("signOut", confirm: true), AylaAppAction("setChatExpiry", value: "7")])
+        #expect(reply.actions?.first?.needsConfirmation == true)
+        #expect(reply.actions?.last?.expiry == .days(7))
+        #expect(AylaAppAction("setChatExpiry", value: "never").expiry == .never)
+        #expect(AylaAppAction("setChatExpiry", value: "default").expiry == .followsAccount)
+        #expect(AylaAppAction("setMemory", value: "aan").isOn == true)
+    }
+
+    @Test func askingAboutVacanciesStaysAQuestionForAyla() {
+        #expect(command("Zoek vacatures als developer in Eindhoven") == nil)
+        #expect(command("Toon nieuwe vacatures") == nil)
+        #expect(command("Wat vind je van de tweede vacature") == nil)
+        #expect(command("Past de eerste vacature bij mij") == nil)
     }
 
     @Test func oneWordOnlyCountsOnThePageItself() {
@@ -257,6 +363,7 @@ struct AylaAppCommandTests {
             "Maak een cv met een blauwe kop", "Ik ga naar mijn stages kijken morgen", "Ik heb een grote tekst geschreven over mijn stage bij Philips en wil die korter",
             "Mijn privacy is belangrijk voor mij", "Zet mijn stage in de kluis", "Ja", "Nee", "Graag", "Klaar", "Ik ben terug",
             "Maak een lijst van wat er in mijn kluis mist", "Welke apparaten zijn ingelogd?",
+            "Bewaar deze stage in mijn kluis", "Hoe bewaar ik een vacature?", "Zoek vacatures als frontend developer",
         ]
         for text in questions {
             #expect(command(text) == nil, "\(text)")

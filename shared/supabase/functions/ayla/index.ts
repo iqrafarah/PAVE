@@ -2,12 +2,16 @@
 // It runs with the user's own session, so row level security applies to every query.
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { answer, CONSENT_HISTORY_LIMIT, type StoredMessage, titleFrom, toPastMessage } from './brain.ts'
+import { educationSearch } from './educations.ts'
+import { webLookup } from './lookups.ts'
+import { localizedReply } from './localize.ts'
 import { loadMemory } from './memory.ts'
 import { loadAllowedVault } from './vault.ts'
+import { loadPlan, planExists, stepUpdater } from './plan.ts'
 import { type AylaReply, parseRequest } from './contract.ts'
-import { openRouterCompletion } from './openrouter.ts'
+import { HEDGE_MS, MODELS, openRouterCompletion } from './openrouter.ts'
 import { MODEL_OUTPUT_SCHEMA } from './prompt.ts'
-import { adzunaSearch } from './vacancies.ts'
+import { adzunaSearch, firstThatFinds, joobleSearch, type SearchVacancies, siteChecker, webSearch, withSupport } from './vacancies.ts'
 import { CORS, json, sessionLevel } from '../_shared/http.ts'
 
 /**
@@ -45,7 +49,11 @@ Deno.serve(async (req) => {
   if (sessionLevel(token) !== 'aal2') return json({ error: 'insufficient_aal' }, 403)
 
   const request = parseRequest(await req.json().catch(() => null))
-  if (typeof request === 'string') return json({ error: 'invalid_request', detail: request }, 400)
+  if (typeof request === 'string') {
+    // Why a question was refused, so a 400 in the logs says what to fix.
+    console.warn('ayla: refused request:', request)
+    return json({ error: 'invalid_request', detail: request }, 400)
+  }
 
   let conversationId = request.conversationId
   if (conversationId) {
@@ -57,16 +65,23 @@ Deno.serve(async (req) => {
       const { data } = await supabase.from('ayla_projects').select('id').eq('id', request.projectId).maybeSingle()
       if (!data) return json({ error: 'project_not_found' }, 404)
     }
+    // A plan that is not there (or before the plans migration) is left out: the chat still starts, without a plan.
+    const inPlan = request.planId && await planExists(supabase, request.planId)
     const { data, error } = await supabase
       .from('ayla_conversations')
-      .insert({ started_on: request.device, title: titleFrom(request.text), ...(request.projectId ? { project_id: request.projectId } : {}) })
+      .insert({
+        started_on: request.device,
+        title: titleFrom(request.text),
+        ...(request.projectId ? { project_id: request.projectId } : {}),
+        ...(inPlan ? { plan_id: request.planId, ...(request.planStepId ? { plan_step_id: request.planStepId } : {}) } : {}),
+      })
       .select('id')
       .single()
     if (error || !data) return json({ error: 'unavailable' }, 500)
     conversationId = data.id as string
   }
 
-  const [{ data: past }, { data: profile }, memory, vault, project] = await Promise.all([
+  const [{ data: past }, { data: profile }, memory, vault, project, plan] = await Promise.all([
     // More than the model gets, so a Ja to the vault early in a long conversation still counts.
     supabase
       .from('ayla_messages')
@@ -78,35 +93,61 @@ Deno.serve(async (req) => {
     loadMemory(supabase),
     loadAllowedVault(supabase),
     loadProject(supabase, conversationId),
+    loadPlan(supabase, conversationId),
   ])
   const history = ((past ?? []) as StoredMessage[]).reverse().map(toPastMessage)
   const firstName = (profile?.preferred_name || profile?.full_name?.split(' ')[0] || undefined) as string | undefined
 
+  // Vacancies from the job API that has a key (Adzuna, then Jooble), with the web search beside it: more vacancies,
+  // and more of their text. Without a job API the web is the only source.
   const adzunaId = Deno.env.get('ADZUNA_APP_ID')
   const adzunaKey = Deno.env.get('ADZUNA_APP_KEY')
+  const joobleKey = Deno.env.get('JOOBLE_API_KEY')
+  const apis: SearchVacancies[] = [
+    ...(adzunaId && adzunaKey ? [adzunaSearch(adzunaId, adzunaKey)] : []),
+    ...(joobleKey ? [joobleSearch(joobleKey, Deno.env.get('JOOBLE_HOST') || undefined)] : []),
+  ]
 
   let title: string | undefined
-  const input = { request, conversationId, history, firstName, memory, vault, project, onTitle: request.conversationId ? undefined : (t: string) => { title = t } }
+  const input = { request, conversationId, history, firstName, memory, vault, project, plan, onTitle: request.conversationId ? undefined : (t: string) => { title = t } }
   const deps = {
-    complete: openRouterCompletion(openRouterKey, MODEL_OUTPUT_SCHEMA),
-    searchVacancies: adzunaId && adzunaKey ? adzunaSearch(adzunaId, adzunaKey) : undefined,
+    // Tokens, the part from the cache, and cost per call, in the function's logs; never what was asked.
+    complete: openRouterCompletion(openRouterKey, MODEL_OUTPUT_SCHEMA, fetch, MODELS, HEDGE_MS, {
+      onUsage: (u) => console.info(`ayla usage ${u.model} in=${u.promptTokens} cached=${u.cachedTokens} out=${u.completionTokens} cost=${u.cost.toFixed(5)}`),
+    }),
+    searchVacancies: withSupport(firstThatFinds(apis), webSearch(openRouterKey)),
+    searchEducations: educationSearch(openRouterKey),
+    lookUp: webLookup(openRouterKey),
     newId: () => crypto.randomUUID(),
+    siteExists: siteChecker(),
+    updatePlanStep: stepUpdater(supabase),
   }
 
-  /** Stores the question and the answer together, and touches the conversation. */
-  const save = async (reply: AylaReply) => {
+  /** Stores the question and the answer together. */
+  const store = async (reply: AylaReply) => {
     // A user message keeps only the names of its files in `reply`, so the chat shows them again; the files' text
     // is never stored.
     const attachments = request.attachments?.length ? { attachments: request.attachments.map((file) => file.name) } : null
-    const { error } = await supabase.from('ayla_messages').insert([
-      { conversation_id: conversationId, role: 'user', text: request.text, device: request.device, reply: attachments },
-      { conversation_id: conversationId, role: 'ayla', text: reply.text, device: request.device, reply },
-    ])
-    if (error) return false
+    const answer = { conversation_id: conversationId, role: 'ayla', text: reply.text, device: request.device, reply }
+    // A turn the app sent itself (what came of Ayla's actions) is not something the user said: only her answer is kept.
+    const rows = request.results?.length
+      ? [answer]
+      : [{ conversation_id: conversationId, role: 'user', text: request.text, device: request.device, reply: attachments }, answer]
+    const { error } = await supabase.from('ayla_messages').insert(rows)
+    return !error
+  }
+
+  /** Moves the conversation to the top of the list, with its title. */
+  const touch = async () => {
     await supabase
       .from('ayla_conversations')
       .update({ updated_at: new Date().toISOString(), ...(title ? { title } : {}) })
       .eq('id', conversationId)
+  }
+
+  const save = async (reply: AylaReply) => {
+    if (!await store(reply)) return false
+    await touch()
     return true
   }
 
@@ -128,9 +169,19 @@ Deno.serve(async (req) => {
         }
         send('start', { conversationId })
         try {
-          const reply = await answer({ ...input, signal: stop.signal, onText: (text) => { written = text; send('text', { text }) } }, deps)
-          if (await save(reply)) send('reply', reply)
-          else send('error', { error: 'unavailable' })
+          const reply = localizedReply(await answer({
+            ...input,
+            signal: stop.signal,
+            onText: (text) => { written = text; send('text', { text }) },
+            onStatus: (status) => send('status', status),
+          }, deps), request.language)
+          // The answer shows as soon as it is stored; the list of conversations catches up after.
+          if (await store(reply)) {
+            send('reply', reply)
+            await touch()
+          } else {
+            send('error', { error: 'unavailable' })
+          }
         } catch {
           if (stop.signal.aborted && written) {
             await save({ version: 1, id: crypto.randomUUID(), conversationId: conversationId!, text: written, blocks: [], usedData: [] })
@@ -153,7 +204,7 @@ Deno.serve(async (req) => {
 
   let reply: AylaReply
   try {
-    reply = await answer(input, deps)
+    reply = localizedReply(await answer(input, deps), request.language)
   } catch {
     return json({ error: 'unavailable' }, 502)
   }

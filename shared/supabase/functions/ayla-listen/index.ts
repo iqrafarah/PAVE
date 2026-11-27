@@ -1,9 +1,9 @@
-// Ayla's ears for the Apple Watch: turns a short recording into text, which the Watch then sends to `ayla`.
+// Ayla's ears: turns a short recording from the Watch or the iPhone into text, which the app then sends to `ayla`.
 // It runs with the user's own session and needs two-step verification, like `ayla` and `ayla-voice`.
 // The recording is not stored or logged.
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { CORS, json, sessionLevel } from '../_shared/http.ts'
-import { audioProblem, cleanTranscript, LISTEN_MODEL, listenMessages, toBase64 } from './listen.ts'
+import { audioProblem, cleanTranscript, hasSpeech, HINTS_HEADER, listenRequest, parseHints, plausibleTranscript, toBase64, wavSeconds } from './listen.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
@@ -24,20 +24,17 @@ Deno.serve(async (req) => {
   const audio = new Uint8Array(await req.arrayBuffer().catch(() => new ArrayBuffer(0)))
   const problem = audioProblem(req.headers.get('Content-Type'), audio.byteLength)
   if (problem) return json({ error: problem }, problem === 'unsupported_media_type' ? 415 : 400)
+  if (!hasSpeech(audio)) return json({ text: '' })
+  const seconds = wavSeconds(audio)
 
   const upstream = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     signal: AbortSignal.timeout(30000),
     headers: { Authorization: `Bearer ${openRouterKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: LISTEN_MODEL,
-      temperature: 0,
-      modalities: ['text'],
-      messages: listenMessages(toBase64(audio)),
-    }),
+    body: JSON.stringify(listenRequest(toBase64(audio), parseHints(req.headers.get(HINTS_HEADER)), seconds ?? undefined)),
   }).catch(() => null)
   if (!upstream?.ok) return json({ error: 'unavailable' }, 502)
 
   const result = await upstream.json().catch(() => null)
-  return json({ text: cleanTranscript(result?.choices?.[0]?.message?.content) })
+  return json({ text: plausibleTranscript(cleanTranscript(result?.choices?.[0]?.message?.content), seconds) })
 })

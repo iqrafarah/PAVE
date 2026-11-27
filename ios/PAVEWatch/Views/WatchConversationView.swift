@@ -37,7 +37,7 @@ struct WatchConversationView: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(.brandGreen)
+                .tint(WatchPreferences.shared.accentColor)
                 .disabled(isLoading)
                 .padding(.top, 6)
             }
@@ -59,7 +59,7 @@ struct WatchConversationView: View {
             .font(.footnote)
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
-            .background(isUser ? Color.white.opacity(0.14) : Color.brandGreen.opacity(0.35), in: .rect(cornerRadius: 12))
+            .background(isUser ? Color.white.opacity(0.14) : WatchPreferences.shared.accentColor.opacity(0.35), in: .rect(cornerRadius: 12))
             .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
             .accessibilityLabel(isUser ? "Jij: \(message.text)" : "Ayla: \(message.text)")
     }

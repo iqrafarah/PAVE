@@ -4,8 +4,11 @@ import Foundation
 /// and is skipped, so the server can add cards without breaking older apps.
 public enum AylaBlock: Codable, Equatable, Sendable {
     case vaultSelection([CategoryCount])
-    case vacancies([Vacancy])
+    case vacancies([Vacancy], search: VacancySearch? = nil)
     case skillSuggestions(itemId: String, skills: [SkillSuggestion])
+    case educations([AylaEducation], search: EducationSearch? = nil)
+    /// The pages a looked-up answer comes from.
+    case sources([Source])
     case cv(CurriculumVitae)
     case unknown(type: String)
 
@@ -17,6 +20,19 @@ public enum AylaBlock: Codable, Equatable, Sendable {
             self.category = category
             self.count = count
         }
+    }
+
+    public struct Source: Codable, Equatable, Hashable, Sendable {
+        public var title: String
+        public var url: URL
+
+        public init(title: String, url: URL) {
+            self.title = title
+            self.url = url
+        }
+
+        /// "scrum.org": the site, which says more than a long page title.
+        public var site: String { url.host()?.replacingOccurrences(of: "www.", with: "") ?? title }
     }
 
     public struct SkillSuggestion: Codable, Equatable, Sendable {
@@ -56,7 +72,7 @@ public enum AylaBlock: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case type, categories, items, itemId, skills, profile, experience
+        case type, categories, items, itemId, skills, profile, experience, search
     }
 
     public init(from decoder: any Decoder) throws {
@@ -66,7 +82,17 @@ public enum AylaBlock: Codable, Equatable, Sendable {
         case "vaultSelection":
             self = .vaultSelection(try container.decode([CategoryCount].self, forKey: .categories))
         case "vacancies":
-            self = .vacancies(try container.decode([Vacancy].self, forKey: .items))
+            self = .vacancies(
+                try container.decode([Vacancy].self, forKey: .items),
+                search: try? container.decodeIfPresent(VacancySearch.self, forKey: .search)
+            )
+        case "educations":
+            self = .educations(
+                try container.decode([AylaEducation].self, forKey: .items),
+                search: try? container.decodeIfPresent(EducationSearch.self, forKey: .search)
+            )
+        case "sources":
+            self = .sources(try container.decode([Source].self, forKey: .items))
         case "skillSuggestions":
             self = .skillSuggestions(
                 itemId: try container.decode(String.self, forKey: .itemId),
@@ -89,8 +115,16 @@ public enum AylaBlock: Codable, Equatable, Sendable {
         case .vaultSelection(let categories):
             try container.encode("vaultSelection", forKey: .type)
             try container.encode(categories, forKey: .categories)
-        case .vacancies(let items):
+        case .vacancies(let items, let search):
             try container.encode("vacancies", forKey: .type)
+            try container.encode(items, forKey: .items)
+            try container.encodeIfPresent(search, forKey: .search)
+        case .educations(let items, let search):
+            try container.encode("educations", forKey: .type)
+            try container.encode(items, forKey: .items)
+            try container.encodeIfPresent(search, forKey: .search)
+        case .sources(let items):
+            try container.encode("sources", forKey: .type)
             try container.encode(items, forKey: .items)
         case .skillSuggestions(let itemId, let skills):
             try container.encode("skillSuggestions", forKey: .type)

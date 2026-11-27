@@ -51,6 +51,10 @@ struct AylaChatModelTests {
             }
         }
         func searchMessages(_ text: String) async throws -> [AylaSearchHit] { hits }
+        var savedResults: [Result<[SavedVacancy], AylaError>] = []
+        func savedVacancies() async throws -> [SavedVacancy] {
+            try lock.withLock { savedResults.isEmpty ? [] : try savedResults.removeFirst().get() }
+        }
         var changes = AsyncStream<Void> { $0.finish() }
         func conversationChanges() -> AsyncStream<Void> { changes }
         var stored: [AylaStoredMessage] = []
@@ -97,6 +101,61 @@ struct AylaChatModelTests {
         #expect(ayla.requests.allSatisfy { $0.device == .phone })
     }
 
+    @Test func herActionsAreHandedOverOnceSoComingBackNeverRunsThemAgain() async {
+        let ayla = FakeAyla()
+        ayla.replies = [.success(AylaReply(id: "r1", conversationId: "conv", text: "Ik open je plan.", actions: [AylaAppAction("openPlan", target: "Piloot worden")]))]
+        let model = AylaChatModel(service: ayla)
+
+        model.send("Open mijn plan")
+        await waitUntilIdle(model)
+
+        #expect(model.actionRequest?.actions.first?.kind == "openPlan")
+        #expect(model.takeActionRequest()?.id == "r1")
+        #expect(model.actionRequest == nil)
+        #expect(model.takeActionRequest() == nil)
+    }
+
+    @Test func aChatStartedInAPlanTellsAylaThePlanAndStepOnce() async {
+        let ayla = FakeAyla()
+        ayla.replies = [.success(AylaReply(id: "r1", conversationId: "conv", text: "Zullen we beginnen?")), .success(AylaReply(id: "r2", conversationId: "conv", text: "Prima"))]
+        let model = AylaChatModel(service: ayla)
+
+        model.newConversation(plan: "plan-1", step: "step-2")
+        model.send("Help me met deze stap")
+        await waitUntilIdle(model)
+        model.send("En nu?")
+        await waitUntilIdle(model)
+
+        #expect(ayla.requests.first?.planId == "plan-1")
+        #expect(ayla.requests.first?.planStepId == "step-2")
+        // Once the chat exists, Ayla reads its plan herself.
+        #expect(ayla.requests.last?.planId == nil)
+        // Any other new chat leaves the plan.
+        model.newConversation()
+        #expect(model.newChatPlan == nil)
+    }
+
+    @Test func addingAPlanToANewChatKeepsWhatWasTyped() async {
+        let ayla = FakeAyla()
+        ayla.replies = [.success(AylaReply(id: "r1", conversationId: "conv", text: "Goed plan!"))]
+        let model = AylaChatModel(service: ayla)
+        model.draft = "Waar begin ik?"
+
+        model.startInPlan("plan-1")
+        #expect(model.draft == "Waar begin ik?")
+        #expect(model.newChatPlan?.planID == "plan-1")
+        model.startInPlan(nil)
+        #expect(model.newChatPlan == nil)
+        model.startInPlan("plan-1")
+        model.send(model.draft)
+        await waitUntilIdle(model)
+
+        #expect(ayla.requests.first?.planId == "plan-1")
+        // Once the chat exists it moves into a plan through the plan itself, not through the next question.
+        model.startInPlan("plan-2")
+        #expect(model.newChatPlan?.planID == "plan-1")
+    }
+
     @Test func aFailurePutsTheQuestionBackAndSendingAgainDoesNotRepeatIt() async {
         let ayla = FakeAyla()
         ayla.replies = [.failure(.noConnection), .success(AylaReply(id: "r", conversationId: "c", text: "Daar ben ik"))]
@@ -134,6 +193,64 @@ struct AylaChatModelTests {
         await waitUntilIdle(model)
         #expect(model.pendingQuestion == nil)
         #expect(!model.pendingOffersEvidence)
+    }
+
+    private static let appwerk = Vacancy(id: "a", title: "iOS-ontwikkelaar", company: "Appwerk", source: .adzuna)
+    private static let pixelwerk = Vacancy(id: "b", title: "Front-end developer", company: "Pixelwerk", source: .adzuna)
+
+    @Test func aVacancyTaskGoesAlongOnceWithItsQuestion() async throws {
+        let ayla = FakeAyla()
+        ayla.replies = [.success(AylaReply(id: "r1", conversationId: "conv", text: "Appwerk past beter.")), .success(AylaReply(id: "r2", conversationId: "conv", text: "Graag."))]
+        let model = AylaChatModel(service: ayla)
+
+        let question = try #require(model.question(for: .compare, about: [Self.appwerk, Self.pixelwerk]))
+        #expect(question == "Vergelijk iOS-ontwikkelaar bij Appwerk met Front-end developer bij Pixelwerk. Welke past het best bij mij?")
+        model.send(question)
+        await waitUntilIdle(model)
+        model.send("Dankjewel")
+        await waitUntilIdle(model)
+
+        #expect(ayla.requests.first?.context?.task == .compare)
+        #expect(ayla.requests.first?.context?.compare?.map(\.company) == ["Appwerk", "Pixelwerk"])
+        #expect(ayla.requests.last?.context == nil)
+    }
+
+    @Test func comparingNeedsTwoOrThreeVacancies() {
+        let model = AylaChatModel(service: FakeAyla())
+        #expect(model.question(for: .compare, about: [Self.appwerk]) == nil)
+        #expect(model.question(for: .compare, about: Array(repeating: Self.appwerk, count: 4)) == nil)
+    }
+
+    @Test func aPracticeInterviewGoesOnUntilItStops() async throws {
+        let ayla = FakeAyla()
+        ayla.replies = (1...3).map { .success(AylaReply(id: "r\($0)", conversationId: "conv", text: "Vraag \($0)")) }
+        let model = AylaChatModel(service: ayla)
+
+        model.send(try #require(model.question(for: .interview, about: [Self.appwerk])))
+        await waitUntilIdle(model)
+        #expect(model.practice?.id == "a")
+        model.send("Ik heb een app gemaakt met SwiftUI.")
+        await waitUntilIdle(model)
+        model.send(try #require(model.stopPracticeQuestion()))
+        await waitUntilIdle(model)
+
+        #expect(ayla.requests.map(\.context?.task) == [.interview, .interview, .interview])
+        #expect(ayla.requests.allSatisfy { $0.context?.vacancy?.company == "Appwerk" })
+        #expect(model.practice == nil)
+    }
+
+    @Test func sayingStopEndsThePracticeToo() async throws {
+        let ayla = FakeAyla()
+        ayla.replies = (1...2).map { .success(AylaReply(id: "r\($0)", conversationId: "conv", text: "Antwoord \($0)")) }
+        let model = AylaChatModel(service: ayla)
+        model.send(try #require(model.question(for: .interview, about: [Self.appwerk])))
+        await waitUntilIdle(model)
+        model.send("Stop maar.")
+        await waitUntilIdle(model)
+        #expect(ayla.requests.last?.context?.task == .interview)
+        #expect(model.practice == nil)
+        model.newConversation()
+        #expect(model.practice == nil)
     }
 
     @Test func askingAboutAnItemSendsItWithEveryQuestionUntilANewConversation() async {
@@ -272,6 +389,33 @@ struct AylaChatModelTests {
         await waitUntilIdle(model)
     }
 
+    @Test func aPageAskedWithAChangeOpensAfterHerActions() async throws {
+        let ayla = FakeAyla()
+        ayla.replies = [.success(AylaReply(
+            id: "r1", conversationId: "conv", text: "Ik zet licht aan en open je kluis.",
+            navigation: .init(screen: .vault), actions: [AylaAppAction("setDisplayMode", value: "light")]
+        ))]
+        let model = AylaChatModel(service: ayla)
+
+        model.send("Zet donkermodus uit en open je kluis")
+        #expect(model.screenRequest == nil)
+        await waitUntilIdle(model)
+        #expect(model.screenRequest == nil)
+        #expect(model.actionRequest?.actions.first?.kind == "setDisplayMode")
+        #expect(model.takeNavigationAfterActions()?.screen == .vault)
+        #expect(model.takeNavigationAfterActions() == nil)
+    }
+
+    @Test func aPageThatOpenedAtOnceComesBackAfterHerActions() async {
+        let ayla = FakeAyla()
+        ayla.replies = [.success(AylaReply(id: "r1", conversationId: "conv", text: "Ik open je map Stage.", actions: [AylaAppAction("openFolder", target: "Stage")]))]
+        let model = AylaChatModel(service: ayla)
+        model.send("Open je kluis en help me met mijn stage")
+        #expect(model.screenRequest?.navigation.screen == .vault)
+        await waitUntilIdle(model)
+        #expect(model.takeNavigationAfterActions()?.screen == .vault)
+    }
+
     @Test func aPageTheBrainDoesNotKnowIsNotSentAsThePlace() async {
         let ayla = FakeAyla()
         ayla.replies = [.success(AylaReply(id: "r", conversationId: "conv", text: "Je hebt geen meldingen."))]
@@ -404,6 +548,38 @@ struct AylaChatModelTests {
         #expect(ayla.requests.last?.text == "Toegevoegd aan mijn kluis: PSM I.")
     }
 
+    @Test func aLoadThatWorksAgainClearsTheProblemWithSavedVacancies() async {
+        let ayla = FakeAyla()
+        let kept = SavedVacancy(vacancy: Self.appwerk, savedAt: .now)
+        ayla.savedResults = [.failure(.noConnection), .success([kept])]
+        let model = AylaChatModel(service: ayla)
+        await model.loadSavedVacancies()
+        #expect(model.vacancyProblem != nil)
+        await model.loadSavedVacancies()
+        #expect(model.vacancyProblem == nil)
+        #expect(model.savedVacancies == [kept])
+    }
+
+    @Test func savedVacanciesAreKnownFromTheStart() async {
+        let ayla = FakeAyla()
+        ayla.savedResults = [.success([SavedVacancy(vacancy: Self.appwerk, savedAt: .now)])]
+        let model = AylaChatModel(service: ayla, nameWait: .milliseconds(10))
+        await model.start()
+        #expect(model.isSaved(Self.appwerk))
+    }
+
+    @Test func anItemCanBeMarkedAddedBeforeAylaHearsIt() async {
+        let ayla = FakeAyla()
+        ayla.replies = [.success(AylaReply(id: "r1", conversationId: "c", text: "Mooi!"))]
+        let model = AylaChatModel(service: ayla)
+        model.noteAdded(replyID: "r0", itemID: "item", uploads: [])
+        #expect(model.addedReplies.contains("r0"))
+        #expect(ayla.requests.isEmpty)
+        model.tellAdded(title: "Eindstage")
+        await waitUntilIdle(model)
+        #expect(ayla.requests.last?.text == "Toegevoegd aan mijn kluis: Eindstage.")
+    }
+
     @Test func theOfferOnACardHidesJaAndNee() async {
         let ayla = FakeAyla()
         let question = AylaReply.Question(text: "Zet ik dit zo in je kluis?", choices: [.init(id: "y", label: "Ja"), .init(id: "n", label: "Nee")])
@@ -425,11 +601,98 @@ struct AylaChatModelTests {
         await waitUntilIdle(model)
         model.attach([VaultItem(id: "item-1", category: .internships, title: "Eindstage")])
         #expect(model.entries.count == 2)
-        #expect(model.context == AylaRequest.Context(screen: .vaultItem, itemId: "item-1"))
+        // One chosen item is still a choice: Ayla sees that item and nothing else of the vault.
+        #expect(model.context == AylaRequest.Context(screen: .vault, itemIds: ["item-1"]))
         #expect(model.contextTitle == "Eindstage")
+        #expect(model.chosenItemCount == 1)
         model.attach([VaultItem(id: "item-1", category: .internships, title: "Eindstage"), VaultItem(id: "item-2", category: .diplomas, title: "Propedeuse")])
         #expect(model.context == AylaRequest.Context(screen: .vault, itemIds: ["item-1", "item-2"]))
         #expect(model.contextTitle == "2 items uit je kluis")
+    }
+
+    @Test func whatAylaDoesInTheAppIsHandedToTheScreenOnce() async {
+        let ayla = FakeAyla()
+        let actions = [AylaAppAction("setDisplayMode", value: "dark"), AylaAppAction("openFolder", target: "Stages")]
+        ayla.replies = [.success(AylaReply(id: "r1", conversationId: "c", text: "Ik zet PAVE op donker en open je map Stages.", actions: actions))]
+        let model = AylaChatModel(service: ayla)
+        model.send("Maak het donker en open mijn stages")
+        await waitUntilIdle(model)
+        #expect(model.actionRequest == AylaChatModel.ActionRequest(id: "r1", actions: actions))
+        #expect(model.actionsWaitingForYes == nil)
+    }
+
+    @Test func whatCannotBeUndoneWaitsForJaAndHappensOnce() async {
+        let ayla = FakeAyla()
+        let actions = [AylaAppAction("deleteEvidence", target: "Eindstage", confirm: true)]
+        let question = AylaReply.Question(text: "", choices: [.init(id: "yes", label: "Ja"), .init(id: "no", label: "Nee")])
+        ayla.replies = [.success(AylaReply(id: "r1", conversationId: "c", text: "Zal ik \"Eindstage\" uit je kluis verwijderen?", question: question, actions: actions))]
+        let model = AylaChatModel(service: ayla)
+        model.send("Verwijder mijn eindstage")
+        await waitUntilIdle(model)
+        #expect(model.actionRequest == nil)
+        #expect(model.actionsWaitingForYes?.actions == actions)
+        model.confirmActions(replyID: "r1", saying: "Ja", done: "Ik heb Eindstage uit je kluis verwijderd.")
+        #expect(model.actionsWaitingForYes == nil)
+        #expect(model.entries.suffix(2).map(\.text) == ["Ja", "Ik heb Eindstage uit je kluis verwijderd."])
+        #expect(model.pendingQuestion == nil)
+    }
+
+    @Test func afterHerActionsAylaGoesOnWithoutAMessageOfYours() async {
+        let ayla = FakeAyla()
+        let first = AylaReply(id: "r1", conversationId: "c", text: "Ik open je map Vakantie.", actions: [AylaAppAction("openFolder", target: "Vakantie")])
+        let second = AylaReply(id: "r2", conversationId: "c", text: "Die map bestaat niet. Zal ik hem maken?")
+        ayla.replies = [.success(first), .success(second)]
+        let model = AylaChatModel(service: ayla)
+        model.send("Open de map Vakantie")
+        await waitUntilIdle(model)
+        #expect(model.canContinue)
+        model.continueAfter([AylaRequest.ActionResult("openFolder", ok: false, said: "Ik kon de map Vakantie niet vinden.")], spoken: false, otherwise: "Ik kon de map Vakantie niet vinden.")
+        await waitUntilIdle(model)
+        // Your question, her first answer and her second: nothing of yours in between.
+        #expect(model.entries.map(\.role) == [.user, .ayla, .ayla])
+        #expect(model.entries.last?.text == "Die map bestaat niet. Zal ik hem maken?")
+        #expect(ayla.requests.last?.results == [AylaRequest.ActionResult("openFolder", ok: false, said: "Ik kon de map Vakantie niet vinden.")])
+        #expect(model.draft.isEmpty)
+    }
+
+    @Test func theFilesOfEvidenceGoWithHerNextRoundOnlyAndSheRemembersSheMayRead() async throws {
+        let ayla = FakeAyla()
+        let first = AylaReply(id: "r1", conversationId: "c", text: "Mag ik in de bestanden van \"Cijferlijst vwo\" kijken?", actions: [AylaAppAction("readEvidence", target: "Cijferlijst vwo", confirm: true)])
+        let second = AylaReply(id: "r2", conversationId: "c", text: "Je hebt natuurkunde gehaald met een 7,2.")
+        let third = AylaReply(id: "r3", conversationId: "c", text: "Graag gedaan.")
+        ayla.replies = [.success(first), .success(second), .success(third)]
+        let model = AylaChatModel(service: ayla)
+        model.send("Heb ik natuurkunde gehaald?")
+        await waitUntilIdle(model)
+        let file = try #require(AylaAttachment(name: "cijferlijst.pdf", text: "Natuurkunde 7,2"))
+        model.letRead([file], of: "Cijferlijst vwo")
+        model.continueAfter([AylaRequest.ActionResult("readEvidence", ok: true)], spoken: false, otherwise: nil)
+        await waitUntilIdle(model)
+        #expect(ayla.requests.last?.attachments == [file])
+        #expect(model.readFileTitles == ["Cijferlijst vwo"])
+        // The next question goes without the files: they were for that one round.
+        model.send("Bedankt")
+        await waitUntilIdle(model)
+        #expect(ayla.requests.last?.attachments?.isEmpty ?? true)
+        // A new conversation starts without the permission.
+        model.newConversation()
+        #expect(model.readFileTitles.isEmpty)
+    }
+
+    @Test func anOpenVacancyGoesAlongWithTheChosenItems() async {
+        let model = AylaChatModel(service: FakeAyla())
+        let vacancy = Vacancy(id: "v", title: "Developer", company: "Bedrijf", source: .jooble)
+        model.attach([VaultItem(id: "item-1", category: .internships, title: "Eindstage")])
+        model.showVacancy(vacancy)
+        #expect(model.context?.itemIds == ["item-1"])
+        #expect(model.context?.vacancy?.title == "Developer")
+        model.showVacancy(nil)
+        #expect(model.context == AylaRequest.Context(screen: .vault, itemIds: ["item-1"]))
+        model.clearContext()
+        #expect(model.chosenItemCount == nil)
+        model.showVacancy(vacancy)
+        #expect(model.context?.screen == .vacancies)
+        #expect(model.context?.vacancy?.company == "Bedrijf")
     }
 
     @Test func aLoadedConversationShowsTheFilesAgain() async {

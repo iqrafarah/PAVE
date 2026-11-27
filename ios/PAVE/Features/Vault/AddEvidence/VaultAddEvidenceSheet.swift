@@ -19,14 +19,27 @@ struct VaultAddEvidenceSheet: View {
     /// "Haal bewijs uit je wallet" (demo): its own way through this sheet, with its own steps.
     @State private var wallet: VaultWalletModel?
     @Environment(PaveCameraControl.self) private var cameraControl: PaveCameraControl?
+    /// The evidence is in and the sheet is closing: its id, and whether the user asked to have it verified.
+    var onAdded: ((_ itemID: String, _ requestsVerification: Bool) -> Void)?
 
     init(vault: VaultModel, category: VaultCategory, folderID: String?) {
         self.init(flow: VaultAddEvidenceModel(vault: vault, category: category, folderID: folderID))
     }
 
     /// Starts at a given point of the flow, for previews.
-    init(flow: VaultAddEvidenceModel) {
+    init(flow: VaultAddEvidenceModel, onAdded: ((_ itemID: String, _ requestsVerification: Bool) -> Void)? = nil) {
         _flow = State(initialValue: flow)
+        self.onAdded = onAdded
+    }
+
+    /// Done with the last piece of evidence: it is kept, the sheet closes, and where it was opened from goes on.
+    private func close(requestingVerification: Bool) {
+        Task {
+            guard await flow.finish() else { return }
+            let id = flow.savedItemID
+            dismiss()
+            if let id { onAdded?(id, requestingVerification) }
+        }
     }
 
     /// The outer display of the iPhone Duo and a phone held sideways: less room above and below.
@@ -206,7 +219,9 @@ struct VaultAddEvidenceSheet: View {
                 if let next = flow.nextFlow() {
                     flow = next
                 } else {
+                    let id = flow.savedItemID
                     dismiss()
+                    if let id { onAdded?(id, false) }
                 }
             }
         }
@@ -239,14 +254,27 @@ struct VaultAddEvidenceSheet: View {
 
     private var header: some View {
         VStack(spacing: isShort ? 10 : 18) {
-            HStack {
+            // Back one step at the top left and stop at the top right, also while typing hides the buttons below.
+            HStack(spacing: 4) {
+                if flow.canGoBack {
+                    PaveBackButton { withAnimation(pageAnimation) { flow.back() } }
+                        .padding(.leading, -12)
+                        .transition(.move(edge: .leading).combined(with: .opacity))
+                }
                 Text(VaultMessages.addTitle)
                     .textStyle(isShort ? .label : .listTitle)
                     .foregroundStyle(Color.ink)
                     .accessibilityAddTraits(.isHeader)
                 Spacer()
+                if flow.page != .done {
+                    PaveCloseButton(label: "Stoppen") {
+                        if flow.hasChanges { confirmsDiscard = true } else { dismiss() }
+                    }
+                    .padding(.trailing, -12)
+                }
             }
             .frame(height: isShort ? 36 : 44)
+            .animation(pageAnimation, value: flow.canGoBack)
             PaveStepper(steps: VaultMessages.steps, current: flow.page.step)
             if flow.isResumed {
                 resumedNotice
@@ -355,14 +383,12 @@ struct VaultAddEvidenceSheet: View {
 
     private var footer: some View {
         HStack(spacing: 8) {
-            if flow.canGoBack {
-                PaveSoftButton(title: "Terug") { flow.back() }
-                    .transition(.move(edge: .leading).combined(with: .opacity))
-            } else if flow.page == .done, !flow.nextEvidence.isEmpty {
-                PaveSoftButton(title: VaultMessages.nextEvidenceSkip) {
-                    Task { if await flow.finish() { dismiss() } }
-                }
-                .disabled(flow.isSaving)
+            if flow.page == .done, !flow.nextEvidence.isEmpty {
+                PaveSoftButton(title: VaultMessages.nextEvidenceSkip) { close(requestingVerification: false) }
+                    .disabled(flow.isSaving)
+            } else if flow.page == .done, onAdded != nil {
+                PaveSoftButton(title: VaultMessages.requestAction) { close(requestingVerification: true) }
+                    .disabled(flow.isSaving)
             } else if offersAyla {
                 PaveSoftButton(title: VaultMessages.aylaFillStop) {
                     flow.stopFilling()
@@ -373,7 +399,6 @@ struct VaultAddEvidenceSheet: View {
             primaryButton
         }
         .animation(pageAnimation, value: offersAyla)
-        .animation(pageAnimation, value: flow.canGoBack)
         .padding(.horizontal, 22)
         .padding(.top, 8)
         .padding(.bottom, isShort ? 6 : 12)

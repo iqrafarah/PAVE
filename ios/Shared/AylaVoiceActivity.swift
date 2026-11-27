@@ -25,9 +25,13 @@ nonisolated struct AylaVoiceActivityAttributes: ActivityAttributes {
         }
 
         var status: Status
+        /// What she is busy with, in words that say nothing about you ("Stap 2 van 3", "Zoekt vacatures"): no names
+        /// of folders, evidence or chats and no search terms, because the Lock Screen can be seen by others.
+        var note: String? = nil
 
         var title: String {
-            switch status {
+            if note != nil, status == .thinking || status == .listening { return "Ayla is bezig" }
+            return switch status {
             case .listening: "Ayla luistert"
             case .thinking: "Ayla denkt na"
             case .speaking: "Ayla praat"
@@ -37,7 +41,8 @@ nonisolated struct AylaVoiceActivityAttributes: ActivityAttributes {
         }
 
         var hint: String {
-            switch status {
+            if let note { return note }
+            return switch status {
             case .listening: "Praat gewoon verder, of knik ja of schud nee."
             case .thinking: "Even geduld."
             case .speaking: "Druk op je AirPods om haar te onderbreken."
@@ -48,7 +53,8 @@ nonisolated struct AylaVoiceActivityAttributes: ActivityAttributes {
 
         /// Shorter, for the Dynamic Island next to the camera.
         var short: String {
-            switch status {
+            if note != nil, status == .thinking || status == .listening { return "Bezig" }
+            return switch status {
             case .listening: "Luistert"
             case .thinking: "Denkt na"
             case .speaking: "Praat"

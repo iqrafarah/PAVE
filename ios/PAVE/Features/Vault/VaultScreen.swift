@@ -14,6 +14,8 @@ struct VaultScreen: View {
     @State private var editedItem: VaultItem?
     @State private var confirmedItem: VaultItem?
     @State private var addFlow: VaultAddEvidenceModel?
+    /// Just added: it opens once the sheet is gone, or its verification request does.
+    @State private var added: (id: String, requestsVerification: Bool)?
     @State private var deletedItem: VaultItem?
     @State private var folderSheet: FolderSheet?
     @State private var deletedFolder: VaultFolder?
@@ -62,24 +64,29 @@ struct VaultScreen: View {
         )
     }
 
+    /// The vault with its pages, split from the sheets and dialogs in `body` so Swift can check both in time.
+    private var routedContent: some View {
+        content
+            .background(Color.canvas.ignoresSafeArea())
+            .navigationTitle("Kluis")
+            .mainScreenToolbar("Kluis", onShowMenu: onShowMenu)
+            .navigationDestination(for: FolderRoute.self) { route in
+                Group {
+                    if route == .all {
+                        VaultAllFoldersPage(actions: actions)
+                    } else {
+                        VaultLibraryPage(folderID: route.id, actions: actions)
+                    }
+                }
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
+            }
+            .task { await model.load() }
+    }
+
     var body: some View {
         NavigationStack(path: $path) {
-            content
-                .background(Color.canvas.ignoresSafeArea())
-                .navigationTitle("Kluis")
-                .mainScreenToolbar("Kluis", onShowMenu: onShowMenu)
-                .navigationDestination(for: FolderRoute.self) { route in
-                    Group {
-                        if route == .all {
-                            VaultAllFoldersPage(actions: actions)
-                        } else {
-                            VaultLibraryPage(folderID: route.id, actions: actions)
-                        }
-                    }
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
-                }
-                .task { await model.load() }
+            routedContent
                 // Ayla pointed to one item: open it once the vault is there.
                 .onChange(of: model.itemToOpen, initial: true) { openRequestedItem() }
                 .onChange(of: model.state) { openRequestedItem() }
@@ -113,16 +120,8 @@ struct VaultScreen: View {
                     VaultRequestConfirmationSheet(
                         item: item,
                         documentCount: model.documents(of: item).count,
-                        onShowMenu: onShowMenu,
                         onSend: { request in
-                            await model.requestValidation(
-                                for: item,
-                                organizationID: request.organization!.id,
-                                locationID: request.location!.id,
-                                departmentID: request.department!.id,
-                                contactID: request.contact!.id,
-                                message: request.message
-                            )
+                            await model.requestValidation(for: item, request)
                         }
                     )
                         .paveSheet()
@@ -138,8 +137,8 @@ struct VaultScreen: View {
                     )
                     .ignoresSafeArea()
                 }
-                .sheet(item: $addFlow) { flow in
-                    VaultAddEvidenceSheet(flow: flow)
+                .sheet(item: $addFlow, onDismiss: openAdded) { flow in
+                    VaultAddEvidenceSheet(flow: flow) { added = ($0, $1) }
                         .paveSheet()
                 }
                 .sheet(item: $folderSheet) { sheet in
@@ -218,6 +217,13 @@ struct VaultScreen: View {
 
     /// A draft closed less than half a minute ago comes back; otherwise new evidence, in the open folder and in the
     /// folder of its kind. Adding from an example folder starts with its kind, such as Project in Projecten.
+    /// After adding: the new evidence opens, or straight away its verification request when that was asked.
+    private func openAdded() {
+        guard let added, let item = model.items.first(where: { $0.id == added.id }) else { return }
+        self.added = nil
+        if added.requestsVerification { confirmedItem = item } else { openedItem = item }
+    }
+
     private func add(_ folder: VaultFolder?) {
         if let draft = model.takeDraft() {
             addFlow = draft

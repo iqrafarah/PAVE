@@ -28,10 +28,13 @@ struct AylaTypingTitle: View {
     /// How long one square takes to fade in or out.
     static let squareFade = 0.1
 
+    /// 289 pt at the standard text size, growing with it.
+    @ScaledMetric(relativeTo: .title) private var titleWidth: CGFloat = 289
+
     var body: some View {
         TimelineView(.animation(paused: isDone || !isStarted)) { context in
             let moment = moment(at: context.date)
-            MaxWidthLayout(maxWidth: 289) {
+            MaxWidthLayout(maxWidth: titleWidth) {
                 Text(text)
                     .textStyle(.welcomeTitle)
                     .foregroundStyle(Color.ink)

@@ -5,6 +5,9 @@ import UIKit
 @testable import PAVE
 
 @MainActor
+// One at a time: several tests keep the vault's order in the same place on the device, and in parallel one saw the
+// order another had just written.
+@Suite(.serialized)
 struct VaultAddEvidenceTests {
     /// Records what the flow sends and fails where a test asks it to.
     private actor FakeVault: VaultService {
@@ -156,6 +159,17 @@ struct VaultAddEvidenceTests {
         while flow.aylaFill == .reading { await Task.yield() }
         #expect(flow.aylaFill == .filled)
         #expect(flow.draft.title == "Professional Scrum Master I")
+    }
+
+    @Test func fillingItInYourselfFromTheChatKeepsTheFilesAndReadsNothing() async {
+        let service = FakeVault()
+        await service.propose([certificate])
+        let flow = VaultAddEvidenceModel.filledByYou(vault: VaultModel(service: service), category: .certificates, documents: [pdf])
+        #expect(flow.documents == [pdf])
+        #expect(flow.page == .details)
+        #expect(flow.aylaFill == .idle)
+        #expect(flow.draft.title != "Professional Scrum Master I")
+        #expect(!flow.draft.filledByAyla)
     }
 
     @Test func filesReadInTheChatAreNotReadAgain() async {
@@ -365,6 +379,9 @@ struct VaultAddEvidenceTests {
             items: [VaultItem(id: "i", folderIDs: ["a", "c"], category: .projects, title: "App")],
             folders: [VaultFolder(id: "a", name: "A"), VaultFolder(id: "b", name: "B"), VaultFolder(id: "c", name: "C")]
         ))
+        // No order left behind by another test.
+        UserDefaults.standard.removeObject(forKey: PaveAccount.key("vaultFolderOrder"))
+        UserDefaults.standard.removeObject(forKey: PaveAccount.key("vaultItemOrder"))
         let model = VaultModel(service: service)
         await model.load()
         return model
@@ -381,8 +398,8 @@ struct VaultAddEvidenceTests {
     }
 
     @Test func aDroppedFolderTakesThePlaceOfTheOther() async {
-        UserDefaults.standard.removeObject(forKey: "vaultFolderOrder")
-        defer { UserDefaults.standard.removeObject(forKey: "vaultFolderOrder") }
+        UserDefaults.standard.removeObject(forKey: PaveAccount.key("vaultFolderOrder"))
+        defer { UserDefaults.standard.removeObject(forKey: PaveAccount.key("vaultFolderOrder")) }
         let service = FakeVault()
         let model = await vaultWithFolders(service)
         await model.moveFolder("c", onto: "a")
@@ -397,8 +414,8 @@ struct VaultAddEvidenceTests {
     }
 
     @Test func draggedCardsKeepTheirOrderAroundTheOthers() async {
-        UserDefaults.standard.removeObject(forKey: "vaultItemOrder")
-        defer { UserDefaults.standard.removeObject(forKey: "vaultItemOrder") }
+        UserDefaults.standard.removeObject(forKey: PaveAccount.key("vaultItemOrder"))
+        defer { UserDefaults.standard.removeObject(forKey: PaveAccount.key("vaultItemOrder")) }
         let service = FakeVault()
         let day = { (d: Int) in VaultDay(year: 2025, month: 1, day: d) }
         await service.store(VaultContents(items: [
