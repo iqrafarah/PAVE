@@ -54,11 +54,15 @@ struct ApplicationStore {
         return try? JSONDecoder().decode(ApplicationDraft.self, from: data)
     }
 
+    /// Posted when an application is saved or deleted here, so it goes to the account at once.
+    static let didChange = Notification.Name("applicationStoreDidChange")
+
     func save(_ draft: ApplicationDraft) {
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         guard let data = try? JSONEncoder().encode(draft) else { return }
         try? data.write(to: file(draft.id), options: [.atomic, .completeFileProtection])
         forgetDeletions([draft.id])
+        NotificationCenter.default.post(name: Self.didChange, object: nil)
     }
 
     /// Deleted by the user: remembered, so the account and the other devices drop it too.
@@ -67,6 +71,7 @@ struct ApplicationStore {
         var deleted = defaults.dictionary(forKey: deletedKey) as? [String: Double] ?? [:]
         deleted[vacancyID] = Date.now.timeIntervalSince1970
         defaults.set(deleted, forKey: deletedKey)
+        NotificationCenter.default.post(name: Self.didChange, object: nil)
     }
 
     /// Removed because another device deleted it: nothing to pass on.

@@ -101,6 +101,11 @@ final class PlanModel {
         }
     }
 
+    /// Choices made on another device came in.
+    func reloadEditDecisions() {
+        editDecisions = (UserDefaults.standard.dictionary(forKey: Self.editDecisionsKey) as? [String: String] ?? [:]).compactMapValues(EditDecision.init(rawValue:))
+    }
+
     func decline(_ edit: AylaReply.PlanEdit) {
         decide(edit.id, .declined)
     }

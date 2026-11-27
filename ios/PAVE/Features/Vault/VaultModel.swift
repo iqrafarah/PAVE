@@ -31,12 +31,12 @@ final class VaultModel {
     @ObservationIgnored private var lookCache: [String: VaultLogoLook] = [:]
     /// Folder colours and icons kept on this device while the database has no columns for them yet.
     @ObservationIgnored private let localStyles = UserDefaults.standard
-    private static let localStylesKey = "vaultFolderStyles"
+    private static var localStylesKey: String { PaveAccount.key("vaultFolderStyles") }
     /// The folder order kept on this device while the database has no column for it yet.
-    private static let localOrderKey = "vaultFolderOrder"
-    private static let localItemOrderKey = "vaultItemOrder"
+    private static var localOrderKey: String { PaveAccount.key("vaultFolderOrder") }
+    private static var localItemOrderKey: String { PaveAccount.key("vaultItemOrder") }
     /// The example folders were made on this phone once; deleting one later must not bring it back.
-    static let exampleFoldersKey = "vaultExampleFoldersMade"
+    static var exampleFoldersKey: String { PaveAccount.key("vaultExampleFoldersMade") }
 
     init(service: (any VaultService)?) {
         self.service = service

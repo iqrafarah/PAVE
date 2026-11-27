@@ -31,6 +31,7 @@ struct MainView: View {
     /// An employer opened from the iPhone's camera, over whatever screen is open.
     @State private var fairEmployer: FairEmployerSlug?
     @State private var draftSync: ApplicationDraftSyncer?
+    @State private var accountSync: AccountStateSync?
     /// The employer's inbox of the demo, opened from its key's code.
     @State private var employerInbox: EmployerInboxKey?
     /// Applications whose demo invitation has arrived, for Meldingen and the bell; read again when you move around.
@@ -154,6 +155,8 @@ struct MainView: View {
             if ShareWatchBridge.isAvailable { await sharing.load() }
             if draftSync == nil { draftSync = ApplicationDraftSyncer.make(auth: appState.authService) }
             if await draftSync?.run() == true { sharing.reloadApplications() }
+            if accountSync == nil { accountSync = AccountStateSync.make(auth: appState.authService) }
+            await accountSync?.run()
             round += 1
             try? await Task.sleep(for: .seconds(30))
         }
@@ -253,11 +256,25 @@ struct MainView: View {
         .task { await memory.load() }
         .task { await model.followConversationChanges() }
         .onChange(of: hasSidebar) { isMenuOpen = false }
+        // What changes on this iPhone goes to the account a moment later, for the laptop and the other devices.
+        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in accountSync?.localChanged() }
+        .onReceive(NotificationCenter.default.publisher(for: AccountStateSync.didPull)) { _ in
+            plans.reloadEditDecisions()
+            emailModel.reloadMarks()
+        }
+        // An application saved here is in the account a moment later, not only at the next round.
+        .onReceive(NotificationCenter.default.publisher(for: ApplicationStore.didChange)) { _ in
+            Task {
+                try? await Task.sleep(for: .seconds(2))
+                if await draftSync?.run() == true { sharing.reloadApplications() }
+            }
+        }
         // A deleted chat that could still be brought back is really deleted when the app goes away.
         .onChange(of: scenePhase) { _, phase in
             if phase == .background {
                 // What was written just now is in the account before the app sleeps, for the next device.
                 Task { await draftSync?.run() }
+                Task { await accountSync?.run() }
                 model.commitPendingDeletion()
                 memory.commitPendingForget()
                 // Locked e-mail conversations need the PIN again, as locked chats do.
