@@ -26,7 +26,7 @@ struct AylaWelcome: View {
     ]
 
     private var title: String {
-        if let firstName { "Wat wil je vandaag doen, \(firstName)" } else { "Wat wil je vandaag doen?" }
+        if let firstName { "Wat wil je vandaag doen, \(firstName)?" } else { "Wat wil je vandaag doen?" }
     }
 
     /// 313 pt at the standard text size, growing with it.
