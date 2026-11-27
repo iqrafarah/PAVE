@@ -362,6 +362,13 @@ struct AylaChatScreen: View {
                 } else if shelf == .plan, let plans {
                     AylaPlanShelf(chat: model, onLeave: { closingShelf(then: $0) }, onOpen: openShelf)
                         .environment(plans)
+                } else if shelf == .profile, let sharing {
+                    // Profiel itself, as in the menu: your card, sharing, selections and applications.
+                    ProfileScreen(model: sharing, onShowMenu: nil)
+                        .environment(vault)
+                        .environment(profile)
+                        .environment(model)
+                        .environment(\.vaultButtonsInPage, toolbarIsBeside)
                 } else if shelf == .vault {
                     if let vault {
                         VaultScreen(onShowMenu: nil)
