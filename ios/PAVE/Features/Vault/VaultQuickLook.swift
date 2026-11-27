@@ -18,7 +18,24 @@ extension View {
     }
 }
 
-private struct VaultOpenFile: Identifiable {
+extension View {
+    /// The same file, as a page in the stack this view is in (back button), for a sheet that already has one: no
+    /// cover of its own on top of it.
+    func vaultFilePage(_ url: Binding<URL?>) -> some View {
+        navigationDestination(item: Binding(
+            get: { url.wrappedValue.map(VaultOpenFile.init) },
+            set: { url.wrappedValue = $0?.url }
+        )) { file in
+            VaultFileViewer(url: file.url, isPushed: true)
+        }
+        .onChange(of: url.wrappedValue) { old, new in
+            guard new == nil, let old else { return }
+            try? FileManager.default.removeItem(at: old.deletingLastPathComponent())
+        }
+    }
+}
+
+private struct VaultOpenFile: Identifiable, Hashable {
     let url: URL
     var id: URL { url }
 }

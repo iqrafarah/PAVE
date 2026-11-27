@@ -84,6 +84,11 @@ struct VaultScreen: View {
             .task { await model.load() }
     }
 
+    /// The evidence open as a page, by id: back closes it.
+    private var openedItemID: Binding<String?> {
+        Binding(get: { openedItem?.id }, set: { id in if id == nil { openedItem = nil } })
+    }
+
     var body: some View {
         NavigationStack(path: $path) {
             routedContent
@@ -108,9 +113,10 @@ struct VaultScreen: View {
                 .onChange(of: model.folders.map(\.id)) { _, ids in
                     path.removeAll { $0 != .all && !ids.contains($0.id) }
                 }
-                .sheet(item: $openedItem) { item in
-                    VaultItemDetailView(itemID: item.id, onShowMenu: onShowMenu)
-                        .paveSheet()
+                // Evidence opens as a page in the vault (back button), also when the vault is a sheet over the chat:
+                // no card on a card.
+                .navigationDestination(item: openedItemID) { id in
+                    VaultItemDetailView(itemID: id, onShowMenu: onShowMenu, isPushed: true)
                 }
                 .sheet(item: $editedItem) { item in
                     VaultEvidenceEditor(vault: model, item: item)

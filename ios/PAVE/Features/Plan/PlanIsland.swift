@@ -183,7 +183,8 @@ struct PlanIsland: View {
 
     /// A moment open, then back around the camera, unless it was opened all the way meanwhile.
     private func show(_ next: Notice) async {
-        guard !isExpanded else { return }
+        // One message at the top at a time: with a melding or Ayla's answer there, the island stays around the camera.
+        guard !isExpanded, !PaveTopSlot.shared.isTaken else { return }
         withAnimation(animation) { notice = next }
         try? await Task.sleep(for: .seconds(next == .plan ? 2.6 : 2.2))
         guard notice == next else { return }

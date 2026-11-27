@@ -30,8 +30,9 @@ struct VaultOrganizationSearchSheet: View {
 
     private var query: Query { .init(text: text, kind: kind) }
 
+    /// A page in the stack of "Bevestiging aanvragen" (back button), not a third sheet over it.
     var body: some View {
-        NavigationStack {
+        Group {
             List {
                 Section {
                     ForEach(results) { place in
@@ -58,7 +59,6 @@ struct VaultOrganizationSearchSheet: View {
             .navigationTitle("Organisatie kiezen")
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $text, placement: .navigationBarDrawer(displayMode: .always), prompt: "Organisatie, plaats of adres")
-            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button(ApplyMessages.done) { dismiss() } } }
             .task(id: query) { await search() }
             .onAppear { if text.isEmpty { text = initialQuery } }
         }

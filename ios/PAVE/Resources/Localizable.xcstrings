@@ -235,6 +235,23 @@
         }
       }
     },
+    "%@ bewijsstukken staan geverifieerd in je kluis.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ pieces of evidence are in your vault as verified."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ prueba ta den bo kluis komo verifiká."
+          }
+        }
+      }
+    },
     "%@ bewijsstukken, kort": {
       "extractionState": "manual",
       "localizations": {
@@ -2068,6 +2085,23 @@
         }
       }
     },
+    "1 bewijsstuk staat geverifieerd in je kluis.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 piece of evidence is in your vault as verified."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 prueba ta den bo kluis komo verifiká."
+          }
+        }
+      }
+    },
     "1 bewijsstuk, kort": {
       "extractionState": "manual",
       "localizations": {
@@ -3612,6 +3646,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tur kos ta kla"
+          }
+        }
+      }
+    },
+    "Alles uit je wallet staat al in je kluis.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Everything from your wallet is already in your vault."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tur kos for di bo wallet ta den bo kluis kaba."
           }
         }
       }
@@ -8359,6 +8410,23 @@
         }
       }
     },
+    "Bijv. Wil je mijn eindstage verifiëren?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E.g. Would you verify my final internship?"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Por ehèmpel: Bo por verifiká mi stage final?"
+          }
+        }
+      }
+    },
     "Bijvoorbeeld Albert Heijn": {
       "extractionState": "manual",
       "localizations": {
@@ -9668,6 +9736,40 @@
         }
       }
     },
+    "Controleren": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kontrolá"
+          }
+        }
+      }
+    },
+    "Controleren…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking…"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kontrolando…"
+          }
+        }
+      }
+    },
     "Creatief": {
       "extractionState": "manual",
       "localizations": {
@@ -10297,6 +10399,23 @@
         }
       }
     },
+    "De demowallet staat nog niet aan. Vraag het team om de functie vault-wallet te zetten.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The demo wallet is not switched on yet. Ask the team to deploy the vault-wallet function."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E demo wallet no ta prendí ainda. Pidi e tim pa pone e funshon vault-wallet."
+          }
+        }
+      }
+    },
     "De einddatum ligt voor de begindatum.": {
       "extractionState": "manual",
       "localizations": {
@@ -10633,6 +10752,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "E organisashon no por a konfirmá esaki. Wak si tur kos ta korekto i kambi'é si ta nesesario."
+          }
+        }
+      }
+    },
+    "De organisatie kon niet verifiëren dat dit klopt. Kijk of alles klopt, pas het zo nodig aan en vraag het opnieuw aan.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The organisation could not verify that this is right. Check everything, change it if needed and ask again."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E organisashon no por a verifiká ku esaki ta korekto. Wak si tur kos ta bon, kambi'é si ta nesesario i pidi atrobe."
           }
         }
       }
@@ -11895,6 +12031,23 @@
         }
       }
     },
+    "Diploma's, certificaten en badges die je school of werkgever al ondertekende. Ze komen geverifieerd in je kluis.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diplomas, certificates and badges your school or employer already signed. They go into your vault as verified."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diploma, sertifikado i badge ku bo skol of dunadó di trabou a firma kaba. Nan ta drenta bo kluis komo verifiká."
+          }
+        }
+      }
+    },
     "Diploma's, certificaten en projecten, voor een opleiding.": {
       "extractionState": "manual",
       "localizations": {
@@ -12252,6 +12405,23 @@
         }
       }
     },
+    "Dit heb je zelf toegevoegd. Nog geen school, opleiding of werkgever heeft gecontroleerd dat het klopt.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You added this yourself. No school, study programme or employer has checked it yet."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bo mes a añadí esaki. Ningun skol, estudio of dunadó di trabou no a kontrol'é ainda."
+          }
+        }
+      }
+    },
     "Dit houd je zelf bij. PAVE stuurt niets naar het bedrijf.": {
       "extractionState": "manual",
       "localizations": {
@@ -12282,6 +12452,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Esaki ta un adrès di Hotmail òf Outlook. PAVE ta funshoná solamente ku iCloud Mail: un adrès @icloud.com, @me.com òf @mac.com."
+          }
+        }
+      }
+    },
+    "Dit is een demo: de wallet en de controle zijn nagemaakt, met verzonnen bewijs. Er gaat niets naar of uit een echte wallet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This is a demo: the wallet and the check are imitations, with made-up evidence. Nothing goes to or from a real wallet."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esaki ta un demo: e wallet i e kontrol ta imitá, ku prueba inventá. Nada no ta bai na of sali for di un wallet real."
           }
         }
       }
@@ -13387,6 +13574,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Skohe un direkshon"
+          }
+        }
+      }
+    },
+    "Een school, opleiding of werkgever heeft gecontroleerd dat dit klopt. Pas je iets aan, dan moet het opnieuw geverifieerd worden.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A school, study programme or employer checked that this is right. If you change something, it has to be verified again."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un skol, estudio of dunadó di trabou a kontrolá ku esaki ta korekto. Si bo kambia algu, e mester wòrdu verifiká atrobe."
           }
         }
       }
@@ -16740,6 +16944,40 @@
         }
       }
     },
+    "Haal bewijs uit je wallet": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get evidence from your wallet"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saka prueba for di bo wallet"
+          }
+        }
+      }
+    },
+    "Handtekening controleren…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking the signature…"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kontrolando e firma…"
+          }
+        }
+      }
+    },
     "Hart": {
       "extractionState": "manual",
       "localizations": {
@@ -17216,6 +17454,23 @@
         }
       }
     },
+    "Het lukte niet om dit in je kluis te zetten. Probeer het zo nog eens.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This could not be put in your vault. Try again in a moment."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No a logra pone esaki den bo kluis. Purba atrobe den un ratu."
+          }
+        }
+      }
+    },
     "Het plan %@ staat klaar bij Plan.": {
       "extractionState": "manual",
       "localizations": {
@@ -17263,6 +17518,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "E ta den bo kaha fuerte komo No konfirmá te ora un skol òf dunadó di trabou konfirm'é."
+          }
+        }
+      }
+    },
+    "Het staat als Niet geverifieerd in je kluis, tot een school of werkgever het verifieert.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It is in your vault as Not verified until a school or employer verifies it."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E ta den bo kluis komo No verifiká, te ora un skol of dunadó di trabou verifik'é."
           }
         }
       }
@@ -18861,6 +19133,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Na Ingles"
+          }
+        }
+      }
+    },
+    "In je kluis": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In your vault"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Den bo kluis"
           }
         }
       }
@@ -22231,6 +22520,23 @@
         }
       }
     },
+    "Je vraagt een school, opleiding of werkgever om het te controleren.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You ask a school, study programme or employer to check it."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bo ta pidi un skol, estudio of dunadó di trabou pa kontrol'é."
+          }
+        }
+      }
+    },
     "Je wachtwoord voldoet aan alle eisen": {
       "extractionState": "manual",
       "localizations": {
@@ -22261,6 +22567,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bo kontraseña no ta kumpli ku tur rekisito ainda."
+          }
+        }
+      }
+    },
+    "Je wallet kon niet geopend worden. Probeer het zo nog eens.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your wallet could not be opened. Try again in a moment."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No por a habri bo wallet. Purba atrobe den un ratu."
+          }
+        }
+      }
+    },
+    "Je wallet openen…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opening your wallet…"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Habriendo bo wallet…"
           }
         }
       }
@@ -22312,6 +22652,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bo ta sali for di bo kuenta. Drenta atrobe ku bo kontraseña i kódigo di verifikashon i despues skohe un kódigo PIN nobo."
+          }
+        }
+      }
+    },
+    "Je zet het zelf in je kluis.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You put it in your vault yourself."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bo mes ta pon'é den bo kluis."
           }
         }
       }
@@ -22758,6 +23115,23 @@
         }
       }
     },
+    "Kies de persoon die je bewijs kan verifiëren.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose the person who can verify your evidence."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skohe e persona ku por verifiká bo prueba."
+          }
+        }
+      }
+    },
     "Kies de richting waar je mee verder gaat.": {
       "extractionState": "manual",
       "localizations": {
@@ -23047,6 +23421,23 @@
         }
       }
     },
+    "Kies eerst iets": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose something first"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skohe algu prome"
+          }
+        }
+      }
+    },
     "Kies er één of meer, zoals Werk en stages én Interesses en hobby's.": {
       "extractionState": "manual",
       "localizations": {
@@ -23251,6 +23642,23 @@
         }
       }
     },
+    "Kies wat je in je kluis zet. Het komt erin als Geverifieerd, omdat je school of werkgever het al ondertekende.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose what goes into your vault. It goes in as Verified, because your school or employer already signed it."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skohe kiko ta bai den bo kluis. E ta drenta komo Verifiká, pasobra bo skol of dunadó di trabou a firm'é kaba."
+          }
+        }
+      }
+    },
     "Kiezen": {
       "extractionState": "manual",
       "localizations": {
@@ -23349,6 +23757,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Wak kua diploma i kua materia bo mester."
+          }
+        }
+      }
+    },
+    "Kijken of het nog geldt…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking whether it is still valid…"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wak si e ta bal ainda…"
           }
         }
       }
@@ -24641,6 +25066,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Laga verifiká"
+          }
+        }
+      }
+    },
+    "Laten verifiëren werkt nog niet in deze versie van PAVE. Er is niets naar %@ gestuurd en niets bewaard.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verification does not work yet in this version of PAVE. Nothing was sent to %@ and nothing was saved."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laga verifiká no ta traha ainda den e version aki di PAVE. Nada no a wòrdu manda na %@ i nada no a wòrdu wardá."
+          }
+        }
+      }
+    },
+    "Laten verifiëren werkt nog niet. Je kunt alvast kijken hoe het wordt, maar er wordt niets verstuurd.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verification does not work yet. You can already see how it will be, but nothing is sent."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laga verifiká no ta traha ainda. Bo por wak kon e lo ta, pero nada no ta wòrdu manda."
           }
         }
       }
@@ -30833,6 +31292,40 @@
         }
       }
     },
+    "Opnieuw laten verifiëren": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Have it verified again"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laga verifiká atrobe"
+          }
+        }
+      }
+    },
+    "Opnieuw laten verifiëren?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Have it verified again?"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laga verifiká atrobe?"
+          }
+        }
+      }
+    },
     "Opnieuw opzoeken": {
       "extractionState": "manual",
       "localizations": {
@@ -31377,6 +31870,23 @@
         }
       }
     },
+    "PAVE kijkt bij elk bewijsstuk of het echt is: wie het ondertekende, of die uitgever bekend is en of het nog geldt.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For each piece of evidence PAVE checks whether it is real: who signed it, whether that issuer is known and whether it is still valid."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PAVE ta wak pa kada prueba si e ta real: ken a firm'é, si e emisor ta konosí i si e ta bal ainda."
+          }
+        }
+      }
+    },
     "PAVE mag de camera niet gebruiken. Zet het aan in Instellingen › PAVE › Camera.": {
       "extractionState": "manual",
       "localizations": {
@@ -31594,6 +32104,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Si bo kambia e datonan òf archivonan, e ta bolbe riba No konfirmá den bo kaha fuerte. Despues bo por pidi konfirmashon atrobe."
+          }
+        }
+      }
+    },
+    "Pas je de gegevens of bestanden aan, dan staat het weer als Niet geverifieerd in je kluis. Daarna kun je het opnieuw laten verifiëren.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If you change the details or files, it is Not verified again in your vault. You can then have it verified again."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si bo kambia e datonan of dokumentonan, e ta bolbe komo No verifiká den bo kluis. Despues bo por laga verifik'é atrobe."
           }
         }
       }
@@ -36171,6 +36698,23 @@
         }
       }
     },
+    "Tik voor uitleg": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap for an explanation"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tok pa un splikashon"
+          }
+        }
+      }
+    },
     "Tilburg": {
       "extractionState": "manual",
       "localizations": {
@@ -37242,6 +37786,40 @@
         }
       }
     },
+    "Uit je wallet": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From your wallet"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For di bo wallet"
+          }
+        }
+      }
+    },
+    "Uit je wallet (demo)": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From your wallet (demo)"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For di bo wallet (demo)"
+          }
+        }
+      }
+    },
     "Uit kluis halen": {
       "extractionState": "manual",
       "localizations": {
@@ -37391,6 +37969,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Invitá"
+          }
+        }
+      }
+    },
+    "Uitgever opzoeken…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Looking up the issuer…"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buskando e emisor…"
           }
         }
       }
@@ -39499,6 +40094,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Añadí %@ paso"
+          }
+        }
+      }
+    },
+    "Voeg %@ toe": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadí %@"
           }
         }
       }
@@ -42495,6 +43107,23 @@
         }
       }
     },
+    "Wie kan dit verifiëren?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Who can verify this?"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ken por verifiká esaki?"
+          }
+        }
+      }
+    },
     "Wie kan mijn gegevens zien?": {
       "extractionState": "manual",
       "localizations": {
@@ -43511,6 +44140,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pone nan na Konfigurashon di bo iPhone."
+          }
+        }
+      }
+    },
+    "Zij hebben gecontroleerd dat het klopt. Scholen en werkgevers kunnen erop vertrouwen.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "They checked that it is right. Schools and employers can rely on it."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nan a kontrolá ku e ta korekto. Skol i dunadó di trabou por konfia riba dje."
+          }
+        }
+      }
+    },
+    "Zij konden niet verifiëren dat het klopt. Pas het aan en vraag het opnieuw aan.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "They could not verify that it is right. Change it and ask again."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nan no por a verifiká ku e ta korekto. Kambi'é i pidi atrobe."
           }
         }
       }

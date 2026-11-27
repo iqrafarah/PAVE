@@ -256,7 +256,7 @@ struct AylaChatScreen: View {
                 )
                 // The plan of this chat, just under the header; it stays while talking, so you go through the steps
                 // hands-free with Ayla and still see where you are.
-                .planBar(chat: model, isHidden: false)
+                .planBar(chat: model, isHidden: application != nil)
 
                 // Her answer while a page sits low over the chat: at the very top of the screen, over her name where
                 // the bar holds nothing else (the outer display of iPhone Duo keeps its buttons along the side), and
@@ -362,6 +362,13 @@ struct AylaChatScreen: View {
                 } else if shelf == .plan, let plans {
                     AylaPlanShelf(chat: model, onLeave: { closingShelf(then: $0) }, onOpen: openShelf)
                         .environment(plans)
+                } else if shelf == .profile, let sharing {
+                    // Profiel itself, as in the menu: your card, sharing, selections and applications.
+                    ProfileScreen(model: sharing, onShowMenu: nil)
+                        .environment(vault)
+                        .environment(profile)
+                        .environment(model)
+                        .environment(\.vaultButtonsInPage, toolbarIsBeside)
                 } else if shelf == .vault {
                     if let vault {
                         VaultScreen(onShowMenu: nil)
@@ -596,7 +603,7 @@ struct AylaChatScreen: View {
         .sheet(item: $selectingText) { ChatTextSelection(text: $0.text) }
         // After a task from an application (practising, what is missing): one tap back to it.
         .overlay(alignment: .top) {
-            if let vacancy = backToApplication, application == nil {
+            if let vacancy = backToApplication, application == nil, !PaveTopSlot.shared.messageShows {
                 AylaBackToApplication(company: vacancy.company) {
                     backToApplication = nil
                     openApplication(for: vacancy)
@@ -608,21 +615,13 @@ struct AylaChatScreen: View {
             }
         }
         .animation(reduceMotion ? nil : .snappy(duration: 0.25), value: backToApplication)
+        // Her answer floating at the top, or a page over the chat: meldingen wait until it is gone.
+        .reportsTop(holding: holdsTop)
         .onChange(of: model.conversationID) { old, new in
             if old != nil, old != new { backToApplication = nil }
         }
-        .fullScreenCover(item: $application) { studio in
-            ApplicationStudioView(
-                model: studio, photo: profile?.avatar,
-                onClose: { application = nil },
-                onTask: { task in
-                    let vacancy = studio.draft.vacancy
-                    application = nil
-                    run(task, on: [vacancy])
-                    backToApplication = vacancy
-                }
-            )
-        }
+        // An application opens as a page (back button), as from Vacatures: not a cover over everything.
+        .navigationDestination(isPresented: applicationIsOpen) { applicationPage }
         // Handoff to your other devices, with only a general title: the chat's own title stays private.
         .userActivity(AylaHandoff.activityType, isActive: model.conversationID != nil && !isVoiceActive) { activity in
             guard let id = model.conversationID else { return }
@@ -1336,6 +1335,28 @@ struct AylaChatScreen: View {
         }
         // Only the field and the round buttons move in; the rest fades out when the conversation stops.
         .transition(.asymmetric(insertion: .identity, removal: .opacity))
+    }
+
+    private var applicationIsOpen: Binding<Bool> {
+        Binding(get: { application != nil }, set: { if !$0 { application = nil } })
+    }
+
+    @ViewBuilder
+    private var applicationPage: some View {
+        if let studio = application {
+            ApplicationStudioView(
+                model: studio, photo: profile?.avatar, isPushed: true,
+                onClose: { application = nil },
+                onTask: { task in
+                    let vacancy = studio.draft.vacancy
+                    application = nil
+                    run(task, on: [vacancy])
+                    backToApplication = vacancy
+                }
+            )
+            .toolbar(.hidden, for: .navigationBar)
+            .navigationBarBackButtonHidden()
+        }
     }
 
     /// The one line under the full-screen orb: what you say, Ayla's answer, or a hint while nothing is happening.
@@ -2688,6 +2709,8 @@ struct AylaChatScreen: View {
 
     /// Her answer shows at the top of the chat. The conversation under it says the same, so it steps back until the
     /// answer is tapped away.
+    private var holdsTop: Bool { replyIsOverChat || shelf != nil }
+
     private var replyIsOverChat: Bool {
         shelf != nil && replyFloatsOverChat && showsShelfReply && (!isTalking || showsVoiceText) && shelfReply != nil
     }
