@@ -93,6 +93,13 @@ struct MainView: View {
         return destination != .notifications || (banner.kind == .email && emailModel.openThreadID != nil) ? banner : nil
     }
 
+    private var topSlot: PaveTopSlot { .shared }
+
+    /// A melding or the step question is on screen: the rest of the top waits.
+    private var showsTopMessage: Bool {
+        shownBanner != nil || (!topSlot.chatHoldsTop && plans.suggestion.map { plans.suggestion(for: $0.planID) != nil } == true)
+    }
+
     @ViewBuilder
     private var bannerView: some View {
         if let banner = shownBanner {
@@ -121,7 +128,7 @@ struct MainView: View {
     /// plan, where the plan itself asks.
     @ViewBuilder
     private var suggestionView: some View {
-        if shownBanner == nil, let suggestion = plans.suggestion, plans.suggestion(for: suggestion.planID) != nil,
+        if shownBanner == nil, !topSlot.chatHoldsTop, let suggestion = plans.suggestion, plans.suggestion(for: suggestion.planID) != nil,
            !(destination == .plan && plans.openPlanID == suggestion.planID) {
             PlanStepSuggestionCard(suggestion: suggestion) {
                 plans.acceptSuggestion()
@@ -189,8 +196,13 @@ struct MainView: View {
         .overlay(alignment: .top) { ZStack(alignment: .top) { bannerView; suggestionView } }
         .animation(.island, value: plans.suggestion)
         .onChange(of: visibleBanner?.id, initial: true) {
-            withAnimation(.island) { shownBanner = visibleBanner }
+            withAnimation(.island) { shownBanner = topSlot.chatHoldsTop ? nil : visibleBanner }
         }
+        // While Ayla's answer floats over the chat a melding waits, then comes; one message at the top at a time.
+        .onChange(of: topSlot.chatHoldsTop) {
+            withAnimation(.island) { shownBanner = topSlot.chatHoldsTop ? nil : visibleBanner }
+        }
+        .onChange(of: showsTopMessage, initial: true) { topSlot.messageShows = showsTopMessage }
         // New meldingen show up while PAVE is open: a quiet refresh every 30 seconds, and the badge on the icon follows.
         .task(id: PollingState(isActive: scenePhase == .active, isOpen: appState.isOpen)) {
             guard scenePhase == .active, appState.isOpen else { return }

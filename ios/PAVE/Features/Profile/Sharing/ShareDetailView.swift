@@ -40,7 +40,7 @@ struct ShareDetailView: View {
                     confirmsRevoke = true
                 }
             }
-            .sheet(isPresented: $showsPreview) {
+            .navigationDestination(isPresented: $showsPreview) {
                 ShareRecipientPreview(share: share, items: vault.items.filter { share.itemIDs.contains($0.id) })
             }
         }

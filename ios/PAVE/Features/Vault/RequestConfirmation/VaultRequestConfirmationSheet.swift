@@ -84,7 +84,7 @@ struct VaultRequestConfirmationSheet: View {
             Button("Weggooien", role: .destructive) { dismiss() }
             Button("Verder met invullen", role: .cancel) {}
         }
-        .sheet(isPresented: $choosesOrganization) {
+        .navigationDestination(isPresented: $choosesOrganization) {
             VaultOrganizationSearchSheet(
                 category: item.category, selectedID: request.place?.locationId,
                 initialQuery: request.place == nil ? suggestedSearch : ""
@@ -92,7 +92,6 @@ struct VaultRequestConfirmationSheet: View {
                 if place.locationId != request.place?.locationId { isDirty = true }
                 request.choose(place)
             }
-            .paveSheet()
         }
         .task(id: item.id) {
             evidenceLogo = nil

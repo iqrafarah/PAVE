@@ -8,9 +8,8 @@ struct ShareRecipientPreview: View {
     let share: ProfileShare
     let items: [VaultItem]
 
-    @Environment(\.dismiss) private var dismiss
     @Environment(ProfileModel.self) private var profile: ProfileModel?
-    @State private var opened: VaultItem?
+    @State private var openedID: String?
 
     /// Only what the share names, in its order.
     private var shared: [VaultItem] {
@@ -28,8 +27,10 @@ struct ShareRecipientPreview: View {
     private var hidden: Set<String> { Set(share.content.hiddenFiles ?? []) }
     private var brief: Set<String> { Set(share.content.brief ?? []) }
 
+    /// A page in the stack of the share it is opened from: the evidence and its files open as pages too, with a back
+    /// button, instead of a sheet on a sheet on a cover.
     var body: some View {
-        NavigationStack {
+        Group {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
                     PaveNotice(message: SharingMessages.previewLabel)
@@ -49,7 +50,7 @@ struct ShareRecipientPreview: View {
                             ForEach(Array(group.items.enumerated()), id: \.element.id) { index, item in
                                 if index > 0 { ShareRowDivider(inset: 66) }
                                 ShareRecipientItemRow(item: item, hasFile: files.contains(item.id) && ShareFiles.sharesDocument(item, hidden: hidden)) {
-                                    opened = item
+                                    openedID = item.id
                                 }
                             }
                         }
@@ -66,9 +67,10 @@ struct ShareRecipientPreview: View {
             .background(Color.canvas)
             .navigationTitle(SharingMessages.preview)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(ApplyMessages.done) { dismiss() } } }
-            .sheet(item: $opened) { item in
-                ShareRecipientItemDetail(item: item, isBrief: brief.contains(item.id), showsFiles: files.contains(item.id), hiddenFiles: hidden)
+            .navigationDestination(item: $openedID) { id in
+                if let item = shared.first(where: { $0.id == id }) {
+                    ShareRecipientItemDetail(item: item, isBrief: brief.contains(item.id), showsFiles: files.contains(item.id), hiddenFiles: hidden)
+                }
             }
         }
     }

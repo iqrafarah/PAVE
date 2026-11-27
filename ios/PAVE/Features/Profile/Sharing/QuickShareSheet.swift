@@ -168,7 +168,7 @@ struct QuickShareSheet: View {
                     Button(created == nil ? SharingMessages.cancel : ApplyMessages.done, action: onDone)
                 }
             }
-            .sheet(isPresented: $showsPreview) { ShareRecipientPreview(share: preview, items: vault.items) }
+            .navigationDestination(isPresented: $showsPreview) { ShareRecipientPreview(share: preview, items: vault.items) }
         }
         .onAppear { model.problem = nil }
         .onDisappear { model.problem = nil }

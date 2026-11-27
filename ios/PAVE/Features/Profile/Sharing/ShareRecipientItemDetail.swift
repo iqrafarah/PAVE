@@ -10,14 +10,13 @@ struct ShareRecipientItemDetail: View {
     let showsFiles: Bool
     var hiddenFiles: Set<String> = []
 
-    @Environment(\.dismiss) private var dismiss
     @Environment(VaultModel.self) private var vault
     @State private var previewURL: URL?
 
     private var documents: [VaultItem.File] { showsFiles ? ShareFiles.documents(of: item, hidden: hiddenFiles) : [] }
 
     var body: some View {
-        NavigationStack {
+        Group {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     VStack(alignment: .leading, spacing: 6) {
@@ -94,8 +93,7 @@ struct ShareRecipientItemDetail: View {
             }
             .background(Color.canvas)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(ApplyMessages.done) { dismiss() } } }
-            .vaultQuickLook($previewURL)
+            .vaultFilePage($previewURL)
         }
     }
 

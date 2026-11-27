@@ -6,16 +6,32 @@ import SwiftUI
 struct VaultFileViewer: View {
     @Environment(\.dismiss) private var dismiss
     let url: URL
+    /// A page in the stack of the sheet it is opened from (back button), instead of a cover of its own over it.
+    var isPushed = false
 
     @State private var download: VaultDownload?
 
     var body: some View {
-        NavigationStack {
+        if isPushed {
+            page
+                .sheet(item: $download) { VaultShareSheet(urls: $0.urls).presentationDetents([.medium, .large]) }
+        } else {
+            NavigationStack { page }
+                .tint(.paveAccent)
+                .sheet(item: $download) { VaultShareSheet(urls: $0.urls).presentationDetents([.medium, .large]) }
+                .gesture(DragGesture(minimumDistance: 40).onEnded { value in
+                    if value.translation.height > 120, abs(value.translation.width) < 80 { dismiss() }
+                })
+        }
+    }
+
+    private var page: some View {
             QuickLookContent(url: url)
                 .ignoresSafeArea(edges: .bottom)
                 .navigationTitle(url.lastPathComponent)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
+                    if !isPushed {
                     ToolbarItem(placement: .topBarLeading) {
                         Button {
                             dismiss()
@@ -24,6 +40,7 @@ struct VaultFileViewer: View {
                                 .paveToolbarHitArea()
                         }
                         .accessibilityLabel("Bestand sluiten")
+                    }
                     }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button(VaultMessages.download) {
@@ -34,12 +51,6 @@ struct VaultFileViewer: View {
                     }
                 }
                 .toolbarBackgroundVisibility(.visible, for: .navigationBar)
-        }
-        .tint(.paveAccent)
-        .sheet(item: $download) { VaultShareSheet(urls: $0.urls).presentationDetents([.medium, .large]) }
-        .gesture(DragGesture(minimumDistance: 40).onEnded { value in
-            if value.translation.height > 120, abs(value.translation.width) < 80 { dismiss() }
-        })
     }
 }
 

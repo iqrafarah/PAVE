@@ -7,6 +7,8 @@ struct VaultItemDetailView: View {
     @Environment(VaultModel.self) private var model
     let itemID: String
     var onShowMenu: (() -> Void)? = nil
+    /// A page in the vault's stack (back button) instead of a sheet of its own over the vault.
+    var isPushed = false
     @State private var isEditing = false
     @State private var requestsConfirmation = false
     @Environment(\.askAylaAbout) private var askAylaAbout
@@ -68,7 +70,10 @@ struct VaultItemDetailView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        if isPushed { page } else { NavigationStack { page } }
+    }
+
+    private var page: some View {
             Group {
                 if let item {
                     content(item)
@@ -84,8 +89,10 @@ struct VaultItemDetailView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Klaar") { dismiss() }
+                if !isPushed {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Klaar") { dismiss() }
+                    }
                 }
             }
             .sheet(isPresented: $isEditing) {
@@ -131,9 +138,8 @@ struct VaultItemDetailView: View {
             } message: {
                 Text(VaultMessages.deleteItemMessage)
             }
-        }
-        .tint(.paveAccent)
-        .cameraControlMenus("item-\(itemID)", menus: cameraMenus, press: { dismiss() })
+            .tint(.paveAccent)
+            .cameraControlMenus("item-\(itemID)", menus: cameraMenus, press: { dismiss() })
     }
 
     /// Knopmodus on an item: its actions and its files; a full press without a choice closes it (Klaar).
