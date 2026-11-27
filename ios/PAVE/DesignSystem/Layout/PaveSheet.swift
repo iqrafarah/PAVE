@@ -14,12 +14,21 @@ extension View {
 private struct PaveSheet: ViewModifier {
     let background: Color?
     let clipsToColumn: Bool
-    @Environment(\.horizontalSizeClass) private var sizeClass
+    /// Chosen once, from the screen the sheet opens on. Not from the size class inside the sheet: a card in the middle
+    /// is narrow, so it read "phone" and turned back into a full sheet, which was wide again, and so on. Every turn
+    /// built the content anew: on the open iPhone Duo the sheet jumped and a text field lost the keyboard at once.
+    @State private var isWide = PaveSheet.screenIsWide
 
     private static let cornerRadius: CGFloat = 25
 
+    /// The open iPhone Duo and iPad: room for a card in the middle.
+    private static var screenIsWide: Bool {
+        let window = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.first
+        return (window?.bounds.width ?? 0) >= 700
+    }
+
     func body(content: Content) -> some View {
-        if sizeClass == .regular {
+        if isWide {
             content
                 .paveAnimationsSwitch()
                 .presentationSizing(.form)

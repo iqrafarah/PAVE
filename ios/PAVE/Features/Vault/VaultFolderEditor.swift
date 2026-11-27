@@ -56,7 +56,9 @@ struct VaultFolderEditor: View {
         }
         .frame(maxWidth: isWide ? 760 : 520)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onGeometryChange(for: CGSize.self) { $0.size } action: { size = $0 }
+        // Not while typing: the keyboard makes the sheet lower, which turned the layout into two columns and back, built
+        // the field anew each time and closed the keyboard again; on the open iPhone Duo the name could not be typed.
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { if !isNameFocused { size = $0 } }
         .background(Color.panel.ignoresSafeArea())
         .tint(.paveAccent)
         // Knopmodus: swipe through the colours and icons and see the folder change; a full press saves, and on the
