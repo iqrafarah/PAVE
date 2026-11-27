@@ -7,6 +7,7 @@ Hoe we de iOS-app van PAVE testen, wat eruit kwam, wat we verbeterden en wat dat
 - [Customer journey en user stories](#customer-journey-en-user-stories)
 - [Ronde 1: gebruikerstest inloggen (6 november)](#ronde-1-gebruikerstest-inloggen-6-november)
 - [Ronde 2: nalopen en lastige gegevens (25 november)](#ronde-2-nalopen-en-lastige-gegevens-25-november)
+- [Ronde 3: vertalingen (27 november)](#ronde-3-vertalingen-27-november)
 - [Overzicht van de rondes](#overzicht-van-de-rondes)
 - [Volgende ronde: gebruikerstest 2](#volgende-ronde-gebruikerstest-2)
 - [Nog open](#nog-open)
@@ -126,13 +127,42 @@ We testten op de iPhone, de dichte Duo en met grote tekst (Dynamic Type).
 
 **Conclusie:** drie bronnen (Daaf op de echte Duo, de code review en de stresstest) wijzen naar hetzelfde: de schermen waren gebouwd met "vriendelijke" gegevens (korte namen, een volle kluis, een gewone iPhone). Sinds deze ronde testen we elk nieuw scherm met een lege kluis, met lange namen en op de dichte Duo, voordat we het laten zien.
 
+## Ronde 3: vertalingen (27 november)
+
+**Opzet:** PAVE is er in het Nederlands, Engels en Papiamentu (Instellingen › Taal). De teksten staan in het Nederlands in de code; `Localizable.xcstrings` vertaalt ze. `PAVETests/LocalizationTests` controleert dat bij elke wijziging:
+
+| Test | Wat hij controleert |
+|---|---|
+| Elke tekst heeft elke taal | Engels en Papiamentu bestaan, zijn "translated" en niet leeg |
+| Waarden en spaties blijven | Een vertaling heeft dezelfde `%@` als het Nederlands en dezelfde spatie vooraan of achteraan (" op %@") |
+| Papiamentu is niet gekopieerd | Geen Papiamentu-tekst die gelijk is aan de Engelse |
+| De app heeft elke taal | De gebouwde app bevat de Engelse en Papiamentse tabel met alle teksten |
+| De vertaler vindt elke tekst | Elke tekst uit de catalogus, ingevuld met namen, komt eruit als zijn eigen vertaling |
+| Data volgen de taal | "27 november" in het Nederlands en Papiamentu, "27 November" in het Engels |
+| Elke tekst in de code is vertaald | Leest alle Swift-code, vult elke tekst in zoals hij op het scherm komt (ook elke keuze in `a ? "x" : "y"`) en kijkt of hij in het Engels uitkomt, ook in de stukjes |
+
+**Resultaat en verbetering:**
+
+| Wat we vonden | Wat we deden |
+|---|---|
+| De vertaler koos bij twee passende teksten de verkeerde: "Past bij Kade" werd "Past at Kade" (via "%@ bij %@") en "1 keer bekeken" werd "viewed 1 times". Hij koos de tekst met de langste regex, en dat is de tekst met de meeste waarden. | Hij kiest nu de tekst met de meeste eigen woorden (`TranslationTable`) |
+| "2 van 5 afgerond" bleef half Nederlands ("2 of 5 afgerond") als er geen stappen waren overgeslagen | "%@ afgerond" toegevoegd |
+| "Safari op iPhone", "Nu: …", "na …" en "Kade en Jumbo" bleven Nederlands. Een tekst met minder dan 3 eigen letters vult de vertaler bewust niet in, zodat "%@ · %@" niet op elke tekst past. | Deze plekken vertalen nu zelf met `PaveTranslator.format("%@ op %@", …)` |
+| De tests die Nederlands verwachten (Plan, Ayla) faalden op een simulator in het Engels | Het schema test nu in het Nederlands (Nederland) |
+| 10 teksten zonder vertaling: "Terug naar alle chats", "Gesprek verwijderen?", de uitleg bij verwijderen, "Dit account", "alleen bekijken", "mag downloaden", "de contactpersoon", "de organisatie", "Je deelt met …, 3 keer bekeken" | Engels en Papiamentu toegevoegd |
+
+**Hield stand:** alle 2651 teksten hebben beide talen, geen enkele vertaling mist een waarde of spatie, en de app bevat beide tabellen.
+
+**Nog open:** het Papiamentu is door AI vertaald en moet nog door iemand die de taal spreekt worden nagelezen (bijvoorbeeld "Mag baha", waar "Por baha" waarschijnlijk beter is).
+
 ## Overzicht van de rondes
 
 | Ronde | Belangrijkste bevinding | Wat we verbeterden | Effect |
 |---|---|---|---|
 | 1 (6 nov) | 4 van 5 zochten de code in de mail | Titel, icoon en zin die zeggen dat de code uit de app komt | Meten in gebruikerstest 2 |
 | 2 (25 nov) | Schermen braken met lege of lange gegevens en op de dichte Duo | Lege staten, uitleg bij grijze knoppen, teksten die meegroeien, twee kolommen op brede schermen | Alle gevonden breuken weg in de stresstest; Demo-gegevens zien er hetzelfde uit |
-| 3 | Gebruikerstest 2 | — | — |
+| 3 (27 nov) | De vertaler koos soms de verkeerde vertaling; 10 teksten zonder vertaling | Vertaler kiest de best passende tekst; ontbrekende vertalingen toegevoegd; `LocalizationTests` | Alle teksten in de code komen in het Engels uit |
+| 4 | Gebruikerstest 2 | — | — |
 
 ## Volgende ronde: gebruikerstest 2
 

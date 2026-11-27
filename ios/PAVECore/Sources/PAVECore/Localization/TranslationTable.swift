@@ -14,15 +14,24 @@ public final class TranslationTable: @unchecked Sendable {
         let url = bundle.url(forResource: "Localizable", withExtension: "strings", subdirectory: nil, localization: localization)
         let entries = url.flatMap { NSDictionary(contentsOf: $0) as? [String: String] } ?? [:]
         exact = entries
-        patterns = entries.compactMap { key, value in
+        patterns = entries.compactMap { key, value -> (fixed: Int, regex: NSRegularExpression, translation: String, isLoose: Bool)? in
             guard key.contains("%@"), Self.hasEnoughWords(key) else { return nil }
             let parts = key.components(separatedBy: "%@").map(NSRegularExpression.escapedPattern(for:))
             let pattern = "^" + parts.joined(separator: "(.+?)") + "$"
             guard let regex = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators]) else { return nil }
-            return (regex, value, Self.letters(in: key) < 6)
+            return (key.replacingOccurrences(of: "%@", with: "").count, regex, value, Self.letters(in: key) < 6)
         }
-        // Longer keys first, so "Na %@ minuten" does not lose to a shorter key that also fits.
-        .sorted { $0.regex.pattern.count > $1.regex.pattern.count }
+        // The key with the most text of its own first, so "Past bij %@" wins over "%@ bij %@" and
+        // "Tot %@ · 1 keer bekeken" over "Tot %@ · %@ keer bekeken". Counting the pattern itself would favour the key
+        // with more values, because each `(.+?)` is longer than the `%@` it stands for.
+        .sorted { $0.fixed != $1.fixed ? $0.fixed > $1.fixed : $0.regex.pattern.count > $1.regex.pattern.count }
+        .map { ($0.regex, $0.translation, $0.isLoose) }
+    }
+
+    /// The translation of a key, such as "%@ op %@", with the values put in. For keys too short to be found in a
+    /// filled-in text: a key needs 3 letters of its own for that, so that "%@ · %@" does not fit every text.
+    public func format(_ key: String, with values: [String]) -> String {
+        Self.fill(exact[key] ?? key, with: values)
     }
 
     public func translate(_ text: String) -> String {

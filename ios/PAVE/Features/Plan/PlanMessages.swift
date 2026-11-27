@@ -133,7 +133,7 @@ enum PlanMessages {
     static let noPlanForChat = "Geen plan"
 
     static func inPlan(_ name: String) -> String {
-        "Nu: \(name)"
+        PaveTranslator.format("Nu: %@", name)
     }
     static let finished = "Klaar! Je hebt alle stappen afgerond."
     static let stepFinished = "Stap afgerond"
@@ -146,7 +146,7 @@ enum PlanMessages {
     static let editRemove = "Kan weg"
     static let editMove = "Verplaatsen"
     static let editAtStart = "aan het begin"
-    static func editAfter(_ title: String) -> String { "na \(title)" }
+    static func editAfter(_ title: String) -> String { PaveTranslator.format("na %@", title) }
     static let reviewPlan = "Laat Ayla nakijken"
     static let reviewPrompt = "Kijk mijn plan na: haal ik zo mijn doel? Stel voor wat erbij moet of weg kan."
     static func nextStepIs(_ title: String) -> String { "Volgende stap: \(title)" }

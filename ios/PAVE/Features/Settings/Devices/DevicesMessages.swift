@@ -26,7 +26,7 @@ enum DevicesMessages {
         case .paveApp:
             device.kind == .unknown ? "PAVE-app" : "PAVE-app op \(kindName(device.kind))"
         case .browser(let browser):
-            device.kind == .unknown ? browser : "\(browser) op \(kindName(device.kind))"
+            device.kind == .unknown ? browser : PaveTranslator.format("%@ op %@", browser, kindName(device.kind))
         case .unknown:
             device.kind == .unknown ? "Onbekend apparaat" : kindName(device.kind)
         }

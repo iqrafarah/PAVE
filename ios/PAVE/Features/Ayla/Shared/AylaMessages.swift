@@ -24,7 +24,7 @@ enum AylaMessages {
     static func activity(_ activity: AylaActivity) -> String {
         switch activity {
         case .searchingVacancies(let what, let place, let also):
-            let terms = also.map { "\(what) en \($0)" } ?? what
+            let terms = also.map { PaveTranslator.format("%@ en %@", what, $0) } ?? what
             return place.isEmpty ? "Ayla zoekt vacatures: \(terms)…" : "Ayla zoekt vacatures: \(terms) in \(place)…"
         case .comparingVacancies(let count, let withVault, let chosen):
             let vacancies = count == 1 ? "1 vacature" : "\(count) vacatures"
@@ -146,7 +146,7 @@ enum AylaMessages {
         count == 1 ? "Gebruik het item dat ik koos." : "Gebruik de \(count) gegevens die ik koos."
     }
     static func vacancySearchedFor(_ search: VacancySearch) -> String {
-        let terms = search.also.map { "\(search.what) en \($0)" } ?? search.what
+        let terms = search.also.map { PaveTranslator.format("%@ en %@", search.what, $0) } ?? search.what
         return search.where.isEmpty ? "Gezocht op: \(terms)" : "Gezocht op: \(terms) in \(search.where)"
     }
     static let vacancyNoData = "Zonder je kluis"
