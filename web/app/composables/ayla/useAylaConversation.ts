@@ -31,6 +31,9 @@ export interface SendOptions {
   context?: { screen: AylaScreen; itemId?: string; itemIds?: string[] };
   // Starts a new chat inside this project; ignored when the chat already exists.
   projectId?: string;
+  // Starts a new chat inside this plan, for this step of it; ignored when the chat already exists.
+  planId?: string;
+  planStepId?: string;
   onConversationStarted?: (conversationId: string) => void;
 }
 
@@ -168,9 +171,10 @@ export function useAylaConversation() {
         input: options.input ?? 'text',
         ...(state.value.conversationId
           ? { conversationId: state.value.conversationId }
-          : options.projectId
-            ? { projectId: options.projectId }
-            : {}),
+          : {
+              ...(options.projectId ? { projectId: options.projectId } : {}),
+              ...(options.planId ? { planId: options.planId, ...(options.planStepId ? { planStepId: options.planStepId } : {}) } : {}),
+            }),
         ...(attachments.length || carried.length
           ? { attachments: [...attachments, ...carried] }
           : {}),

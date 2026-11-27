@@ -39,6 +39,9 @@ const newChatProject = computed(() =>
 const lock = useAylaChatLock();
 const isNewChatLocked = computed(() => !conversationId.value && (props.isLocked || lock.state.value.isNewChatLocked));
 const chatProjectId = computed(() => props.projectId ?? newChatProject.value?.id);
+// "Bespreken met Ayla" on a plan: the new chat belongs to that plan (and step); the chip says so, ✕ undoes it.
+const plans = usePlans();
+const newChatPlan = computed(() => (conversationId.value ? null : plans.find(plans.state.value.newChat?.planId)));
 const { readDraft, saveDraft } = useAylaDraft();
 
 const text = ref('');
@@ -215,7 +218,14 @@ async function send(questionText: string, input: 'text' | 'voice' = 'text') {
     input,
     ...(props.screen ? { context: { screen: props.screen } } : {}),
     ...(chatProjectId.value ? { projectId: chatProjectId.value } : {}),
+    ...(newChatPlan.value
+      ? { planId: newChatPlan.value.id, ...(plans.state.value.newChat?.stepId ? { planStepId: plans.state.value.newChat.stepId } : {}) }
+      : {}),
     onConversationStarted(newId) {
+      if (newChatPlan.value) {
+        plans.state.value.newChat = null;
+        plans.load(true);
+      }
       moveNewChatFiles(newId);
       if (startedWithoutConversation) saveDraft(null, '');
       if (chatProjectId.value) projects.setMembership(newId, chatProjectId.value);
@@ -425,6 +435,11 @@ watch(conversation.questionToEdit, async (question) => {
 
 onMounted(() => {
   text.value = readDraft(conversationId.value);
+  // A step to talk through: its question is ready in the chatbox.
+  const prompt = conversationId.value ? null : plans.state.value.newChat?.prompt;
+  if (prompt && !text.value.trim()) text.value = prompt;
+  if (plans.state.value.newChat) plans.state.value.newChat = { ...plans.state.value.newChat, prompt: null };
+  if (plans.state.value.newChat && plans.state.value.status === 'idle') plans.load(true);
   // The memory cards under replies need the notes the user already has.
   if (memory.state.value.status === 'idle') memory.load();
 });
@@ -435,6 +450,7 @@ onBeforeUnmount(() => {
   if (router.currentRoute.value.path !== '/') {
     projects.state.value.newChatProjectId = null;
     lock.state.value.isNewChatLocked = false;
+    plans.state.value.newChat = null;
   }
 });
 
@@ -514,6 +530,15 @@ defineExpose({ openFilePicker });
         icon="folder"
         :look="projectLook(newChatProject)"
         @clear="projects.state.value.newChatProjectId = null"
+      />
+      <AylaContextChip
+        v-if="newChatPlan && !hasComposerOnTop"
+        class="relative mb-2.5"
+        :title="newChatPlan.name"
+        :label="PLAN_IN_PLAN(newChatPlan.name)"
+        icon="folder"
+        :look="{ iconSrc: planTemplateIcon(newChatPlan.templateId), hex: null }"
+        @clear="plans.state.value.newChat = null"
       />
       <AylaContextChip
         v-else-if="isNewChatLocked && !hasComposerOnTop"

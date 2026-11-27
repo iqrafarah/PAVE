@@ -70,7 +70,7 @@ onBeforeUnmount(release);
     @click="backdropClick"
   >
     <div class="flex items-center gap-3 border-b border-card-line px-5 py-3">
-      <h2 :id="titleId" class="min-w-0 flex-1 truncate text-base font-semibold text-heading">{{ file?.name }}</h2>
+      <h2 translate="no" :id="titleId" class="min-w-0 flex-1 truncate text-base font-semibold text-heading">{{ file?.name }}</h2>
       <button
         type="button"
         class="h-9 shrink-0 rounded-lg px-3 text-sm font-medium text-brand hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand"

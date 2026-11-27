@@ -78,6 +78,7 @@ onMounted(async () => {
         @save="saveSettings"
         @close="isEditing = false"
       />
+      <PlanProjectList :project-id="project.id" class="mb-4" />
     </template>
   </AylaChatListPage>
 </template>

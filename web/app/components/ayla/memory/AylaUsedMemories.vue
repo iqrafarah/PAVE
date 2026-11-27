@@ -64,7 +64,7 @@ onBeforeUnmount(() => document.removeEventListener('click', handleOutsideClick))
             <LayoutPaveIcon :name="MEMORY_CATEGORY_STYLES[memory.category].icon" class="size-3.25" />
             <span class="sr-only">{{ getCategoryTitle(memory.category) }}:</span>
           </span>
-          <span class="min-w-0 break-words text-sm font-medium text-heading">{{ memory.text }}</span>
+          <span translate="no" class="min-w-0 break-words text-sm font-medium text-heading">{{ memory.text }}</span>
         </li>
       </ul>
       <NuxtLink

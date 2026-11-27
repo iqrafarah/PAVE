@@ -173,7 +173,7 @@ const rowButton =
               <VaultIcon src="/images/vault/icons/ChatBubbleLeftEllipsisSolid.svg" class="size-4.25" />
             </span>
             <span class="flex min-w-0 flex-col gap-0.5">
-              <span class="truncate text-base font-semibold text-heading">{{ chat.title }}</span>
+              <span translate="no" class="truncate text-base font-semibold text-heading">{{ chat.title }}</span>
               <span class="text-xs text-subtle">{{ formatDate(chat.updatedAt) }}</span>
             </span>
           </NuxtLink>
@@ -207,7 +207,7 @@ const rowButton =
               <VaultIcon src="/images/vault/icons/FolderSolid.svg" class="size-4.25" />
             </span>
             <span class="flex min-w-0 flex-col gap-0.5">
-              <span class="truncate text-base font-semibold text-heading">{{ item.title }}</span>
+              <span translate="no" class="truncate text-base font-semibold text-heading">{{ item.title }}</span>
               <span class="text-xs text-subtle">{{ formatDate(item.archivedAt ?? item.updatedAt) }}</span>
             </span>
           </button>

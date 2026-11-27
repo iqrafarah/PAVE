@@ -226,6 +226,68 @@ Een eigen route binnen Bewijs toevoegen, met de stappen Kiezen, Controleren en T
 | Te grote bijlage | {bestand} is te groot om te versturen. Kies een kleiner bestand. |
 | Versturen mislukt | Je antwoord kon niet worden verstuurd. Probeer opnieuw. |
 
+## Meldingen en bevestiging aanvragen (web)
+
+Web doet hetzelfde als iOS, met dezelfde teksten (zie de iOS-secties hierboven). Wat op web anders staat:
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Indeling | De lijst links, de geopende melding rechts (op een klein scherm één tegelijk). Een gesprek opent meteen de chat. |
+| Groepen | Actie nodig ({aantal}) / Vandaag / Deze week / Eerder |
+| Gesprek met meer meldingen | Ayla · {n} berichten |
+| Tabbladen | Alles / Gesprekken (e-mail) / Werk / Bewijs, zoals iOS — Zoek in meldingen |
+| Van de beurs | Inklapbaar (Van de beurs · {n}) — Gesprek: {vacature} · {werkgever} · {moment} · Kan niet / Ik kom — Je hebt gezegd dat je komt. · Zet in je agenda (.ics) |
+| Leeg (lerende) | Je bent helemaal bij — Zodra een organisatie je bewijs beoordeelt, zie je dat hier. |
+| Leeg (beoordelaar) | Je bent helemaal bij — Nieuwe verificatieaanvragen en beslissingen verschijnen hier. |
+| Na beoordelen | Je hebt het bewijs geverifieerd. / Je hebt de aanvraag afgewezen. |
+| Banner bij een nieuwe melding | {titel} — {wie of wat} (of: Nieuwe melding), met ✕ Sluiten |
+| Bel | Cijfer met het aantal ongelezen, 9+ boven de negen |
+| Kaart bovenaan Meldingen | Een seintje bij nieuwe meldingen? — Je ziet het ook als PAVE in een ander tabblad staat. Alleen de titel, nooit je bewijs. — Niet nu / Zet aan |
+| Kaart als de browser blokkeert | Meldingen staan uit in je browser — Zet ze aan in de instellingen van je browser. |
+| Instellingen › Meldingen | Seintje bij nieuwe meldingen — Een melding van je browser als je bewijs is beoordeeld of er een verificatieaanvraag binnenkomt, ook als PAVE in een ander tabblad staat. Er staat alleen een titel in, nooit je bewijs of je gesprekken. |
+| Onder de schakelaar | Dit werkt zolang PAVE ergens in je browser open staat. Het geldt alleen voor deze browser. |
+| Bevestiging aanvragen: organisatie zoeken | Organisatie kiezen — Organisatie, plaats of adres — Alles / Onderwijs / Bedrijven / Overheid / Overig — één rij per vestiging (McDonald's · Westermarkt, Tilburg, met adres) — Gereed |
+| Bevestiging aanvragen: organisatie | Zoek een organisatie of plaats / Kies een vestiging van {naam} / Andere zoeken — Bij deze vestiging kan niemand dit soort bewijs bevestigen. — Zoek op naam of functie — filters Afdeling en Functie (op naam, alleen van deze vestiging) — met profielfoto's |
+| Bevestiging aanvragen: lijsten | Meer laden ({getoond} van {totaal}) |
+| Persoon mag het niet | Deze persoon mag dit soort bewijs niet bevestigen. Kies iemand anders. |
+
+### Taal en lettertype (web)
+
+Zoals iOS (Instellingen › Taal, Instellingen › Weergave › Lettertype). Web vertaalt met dezelfde tabel als de app
+(`web/scripts/translations-from-ios.mjs` → `web/public/i18n/en.json`, `pap.json`), aangevuld met de web-eigen teksten in
+`web/public/i18n/web-en.json` en `web-pap.json` (`node web/scripts/untranslated-texts.mjs` toont wat nog ontbreekt).
+Wat mensen zelf maakten staat in de code met `translate="no"` en blijft zoals het is.
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Taal | Nederlands / English / Papiamentu (elk in de eigen taal, met vlag) — PAVE verandert meteen van taal. … — Deze keuze volgt je account op al je apparaten. (zonder kolom: Deze keuze geldt alleen voor deze browser.) |
+| Lettertype | PAVE / Systeem / Rond / Schreef / Leesbaar, elk met "Aa" — Leesbaar is Atkinson Hyperlegible: letters die je minder snel door elkaar haalt. Je keuze blijft in deze browser. |
+
+### Plan (web)
+
+Zoals iOS (PlanScreen, PlanDetailView, PlanEditor, PlanStepProposalSheet, VacancyPlanLink, ProjectPlansList): Actief /
+Voltooid, Nieuw plan met dezelfde sjablonen (Leeg plan, Stappen van Ayla, …), per stap een menu (Bespreken met Ayla,
+Afronden, Hier verder, Nog te doen, Overslaan, Open je kluis/profiel/Meldingen, Omhoog/Omlaag, Stap aanpassen), Project,
+Gesprekken met Ayla, en "Maak een plan voor deze vacature" op een vacature. Niet op web: toegangsscherm en Dynamic Bar.
+
+### E-mail in Meldingen (web)
+
+Zoals iOS: je eigen iCloud Mail, gesprekken als chat in Meldingen. Een browser kan geen IMAP of SMTP, dus de webserver
+(`web/server/api/email`) logt in namens de lerende. Het app-specifieke wachtwoord staat versleuteld (AES-256-GCM, sleutel
+`NUXT_EMAIL_SECRET`, alleen op de webserver) in `email_accounts`; de mails zelf worden nergens bewaard.
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Kaart bovenaan Meldingen | Je e-mail ook hier? — Koppel iCloud Mail en beantwoord e-mails als een chat. — Koppel / ✕ Niet nu |
+| Werkbalk | Nieuw bericht (als er een account is) / E-mail |
+| Koppelen | E-mailaccount koppelen — E-mailadres — App-specifiek wachtwoord — Ga naar account.apple.com — Koppelen |
+| Privacy (web) | PAVE haalt je e-mail live op bij iCloud en bewaart je e-mails niet. Je app-specifieke wachtwoord wordt versleuteld opgeslagen, zodat PAVE je e-mail ook in de browser kan ophalen. Als je ontkoppelt, wordt het gewist. |
+| Ontkoppelen | Ontkoppelen? — PAVE wist je wachtwoord. Je e-mails blijven gewoon in je mailbox. … |
+| Gesprek | Aan iedereen / Alleen aan {naam} — Aan: {namen} — Bericht — Versturen (⌘/Ctrl + Enter) |
+| Verwijderen | Dit gesprek verwijderen? — Het gaat naar de prullenmand van je iCloud-mailbox. … — Gesprek verwijderd · Ongedaan maken |
+| Nieuw bericht | Aan (meerdere met een komma) — Onderwerp — Je bericht — Bijlage toevoegen — Je verstuurt vanaf {adres}. — Verstuur |
+| Nog niet op web | Vastzetten, dempen, vergrendelen met je pincode, doorsturen, hulp van Ayla, bewijs uit de kluis meesturen, inspreken, contacten van je telefoon |
+
 ## Vacatures in de Ayla-chat (iOS)
 
 Vacatures staan niet in het menu. Je zoekt ze in de chat met Ayla; ze openen in een paneel over de chat, net als de kluis.

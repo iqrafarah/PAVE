@@ -47,6 +47,9 @@ export interface AylaRequest {
   conversationId?: string;
   // Starts the new conversation inside this project.
   projectId?: string;
+  // Starts the new conversation inside this plan, for this step of it (migration 20261125130000).
+  planId?: string;
+  planStepId?: string;
   text: string;
   device: AylaDevice;
   input: AylaInput;

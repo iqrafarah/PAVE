@@ -38,6 +38,29 @@ export const SETTINGS_ACCOUNT_PATH = '/instellingen/account';
 export const SETTINGS_APPEARANCE_PATH = '/instellingen/weergave';
 export const SETTINGS_AYLA_PATH = '/instellingen/ayla';
 export const SETTINGS_PRIVACY_PATH = '/instellingen/privacy';
+export const SETTINGS_NOTIFICATIONS_PATH = '/instellingen/meldingen';
+export const SETTINGS_LANGUAGE_PATH = '/instellingen/taal';
+
+// Instellingen › Taal (iOS SettingsLanguageScreen).
+export const LANGUAGE_TITLE = 'Taal';
+export const LANGUAGE_HINT =
+  'PAVE verandert meteen van taal. Ayla antwoordt in de taal waarin je haar schrijft. Wat je zelf hebt gemaakt, zoals je chats en je kluis, blijft zoals het is.';
+export const LANGUAGE_SYNCED = 'Deze keuze volgt je account op al je apparaten.';
+export const LANGUAGE_LOCAL = 'Deze keuze geldt alleen voor deze browser.';
+export const LANGUAGE_SAVE_FAILED = 'Je taal kon niet in je account worden bewaard. Hij geldt nu alleen voor deze browser.';
+
+// Instellingen › Weergave › Lettertype (iOS SettingsAppearanceScreen).
+export const FONT_STYLE_TITLE = 'Lettertype';
+export const FONT_STYLE_HINT = 'Leesbaar is Atkinson Hyperlegible: letters die je minder snel door elkaar haalt. Je keuze blijft in deze browser.';
+export const FONT_STYLE_NAMES = {
+  pave: 'PAVE',
+  system: 'Systeem',
+  rounded: 'Rond',
+  serif: 'Schreef',
+  readable: 'Leesbaar',
+} as const;
+export const SETTINGS_ON = 'Aan';
+export const SETTINGS_OFF = 'Uit';
 export const SETTINGS_ACCOUNT_SUBTITLE = 'Je naam, foto en gegevens';
 export const SETTINGS_GENERAL = 'Algemeen';
 export const SETTINGS_AYLA_PRIVACY = 'Ayla en privacy';

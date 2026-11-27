@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // A window over the vault in the style of "Kluis aanvullen": a white card with a large title, ✕ at the top right and
-// the buttons at the bottom. Escape or a click next to it closes it.
+// the buttons at the bottom. Only ✕ (and Escape, for the keyboard) closes it: a click next to it does not, because
+// selecting text and letting go outside the card counts as such a click.
 withDefaults(
   defineProps<{
     title: string;
@@ -39,10 +40,6 @@ function handleCancel(event: Event) {
   requestClose();
 }
 
-function handleClick(event: MouseEvent) {
-  if (event.target === dialogRef.value) requestClose();
-}
-
 </script>
 
 <template>
@@ -52,7 +49,6 @@ function handleClick(event: MouseEvent) {
     :class="width === 'narrow' ? 'max-w-120' : 'max-w-154'"
     class="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] overflow-hidden rounded-modal bg-white p-0 text-heading shadow-modal backdrop:bg-backdrop"
     @cancel="handleCancel"
-    @click="handleClick"
   >
     <div v-if="isOpen" class="flex max-h-[calc(100dvh-2rem)] flex-col">
       <div class="flex items-start justify-between gap-4 px-9 pt-8 max-sm:px-5">

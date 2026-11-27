@@ -11,6 +11,10 @@ const retentionSummary = computed(() =>
   retention.state.value.status === 'ready' ? getRetentionPeriod(retention.state.value.retention.chatExpiry.days) : undefined,
 );
 const generalHeadingId = useId();
+const alerts = useNotificationAlerts();
+const language = useLanguage();
+const languageName = computed(() => languageInfo(language.state.value.language).nativeName);
+const alertsSummary = computed(() => (alerts.isEnabled.value ? SETTINGS_ON : SETTINGS_OFF));
 const aylaHeadingId = useId();
 const themeName = computed(() => personal.state.value.theme === 'custom'
   ? PERSONAL_CUSTOM_COLOR
@@ -45,6 +49,8 @@ onMounted(() => {
         <SettingsSectionTitle :id="generalHeadingId" :title="SETTINGS_GENERAL" />
         <SettingsGroup>
           <SettingsRow :to="SETTINGS_APPEARANCE_PATH" :title="PERSONAL_TITLE" icon="/images/settings/appearance.svg" :value="themeName" />
+          <SettingsRow :to="SETTINGS_LANGUAGE_PATH" :title="LANGUAGE_TITLE" icon="/images/settings/globe.svg" :value="languageName" is-value-name />
+          <SettingsRow :to="SETTINGS_NOTIFICATIONS_PATH" :title="ALERTS_SETTINGS_TITLE" icon="/images/settings/bell.svg" :value="alertsSummary" />
           <SettingsRow :to="DEVICES_PATH" :title="DEVICES_TITLE" icon="/images/settings/phone.svg" />
         </SettingsGroup>
       </section>

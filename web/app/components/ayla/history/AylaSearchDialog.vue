@@ -298,13 +298,13 @@ function backdropClick(event: MouseEvent) {
           <img v-if="result.icon" :src="result.icon" alt="" class="size-5 shrink-0" />
           <LayoutPaveIcon v-else :name="result.kind === 'chat' ? 'chat' : 'folder'" class="size-5 shrink-0 text-subtle" aria-hidden="true" />
           <span class="flex min-w-0 flex-1 flex-col">
-            <span class="truncate text-base font-medium text-heading">
+            <span translate="no" class="truncate text-base font-medium text-heading">
               <template v-for="(piece, index) in pieces(result.title)" :key="index">
                 <strong v-if="piece.isMatch" class="font-bold">{{ piece.text }}</strong>
                 <template v-else>{{ piece.text }}</template>
               </template>
             </span>
-            <span v-if="result.subtitle" class="truncate text-sm text-subtle">
+            <span v-if="result.subtitle" translate="no" class="truncate text-sm text-subtle">
               <template v-for="(piece, index) in pieces(result.subtitle)" :key="index">
                 <strong v-if="piece.isMatch" class="font-bold text-heading">{{ piece.text }}</strong>
                 <template v-else>{{ piece.text }}</template>
@@ -323,13 +323,13 @@ function backdropClick(event: MouseEvent) {
           <img v-if="result.icon" :src="result.icon" alt="" class="size-5 shrink-0" />
           <LayoutPaveIcon v-else :name="result.kind === 'chat' ? 'chat' : 'folder'" class="size-5 shrink-0 text-subtle" aria-hidden="true" />
           <span class="flex min-w-0 flex-1 flex-col">
-            <span class="truncate text-base font-medium text-heading">
+            <span translate="no" class="truncate text-base font-medium text-heading">
               <template v-for="(piece, index) in pieces(result.title)" :key="index">
                 <strong v-if="piece.isMatch" class="font-bold">{{ piece.text }}</strong>
                 <template v-else>{{ piece.text }}</template>
               </template>
             </span>
-            <span v-if="result.subtitle" class="truncate text-sm text-subtle">
+            <span v-if="result.subtitle" translate="no" class="truncate text-sm text-subtle">
               <template v-for="(piece, index) in pieces(result.subtitle)" :key="index">
                 <strong v-if="piece.isMatch" class="font-bold text-heading">{{ piece.text }}</strong>
                 <template v-else>{{ piece.text }}</template>

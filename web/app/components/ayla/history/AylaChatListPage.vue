@@ -100,7 +100,7 @@ function formatDate(value: string) {
                   :to="`/ayla/${chat.id}`"
                   class="flex items-baseline gap-4 rounded-bubble px-4 py-3 transition-colors hover:bg-tint focus-visible:outline-2 focus-visible:outline-brand"
                 >
-                  <span class="min-w-0 flex-1 truncate text-sm font-medium text-heading">{{ chat.title }}</span>
+                  <span translate="no" class="min-w-0 flex-1 truncate text-sm font-medium text-heading">{{ chat.title }}</span>
                   <span class="shrink-0 text-xs text-subtle">{{ formatDate(chat.updatedAt) }}</span>
                 </NuxtLink>
               </li>

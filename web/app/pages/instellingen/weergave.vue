@@ -1,9 +1,27 @@
 <script setup lang="ts">
 import type { TextSize, ThemeId } from '~/utils/settings/appearance';
+import type { PaveFontStyle } from '~/composables/settings/useFontStyle';
 
-useHead({ title: `${PERSONAL_TITLE} - PAVE` });
+useHead({
+  title: `${PERSONAL_TITLE} - PAVE`,
+  // The readable typeface, so its "Aa" below shows what you would get.
+  link: [{ key: 'pave-readable-font', rel: 'stylesheet', href: READABLE_FONT_HREF }],
+});
 const personal = usePersonalisation();
 const { mode } = useDisplayMode();
+const { style: fontStyle } = useFontStyle();
+const fontChoice = computed({
+  get: () => fontStyle.value as string,
+  set: (value: string) => (fontStyle.value = value as PaveFontStyle),
+});
+// "Aa" in each typeface, so you see what you choose before you choose it (iOS FontStyleGlyph).
+const FONT_SAMPLES: Record<PaveFontStyle, string> = {
+  pave: '"Sora", "Inter", sans-serif',
+  system: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+  rounded: 'ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", "Varela Round", system-ui, sans-serif',
+  serif: 'ui-serif, "New York", Georgia, "Times New Roman", serif',
+  readable: '"Atkinson Hyperlegible", system-ui, sans-serif',
+};
 const AUTO_ICON = 'M12 3a9 9 0 1 0 0 18V3Z M12 3v18';
 const sync = computed(() => personal.sync.value);
 const syncMessage = computed(() => {
@@ -11,7 +29,7 @@ const syncMessage = computed(() => {
   if (sync.value.isSaving) return PERSONAL_SYNC_SAVING;
   return sync.value.canSave ? PERSONAL_SYNCED : PERSONAL_DEVICE_NOTE;
 });
-const ids = { theme: useId(), view: useId(), size: useId(), mode: useId() };
+const ids = { theme: useId(), view: useId(), size: useId(), mode: useId(), font: useId() };
 const TEXT_SIZE_ICONS: Record<TextSize, string> = { small: 'h-3 w-2.75', normal: 'h-4 w-3.5', large: 'h-5 w-4.5' };
 const theme = computed({
   get: () => personal.state.value.theme,
@@ -90,6 +108,22 @@ onMounted(personal.load);
           <span class="flex w-4.5 justify-center"><LayoutAylaGlyph :class="TEXT_SIZE_ICONS[option.id]" /></span>
         </SettingsChoice>
       </div>
+    </section>
+    <section :aria-labelledby="ids.font" :class="section">
+      <h2 :id="ids.font" :class="heading">{{ FONT_STYLE_TITLE }}</h2>
+      <div role="radiogroup" :aria-labelledby="ids.font" class="grid grid-cols-[repeat(auto-fill,minmax(8.25rem,1fr))] gap-2.5">
+        <SettingsChoice
+          v-for="option in PAVE_FONT_STYLES"
+          :key="option"
+          v-model="fontChoice"
+          name="pave-font-style"
+          :value="option"
+          :label="FONT_STYLE_NAMES[option]"
+        >
+          <span :style="{ fontFamily: FONT_SAMPLES[option] }" class="text-[1.0625rem] font-semibold leading-none" translate="no">Aa</span>
+        </SettingsChoice>
+      </div>
+      <p class="text-xs/normal text-subtle">{{ FONT_STYLE_HINT }}</p>
     </section>
     <SettingsSwitchCard v-model="reduceMotion" :title="PERSONAL_REDUCE_MOTION" :explanation="PERSONAL_REDUCE_MOTION_HINT" />
     <p v-if="!sync.problem" role="status" class="px-2 text-xs/normal text-subtle">{{ syncMessage }}</p>

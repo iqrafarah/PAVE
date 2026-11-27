@@ -17,7 +17,7 @@ const details = computed(() => describeFile(props.file));
       <VaultIcon src="/images/vault/file.svg" :width="28" :height="28" class="text-brand" />
     </span>
     <span class="flex min-w-0 flex-1 flex-col gap-0.5">
-      <span class="truncate font-heading text-sm font-semibold text-heading">{{ file.name }}</span>
+      <span translate="no" class="truncate font-heading text-sm font-semibold text-heading">{{ file.name }}</span>
       <span class="text-xs font-medium text-heading">{{ details }}</span>
     </span>
     <button

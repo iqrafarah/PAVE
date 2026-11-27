@@ -80,7 +80,7 @@ onMounted(scrollToBottom);
             class="max-w-52.75 whitespace-pre-wrap break-words rounded-xl bg-bubble px-3.25 py-3 text-xs font-semibold text-heading"
           >
             <span class="sr-only">Jij:</span>
-            {{ message.text }}
+            <span translate="no">{{ message.text }}</span>
           </p>
           <p
             v-else
@@ -88,7 +88,7 @@ onMounted(scrollToBottom);
           >
             <AylaSlashIcon :blocks="4" class="h-3.25 w-2 shrink-0" />
             <span class="sr-only">{{ AYLA_NAME }}:</span>
-            <span v-if="message.text" class="min-w-0">{{ message.text }}</span>
+            <span translate="no" v-if="message.text" class="min-w-0">{{ message.text }}</span>
             <span v-else class="sr-only">{{ AYLA_THINKING }}</span>
           </p>
           <ul v-if="message.attachmentNames.length" class="mt-1 flex flex-wrap justify-end gap-1" aria-label="Bijlagen">

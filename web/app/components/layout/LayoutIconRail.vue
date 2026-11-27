@@ -2,6 +2,11 @@
 // The rail on wide screens: the same places and icons as the menu on small screens and on the iPhone
 // (MAIN_PLACES, the Figma icons from the iPhone app). The PAVE logo opens the chat history.
 const route = useRoute();
+const { unreadCount } = useNotifications();
+// "Meldingen, 3 ongelezen" for a screen reader; the badge itself is hidden from it.
+const notificationsLabel = computed(() =>
+  unreadCount.value ? `${MENU_NOTIFICATIONS}, ${NOTIFICATIONS_UNREAD_COUNT(unreadCount.value)}` : MENU_NOTIFICATIONS,
+);
 const router = useRouter();
 const { isCollapsed, toggleFromLogo } = useAylaPanel();
 
@@ -92,10 +97,11 @@ function hasPage(path: string) {
         :title="MENU_NOTIFICATIONS"
         :aria-current="route.path === '/meldingen' ? 'page' : undefined"
         :class="route.path === '/meldingen' ? 'bg-brand text-white' : 'bg-tile text-brand'"
-        class="flex size-9 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        class="relative flex size-9 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       >
         <LayoutPaveIcon name="bell" class="size-5" />
-        <span class="sr-only">{{ MENU_NOTIFICATIONS }}</span>
+        <span class="sr-only">{{ notificationsLabel }}</span>
+        <NotificationBellBadge />
       </NuxtLink>
       <!-- Your photo, or the first letter of your name when there is no photo yet (iOS AccountBadge). -->
       <LayoutAccountMenu class="mt-0.75" />

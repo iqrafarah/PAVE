@@ -192,7 +192,7 @@ function handleMenuChoice(id: string) {
       >
         <span class="flex items-center gap-3">
           <LayoutPaveIcon v-if="showIcon" name="chat" class="size-4 text-brand" />
-          <span class="min-w-0 flex-1 truncate text-sm font-medium text-heading">{{ conversation.title }}</span>
+          <span translate="no" class="min-w-0 flex-1 truncate text-sm font-medium text-heading">{{ conversation.title }}</span>
         </span>
         <span v-if="isStartedOnPhone" class="flex items-center gap-1 text-xs text-subtle">
           <VaultIcon src="/images/settings/phone.svg" class="size-3" />
