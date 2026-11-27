@@ -189,10 +189,10 @@ struct VaultLibraryPage: View {
         } else {
             Menu {
                 Button { actions.add(nil) } label: {
-                    Label { Text("Bewijs toevoegen") } icon: { Image(.iconDocumentPlusSolid) }
+                    Label { Text("Bewijs toevoegen") } icon: { Image(.iconDocumentPlusSolid).renderingMode(.template) }
                 }
                 Button(action: actions.newFolder) {
-                    Label { Text("Map aanmaken") } icon: { Image(.iconFolderPlusSolid) }
+                    Label { Text("Map aanmaken") } icon: { Image(.iconFolderPlusSolid).renderingMode(.template) }
                 }
             } label: {
                 plusIcon
@@ -405,10 +405,10 @@ struct VaultLibraryPage: View {
                     Label { Text(folder.isPinned ? VaultMessages.unpinFolder : VaultMessages.pinFolder) } icon: { Image(folder.isPinned ? .iconBookmarkSlashSolid : .iconBookmarkSolid).renderingMode(.template) }
                 }
                 Button { actions.editFolder(folder) } label: {
-                    Label { Text("Map aanpassen") } icon: { Image(.iconPencil) }
+                    Label { Text("Map aanpassen") } icon: { Image(.iconPencilSolid).renderingMode(.template) }
                 }
                 Button(role: .destructive) { actions.deleteFolder(folder) } label: {
-                    Label { Text("Map verwijderen") } icon: { Image(.iconTrash) }
+                    Label { Text("Map verwijderen") } icon: { Image(.iconTrashSolid).renderingMode(.template) }
                 }
             }
             .vaultDraggable(.folder(folder.id), in: dragSpace)

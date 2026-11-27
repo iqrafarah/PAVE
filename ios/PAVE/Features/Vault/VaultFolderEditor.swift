@@ -252,7 +252,7 @@ struct VaultFolderEditor: View {
         .accessibilityAddTraits(isOn ? .isSelected : [])
         .contextMenu {
             if ownColor != nil {
-                Button { picksOwnColor = true } label: { Label { Text(VaultMessages.changeOwnFolderColor) } icon: { Image(.iconPaintBrush) } }
+                Button { picksOwnColor = true } label: { Label { Text(VaultMessages.changeOwnFolderColor) } icon: { Image(.iconPaintBrushSolid).renderingMode(.template) } }
             }
         }
     }

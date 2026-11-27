@@ -49,7 +49,7 @@ struct VaultFileTile: View {
             open()
         }
         .contextMenu {
-            Button { startDownload() } label: { Label { Text(VaultMessages.download) } icon: { Image(.iconDownload) } }
+            Button { startDownload() } label: { Label { Text(VaultMessages.download) } icon: { Image(.iconDownload).renderingMode(.template) } }
         }
         .sheet(item: $download) { VaultShareSheet(urls: $0.urls).presentationDetents([.medium, .large]) }
         .accessibilityAction(named: VaultMessages.downloadFile(file.name)) { startDownload() }

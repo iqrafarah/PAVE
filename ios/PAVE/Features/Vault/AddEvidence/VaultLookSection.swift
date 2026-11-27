@@ -58,11 +58,11 @@ struct VaultLookSection: View {
         HStack(alignment: .center, spacing: 14) {
             Menu {
                 if logo != nil {
-                    Button { reframe(.logo) } label: { Label { Text(VaultMessages.reframe) } icon: { Image(.iconPencil) } }
+                    Button { reframe(.logo) } label: { Label { Text(VaultMessages.reframe) } icon: { Image(.iconPencilSolid).renderingMode(.template) } }
                 }
                 sourceButtons { logoSource = $0 }
                 if logo != nil {
-                    Button(role: .destructive, action: onRemoveLogo) { Label { Text(VaultMessages.logoRemove) } icon: { Image(.iconTrash) } }
+                    Button(role: .destructive, action: onRemoveLogo) { Label { Text(VaultMessages.logoRemove) } icon: { Image(.iconTrashSolid).renderingMode(.template) } }
                 }
             } label: {
                 Group {
@@ -148,9 +148,9 @@ struct VaultLookSection: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             Menu {
-                Button { reframe(.cover) } label: { Label { Text(VaultMessages.reframe) } icon: { Image(.iconPencil) } }
+                Button { reframe(.cover) } label: { Label { Text(VaultMessages.reframe) } icon: { Image(.iconPencilSolid).renderingMode(.template) } }
                 sourceButtons { coverSource = $0 }
-                Button(role: .destructive, action: onRemoveCover) { Label { Text(VaultMessages.coverRemove) } icon: { Image(.iconTrash) } }
+                Button(role: .destructive, action: onRemoveCover) { Label { Text(VaultMessages.coverRemove) } icon: { Image(.iconTrashSolid).renderingMode(.template) } }
             } label: {
                 Image(.iconEllipsis)
                     .renderingMode(.template)
@@ -170,8 +170,8 @@ struct VaultLookSection: View {
 
     @ViewBuilder
     private func sourceButtons(_ choose: @escaping (VaultFileSource) -> Void) -> some View {
-        Button { choose(.photos) } label: { Label { Text("Kies een foto") } icon: { Image(.iconPhotoSolid) } }
-        Button { choose(.files) } label: { Label { Text("Kies een bestand") } icon: { Image(.iconDocumentSolid) } }
+        Button { choose(.photos) } label: { Label { Text("Kies een foto") } icon: { Image(.iconPhotoSolid).renderingMode(.template) } }
+        Button { choose(.files) } label: { Label { Text("Kies een bestand") } icon: { Image(.iconDocumentSolid).renderingMode(.template) } }
     }
 
     private func choose(_ value: Bool) {

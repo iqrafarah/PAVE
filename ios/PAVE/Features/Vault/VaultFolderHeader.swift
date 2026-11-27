@@ -41,10 +41,10 @@ struct VaultFolderHeader: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             Menu {
                 Button(action: onEdit) {
-                    Label { Text("Map aanpassen") } icon: { Image(.iconPencil) }
+                    Label { Text("Map aanpassen") } icon: { Image(.iconPencilSolid).renderingMode(.template) }
                 }
                 Button(role: .destructive, action: onDelete) {
-                    Label { Text("Map verwijderen") } icon: { Image(.iconTrash) }
+                    Label { Text("Map verwijderen") } icon: { Image(.iconTrashSolid).renderingMode(.template) }
                 }
             } label: {
                 Image(.iconEllipsis)

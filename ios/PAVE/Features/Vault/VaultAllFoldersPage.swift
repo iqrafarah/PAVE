@@ -6,9 +6,14 @@ import SwiftUI
 /// by name; capitals and accents do not matter.
 struct VaultAllFoldersPage: View {
     @Environment(VaultModel.self) private var model
+    @Environment(\.hidesScreenButtons) private var hidesScreenButtons
+    @Environment(\.vaultButtonsInPage) private var buttonsInPage
+    @Environment(\.menuButtonFrame) private var menuFrame
     let actions: VaultActions
 
     @State private var query = ""
+    /// The folder held over another one while dragging, which takes its place on letting go.
+    @State private var dropTarget: String?
     @FocusState private var isSearchFocused: Bool
 
     private static let searchFrom = 9
@@ -51,14 +56,40 @@ struct VaultAllFoldersPage: View {
         .scrollDismissesKeyboard(.immediately)
         .background(Color.canvas.ignoresSafeArea())
         .navigationTitle(VaultMessages.allFoldersTitle)
+        // On iPhone Duo's outer display iOS shows no toolbar buttons in the vault's sheet: the button is along the side,
+        // as on the other pages of the vault.
+        .overlay {
+            if buttonsInPage, !hidesScreenButtons { sideButton }
+        }
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button(action: actions.newFolder) {
-                    Image(.iconFolderPlusSolid)
-                        .paveToolbarHitArea()
+            if !hidesScreenButtons, !buttonsInPage {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: actions.newFolder) {
+                        Image(.iconFolderPlusSolid)
+                            .renderingMode(.template)
+                            .foregroundStyle(Color.ink)
+                            .paveToolbarHitArea()
+                    }
+                    .accessibilityLabel("Map aanmaken")
                 }
-                .accessibilityLabel("Map aanmaken")
             }
+        }
+    }
+
+    private var sideButton: some View {
+        GeometryReader { proxy in
+            let frame = proxy.frame(in: .global)
+            Button(action: actions.newFolder) {
+                Image(.iconFolderPlusSolid)
+                    .renderingMode(.template)
+                    .foregroundStyle(Color.ink)
+                    .frame(width: 44, height: 44)
+                    .contentShape(.circle)
+            }
+            .buttonStyle(.pave)
+            .glassEffect(.regular.interactive(), in: .circle)
+            .accessibilityLabel("Map aanmaken")
+            .position(x: proxy.size.width + proxy.safeAreaInsets.trailing / 2, y: max(menuFrame.midY, frame.minY + 40) - frame.minY)
         }
     }
 
@@ -72,28 +103,38 @@ struct VaultAllFoldersPage: View {
             iconColor: style.color.foreground,
             isPinned: folder.isPinned,
             count: model.count(in: .folder(folder.id)),
-            isSelected: false
+            isSelected: false,
+            isDropTarget: dropTarget == folder.id
         ) {
             actions.openFolder(folder)
         }
+        // The same menu as the folders on top of the vault.
         .contextMenu {
             Button {
                 Task { await model.setPinned(!folder.isPinned, folder: folder) }
             } label: {
                 Label { Text(folder.isPinned ? VaultMessages.unpinFolder : VaultMessages.pinFolder) } icon: { Image(folder.isPinned ? .iconBookmarkSlashSolid : .iconBookmarkSolid).renderingMode(.template) }
             }
-            if query.isEmpty {
-                Button { move(folder, by: -1) } label: { Label { Text("Naar voren") } icon: { Image(.iconArrowLeft).renderingMode(.template) } }
-                    .disabled(model.folders.first == folder)
-                Button { move(folder, by: 1) } label: { Label { Text("Naar achteren") } icon: { Image(.iconArrowRight).renderingMode(.template) } }
-                    .disabled(model.folders.last == folder)
-            }
             Button { actions.editFolder(folder) } label: {
-                Label { Text("Map aanpassen") } icon: { Image(.iconPencil) }
+                Label { Text("Map aanpassen") } icon: { Image(.iconPencilSolid).renderingMode(.template) }
             }
             Button(role: .destructive) { actions.deleteFolder(folder) } label: {
-                Label { Text("Map verwijderen") } icon: { Image(.iconTrash) }
+                Label { Text("Map verwijderen") } icon: { Image(.iconTrashSolid).renderingMode(.template) }
             }
+        }
+        // Drag a folder onto another one: it takes that place, as in the row on top of the vault. Not while searching,
+        // when the folders in between are not on screen.
+        .draggable(folder.id) {
+            VaultFolderTile(title: folder.name, icon: style.icon.image, color: style.color.color, surface: style.color.surface, iconColor: style.color.foreground, isPinned: folder.isPinned, count: model.count(in: .folder(folder.id)), isSelected: false) {}
+        }
+        .dropDestination(for: String.self) { ids, _ in
+            dropTarget = nil
+            guard query.isEmpty, let id = ids.first, id != folder.id, model.folders.contains(where: { $0.id == id }) else { return false }
+            PaveHaptics.selection()
+            Task { await model.moveFolder(id, onto: folder.id) }
+            return true
+        } isTargeted: { isOver in
+            if isOver { dropTarget = folder.id } else if dropTarget == folder.id { dropTarget = nil }
         }
         .accessibilityAction(named: "Naar voren") { move(folder, by: -1) }
         .accessibilityAction(named: "Naar achteren") { move(folder, by: 1) }
