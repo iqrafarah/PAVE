@@ -38,11 +38,11 @@ enum WatchNextStep {
     }
 
     static func when(_ step: NextStep) -> String {
-        let dutch = Locale(identifier: "nl_NL")
-        let time = step.date.formatted(.dateTime.hour().minute().locale(dutch))
+        let locale = WatchPreferences.locale
+        let time = step.date.formatted(.dateTime.hour().minute().locale(locale))
         let calendar = Calendar.current
         let day = calendar.isDateInToday(step.date) ? "Vandaag" : calendar.isDateInTomorrow(step.date) ? "Morgen"
-            : step.date.formatted(.dateTime.weekday(.wide).day().month(.abbreviated).locale(dutch))
+            : step.date.formatted(.dateTime.weekday(.wide).day().month(.abbreviated).locale(locale))
         let base = "\(day) \(time)"
         return step.kind == .answer ? "\(base) · antwoord op je iPhone" : base
     }

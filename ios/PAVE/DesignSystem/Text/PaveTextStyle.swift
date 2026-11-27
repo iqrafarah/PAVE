@@ -57,7 +57,7 @@ enum PaveTextStyle {
         case .label, .link, .calloutTitle: 14
         case .eyebrow, .footnote: 13
         case .caption: 12
-        case .tag: 10
+        case .tag: 11
         }
     }
 

@@ -75,9 +75,11 @@ struct PlanDynamicBar: View {
                         .lineLimit(1)
                 } else {
                     PlanProgressRing(plan: plan, size: 24)
+                    // A plan name cut to a few letters says nothing: without room it goes, and the step stays.
                     ViewThatFits(in: .horizontal) {
-                        pillText.fixedSize()
-                        pillText
+                        pillText(withName: true).fixedSize()
+                        pillText(withName: false).fixedSize()
+                        pillText(withName: false)
                     }
                     if plan.totalCount > 0 {
                         Text(PlanMessages.shortProgress(plan))
@@ -97,20 +99,25 @@ struct PlanDynamicBar: View {
         .buttonStyle(.pave)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
+        .accessibilityValue(PlanMessages.folded)
         .accessibilityHint(PlanMessages.showSteps)
         .accessibilityAddTraits(.isButton)
     }
 
-    private var pillText: some View {
+    private func pillText(withName: Bool) -> some View {
         HStack(spacing: 5) {
-            Text(plan.name)
-                .textStyle(.caption)
-                .foregroundStyle(Color.inkMuted)
-                .lineLimit(1)
-            if let step = plan.currentStep {
-                Text("·")
+            if withName || plan.currentStep == nil {
+                Text(plan.name)
                     .textStyle(.caption)
                     .foregroundStyle(Color.inkMuted)
+                    .lineLimit(1)
+            }
+            if let step = plan.currentStep {
+                if withName {
+                    Text("·")
+                        .textStyle(.caption)
+                        .foregroundStyle(Color.inkMuted)
+                }
                 Text(step.title)
                     .textStyle(.chip)
                     .foregroundStyle(Color.ink)
@@ -152,6 +159,7 @@ struct PlanDynamicBar: View {
             }
             .buttonStyle(.pave)
             .accessibilityLabel(accessibilityLabel)
+            .accessibilityValue(PlanMessages.unfolded)
             .accessibilityHint(PlanMessages.hideSteps)
 
             ScrollView {
@@ -164,7 +172,7 @@ struct PlanDynamicBar: View {
                     } else {
                         PlanTimeline(steps: plan.steps, spacing: 12) { step in
                             if step.status == .active {
-                                Button(PlanMessages.markDone, action: onCompleteStep)
+                                Button(action: onCompleteStep) { Text(PlanMessages.markDone) }
                                     .textStyle(.tag)
                                     .foregroundStyle(Color.paveAccent)
                                     .padding(.horizontal, 10)
@@ -202,6 +210,10 @@ struct PlanDynamicBar: View {
                     .padding(.horizontal, 14)
                     .frame(minHeight: 34)
                     .background(Color.paveAccentFill, in: .capsule)
+                    // 44 pt to tap, while the capsule keeps its size.
+                    .padding(.vertical, 5)
+                    .contentShape(.rect)
+                    .padding(.vertical, -5)
                 }
                 .buttonStyle(.pave)
             }
@@ -280,6 +292,9 @@ struct PlanChatsMenu: View {
             .padding(.horizontal, 12)
             .frame(minHeight: 34)
             .background(Color.paveSurfaceTint, in: .capsule)
+            .padding(.vertical, 5)
+            .contentShape(.rect)
+            .padding(.vertical, -5)
         }
         .accessibilityLabel("\(PlanMessages.conversations), \(PlanMessages.conversationCount(conversations.count))")
     }

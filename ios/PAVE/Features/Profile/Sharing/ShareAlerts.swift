@@ -12,7 +12,7 @@ enum ShareAlerts {
     static let endingCategory = "share-ending"
     static let revokeAction = "share-revoke"
     static let extendAction = "share-extend"
-    private static let seenKey = "shareLooksSeenUntil"
+    private static var seenKey: String { PaveAccount.key("shareLooksSeenUntil") }
 
     /// Set at launch: what an action in a notification does, with the share's id.
     static var onRevoke: ((String) async -> Void)?

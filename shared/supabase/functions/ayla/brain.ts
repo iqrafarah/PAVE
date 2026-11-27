@@ -1,11 +1,13 @@
 import { ACTIONS, type ActionKind, type ActionResult, type AppAction, type AppState, needsConfirmation, type AylaReply, type AylaRequest, type Block, type Status, CATEGORIES, type Category, type Context, type Device, type RequirementLink, type Screen, SCREENS, type Vacancy, type VacancyContext } from './contract.ts'
 import type { AllowedVault } from './vault.ts'
+import { describeLookup, type LookUp, LOOKUP_OUTPUT_SCHEMA, type LookupResult } from './lookups.ts'
+import { describeEducations, type Education, EDUCATION_OUTPUT_SCHEMA, type SearchEducations } from './educations.ts'
 import { cleanPurpose, CONSENT_QUESTION_CHOICES, grantsWholeVault, consentChoices, consentQuestion, mayLookInVault, saysNo, saysYes, type VaultConsent, vaultConsent, vaultRevoked, revokesVault } from './consent.ts'
 import { cleanMemories, type Memory, type MemorySuggestion, usedNotes } from './memory.ts'
 import type { ContentPart, ChatMessage, Complete, Effort } from './openrouter.ts'
 import { buildSystemPrompt, contextNote, MATCH_OUTPUT_SCHEMA } from './prompt.ts'
 import { vaultProposal } from './proposal.ts'
-import { newPlanProposal, type PlanContext, planChange, planProposal, type PlanStepStatus } from './plan.ts'
+import { newPlanProposal, type PlanContext, planChange, PLAN_EDIT_SCHEMA, planEditProposal, planProposal, type PlanStepStatus } from './plan.ts'
 import { type FoundVacancy, logoUrl, mergeFound, type SearchVacancies } from './vacancies.ts'
 
 /** A message so far. An Ayla turn says whether it asked to look in the vault, for the consent of this conversation. */
@@ -39,6 +41,10 @@ export interface BrainDeps {
   complete: Complete
   /** Missing when no source for vacancies is configured. */
   searchVacancies?: SearchVacancies
+  /** Missing when studies and courses cannot be looked up. */
+  searchEducations?: SearchEducations
+  /** Looks a fact up on the web; missing when that is not possible. */
+  lookUp?: LookUp
   newId: () => string
   /** Whether a site the model named for a company really is there; without it no logos are shown. */
   siteExists?: (domain: string) => Promise<boolean>
@@ -66,11 +72,42 @@ export function toPastMessage(message: StoredMessage): PastMessage {
   }
   // The cards under an answer are not in its text: without them a later "de tweede" or "meer zoals die" means nothing.
   const shown = shownVacancies(message.reply?.blocks)
-  const said = [message.text, shown, actionsNote(message.reply?.actions)].filter(Boolean).join('\n')
+  const said = [message.text, shown, actionsNote(message.reply?.actions), madePlanNote(message.reply)].filter(Boolean).join('\n')
   const asked = !!message.reply?.accessRequest
   if (!asked) return { role: message.role, text: said }
   const question = message.reply?.question?.text
   return { role: 'ayla', text: question ? `${said}\n${question}` : said, askedVault: true }
+}
+
+const MADE_PLAN = /\(Je maakte bij dit antwoord het plan "([^"]*)"/
+
+/** A plan she made with an answer, so she knows later that it is there and does not make it again. */
+function madePlanNote(reply: Partial<AylaReply> | null | undefined): string | null {
+  const name = reply?.proposedAction?.kind === 'createPlan' ? reply.proposedAction.newPlan?.name : undefined
+  return name ? `(Je maakte bij dit antwoord het plan "${name.replace(/"/g, "'")}": het staat bij Plan en dit gesprek hoort erbij. Maak het niet opnieuw.)` : null
+}
+
+/** "Maak een plan", "een nieuw plan", "stappenplan", "opnieuw beginnen": the user asks for a plan in so many words. */
+const ASKS_PLAN = /\b(stappenplan|plan\w*)\b/i
+const MAKES_PLAN = /\b(maak|maken|start|begin|zet)\w*\b[^.?!]{0,40}\b(stappen)?plan\b|\b(stappen)?plan\b[^.?!]{0,40}\b(maken|starten|beginnen|opzetten)\b/i
+const ASKS_NEW_PLAN = /\bplan\b[^.?!]{0,60}\bnieuwe?\b|\b(nieuwe?|ander|tweede|nog een|extra)\b[^.?!]{0,20}\bplan|\bopnieuw\b|\bplan\b[^.?!]{0,30}\b(opnieuw|overnieuw)\b|\b(new|another) plan\b/i
+
+/**
+ * Whether a plan the model wants to make may be made. The model fills newPlan too easily, turn after turn: a plan with
+ * this name that is already there, a plan made earlier in this conversation or a conversation that already belongs to
+ * a plan all mean no, unless the user asks for a new plan in so many words.
+ */
+export function mayMakePlan(name: string | undefined, text: string, history: PastMessage[], plans: string[] | undefined, inPlan: boolean): boolean {
+  if (ASKS_NEW_PLAN.test(text)) return true
+  const made = history.flatMap((message) => (message.role === 'ayla' ? [message.text.match(MADE_PLAN)?.[1]] : [])).filter((n): n is string => !!n)
+  const existing = [...made, ...(plans ?? []).map((line) => line.replace(/\s*\(.*$/, ''))]
+  if (name && existing.some((other) => sameWords(other, name))) return false
+  // Another plan beside the one of this conversation only when asked for now, in so many words.
+  if (inPlan || made.length) return MAKES_PLAN.test(text)
+  // Asked for now or just before, or a yes to her offer to make one.
+  const offered = history.at(-1)?.role === 'ayla' && ASKS_PLAN.test(history.at(-1)!.text)
+  const askedBefore = history.filter((message) => message.role === 'user').slice(-2).some((message) => ASKS_PLAN.test(message.text))
+  return ASKS_PLAN.test(text) || offered || askedBefore
 }
 
 /** What Ayla did in the app with an answer, so a later "zet het terug" or "doe dat nog eens" has something to point at. */
@@ -107,6 +144,8 @@ interface ModelOutput {
   question: { text: string; choices: { id: string; label: string }[] } | null
   navigation: { screen: string; item?: number | null } | null
   vacancySearch: { what: string; where: string; also: string | null } | null
+  educationSearch: { what: string; where: string } | null
+  webLookup: { question: string } | null
   vacancyMatches: unknown
   vacancySites: unknown
   title: string | null
@@ -115,6 +154,7 @@ interface ModelOutput {
   usedVaultItems: unknown
   vaultItem: unknown
   planStep: unknown
+  planEdit: unknown
   newPlan: unknown
   askVault: unknown
   actions: unknown
@@ -183,7 +223,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
       role: 'system',
       content: buildSystemPrompt({
         device: request.device, input: request.input, firstName: input.firstName, context: request.context, memory, project: input.project, plan: input.plan,
-        vault, vaultConsent: consent, vaultPart: part ? { mayAskMore } : undefined, app: request.app, hasFiles, english: writesEnglish(request.text),
+        vault, vaultConsent: consent, vaultPart: part ? { mayAskMore } : undefined, app: request.app, hasFiles, english: writesEnglish(request.text), language: request.language,
       }),
     },
     ...pastMessages(input.history.slice(-HISTORY_LIMIT)),
@@ -301,7 +341,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
       // Under found vacancies she always asks to compare them with the vault, until the user answered that.
       askVault: fit === 'ask' && items.length ? cleanPurpose(second.askVault) ?? ASK_FOR_MATCHES : fit === 'ask' ? second.askVault : null,
       usedVaultItems: [...list(decided.usedVaultItems), ...list(second.usedVaultItems)],
-      vacancySearch: null, navigation: null, vaultItem: null, planStep: null, newPlan: null, actions: [], continues: false,
+      vacancySearch: null, educationSearch: null, webLookup: null, navigation: null, vaultItem: null, planStep: null, planEdit: decided.planEdit, newPlan: null, actions: [], continues: false,
     }
     if (items.length && request.device !== 'watch') {
       // What fits and what is missing only with the vault allowed, and only what the vacancy text really says. The
@@ -311,6 +351,56 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
       const cards = canMatch ? bestFirst(withMatches(withLogo, output.vacancyMatches)) : withLogo.map((f) => f.vacancy)
       blocks.push({ type: 'vacancies', items: cards, search: { what: terms.what, where: terms.where, ...(terms.also ? { also: terms.also } : {}) } })
     }
+  }
+
+  // In a plan on the iPhone, what she finds can change the plan: the round about it may propose that too.
+  const editsPlan = !!input.plan && request.device === 'phone'
+  // Studies and courses: the cards come from the search, her words about them from a second, short answer. Not on the
+  // Watch, which has no room for cards; and a vacancy search in the same answer goes first.
+  if (decided.educationSearch && !decided.vacancySearch && request.device !== 'watch' && !task) {
+    const terms = decided.educationSearch
+    input.onStatus?.({ kind: 'educationSearch', what: terms.what, where: terms.where })
+    let found: Education[] | null = null
+    try {
+      found = deps.searchEducations ? await deps.searchEducations(terms.what, terms.where) : null
+    } catch (error) {
+      if (input.signal?.aborted) throw error
+    }
+    if (found?.length) blocks.push({ type: 'educations', items: found, search: terms })
+    messages.push({ role: 'assistant', content: JSON.stringify(output) }, { role: 'user', content: describeEducations(terms, found) })
+    try {
+      const second = parseOutput((await deps.complete(messages, { ...options, schema: withPlanEdit(EDUCATION_OUTPUT_SCHEMA, editsPlan), maxTokens: editsPlan ? 900 : 500 })).content)
+      if (second.text.trim()) output = { ...output, text: second.text.trim() }
+      if (second.planEdit) output = { ...output, planEdit: second.planEdit }
+    } catch (error) {
+      if (input.signal?.aborted) throw error
+    }
+    output = { ...output, educationSearch: null, actions: [], navigation: null }
+  } else if (decided.educationSearch && request.device === 'watch') {
+    output = { ...output, text: EDUCATIONS_ON_PHONE_TEXT, educationSearch: null }
+  }
+
+  // A fact she looks up instead of answering from memory: her answer from what the pages say, with the pages as
+  // sources (not on the Watch, which has no room for them, but the answer is the same).
+  if (decided.webLookup && !decided.vacancySearch && !decided.educationSearch && !task) {
+    const question = decided.webLookup.question
+    input.onStatus?.({ kind: 'webLookup', question })
+    let found: LookupResult | null = null
+    try {
+      found = deps.lookUp ? await deps.lookUp(question) : null
+    } catch (error) {
+      if (input.signal?.aborted) throw error
+    }
+    messages.push({ role: 'assistant', content: JSON.stringify(output) }, { role: 'user', content: describeLookup(question, found) })
+    try {
+      const second = parseOutput((await deps.complete(messages, { ...options, schema: withPlanEdit(LOOKUP_OUTPUT_SCHEMA, editsPlan), maxTokens: editsPlan ? 900 : 500 })).content)
+      if (second.text.trim()) output = { ...output, text: second.text.trim() }
+      if (second.planEdit) output = { ...output, planEdit: second.planEdit }
+    } catch (error) {
+      if (input.signal?.aborted) throw error
+    }
+    if (found?.material && found.sources.length && request.device !== 'watch') blocks.push({ type: 'sources', items: found.sources })
+    output = { ...output, webLookup: null, navigation: null }
   }
 
   const reply = toReply(output, blocks, input.conversationId, deps.newId(), vault)
@@ -351,10 +441,24 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
     delete reply.question
     delete reply.navigation
   }
-  const asked = purpose || pointsAtNothing ? [] : cleanActions(decided.actions, request.device)
+  const asked = (purpose || pointsAtNothing ? [] : cleanActions(decided.actions, request.device))
+    // Answering an employer that did not invite you would send a yes to nobody: someone who is not on the list of
+    // invitations wrote a mail, and the answer goes there, in the user's own words.
+    .map((action) => action.do === 'answerInvitation' && request.device === 'phone' && !invitationListed(action.target, request.app?.invitations)
+      ? { do: 'replyMail' as const, ...(action.target ? { target: action.target } : {}), value: request.text.slice(0, 120) }
+      : action)
+    // A whole plan by its name is not a step of it: the plan goes, after Ja.
+    .map((action) => action.do === 'removePlanStep' && namesPlan(action.target, request.app?.plans) && !input.plan?.steps.some((step) => sameWords(step.title, action.target ?? ''))
+      ? { do: 'deletePlan' as const, target: action.target, confirm: true as const }
+      : action)
+    // Going on with a plan happens here in the chat; the plan's page only opens when the user asks to see it.
+    .map((action) => action.do === 'openPlan' && request.device === 'phone' && !asksToSeePlan(request.text)
+      ? { do: 'workOnPlan' as const, ...(action.target ? { target: action.target } : {}) }
+      : action)
   // What already is so is not done again, and a vacancy is only saved when the user said so, whatever the model says.
-  const wanted = asked.filter((action) => !alreadySo(action, request.app) && (action.do !== 'saveVacancy' || asksToSave(request.text, lastAyla)))
-  if (asked.length && !wanted.length && !blocks.length) reply.text = ALREADY_SO_TEXT
+  const notYet = asked.filter((action) => !alreadySo(action, request.app))
+  const wanted = notYet.filter((action) => action.do !== 'saveVacancy' || asksToSave(request.text, lastAyla))
+  if (asked.length && !notYet.length && !blocks.length) reply.text = ALREADY_SO_TEXT
   const sure = confirmable(wanted)
   const actions = sure ? sure.actions : asksBeforeDoing(cleanText(decided.text), decided.intent) ? [] : wanted
   if (actions.length) {
@@ -378,16 +482,32 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   // changes. The apps hear it through updatePlan, unless a proposal for the vault already takes that place: then they
   // pick it up when they load the plan again.
   // A plan the user asked for: the iPhone saves it with the user's own session and puts this chat in it.
-  const created = purpose || sure || pointsAtNothing || request.device !== 'phone' ? undefined : newPlanProposal(decided.newPlan, deps.newId(), new Date())
+  const proposed = purpose || sure || pointsAtNothing || request.device !== 'phone' ? undefined : newPlanProposal(decided.newPlan, deps.newId(), new Date())
+  const created = proposed && mayMakePlan(proposed.newPlan?.name, request.text, input.history, request.app?.plans, !!input.plan) ? proposed : undefined
   if (created) reply.proposedAction ??= created
-  const change = purpose || sure || pointsAtNothing ? undefined : planChange(decided.planStep, input.plan)
+  // Asked for a plan that is already there: this chat goes on with that plan instead of a second one beside it.
+  const sameAsListed = proposed && !created && !input.plan && !reply.actions?.length && ASKS_PLAN.test(request.text)
+    ? (request.app?.plans ?? []).map((line) => line.replace(/\s*\(.*$/, '')).find((name) => sameWords(name, proposed.newPlan?.name ?? ''))
+    : undefined
+  if (sameAsListed) reply.actions = [{ do: 'workOnPlan', target: sameAsListed }]
+  const marked = purpose || sure || pointsAtNothing ? undefined : planChange(decided.planStep, input.plan)
+  // A step is done or skipped because the user says so, never because the model thinks so after an "oké".
+  const change = marked && saysStepIs(marked.status, request.text, input.history) ? marked : undefined
   if (change && input.plan && deps.updatePlanStep && await deps.updatePlanStep(change.step.id, change.status)) {
     reply.proposedAction ??= planProposal(input.plan, change, deps.newId(), new Date())
   }
+  // Changes to the plan she proposes: only on the iPhone, which shows the card, and not right after a no.
+  const edit = purpose || sure || pointsAtNothing || request.device !== 'phone' || declinedOffer(input.history, request.text) || declinedPlanEdit(input.history, request.text)
+    ? undefined
+    : planEditProposal(output.planEdit, input.plan, deps.newId())
+  // Only when it is about the plan now: asked for, after a step that is done, or after she looked something up.
+  const aboutPlan = !!change || !!decided.educationSearch || !!decided.webLookup || ASKS_ABOUT_PLAN.test(request.text)
+  if (edit && aboutPlan) reply.planEdit = edit
   return reply
 }
 
 const ALREADY_SO_TEXT = 'Dat staat al zo.'
+const EDUCATIONS_ON_PHONE_TEXT = 'Opleidingen zoeken doe ik op je iPhone. Vraag het daar, dan zie je ze met een link naar de school.'
 
 /** Words that ask for work or a search, also misspelt ("vacaturs zoekn") or as a follow-up ("ook in Utrecht"). */
 const WORK_REQUEST = /\b(vacat\w*|zoek\w*|banen|baan|bijbaan|jobs?|stage\w*|werk|werken|functies?|sollicit\w*|parttime|fulltime|meer|andere|ook in|ook als|in de buurt)\b/i
@@ -525,7 +645,7 @@ function nudgeFor(output: ModelOutput, turn: { searches: boolean; aboutWork: boo
       fixedBy: (again) => !!again.vacancySearch || (turn.mayAsk && !!cleanPurpose(again.askVault)),
     }
   }
-  const does = list(output.actions).length > 0 || !!output.navigation || !!output.vaultItem || !!output.newPlan || !!output.vacancySearch || list(output.memories).length > 0
+  const does = list(output.actions).length > 0 || !!output.navigation || !!output.vaultItem || !!output.newPlan || !!output.planEdit || !!output.vacancySearch || !!output.educationSearch || !!output.webLookup || list(output.memories).length > 0
   if (turn.device === 'phone' && output.intent === 'act' && !does) {
     return {
       says: 'Je zegt dat je iets doet in de app, maar actions is leeg: er gebeurt nu niets. Kun je het zelf, zet de stappen dan in actions en zeg kort wat je doet. Kun je het niet zelf, zet intent dan op "answer" en zeg eerlijk waar de gebruiker het vindt.',
@@ -560,9 +680,11 @@ const CONFIRM_QUESTIONS: Partial<Record<ActionKind, (action: AppAction) => strin
   forgetAll: () => 'Zal ik alles vergeten wat ik over je onthoud? Dat kan niet ongedaan worden gemaakt.',
   allowAyla: (action) => `Mag ik "${action.target}" voortaan bekijken en gebruiken?`,
   removePlanStep: (action) => `Zal ik de stap "${action.target}" uit je plan halen?`,
+  deletePlan: (action) => `Zal ik je plan "${action.target}" verwijderen? Je gesprekken blijven bewaard.`,
   answerInvitation: (action) => /^(no|nee)$/i.test(action.value ?? '')
     ? `Zal ik ${action.target} laten weten dat je niet kunt?`
     : `Zal ik ${action.target} laten weten dat je komt?`,
+  attachToEvidence: (action) => `Zal ik ${action.value === 'last' || !action.value ? 'het bestand uit dit gesprek' : `"${action.value}"`} bij "${action.target}" in je kluis zetten?`,
   addProjectSource: (action) => `Zal ik "${action.target}" als bron toevoegen${action.value ? ` aan ${action.value}` : ''}? Dan mag ik het bekijken en gebruiken in dat project.`,
 }
 
@@ -590,12 +712,37 @@ export function confirmable(actions: AppAction[]): { actions: AppAction[]; quest
   return { actions: [first], question: CONFIRM_QUESTIONS[first.do]?.(first) ?? 'Weet je het zeker?' }
 }
 
-const OFFERS = /^(wil je|zal ik|zullen we|moet ik|mag ik|kan ik|heb je zin|lijkt het je|is het goed)\b/i
+const OFFERS = /^(wil je|zal ik|zullen we|moet ik|mag ik|kan ik|heb je zin|lijkt het je|is het goed|shall i|should i|do you want|would you like|may i|can i|shall we)\b/i
 
 /**
  * The user says no, and nothing else, to something Ayla offered in the last turn. A no to an ordinary question
  * ("Heb je al een cv?") is an answer, and a no with more words says what the user wants instead.
  */
+const SAYS_DONE = /\b(klaar|af|gedaan|gehaald|afgerond|afgemaakt|geregeld|gelukt|binnen|voltooid|geslaagd|ingeleverd|verstuurd|done|finished|completed|vink\w*|afvinken|kla)\b|\b(heb|ben|is|zijn|have|has)\b[^.?!]*\b\w{0,5}ge\w{2,}(d|t|en)\b/i
+const SAYS_SKIP = /\b(sla\b|overslaan|skip\w*|sla .* over|laat .* zitten|niet (meer )?nodig|hoeft niet|schrap)\b/i
+const ASKS_STEP_DONE = /\b(klaar|afgerond|afvinken|gelukt|gedaan|gehaald|overslaan)\b[^.!]*\?/i
+/** Words about the plan itself: what is in it, what is missing, whether it still reaches the goal. */
+const ASKS_ABOUT_PLAN = /\b(plan\w*|stap\w*|doel\w*|nakijken|kijk .* na|klopt|mis\w*|ontbreekt|ontbreken|aanpassen|pas .* aan|wat moet|wat nog|nog nodig|haal ik|toevoegen|weghalen|volgorde|eerst)\b/i
+
+/**
+ * Whether the user's own words carry the status the model gave a step: "ik heb de cursus af", "die sla ik over", or
+ * Ja to her question whether it is done. Going on with another step needs no such words.
+ */
+export function saysStepIs(status: PlanStepStatus, text: string, history: PastMessage[]): boolean {
+  if (status === 'active') return true
+  const last = history.at(-1)
+  if (saysYes(text) && last?.role === 'ayla' && ASKS_STEP_DONE.test(last.text)) return true
+  if (saysNo(text) && !/\b(niet (meer )?nodig|hoeft niet)\b/i.test(text)) return false
+  // "Ik heb het nog niet gedaan", "bijna klaar": not done.
+  return status === 'done' ? SAYS_DONE.test(text) && !/\b(niet|geen|nooit|bijna|not)\b/i.test(text) : SAYS_SKIP.test(text)
+}
+
+/** "Nee, laat maar zo" right after Ayla proposed changing the plan: the plan stays as it is. */
+export function declinedPlanEdit(history: PastMessage[], text: string): boolean {
+  const last = history.at(-1)
+  return last?.role === 'ayla' && /\b(plan|stap|stappen)\b/i.test(last.text) && text.trim().split(/\s+/).length <= 6 && saysNo(text)
+}
+
 export function declinedOffer(history: PastMessage[], text: string): boolean {
   if (text.trim().split(/\s+/).length > 3 || !saysNo(text)) return false
   const last = history.at(-1)
@@ -621,11 +768,60 @@ export function endsWithOpenQuestion(text: string): boolean {
   return /^(wat|welke?|hoe|wanneer|waar\w*|wie|waarom|hoeveel|hoelang)\b/i.test(last)
 }
 
+/**
+ * One question at a time: with a question under the answer, the text does not end on a question of its own, whether
+ * it asks the same in other words or something else ("Zal ik zoeken?" above "Waar wil je mee beginnen?"). What she
+ * says before it stays as it was written, lists and all.
+ */
+export function withoutRepeatedQuestion(text: string, question: string): string {
+  if (!question.trim()) return text
+  const whole = text.trim()
+  const sentences = whole.split(/(?<=[.!?])\s+|\n+/).map((s) => s.trim()).filter(Boolean)
+  const last = sentences.at(-1) ?? ''
+  if (sentences.length < 2 || !last.endsWith('?')) return text
+  return whole.slice(0, whole.lastIndexOf(last)).trim()
+}
+
+/** Whether an invitation from the fair the app listed is meant: a word of the employer's name in the target. */
+function sameWords(a: string, b: string): boolean {
+  const key = (text: string) => text.toLocaleLowerCase('nl').normalize('NFD').replace(/[^a-z0-9]/g, '')
+  return key(a) === key(b)
+}
+
+/** The target is one of the user's plans, as the app lists them ("Piloot worden (1 van 7 stappen, nu: ...)"). */
+export function namesPlan(target: string | undefined, plans: string[] | undefined): boolean {
+  if (!target || !plans?.length) return false
+  return plans.some((line) => sameWords(line.replace(/\s*\(.*$/, ''), target))
+}
+
+/** "Open mijn plan", "laat het plan zien", "show my plan": to see the plan's page, not to go on with it in the chat. */
+const SEES_PLAN = /\b(open\w*|bekijk\w*|toon\w*|zien|laat .{0,30}zien|ga naar|naar (het|mijn) plan|show\w*|see|view|habri\w*|mustra\w*|wak\w*)\b/i
+
+export function asksToSeePlan(text: string): boolean {
+  return SEES_PLAN.test(text)
+}
+
+export function invitationListed(target: string | undefined, invitations: string[] | undefined): boolean {
+  if (!target || !invitations?.length) return false
+  const words = target.toLocaleLowerCase('nl').split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 2)
+  return invitations.some((line) => {
+    const employer = line.split(':')[0].toLocaleLowerCase('nl')
+    return words.some((w) => employer.includes(w))
+  })
+}
+
+/** A question that offers to put a plan in the vault: a plan is no evidence, so it is never asked. */
+export function offersPlanForVault(text: string | undefined): boolean {
+  return !!text && /\b(stappen)?plan\b/i.test(text) && /\bkluis\b/i.test(text)
+}
+
 /** The text without the sentences in which the model itself asks whether it may look in the vault. */
 export function withoutConsentAsk(text: string): string {
   const sentences = text.split(/(?<=[.!?])\s+|\n+/).map((s) => s.trim()).filter(Boolean)
   const asksVault = (s: string) =>
-    /\bkluis\b/i.test(s) && (/^(mag|kan|zal|zou) ik\b|^(wil je dat|vind je het goed|is het goed)\b|\bin je kluis\b.*\bkijken\b/i.test(s))
+    (/\bkluis\b/i.test(s) && (/^(mag|kan|zal|zou) ik\b|^(wil je dat|vind je het goed|is het goed)\b|\bin je kluis\b.*\bkijken\b/i.test(s)))
+    || (/\bvault\b/i.test(s) && /^(may|can|shall|could) i\b|^(do you want me|would you like me|is it ok)\b/i.test(s))
+    || (/\bkaha fuerte\b/i.test(s) && /^(mi por|bo ke pa mi)\b/i.test(s))
   return sentences.filter((s) => !asksVault(s)).join(' ')
 }
 
@@ -707,7 +903,7 @@ Ga verder met wat de gebruiker vroeg: doe de stappen die nog moeten, kies een an
 }
 
 const LIGHT = /^(hoi|hey|hallo|hi|goedemorgen|goedemiddag|goedenavond|dank ?je( wel)?|dankjewel|bedankt|thanks|top|oke|oké|ok|prima|fijn|doei|tot ziens)[\s!.]*$/i
-const HARD = /\b(privacy|gegevens|avg|veilig|cv|curriculum|motivatiebrief|sollicitatiebrief|plan|stappenplan|vergelijk|analyseer|analyse|samenvat|samenvatting|herschrijf|verbeter|leg uit|waarom|voor- en nadelen|advies)\b/i
+const HARD = /\b(privacy|gegevens|avg|veilig|cv|curriculum|motivatiebrief|sollicitatiebrief|stappenplan|vergelijk|analyseer|analyse|samenvat|samenvatting|herschrijf|verbeter|leg uit|waarom|voor- en nadelen|advies)\b|\b(maak|maken|opstellen|bedenk|schrijf|help)\b[^.?!]*\bplan\b/i
 const SEVERAL = /\b(en dan|daarna|vervolgens|en ook)\b| en (zet|maak|open|verplaats|archiveer|verwijder|bewaar|noem|start)\b/i
 
 /**
@@ -733,15 +929,18 @@ export function effortFor(request: AylaRequest, mayLook = false, turn: { justGra
 
 const NEEDS_TARGET: readonly ActionKind[] = [
   'openFolder', 'openChat', 'moveToFolder', 'archiveEvidence', 'allowAyla', 'requestVerification', 'deleteEvidence',
-  'openPlan', 'openProject', 'markPlanStep', 'removePlanStep', 'linkPlanToProject',
-  'renamePlanStep', 'describePlanStep', 'answerInvitation', 'addTalkToCalendar', 'addProjectSource',
+  'openPlan', 'openProject', 'markPlanStep', 'removePlanStep', 'deletePlan', 'linkPlanToProject',
+  'renamePlanStep', 'describePlanStep', 'answerInvitation', 'addTalkToCalendar', 'addProjectSource', 'addToCalendar',
+  'editEvidence', 'restoreEvidence', 'addSkill', 'linkEvidenceToStep', 'setStepDue', 'moveStep', 'setApplicationStatus', 'startPractice',
+  'attachToEvidence', 'makeSelection', 'workOnPlan',
 ]
 /** Mail actions may leave out who: then the newest conversation is meant. */
 const NEEDS_VALUE: readonly ActionKind[] = [
   'openSettingsPage', 'renameChat', 'pinChat', 'setChatExpiry', 'setTheme', 'setTextSize', 'setDisplayMode', 'setVaultLayout', 'setVoiceText',
   'setChatsInSearch', 'setAnimations', 'setMemory', 'createFolder', 'moveToFolder', 'allowAyla', 'openVacancy', 'saveVacancy',
   'setFontStyle', 'addPlanStep', 'markPlanStep', 'linkPlanToProject', 'shareWith', 'stopSharing',
-  'renamePlanStep', 'describePlanStep', 'answerInvitation',
+  'renamePlanStep', 'describePlanStep', 'answerInvitation', 'addToCalendar', 'writeMail',
+  'addSkill', 'linkEvidenceToStep', 'setStepDue', 'moveStep', 'setApplicationStatus', 'setLanguage', 'makeSelection',
 ]
 
 /** The actions of an answer as the app gets them: known ones only, complete, at most 4, and only on the iPhone. */
@@ -751,7 +950,10 @@ export function moreThanOneRound(raw: unknown): boolean {
 }
 
 /** What Ayla may set up from the Watch: the Watch asks Ja or Nee itself, and the iPhone carries it out. */
-export const WATCH_ACTIONS: readonly ActionKind[] = ['addPlanStep', 'markPlanStep', 'answerInvitation', 'openApplication', 'makeVacancyPlan', 'openPlan']
+/** A day (2026-12-03) or a day and time (2026-12-03T14:30), as the app puts it in the calendar; repeating with daily, weekly or monthly after it. */
+const CALENDAR_DATE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])(T([01]\d|2[0-3]):[0-5]\d)?( (daily|weekly|monthly))?$/
+
+export const WATCH_ACTIONS: readonly ActionKind[] = ['addPlanStep', 'markPlanStep', 'answerInvitation', 'openApplication', 'makeVacancyPlan', 'openPlan', 'addToCalendar']
 
 export function cleanActions(raw: unknown, device: AylaRequest['device']): AppAction[] {
   if (device === 'web' || !Array.isArray(raw)) return []
@@ -760,10 +962,16 @@ export function cleanActions(raw: unknown, device: AylaRequest['device']): AppAc
   for (const entry of raw as Record<string, unknown>[]) {
     const kind = entry?.do as ActionKind
     if (!ACTIONS.includes(kind) || (onWatch && !WATCH_ACTIONS.includes(kind))) continue
-    const word = (value: unknown) => (typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, 120) : '')
+    // The changes to evidence can be a description; everything else is a name, a title or a date.
+    const word = (value: unknown) => (typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, kind === 'editEvidence' || kind === 'makeSelection' ? 400 : 120) : '')
     const value = word(entry.value)
     const target = word(entry.target)
     if ((NEEDS_TARGET.includes(kind) && !target) || (NEEDS_VALUE.includes(kind) && !value)) continue
+    // A moment in the calendar is a real date, as the app reads it.
+    if (kind === 'addToCalendar' && !CALENDAR_DATE.test(value)) continue
+    if (kind === 'setStepDue' && value !== 'none' && !/^\d{4}-\d{2}-\d{2}$/.test(value)) continue
+    if (kind === 'setApplicationStatus' && !['concept', 'sent', 'interview', 'offer', 'rejected'].includes(value)) continue
+    if (kind === 'setLanguage' && !['nl', 'en', 'pap'].includes(value)) continue
     // On the Watch every action waits for Ja on the wrist, so it carries no question of its own.
     actions.push({ do: kind, ...(value ? { value } : {}), ...(target ? { target } : {}), ...(!onWatch && needsConfirmation(kind, value) ? { confirm: true as const } : {}) })
     if (actions.length === (onWatch ? 2 : 4)) break
@@ -1030,6 +1238,12 @@ function parseOutput(raw: string): ModelOutput {
           also: typeof json.vacancySearch.also === 'string' && json.vacancySearch.also.trim() ? json.vacancySearch.also.trim() : null,
         }
         : null,
+      educationSearch: json.educationSearch && typeof json.educationSearch.what === 'string' && json.educationSearch.what.trim()
+        ? { what: json.educationSearch.what.trim().slice(0, 120), where: String(json.educationSearch.where ?? '').trim().slice(0, 80) }
+        : null,
+      webLookup: json.webLookup && typeof json.webLookup.question === 'string' && json.webLookup.question.trim()
+        ? { question: json.webLookup.question.trim().slice(0, 200) }
+        : null,
       vacancyMatches: Array.isArray(json.vacancyMatches) ? json.vacancyMatches : [],
       vacancySites: Array.isArray(json.vacancySites) ? json.vacancySites : [],
       title: typeof json.title === 'string' ? json.title : null,
@@ -1040,11 +1254,12 @@ function parseOutput(raw: string): ModelOutput {
       continues: json.continues === true,
       vaultItem: json.vaultItem ?? null,
       planStep: json.planStep ?? null,
+      planEdit: json.planEdit ?? null,
       newPlan: json.newPlan ?? null,
       askVault: typeof json.askVault === 'string' ? json.askVault : null,
     }
   }
-  const empty: ModelOutput = { intent: null, text: '', question: null, navigation: null, vacancySearch: null, vacancyMatches: [], vacancySites: [], title: null, memories: [], usedMemories: [], usedVaultItems: [], vaultItem: null, planStep: null, newPlan: null, askVault: null, actions: [], continues: false }
+  const empty: ModelOutput = { intent: null, text: '', question: null, navigation: null, vacancySearch: null, educationSearch: null, webLookup: null, vacancyMatches: [], vacancySites: [], title: null, memories: [], usedMemories: [], usedVaultItems: [], vaultItem: null, planStep: null, planEdit: null, newPlan: null, askVault: null, actions: [], continues: false }
   // Plain words instead of JSON: that is the answer. JSON that was cut off (a long answer ran out of room) never
   // shows as it is: what was complete is kept (her text, a search she asked for, the vacancies she had compared),
   // the rest is left out.
@@ -1151,6 +1366,9 @@ function toReply(output: ModelOutput, blocks: Block[], conversationId: string, i
     .slice(0, 3)
     .map((c, i) => ({ id: typeof c.id === 'string' && c.id.trim() ? c.id.trim() : `choice_${i + 1}`, label: c.label.trim() }))
   if (output.question && choices.length >= 2) reply.question = { text: output.question.text ?? '', choices }
+  if (reply.question) reply.text = withoutRepeatedQuestion(reply.text, reply.question.text)
+  // "Wil je dit plan in je kluis zetten?" never goes out: a plan is made at Plan, not kept as evidence.
+  if (reply.question && offersPlanForVault(reply.question.text)) delete reply.question
   const screen = output.navigation?.screen as Screen
   if (SCREENS.includes(screen) && NAVIGABLE.has(screen)) reply.navigation = { screen }
   // Opening one item from the vault: only an item the user allowed, by its id; otherwise the vault itself.
@@ -1174,4 +1392,10 @@ function cleanText(text: string): string {
     .replace(/^#{1,6}\s+/gm, '')
     .replace(/\s*\((Getoonde vacatures|Je acties bij dit antwoord|PAVE vroeg hiervoor|Bericht van PAVE)[^)]*\)?/g, '')
     .trim()
+}
+
+/** The schema of a round after a search, with room for changes to the plan when there is one. */
+export function withPlanEdit(schema: { type: string; additionalProperties: boolean; required: string[]; properties: Record<string, unknown> }, editsPlan: boolean) {
+  if (!editsPlan) return schema
+  return { ...schema, required: [...schema.required, 'planEdit'], properties: { ...schema.properties, planEdit: PLAN_EDIT_SCHEMA } }
 }

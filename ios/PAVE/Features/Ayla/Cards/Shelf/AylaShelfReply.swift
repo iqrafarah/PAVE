@@ -35,7 +35,7 @@ struct AylaShelfReply: View {
                     .resizable()
                     .scaledToFit()
                     .paveIconFrame(10)
-                    .foregroundStyle(Color.paveAccent.opacity(0.6))
+                    .foregroundStyle(Color.paveAccent)
                     .padding(.top, 6)
                     .accessibilityHidden(true)
             }

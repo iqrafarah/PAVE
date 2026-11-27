@@ -53,7 +53,7 @@ struct ApplicationHubStatus: View {
                 if model.tracking.deadline != nil {
                     DatePicker(ApplyMessages.deadline, selection: deadline, displayedComponents: .date)
                         .labelsHidden()
-                        .environment(\.locale, Locale(identifier: "nl_NL"))
+                        .environment(\.locale, PaveLanguageStore.current.locale)
                         .fixedSize()
                 }
             }

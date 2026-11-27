@@ -4,6 +4,7 @@ import SwiftUI
 /// The page of one plan: its goal and progress, all steps, and its chats with Ayla. From here you go on with Ayla
 /// (the latest chat of the plan, or a new one for the step you are on) and change the steps yourself.
 struct PlanDetailView: View {
+    @Environment(\.openURL) private var openURL
     let planID: String
     let chats: AylaConversationList
     let chatsAreComplete: Bool
@@ -32,6 +33,14 @@ struct PlanDetailView: View {
             }
         }
         .background(Color.canvas.ignoresSafeArea())
+        // Handoff: on an iPad the plans open, on a Mac the plans on the PAVE website. The plan's name stays private.
+        .userActivity(AylaHandoff.planActivityType) { activity in
+            activity.title = PlanMessages.title
+            activity.isEligibleForHandoff = true
+            activity.isEligibleForSearch = false
+            activity.isEligibleForPrediction = false
+            activity.webpageURL = AylaHandoff.planWebURL
+        }
         .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -44,6 +53,9 @@ struct PlanDetailView: View {
                     Button { editsPlan = true } label: { Label(PlanMessages.rename, tinted: .iconPencilSolid) }
                     Button { addsStep = true } label: { Label(PlanMessages.addStep, tinted: .iconPlusCircleSolid) }
                     Button { proposesSteps = true } label: { Label(PlanMessages.proposeSteps, tinted: .iconAyla) }
+                    if let plan, !plan.isFinished, !plan.steps.isEmpty {
+                        Button { review(plan) } label: { Label(PlanMessages.reviewPlan, tinted: .iconAyla) }
+                    }
                     if plan?.isFinished == true {
                         Button { model.reopen(planID) } label: { Label(PlanMessages.reopen, tinted: .iconArrowUturnLeftSolid) }
                     } else {
@@ -127,6 +139,14 @@ struct PlanDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 header(plan)
+                if let suggestion = model.suggestion(for: plan.id) {
+                    PlanStepSuggestionCard(suggestion: suggestion, showsPlan: false) {
+                        model.acceptSuggestion()
+                    } onDismiss: {
+                        model.dismissSuggestion()
+                    }
+                    .transition(.scale(scale: 0.96, anchor: .top).combined(with: .opacity))
+                }
                 PlanProjectRow(plan: plan, projects: chats.projects) { projectID in
                     model.setProject(projectID, of: planID)
                     if projectID != nil { actions.moveChats(plan, projectID) }
@@ -141,6 +161,7 @@ struct PlanDetailView: View {
             .frame(maxWidth: .infinity)
         }
         .animation(.snappy, value: plan)
+        .animation(.snappy, value: model.suggestion)
     }
 
     private func header(_ plan: PavePlan) -> some View {
@@ -168,16 +189,30 @@ struct PlanDetailView: View {
                         .contentTransition(.numericText())
                 }
             }
-            HStack(spacing: 10) {
-                if plan.isFinished {
-                    PaveSoftButton(title: PlanMessages.reopen) { model.reopen(plan.id) }
-                } else {
-                    PavePrimaryButton(title: PlanMessages.resume) { resume(plan) }
-                    PaveSoftButton(title: PlanMessages.newConversation) { actions.start(plan, plan.currentStep) }
-                }
+            // Side by side where the words fit (Dutch on a phone), under each other where they do not (other
+            // languages, larger text), so a label never breaks over two lines.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) { planButtons(plan) }
+                VStack(spacing: 10) { planButtons(plan) }
             }
             .padding(.top, 4)
         }
+    }
+
+    @ViewBuilder
+    private func planButtons(_ plan: PavePlan) -> some View {
+        if plan.isFinished {
+            PaveSoftButton(title: PlanMessages.reopen) { model.reopen(plan.id) }
+        } else {
+            PavePrimaryButton(title: PlanMessages.resume) { resume(plan) }
+            PaveSoftButton(title: PlanMessages.newConversation) { actions.start(plan, plan.currentStep) }
+        }
+    }
+
+    /// "Laat Ayla nakijken": in the plan's latest chat, Ayla checks the whole plan against its goal.
+    private func review(_ plan: PavePlan) {
+        let latest = plan.liveConversations(in: chats, isComplete: chatsAreComplete).first
+        actions.ask(plan, latest?.id, PaveTranslator.translate(PlanMessages.reviewPrompt))
     }
 
     private func steps(_ plan: PavePlan) -> some View {
@@ -228,6 +263,20 @@ struct PlanDetailView: View {
                 .frame(minHeight: 44)
             }
             .buttonStyle(.pave)
+            if !plan.isFinished, !plan.steps.isEmpty {
+                Button {
+                    review(plan)
+                } label: {
+                    Label {
+                        Text(PlanMessages.reviewPlan).textStyle(.action)
+                    } icon: {
+                        AylaLetter(color: Color.paveAccent).frame(width: 12, height: 12)
+                    }
+                    .foregroundStyle(Color.paveAccent)
+                    .frame(minHeight: 44)
+                }
+                .buttonStyle(.pave)
+            }
         }
     }
 
@@ -252,6 +301,7 @@ struct PlanDetailView: View {
                                     .scaledToFit()
                                     .paveIconFrame(16)
                                     .foregroundStyle(Color.paveAccent)
+                                    .accessibilityHidden(true)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(chat.title.isEmpty ? PlanMessages.untitledConversation(chats.count - index) : chat.title)
                                         .textStyle(.listTitle)
@@ -271,6 +321,7 @@ struct PlanDetailView: View {
                                     .scaledToFit()
                                     .frame(width: 10, height: 10)
                                     .foregroundStyle(Color.inkMuted)
+                                    .accessibilityHidden(true)
                             }
                             .padding(.horizontal, 16)
                             .frame(minHeight: 56)
@@ -326,6 +377,9 @@ struct PlanDetailView: View {
                 if step.kind == .conversation, step.metadata[PlanVacancy.idKey] != nil {
                     Button(PlanMessages.practiseTalk) { vacancyRequest(.task(.interview, vacancy)) }
                 }
+            }
+            if let site = step.metadata[AylaEducation.urlKey].flatMap(URL.init(string:)) {
+                Button(EducationMessages.openSite) { openURL(site) }
             }
             if let destination = step.kind.destination {
                 Button(destination.planStepAction) { actions.go(destination) }

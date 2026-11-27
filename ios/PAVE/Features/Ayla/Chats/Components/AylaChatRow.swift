@@ -57,7 +57,7 @@ struct AylaChatRow: View {
         .accessibilityAddTraits(isCurrent ? [.isButton, .isSelected] : .isButton)
     }
 
-    private static let dutch = Locale(identifier: "nl_NL")
+    private static var locale: Locale { PaveLanguageStore.current.locale }
 
     /// The time today and yesterday (the group above already says which day), the day of the week this week,
     /// otherwise the date.
@@ -65,15 +65,15 @@ struct AylaChatRow: View {
         let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: date), to: calendar.startOfDay(for: now)).day ?? 0
         switch days {
         case ...1:
-            return date.formatted(Date.FormatStyle(date: .omitted, time: .shortened).locale(dutch))
+            return date.formatted(Date.FormatStyle(date: .omitted, time: .shortened).locale(locale))
         case 2...6:
-            return date.formatted(Date.FormatStyle().weekday(.wide).locale(dutch)).capitalized(with: dutch)
+            return date.formatted(Date.FormatStyle().weekday(.wide).locale(locale)).capitalized(with: locale)
         default:
             let sameYear = calendar.component(.year, from: date) == calendar.component(.year, from: now)
             let style = sameYear
                 ? Date.FormatStyle().day().month(.abbreviated)
                 : Date.FormatStyle().day().month(.abbreviated).year()
-            return date.formatted(style.locale(dutch))
+            return date.formatted(style.locale(locale))
         }
     }
 }

@@ -95,6 +95,9 @@ struct RootView: View {
         .onContinueUserActivity(AylaHandoff.activityType) { activity in
             appState.conversationToOpen = AylaHandoff.conversationID(in: activity)
         }
+        .onContinueUserActivity(AylaHandoff.planActivityType) { _ in
+            appState.link = .plan
+        }
         .onOpenURL { url in
             switch ShareLinks.scanned(url.absoluteString) {
             case .employer?, .vacancy?, .inbox?:

@@ -608,6 +608,16 @@ belong to projects.
   `active`). The server checks it and saves it with `rpc/set_plan_step_status`, which keeps one step active. The reply
   carries `proposedAction: { kind: "updatePlan", planStep: { planId, stepId, status } }` so the apps show it at once;
   the apps also load the plan again after every answer in a plan's chat.
+- **Ayla proposes changes to the plan** (2026-11-26, iPhone only). In a plan's chat the model may answer `planEdit:
+  { changes: [{ op: add | remove | move, step, title, kind, after, why }] }`: when the user asks to check the plan,
+  after a step is done, or after a search or lookup that adds or removes a step. The server keeps only real changes
+  (`planEditProposal`: no done step removed, no step that is already there, at most four) and sends `planEdit: { id,
+  planId, changes: [{ op, stepId?, title, kind?, afterStepId?, why }] }` (`afterStepId` null: at the start). Nothing is
+  saved: the app shows a card, the user unticks what they do not want and taps "Pas plan aan". Not sent right after a
+  no, nor to the Watch or the web, which can ignore the field. "Laat Ayla nakijken" on the plan's page asks it in the
+  plan's latest chat.
+- **Going on with a plan stays in the chat.** `openPlan` only opens the plan's page when the user asks to see it ("open",
+  "laat zien", "bekijk"); otherwise the server turns it into `workOnPlan` (`asksToSeePlan`).
 - **Other flows** (such as finding work) make a plan from their own `PavePlanTemplate` with kinds of their own; ids of
   steps are UUIDs. `metadata` on a plan and a step is free room for that flow.
 
@@ -656,3 +666,29 @@ Not reused: the pixel orb and icons, the audience questions with QR code, the de
 4. Conversations and messages in Supabase, with live sync.
 5. Chat in the apps, then voice.
 6. Consent and the vault, then memory, then proposals.
+
+### Studies and courses (2026-11-26)
+
+`educationSearch` (`{ what, where }`) makes Ayla look up studies and courses through OpenRouter's web plugin (Exa), in
+`ayla/educations.ts`. Only pages the search returned count, as with vacancies, so a school or page cannot be invented.
+The results come as an `educations` block (`name`, `school`, `level` mbo/hbo/wo/cursus/overig, `city`, `duration`,
+`url`, `summary`), with a second short answer about which fits and what to check on the site. Not on the Watch: there
+she says to ask on the iPhone. On the iPhone each card has "Bekijk de site" and "Zet in plan" (a research step with the
+page in `metadata.educationURL`) or, without a plan, "Maak er een plan van" (look, admission, open day, evidence,
+apply). In a plan chat she searches instead of only offering to.
+
+### Language
+
+Fixed sentences the server writes itself (confirm questions, the vault question, Ja/Nee, fallbacks, plan updates) are
+translated in `ayla/localize.ts` just before the reply leaves, so the checks in `brain.ts` keep working on the Dutch
+words. Yes, Si and Nò count as answers.
+
+### More actions (2026-11-26)
+
+`editEvidence` (opens the evidence form with Ayla's changes filled in, as "veld: waarde; …"; the user saves, and a
+verified item says it needs verifying again), `restoreEvidence`, `addSkill`, `linkEvidenceToStep` (step metadata
+`evidenceIDs`), `setStepDue` (step metadata `due`, shown under the step, red when passed) and `moveStep`,
+`setApplicationStatus` (the user's own record; PAVE sends nothing) and `startPractice`, `setLanguage`, `addToCalendar`
+(also from the Watch: the calendar opens on the iPhone), `writeMail`, and `shareWith` with a duration in days as
+target. The app sends its applications as lines in `app.applications`. What she can do for a plan depends on the
+device (`PLAN_TOOLS` in plan.ts), so she never promises something that does not happen there.

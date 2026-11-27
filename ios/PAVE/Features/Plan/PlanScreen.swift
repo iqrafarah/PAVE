@@ -13,6 +13,8 @@ struct PlanChatActions {
     var moveChats: (PavePlan, String?) -> Void = { _, _ in }
     /// Deletes these chats, when a plan is deleted together with its chats.
     var deleteChats: ([String]) -> Void = { _ in }
+    /// Asks Ayla something in the plan's latest chat (nil: a new chat in the plan), such as checking the plan.
+    var ask: (PavePlan, String?, String) -> Void = { _, _, _ in }
 }
 
 /// All plans: the ones still going, the most recently changed first, and below them the finished ones. A plan opens on

@@ -13,6 +13,6 @@ enum AylaServiceFactory {
         else {
             return nil
         }
-        return SupabaseAylaService(projectURL: url, publishableKey: key) { await auth.accessToken() }
+        return SupabaseAylaService(projectURL: url, publishableKey: key, language: { PaveLanguageStore.current.rawValue }) { await auth.accessToken() }
     }
 }

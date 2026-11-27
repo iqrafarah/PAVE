@@ -86,6 +86,9 @@ struct ProfileScreen: View {
                 }
             case .showShares:
                 break
+            case .selection(let name, let template, let itemIDs):
+                let chosen = vault.items.filter { itemIDs.contains($0.id) }
+                editing = SavedProfile(name: name, template: template, itemIDs: chosen.map(\.id), fileIDs: ShareFiles.byDefault(chosen))
             }
         }
         .sheet(item: $composing, onDismiss: {

@@ -11,6 +11,8 @@ struct AylaProjectStart: View {
     let project: AylaProject
     let model: AylaChatModel
     let onOpenChat: (AylaConversation) -> Void
+    /// Back to all chats; nil where the list is beside the page already.
+    var onBack: (() -> Void)?
 
     @Environment(VaultModel.self) private var vault: VaultModel?
     @State private var tab = Tab.chats
@@ -22,6 +24,9 @@ struct AylaProjectStart: View {
     @State private var uploadFlow: VaultAddEvidenceModel?
     @State private var uploading: VaultAddEvidenceModel?
     @State private var openedItem: VaultItem?
+    @State private var renaming: AylaConversation?
+    @State private var newTitle = ""
+    @State private var deleting: AylaConversation?
 
     private var chats: [AylaConversation] {
         model.conversationList.visible.filter { $0.projectID == project.id }.sorted { $0.updatedAt > $1.updatedAt }
@@ -80,6 +85,22 @@ struct AylaProjectStart: View {
             // The kind that was filtered on is gone: show everything again.
             if let kind, let categories, !categories.contains(kind) { self.kind = nil }
         }
+        .alert("Naam wijzigen", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
+            TextField("Naam", text: $newTitle)
+            Button(ApplyMessages.cancel, role: .cancel) { renaming = nil }
+            Button("Bewaren") {
+                if let renaming, !newTitle.trimmingCharacters(in: .whitespaces).isEmpty { model.rename(renaming, to: newTitle) }
+                renaming = nil
+            }
+        }
+        .confirmationDialog(AylaMessages.projectDeleteChatQuestion, isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible, presenting: deleting) { chat in
+            Button("Verwijderen", role: .destructive) {
+                PaveHaptics.tap(.heavy)
+                model.delete([chat])
+            }
+        } message: { _ in
+            Text(AylaMessages.projectDeleteChatHint)
+        }
         .sheet(isPresented: $editsProject) {
             AylaProjectEditor(project: project, canStyle: model.conversationList.canStyleProjects) { name, instructions, icon, color in
                 var changed = project
@@ -122,6 +143,10 @@ struct AylaProjectStart: View {
 
     private var header: some View {
         HStack(spacing: 14) {
+            if let onBack {
+                PaveBackButton(label: AylaMessages.projectBackToChats, action: onBack)
+                    .padding(.leading, -12)
+            }
             AylaProjectBadge(project: project, size: 48)
             Text(project.name)
                 .textStyle(.emptyTitle)
@@ -155,6 +180,9 @@ struct AylaProjectStart: View {
             VStack(spacing: 2) {
                 ForEach(chats) { chat in
                     AylaChatRow(conversation: chat, isCurrent: false) { onOpenChat(chat) }
+                        // The same as in the list of chats: hold a chat to rename, pin, take out or delete it.
+                        .contextMenu { chatMenu(chat) }
+                        .accessibilityActions { chatMenu(chat) }
                 }
             }
             .padding(.horizontal, -8)
@@ -326,7 +354,7 @@ struct AylaProjectStart: View {
                             .textStyle(.listTitle)
                             .foregroundStyle(Color.ink)
                             .lineLimit(1)
-                        Text([item.category.singularTitle, item.createdAt.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "nl_NL")))].joined(separator: " · "))
+                        Text([item.category.singularTitle, item.createdAt.formatted(.dateTime.day().month(.abbreviated).locale(PaveLanguageStore.current.locale))].joined(separator: " · "))
                             .textStyle(.caption)
                             .foregroundStyle(Color.inkMuted)
                             .lineLimit(1)
@@ -356,6 +384,27 @@ struct AylaProjectStart: View {
         .padding(.leading, 10)
         .padding(.vertical, 6)
         .background(Color.panel, in: .rect(cornerRadius: 14))
+    }
+
+    @ViewBuilder
+    private func chatMenu(_ chat: AylaConversation) -> some View {
+        Button {
+            newTitle = chat.title
+            renaming = chat
+        } label: {
+            Label("Naam wijzigen", tinted: .iconPencilSolid)
+        }
+        if model.conversationList.canPin {
+            Button { model.togglePin(chat) } label: {
+                Label { Text(chat.isPinned ? "Losmaken" : "Vastzetten") } icon: { Image(chat.isPinned ? .iconBookmarkSlashSolid : .iconBookmarkSolid).renderingMode(.template) }
+            }
+        }
+        Button { model.move(chat, to: nil) } label: { Label(AylaMessages.removeFromProject, tinted: .iconMinusCircleSolid) }
+        if model.conversationList.canArchive {
+            Button { model.setArchived(true, [chat]) } label: { Label(RetentionMessages.archive, tinted: .iconArchiveBoxSolid) }
+        }
+        Divider()
+        Button(role: .destructive) { deleting = chat } label: { Label("Verwijderen", tinted: .iconTrashSolid) }
     }
 
     private func emptyText(_ text: String) -> some View {

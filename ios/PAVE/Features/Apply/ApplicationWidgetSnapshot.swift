@@ -65,6 +65,21 @@ enum ApplicationWidgetSnapshot {
         return Snapshot(rows: Array(rows.prefix(4)), updatedAt: now)
     }
 
+    /// Signing out: the widget shows nothing of this account any more.
+    static func clear() {
+        drafts = nil
+        shares = []
+        guard let group = Bundle.main.object(forInfoDictionaryKey: "PaveKeychainGroup") as? String else { return }
+        let item: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecAttrAccessGroup as String: group,
+        ]
+        SecItemDelete(item as CFDictionary)
+        WidgetCenter.shared.reloadTimelines(ofKind: widgetKind)
+    }
+
     private static func publish() {
         guard let drafts, let group = Bundle.main.object(forInfoDictionaryKey: "PaveKeychainGroup") as? String,
               let data = try? JSONEncoder().encode(snapshot(drafts: drafts, shares: shares)) else { return }

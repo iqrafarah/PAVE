@@ -6,7 +6,7 @@ import UserNotifications
 /// remembered on this device, so it is never announced twice.
 @MainActor
 enum FairAlerts {
-    private static let seenKey = "fair.seenInvitations"
+    private static var seenKey: String { PaveAccount.key("fair.seenInvitations") }
     static let categoryID = "share-fair-invitation"
     static let acceptAction = "share-fair-accept"
     static let declineAction = "share-fair-decline"

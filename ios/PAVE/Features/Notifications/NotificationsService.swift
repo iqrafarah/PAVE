@@ -93,7 +93,7 @@ struct NotificationReviewItem: Decodable, Sendable {
 
     private func monthYear(_ raw: String) -> String {
         guard let date = ISO8601DateFormatter().date(from: raw + "T00:00:00Z") else { return raw }
-        return date.formatted(.dateTime.month(.abbreviated).year().locale(Locale(identifier: "nl_NL")))
+        return date.formatted(.dateTime.month(.abbreviated).year().locale(PaveLanguageStore.current.locale))
     }
 }
 

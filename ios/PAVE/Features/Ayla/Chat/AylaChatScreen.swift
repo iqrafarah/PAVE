@@ -21,6 +21,7 @@ struct AylaChatScreen: View {
     @Environment(NotificationsModel.self) private var notifications: NotificationsModel?
     @Environment(ProfileModel.self) private var profile: ProfileModel?
     @Environment(PlanModel.self) private var plans: PlanModel?
+    @Environment(\.openURL) private var openURL
     @Environment(SharingModel.self) private var sharing: SharingModel?
     @Environment(EmailModel.self) private var email: EmailModel?
     @Environment(\.openPlan) private var openPlan
@@ -63,6 +64,8 @@ struct AylaChatScreen: View {
     @State private var orbLandings = 0
     @State private var orbSpringBacks = 0
     @State private var voiceBarHeight: CGFloat = 0
+    /// The buttons that take the bar's place for a question while talking; with long answers they stand above each other.
+    @State private var voiceChoicesHeight: CGFloat = 0
     /// Where the line under the large orb is, so the field leaves it clear.
     @State private var captionFrame = CGRect.null
     @State private var openVacanciesID: String?
@@ -123,6 +126,9 @@ struct AylaChatScreen: View {
     @State private var confirmationItem: VaultItem?
     /// The talk Ayla puts in your calendar; you save it yourself in the sheet.
     @State private var calendarTalk: FairApplication?
+    @State private var calendarMoment: AylaCalendarMoment?
+    @State private var mailDraft: EmailDraft?
+    @State private var evidenceEdit: EvidenceEdit?
     @State private var practiceReport: PracticeReportRequest?
     @State private var reportVacancy: Vacancy?
     /// Making a CV and a letter for a vacancy ("Solliciteren").
@@ -248,8 +254,9 @@ struct AylaChatScreen: View {
                     height: proxy.size.height,
                     bottomMargin: isOverVacancies ? sheetHeight - proxy.safeAreaInsets.bottom : bottomBarHeight + bottomGap + offlineNoticeHeight
                 )
-                // The plan of this chat, just under the header; out of the way while talking.
-                .planBar(chat: model, isHidden: isTalking)
+                // The plan of this chat, just under the header; it stays while talking, so you go through the steps
+                // hands-free with Ayla and still see where you are.
+                .planBar(chat: model, isHidden: false)
 
                 // Her answer while a page sits low over the chat: at the very top of the screen, over her name where
                 // the bar holds nothing else (the outer display of iPhone Duo keeps its buttons along the side), and
@@ -438,6 +445,22 @@ struct AylaChatScreen: View {
                 }
             }
         }
+        .sheet(item: $calendarMoment) { moment in
+            AylaCalendarEditor(moment: moment) { calendarMoment = nil }
+                .ignoresSafeArea()
+        }
+        .sheet(item: $evidenceEdit) { edit in
+            if let vault {
+                VaultEvidenceEditor(vault: vault, item: edit.item, changes: edit.changes)
+                    .paveSheet()
+            }
+        }
+        .sheet(item: $mailDraft) { draft in
+            if let email {
+                EmailComposeSheet(draft: draft)
+                    .environment(email)
+            }
+        }
         .sheet(item: $calendarTalk) { application in
             if let moment = application.invitedFor {
                 ApplicationCalendarEditor(vacancy: FairApplicationDetail.vacancy(of: application), deadline: moment, isTalk: true) { calendarTalk = nil }
@@ -545,9 +568,9 @@ struct AylaChatScreen: View {
         }
         // What Ayla chose to do in the app with her answer: carried out here, one thing at a time.
         .task(id: model.actionRequest?.id) {
-            guard let request = model.actionRequest else { return }
+            guard model.actionRequest != nil else { return }
             try? await Task.sleep(for: .milliseconds(400))
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, let request = model.takeActionRequest() else { return }
             await run(request.actions, continues: request.continues)
         }
         .onChange(of: model.activity) { _, activity in
@@ -555,6 +578,7 @@ struct AylaChatScreen: View {
             if actionSteps.isEmpty || showsSearchSteps { voice?.doingNote = activity.map(AylaMessages.voiceNote) }
             followSearch(activity)
         }
+        .transform(announcements)
         .onChange(of: model.phase) { _, phase in
             // The search is over: the steps that are left are ticked off, or go when nothing came of it.
             guard showsSearchSteps, phase == .idle || phase != .thinking && phase != .writing else { return }
@@ -606,6 +630,8 @@ struct AylaChatScreen: View {
             activity.isEligibleForSearch = false
             activity.isEligibleForPrediction = false
             activity.addUserInfoEntries(from: [AylaHandoff.idKey: id])
+            // On a Mac it opens in Safari, where you are signed in to the same PAVE.
+            activity.webpageURL = AylaHandoff.webURL(conversation: id)
         }
         .fullScreenCover(isPresented: $isScanning) {
             DocumentScanner { pages in
@@ -808,9 +834,12 @@ struct AylaChatScreen: View {
         if model.entries.isEmpty, !model.isLoadingConversation, let project = model.openProject {
             // The start page of a project: its chats and sources, and the text field below starts a chat in it.
             ScrollView {
-                AylaProjectStart(project: project, model: model) { chat in
+                AylaProjectStart(project: project, model: model, onOpenChat: { chat in
                     Task { await model.open(chat) }
-                }
+                }, onBack: {
+                    model.openProject = nil
+                    closingShelf(then: onShowChats)
+                })
                 .opacity(isTalking ? 0 : 1)
             }
             .scrollBounceBehavior(.basedOnSize)
@@ -837,6 +866,21 @@ struct AylaChatScreen: View {
             .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: bottomMargin) }
         } else {
             transcript(bottomMargin: bottomMargin)
+        }
+    }
+
+    /// Where the conversation shows: it fades out just under the header, and while talking above the room of the orb.
+    private func transcriptMask(bottomMargin: CGFloat) -> some View {
+        VStack(spacing: 0) {
+            LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
+                .frame(height: 24)
+            Color.black
+            if isTalking {
+                LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
+                    .frame(height: 36)
+                Color.clear
+                    .frame(height: max(0, bottomMargin - 36))
+            }
         }
     }
 
@@ -876,6 +920,8 @@ struct AylaChatScreen: View {
                 .accessibilityHidden(true)
         }
         .scrollEdgeEffectStyle(.soft, for: .vertical)
+        // Nothing reads through her name at the top, and while talking nothing shows behind the orb and the bar.
+        .mask { transcriptMask(bottomMargin: bottomMargin) }
         .scrollPosition($scrollPosition)
         .defaultScrollAnchor(.bottom)
         .defaultScrollAnchor(.bottom, for: .alignment)
@@ -889,6 +935,7 @@ struct AylaChatScreen: View {
         .onChange(of: model.entries.count) { scrollToBottom() }
         .onChange(of: openVacanciesID) { scrollToBottom() }
         .onChange(of: bottomBarHeight) { scrollToBottom() }
+        .onChange(of: plans?.editDecisions.count) { scrollToBottom() }
         // The keyboard is still on its way down when the question is sent, so the first scroll can land too high and
         // leave the last message under the "Ayla denkt na" blocks: once more when that has settled.
         .onChange(of: model.phase) { _, phase in
@@ -983,6 +1030,43 @@ struct AylaChatScreen: View {
                     }
                     .padding(.top, 3)
                 }
+                if let sources = Self.sources(in: entry), !sources.isEmpty {
+                    AylaSources(sources: sources) { openURL($0) }
+                        .padding(.top, 3)
+                }
+                let educations = Self.educations(in: entry)
+                if !educations.isEmpty {
+                    EducationResults(
+                        educations: educations,
+                        hasPlan: chatPlan != nil,
+                        isInPlan: { education in chatPlan?.steps.contains { $0.metadata[AylaEducation.idKey] == education.id } ?? false },
+                        onOpenSite: { openURL($0.url) },
+                        onPlan: { putInPlan($0) }
+                    )
+                    .padding(.top, 3)
+                }
+                if let edit = entry.reply?.planEdit {
+                    planEditCard(edit, isLast: entry.id == model.lastAylaEntryID)
+                }
+            }
+        }
+    }
+
+    /// Ayla proposes changes to the plan: you decide on the newest answer; on older ones only a change made shows.
+    @ViewBuilder
+    private func planEditCard(_ edit: AylaReply.PlanEdit, isLast: Bool) -> some View {
+        if let plans, let plan = plans.plan(id: edit.planId) {
+            let decision = plans.editDecisions[edit.id]
+            if decision == .applied || (decision == nil && isLast) {
+                AylaPlanEditCard(
+                    edit: edit,
+                    plan: plan,
+                    decision: decision,
+                    onApply: { plans.apply(edit, keeping: $0) },
+                    onDecline: { plans.decline(edit) },
+                    onOpenPlan: { openPlan?(plan.id) }
+                )
+                .padding(.top, 3)
             }
         }
     }
@@ -1040,6 +1124,26 @@ struct AylaChatScreen: View {
 
     /// What the spoken conversation reacts to: the orb's haptics, the orb changing place, and the conversation
     /// ending by itself. Apart from `body`, so the compiler can keep up.
+    /// VoiceOver hears that Ayla thinks, what she answered and when it failed, without looking for it; spoken, she
+    /// says it herself.
+    private func announcements(_ content: some View) -> some View {
+        content.onChange(of: model.phase) { old, phase in
+            guard !isTalking else { return }
+            switch phase {
+            case .thinking:
+                AccessibilityNotification.Announcement(AylaMessages.thinking).post()
+            case .idle where old == .writing || old == .thinking:
+                if let last = model.entries.last, last.role == .ayla, !last.text.isEmpty {
+                    AccessibilityNotification.Announcement(AylaMessages.answered(last.text)).post()
+                }
+            case .failed(let message):
+                AccessibilityNotification.Announcement(message).post()
+            default:
+                break
+            }
+        }
+    }
+
     private func voiceReactions(_ content: some View) -> some View {
         content
             // Your message is sent: a firm tap. Ayla's answer comes in: a soft one. Opening an old chat is neither.
@@ -1180,7 +1284,8 @@ struct AylaChatScreen: View {
                 // (the vacancy cards and their buttons), and would take every tap meant for that.
                 .allowsHitTesting(orbMotion.isLow)
                 .padding(.top, 36)
-                .padding(.bottom, 8)
+                // Choices higher than the bar push the orb up, so it never lies over them.
+                .padding(.bottom, 8 + (voiceChoices.isEmpty ? 0 : max(0, voiceChoicesHeight - voiceBarHeight)))
                 .accessibilityHidden(true)
 
             AylaVoiceBar(
@@ -1213,6 +1318,7 @@ struct AylaChatScreen: View {
                     ) { choice in
                         chooseWhileTalking(choice)
                     }
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { voiceChoicesHeight = $0 }
                     .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .bottom)))
                 }
             }
@@ -1375,7 +1481,7 @@ struct AylaChatScreen: View {
                 if !isVoiceActive {
                     Text(AylaMessages.disclaimer)
                         .textStyle(.caption)
-                        .foregroundStyle(Color.inkMuted)
+                        .foregroundStyle(model.phase == .thinking ? Self.onThinkingGlow : Color.inkMuted)
                         .frame(maxWidth: .infinity)
                         .padding(.top, 6)
                 }
@@ -1395,8 +1501,13 @@ struct AylaChatScreen: View {
         }
     }
 
+    /// Text right on the glow while Ayla thinks: the glow is deep green in light mode and light mint in dark mode.
+    private static let onThinkingGlow = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark ? UIColor.black.withAlphaComponent(0.7) : UIColor.white.withAlphaComponent(0.85)
+    })
+
     private var placeholderColor: Color {
-        model.phase == .idle || model.phase == .writing ? Color.inkMuted.opacity(0.41) : Color.white.opacity(0.41)
+        model.phase == .idle || model.phase == .writing ? Color.inkMuted : Color.white.opacity(0.85)
     }
 
     @ViewBuilder
@@ -1508,6 +1619,9 @@ struct AylaChatScreen: View {
     }
 
     private func startWave(fromOrb: Bool = false) {
+        // A ring across the whole screen is the kind of motion Reduce Motion asks to leave out; the haptic and the
+        // tick that come with it still say it worked.
+        guard !reduceMotion else { return }
         let started = Date()
         waveFromOrb = fromOrb
         waveStartedAt = started
@@ -1637,6 +1751,12 @@ struct AylaChatScreen: View {
         mutedForPhotos = false
     }
 
+    /// A photo as JPEG at its full size, as before, but off the main thread: decoding a 48 MP photo there froze the chat.
+    @concurrent
+    nonisolated private static func jpeg(from data: Data) async -> Data? {
+        UIImage(data: data)?.jpegData(compressionQuality: 0.85)
+    }
+
     private func addItemPhotos(_ items: [PhotosPickerItem], to itemID: String) async {
         guard let vault else { return }
         isAddingItemPhotos = true
@@ -1644,7 +1764,7 @@ struct AylaChatScreen: View {
         let day = Date.now.formatted(.iso8601.year().month().day())
         var added = 0
         for item in items {
-            guard let data = try? await item.loadTransferable(type: Data.self), let jpeg = UIImage(data: data)?.jpegData(compressionQuality: 0.85) else { continue }
+            guard let data = try? await item.loadTransferable(type: Data.self), let jpeg = await Self.jpeg(from: data) else { continue }
             let upload = VaultUpload(data: jpeg, fileName: "Foto \(day) \(added + 1).jpeg", mimeType: "image/jpeg")
             do {
                 try await vault.attach(upload, to: itemID)
@@ -1850,6 +1970,18 @@ struct AylaChatScreen: View {
         guard let question = model.question(for: task, about: vacancies) else { return }
         PaveHaptics.tap(.medium)
         if task == .compare { compareIDs = [] }
+        // With AirPods in, practising is talking: Ayla asks out loud, you answer out loud, hands free.
+        if task == .interview, !isTalking, AylaHeadGestures.hasBluetoothHeadphones {
+            startVoice()
+            Task {
+                for _ in 0..<30 where voice?.isActive != true {
+                    try? await Task.sleep(for: .milliseconds(100))
+                }
+                guard isTalking else { return }
+                askAyla(question)
+            }
+            return
+        }
         voice?.play(.tick)
         askAyla(question)
     }
@@ -2237,6 +2369,39 @@ struct AylaChatScreen: View {
         isChoosingFile = true
     }
 
+    static func sources(in entry: AylaChatModel.Entry) -> [AylaBlock.Source]? {
+        entry.reply?.blocks.lazy.compactMap { block -> [AylaBlock.Source]? in
+            if case .sources(let items) = block { return items }
+            return nil
+        }.first
+    }
+
+    static func educations(in entry: AylaChatModel.Entry) -> [AylaEducation] {
+        entry.reply?.blocks.lazy.compactMap { block -> [AylaEducation]? in
+            if case .educations(let items, _) = block { return items }
+            return nil
+        }.first ?? []
+    }
+
+    /// A study from Ayla's results into the plan of this chat as a step, or, without a plan, into a plan of its own
+    /// that this chat then belongs to.
+    private func putInPlan(_ education: AylaEducation) {
+        guard let plans else { return }
+        if let plan = chatPlan {
+            guard !plan.steps.contains(where: { $0.metadata[AylaEducation.idKey] == education.id }) else { return }
+            withAnimation(.easeOut(duration: 0.2)) { plans.addStepAfterCurrent(EducationMessages.step(for: education), to: plan.id) }
+            PaveHaptics.success()
+            AccessibilityNotification.Announcement(EducationMessages.addedTo(plan.name)).post()
+            return
+        }
+        Task {
+            guard let made = await plans.create(name: education.name, goal: EducationMessages.template(for: education).goal, from: EducationMessages.template(for: education)) else { return }
+            putChat(in: made)
+            PaveHaptics.success()
+            AccessibilityNotification.Announcement(EducationMessages.planMade(made.name)).post()
+        }
+    }
+
     /// The plan this chat is in, or that it will start in.
     private var chatPlan: PavePlan? {
         plans?.activePlan(conversationID: model.conversationID, newChatPlanID: model.newChatPlan?.planID)
@@ -2284,7 +2449,7 @@ struct AylaChatScreen: View {
                 fileProblem = AylaMessages.tooManyFiles
                 return
             }
-            guard let data = try? await item.loadTransferable(type: Data.self), let jpeg = UIImage(data: data)?.jpegData(compressionQuality: 0.85) else {
+            guard let data = try? await item.loadTransferable(type: Data.self), let jpeg = await Self.jpeg(from: data) else {
                 fileProblem = AylaMessages.fileUnreadable
                 continue
             }
@@ -2571,17 +2736,20 @@ struct AylaChatScreen: View {
             return AylaMessages.chooseYourself
         }
         // Ja to "Zal ik dit gesprek verwijderen?": now she does it, once.
-        if let waiting = model.actionsWaitingForYes, AylaVaultOffer.isYes(text), text.split(separator: " ").count <= 3 {
+        if let waiting = model.actionsWaitingForYes, AylaVaultOffer.isPlainYes(text) {
             // She only says it is done when it can be done: evidence that is not there, or a chat not in the list yet.
             let items = (vault?.items ?? []).map { AylaAppCommand.Named(id: $0.id, name: $0.title) }
             let missing = waiting.actions.lazy.compactMap { action -> String? in
                 switch action.kind {
                 case "deleteEvidence", "allowAyla": AylaAppAction.best(action.target, in: items) == nil ? AylaMessages.actionNoItem(action.target ?? "") : nil
                 case "deleteChat": model.currentConversation == nil ? AylaMessages.actionNoCurrentChat : nil
+                case "deletePlan": plans.flatMap { AylaPlanActions(plans: $0, chatPlan: nil).plan(named: action.target) } == nil ? AylaMessages.actionNoPlan(action.target) : nil
                 default: nil
                 }
             }.first
-            let done = missing ?? AylaActionWords.done(waiting.actions)
+            // "Verwijder mijn plan en begin een nieuw": once the old one is gone, she asks what the new one is about.
+            let startsOver = waiting.actions.contains { $0.kind == "deletePlan" } && model.asked(matching: AylaVaultOffer.startsOver)
+            let done = missing ?? (AylaActionWords.done(waiting.actions) + (startsOver ? " " + AylaMessages.askNewPlanGoal : ""))
             model.confirmActions(replyID: waiting.replyID, saying: text.trimmingCharacters(in: .whitespacesAndNewlines), done: done)
             if missing == nil { Task { await run(waiting.actions) } }
             if !isTalking { AccessibilityNotification.Announcement(done).post() }
@@ -2768,7 +2936,8 @@ struct AylaChatScreen: View {
             font: PaveFontStore.shared.style.rawValue,
             plans: plans.map { AylaPlanActions.lines($0.plans) },
             projects: model.conversationList.projects.map(\.name),
-            invitations: sharing?.fairApplications.map(AylaPlanActions.invitationLines)
+            invitations: sharing?.fairApplications.map(AylaPlanActions.invitationLines),
+            applications: AylaPlanActions.applicationLines(ApplicationStore().all())
         )
     }
 
@@ -2935,6 +3104,13 @@ struct AylaChatScreen: View {
         case "setFontStyle":
             guard let style = PaveFontStyle(rawValue: action.value?.lowercased() ?? "") else { return .failed(AylaMessages.actionUnknownValue) }
             inSettings(.appearance) { PaveFontStore.shared.style = style }
+        case "workOnPlan":
+            // On with a plan here: this chat joins it, so from her next answer she sees every step of it.
+            guard let plans else { return .failed(AylaMessages.actionUnavailable) }
+            guard let plan = AylaPlanActions(plans: plans, chatPlan: chatPlan).plan(named: action.target) else {
+                return .failed(AylaMessages.actionNoPlan(action.target))
+            }
+            if chatPlan?.id != plan.id { putChat(in: plan) }
         case "openPlan":
             guard let plans, let openPlan else { return .failed(AylaMessages.actionUnavailable) }
             guard let plan = AylaPlanActions(plans: plans, chatPlan: plans.plan(containing: model.conversationID)).plan(named: action.target) else {
@@ -2983,6 +3159,102 @@ struct AylaChatScreen: View {
             guard application.answer == .accepted, application.invitedFor != nil else { return .failed(AylaMessages.actionInvitationNotAccepted) }
             if isTalking { stopVoice() }
             closingShelf { calendarTalk = application }
+        case "editEvidence":
+            guard vault != nil, let item = item() else { return .failed(AylaMessages.actionNoItem(action.target ?? "")) }
+            if isTalking { stopVoice() }
+            closingShelf { evidenceEdit = EvidenceEdit(item: item, changes: action.value) }
+        case "restoreEvidence":
+            guard let vault else { return .failed(AylaMessages.actionUnavailable) }
+            let named = vault.archived.map { AylaAppCommand.Named(id: $0.id, name: $0.title) }
+            guard let found = AylaAppAction.best(action.target, in: named), let item = vault.archived.first(where: { $0.id == found.id }) else {
+                return .failed(AylaMessages.actionNotArchived(action.target ?? ""))
+            }
+            guard await vault.setArchived(false, item) else { return .failed(AylaMessages.actionUnavailable) }
+        case "addSkill":
+            guard let vault, let item = item() else { return .failed(AylaMessages.actionNoItem(action.target ?? "")) }
+            guard let skill = action.value?.trimmingCharacters(in: .whitespaces), !skill.isEmpty else { return .failed(AylaMessages.actionUnknownValue) }
+            if item.skills.contains(where: { $0.caseInsensitiveCompare(skill) == .orderedSame }) { return .said(AylaMessages.actionSkillThere(skill)) }
+            do {
+                try await vault.addSkills([skill], to: item.id)
+                await vault.load()
+            } catch {
+                return .failed(AylaMessages.actionUnavailable)
+            }
+        case "linkEvidenceToStep":
+            guard let plans, let vault else { return .failed(AylaMessages.actionUnavailable) }
+            let named = vault.items.map { AylaAppCommand.Named(id: $0.id, name: $0.title) }
+            guard let found = AylaAppAction.best(action.value, in: named), let item = vault.items.first(where: { $0.id == found.id }) else {
+                return .failed(AylaMessages.actionNoItem(action.value ?? ""))
+            }
+            if let problem = AylaPlanActions(plans: plans, chatPlan: plans.plan(containing: model.conversationID)).link(evidence: item, toStep: action.target) {
+                return .failed(problem)
+            }
+        case "setStepDue", "moveStep":
+            guard let plans else { return .failed(AylaMessages.actionUnavailable) }
+            let planActions = AylaPlanActions(plans: plans, chatPlan: plans.plan(containing: model.conversationID))
+            let problem = action.kind == "setStepDue" ? planActions.setDue(action.target, to: action.value) : planActions.moveStep(action.target, before: action.value)
+            if let problem { return .failed(problem) }
+        case "setApplicationStatus":
+            guard let status = ApplicationStatus(rawValue: action.value ?? "") else { return .failed(AylaMessages.actionUnknownValue) }
+            let store = ApplicationStore()
+            guard var draft = AylaPlanActions.application(action.target, in: store.all()) else { return .failed(AylaMessages.actionNoApplicationFound(action.target ?? "")) }
+            var tracking = draft.progress
+            if status == .sent { tracking.send() } else { tracking.set(status) }
+            draft.tracking = tracking
+            store.save(draft)
+        case "startPractice":
+            let known = ApplicationStore().all().map(\.vacancy) + model.savedVacancies.map(\.vacancy) + model.latestVacancySearch.vacancies
+            let named = known.map { AylaAppCommand.Named(id: $0.id, name: "\($0.title) \($0.company)") }
+            guard let found = AylaAppAction.best(action.target, in: named), let vacancy = known.first(where: { $0.id == found.id }) else {
+                return .failed(AylaMessages.actionNoApplicationFound(action.target ?? ""))
+            }
+            run(.interview, on: [vacancy])
+        case "attachToEvidence":
+            guard let vault, let item = item() else { return .failed(AylaMessages.actionNoItem(action.target ?? "")) }
+            let files = model.conversationUploads
+            let named = files.map { AylaAppCommand.Named(id: $0.fileName, name: $0.fileName) }
+            let wantsLast = ["last", "laatste", ""].contains(action.value?.lowercased() ?? "")
+            let upload = wantsLast ? files.last : AylaAppAction.best(action.value, in: named).flatMap { found in files.last { $0.fileName == found.id } }
+            guard let upload else { return .failed(AylaMessages.actionNoChatFile) }
+            do {
+                try await vault.attach(upload, to: item.id)
+                await vault.load()
+            } catch {
+                return .failed(AylaMessages.actionUnavailable)
+            }
+        case "makeSelection":
+            guard let shareFromAyla, let vault, let name = action.value?.trimmingCharacters(in: .whitespaces), !name.isEmpty else {
+                return .failed(AylaMessages.actionUnavailable)
+            }
+            let titles = (action.target ?? "").split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            let named = vault.items.map { AylaAppCommand.Named(id: $0.id, name: $0.title) }
+            let ids = titles.compactMap { AylaAppAction.best($0, in: named)?.id }
+            guard !ids.isEmpty else { return .failed(AylaMessages.actionNoItem(action.target ?? "")) }
+            let lowered = name.lowercased()
+            let template: ShareTemplate = lowered.contains("beurs") ? .fair
+                : ["opleiding", "school", "studie", "study"].contains(where: lowered.contains) ? .education : .employer
+            closeShelf()
+            shareFromAyla(.selection(name: name, template: template, itemIDs: Array(Set(ids))))
+        case "setLanguage":
+            guard let language = PaveLanguage(rawValue: action.value ?? "") else { return .failed(AylaMessages.actionUnknownValue) }
+            PaveLanguageStore.shared.select(language)
+        case "addToCalendar":
+            guard let moment = AylaCalendarMoment(title: action.target ?? "", value: action.value ?? "") else { return .failed(AylaMessages.actionBadDate) }
+            if isTalking { stopVoice() }
+            closingShelf { calendarMoment = moment }
+        case "writeMail":
+            // Her answer is the mail itself; you read it, change it and send it yourself.
+            let target = action.target ?? ""
+            let draft = EmailDraft(to: target.contains("@") ? target : "", subject: action.value ?? "", text: model.lastReply?.text ?? "")
+            if isTalking { stopVoice() }
+            if let email, email.hasAccounts {
+                closingShelf { mailDraft = draft }
+            } else if let url = draft.mailtoURL {
+                openURL(url)
+            } else {
+                return .failed(AylaMessages.actionUnavailable)
+            }
+            return .said(AylaMessages.actionMailOpened)
         case "addProjectSource":
             guard let vault, let item = item() else { return .failed(AylaMessages.actionNoItem(action.target ?? "")) }
             let projects = model.conversationList.projects
@@ -3000,6 +3272,11 @@ struct AylaChatScreen: View {
             }
             await model.addSources([item.id], to: project)
             if model.sourcesProblem != nil { return .failed(AylaMessages.actionUnavailable) }
+        case "deletePlan":
+            guard let plans, let plan = AylaPlanActions(plans: plans, chatPlan: nil).plan(named: action.target) else {
+                return .failed(AylaMessages.actionNoPlan(action.target))
+            }
+            await plans.delete(plan.id)
         case "addPlanStep", "markPlanStep", "removePlanStep", "linkPlanToProject":
             guard let plans else { return .failed(AylaMessages.actionUnavailable) }
             let planActions = AylaPlanActions(plans: plans, chatPlan: plans.plan(containing: model.conversationID))
@@ -3027,7 +3304,9 @@ struct AylaChatScreen: View {
         case "shareWith":
             guard let shareFromAyla, let who = action.value, !who.isEmpty else { return .failed(AylaMessages.actionUnavailable) }
             closeShelf()
-            shareFromAyla(.share(organisation: who, duration: nil, withApplication: false))
+            let days = action.target.flatMap { Int($0.filter(\.isNumber)) }
+            let duration = days.map { days in ShareDuration.allCases.min { abs($0.days - days) < abs($1.days - days) } } ?? nil
+            shareFromAyla(.share(organisation: who, duration: duration, withApplication: false))
         case "stopSharing":
             guard let shareFromAyla, let who = action.value, !who.isEmpty else { return .failed(AylaMessages.actionUnavailable) }
             closeShelf()
@@ -3229,4 +3508,11 @@ private extension View {
     func transform(_ change: (Self) -> some View) -> some View {
         change(self)
     }
+}
+
+/// Evidence Ayla opens for you to change, with what she filled in.
+struct EvidenceEdit: Identifiable {
+    let item: VaultItem
+    let changes: String?
+    var id: String { item.id }
 }

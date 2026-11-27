@@ -5,6 +5,21 @@ import PAVECore
 enum AylaMessages {
     /// Above Ja and Nee when Ayla offers to add something to the vault, as on the web (AYLA_VAULT_LABEL).
     static let thinking = "Ayla denkt na…"
+    /// For VoiceOver when her answer is in: her words, cut short when long, since the bubble itself has all of it.
+    static func answered(_ text: String) -> String {
+        let short = text.count > 220 ? String(text.prefix(220)).components(separatedBy: " ").dropLast().joined(separator: " ") + "…" : text
+        return "Ayla: \(short)"
+    }
+    static let selectChatHint = "Selecteert of deselecteert dit gesprek"
+    static let sourcesTitle = "Bronnen"
+    static let sourceHint = "Opent de pagina in Safari"
+    static let calendarNotes = "Klaargezet door Ayla in PAVE."
+    static let actionBadDate = "Die datum kon ik niet lezen. Zeg de dag nog eens, bijvoorbeeld 3 december."
+    static func actionNotArchived(_ name: String) -> String { "Ik kon \(name) niet vinden in het archief." }
+    static func actionSkillThere(_ skill: String) -> String { "\(skill) staat er al bij." }
+    static func actionNoApplicationFound(_ name: String) -> String { "Ik kon geen sollicitatie of vacature vinden bij \(name)." }
+    static let actionNoChatFile = "Ik zie geen bestand in dit gesprek. Stuur de foto of het bestand eerst hier."
+    static let actionMailOpened = "De mail staat klaar. Lees hem na en verstuur hem zelf."
     /// On one line where "Ayla denkt na…" stands, so a long search is shortened in the middle.
     static func activity(_ activity: AylaActivity) -> String {
         switch activity {
@@ -16,6 +31,10 @@ enum AylaMessages {
             guard withVault else { return "Ayla bekijkt \(vacancies)…" }
             if let chosen, chosen > 0 { return "Ayla vergelijkt \(vacancies) met wat je koos…" }
             return "Ayla vergelijkt \(vacancies) met je kluis…"
+        case .searchingEducations(let what, let place):
+            return EducationMessages.searching(what, in: place)
+        case .lookingUp(let question):
+            return "Ayla zoekt het op: \(question)…"
         case .continuing:
             return "Ayla gaat verder…"
         }
@@ -44,6 +63,8 @@ enum AylaMessages {
     static func actionFolderExists(_ name: String) -> String { "De map \(name) bestond al. Ik open hem." }
     static func actionDeletedEvidence(_ title: String) -> String { "Ik heb \(title) uit je kluis verwijderd." }
     static let actionDeletedChat = "Ik heb het gesprek verwijderd."
+    static func actionDeletedPlan(_ name: String) -> String { "Ik heb je plan \(name) verwijderd." }
+    static let askNewPlanGoal = "Waar moet je nieuwe plan over gaan?"
     static let actionForgotAll = "Ik heb alles vergeten wat ik over je onthield."
     static let actionSignsOut = "Ik log je uit."
     static let actionDone = "Gedaan."
@@ -69,6 +90,8 @@ enum AylaMessages {
         switch activity {
         case .searchingVacancies: "Zoekt vacatures"
         case .comparingVacancies: "Vergelijkt vacatures"
+        case .searchingEducations: EducationMessages.searchingShort
+        case .lookingUp: "Zoekt het op"
         case .continuing: "Gaat verder"
         }
     }
@@ -146,7 +169,7 @@ enum AylaMessages {
     /// "Geplaatst op 20 november", from the day the source gives ("2026-11-20"); nil when that is not a day.
     static func vacancyPosted(_ day: String) -> String? {
         guard let date = try? Date(day, strategy: .iso8601.year().month().day()) else { return nil }
-        return "Geplaatst op \(date.formatted(.dateTime.day().month(.wide).locale(Locale(identifier: "nl_NL"))))"
+        return "Geplaatst op \(date.formatted(.dateTime.day().month(.wide).locale(PaveLanguageStore.current.locale)))"
     }
     static let vacancyTitle = "Vacature"
     static let vacancyFromText = "Uit de vacaturetekst"
@@ -211,6 +234,7 @@ enum AylaMessages {
         case .share(let organisation, _, _): "Ik zet het klaar voor \(organisation). Controleer wat erin staat en bevestig het; ik deel niets zelf."
         case .stop(let organisation): "Ik open het delen met \(organisation). Tik op Intrekken om het te stoppen."
         case .showShares: "Hier zie je wat je nu deelt, met wie en hoe lang nog."
+        case .selection(let name, _, _): "De selectie \(name) staat klaar bij Profiel. Kijk hem na en bewaar hem."
         }
     }
     static let vacancyApplicationsTab = "Sollicitaties"
@@ -344,6 +368,9 @@ enum AylaMessages {
     static let moveFailed = "De chat kon niet worden verplaatst. Probeer het opnieuw."
     static let moveToProject = "Naar project verplaatsen"
     static let removeFromProject = "Uit project halen"
+    static let projectBackToChats = "Terug naar alle chats"
+    static let projectDeleteChatQuestion = "Gesprek verwijderen?"
+    static let projectDeleteChatHint = "Het gesprek met Ayla verdwijnt. Bewijs in je kluis blijft altijd bewaard."
     static let moveEmpty = "Je hebt nog geen projecten. Maak er een met de + bij Projecten."
     static let lockMenu = "Chat vergrendelen"
     static let unlockMenu = "Ontgrendelen"

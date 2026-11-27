@@ -9,6 +9,7 @@ struct PaveSoftButton: View {
         Button(action: action) {
             Text(title)
                 .textStyle(.button)
+                .paveButtonLabelFit()
         }
         .buttonStyle(SoftButtonStyle())
     }

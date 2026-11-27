@@ -11,7 +11,8 @@ struct AylaHeadHint: View {
             .foregroundStyle(isAnswer ? Color.white : Color.ink)
             .contentTransition(.opacity)
             .padding(.horizontal, 12)
-            .frame(height: 30)
+            .padding(.vertical, 6)
+            .frame(minHeight: 30)
             .background(isAnswer ? Color.paveAccentFill : Color.panel, in: .capsule)
             .overlay { Capsule().strokeBorder(isAnswer ? Color.clear : Color.cardBorder, lineWidth: 1) }
     }

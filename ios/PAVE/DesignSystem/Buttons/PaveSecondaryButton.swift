@@ -16,6 +16,7 @@ struct PaveSecondaryButton: View {
                 }
                 Text(title)
                     .textStyle(.button)
+                    .paveButtonLabelFit()
             }
         }
         .buttonStyle(SecondaryButtonStyle())

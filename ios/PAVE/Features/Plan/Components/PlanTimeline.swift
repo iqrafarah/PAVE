@@ -30,12 +30,21 @@ struct PlanTimeline<Trailing: View>: View {
                     .foregroundStyle(step.status == .upcoming || step.status == .skipped ? Color.inkMuted : Color.ink)
                     .strikethrough(step.status == .skipped, color: Color.inkMuted)
                     .multilineTextAlignment(.leading)
+                    // The whole title: a step you cannot read is a step you cannot do.
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
                 if showsSummary, !step.summary.isEmpty {
                     Text(step.summary)
                         .textStyle(.caption)
                         .foregroundStyle(Color.inkMuted)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
+                }
+                if let extra = PlanMessages.stepExtras(step) {
+                    Text(extra)
+                        .textStyle(.caption)
+                        .foregroundStyle(PlanMessages.isOverdue(step) ? Color.critical : Color.inkMuted)
+                        .lineLimit(1)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -55,7 +64,9 @@ struct PlanTimeline<Trailing: View>: View {
         }
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(step.title), \(PlanMessages.status(step.status))\(step.summary.isEmpty ? "" : ". \(step.summary)")")
+        // What the row combines would swallow its buttons, such as Klaar: they stay reachable as actions.
+        .accessibilityActions { trailing(step) }
+        .accessibilityLabel("\(step.title), \(PlanMessages.status(step.status))\(step.summary.isEmpty ? "" : ". \(step.summary)")\(PlanMessages.stepExtras(step).map { ". \($0)" } ?? "")")
 
         if let onSelect {
             Button { onSelect(step) } label: { content }

@@ -1,3 +1,4 @@
+import type { Education } from './educations.ts'
 // The Ayla contract, see shared/ayla/reply.schema.json.
 import type { MemoryCategory } from './memory.ts'
 
@@ -34,7 +35,12 @@ export interface AylaRequest {
    * goes on with what was asked. Such a turn stores no user message.
    */
   results?: ActionResult[]
+  /** The language the app is in (Instellingen › Taal): Ayla answers in it. Missing means Dutch. */
+  language?: Language
 }
+
+export const LANGUAGES = ['nl', 'en', 'pap'] as const
+export type Language = (typeof LANGUAGES)[number]
 
 export interface ActionResult { do: ActionKind; ok: boolean; said?: string }
 
@@ -58,6 +64,8 @@ export interface AppState {
   projects?: string[]
   /** Invitations from employers at the fair, one line each as the app writes it: who, for what, when, answered or not. At most 6. */
   invitations?: string[]
+  /** The user's applications: "functie bij bedrijf · status · deadline". */
+  applications?: string[]
 }
 
 /** The vacancy the user has open in the app, as the card shows it, so "past deze bij mij?" is about that one. */
@@ -102,14 +110,16 @@ export const ACTIONS = [
   'openVacancy', 'saveVacancy',
   'openNotifications', 'openApplications', 'openApplication', 'openProject', 'setFontStyle',
   'openPlan', 'addPlanStep', 'markPlanStep', 'renamePlanStep', 'describePlanStep', 'linkPlanToProject', 'makeVacancyPlan',
-  'addTalkToCalendar', 'openMail', 'summarizeMail', 'replyMail',
+  'addTalkToCalendar', 'addToCalendar', 'openMail', 'summarizeMail', 'replyMail', 'writeMail',
   'shareWith', 'stopSharing', 'showShares',
-  'deleteChat', 'deleteEvidence', 'signOut', 'forgetAll', 'removePlanStep', 'answerInvitation', 'addProjectSource',
+  'editEvidence', 'restoreEvidence', 'addSkill', 'linkEvidenceToStep', 'setStepDue', 'moveStep',
+  'setApplicationStatus', 'startPractice', 'setLanguage', 'attachToEvidence', 'makeSelection', 'workOnPlan',
+  'deleteChat', 'deleteEvidence', 'signOut', 'forgetAll', 'removePlanStep', 'deletePlan', 'answerInvitation', 'addProjectSource',
 ] as const
 export type ActionKind = (typeof ACTIONS)[number]
 
 /** What cannot be undone: PAVE asks Ja or Nee first, and the app only acts after Ja. */
-export const CONFIRMED_ACTIONS: readonly ActionKind[] = ['deleteChat', 'deleteEvidence', 'signOut', 'forgetAll', 'removePlanStep', 'answerInvitation', 'addProjectSource']
+export const CONFIRMED_ACTIONS: readonly ActionKind[] = ['deleteChat', 'deleteEvidence', 'signOut', 'forgetAll', 'removePlanStep', 'deletePlan', 'answerInvitation', 'addProjectSource', 'attachToEvidence']
 
 export interface AppAction { do: ActionKind; value?: string; target?: string; confirm?: true }
 
@@ -123,6 +133,8 @@ export type Status =
   | { kind: 'vacancySearch'; what: string; where: string; also?: string }
   /** chosen: how many vault items the user picked for this conversation, when that is what Ayla compares with. */
   | { kind: 'vacancyMatch'; count: number; withVault: boolean; chosen?: number }
+  | { kind: 'educationSearch'; what: string; where: string }
+  | { kind: 'webLookup'; question: string }
 
 export interface RequirementLink { skill: string; requirement: string }
 
@@ -149,6 +161,10 @@ export type Block =
   /** search: what Ayla searched for, so the apps can show it and a later turn can search the same again. */
   | { type: 'vacancies'; items: Vacancy[]; search?: { what: string; where: string; also?: string } }
   | { type: 'skillSuggestions'; itemId: string; skills: { name: string; reason: string }[] }
+  /** Studies and courses found on the web, each with its own page. */
+  | { type: 'educations'; items: Education[]; search: { what: string; where: string } }
+  /** The pages a looked-up answer comes from, so every fact can be checked. */
+  | { type: 'sources'; items: { title: string; url: string }[] }
   | { type: 'cv'; profile: string; experience: { title: string; organisation: string; period: string; description?: string }[]; skills: string[] }
 
 /** An item Ayla proposes for the vault, in the fields of `vault_items`; dates as YYYY-MM-DD. */
@@ -189,6 +205,15 @@ export interface AylaReply {
     newPlan?: { name: string; goal: string; steps: { title: string; summary: string; kind: string }[] }
   }
   blocks: Block[]
+  /**
+   * Changes to the conversation's plan Ayla proposes so it reaches its goal. Nothing is saved: the app shows them on a
+   * card, the user takes out what they do not want and taps "Pas plan aan".
+   */
+  planEdit?: {
+    id: string
+    planId: string
+    changes: { op: 'add' | 'remove' | 'move'; stepId?: string; title: string; kind?: string; afterStepId?: string | null; why: string }[]
+  }
   navigation?: { screen: Screen; itemId?: string }
   /** What Ayla does in the app with this answer, in order. With `confirm`, only after the user says Ja. */
   actions?: AppAction[]
@@ -217,13 +242,14 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 export function parseRequest(body: unknown): AylaRequest | string {
   if (typeof body !== 'object' || body === null) return 'body must be an object'
   const b = body as Record<string, unknown>
-  const allowed = new Set(['conversationId', 'projectId', 'planId', 'planStepId', 'text', 'device', 'input', 'context', 'attachments', 'app', 'results'])
+  const allowed = new Set(['conversationId', 'projectId', 'planId', 'planStepId', 'text', 'device', 'input', 'context', 'attachments', 'app', 'results', 'language'])
   const extra = Object.keys(b).find((key) => !allowed.has(key))
   if (extra) return `unknown field ${extra}`
   if (typeof b.text !== 'string' || !b.text.trim()) return 'text is required'
   if (b.text.length > MAX_TEXT_LENGTH) return 'text is too long'
   if (!DEVICES.includes(b.device as Device)) return 'device is not valid'
   if (b.input !== 'voice' && b.input !== 'text') return 'input is not valid'
+  if (b.language !== undefined && !LANGUAGES.includes(b.language as Language)) return 'language is not valid'
   if (b.conversationId !== undefined && (typeof b.conversationId !== 'string' || !UUID.test(b.conversationId))) {
     return 'conversationId is not valid'
   }
@@ -313,6 +339,7 @@ export function parseRequest(body: unknown): AylaRequest | string {
     text: b.text.trim(),
     device: b.device as Device,
     input: b.input,
+    ...(b.language && b.language !== 'nl' ? { language: b.language as Language } : {}),
     ...(app ? { app } : {}),
     ...(results ? { results } : {}),
     ...(b.conversationId ? { conversationId: b.conversationId as string } : {}),
@@ -325,7 +352,7 @@ export function parseRequest(body: unknown): AylaRequest | string {
 }
 
 const APP_WORDS = ['theme', 'textSize', 'displayMode', 'vaultLayout', 'chatTitle', 'seeing', 'font'] as const
-const APP_LISTS = { plans: { count: 8, length: 200 }, projects: { count: 12, length: 80 }, invitations: { count: 6, length: 200 } } as const
+const APP_LISTS = { plans: { count: 8, length: 200 }, projects: { count: 12, length: 80 }, invitations: { count: 6, length: 200 }, applications: { count: 10, length: 200 } } as const
 const APP_SWITCHES = ['voiceText', 'animations', 'memory', 'chatPinned'] as const
 
 function parseAppState(raw: unknown): AppState | null {

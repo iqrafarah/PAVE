@@ -45,17 +45,17 @@ enum DevicesMessages {
     }
 
     /// "Nu actief" or "Actief 2 uur geleden".
-    static func activity(of device: SignedInDevice, now: Date = .now) -> String {
+    static func activity(of device: SignedInDevice, now: Date = .now, locale: Locale = PaveLanguageStore.current.locale) -> String {
         guard !device.isCurrent, now.timeIntervalSince(device.lastActiveAt) >= 5 * 60 else { return "Nu actief" }
         let formatter = RelativeDateTimeFormatter()
-        formatter.locale = Locale(identifier: "nl_NL")
+        formatter.locale = locale
         formatter.unitsStyle = .full
         return "Actief \(formatter.localizedString(for: device.lastActiveAt, relativeTo: now))"
     }
 
     /// "Ingelogd op 10 nov".
-    static func signedIn(of device: SignedInDevice) -> String {
-        "Ingelogd op \(device.signedInAt.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "nl_NL"))))"
+    static func signedIn(of device: SignedInDevice, locale: Locale = PaveLanguageStore.current.locale) -> String {
+        "Ingelogd op \(device.signedInAt.formatted(.dateTime.day().month(.abbreviated).locale(locale)))"
     }
 
     static func message(for error: DevicesError) -> String {

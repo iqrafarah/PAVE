@@ -1,14 +1,5 @@
 import PAVECore
 import SwiftUI
-import TipKit
-
-/// The first time the plan shows in the Dynamic Island: how to open it.
-struct PlanIslandTip: Tip {
-    // Written out here (see docs/ui-teksten.md): a tip is read off the main actor.
-    var title: Text { Text("Je plan staat hier") }
-    var message: Text? { Text("Tik net onder het eiland of veeg omlaag voor je stappen. Houd vast om het hele plan te openen.") }
-    var image: Image? { Image(systemName: "hand.tap") }
-}
 
 extension EnvironmentValues {
     /// The plan of the chat shows around the iPhone's Dynamic Island instead of as a pill under Ayla's header.
@@ -30,6 +21,16 @@ enum DynamicIslandFrame {
         let top: CGFloat = topInset >= 62 ? 14 : 11
         return CGRect(x: (width - size.width) / 2, y: top, width: size.width, height: size.height)
     }
+
+    /// The closed iPhone Duo: no status bar on top but a column on the right, with the camera at the top of it (measured
+    /// on Daaf's Duo: a capsule of 37 × 63 pt, its centre 6 pt left of the column's middle and 57 pt from the top; the
+    /// Simulator draws a round one elsewhere). `width` is the width beside the column. Nil on every other screen.
+    static func sideFrame(topInset: CGFloat, trailingInset: CGFloat, width: CGFloat) -> CGRect? {
+        guard UIDevice.current.userInterfaceIdiom == .phone, topInset < 20, trailingInset >= 60, width < 500 else { return nil }
+        let size = CGSize(width: 37, height: 63)
+        let center = CGPoint(x: width + trailingInset / 2 - 6, y: 57)
+        return CGRect(x: center.x - size.width / 2, y: center.y - size.height / 2, width: size.width, height: size.height)
+    }
 }
 
 /// The plan of the open chat, grown out of the iPhone's own Dynamic Island, as the system does with a Live Activity
@@ -43,6 +44,8 @@ struct PlanIsland: View {
     /// The hardware island, in the coordinates of the screen.
     let island: CGRect
     let screenWidth: CGFloat
+    /// The camera sits in a column on the right (closed iPhone Duo): the island grows out of it to the left.
+    var isSide = false
     @Binding var isExpanded: Bool
     let onOpenPlan: () -> Void
     let onCompleteStep: () -> Void
@@ -52,11 +55,12 @@ struct PlanIsland: View {
     @Environment(\.paveReduceMotion) private var reduceMotion
     @State private var notice: Notice?
     @State private var stepsHeight: CGFloat = 0
-    private let tip = PlanIslandTip()
 
     /// How far the compact island reaches out on each side of the camera: as a Live Activity of the system, so the
     /// clock and the signal icons stay free.
     static let side: CGFloat = 30
+    /// How far the side island reaches out of the column to the left of the camera, for the ring and how far you are.
+    static let sideReach: CGFloat = 78
     /// iOS keeps every touch in the status bar for itself (it scrolls to the top), and around the camera there is no
     /// screen at all. So an invisible strip just below the island, under the status bar, counts as touching it.
     static let reach: CGFloat = 30
@@ -72,22 +76,35 @@ struct PlanIsland: View {
         reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.5, bounce: 0.28)
     }
 
+    /// Where it grows from: the middle of the top, or the camera in the column on the right.
+    private var anchor: UnitPoint { isSide ? .topTrailing : .top }
+
+    /// From the right edge of the screen to the right side of the camera, for the side island.
+    private var trailingRoom: CGFloat { max(0, screenWidth - island.maxX) }
+
+    /// How far the side island tucks in behind the camera: to its middle. Black all the way under the camera made iOS
+    /// draw a grey shade around it in the column.
+    private var sideTuck: CGFloat { island.width / 2 }
+
     var body: some View {
-        ZStack(alignment: .top) {
+        ZStack(alignment: isSide ? .topTrailing : .top) {
             if isExpanded {
                 card
-                    .padding(.top, island.maxY + 8)
+                    // Under the camera at the top; beside it, out of the column to the left, on the closed Duo.
+                    .padding(.top, isSide ? island.minY : island.maxY + 8)
+                    .padding(.trailing, isSide ? screenWidth - island.minX + 6 : 0)
                     .transition(.asymmetric(
-                        insertion: .scale(scale: 0.4, anchor: .top).combined(with: .opacity),
-                        removal: .scale(scale: 0.6, anchor: .top).combined(with: .opacity)
+                        insertion: .scale(scale: 0.4, anchor: anchor).combined(with: .opacity),
+                        removal: .scale(scale: 0.6, anchor: anchor).combined(with: .opacity)
                     ))
             } else {
                 blackIsland
                     .padding(.top, island.minY)
-                    .transition(.scale(scale: 0.85, anchor: .top).combined(with: .opacity))
+                    .padding(.trailing, isSide ? trailingRoom + island.width - sideTuck - Self.reachSide : 0)
+                    .transition(.scale(scale: 0.85, anchor: anchor).combined(with: .opacity))
             }
         }
-        .frame(maxWidth: .infinity, alignment: .top)
+        .frame(maxWidth: .infinity, alignment: isSide ? .topTrailing : .top)
         .animation(animation, value: isExpanded)
         .animation(animation, value: notice)
         .animation(.easeOut(duration: 0.25), value: plan)
@@ -102,7 +119,12 @@ struct PlanIsland: View {
     // MARK: The island, black as the camera
 
     private var blackIsland: some View {
-        let radius: CGFloat = notice == nil ? island.height / 2 : 34
+        // On the Duo a slim capsule from the top of the camera, as high as the camera is wide, so the two black shapes
+        // run into each other.
+        let height = isSide ? island.width : island.height
+        let radius: CGFloat = notice == nil ? height / 2 : 34
+        let compactWidth = isSide ? sideTuck + Self.sideReach : island.width + 2 * Self.side
+        let noticeWidth = isSide ? min(island.minX + sideTuck - 12, 380) : screenWidth - 24
         return Group {
             if notice == nil {
                 compact
@@ -110,7 +132,7 @@ struct PlanIsland: View {
                 noticeContent
             }
         }
-        .frame(width: notice == nil ? island.width + 2 * Self.side : screenWidth - 24)
+        .frame(width: notice == nil ? compactWidth : noticeWidth)
         .background(Color.black, in: .rect(cornerRadius: radius, style: .continuous))
         // Dark inside, as the system island: PAVE's colours turn light on black.
         .environment(\.colorScheme, .dark)
@@ -123,13 +145,12 @@ struct PlanIsland: View {
             PaveHaptics.tap(.medium)
             onOpenPlan()
         }
-        // Pulled down, it opens.
+        // Pulled down, or out of the column to the left, it opens.
         .simultaneousGesture(
             DragGesture(minimumDistance: 8).onEnded { drag in
-                if drag.translation.height > 12 { toggle() }
+                if drag.translation.height > 12 || isSide && drag.translation.width < -12 { toggle() }
             }
         )
-        .popoverTip(tip, arrowEdge: .top)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityHint(PlanMessages.islandHint)
@@ -141,7 +162,7 @@ struct PlanIsland: View {
 
     private var card: some View {
         expanded
-            .frame(width: min(screenWidth - 16, 560))
+            .frame(width: isSide ? min(island.minX - 14, 560) : min(screenWidth - 16, 560))
             .glassEffect(.regular.tint(Color.panel.opacity(0.97)), in: .rect(cornerRadius: 30, style: .continuous))
             .shadow(color: .black.opacity(0.12), radius: 24, y: 10)
             // Pushed up, it folds again.
@@ -154,7 +175,6 @@ struct PlanIsland: View {
 
     private func toggle() {
         PaveHaptics.tap(.light)
-        tip.invalidate(reason: .actionPerformed)
         withAnimation(animation) {
             notice = nil
             isExpanded.toggle()
@@ -173,6 +193,28 @@ struct PlanIsland: View {
     // MARK: Around the camera
 
     private var compact: some View {
+        Group {
+            if isSide {
+                // Left of the camera, which is the right end of the capsule.
+                HStack(spacing: 8) {
+                    PlanProgressRing(plan: plan, size: 18)
+                    Text(plan.isFinished ? "✓" : PlanMessages.shortProgress(plan))
+                        .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                        .foregroundStyle(Color.paveAccent)
+                        .contentTransition(.numericText())
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    Spacer(minLength: sideTuck + 4)
+                }
+                .padding(.leading, 12)
+                .frame(height: island.width)
+            } else {
+                topCompact
+            }
+        }
+    }
+
+    private var topCompact: some View {
         VStack(spacing: 0) {
             // Beside the camera: how far, as the system shows a Live Activity.
             HStack(spacing: 0) {
@@ -234,8 +276,10 @@ struct PlanIsland: View {
                 .fill(Color.white.opacity(0.3))
                 .frame(width: 36, height: 4)
         }
-        .padding(.horizontal, 18)
-        .padding(.top, island.height + 6)
+        .padding(.leading, 18)
+        // Clear of the camera: below it at the top, left of it in the column.
+        .padding(.trailing, isSide ? sideTuck + 12 : 18)
+        .padding(.top, isSide ? 10 : island.height + 6)
         .padding(.bottom, 10)
     }
 
@@ -282,7 +326,7 @@ struct PlanIsland: View {
                     } else {
                         PlanTimeline(steps: plan.steps, spacing: 12) { step in
                             if step.status == .active {
-                                Button(PlanMessages.markDone, action: onCompleteStep)
+                                Button(action: onCompleteStep) { Text(PlanMessages.markDone) }
                                     .textStyle(.tag)
                                     .foregroundStyle(Color.paveAccent)
                                     .padding(.horizontal, 10)
@@ -351,6 +395,7 @@ struct PlanIslandOverlay: View {
     let chat: AylaChatModel
     let island: CGRect
     let screenWidth: CGFloat
+    var isSide = false
 
     @Environment(PlanModel.self) private var plans: PlanModel?
     @Environment(\.openPlan) private var openPlan
@@ -376,6 +421,7 @@ struct PlanIslandOverlay: View {
                     currentConversationID: chat.conversationID,
                     island: island,
                     screenWidth: screenWidth,
+                    isSide: isSide,
                     isExpanded: $isExpanded,
                     onOpenPlan: {
                         setExpanded(false)

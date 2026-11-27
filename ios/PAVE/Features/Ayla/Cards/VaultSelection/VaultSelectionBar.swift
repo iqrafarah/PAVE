@@ -26,7 +26,10 @@ struct VaultSelectionBar: View {
                 Text("Verder")
                     .textStyle(.bodyMedium)
                     .foregroundStyle(Color.canvas)
-                    .frame(width: 101, height: 35)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 6)
+                    // Figma's 101 × 35 at the standard text size; larger text makes it grow instead of cutting off.
+                    .frame(minWidth: 101, minHeight: 35)
                     .background(Color.paveAccentFill, in: .capsule)
                     .frame(minHeight: 44)
                     .contentShape(.capsule)
@@ -37,7 +40,8 @@ struct VaultSelectionBar: View {
         }
         .padding(.leading, 26)
         .padding(.trailing, 16)
-        .frame(height: 69.3)
+        .padding(.vertical, 4)
+        .frame(minHeight: 69.3)
         .background(Color.paveSurfaceTint, in: .capsule)
     }
 }

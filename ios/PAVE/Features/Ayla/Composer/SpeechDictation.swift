@@ -18,7 +18,14 @@ final class SpeechDictation {
     /// How loud the user is, for the pixel wave in the recording bar.
     let meter = VoiceMeter()
 
-    private let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "nl-NL"))
+    /// The recognizer for the language the app is in now; kept while it listens.
+    private var recognizer: SFSpeechRecognizer? {
+        let identifier = PaveLanguageStore.current.speechIdentifier
+        if let cachedRecognizer, cachedRecognizer.locale.identifier == identifier { return cachedRecognizer }
+        cachedRecognizer = SFSpeechRecognizer(locale: Locale(identifier: identifier))
+        return cachedRecognizer
+    }
+    @ObservationIgnored private var cachedRecognizer: SFSpeechRecognizer?
     private let engine = AVAudioEngine()
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?

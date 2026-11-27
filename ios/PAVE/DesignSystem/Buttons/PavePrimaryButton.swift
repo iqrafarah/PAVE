@@ -14,6 +14,7 @@ struct PavePrimaryButton: View {
                 }
                 Text(isLoading ? loadingTitle ?? title : title)
                     .textStyle(.button)
+                    .paveButtonLabelFit()
             }
         }
         .buttonStyle(PrimaryButtonStyle(isLoading: isLoading))

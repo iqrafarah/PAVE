@@ -150,7 +150,17 @@ final class EmailModel {
 
     // MARK: Pinned
 
-    static let pinnedKey = "emailPinnedThreads"
+    /// Pinned, muted and locked conversations changed on another device came in.
+    func reloadMarks() {
+        let pinned = UserDefaults.standard.stringArray(forKey: Self.pinnedKey) ?? []
+        let muted = UserDefaults.standard.stringArray(forKey: Self.mutedKey) ?? []
+        let locked = UserDefaults.standard.stringArray(forKey: Self.lockedKey) ?? []
+        if pinned != pinnedIDs { pinnedIDs = pinned }
+        if muted != mutedIDs { mutedIDs = muted }
+        if locked != lockedIDs { lockedIDs = locked }
+    }
+
+    static var pinnedKey: String { PaveAccount.key("emailPinnedThreads") }
     /// As in Messages: at most nine conversations at the top.
     static let maxPinned = 9
 
@@ -197,7 +207,7 @@ final class EmailModel {
 
     // MARK: Muted
 
-    static let mutedKey = "emailMutedThreads"
+    static var mutedKey: String { PaveAccount.key("emailMutedThreads") }
 
     /// "Dempen": the conversation stays in the list and counts as unread, but no banner comes for it.
     private(set) var mutedIDs: [String] = UserDefaults.standard.stringArray(forKey: EmailModel.mutedKey) ?? [] {
@@ -221,7 +231,7 @@ final class EmailModel {
 
     // MARK: Locked
 
-    static let lockedKey = "emailLockedThreads"
+    static var lockedKey: String { PaveAccount.key("emailLockedThreads") }
 
     /// "Vergrendelen": the conversation needs your PIN, the same as for locked chats. In the list it shows no names,
     /// subject or text, and search and banners leave it out.

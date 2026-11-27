@@ -18,6 +18,8 @@ struct ChatBubble: View {
     let text: String
     let speaker: Speaker
     var actions: [Action] = []
+    /// Figma's 230 pt at the standard text size, growing with it: at large sizes a line keeps more than three words.
+    @ScaledMetric(relativeTo: .body) private var textWidth: CGFloat = 230
 
     private var isUser: Bool {
         if case .user = speaker { true } else { false }
@@ -54,7 +56,7 @@ struct ChatBubble: View {
             if case .ayla(true) = speaker {
                 PaveMark()
             }
-            MaxWidthLayout(maxWidth: isUser ? 232 : 230) {
+            MaxWidthLayout(maxWidth: textWidth + (isUser ? 2 : 0)) {
                 Text(text)
                     .textStyle(.bubble)
                     .foregroundStyle(isUser ? Color.ink : .paveAccent)

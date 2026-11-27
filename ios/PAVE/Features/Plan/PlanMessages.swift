@@ -1,7 +1,28 @@
+import Foundation
 import PAVECore
 
 /// The words of the plans, the same as in docs/ui-teksten.md.
 enum PlanMessages {
+    static let folded = "Ingeklapt"
+    static let unfolded = "Uitgeklapt"
+    /// Under a step: its deadline and the evidence that shows it, such as "Voor 15 dec. · 1 bewijsstuk".
+    static func stepExtras(_ step: PavePlanStep) -> String? {
+        var parts: [String] = []
+        if let due = step.due.flatMap(VaultDay.init), let date = Calendar.current.date(from: DateComponents(year: due.year, month: due.month, day: due.day)) {
+            parts.append("Voor \(date.formatted(.dateTime.day().month(.abbreviated).locale(PaveLanguageStore.current.locale)))".translated)
+        }
+        let count = step.evidenceIDs.count
+        if count > 0 { parts.append((count == 1 ? "1 bewijsstuk" : "\(count) bewijsstukken").translated) }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    /// A deadline that passed on a step that is not done.
+    static func isOverdue(_ step: PavePlanStep, now: Date = .now) -> Bool {
+        guard step.status != .done, step.status != .skipped, let due = step.due.flatMap(VaultDay.init),
+              let date = Calendar.current.date(from: DateComponents(year: due.year, month: due.month, day: due.day + 1)) else { return false }
+        return date < now
+    }
+
     static let title = "Plan"
     static let emptyTitle = "Je hebt nog geen plan"
     static let emptyMessage = "Maak een plan voor een doel waar je naartoe wilt werken. Ayla helpt je stap voor stap."
@@ -116,6 +137,20 @@ enum PlanMessages {
     }
     static let finished = "Klaar! Je hebt alle stappen afgerond."
     static let stepFinished = "Stap afgerond"
+    static let suggestionTitle = "Klaar met deze stap?"
+    static let notYet = "Nog niet"
+    static let editTitle = "Zo haal je je doel beter"
+    static let editApply = "Pas plan aan"
+    static let editDone = "Plan aangepast"
+    static let editAdd = "Nieuwe stap"
+    static let editRemove = "Kan weg"
+    static let editMove = "Verplaatsen"
+    static let editAtStart = "aan het begin"
+    static func editAfter(_ title: String) -> String { "na \(title)" }
+    static let reviewPlan = "Laat Ayla nakijken"
+    static let reviewPrompt = "Kijk mijn plan na: haal ik zo mijn doel? Stel voor wat erbij moet of weg kan."
+    static func nextStepIs(_ title: String) -> String { "Volgende stap: \(title)" }
+    static func fromPlan(_ name: String) -> String { "Uit je plan \(name)" }
 
     static let conversations = "Gesprekken met Ayla"
     static let noConversations = "Nog geen gesprekken in dit plan."

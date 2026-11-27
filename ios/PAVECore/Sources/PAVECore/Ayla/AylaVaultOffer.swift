@@ -62,11 +62,11 @@ public enum AylaVaultOffer {
         choices: [AylaReply.Choice(id: "yes", label: "Ja"), AylaReply.Choice(id: "no", label: "Nee")]
     )
 
-    // Computed: a Regex is not Sendable, so it cannot be a shared constant.
-    private static var addWords: Regex<Substring> { #/toevoeg|aanvul|bewaar|opsla|\bzet/# }
-    private static var openWords: Regex<Substring> { #/^(?:wat|welke?|hoe|wanneer|waar\w*|wie|waarom|hoeveel|hoelang)\b/#.ignoresCase() }
-    private static var consentAsk: Regex<Substring> { #/\bmag ik\b[^.?!]*\bkluis\b[^.?!]*\bkijken\b/#.ignoresCase() }
-    private static var yesLabel: Regex<(Substring, Substring)> { #/^(ja|jazeker|ja graag|graag|ja,? graag|ja,? toevoegen|toevoegen|yes)\b/#.ignoresCase() }
+    // Made once: a Regex is not Sendable, but these are never changed, so sharing them is safe.
+    nonisolated(unsafe) private static let addWords: Regex<Substring> = #/toevoeg|aanvul|bewaar|opsla|\bzet/#
+    nonisolated(unsafe) private static let openWords: Regex<Substring> = #/^(?:wat|welke?|hoe|wanneer|waar\w*|wie|waarom|hoeveel|hoelang)\b/#.ignoresCase()
+    nonisolated(unsafe) private static let consentAsk: Regex<Substring> = #/\bmag ik\b[^.?!]*\bkluis\b[^.?!]*\bkijken\b/#.ignoresCase()
+    nonisolated(unsafe) private static let yesLabel: Regex<(Substring, Substring)> = #/^(ja|jazeker|ja graag|graag|ja,? graag|ja,? toevoegen|toevoegen|yes)\b/#.ignoresCase()
 
     /// The question under Ayla's answer: her own, or "Wil je iets toevoegen?" when she answers about the vault without it.
     /// `asked` is the user's question this reply answers.
@@ -162,7 +162,7 @@ public enum AylaVaultOffer {
         return starters.contains(cleaned[0])
     }
 
-    private static var noLabel: Regex<(Substring, Substring)> { #/^(nee|nee,? dank je|liever niet|niet nu|no)\b/#.ignoresCase() }
+    nonisolated(unsafe) private static let noLabel: Regex<(Substring, Substring)> = #/^(nee|nee,? dank je|liever niet|niet nu|no)\b/#.ignoresCase()
 
     public static func isNo(_ label: String) -> Bool {
         label.trimmingCharacters(in: .whitespacesAndNewlines).prefixMatch(of: noLabel) != nil
@@ -178,6 +178,15 @@ public enum AylaVaultOffer {
     public static func endsWithYesNoQuestion(_ text: String) -> Bool {
         guard let last = sentences(of: text).last(where: { $0.hasSuffix("?") }) else { return false }
         return !last.contains(openWords) && !last.lowercased().contains(" of ")
+    }
+
+    nonisolated(unsafe) private static let butWords: Regex<Substring> = #/\b(?:maar|niet|nee|wacht|behalve|toch|liever|eerst)\b/#.ignoresCase()
+    nonisolated(unsafe) public static let startsOver: Regex<Substring> = #/\b(?:nieuw\w*|opnieuw|ander\w*|overnieuw)\b/#.ignoresCase()
+
+    /// A Ja to a question PAVE asks itself, also with a few words after it ("Ja, dat had ik net ook al gevraagd"); not a
+    /// Ja with a but ("ja maar niet die").
+    public static func isPlainYes(_ text: String) -> Bool {
+        isYes(text) && text.split(separator: " ").count <= 12 && text.firstMatch(of: butWords) == nil
     }
 
     public static func isYes(_ label: String) -> Bool {

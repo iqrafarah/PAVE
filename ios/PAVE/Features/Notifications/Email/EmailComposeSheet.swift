@@ -7,6 +7,8 @@ import UniformTypeIdentifiers
 /// you write.
 struct EmailComposeSheet: View {
     var forwarding: EmailForwarding?
+    /// Written by Ayla ("schrijf een mail aan de school"): you read it, change it and send it yourself.
+    var draft: EmailDraft?
     /// Gets the new conversation's id, so Meldingen can open it.
     var onSent: (String) -> Void = { _ in }
 
@@ -180,7 +182,14 @@ struct EmailComposeSheet: View {
                         .disabled(!canSend)
                 }
             }
-            .onAppear { field = .to }
+            .onAppear {
+                if let draft, to.isEmpty, subject.isEmpty, text.isEmpty {
+                    to = draft.to
+                    subject = draft.subject
+                    text = draft.text
+                }
+                field = draft == nil || draft?.to.isEmpty == true ? .to : .text
+            }
             .task { await prepareForward() }
             .fileImporter(isPresented: $isChoosingFile, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
                 guard case let .success(urls) = result else { return }
@@ -321,5 +330,22 @@ struct EmailSuggestionRow: View {
             result[range].inlinePresentationIntent = .stronglyEmphasized
         }
         return result
+    }
+}
+
+/// A new e-mail Ayla wrote for you, before you send it.
+struct EmailDraft: Identifiable, Equatable {
+    let id = UUID()
+    var to: String
+    var subject: String
+    var text: String
+
+    /// The same mail in the iPhone's own Mail app, when no mailbox is linked in PAVE.
+    var mailtoURL: URL? {
+        var parts = URLComponents()
+        parts.scheme = "mailto"
+        parts.path = to
+        parts.queryItems = [URLQueryItem(name: "subject", value: subject), URLQueryItem(name: "body", value: text)]
+        return parts.url
     }
 }

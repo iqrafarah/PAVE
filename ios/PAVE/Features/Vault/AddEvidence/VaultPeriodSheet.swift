@@ -54,7 +54,7 @@ struct VaultPeriodSheet: View {
                     }
                 }
             }
-            .environment(\.locale, Locale(identifier: "nl_NL"))
+            .environment(\.locale, PaveLanguageStore.current.locale)
             .scrollContentBackground(.hidden)
             .background(Color.canvas)
             .navigationTitle("Periode")

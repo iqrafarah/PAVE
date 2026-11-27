@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { answer } from '../brain.ts'
 import { parseRequest } from '../contract.ts'
 import { buildSystemPrompt, MODEL_OUTPUT_SCHEMA } from '../prompt.ts'
-import { newPlanProposal, type PlanContext, planChange, planLayer, toPlan } from '../plan.ts'
+import { newPlanProposal, type PlanContext, planChange, planEditProposal, planLayer, toPlan } from '../plan.ts'
 
 const PLAN_ID = '11111111-1111-4111-8111-111111111111'
 const STEP_ID = '22222222-2222-4222-8222-222222222222'
@@ -158,4 +158,45 @@ test('a plan made for a vacancy tells her which one, what is missing, and where 
   assert(layer.includes('(soort: cv of brief schrijven)'))
   assert(layer.includes('(soort: bewijs in de Kluis zetten)'))
   assert.equal(toPlan({ id: 'p2', name: 'Plan', goal: '', plan_steps: [] }).vacancy, undefined)
+})
+
+test('a proposed change to the plan keeps only real changes to steps that are not done yet', () => {
+  const edit = planEditProposal({ changes: [
+    { op: 'add', step: 0, title: 'Een medische keuring aanvragen', kind: 'action', after: 2, why: 'De opleiding vraagt een keuring.' },
+    { op: 'add', step: 0, title: 'je CV bijwerken!', kind: 'document', after: 0, why: 'staat er al' },
+    { op: 'remove', step: 1, title: '', kind: 'general', after: 0, why: 'al gedaan' },
+    { op: 'remove', step: 3, title: '', kind: 'general', after: 0, why: 'Je kluis heeft je certificaat al.' },
+    { op: 'move', step: 3, title: '', kind: 'general', after: 0, why: 'al weggehaald' },
+    { op: 'move', step: 2, title: '', kind: 'general', after: 1, why: 'staat daar al' },
+    { op: 'add', step: 0, title: 'Iets', kind: 'onbekend', after: 99, why: '' },
+  ] }, plan, 'e1')
+  assert.deepEqual(edit, {
+    id: 'e1',
+    planId: 'plan',
+    changes: [
+      { op: 'add', title: 'Een medische keuring aanvragen', kind: 'action', afterStepId: 's2', why: 'De opleiding vraagt een keuring.' },
+      { op: 'remove', stepId: 's3', title: 'Bewijs in je kluis', why: 'Je kluis heeft je certificaat al.' },
+      { op: 'add', title: 'Iets', kind: 'general', afterStepId: 's3', why: '' },
+    ],
+  })
+  assert.equal(planEditProposal({ changes: [{ op: 'remove', step: 1, title: '', kind: 'general', after: 0, why: '' }] }, plan, 'e'), undefined)
+  assert.equal(planEditProposal({ changes: [] }, undefined, 'e'), undefined)
+})
+
+test('the plan card goes to the iPhone in a plan, never to the Watch or right after a no', async () => {
+  const output = say('Ik stel een aanpassing van je plan voor.', { planStep: null, planEdit: { changes: [{ op: 'add', step: 0, title: 'Proefsollicitatie doen', kind: 'conversation', after: 2, why: 'Zo oefen je voor het echte gesprek.' }] } })
+  const phone = await answer({ request: { ...request, text: 'kijk mijn plan na' }, conversationId: 'c', history: [], plan }, { ...model(output), newId: ids() })
+  assert.equal(phone.planEdit?.planId, 'plan')
+  assert.equal(phone.planEdit?.changes[0].afterStepId, 's2')
+  const watch = await answer({ request: { ...request, device: 'watch', text: 'kijk mijn plan na' }, conversationId: 'c', history: [], plan }, { ...model(output), newId: ids() })
+  assert.equal(watch.planEdit, undefined)
+  const proposed = [{ role: 'ayla' as const, text: 'Ik stel een aanpassing van je plan voor. Zal ik het plan zo aanpassen?' }]
+  const longNo = await answer({ request: { ...request, text: 'Nee, laat maar zo' }, conversationId: 'c', history: proposed, plan }, { ...model(output), newId: ids() })
+  assert.equal(longNo.planEdit, undefined)
+  const history = [{ role: 'ayla' as const, text: 'Zal ik een proefsollicitatie aan je plan toevoegen?' }]
+  const no = await answer({ request: { ...request, text: 'nee, nog niet' }, conversationId: 'c', history, plan }, { ...model(output), newId: ids() })
+  assert.equal(no.planEdit, undefined)
+  assert.match(buildSystemPrompt({ device: 'phone', plan }), /planEdit: stel wijzigingen aan het plan voor/)
+  assert.match(buildSystemPrompt({ device: 'watch', plan }), /planEdit is altijd null/)
+  assert.ok(MODEL_OUTPUT_SCHEMA.required.includes('planEdit'))
 })

@@ -1,4 +1,5 @@
 import ActivityKit
+import AppIntents
 import Foundation
 import SwiftUI
 
@@ -29,22 +30,96 @@ nonisolated struct PlanActivityAttributes: ActivityAttributes {
         /// Only when you chose to show them on the Lock Screen.
         var planName: String? = nil
         var stepTitle: String? = nil
+        /// The few words on the Lock Screen in the language of the app; the widget has no translations of its own.
+        var words: Words? = nil
+
+        struct Words: Codable, Hashable {
+            var yourPlan: String
+            var allDone: String
+            /// "Stap %@ van %@"
+            var stepOf: String
+            var done: String
+            var markDone: String
+        }
 
         var progress: Double {
             totalCount == 0 ? 0 : min(1, Double(doneCount) / Double(totalCount))
         }
 
-        var title: String { planName ?? "Je plan" }
+        var title: String { planName ?? words?.yourPlan ?? "Je plan" }
 
         /// The line under the title: the step, or where you are.
         var line: String {
-            if isFinished { return "Alle stappen afgerond" }
+            if isFinished { return words?.allDone ?? "Alle stappen afgerond" }
             if let stepTitle { return stepTitle }
-            let number = "Stap \(stepNumber) van \(totalCount)"
-            return kindTitle.map { "\(number) · \($0)" } ?? number
+            let number = (words?.stepOf ?? "Stap %@ van %@")
+                .replacingOccurrences(of: "%1$@", with: "%@")
+                .replacingOccurrences(of: "%2$@", with: "%@")
+            let parts = number.components(separatedBy: "%@")
+            let filled = parts.count == 3 ? parts[0] + "\(stepNumber)" + parts[1] + "\(totalCount)" + parts[2] : "\(stepNumber)/\(totalCount)"
+            return kindTitle.map { "\(filled) · \($0)" } ?? filled
         }
 
         /// "2/6", next to the camera.
-        var short: String { isFinished ? "Klaar" : "\(doneCount)/\(totalCount)" }
+        var short: String { isFinished ? (words?.done ?? "Klaar") : "\(doneCount)/\(totalCount)" }
+
+        var markDone: String { words?.markDone ?? "Stap klaar" }
     }
 }
+
+/// "Stap klaar" on the Lock Screen: the step you are on is done, without opening PAVE. The app carries it out; when
+/// it is not running, it keeps the plan for when it starts, and the Lock Screen already counts it.
+struct CompletePlanStepIntent: LiveActivityIntent {
+    static let title: LocalizedStringResource = "Stap afronden"
+    static let isDiscoverable = false
+
+    @Parameter(title: "Plan")
+    var planID: String
+
+    init() {}
+
+    init(planID: String) {
+        self.planID = planID
+    }
+
+    func perform() async throws -> some IntentResult {
+        await PlanStepCompletion.complete(planID)
+        return .result()
+    }
+}
+
+/// Where the Lock Screen's "Stap klaar" lands. The app sets `handler` once it has its plans; until then the plan waits
+/// in `pendingKey`, and the activity moves on by one step at once.
+@MainActor
+enum PlanStepCompletion {
+    static let pendingKey = "planStepsCompletedOnLockScreen"
+    static var handler: ((String) -> Void)?
+
+    static func complete(_ planID: String) async {
+        if let handler {
+            handler(planID)
+            return
+        }
+        let defaults = UserDefaults.standard
+        defaults.set((defaults.stringArray(forKey: pendingKey) ?? []) + [planID], forKey: pendingKey)
+        for activity in Activity<PlanActivityAttributes>.activities where activity.attributes.planID == planID {
+            var state = activity.content.state
+            guard !state.isFinished else { continue }
+            state.doneCount = min(state.totalCount, state.doneCount + 1)
+            state.isFinished = state.doneCount == state.totalCount
+            state.stepNumber = min(state.totalCount, state.stepNumber + 1)
+            state.kindTitle = nil
+            state.stepTitle = nil
+            await activity.update(ActivityContent(state: state, staleDate: nil))
+        }
+    }
+
+    /// The steps finished on the Lock Screen while PAVE was not running.
+    static func takePending() -> [String] {
+        let defaults = UserDefaults.standard
+        let pending = defaults.stringArray(forKey: pendingKey) ?? []
+        defaults.removeObject(forKey: pendingKey)
+        return pending
+    }
+}
+

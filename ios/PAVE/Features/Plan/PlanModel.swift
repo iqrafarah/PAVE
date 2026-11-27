@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import Observation
 import PAVECore
 
@@ -27,6 +28,91 @@ final class PlanModel {
     init(service: (any PlanService)?, liveActivity: PlanActivityController? = nil) {
         self.service = service
         self.liveActivity = liveActivity
+        // "Stap klaar" on the Lock Screen while PAVE runs.
+        if liveActivity != nil {
+            PlanStepCompletion.handler = { [weak self] planID in self?.completeCurrentStep(in: planID) }
+            PlanProgress.handler = { [weak self] event in self?.notice(event) }
+        }
+    }
+
+    // MARK: Done with this step?
+
+    /// What you just did fits the step a plan is on: "Klaar met deze stap?". Nothing is marked done without your tap.
+    struct StepSuggestion: Equatable {
+        let planID: String
+        let stepID: String
+        let planName: String
+        let stepTitle: String
+        let evidenceID: String?
+    }
+
+    private(set) var suggestion: StepSuggestion?
+
+    /// The suggestion while its step is still the one the plan is on.
+    func suggestion(for planID: String) -> StepSuggestion? {
+        guard let suggestion, suggestion.planID == planID, plan(id: planID)?.currentStep?.id == suggestion.stepID else { return nil }
+        return suggestion
+    }
+
+    /// The plan for the vacancy it was about first, then the plan followed on the Lock Screen, then the others.
+    func notice(_ event: PlanProgressEvent) {
+        let forVacancy = event.vacancyID.map { id in activePlans.filter { PlanVacancy.vacancyID(of: $0) == id } } ?? []
+        let followed = followedPlanID.flatMap { plan(id: $0) }.map { [$0] } ?? []
+        for plan in forVacancy + followed + activePlans {
+            guard let step = plan.stepFinished(by: event) else { continue }
+            suggestion = StepSuggestion(planID: plan.id, stepID: step.id, planName: plan.name, stepTitle: step.title, evidenceID: event.itemID)
+            return
+        }
+    }
+
+    /// The step is done, its evidence kept with it; says which step is next.
+    func acceptSuggestion() {
+        guard let suggestion else { return }
+        self.suggestion = nil
+        Task {
+            guard await change(suggestion.planID, { $0.finishStep(id: suggestion.stepID, evidenceID: suggestion.evidenceID) }) else { return }
+            PaveHaptics.success()
+            let next = plan(id: suggestion.planID)?.currentStep?.title
+            AccessibilityNotification.Announcement(PaveTranslator.translate(next.map { PlanMessages.nextStepIs($0) } ?? PlanMessages.finished)).post()
+        }
+    }
+
+    func dismissSuggestion() {
+        suggestion = nil
+    }
+
+    // MARK: Ayla's proposal for the plan
+
+    enum EditDecision: String { case applied, declined }
+
+    private static var editDecisionsKey: String { PaveAccount.key("aylaPlanEditDecisions") }
+    private(set) var editDecisions: [String: EditDecision] = (UserDefaults.standard.dictionary(forKey: PlanModel.editDecisionsKey) as? [String: String] ?? [:])
+        .compactMapValues(EditDecision.init(rawValue:))
+
+    /// The changes you kept from Ayla's proposal, in her order; the card then says the plan was changed.
+    func apply(_ edit: AylaReply.PlanEdit, keeping changes: [AylaReply.PlanEdit.Change]) {
+        decide(edit.id, .applied)
+        Task {
+            guard await change(edit.planId, { $0.apply(changes) }) else {
+                decide(edit.id, nil)
+                return
+            }
+            PaveHaptics.success()
+        }
+    }
+
+    /// Choices made on another device came in.
+    func reloadEditDecisions() {
+        editDecisions = (UserDefaults.standard.dictionary(forKey: Self.editDecisionsKey) as? [String: String] ?? [:]).compactMapValues(EditDecision.init(rawValue:))
+    }
+
+    func decline(_ edit: AylaReply.PlanEdit) {
+        decide(edit.id, .declined)
+    }
+
+    private func decide(_ id: String, _ decision: EditDecision?) {
+        editDecisions[id] = decision
+        UserDefaults.standard.set(editDecisions.mapValues(\.rawValue), forKey: Self.editDecisionsKey)
     }
 
     // MARK: Lock Screen
@@ -87,7 +173,15 @@ final class PlanModel {
         do {
             plans = try await service.plans()
             isAvailable = true
-            if !hasLoaded { liveActivity?.sync(plans) }
+            if !hasLoaded {
+                // Steps finished on the Lock Screen while PAVE was closed.
+                if liveActivity != nil {
+                    for planID in PlanStepCompletion.takePending() where plans.contains(where: { $0.id == planID }) {
+                        completeCurrentStep(in: planID)
+                    }
+                }
+                liveActivity?.sync(plans, force: true)
+            }
         } catch PlanServiceError.notSetUp {
             isAvailable = false
         } catch {
@@ -122,6 +216,14 @@ final class PlanModel {
         guard let made = action.newPlan, !madeFromAyla.contains(action.id),
               !plans.contains(where: { $0.metadata[Self.aylaProposalKey] == action.id }) else { return nil }
         guard let name = PavePlan.cleanName(made.name) else { return nil }
+        // A plan with this name that is still going is the plan she means: never a second one beside it. The chat
+        // joins it when it has no plan yet.
+        if let same = plans.first(where: { !$0.isFinished && Self.sameName($0.name, name) }) {
+            if let conversationID, plan(containing: conversationID) == nil {
+                attach(conversationID: conversationID, title: title, to: same.id)
+            }
+            return nil
+        }
         madeFromAyla.insert(action.id)
         defer { madeFromAyla.remove(action.id) }
         var template = made.template
@@ -137,6 +239,11 @@ final class PlanModel {
         }
         if let old, let conversationID { detach(conversationID: conversationID, from: old.id) }
         return plan
+    }
+
+    private static func sameName(_ a: String, _ b: String) -> Bool {
+        func key(_ text: String) -> String { text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil).filter { $0.isLetter || $0.isNumber } }
+        return key(a) == key(b)
     }
 
     private static let aylaProposalKey = "aylaProposal"
@@ -221,6 +328,14 @@ final class PlanModel {
 
     func updateStep(_ step: PavePlanStep, in planID: String) {
         Task { await change(planID) { $0.updateStep(step) } }
+    }
+
+    func addStepAfterCurrent(_ step: PavePlanStep, to planID: String) {
+        Task { await change(planID) { $0.addStepAfterCurrent(step) } }
+    }
+
+    func moveStep(_ stepID: String, before otherID: String?, in planID: String) {
+        Task { await change(planID) { $0.moveStep(id: stepID, before: otherID) } }
     }
 
     func removeStep(_ stepID: String, from planID: String) {

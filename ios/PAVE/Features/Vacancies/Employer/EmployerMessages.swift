@@ -17,6 +17,6 @@ enum EmployerMessages {
     static let sources = "Bronnen"
     static let opensOutside = "Opent de website van het bedrijf, buiten PAVE"
     static func foundBy(_ date: Date) -> String {
-        "Opgezocht door Ayla op \(date.formatted(.dateTime.day().month(.wide).locale(Locale(identifier: "nl_NL")))). Controleer het bij de bronnen."
+        "Opgezocht door Ayla op \(date.formatted(.dateTime.day().month(.wide).locale(PaveLanguageStore.current.locale))). Controleer het bij de bronnen."
     }
 }

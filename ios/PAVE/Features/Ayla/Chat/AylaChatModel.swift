@@ -264,6 +264,11 @@ final class AylaChatModel {
     }
 
     /// The user's question that an answer is about.
+    /// Whether one of your last few messages says this, such as wanting to start over with a new plan.
+    func asked(matching words: Regex<Substring>) -> Bool {
+        entries.reversed().filter { $0.role == .user }.prefix(3).contains { $0.text.firstMatch(of: words) != nil }
+    }
+
     private func askedText(before entry: Entry) -> String {
         guard let index = entries.firstIndex(where: { $0.id == entry.id }), index > 0, entries[index - 1].role == .user else { return "" }
         return entries[index - 1].text
@@ -409,6 +414,9 @@ final class AylaChatModel {
     /// The answer while it is written. The words grow in a message of their own, which becomes the real answer once
     /// it is complete.
     private func stream(_ turn: Turn) async {
+        // Leaving PAVE while she answers: iOS gives some time, enough for most answers and searches to finish.
+        let time = BackgroundTime()
+        defer { time.end() }
         if let removal {
             self.removal = nil
             guard await removal.value else {
@@ -582,6 +590,13 @@ final class AylaChatModel {
     /// The actions of her newest answer, for the screen to carry out. What needs your Ja first is not in here.
     private(set) var actionRequest: ActionRequest?
     private var confirmedActionReplies: Set<String> = []
+
+    /// The actions to carry out now, handed over once: coming back to the chat later never runs them again (it opened
+    /// a plan over and over when "Verder met Ayla" brought you back to the chat that opened it).
+    func takeActionRequest() -> ActionRequest? {
+        defer { actionRequest = nil }
+        return actionRequest
+    }
 
     private func requestActions(of reply: AylaReply) {
         guard let actions = reply.actions, !actions.isEmpty, !actions.contains(where: \.needsConfirmation) else { return }
@@ -907,6 +922,15 @@ final class AylaChatModel {
     private func savePendingFiles() {
         guard let conversationID else { return }
         pendingFiles.save(sentUploads, for: conversationID)
+    }
+
+    /// Back in PAVE after her answer broke off in the background: what the server kept takes the place of the error.
+    func reloadIfInterrupted() async {
+        guard case .failed = phase, !isAnswering, let id = conversationID, entries.last?.role == .user, let service else { return }
+        guard let stored = try? await service.messages(in: id), stored.last?.role == .ayla else { return }
+        let conversation = currentConversation ?? AylaConversation(id: id, title: "", updatedAt: .now)
+        phase = .idle
+        await open(conversation)
     }
 
     func open(_ conversation: AylaConversation) async {
@@ -1487,5 +1511,23 @@ final class AylaChatModel {
         case .conversationNotFound: AylaMessages.conversationGone
         case .unavailable, .notSetUp: AylaMessages.unavailable
         }
+    }
+}
+
+/// A little time from iOS after you leave PAVE, so an answer that is still coming in can finish.
+@MainActor
+private final class BackgroundTime {
+    private var id = UIBackgroundTaskIdentifier.invalid
+
+    init() {
+        id = UIApplication.shared.beginBackgroundTask(withName: "Ayla antwoordt") { [weak self] in
+            MainActor.assumeIsolated { self?.end() }
+        }
+    }
+
+    func end() {
+        guard id != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(id)
+        id = .invalid
     }
 }

@@ -189,6 +189,8 @@ public struct AylaReply: Codable, Equatable, Sendable {
     public var accessRequest: AccessRequest?
     public var proposedAction: ProposedAction?
     public var blocks: [AylaBlock]
+    /// Changes to the conversation's plan Ayla proposes so it reaches its goal; nothing changes before the user agrees.
+    public var planEdit: PlanEdit?
     public var navigation: Navigation?
     /// What Ayla does in the app with this answer, in order.
     public var actions: [AylaAppAction]?
@@ -239,6 +241,40 @@ public struct AylaReply: Codable, Equatable, Sendable {
         }
     }
 
+    public struct PlanEdit: Codable, Equatable, Hashable, Sendable {
+        public var id: String
+        public var planId: String
+        public var changes: [Change]
+
+        public init(id: String, planId: String, changes: [Change]) {
+            self.id = id
+            self.planId = planId
+            self.changes = changes
+        }
+
+        public struct Change: Codable, Equatable, Hashable, Sendable {
+            public enum Operation: String, Codable, Sendable { case add, remove, move }
+            public var op: Operation
+            /// The step removed or moved.
+            public var stepId: String?
+            /// A new step's title, or the title of the step removed or moved.
+            public var title: String
+            public var kind: String?
+            /// The step it comes after; nil: at the start.
+            public var afterStepId: String?
+            public var why: String
+
+            public init(op: Operation, stepId: String? = nil, title: String, kind: String? = nil, afterStepId: String? = nil, why: String = "") {
+                self.op = op
+                self.stepId = stepId
+                self.title = title
+                self.kind = kind
+                self.afterStepId = afterStepId
+                self.why = why
+            }
+        }
+    }
+
     /// Everything Ayla suggests remembering or taking away in this reply.
     public var suggestedMemories: [MemorySuggestion] {
         (memories ?? memory.map { [$0] } ?? []).filter { !$0.text.isEmpty || $0.replaces != nil }
@@ -252,6 +288,7 @@ public struct AylaReply: Codable, Equatable, Sendable {
         accessRequest: AccessRequest? = nil,
         proposedAction: ProposedAction? = nil,
         blocks: [AylaBlock] = [],
+        planEdit: PlanEdit? = nil,
         navigation: Navigation? = nil,
         actions: [AylaAppAction]? = nil,
         continues: Bool? = nil,
@@ -268,6 +305,7 @@ public struct AylaReply: Codable, Equatable, Sendable {
         self.accessRequest = accessRequest
         self.proposedAction = proposedAction
         self.blocks = blocks
+        self.planEdit = planEdit
         self.navigation = navigation
         self.actions = actions
         self.continues = continues

@@ -8,7 +8,7 @@
 import { readFileSync } from 'node:fs'
 import { answer, type PastMessage, toPastMessage } from '../brain.ts'
 import type { AylaReply, AylaRequest } from '../contract.ts'
-import { openRouterCompletion } from '../openrouter.ts'
+import { HEDGE_MS, MODELS, openRouterCompletion } from '../openrouter.ts'
 import { MODEL_OUTPUT_SCHEMA } from '../prompt.ts'
 import type { AllowedVault } from '../vault.ts'
 import type { FoundVacancy } from '../vacancies.ts'
@@ -42,7 +42,7 @@ const jobs: FoundVacancy[] = [
 type Turn = Partial<AylaRequest> & { text: string; consent?: boolean }
 interface Search { what: string; where: string }
 interface Check { what: string; ok: (reply: AylaReply, all: AylaReply[], searches: Search[]) => boolean }
-interface Scenario { name: string; turns: Turn[]; checks: Check[]; history?: PastMessage[]; noVault?: boolean; notes?: string[] }
+interface Scenario { name: string; turns: Turn[]; checks: Check[]; history?: PastMessage[]; noVault?: boolean; notes?: string[]; vault?: AllowedVault; plan?: typeof scrumPlan }
 
 const has = (reply: AylaReply, re: RegExp) => re.test(reply.text + ' ' + (reply.question?.text ?? ''))
 const vacancies = (reply: AylaReply) => reply.blocks.some((b) => b.type === 'vacancies' && b.items.length > 0)
@@ -71,6 +71,23 @@ const noSearch: Check = { what: 'zoekt niet opnieuw', ok: (r, _a, s) => !vacanci
 const noVaultAsk: Check = { what: 'vraagt niet om de kluis', ok: (r) => !r.accessRequest }
 const noList: Check = { what: 'geen lijstje (gesproken)', ok: (r) => !/^\s*(\d+[.)]|[-•])\s/m.test(r.text) }
 const noMadeUpTerms: Check = { what: 'verzint geen salaris of uren', ok: (r) => !has(r, /€|euro|\d+\s*uur|per maand|bruto/i) }
+// Made-up web results, so the evals pay for the model only and always see the same pages.
+const fakeLookUp = async (question: string) => ({
+  material: /psm|scrum/i.test(question) ? 'Het PSM I-examen van Scrum.org kost 200 dollar en is online te maken [1]. Je hebt 60 minuten voor 80 vragen [1].' : 'De pagina\'s zeggen hier niets over.',
+  sources: [{ title: 'Scrum.org', url: 'https://www.scrum.org/psm' }],
+})
+const fakeEducations = async (_what: string) => [
+  { id: 'e1', name: 'Aviation', school: 'Hogeschool van Amsterdam', level: 'hbo' as const, city: 'Amsterdam', duration: '4 jaar', url: 'https://example.nl/aviation', summary: 'Een hbo-opleiding over de luchtvaart.' },
+]
+const PLAN = '11111111-1111-4111-8111-111111111111'
+const scrumPlan = { id: PLAN, name: 'Scrum halen', goal: 'Mijn PSM I-certificaat halen voor de baan bij Studio Noord', steps: [
+  { id: 'p1', title: 'Cursus kiezen', summary: '', kind: 'research', status: 'active' as 'active' | 'done' | 'upcoming' | 'skipped' },
+  { id: 'p2', title: 'Cursus Engels B2', summary: 'Het examen is in het Engels', kind: 'action', status: 'upcoming' as 'active' | 'done' | 'upcoming' | 'skipped' },
+  { id: 'p3', title: 'Examen doen', summary: '', kind: 'milestone', status: 'upcoming' as 'active' | 'done' | 'upcoming' | 'skipped' },
+] }
+const englishVault: AllowedVault = { status: 'on', items: [...vault.items, { id: 'i4', kind: 'certificates', category: 'Certificaat', title: 'Cambridge English B2 First', organisation: 'Cambridge', period: '2024', status: 'geverifieerd', skills: ['Engels'], files: [] }] }
+const proposes = (r: AylaReply, op?: string) => (r.planEdit?.changes ?? []).some((c) => !op || c.op === op)
+const evalPlan = { id: '11111111-1111-4111-8111-111111111111', name: 'Piloot worden', goal: 'Piloot worden', steps: [{ id: 's1', title: 'Onderzoek opleidingen voor piloot', summary: '', kind: 'research', status: 'active' as const }] }
 const steps = (r: AylaReply) => (r.text.match(/(^|\s)\d[.)]\s/g) ?? []).length
 
 const scenarios: Scenario[] = [
@@ -126,7 +143,7 @@ const scenarios: Scenario[] = [
   { name: 'privacy: eerlijk en zonder beloftes', turns: [{ text: 'Wat gebeurt er met mijn gegevens? Blijft alles in Europa?' }], checks: [clean, short(700), { what: 'belooft Europa niet', ok: (r) => !has(r, /blij(ft|ven) (alles |altijd )?in europa|ja,? (alles|je gegevens)/i) }, { what: 'legt uit wat ze ziet', ok: (r) => has(r, /kluis|toestemming|gesprek/i) }] },
   { name: 'nee op een gewone vraag is een antwoord', history: [{ role: 'user', text: 'Ik wil solliciteren als developer' }, { role: 'ayla', text: 'Leuk! Heb je al een cv?' }], turns: [{ text: 'Nee' }], checks: [clean, { what: 'gaat verder met het cv', ok: (r) => has(r, /cv|opzet/i) || !!r.accessRequest }, { what: 'vraagt niet opnieuw of er een cv is', ok: (r) => !has(r, /heb je al een cv/i) }] },
   { name: 'één bewijs open: alleen dat', turns: [{ text: 'Wat kan ik hiermee?', context: { screen: 'vaultItem', itemId: 'i2' } }], checks: [clean, { what: 'heeft het over de stage', ok: (r) => has(r, /stage|livewall/i) }, { what: 'noemt de rest van de kluis niet', ok: (r) => !has(r, /propedeuse|swiftui/i) }] },
-  { name: 'cursus zonder namen of prijzen', history: shown, turns: [{ text: 'Hoe haal ik dat Scrum-certificaat?' }], checks: [clean, { what: 'noemt geen prijs', ok: (r) => !has(r, /€|euro/i) }, { what: 'zet geen cursus in de kluis', ok: (r) => !r.proposedAction && r.navigation?.screen !== 'addEvidence' }] },
+  { name: 'cursus zonder namen of prijzen', history: shown, turns: [{ text: 'Hoe haal ik dat Scrum-certificaat?' }], checks: [clean, { what: 'noemt geen prijs zonder bron', ok: (r) => !has(r, /€|euro|\$|dollar/i) || r.blocks.some((b) => b.type === 'sources') }, { what: 'zet geen cursus in de kluis', ok: (r) => !r.proposedAction && r.navigation?.screen !== 'addEvidence' }] },
   { name: 'stop', history: allowed, turns: [{ text: 'Stop maar' }], checks: [clean, short(200), { what: 'doet niets', ok: (r) => !r.actions?.length && !vacancies(r) }] },
   // Ronde 2 (2026-11-23): onverwachte vragen, meer taken tegelijk, grote klussen met een plan, en doorvragen op vacatures.
   { name: 'r2 wat is PAVE', turns: [{ text: 'Wat is PAVE eigenlijk?' }], checks: [clean, short(700), { what: 'legt het uit', ok: (r) => has(r, /kluis|ontwikkel|bewijs|bijhoud|overgang|gegevens/i) }, { what: 'vraagt niet om de kluis', ok: (r) => !r.accessRequest }] },
@@ -182,6 +199,33 @@ const scenarios: Scenario[] = [
   { name: 'r3 stem: die eerste, wat mis ik', history: shown, turns: [{ text: 'die eerste, wat mis ik daarvoor', input: 'voice' }], checks: [clean, short(500), noSearch, { what: 'noemt Scrum', ok: (r) => has(r, /scrum/i) }] },
   { name: 'r3 stem: qua reistijd', history: shown, turns: [{ text: 'en qua reistijd?', input: 'voice' }], notes: ['Je woont in Tilburg.'], checks: [clean, short(500), noSearch, { what: 'over de plaatsen', ok: (r) => has(r, /eindhoven|den bosch|tilburg|reistijd|reis/i) }, { what: 'verzint geen reistijden', ok: (r) => !has(r, /\d+\s*(min|minuten|km|kilometer|kwartier)|half uur|uur rijden/i) }] },
   { name: 'r3 stem: deze met de vorige', history: shown, turns: [{ text: 'vergelijk deze met de vorige', input: 'voice', context: onCard(), app: { seeing: 'het gesprek met de bol, met vacature 2 van 3 op de kaart eronder' } }], checks: [clean, short(650), noSearch, { what: 'noemt beide', ok: (r) => has(r, /appwerk|ios/i) && has(r, /studio noord|frontend/i) }] },
+  // Ronde 4 (2026-11-26): wat ze sinds vandaag kan, en dat ze niets belooft wat ze niet kan.
+  { name: 'r4 agenda: open dag', turns: [{ text: 'Zet de open dag van Fontys op 3 december om 10 uur in mijn agenda' }], checks: [clean, { what: 'zet het in de agenda op 3 december 10:00', ok: (r) => (r.actions ?? []).some((a) => a.do === 'addToCalendar' && /-12-03T10:00/.test(a.value ?? '') && /open dag|fontys/i.test(a.target ?? '')) }, { what: 'zegt niet dat het al bewaard is', ok: (r) => !has(r, /heb .* (bewaard|opgeslagen|gezet)/i) }] },
+  { name: 'r4 agenda: elke vrijdag', turns: [{ text: 'Herinner me elke vrijdag om vijf uur aan mijn plan' }], checks: [clean, { what: 'herhalend, vrijdag 17:00', ok: (r) => (r.actions ?? []).some((a) => a.do === 'addToCalendar' && /T17:00 weekly$/.test(a.value ?? '') && new Date(`${(a.value ?? '').slice(0, 10)}T12:00:00Z`).getUTCDay() === 5) }] },
+  { name: 'r4 bewijs aanpassen, geen tweede', history: allowed, turns: [{ text: 'Mijn eindstage is op 30 juni 2026 afgelopen, pas dat aan' }], checks: [clean, { what: 'past de eindstage aan', ok: (r) => (r.actions ?? []).some((a) => a.do === 'editEvidence' && /eindstage/i.test(a.target ?? '') && /2026-06-30/.test(a.value ?? '')) }, { what: 'maakt geen nieuw bewijs', ok: (r) => !r.proposedAction }] },
+  { name: 'r4 bewijs aan een stap', history: allowed, turns: [{ text: 'Koppel mijn propedeuse aan de stap Cursus kiezen', app: myPlans }], checks: [clean, { what: 'koppelt', ok: (r) => (r.actions ?? []).some((a) => a.do === 'linkEvidenceToStep' && /cursus kiezen/i.test(a.target ?? '') && /propedeuse/i.test(a.value ?? '')) }] },
+  { name: 'r4 deadline voor een stap', turns: [{ text: 'De stap Cursus kiezen moet af zijn op 15 december', app: myPlans }], checks: [clean, { what: 'zet de deadline', ok: (r) => (r.actions ?? []).some((a) => a.do === 'setStepDue' && /cursus kiezen/i.test(a.target ?? '') && /-12-15$/.test(a.value ?? '')) }] },
+  { name: 'r4 stap verplaatsen', turns: [{ text: 'Zet de stap Cursus kiezen als laatste in mijn plan Scrum halen', app: myPlans }], checks: [clean, { what: 'verplaatst naar achteren', ok: (r) => (r.actions ?? []).some((a) => a.do === 'moveStep' && /cursus kiezen/i.test(a.target ?? '') && a.value === 'last') }] },
+  { name: 'r4 opzoeken met bronnen', turns: [{ text: 'Wat kost het PSM I-examen?' }], checks: [clean, { what: 'zoekt het op', ok: (r) => r.blocks.some((b) => b.type === 'sources') }, { what: 'noemt het bedrag uit de bron', ok: (r) => has(r, /200/) }] },
+  { name: 'r4 opleidingen zoeken', turns: [{ text: 'Welke opleidingen zijn er om piloot te worden?' }], checks: [clean, { what: 'toont opleidingen', ok: (r) => r.blocks.some((b) => b.type === 'educations') }, { what: 'biedt niet alleen aan', ok: (r) => !has(r, /wil je dat ik .*(zoek|opzoek)/i) }] },
+  // Ronde 5 (2026-11-26): Ayla als coach bij een plan: nakijken, stappen voorstellen en weghalen, doorgaan na een stap.
+  { name: 'r5 plan nakijken', plan: scrumPlan, vault: englishVault, history: allowed, turns: [{ text: 'Kijk mijn plan na: haal ik zo mijn doel? Stel voor wat erbij moet of weg kan.', planId: PLAN }], checks: [clean, { what: 'stelt een aanpassing voor met de kaart', ok: (r) => proposes(r) }, { what: 'haalt de cursus Engels weg (B2 staat in de kluis)', ok: (r) => (r.planEdit?.changes ?? []).some((c) => c.op === 'remove' && c.stepId === 'p2') }, { what: 'geen nieuw plan', ok: (r) => r.proposedAction?.kind !== 'createPlan' }] },
+  { name: 'r5 plan nakijken: oefenen ontbreekt', plan: scrumPlan, history: allowed, turns: [{ text: 'Mis ik nog iets in mijn plan om het examen te halen?', planId: PLAN }], checks: [clean, { what: 'stelt een nieuwe stap voor', ok: (r) => proposes(r, 'add') }, { what: 'herhaalt geen stap die er al is', ok: (r) => !(r.planEdit?.changes ?? []).some((c) => c.op === 'add' && /^(cursus kiezen|examen doen)$/i.test(c.title)) }] },
+  { name: 'r5 stap klaar en door', plan: scrumPlan, history: allowed, turns: [{ text: 'Ik heb de cursus gekozen: de PSM I-training van Scrum.org.', planId: PLAN }], checks: [clean, { what: 'rondt de stap af', ok: (r) => r.proposedAction?.kind === 'updatePlan' && r.proposedAction.planStep?.status === 'done' }, { what: 'gaat door met de volgende stap', ok: (r) => has(r, /engels|examen|volgende/i) }] },
+  { name: 'r5 nee op voorstel', plan: scrumPlan, history: [...allowed, { role: 'user', text: 'Kijk mijn plan na' }, { role: 'ayla', text: 'Ik stel voor om een stap Proefexamen doen toe te voegen. Zal ik het plan zo aanpassen?' }], turns: [{ text: 'Nee, laat maar zo', planId: PLAN }], checks: [clean, { what: 'stelt het niet opnieuw voor', ok: (r) => !proposes(r) }] },
+  { name: 'r5 opzoeken in plan', plan: scrumPlan, history: allowed, turns: [{ text: 'Wat kost het PSM I-examen en hoeveel vragen zijn het?', planId: PLAN }], checks: [clean, { what: 'noemt de prijs uit de bron', ok: (r) => has(r, /200/) }] },
+  { name: 'r5 verder met plan blijft in de chat', turns: [{ text: 'Kunnen we weer verder gaan met mijn plan Scrum halen?', app: myPlans }], checks: [clean, { what: 'workOnPlan, opent het plan niet', ok: (r) => does(r, 'workOnPlan') && !does(r, 'openPlan') }] },
+  { name: 'r5 Watch: geen kaart', plan: scrumPlan, history: allowed, turns: [{ text: 'Kijk mijn plan na', planId: PLAN, device: 'watch' }], checks: [{ what: 'geen planEdit op de Watch', ok: (r) => !r.planEdit }] },
+  // Ronde 6 (2026-11-26): een heel plan weg en opnieuw beginnen, zonder dubbele vraag.
+  { name: 'r6 plan weg en nieuw', turns: [{ text: 'Kunnen we mijn plan van piloot verwijderen en een nieuwe starten?', app: { plans: ['Piloot worden (0 van 7 stappen, nu: Opleidingen vergelijken)'], projects: [] } }], checks: [{ what: 'deletePlan voor Piloot worden, met Ja/Nee', ok: (r) => (r.actions ?? []).some((a) => a.do === 'deletePlan' && /piloot/i.test(a.target ?? '') && a.confirm) && !!r.question }, { what: 'niet de vraag nieuw plan of openen', ok: (r) => !has(r, /openen|bestaande/i) }, { what: 'geen dubbele vraag', ok: (r) => (r.text.match(/\?/g) ?? []).length <= 1 }] },
+  { name: 'r6 plan weg met nieuw doel', turns: [{ text: 'Verwijder mijn plan piloot worden, ik wil een plan om leraar informatica te worden', app: { plans: ['Piloot worden (0 van 7 stappen, nu: Opleidingen vergelijken)'], projects: [] } }], checks: [{ what: 'deletePlan voor Piloot worden', ok: (r) => (r.actions ?? []).some((a) => a.do === 'deletePlan' && /piloot/i.test(a.target ?? '')) }, { what: 'verwijdert geen stap', ok: (r) => !does(r, 'removePlanStep') }] },
+  { name: 'r4 plan: zoekt zelf', turns: [{ text: 'Welke opleiding past bij deze stap?', planId: '11111111-1111-4111-8111-111111111111' }], checks: [clean, { what: 'zoekt opleidingen', ok: (r) => r.blocks.some((b) => b.type === 'educations') }] },
+  { name: 'r4 sollicitatie verstuurd', turns: [{ text: 'Ik heb mijn sollicitatie bij Appwerk vandaag verstuurd', app: { applications: ['iOS developer bij Appwerk, concept', 'Junior frontend developer bij Studio Noord, sent'] } }], checks: [clean, { what: 'zet de status op verstuurd', ok: (r) => (r.actions ?? []).some((a) => a.do === 'setApplicationStatus' && /appwerk/i.test(a.target ?? '') && a.value === 'sent') }, { what: 'zegt niet dat PAVE iets stuurde', ok: (r) => !has(r, /heb (ik )?.*(verstuurd|gestuurd) naar/i) }] },
+  { name: 'r4 selectie', history: allowed, turns: [{ text: 'Maak een selectie voor IT-sollicitaties met mijn propedeuse en mijn eindstage' }], checks: [clean, { what: 'maakt de selectie', ok: (r) => (r.actions ?? []).some((a) => a.do === 'makeSelection' && /propedeuse/i.test(a.target ?? '') && /eindstage/i.test(a.target ?? '')) }, { what: 'deelt niets', ok: (r) => !does(r, 'shareWith') }] },
+  { name: 'r4 foto bij bewijs vraagt eerst', history: [...allowed, { role: 'user', text: 'Hier is mijn certificaat (bijlagen: certificaat.jpg)' }, { role: 'ayla', text: 'Ik zie je certificaat. Wat wil je ermee doen?' }], turns: [{ text: 'Zet deze foto bij mijn eindstage' }], checks: [{ what: 'vraagt Ja of Nee', ok: (r) => !!r.question && (r.actions ?? []).some((a) => a.do === 'attachToEvidence' && /eindstage/i.test(a.target ?? '') && a.confirm) }, { what: 'maakt geen nieuw bewijs', ok: (r) => !r.proposedAction }] },
+  { name: 'r4 taal', turns: [{ text: 'Zet de app in het Engels' }], checks: [clean, { what: 'zet Engels', ok: (r) => (r.actions ?? []).some((a) => a.do === 'setLanguage' && a.value === 'en') }] },
+  { name: 'r4 verificatie loopt al', history: allowed, vault: { status: 'on', items: [{ id: 'i2', kind: 'internships', category: 'Stage', title: 'Eindstage', organisation: 'LiveWall', place: 'Tilburg', period: 'feb 2025 tot nu', status: 'niet geverifieerd, verificatie aangevraagd bij LiveWall, wacht op antwoord', skills: ['React'], files: [] }] }, turns: [{ text: 'Moet ik mijn eindstage nog laten verifiëren?' }], checks: [clean, { what: 'zegt dat het loopt', ok: (r) => has(r, /aangevraagd|loopt|wacht/i) }, { what: 'vraagt het niet opnieuw aan', ok: (r) => !does(r, 'requestVerification') }] },
+  { name: 'r4 horloge: niet beloven wat niet kan', turns: [{ text: 'Mail de school of ze een open dag hebben', device: 'watch', input: 'voice' }], checks: [short(260), { what: 'geen mail-actie op het horloge', ok: (r) => !does(r, 'writeMail') }, { what: 'zegt dat het op de iPhone kan', ok: (r) => has(r, /iphone/i) }] },
   { name: 'r2 onthouden en meteen gebruiken', turns: [{ text: 'Ik woon in Tilburg en zoek werk als UX designer' }], checks: [clean, { what: 'stelt voor Tilburg te onthouden', ok: (r) => !!r.memories?.some((m) => /tilburg/i.test(m.text)) }, { what: 'zoekt in Tilburg', ok: (_r, _a, s) => s.some((q) => /tilburg/i.test(q.where) && /ux|design/i.test(q.what)) }] },
 ]
 
@@ -198,8 +242,8 @@ async function run(scenario: Scenario, complete: ReturnType<typeof openRouterCom
       const request = { device: 'phone', input: 'text', ...rest } as AylaRequest
       searches = []
       const reply = await answer(
-        { request, conversationId: 'eval', history, firstName: 'Ravi', memory: { status: 'on', notes: (scenario.notes ?? []).map((text) => ({ text, category: 'personal' as const })) }, vault: scenario.noVault ? undefined : vault },
-        { complete, newId: () => `id_${++n}`, searchVacancies: async (what: string, where: string) => { searches.push({ what, where }); return jobs }, siteExists: async () => false },
+        { request, conversationId: 'eval', history, firstName: 'Ravi', memory: { status: 'on', notes: (scenario.notes ?? []).map((text) => ({ text, category: 'personal' as const })) }, vault: scenario.noVault ? undefined : scenario.vault ?? vault, plan: request.planId ? scenario.plan ?? evalPlan : undefined },
+        { complete, newId: () => `id_${++n}`, searchVacancies: async (what: string, where: string) => { searches.push({ what, where }); return jobs }, siteExists: async () => false, lookUp: fakeLookUp, searchEducations: fakeEducations, updatePlanStep: async () => true },
       )
       replies.push(reply)
       if (!request.results?.length) history.push({ role: 'user', text: request.text })
@@ -221,7 +265,12 @@ if (!apiKey) {
 const only = process.argv.includes('--only') ? process.argv[process.argv.indexOf('--only') + 1] : null
 const verbose = process.argv.includes('--verbose')
 const raw = process.argv.includes('--raw')
-const real = openRouterCompletion(apiKey, MODEL_OUTPUT_SCHEMA)
+// What the run really cost, and how much of the prompt came from Mistral's cache; it stops when it passes the budget.
+const budget = process.argv.includes('--budget') ? Number(process.argv[process.argv.indexOf('--budget') + 1]) : 1
+const spent = { cost: 0, prompt: 0, cached: 0, calls: 0 }
+const real = openRouterCompletion(apiKey, MODEL_OUTPUT_SCHEMA, fetch, MODELS, HEDGE_MS, {
+  onUsage: (u) => { spent.cost += u.cost; spent.prompt += u.promptTokens; spent.cached += u.cachedTokens; spent.calls++ },
+})
 const answeredBy = new Map<string, number>()
 // Counts which model answered; --raw also shows what each call really wrote, before the server made a reply of it.
 const complete: typeof real = async (messages, options) => {
@@ -238,10 +287,17 @@ const complete: typeof real = async (messages, options) => {
 }
 // --times 5 runs every chosen scenario five times: the models do not answer the same way twice.
 const times = process.argv.includes('--times') ? Number(process.argv[process.argv.indexOf('--times') + 1]) || 1 : 1
-const chosen = scenarios.filter((s) => !only || s.name.includes(only)).flatMap((s) => Array.from({ length: times }, () => s))
+const wanted = only ? only.split('|') : null
+const chosen = scenarios.filter((s) => !wanted || wanted.some((w) => s.name.includes(w))).flatMap((s) => Array.from({ length: times }, () => s))
 const results: Awaited<ReturnType<typeof run>>[] = []
 // Two at a time: with more, Mistral refuses requests and a weaker model answers, which tests something else.
-for (let i = 0; i < chosen.length; i += 2) results.push(...await Promise.all(chosen.slice(i, i + 2).map((s) => run(s, complete))))
+for (let i = 0; i < chosen.length; i += 2) {
+  if (spent.cost >= budget) {
+    console.log(`Gestopt: het budget van $${budget} is op.`)
+    break
+  }
+  results.push(...await Promise.all(chosen.slice(i, i + 2).map((s) => run(s, complete))))
+}
 
 let failed = 0
 for (const result of results) {
@@ -261,5 +317,6 @@ for (const result of results) {
   }
 }
 console.log(`\n${results.length - failed} van ${results.length} goed`)
+console.log(`Kosten: $${spent.cost.toFixed(4)} voor ${spent.calls} aanroepen; ${spent.prompt} tokens in, waarvan ${spent.cached} uit de cache (${spent.prompt ? Math.round(100 * spent.cached / spent.prompt) : 0}%)`)
 console.log(`Antwoorden per model: ${[...answeredBy].map(([model, count]) => `${model.replace('mistralai/', '')} ${count}`).join(', ')}`)
 process.exit(failed ? 1 : 0)

@@ -1,5 +1,4 @@
 import SwiftUI
-import TipKit
 
 @main
 struct PAVEApp: App {
@@ -10,8 +9,6 @@ struct PAVEApp: App {
         let appState = AppState(authService: AuthServiceFactory.make())
         _appState = State(initialValue: appState)
         WatchBridge.shared.start(auth: appState.authService) { AppState.isSignedIn() }
-        // Short tips the first time something new shows, such as the plan in the Dynamic Island.
-        try? Tips.configure()
     }
 
     var body: some Scene {

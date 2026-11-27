@@ -48,6 +48,22 @@ struct PlanModelTests {
         #expect(model.plans.count == 1)
     }
 
+    @Test func aPlanWithTheSameNameIsNeverMadeBesideIt() async throws {
+        let model = await loadedModel([])
+        func proposal(_ id: String, _ name: String) -> AylaReply.ProposedAction {
+            AylaReply.ProposedAction(id: id, kind: .createPlan, summary: "", expiresAt: .now.addingTimeInterval(60),
+                                     newPlan: .init(name: name, steps: [.init(title: "Eisen uitzoeken"), .init(title: "Aanmelden")]))
+        }
+        let first = try #require(await model.create(from: proposal("one", "KLM-piloot worden"), conversationID: "chat"))
+        #expect(await model.create(from: proposal("two", "KLM-piloot worden"), conversationID: "chat") == nil)
+        #expect(await model.create(from: proposal("three", "klm piloot worden."), conversationID: "other") == nil)
+        #expect(model.plans.count == 1)
+        #expect(model.plan(containing: "chat")?.id == first.id)
+        // A chat without a plan that asked for the same plan joins the one that is there.
+        await eventually { model.plan(containing: "other") != nil }
+        #expect(model.plan(containing: "other")?.id == first.id)
+    }
+
     @Test func aNewPlanInAPlansChatTakesTheChatAlong() async throws {
         let model = await loadedModel()
         let old = try #require(model.plans.first)

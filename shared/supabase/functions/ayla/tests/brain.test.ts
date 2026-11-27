@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { test } from 'node:test'
-import { alreadySo, asksAboutShown, shownNames, asksForWork, asksToSave, moreThanOneRound, writesEnglish, announcesSearchOnly, answer, asksBeforeDoing, confirmable, declinedOffer, entriesSoFar, ownWords, vaultScope, bestFirst, sitesFromName, cleanActions, cleanTitle, effortFor, resultsMessage, siteFits, withLogos, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk } from '../brain.ts'
+import { alreadySo, asksAboutShown, shownNames, asksForWork, asksToSave, moreThanOneRound, writesEnglish, announcesSearchOnly, answer, asksBeforeDoing, confirmable, declinedOffer, entriesSoFar, ownWords, vaultScope, bestFirst, sitesFromName, cleanActions, cleanTitle, effortFor, resultsMessage, siteFits, withLogos, consentAskSoFar, vacancySearchSoFar, withMatches, consentAskIn, endsWithOpenQuestion, partialText, titleFrom, toPastMessage, withAttachments, withoutConsentAsk, withoutRepeatedQuestion, namesPlan, mayMakePlan, saysStepIs } from '../brain.ts'
 import { needsConfirmation, parseRequest } from '../contract.ts'
 import { cleanPurpose, grantsWholeVault, revokesVault, saysNo, saysYes, vaultConsent } from '../consent.ts'
 import { MODELS, modelsFor, openRouterCompletion } from '../openrouter.ts'
@@ -967,6 +967,71 @@ test('the Watch only sets up what the iPhone carries out, and asks Ja itself', a
   assert.match(fake.calls[0][0].content, /Zelf iets doen vanaf de Watch/)
 })
 
+test('going on with a plan stays in the chat; only asking to see it opens the plan', async () => {
+  for (const [text, kind] of [
+    ['kunnen we verder met mijn plan om piloot te worden?', 'workOnPlan'],
+    ['ga maar weer verder', 'workOnPlan'],
+    ['open mijn plan piloot', 'openPlan'],
+    ['laat me het plan even zien', 'openPlan'],
+    ['show my pilot plan', 'openPlan'],
+  ] as const) {
+    const fake = model(say('Je bent bij de medische keuring.', { actions: [{ do: 'openPlan', value: null, target: 'Piloot worden' }] }))
+    const reply = await answer({ request: { ...request, text }, conversationId: 'c', history: [] }, { complete: fake.complete, newId: ids() })
+    assert.deepEqual(reply.actions, [{ do: kind, target: 'Piloot worden' }], text)
+  }
+})
+
+test('deleting a whole plan is deletePlan after Ja, also when the model calls it a step', async () => {
+  const app = { plans: ['Piloot worden (0 van 7 stappen, nu: Opleidingen vergelijken)'] }
+  assert.equal(namesPlan('piloot worden', app.plans), true)
+  assert.equal(namesPlan('Opleidingen vergelijken', app.plans), false)
+  for (const kind of ['removePlanStep', 'deletePlan']) {
+    const fake = model(say('Ik zet klaar dat je plan weg gaat.', { intent: 'act', actions: [{ do: kind, value: null, target: 'Piloot worden' }] }))
+    const reply = await answer({ request: { ...request, text: 'Kunnen we mijn plan van piloot verwijderen en een nieuwe starten?', app }, conversationId: 'c', history: [] }, { complete: fake.complete, newId: ids() })
+    assert.deepEqual(reply.actions, [{ do: 'deletePlan', target: 'Piloot worden', confirm: true }])
+    assert.equal(reply.text, 'Zal ik je plan "Piloot worden" verwijderen? Je gesprekken blijven bewaard.')
+  }
+})
+
+test('a question in the text that the question below repeats in other words goes', () => {
+  assert.equal(
+    withoutRepeatedQuestion("Je hebt al een plan 'Piloot worden' met 7 stappen. Wil je dat plan verwijderen en een nieuw plan starten?", "Wil je het plan 'Piloot worden' verwijderen en een nieuw plan starten?"),
+    "Je hebt al een plan 'Piloot worden' met 7 stappen.",
+  )
+})
+
+test('a plan is made once: not again turn after turn, and not beside the plan of the conversation', async () => {
+  const made = toPastMessage({ role: 'ayla', text: 'Je plan staat klaar.', reply: { proposedAction: { id: 'p', kind: 'createPlan', summary: '', expiresAt: '', newPlan: { name: 'KLM-piloot worden', goal: '', steps: [] } } } })
+  assert.match(made.text, /Je maakte bij dit antwoord het plan "KLM-piloot worden"/)
+  const before = [{ role: 'user' as const, text: 'Ik wil KLM-piloot worden' }, made]
+  assert.equal(mayMakePlan('KLM-piloot worden', 'Oké, duidelijk.', before, [], false), false)
+  assert.equal(mayMakePlan('KLM-piloot worden', 'Cursus natuurkunde', before, ['KLM-piloot worden (0 van 3 stappen, nu: Eisen)'], true), false)
+  assert.equal(mayMakePlan('Piloot bij KLM', 'Ja', before, [], false), false)
+  assert.equal(mayMakePlan('KLM-piloot worden', 'Maak een plan om KLM-piloot te worden', [], ['KLM-piloot worden (0 van 3 stappen, nu: Eisen)'], false), false)
+  // Asked for: now, just before, as a yes to her offer, or a new one in so many words.
+  assert.equal(mayMakePlan('Scrum halen', 'Maak een plan om mijn Scrum-certificaat te halen', [], [], false), true)
+  assert.equal(mayMakePlan('Scrum halen', 'Ja', [{ role: 'ayla', text: 'Zal ik er een plan van maken?' }], [], false), true)
+  assert.equal(mayMakePlan('KLM-piloot worden', 'Ik wil KLM-piloot worden', [{ role: 'user', text: 'Kunnen we mijn plan van pilot verwijderen en een nieuwe starten?' }, { role: 'ayla', text: 'Zal ik je plan "Piloot worden" verwijderen? Je gesprekken blijven bewaard.' }], [], false), true)
+  assert.equal(mayMakePlan('Scrum halen', 'Maak ook een plan voor mijn Scrum-certificaat', before, [], true), true)
+  assert.equal(mayMakePlan('KLM-piloot worden', 'Begin opnieuw met een nieuw plan', before, [], true), true)
+  assert.equal(mayMakePlan('Scrum halen', 'Wat moet ik morgen doen?', [], [], false), false)
+
+  const output = say('Je mist dus nog natuurkunde.', { newPlan: { name: 'KLM-piloot worden', goal: 'Ik wil KLM-piloot worden.', steps: [{ title: 'Eisen uitzoeken', summary: '', kind: 'research' }, { title: 'Aanmelden', summary: '', kind: 'action' }] } })
+  const again = await answer({ request: { ...request, text: 'Oké, duidelijk.' }, conversationId: 'c', history: before }, { complete: model(output).complete, newId: ids() })
+  assert.equal(again.proposedAction, undefined)
+})
+
+test('a step is done or skipped on the user\'s words, not on an okay', () => {
+  for (const text of ['Ik heb de cursus af', 'Mijn cv is klaar', 'Gelukt!', 'Ik heb me aangemeld', 'Vink die stap maar af', 'Ik ben geslaagd']) assert.equal(saysStepIs('done', text, []), true, text)
+  for (const text of ['Oké, duidelijk.', 'Bedankt!', 'Ga maar verder', 'Ik heb het nog niet gedaan', 'Bijna klaar', 'Wat is de volgende stap?', 'Nee']) assert.equal(saysStepIs('done', text, []), false, text)
+  assert.equal(saysStepIs('done', 'Ja', [{ role: 'ayla', text: 'Is de cursus al afgerond?' }]), true)
+  assert.equal(saysStepIs('done', 'Ja', [{ role: 'ayla', text: 'Zal ik opleidingen zoeken?' }]), false)
+  assert.equal(saysStepIs('skipped', 'Die sla ik over', []), true)
+  assert.equal(saysStepIs('skipped', 'Nee, die is niet nodig', []), true)
+  assert.equal(saysStepIs('skipped', 'Oké', []), false)
+  assert.equal(saysStepIs('active', 'Oké', []), true)
+})
+
 test('what cannot be undone waits for a Ja to a question with fixed words', async () => {
   const fake = model(say('Ik heb het verwijderd!', { actions: [{ do: 'deleteEvidence', value: null, target: 'Eindstage' }], navigation: { screen: 'vault', item: null } }))
   const reply = await answer({ request, conversationId: 'c', history: [] }, { complete: fake.complete, newId: ids() })
@@ -1399,7 +1464,8 @@ test('the prompt fits the device and the conversation', () => {
   assert.doesNotMatch(watch, /via de bol/)
   assert.doesNotMatch(phone, /hoeft geen diploma of certificaat te zijn/)
   assert.match(buildSystemPrompt({ device: 'phone', hasFiles: true }), /hoeft geen diploma of certificaat te zijn/)
-  assert.match(phone, /Tot slot, bij elk antwoord[\s\S]*één vraag tegelijk, in de taal van de gebruiker\.$/)
+  assert.match(phone, /Tot slot, bij elk antwoord[\s\S]*één vraag tegelijk, in de taal van de gebruiker\.\n7\. [^\n]*nooit in de kluis\.$/)
+  assert.match(web, /Tot slot, bij elk antwoord[\s\S]*één vraag tegelijk, in de taal van de gebruiker\.$/)
   // The first round no longer carries the matches; the round after a search does.
   assert.equal('vacancyMatches' in MODEL_OUTPUT_SCHEMA.properties, false)
   assert.deepEqual(MODEL_OUTPUT_SCHEMA.required[0], 'intent')
@@ -1578,7 +1644,7 @@ test('each task has its own layer, with the question itself, and only applying a
   assert.match(gaps, /## Taak: wat mist er nog/)
   assert.match(gaps, /altijd twee tot vijf stappen/)
   assert.match(gaps, /zeg niet dat ze bewaard zijn/)
-  assert.match(gaps, /bij Plan een plan van kan maken/)
+  assert.match(gaps, /of je er een plan van zal maken/)
   const prepare = prompt({ vacancy: appwerk, task: 'prepare' })
   assert.match(prepare, /zet askVault op "je te helpen solliciteren op deze vacature"/)
   assert.match(prepare, /Heb je meer nodig, vraag het dan met askVault/)
@@ -1667,4 +1733,18 @@ test('the new actions that act for the user ask with their own words first', () 
   assert.match(confirmable([{ do: 'addProjectSource', target: 'Eindstage', value: 'Afstuderen', confirm: true }])?.question ?? '', /bron toevoegen aan Afstuderen\? Dan mag ik het bekijken/)
   assert.equal(needsConfirmation('answerInvitation', 'yes'), true)
   assert.equal(needsConfirmation('addTalkToCalendar', ''), false)
+})
+
+test('a question under the answer is not asked twice in the text', () => {
+  const text = 'Voor een pilootopleiding vragen scholen vaak een vooropleiding met wiskunde. Wil je dat ik opleidingen voor je opzoek?'
+  assert.equal(withoutRepeatedQuestion(text, 'Wil je dat ik opleidingen voor piloot voor je opzoek?'), 'Voor een pilootopleiding vragen scholen vaak een vooropleiding met wiskunde.')
+  assert.equal(withoutRepeatedQuestion('Wil je een plan?', 'Wil je een plan?'), 'Wil je een plan?')
+  // One question at a time: another question in the text goes too, and what stands before it keeps its lines.
+  assert.equal(withoutRepeatedQuestion('Dat kan. Welke stap eerst?', 'Zal ik het in je kluis zetten?'), 'Dat kan.')
+  assert.equal(
+    withoutRepeatedQuestion('Je mist dus nog natuurkunde en een Engelse taaltoets. Zal ik zoeken naar een cursus natuurkunde en een taaltoets Engels die je kunt doen?', 'Waar wil je mee beginnen?'),
+    'Je mist dus nog natuurkunde en een Engelse taaltoets.',
+  )
+  assert.equal(withoutRepeatedQuestion('Je mist:\n1. Natuurkunde\n2. Engels\nZal ik zoeken?', 'Waar wil je mee beginnen?'), 'Je mist:\n1. Natuurkunde\n2. Engels')
+  assert.equal(withoutRepeatedQuestion('Zal ik zoeken?', ''), 'Zal ik zoeken?')
 })

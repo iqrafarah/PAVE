@@ -18,6 +18,8 @@ struct AylaAttachMenu: View {
     var planName: String?
 
     @State private var canPaste = Self.clipboardHasFile
+    /// Figma's 255 pt at the standard text size; it grows with larger text instead of cutting the rows off.
+    @ScaledMetric(relativeTo: .body) private var width: CGFloat = 255
 
     /// Asking whether there is something does not trigger the "allow paste" question; only reading it does.
     private static var clipboardHasFile: Bool {
@@ -51,8 +53,11 @@ struct AylaAttachMenu: View {
         .padding(.trailing, 20)
         .padding(.top, 20)
         .padding(.bottom, 21)
-        .frame(width: 255, alignment: .leading)
+        // As wide as that, but never wider than the screen.
+        .frame(maxWidth: width, alignment: .leading)
         .glassEffect(.regular, in: .rect(cornerRadius: 25))
+        // Over the chat like a menu: VoiceOver stays in it until it closes (the chat adds the escape action).
+        .accessibilityAddTraits(.isModal)
         .onReceive(NotificationCenter.default.publisher(for: UIPasteboard.changedNotification)) { _ in
             canPaste = Self.clipboardHasFile
         }

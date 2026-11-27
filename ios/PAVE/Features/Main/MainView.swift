@@ -26,9 +26,12 @@ struct MainView: View {
     @State private var sharing: SharingModel
     /// Ayla was asked to share: the composer opens over the chat, so you are back with her once it is done.
     @State private var aylaShare: ShareTemplateChoice?
+    /// A moment Ayla set up on the Watch, for the iPhone's calendar screen.
+    @State private var calendarFromWatch: AylaCalendarMoment?
     /// An employer opened from the iPhone's camera, over whatever screen is open.
     @State private var fairEmployer: FairEmployerSlug?
     @State private var draftSync: ApplicationDraftSyncer?
+    @State private var accountSync: AccountStateSync?
     /// The employer's inbox of the demo, opened from its key's code.
     @State private var employerInbox: EmployerInboxKey?
     /// Applications whose demo invitation has arrived, for Meldingen and the bell; read again when you move around.
@@ -113,6 +116,29 @@ struct MainView: View {
         }
     }
 
+    /// "Klaar met deze stap?" over the app, after the melding when both are there. It waits for an answer: what you
+    /// did often happens in a sheet, and the question should still be there when it closes. Not on the page of that
+    /// plan, where the plan itself asks.
+    @ViewBuilder
+    private var suggestionView: some View {
+        if shownBanner == nil, let suggestion = plans.suggestion, plans.suggestion(for: suggestion.planID) != nil,
+           !(destination == .plan && plans.openPlanID == suggestion.planID) {
+            PlanStepSuggestionCard(suggestion: suggestion) {
+                plans.acceptSuggestion()
+            } onDismiss: {
+                plans.dismissSuggestion()
+            }
+            .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
+            .gesture(DragGesture(minimumDistance: 12).onEnded { value in
+                if value.translation.height < -10 { plans.dismissSuggestion() }
+            })
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .id(suggestion.stepID)
+            .transition(.fromIsland)
+        }
+    }
+
     private func dismissBanners() {
         notificationsModel.dismissBanner()
         emailModel.dismissBanner()
@@ -129,6 +155,8 @@ struct MainView: View {
             if ShareWatchBridge.isAvailable { await sharing.load() }
             if draftSync == nil { draftSync = ApplicationDraftSyncer.make(auth: appState.authService) }
             if await draftSync?.run() == true { sharing.reloadApplications() }
+            if accountSync == nil { accountSync = AccountStateSync.make(auth: appState.authService) }
+            await accountSync?.run()
             round += 1
             try? await Task.sleep(for: .seconds(30))
         }
@@ -158,7 +186,8 @@ struct MainView: View {
         .environment(emailModel)
         .task(id: destination) { invitations = Self.arrivedInvitations() }
         // A container that is always there, so the card's insertion and removal have something to animate in.
-        .overlay(alignment: .top) { ZStack(alignment: .top) { bannerView } }
+        .overlay(alignment: .top) { ZStack(alignment: .top) { bannerView; suggestionView } }
+        .animation(.island, value: plans.suggestion)
         .onChange(of: visibleBanner?.id, initial: true) {
             withAnimation(.island) { shownBanner = visibleBanner }
         }
@@ -227,11 +256,25 @@ struct MainView: View {
         .task { await memory.load() }
         .task { await model.followConversationChanges() }
         .onChange(of: hasSidebar) { isMenuOpen = false }
+        // What changes on this iPhone goes to the account a moment later, for the laptop and the other devices.
+        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in accountSync?.localChanged() }
+        .onReceive(NotificationCenter.default.publisher(for: AccountStateSync.didPull)) { _ in
+            plans.reloadEditDecisions()
+            emailModel.reloadMarks()
+        }
+        // An application saved here is in the account a moment later, not only at the next round.
+        .onReceive(NotificationCenter.default.publisher(for: ApplicationStore.didChange)) { _ in
+            Task {
+                try? await Task.sleep(for: .seconds(2))
+                if await draftSync?.run() == true { sharing.reloadApplications() }
+            }
+        }
         // A deleted chat that could still be brought back is really deleted when the app goes away.
         .onChange(of: scenePhase) { _, phase in
             if phase == .background {
                 // What was written just now is in the account before the app sleeps, for the next device.
                 Task { await draftSync?.run() }
+                Task { await accountSync?.run() }
                 model.commitPendingDeletion()
                 memory.commitPendingForget()
                 // Locked e-mail conversations need the PIN again, as locked chats do.
@@ -316,6 +359,10 @@ struct MainView: View {
             sharing: sharing, vault: vault, profile: profile, model: model,
             fairEmployer: $fairEmployer, employerInbox: $employerInbox, aylaShare: $aylaShare
         ))
+        .sheet(item: $calendarFromWatch) { moment in
+            AylaCalendarEditor(moment: moment) { calendarFromWatch = nil }
+                .ignoresSafeArea()
+        }
     }
 
     private var openDestinationAction: (MainDestination) -> Void {
@@ -537,7 +584,7 @@ struct MainView: View {
                     for chat in model.conversationList.conversations where plan.conversations.contains(where: { $0.id == chat.id }) && chat.projectID != projectID {
                         model.move(chat, to: project)
                     }
-                }, deleteChats: deleteChats)
+                }, deleteChats: deleteChats, ask: askInPlan)
             )
             // Ayla's proposal for steps reads the evidence she may see and asks her service.
             .environment(vault)
@@ -694,6 +741,24 @@ struct MainView: View {
         if !isWide { showsChats = false }
     }
 
+    /// A question to Ayla about a plan, such as "Laat Ayla nakijken": in its latest chat, or a new one in the plan.
+    private func askInPlan(_ plan: PavePlan, chatID: String?, text: String) {
+        destination = .ayla
+        isMenuOpen = false
+        if !isWide { showsChats = false }
+        if let chatID {
+            let conversation = model.conversationList.conversations.first { $0.id == chatID } ?? AylaConversation(id: chatID, title: "", updatedAt: .now)
+            Task {
+                if model.conversationID != chatID { await model.open(conversation) }
+                model.send(text)
+            }
+        } else {
+            let project = model.conversationList.projects.first { $0.id == plan.projectID }
+            model.newConversation(in: project, plan: plan.id, step: nil)
+            model.send(text)
+        }
+    }
+
     /// A plan deleted together with its chats: they go as when deleted from the list of chats.
     private func deleteChats(_ ids: [String]) {
         let chats = model.conversationList.conversations.filter { ids.contains($0.id) }
@@ -775,6 +840,14 @@ extension MainView {
                     open(.ayla)
                 }
                 said.append(WatchHandoffMessages.onIPhone)
+            case "addToCalendar":
+                guard let moment = AylaCalendarMoment(title: action.target ?? "", value: action.value ?? "") else {
+                    said.append(AylaMessages.actionBadDate)
+                    continue
+                }
+                calendarFromWatch = moment
+                handOff(title: moment.title, detail: WatchHandoffMessages.calendarOnIPhone)
+                said.append(WatchHandoffMessages.calendarOnIPhone)
             case "openPlan":
                 guard let plan = planActions.plan(named: action.target) else {
                     said.append(AylaMessages.actionNoPlan(action.target))
@@ -820,6 +893,7 @@ enum WatchHandoffMessages {
     static let onIPhone = "Het staat klaar op je iPhone."
     static let fromWatch = "Klaargezet door Ayla, vanaf je Watch."
     static let onlyOnIPhone = "Dat kan alleen op je iPhone."
+    static let calendarOnIPhone = "Open je iPhone om het in je agenda te bewaren."
     static func stepAdded(_ title: String) -> String { "Ik heb de stap \(title) toegevoegd." }
     static func stepMarked(_ title: String) -> String { "Ik heb de stap \(title) bijgewerkt." }
     static func noVacancy(_ words: String) -> String { "Ik vond geen vacature bij \(words). Open hem op je iPhone." }

@@ -16,7 +16,7 @@ nonisolated final class DeviceVoice: NSObject, AVSpeechSynthesizerDelegate, @unc
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             lock.withLock { onDone = { continuation.resume() } }
             let utterance = AVSpeechUtterance(string: text.replacing(/\b(?i:pav[eé])(?![a-zà-ÿ])/, with: "Peiv"))
-            utterance.voice = AVSpeechSynthesisVoice(language: "nl-NL")
+            utterance.voice = AVSpeechSynthesisVoice(language: PaveLanguageStore.current.speechIdentifier)
             synthesizer.speak(utterance)
         }
     }

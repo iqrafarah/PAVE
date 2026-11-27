@@ -2,11 +2,14 @@
 // It runs with the user's own session, so row level security applies to every query.
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { answer, CONSENT_HISTORY_LIMIT, type StoredMessage, titleFrom, toPastMessage } from './brain.ts'
+import { educationSearch } from './educations.ts'
+import { webLookup } from './lookups.ts'
+import { localizedReply } from './localize.ts'
 import { loadMemory } from './memory.ts'
 import { loadAllowedVault } from './vault.ts'
 import { loadPlan, planExists, stepUpdater } from './plan.ts'
 import { type AylaReply, parseRequest } from './contract.ts'
-import { openRouterCompletion } from './openrouter.ts'
+import { HEDGE_MS, MODELS, openRouterCompletion } from './openrouter.ts'
 import { MODEL_OUTPUT_SCHEMA } from './prompt.ts'
 import { adzunaSearch, firstThatFinds, joobleSearch, type SearchVacancies, siteChecker, webSearch, withSupport } from './vacancies.ts'
 import { CORS, json, sessionLevel } from '../_shared/http.ts'
@@ -108,8 +111,13 @@ Deno.serve(async (req) => {
   let title: string | undefined
   const input = { request, conversationId, history, firstName, memory, vault, project, plan, onTitle: request.conversationId ? undefined : (t: string) => { title = t } }
   const deps = {
-    complete: openRouterCompletion(openRouterKey, MODEL_OUTPUT_SCHEMA),
+    // Tokens, the part from the cache, and cost per call, in the function's logs; never what was asked.
+    complete: openRouterCompletion(openRouterKey, MODEL_OUTPUT_SCHEMA, fetch, MODELS, HEDGE_MS, {
+      onUsage: (u) => console.info(`ayla usage ${u.model} in=${u.promptTokens} cached=${u.cachedTokens} out=${u.completionTokens} cost=${u.cost.toFixed(5)}`),
+    }),
     searchVacancies: withSupport(firstThatFinds(apis), webSearch(openRouterKey)),
+    searchEducations: educationSearch(openRouterKey),
+    lookUp: webLookup(openRouterKey),
     newId: () => crypto.randomUUID(),
     siteExists: siteChecker(),
     updatePlanStep: stepUpdater(supabase),
@@ -161,12 +169,12 @@ Deno.serve(async (req) => {
         }
         send('start', { conversationId })
         try {
-          const reply = await answer({
+          const reply = localizedReply(await answer({
             ...input,
             signal: stop.signal,
             onText: (text) => { written = text; send('text', { text }) },
             onStatus: (status) => send('status', status),
-          }, deps)
+          }, deps), request.language)
           // The answer shows as soon as it is stored; the list of conversations catches up after.
           if (await store(reply)) {
             send('reply', reply)
@@ -196,7 +204,7 @@ Deno.serve(async (req) => {
 
   let reply: AylaReply
   try {
-    reply = await answer(input, deps)
+    reply = localizedReply(await answer(input, deps), request.language)
   } catch {
     return json({ error: 'unavailable' }, 502)
   }

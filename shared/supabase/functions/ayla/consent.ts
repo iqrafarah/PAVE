@@ -28,13 +28,13 @@ export function saysNo(text: string): boolean {
   // "Niet alleen mijn diploma" asks for more, and "laat maar zien" asks to see it: neither is a no.
   const said = heard(text).replace(/\bniet alleen\b/g, ' ').replace(/\blaat maar (zien|komen|horen|weten)\b/g, ' ').replace(/\s+/g, ' ').trim()
   if (said.split(' ').length > 9) return false
-  return said === 'niet' || /^(nee|neen|no|nope|liever niet|nu (even )?niet|hoeft niet|laat maar|doe maar niet|niet nodig|niet doen|nee dank)\b/.test(said)
+  return said === 'niet' || /^nò(\s|$)/.test(said) || /^(nee|neen|no|nope|nah|not now|no thanks|liever niet|nu (even )?niet|hoeft niet|laat maar|doe maar niet|niet nodig|niet doen|nee dank)\b/.test(said)
     || /\b(liever niet|toch niet|doe maar niet|hoeft niet|laat maar|nu even niet)\b/.test(said)
 }
 
 /** Whole phrases that mean yes, and the words a yes may be made of. Anything else in the answer makes it more than a yes. */
 const YES_PHRASES = /\b((doe|kijk|ga|zoek|begin|toe) (dan )?maar|ga je gang|geen probleem|zeker weten|van mij mag het|laat maar (zien|komen|horen))\b/g
-const YES_WORDS = new Set(['ja', 'jazeker', 'jawel', 'jahoor', 'jep', 'yep', 'yes', 'sure', 'graag', 'prima', 'oke', 'oké', 'ok', 'okay', 'goed', 'top', 'tuurlijk', 'natuurlijk', 'uiteraard', 'absoluut', 'zeker', 'akkoord', 'mag', 'fijn'])
+const YES_WORDS = new Set(['ja', 'si', 'sí', 'yeah', 'please', 'jazeker', 'jawel', 'jahoor', 'jep', 'yep', 'yes', 'sure', 'graag', 'prima', 'oke', 'oké', 'ok', 'okay', 'goed', 'top', 'tuurlijk', 'natuurlijk', 'uiteraard', 'absoluut', 'zeker', 'akkoord', 'mag', 'fijn'])
 const YES_FILLERS = new Set(['is', 'dat', 'wel', 'helemaal', 'hoor', 'gerust', 'dan', 'hoor'])
 
 /**
@@ -125,7 +125,7 @@ export function mayLookInVault(consent: VaultConsent): boolean {
 /** What Ayla wants to look for, so it fits "Mag ik in je kluis kijken om …?"; null when there is nothing usable. */
 export function cleanPurpose(raw: unknown): string | null {
   if (typeof raw !== 'string') return null
-  let purpose = raw.replace(/\s+/g, ' ').trim().replace(/^om\s+/i, '').replace(/[?.!,;:\s]+$/, '')
+  let purpose = raw.replace(/\s+/g, ' ').trim().replace(/^(om|to|pa)\s+/i, '').replace(/[?.!,;:\s]+$/, '')
   // The question already says "in je kluis": "te zien wat er in je kluis staat" becomes "te zien wat erin staat".
   purpose = purpose.replace(/\ber (in|uit) (je|jouw|de|mijn) kluis\b/gi, 'er$1').replace(/\b(in|uit) (je|jouw|de|mijn) kluis\b/gi, 'er$1')
   // A model that writes the word instead of leaving it empty is not asking for anything.

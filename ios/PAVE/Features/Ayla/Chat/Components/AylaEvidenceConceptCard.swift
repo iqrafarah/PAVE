@@ -74,7 +74,7 @@ struct AylaEvidenceConceptCard: View {
                             .frame(width: 96, alignment: .leading)
                         Text(row.value ?? AylaMessages.conceptUnknown)
                             .textStyle(.caption)
-                            .foregroundStyle(row.value == nil ? Color.inkMuted.opacity(0.7) : .ink)
+                            .foregroundStyle(row.value == nil ? Color.inkMuted : .ink)
                             .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -142,11 +142,16 @@ struct AylaEvidenceConceptCard: View {
                     .truncationMode(.middle)
             }
             .padding(.horizontal, 9)
-            .frame(height: 26)
+            .padding(.vertical, 5)
+            .frame(minHeight: 26)
             .frame(maxWidth: 190)
             .fixedSize(horizontal: true, vertical: false)
             .background(isOn ? Color.paveSurfaceTint : Color.canvas, in: .rect(cornerRadius: 9))
             .overlay { RoundedRectangle(cornerRadius: 9).strokeBorder(isOn ? Color.clear : Color.cardBorder, lineWidth: 1) }
+            // 44 pt to tap, without the chip taking more room.
+            .padding(.vertical, 9)
+            .contentShape(.rect)
+            .padding(.vertical, -9)
         }
         .buttonStyle(.pave)
         .disabled(!isLast || isAdded)
