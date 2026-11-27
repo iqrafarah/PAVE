@@ -8121,6 +8121,23 @@
         }
       }
     },
+    "Bij %@ staan geen bestanden om in te kijken.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There are no files with %@ to look at."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No tin dokumentonan na %@ pa wak."
+          }
+        }
+      }
+    },
     "Bij deze vestiging kan niemand dit soort bewijs bevestigen.": {
       "extractionState": "manual",
       "localizations": {
@@ -18083,6 +18100,23 @@
         }
       }
     },
+    "Ik kijk in de bestanden van %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I am looking at the files of %@."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi ta wak den e dokumentonan di %@."
+          }
+        }
+      }
+    },
     "Ik kom": {
       "extractionState": "manual",
       "localizations": {
@@ -18130,6 +18164,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mi no por a haña %@ den bo kaha fuerte."
+          }
+        }
+      }
+    },
+    "Ik kon de bestanden van %@ nu niet lezen.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I could not read the files of %@ just now."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mi no por a lesa e dokumentonan di %@ awor."
           }
         }
       }
@@ -18623,6 +18674,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Den espera"
+          }
+        }
+      }
+    },
+    "In de bestanden van %@ kijken": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Look at the files of %@"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wak den e dokumentonan di %@"
           }
         }
       }

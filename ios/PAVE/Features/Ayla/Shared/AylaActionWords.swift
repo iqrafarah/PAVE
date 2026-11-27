@@ -44,6 +44,7 @@ enum AylaActionWords {
         case "deleteChat": return "Chat verwijderen"
         case "deleteEvidence": return "\(target) verwijderen"
         case "deletePlan": return "Plan \(target) verwijderen"
+        case "readEvidence": return "In de bestanden van \(target) kijken"
         case "signOut": return "Uitloggen"
         case "forgetAll": return "Alles vergeten"
         default: return "Iets in de app doen"
@@ -56,6 +57,7 @@ enum AylaActionWords {
             case "deleteChat": AylaMessages.actionDeletedChat
             case "deleteEvidence": AylaMessages.actionDeletedEvidence(action.target ?? "het")
             case "deletePlan": AylaMessages.actionDeletedPlan(action.target ?? "")
+            case "readEvidence": AylaMessages.actionReadsFiles(action.target ?? "")
             case "forgetAll": AylaMessages.actionForgotAll
             case "signOut": AylaMessages.actionSignsOut
             case "allowAyla": AylaMessages.actionAllowed(action.target ?? "het")

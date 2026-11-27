@@ -560,6 +560,17 @@ final class AylaChatModel {
     /// conversation starts it (so she says her answer) by asking with `followUpText`.
     /// `otherwise`: what the app says itself when she cannot be reached for that round, so a step that failed is
     /// never left unsaid.
+    /// The files of evidence you let her read, for her next round only; they are not kept.
+    private var evidenceFiles: [AylaAttachment] = []
+    /// Evidence whose files you let her read in this conversation, by title, so she does not ask again.
+    private(set) var readFileTitles: [String] = []
+
+    /// You said Ja to her reading the files of this evidence: they go along with her next round.
+    func letRead(_ files: [AylaAttachment], of title: String) {
+        evidenceFiles = Array(files.prefix(AylaAttachment.maxCount))
+        if !readFileTitles.contains(title) { readFileTitles.append(title) }
+    }
+
     func continueAfter(_ results: [AylaRequest.ActionResult], spoken: Bool, otherwise: String?) {
         guard canContinue, !results.isEmpty, !isAnswering else {
             if let otherwise { say(otherwise) }
@@ -581,9 +592,11 @@ final class AylaChatModel {
         followUpRounds += 1
         phase = .thinking
         activity = .continuing
+        let files = evidenceFiles
+        evidenceFiles = []
         let request = AylaRequest(
             conversationId: conversationID, text: Self.followUpText, device: .phone, input: input, context: context,
-            app: appState?(), results: results
+            attachments: files, app: appState?(), results: results
         )
         return Turn(service: service, request: request, text: Self.followUpText, files: [], isFollowUp: true)
     }
@@ -902,6 +915,8 @@ final class AylaChatModel {
         openProject = nil
         newChatProject = project
         newChatPlan = planID.map { ($0, stepID) }
+        readFileTitles = []
+        evidenceFiles = []
         clearContext()
         endPractice()
         entries = []
@@ -936,6 +951,8 @@ final class AylaChatModel {
     func open(_ conversation: AylaConversation) async {
         openProject = nil
         newChatPlan = nil
+        readFileTitles = []
+        evidenceFiles = []
         guard let service, !isAnswering else { return }
         clearContext()
         endPractice()
