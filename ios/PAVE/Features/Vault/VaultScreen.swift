@@ -155,27 +155,29 @@ struct VaultScreen: View {
                     .presentationDragIndicator(.visible)
                     .paveSheet()
                 }
-                .confirmationDialog("Uit je kluis verwijderen?", isPresented: isPresented($deletedItem), titleVisibility: .visible, presenting: deletedItem) { item in
-                    Button("Verwijderen", role: .destructive) {
-                        PaveHaptics.tap(.heavy)
-                        Task { await model.delete(item) }
-                    }
-                } message: { _ in
-                    Text(VaultMessages.deleteItemMessage)
-                }
-                .confirmationDialog("Map verwijderen?", isPresented: isPresented($deletedFolder), titleVisibility: .visible, presenting: deletedFolder) { folder in
-                    Button("Map verwijderen", role: .destructive) {
-                        path.removeAll { $0.id == folder.id }
-                        Task { await model.deleteFolder(folder) }
-                    }
-                } message: { _ in
-                    Text(VaultMessages.deleteFolderMessage)
-                }
-                .alert("Dat lukte niet", isPresented: Binding(get: { model.problem != nil && addFlow == nil && editedItem == nil && openedItem == nil && folderSheet == nil }, set: { if !$0 { model.problem = nil } })) {
-                    Button("OK", role: .cancel) {}
-                } message: {
-                    Text(model.problem ?? "")
-                }
+        }
+        // On the stack itself, not on the vault under it: the questions show on every page, also in a folder or in
+        // "Alle mappen" (on the hidden page under it, iOS showed nothing and deleting did nothing).
+        .confirmationDialog("Uit je kluis verwijderen?", isPresented: isPresented($deletedItem), titleVisibility: .visible, presenting: deletedItem) { item in
+            Button("Verwijderen", role: .destructive) {
+                PaveHaptics.tap(.heavy)
+                Task { await model.delete(item) }
+            }
+        } message: { _ in
+            Text(VaultMessages.deleteItemMessage)
+        }
+        .confirmationDialog("Map verwijderen?", isPresented: isPresented($deletedFolder), titleVisibility: .visible, presenting: deletedFolder) { folder in
+            Button("Map verwijderen", role: .destructive) {
+                path.removeAll { $0.id == folder.id }
+                Task { await model.deleteFolder(folder) }
+            }
+        } message: { _ in
+            Text(VaultMessages.deleteFolderMessage)
+        }
+        .alert("Dat lukte niet", isPresented: Binding(get: { model.problem != nil && addFlow == nil && editedItem == nil && openedItem == nil && folderSheet == nil }, set: { if !$0 { model.problem = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(model.problem ?? "")
         }
         .tint(.paveAccent)
     }

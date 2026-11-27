@@ -15,8 +15,8 @@ struct VaultUploadZone: View {
             ForEach(sources) { source in
                 Button { onChoose(source) } label: {
                     switch source {
-                    case .files: Label { Text("Kies een bestand") } icon: { Image(.iconDocumentSolid) }
-                    case .photos: Label { Text("Kies een foto") } icon: { Image(.iconPhotoSolid) }
+                    case .files: Label { Text("Kies een bestand") } icon: { Image(.iconDocumentSolid).renderingMode(.template) }
+                    case .photos: Label { Text("Kies een foto") } icon: { Image(.iconPhotoSolid).renderingMode(.template) }
                     }
                 }
             }

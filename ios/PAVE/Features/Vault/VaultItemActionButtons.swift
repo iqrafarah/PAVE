@@ -13,13 +13,13 @@ struct VaultItemActionButtons: View {
 
     var body: some View {
         Button(action: onEdit) {
-            SwiftUI.Label { Text("Aanpassen") } icon: { Image(.iconPencil) }
+            SwiftUI.Label { Text("Aanpassen") } icon: { Image(.iconPencilSolid).renderingMode(.template) }
         }
         if item.status != .verified, !item.isAwaitingReview {
             Button(action: onRequestConfirmation) {
                 SwiftUI.Label {
                     Text(item.status == .rejected ? VaultMessages.requestAgainAction : VaultMessages.requestAction)
-                } icon: { Image(.iconCheckBadgeSolid) }
+                } icon: { Image(.iconCheckBadgeSolid).renderingMode(.template) }
             }
         }
         if let movesFrom, model.folders.count > 1 {
@@ -30,7 +30,7 @@ struct VaultItemActionButtons: View {
                     }
                 }
             } label: {
-                SwiftUI.Label { Text("Verplaatsen naar") } icon: { Image(.iconArrowRight).renderingMode(.template) }
+                SwiftUI.Label { Text("Verplaatsen naar") } icon: { Image(.iconArrowRightSolid).renderingMode(.template) }
             }
         }
         if !model.folders.isEmpty {
@@ -45,7 +45,7 @@ struct VaultItemActionButtons: View {
                     }
                 }
             } label: {
-                SwiftUI.Label { Text("In mappen") } icon: { Image(.iconFolderArrowDownSolid) }
+                SwiftUI.Label { Text("In mappen") } icon: { Image(.iconFolderArrowDownSolid).renderingMode(.template) }
             }
             .menuActionDismissBehavior(.disabled)
         }
@@ -57,7 +57,7 @@ struct VaultItemActionButtons: View {
             }
         }
         Button(role: .destructive, action: onDelete) {
-            SwiftUI.Label { Text("Verwijderen") } icon: { Image(.iconTrash) }
+            SwiftUI.Label { Text("Verwijderen") } icon: { Image(.iconTrashSolid).renderingMode(.template) }
         }
     }
 }
