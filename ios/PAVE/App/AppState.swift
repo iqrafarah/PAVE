@@ -100,12 +100,17 @@ final class AppState {
             return
         }
         phase = pinVault.hasPin ? .locked : .pinSetup
+        // Signed in before PAVE kept which account: ask the session, before anything of the account is opened.
+        if PaveAccount.current(in: defaults) == nil {
+            Task { PaveAccount.set(await authService.accountID(), in: defaults) }
+        }
     }
 
     func signIn(accountID: String?) {
         guard phase == .signedOut else { return }
         defaults.set(true, forKey: Self.signedInKey)
         signedInAccountID = accountID
+        PaveAccount.set(accountID, in: defaults)
         if let accountID, pinVault.belongs(to: accountID) {
             phase = .main
         } else {
@@ -176,6 +181,12 @@ final class AppState {
         AylaDrafts.forget(in: defaults)
         AylaPendingFiles.forget()
         NotificationAlerts.forgetEverything()
+        // What this account keeps on the iPhone goes out of sight: it stays in its own folder for when it signs in
+        // again, and the next account sees none of it, also not on the Lock Screen, in a widget or on the Watch.
+        PaveAccount.set(nil, in: defaults)
+        ApplicationWidgetSnapshot.clear()
+        WatchNextStepBridge.clear()
+        PlanActivityController.endAll()
         // The iCloud Mail connection stays until you disconnect it yourself (Meldingen › E-mailaccounts).
         conversationToOpen = nil
         opensNotifications = false

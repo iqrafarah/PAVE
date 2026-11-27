@@ -22,6 +22,15 @@ enum WatchNextStepBridge {
         publish()
     }
 
+    /// Signing out: the Watch forgets the next step of this account.
+    static func clear() {
+        drafts = nil
+        fair = []
+        lastSent = nil
+        guard ShareWatchBridge.isAvailable else { return }
+        WCSession.default.transferUserInfo([key: ["clear": true]])
+    }
+
     private static func publish() {
         guard ShareWatchBridge.isAvailable, let drafts else { return }
         let step = NextStep.pick(drafts: drafts, fair: fair) { slug in

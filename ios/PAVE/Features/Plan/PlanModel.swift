@@ -85,7 +85,7 @@ final class PlanModel {
 
     enum EditDecision: String { case applied, declined }
 
-    private static let editDecisionsKey = "aylaPlanEditDecisions"
+    private static var editDecisionsKey: String { PaveAccount.key("aylaPlanEditDecisions") }
     private(set) var editDecisions: [String: EditDecision] = (UserDefaults.standard.dictionary(forKey: PlanModel.editDecisionsKey) as? [String: String] ?? [:])
         .compactMapValues(EditDecision.init(rawValue:))
 

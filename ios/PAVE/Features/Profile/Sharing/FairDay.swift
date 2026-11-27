@@ -14,7 +14,8 @@ enum FairDay {
         let event: Event
     }
 
-    private static let key = "fair.day"
+    /// This account's own day: another account on this iPhone starts empty.
+    private static var key: String { PaveAccount.key("fair.day") }
 
     static func record(_ event: Event, at date: Date = .now) {
         var entries = all()

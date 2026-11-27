@@ -27,7 +27,7 @@ struct QuickShareSheet: View {
     @Environment(VaultModel.self) private var vault
     @Environment(ProfileModel.self) private var profile
     /// The last choice of your profile or a selection, for the next Snel delen.
-    @AppStorage("quickShare.profileID") private var lastChoice = ""
+    @AppStorage(PaveAccount.key("quickShare.profileID")) private var lastChoice = ""
     @State private var choice = ""
     @State private var didStart = false
     @State private var includesCV = true

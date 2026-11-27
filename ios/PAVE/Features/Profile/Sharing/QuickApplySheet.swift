@@ -13,7 +13,7 @@ struct QuickApplySheet: View {
     @Environment(VaultModel.self) private var vault
     @Environment(ProfileModel.self) private var profile
     @Environment(AylaChatModel.self) private var chat
-    @AppStorage("fair.availability") private var storedAvailability = ""
+    @AppStorage(PaveAccount.key("fair.availability")) private var storedAvailability = ""
     @State private var card = FairApplicationCard(name: "")
     @State private var isWriting = false
     @State private var aylaFailed = false

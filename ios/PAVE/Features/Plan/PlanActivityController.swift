@@ -53,6 +53,15 @@ final class PlanActivityController {
         }
     }
 
+    /// Signing out: no plan of this account stays on the Lock Screen or in the Dynamic Island.
+    static func endAll() {
+        Task.detached {
+            for activity in Activity<Attributes>.activities {
+                await activity.end(nil, dismissalPolicy: .immediate)
+            }
+        }
+    }
+
     /// The plans as they are now. A finished plan shows "Klaar" once more and then goes; a deleted one goes at once.
     func sync(_ plans: [PavePlan], force: Bool = false) {
         guard let followedPlanID, let id = activityID else { return }

@@ -64,6 +64,8 @@ enum NotificationAlerts {
     static func forgetEverything() {
         UserDefaults.standard.removeObject(forKey: seenKey)
         UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+        // Reminders of this account (a deadline, an invitation that is coming) do not go off for the next one.
+        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
         UNUserNotificationCenter.current().setBadgeCount(0)
         EmailPhotoStore.forgetAll()
     }
