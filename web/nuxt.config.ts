@@ -27,6 +27,11 @@ export default defineNuxtConfig({
       ],
     },
   },
+  // Server only: the key that encrypts the app-specific passwords of connected mailboxes (NUXT_EMAIL_SECRET, at least
+  // 32 characters, e.g. `openssl rand -base64 48`). Without it e-mail in Meldingen says it is not available.
+  runtimeConfig: {
+    emailSecret: '',
+  },
   css: ['~/assets/css/main.css'],
   vite: {
     plugins: [tailwindcss()],

@@ -53,7 +53,7 @@ watch(
         <span :style="{ background: surfaceTint }" class="relative h-12 w-full shrink-0 overflow-hidden" aria-hidden="true">
           <img v-if="coverUrl" :src="coverUrl" alt="" class="size-full object-cover" loading="lazy" @error="hasCoverFailed = true" />
         </span>
-        <VaultStatusBadge :status="item.status" class="absolute right-2 top-2" />
+        <VaultStatusBadge :status="item.status" :is-awaiting="isAwaitingReview(item)" class="absolute right-2 top-2" />
         <VaultLogo :name="monogramName" :logo-url="item.logoUrl" :file-name="firstDocument" :size="44" class="absolute left-3 top-6.5" />
         <span class="flex flex-1 flex-col gap-2 px-3 pb-3 pt-7.5">
           <span class="line-clamp-2 break-words pr-7 text-[0.9375rem]/snug font-semibold text-heading">{{ item.title }}</span>
@@ -80,7 +80,7 @@ watch(
         <span class="flex min-w-0 flex-1 flex-col gap-1.5">
           <span class="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span class="min-w-0 text-base font-semibold text-heading">{{ item.title }}</span>
-            <VaultStatusBadge :status="item.status" />
+            <VaultStatusBadge :status="item.status" :is-awaiting="isAwaitingReview(item)" />
           </span>
           <span class="flex flex-wrap gap-x-5 gap-y-1 text-[0.8125rem] font-medium text-heading">
             <span v-if="place" class="flex min-w-0 items-center gap-2">

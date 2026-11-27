@@ -53,5 +53,6 @@ const showsChats = computed(() => route.meta.showsChats === true);
     <VaultAddDialog />
     <VaultFilePreview />
     <AylaSearchDialog :open="search.isOpen.value" @close="search.close()" />
+    <NotificationCenter />
   </div>
 </template>

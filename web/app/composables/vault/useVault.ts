@@ -10,6 +10,7 @@ import type {
   VaultShelf,
   VaultSkillSuggestion,
 } from '~/types/vault';
+import type { VaultValidationRequest } from '~/types/verification';
 
 const BUCKET = 'pave-vault';
 // A link to a logo or cover lasts an hour; the vault is read again after every change and on every visit.
@@ -19,6 +20,8 @@ const EXAMPLE_FOLDERS_KEY = 'pave-vault-example-folders-made';
 // Pinned folders while the database cannot keep them yet (before migration 20261119120000): folder id → when pinned.
 const PINNED_FOLDERS_KEY = 'pave-vault-pinned-folders';
 const ITEM_SELECT = '*,vault_item_skills(name,status),vault_item_files(*)';
+const REQUEST_SELECT = 'vault_validation_requests(status,organization_id,organisation_name,requested_at,response)';
+const REQUEST_STATUSES: VaultValidationRequest['status'][] = ['pending', 'verified', 'rejected', 'cancelled'];
 
 export type VaultLoadStatus = 'loading' | 'ready' | 'failed';
 
@@ -62,6 +65,16 @@ interface ItemRow {
   vault_item_skills: { name: string; status: string }[] | null;
   vault_item_files: { id: string; file_name: string; mime_type: string; storage_path: string; role?: string | null }[] | null;
   vault_item_folders?: { folder_id: string }[] | null;
+  // The requests to confirm it (migration 20261117180000); left out when that query fails.
+  vault_validation_requests?: RequestRow[] | null;
+}
+
+interface RequestRow {
+  status: string;
+  organization_id: string | null;
+  organisation_name: string;
+  requested_at: string;
+  response: string | null;
 }
 
 interface FolderRow {
@@ -79,6 +92,20 @@ interface ErrorLike {
   code?: string;
   message?: string;
   status?: number;
+}
+
+/** The newest request to confirm the item, as the learner may read it back (iOS VaultService.lastRequest). */
+function toLastRequest(rows: RequestRow[] | null | undefined): VaultValidationRequest | null {
+  const known = (rows ?? []).filter((row) => (REQUEST_STATUSES as string[]).includes(row.status));
+  const newest = known.sort((a, b) => b.requested_at.localeCompare(a.requested_at))[0];
+  if (!newest) return null;
+  return {
+    status: newest.status as VaultValidationRequest['status'],
+    organizationId: newest.organization_id,
+    organisationName: newest.organisation_name,
+    requestedAt: newest.requested_at,
+    response: newest.response,
+  };
 }
 
 /** Null for a category or status this version of the app does not know yet, as on iOS. */
@@ -101,6 +128,7 @@ function toItem(row: ItemRow): VaultItem | null {
     category: row.category as VaultItem['category'],
     title: row.title,
     description: row.description,
+    organizationId: row.organization_id ?? null,
     organisationName: row.organisation_name,
     organisationLocation: row.organisation_location,
     startDate: row.start_date,
@@ -121,6 +149,7 @@ function toItem(row: ItemRow): VaultItem | null {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     position: row.position ?? null,
+    lastRequest: toLastRequest(row.vault_validation_requests),
   };
 }
 
@@ -183,6 +212,12 @@ export function useVault() {
 
   /** The items with their folder links; before migration 20261112130000 folder_id is the only folder. */
   async function readItems() {
+    // With the requests to confirm each item; without them the vault still loads, only "In afwachting" is missing.
+    const withRequests = await supabase
+      .from('vault_items')
+      .select(`${ITEM_SELECT},vault_item_folders(folder_id),${REQUEST_SELECT}`)
+      .order('updated_at', { ascending: false });
+    if (!withRequests.error) return withRequests;
     const withFolders = await supabase
       .from('vault_items')
       .select(`${ITEM_SELECT},vault_item_folders(folder_id)`)

@@ -3,6 +3,11 @@
 // the dimmed screen. PAVE and the bell at the top, the places, and at the bottom "Nieuw gesprek" and your account.
 // Opened only with the PAVE logo at the top of a screen. Escape, a click next to it or a place closes it.
 const route = useRoute();
+const { unreadCount } = useNotifications();
+// "Meldingen, 3 ongelezen" for a screen reader; the badge itself is hidden from it.
+const notificationsLabel = computed(() =>
+  unreadCount.value ? `${MENU_NOTIFICATIONS}, ${NOTIFICATIONS_UNREAD_COUNT(unreadCount.value)}` : MENU_NOTIFICATIONS,
+);
 const router = useRouter();
 const conversation = useAylaConversation();
 const { isMenuOpen, closeMenu } = useMainMenu();
@@ -88,10 +93,11 @@ watch(() => route.fullPath, closeMenu);
           to="/meldingen"
           :aria-current="route.path === '/meldingen' ? 'page' : undefined"
           :class="route.path === '/meldingen' ? 'ring-2 ring-brand' : ''"
-          class="flex size-11 items-center justify-center rounded-full bg-tile text-brand focus-visible:outline-2 focus-visible:outline-brand"
+          class="relative flex size-11 items-center justify-center rounded-full bg-tile text-brand focus-visible:outline-2 focus-visible:outline-brand"
         >
           <LayoutPaveIcon name="bell" class="size-5" />
-          <span class="sr-only">{{ MENU_NOTIFICATIONS }}</span>
+          <span class="sr-only">{{ notificationsLabel }}</span>
+          <NotificationBellBadge />
         </NuxtLink>
       </div>
 

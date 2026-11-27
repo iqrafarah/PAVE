@@ -56,6 +56,24 @@ onMounted(async () => {
   if (lock.state.value.status === 'idle') await lock.load();
   load();
 });
+
+// The chat on screen gives no notification for Ayla's answers in it, and one about it is read at once (iOS keepsOpenChat).
+// A locked chat counts once it is unlocked.
+const notifications = useNotifications();
+let releaseOpenChat: (() => void) | null = null;
+watch(
+  () => (import.meta.client && !isGated.value ? conversationId.value : null),
+  (id) => {
+    releaseOpenChat?.();
+    releaseOpenChat = id ? notifications.keepOpen(id) : null;
+    if (id) {
+      const unread = notifications.state.value.notifications.filter((entry) => entry.conversationId === id && entry.isUnread).map((entry) => entry.id);
+      notifications.markRead(unread);
+    }
+  },
+  { immediate: true },
+);
+onBeforeUnmount(() => releaseOpenChat?.());
 </script>
 
 <template>

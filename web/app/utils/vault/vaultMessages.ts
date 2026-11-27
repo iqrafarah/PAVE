@@ -220,7 +220,6 @@ export const VAULT_DISCARD_CHANGES_CONFIRM = 'Weggooien';
 export const VAULT_DISCARD_CHANGES_MESSAGE = 'Wat je hebt aangepast, wordt niet bewaard.';
 export const VAULT_DISCARD_CHANGES_KEEP = 'Verder met aanpassen';
 export const VAULT_IN_FOLDERS = 'In mappen';
-export const VAULT_REQUEST_DISCARD_KEEP = 'Verder met invullen';
 export const VAULT_FIELD_FOLDERS = 'Mappen';
 export const VAULT_NO_FOLDER = 'Geen map';
 export const VAULT_NEW_KIND_FOLDER = (name: string) => `${name} (nieuwe map)`;
@@ -299,54 +298,9 @@ export const VAULT_ERROR_NOT_ALLOWED = 'Dit mag niet met je account. Log opnieuw
 export const VAULT_ERROR_GENERIC = 'Er ging iets mis. Probeer het zo nog een keer.';
 export const VAULT_ERROR_NOT_READY = 'Dit is nog niet beschikbaar. Probeer het later nog een keer.';
 
-// Bevestiging aanvragen (iOS VaultRequestConfirmationSheet). Only the front for now: nothing is sent or stored.
+// Bevestiging aanvragen (iOS VaultRequestConfirmationSheet). The rest of its texts are in verificationMessages.ts.
 export const VAULT_REQUEST_ACTION = 'Bevestiging aanvragen';
 export const VAULT_REQUEST_AGAIN_ACTION = 'Opnieuw bevestiging aanvragen';
-export const VAULT_REQUEST_PREVIEW_LABEL = 'Voorbeeld';
-export const VAULT_REQUEST_PREVIEW_ACCESSIBILITY = 'Voorbeeld, werkt nog niet';
-export const VAULT_REQUEST_NOT_ACTIVE =
-  'Bevestiging aanvragen werkt nog niet. Je kunt alvast kijken hoe het wordt, maar er wordt niets verstuurd.';
-export const VAULT_REQUEST_WHO_TITLE = 'Wie kan dit bevestigen?';
-export const VAULT_REQUEST_ORGANISATION_PROMPT = 'Bijvoorbeeld Fontys of LiveWall';
-export const VAULT_REQUEST_EMAIL_TITLE = 'E-mailadres van je contactpersoon';
-export const VAULT_REQUEST_EMAIL_PROMPT = 'naam@organisatie.nl';
-export const VAULT_REQUEST_MESSAGE_TITLE = 'Bericht';
-export const VAULT_REQUEST_MESSAGE_PROMPT = 'Bijvoorbeeld: Wil je mijn eindstage bevestigen?';
-export const VAULT_REQUEST_SHARED_TITLE = 'Dit ziet de ontvanger';
-export const VAULT_REQUEST_SEND = 'Verzoek versturen';
-export const VAULT_REQUEST_NOT_SENT_TITLE = 'Nog niet verstuurd';
-export const VAULT_REQUEST_NOT_SENT_MESSAGE = (organisation: string) =>
-  `Bevestiging aanvragen werkt nog niet in deze versie van PAVE. Er is niets naar ${organisation.trim() || 'de organisatie'} gestuurd en niets bewaard.`;
-export const VAULT_REQUEST_DISCARD_TITLE = 'Verzoek weggooien?';
-export const VAULT_REQUEST_DISCARD_CONFIRM = 'Weggooien';
-export const VAULT_REQUEST_MISSING = {
-  organisation: 'Vul de naam van de organisatie in.',
-  email: 'Vul een geldig e-mailadres in, zoals naam@organisatie.nl.',
-} as const;
-export const VAULT_REQUEST_RECIPIENTS = {
-  school: {
-    title: 'School of opleiding',
-    example: "Voor diploma's, cijfers en certificaten.",
-    organisationLabel: 'School of opleiding',
-    icon: '/images/vault/icons/AcademicCapSolid.svg',
-  },
-  employer: {
-    title: 'Werkgever of stagebedrijf',
-    example: 'Voor werkervaring en stages.',
-    organisationLabel: 'Werkgever of stagebedrijf',
-    icon: '/images/vault/icons/BriefcaseSolid.svg',
-  },
-  mentor: {
-    title: 'Docent of begeleider',
-    example: 'Voor projecten, feedback en vaardigheden.',
-    organisationLabel: 'School of organisatie van je begeleider',
-    icon: '/images/vault/icons/UserGroupSolid.svg',
-  },
-} as const;
-export const VAULT_SHARED_DESCRIPTION = 'Je omschrijving';
-export const VAULT_SHARED_TITLE = (title: string, kind: string) => `${title} (${kind.toLowerCase()})`;
-export const VAULT_SHARED_FILES = (count: number) => (count === 1 ? '1 bestand' : `${count} bestanden`);
-export const VAULT_SHARED_SKILLS = (count: number) => (count === 1 ? '1 vaardigheid' : `${count} vaardigheden`);
 
 // "Laat Ayla invullen" (iOS VaultMessages, aylaFill...)
 export const VAULT_AYLA_FILL = 'Laat Ayla invullen';

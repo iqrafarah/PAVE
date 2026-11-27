@@ -178,7 +178,7 @@ export function fullDay(day: string) {
 }
 
 /** "mrt 2025 - dec 2025", "nov 2025 - nu" or "jun 2025". */
-export function itemPeriod(item: VaultItem) {
+export function itemPeriod(item: Pick<VaultItem, 'startDate' | 'endDate' | 'issuedOn' | 'isCurrent'>) {
   const { startDate: start, issuedOn } = item;
   const end = item.isCurrent ? null : item.endDate;
   if (issuedOn && !start && !item.endDate) return monthAndYear(issuedOn);
@@ -193,7 +193,7 @@ export function itemPeriod(item: VaultItem) {
 }
 
 /** "Pixelwerk, Eindhoven". */
-export function itemPlace(item: VaultItem) {
+export function itemPlace(item: Pick<VaultItem, 'organisationName' | 'organisationLocation'>) {
   const parts = [item.organisationName, item.organisationLocation].map((part) => part?.trim()).filter(Boolean);
   return parts.length ? parts.join(', ') : null;
 }

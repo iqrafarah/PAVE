@@ -161,8 +161,8 @@ const row =
           <VaultIcon src="/images/vault/icons/Pencil.svg" class="size-4.5 text-brand" />
           {{ VAULT_EDIT }}
         </button>
-        <!-- Confirmed evidence needs no request; anything else can be sent to a school or employer. -->
-        <button v-if="item.status !== 'verified'" type="button" role="menuitem" :class="row" class="text-ink" @mouseenter="setFolders(false)" @click="choose('confirm')">
+        <!-- Confirmed evidence needs no request, and an open one is decided first; anything else can be sent. -->
+        <button v-if="canRequestConfirmation(item)" type="button" role="menuitem" :class="row" class="text-ink" @mouseenter="setFolders(false)" @click="choose('confirm')">
           <VaultIcon src="/images/vault/icons/CheckBadgeSolid.svg" class="size-4.5 text-brand" />
           {{ VAULT_REQUEST_ACTION }}
         </button>

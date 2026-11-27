@@ -1,4 +1,5 @@
 import type { VaultCategory } from '~/types/ayla';
+import type { VaultValidationRequest } from '~/types/verification';
 
 /** The categories of vault_items, as in the database. "other" (Overige) came with the second vault migration. */
 export type VaultItemCategory = VaultCategory | 'other';
@@ -54,6 +55,8 @@ export interface VaultItem {
   category: VaultItemCategory;
   title: string;
   description: string | null;
+  // The organisation in the directory the evidence belongs to (vault_items.organization_id), when known.
+  organizationId: string | null;
   organisationName: string | null;
   organisationLocation: string | null;
   startDate: string | null;
@@ -78,6 +81,8 @@ export interface VaultItem {
   updatedAt: string;
   // Its place in "Eigen volgorde", once you dragged your evidence into an order of your own (vault_items.position).
   position: number | null;
+  // The newest request to confirm it: "In afwachting" while it is open, the reason after a rejection. Null without one.
+  lastRequest: VaultValidationRequest | null;
 }
 
 // The theme colours of Settings (green, blue, gold, rose = Roze, rust = Oranje, purple, red, lime), plus slate, which

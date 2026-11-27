@@ -35,6 +35,12 @@ const folderNames = computed(() =>
   vault.state.value.folders.filter((folder) => item.value?.folderIds.includes(folder.id)).map((folder) => folder.name),
 );
 const place = computed(() => (item.value ? itemPlace(item.value) : null));
+const reason = computed(() => (item.value ? rejectionReason(item.value) : null));
+const statusExplanation = computed(() => {
+  if (!item.value) return '';
+  if (isAwaitingReview(item.value)) return awaitingReviewExplanation(item.value.lastRequest?.organisationName);
+  return VAULT_STATUS_EXPLANATIONS[item.value.status];
+});
 const period = computed(() => (item.value ? itemPeriod(item.value) : null));
 // The logo and cover are pictures of the card, not evidence, so they are left out of "Bestanden".
 const documents = computed(() => item.value?.files.filter((file) => file.role === 'document') ?? []);
@@ -110,17 +116,22 @@ watch(
         <VaultLogo :name="item.organisationName ?? item.title" :logo-url="item.logoUrl" :file-name="documents[0]?.name" :size="56" />
         <div class="flex min-w-0 flex-1 flex-col items-start gap-2">
           <p class="font-heading text-xl font-semibold text-heading">{{ item.title }}</p>
-          <VaultStatusBadge :status="item.status" />
+          <VaultStatusBadge :status="item.status" :is-awaiting="isAwaitingReview(item)" />
         </div>
       </div>
 
       <section class="flex flex-col gap-2.5">
         <h3 class="text-xs font-semibold text-subtle">{{ VAULT_DETAIL_STATUS }}</h3>
         <div class="flex flex-col gap-3.5 rounded-2xl border border-card-border bg-white p-4">
-          <p class="text-sm font-medium text-heading">{{ VAULT_STATUS_EXPLANATIONS[item.status] }}</p>
-          <!-- Also after a change: a confirmed item that was changed is Niet bevestigd again and can be sent anew. -->
+          <p class="text-sm font-medium text-heading">{{ statusExplanation }}</p>
+          <div v-if="reason" class="rounded-xl bg-status-rejected-surface p-3">
+            <p class="text-xs font-medium text-subtle">{{ rejectionReasonTitle(item.lastRequest?.organisationName) }}</p>
+            <p class="mt-1 whitespace-pre-wrap text-sm font-medium text-heading">{{ reason }}</p>
+          </div>
+          <!-- Also after a change: a confirmed item that was changed is Niet bevestigd again and can be sent anew. While a
+               request is open there is nothing to send: the reviewer decides first. -->
           <button
-            v-if="item.status !== 'verified'"
+            v-if="canRequestConfirmation(item)"
             type="button"
             class="flex min-h-13.25 w-full items-center justify-center gap-2.5 rounded-full border-[1.5px] border-brand bg-white px-4 text-base font-semibold text-brand transition-transform hover:bg-drop active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
             @click="emit('requestConfirmation', item.id)"
