@@ -1,4 +1,4 @@
-import type { Vacancy } from '~/types/ayla';
+import type { AylaNewPlan, AylaPlanEditChange, Vacancy } from '~/types/ayla';
 import type { Plan, PlanStep, PlanStepStatus, PlanTemplate, PlanTemplateStep } from '~/types/plan';
 import { PLAN_VACANCY_STEPS } from './planMessages';
 
@@ -185,6 +185,86 @@ export function reopenPlan(plan: Plan): Plan {
     }
   }
   return { ...plan, steps, completedAt: null, updatedAt: now() };
+}
+
+/** "Afronden" in the chat: the step you are on is done and the next one becomes the step to work on. */
+export function completeCurrentStep(plan: Plan): Plan {
+  const current = currentStep(plan);
+  return current ? setStepStatus(plan, current.id, 'done') : plan;
+}
+
+/** The step goes just before another one, or at the end without one (iOS PavePlan.moveStep(id:before:)). */
+function moveStepBefore(plan: Plan, stepId: string, beforeId: string | null): Plan {
+  const step = plan.steps.find((entry) => entry.id === stepId);
+  if (!step || stepId === beforeId) return plan;
+  const others = plan.steps.filter((entry) => entry.id !== stepId);
+  const target = beforeId ? others.findIndex((entry) => entry.id === beforeId) : -1;
+  const steps = target >= 0 ? [...others.slice(0, target), step, ...others.slice(target)] : [...others, step];
+  return normalizePlan({ ...plan, steps, updatedAt: now() });
+}
+
+/** Right after a step, or at the start (null); after a step that is gone, at the end. */
+function placeStepAfter(plan: Plan, stepId: string, afterId: string | null): Plan {
+  const others = plan.steps.filter((entry) => entry.id !== stepId);
+  if (afterId === null) return moveStepBefore(plan, stepId, others[0]?.id ?? null);
+  const index = others.findIndex((entry) => entry.id === afterId);
+  return moveStepBefore(plan, stepId, index >= 0 ? (others[index + 1]?.id ?? null) : null);
+}
+
+/**
+ * Ayla's proposed changes, as far as the user kept them (iOS PavePlan.apply): new steps where she put them, steps
+ * taken out (never a done one), steps moved. A step that is gone meanwhile is left alone.
+ */
+export function applyPlanEdit(plan: Plan, changes: AylaPlanEditChange[]): Plan {
+  let next = plan;
+  for (const change of changes) {
+    if (change.op === 'add') {
+      const title = cleanPlanName(change.title);
+      if (!title) continue;
+      const step = newStep({ title, summary: change.why, kind: change.kind || 'general' });
+      next = placeStepAfter(normalizePlan({ ...next, steps: [...next.steps, step], updatedAt: now() }), step.id, change.afterStepId ?? null);
+    } else if (change.op === 'remove') {
+      const isOpen = next.steps.some((step) => step.id === change.stepId && step.status !== 'done');
+      if (change.stepId && isOpen) next = removeStep(next, change.stepId);
+    } else if (change.stepId && next.steps.some((step) => step.id === change.stepId)) {
+      next = placeStepAfter(next, change.stepId, change.afterStepId ?? null);
+    }
+  }
+  return next;
+}
+
+/** The chat belongs to the plan (and to a step of it), as save_plan stores it. */
+export function attachConversation(plan: Plan, conversationId: string, title = '', stepId: string | null = null): Plan {
+  const known = plan.conversations.find((chat) => chat.id === conversationId);
+  const conversations = known
+    ? plan.conversations.map((chat) => (chat.id === conversationId ? { ...chat, title: title || chat.title, stepId: stepId ?? chat.stepId } : chat))
+    : [...plan.conversations, { id: conversationId, title, stepId, addedAt: now() }];
+  const steps = plan.steps.map((step) => (step.id === stepId && !step.conversationId ? { ...step, conversationId } : step));
+  return { ...plan, conversations, steps, updatedAt: now() };
+}
+
+/** Two names for the same plan: case, accents, spaces and punctuation do not count (iOS PlanModel.sameName). */
+export function isSamePlanName(a: string, b: string) {
+  const key = (text: string) => text.toLocaleLowerCase('nl').normalize('NFD').replace(/[^\p{L}\p{N}]/gu, '');
+  return key(a) === key(b);
+}
+
+const AYLA_PROPOSAL = 'aylaProposal';
+const AYLA_TEMPLATE_ID = 'ayla';
+
+/** The plan made from what Ayla wrote, once per proposal: the plan keeps the id of her proposal. */
+export function isPlanFromProposal(plan: Plan, proposalId: string) {
+  return plan.metadata[AYLA_PROPOSAL] === proposalId;
+}
+
+export function planFromAyla(made: AylaNewPlan, proposalId: string): Plan | null {
+  const name = cleanPlanName(made.name);
+  if (!name) return null;
+  const steps = made.steps
+    .map((step) => ({ title: cleanPlanName(step.title) ?? '', summary: cleanPlanGoal(step.summary), kind: step.kind || 'general' }))
+    .filter((step) => step.title);
+  const template: PlanTemplate = { id: AYLA_TEMPLATE_ID, name, summary: '', goal: '', steps, metadata: { [AYLA_PROPOSAL]: proposalId } };
+  return planFromTemplate(template, name, cleanPlanGoal(made.goal));
 }
 
 export function detachConversation(plan: Plan, conversationId: string): Plan {

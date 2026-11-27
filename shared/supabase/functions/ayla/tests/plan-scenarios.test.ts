@@ -58,7 +58,7 @@ function holds(reply: AylaReply, text: string, where: { inPlan: boolean; device:
   if (!/\b(nieuw|opnieuw|ander)\w*/i.test(text)) assert.notEqual(reply.proposedAction?.kind, 'createPlan', `${label}: maakt het plan opnieuw`)
   // Changes to the plan: only on the iPhone in a plan, a few, never a done step or a step that is there.
   if (reply.planEdit) {
-    assert.ok(where.inPlan && where.device === 'phone', `${label}: planvoorstel waar het niet hoort`)
+    assert.ok(where.inPlan && where.device !== 'watch', `${label}: planvoorstel waar het niet hoort`)
     assert.ok(reply.planEdit.changes.length <= 4, `${label}: te veel wijzigingen`)
     for (const change of reply.planEdit.changes) {
       assert.notEqual(change.stepId, 's1', `${label}: raakt een afgeronde stap`)

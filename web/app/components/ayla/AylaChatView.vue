@@ -42,6 +42,13 @@ const chatProjectId = computed(() => props.projectId ?? newChatProject.value?.id
 // "Bespreken met Ayla" on a plan: the new chat belongs to that plan (and step); the chip says so, ✕ undoes it.
 const plans = usePlans();
 const newChatPlan = computed(() => (conversationId.value ? null : plans.find(plans.state.value.newChat?.planId)));
+// "Plan toevoegen": the list of plans, the form of the Plan page for a new one, and Ayla's steps for a plan made "with
+// Ayla", as on the Plan page.
+const isPickingPlan = ref(false);
+const isCreatingPlan = ref(false);
+const proposalPlanId = ref<string | null>(null);
+const isProposingSteps = ref(false);
+const proposalPlan = computed(() => plans.find(proposalPlanId.value));
 const { readDraft, saveDraft } = useAylaDraft();
 
 const text = ref('');
@@ -245,6 +252,16 @@ async function send(questionText: string, input: 'text' | 'voice' = 'text') {
     },
   });
   restoreFailed(failedText, failedAttachments);
+}
+
+/** A plan just made from the chat: the chat goes in it (a new chat starts in it), and "Stappen van Ayla" proposes steps. */
+async function joinNewPlan(planId: string) {
+  if (conversationId.value) await plans.addChatToPlan(planId, conversationId.value);
+  else plans.state.value.newChat = { planId, stepId: null, prompt: null };
+  if (plans.state.value.proposesStepsFor !== planId) return;
+  plans.state.value.proposesStepsFor = null;
+  proposalPlanId.value = planId;
+  isProposingSteps.value = true;
 }
 
 async function lockNewChat(id: string) {
@@ -585,6 +602,7 @@ defineExpose({ openFilePicker });
         @stop-talking="voice.stop"
         @reading-files="isComposerReading = $event"
         @pick-item="pickerRef?.open()"
+        @pick-plan="isPickingPlan = true"
       />
       </Transition>
       <p v-if="!hasComposerOnTop" class="relative mt-2 text-center text-xs text-muted">{{ AYLA_DISCLAIMER }}</p>
@@ -611,6 +629,13 @@ defineExpose({ openFilePicker });
     />
     <VaultRequestDialog :item-id="confirmItemId" @close="confirmItemId = null" />
     <AylaVaultPicker ref="picker" @pick="conversation.attachItems($event); composerRef?.focus()" />
+    <PlanPickerDialog v-model:open="isPickingPlan" :conversation-id="conversationId" @new-plan="isCreatingPlan = true" />
+    <PlanEditorDialog v-model:open="isCreatingPlan" :plan="null" @created="joinNewPlan" />
+    <PlanProposalDialog
+      v-model:open="isProposingSteps"
+      :plan="proposalPlan"
+      @add="proposalPlan && plans.addPlanSteps(proposalPlan.id, $event)"
+    />
 
     <!-- Announces Ayla's answer once it is complete, not every word while she writes. -->
     <p class="sr-only" aria-live="polite">{{ state.announcement }}</p>

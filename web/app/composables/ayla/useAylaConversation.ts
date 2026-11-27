@@ -73,6 +73,7 @@ export function useAylaConversation() {
   // Set just before the new chat opens, which then takes it over; any other new chat starts without one.
   const nextItemContext = useState<AylaItemContext | null>('ayla-next-item-context', () => null);
   const { streamQuestion, loadMessages, removeLastTurn } = useAyla();
+  const plans = usePlans();
 
   function stop() {
     stopController?.abort();
@@ -196,6 +197,8 @@ export function useAylaConversation() {
           answer.isWriting = false;
           state.value.announcement = `${AYLA_NAME}: ${reply.text}`;
           openRequestedScreen(reply, text);
+          // Only an answer that just came in: opening an older chat never applies its plan changes again.
+          plans.followReply(reply, state.value.conversationId ?? reply.conversationId, text);
         },
       },
       stopController.signal,

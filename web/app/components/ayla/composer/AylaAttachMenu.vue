@@ -1,11 +1,12 @@
 <script setup lang="ts">
 // The plus button in the chat field and what it adds to a message (iOS AylaAttachMenu): it opens upwards over the
-// left side of the field. An item from the vault becomes what the conversation is about; plans can be added once they
-// exist, until then the row says why not.
+// left side of the field. An item from the vault becomes what the conversation is about; "Plan toevoegen" puts the
+// chat in one of your plans or in a new one.
 const emit = defineEmits<{
   addFile: [];
   addPhoto: [];
   pickItem: [];
+  pickPlan: [];
 }>();
 
 const vault = useVault();
@@ -31,7 +32,7 @@ const ROWS = computed<AttachRow[]>(() => [
     height: 16,
     isAvailable: hasVaultItems.value,
   },
-  { id: 'plan', label: AYLA_ADD_PLAN_LABEL, note: AYLA_NO_PLAN_NOTE, icon: '/images/ayla/add-plan.svg', width: 17, height: 16, isAvailable: false },
+  { id: 'plan', label: AYLA_ADD_PLAN_LABEL, icon: '/images/ayla/add-plan.svg', width: 17, height: 16, isAvailable: true },
   { id: 'file', label: AYLA_ADD_FILE_LABEL, icon: '/images/ayla/add-file.svg', width: 14.6, height: 15.6, isAvailable: true },
   { id: 'photo', label: AYLA_ADD_PHOTO_LABEL, icon: '/images/vault/icons/PhotoSolid.svg', width: 16, height: 16, isAvailable: true },
 ]);
@@ -64,6 +65,7 @@ function choose(row: AttachRow) {
   if (row.id === 'file') emit('addFile');
   else if (row.id === 'photo') emit('addPhoto');
   else if (row.id === 'item') emit('pickItem');
+  else if (row.id === 'plan') emit('pickPlan');
 }
 
 function moveFocus(step: number) {

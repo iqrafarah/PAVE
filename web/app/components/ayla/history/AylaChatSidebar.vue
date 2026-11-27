@@ -114,6 +114,26 @@ const transcript = computed(() => {
   const isOpenChat = Boolean(activeId.value) && state.conversationId === activeId.value;
   return isOpenChat ? state.messages : [];
 });
+// The plan of the open chat (or of the new chat about to start in one): its steps take the place of the chats, and
+// the pill above them goes to the chats and back.
+const plans = usePlans();
+const chatPlan = computed(() => plans.planOfChat(activeId.value));
+const showsChats = ref(false);
+// Asked Ayla for a plan: while she writes it and it is saved, its place already shows that she is making it.
+const lastQuestion = computed(() => transcript.value.findLast((message) => message.role === 'user')?.text ?? '');
+const isMakingPlan = computed(
+  () =>
+    !chatPlan.value &&
+    asksForNewPlan(lastQuestion.value) &&
+    (conversation.state.value.isWriting || (Boolean(activeId.value) && plans.state.value.makingPlanFor === activeId.value)),
+);
+const showsSteps = computed(() => (Boolean(chatPlan.value) || isMakingPlan.value) && !showsChats.value);
+// Another chat or a plan that was just made: its steps show first, and a folded panel opens for a new plan.
+watch([activeId, () => chatPlan.value?.id], ([id, planId], [previousId, previousPlanId]) => {
+  showsChats.value = false;
+  const isNewPlan = Boolean(planId) && !previousPlanId && id === previousId;
+  if (isNewPlan && isCollapsed.value) setCollapsed(false);
+});
 const status = computed(() => chats.state.value.status);
 const hasNoChats = computed(() => status.value === 'ready' && chats.visibleConversations.value.length === 0);
 
@@ -226,7 +246,7 @@ onMounted(async () => {
   } catch {
     width.value = DEFAULT_WIDTH;
   }
-  await Promise.all([chats.load(), lock.load()]);
+  await Promise.all([chats.load(), lock.load(), plans.state.value.status === 'idle' ? plans.load(true) : null]);
   channel = await chats.subscribe();
 });
 
@@ -250,8 +270,12 @@ onBeforeUnmount(() => {
       @keydown.esc="closeDrawerAndReturnFocus"
       @keydown="trapFocus"
     >
+      <!-- The steps of a plan end where Figma puts the line above the messages (1363:2668, 368 px from the top). -->
       <div
-        :class="transcript.length ? 'h-76.75 shrink-0 border-b border-rail-line' : 'min-h-0 flex-1'"
+        :class="[
+          transcript.length ? 'border-b border-rail-line' : '',
+          !transcript.length ? 'min-h-0 flex-1' : showsSteps ? 'h-92 shrink-0' : 'h-76.75 shrink-0',
+        ]"
         class="flex flex-col"
       >
         <div class="flex items-center pl-5.5 pr-5.25 pt-4.75">
@@ -284,7 +308,38 @@ onBeforeUnmount(() => {
           </button>
         </div>
 
-        <div class="min-h-0 flex-1 space-y-5.25 overflow-y-auto px-5.5 pb-4 pt-9.5">
+        <!-- In a plan's chat the steps take the place of the chats, under a pill to the chats (Figma FEDDIES 1363:2656). -->
+        <div v-if="showsSteps" class="flex min-h-0 flex-1 flex-col">
+          <button
+            type="button"
+            :aria-label="PLAN_TO_CHATS_LABEL"
+            class="mx-auto mt-3.5 flex h-6.5 items-center gap-2.5 rounded-pill px-3 font-heading text-pill font-semibold text-heading hover:bg-tint focus-visible:outline-2 focus-visible:outline-brand"
+            @click="showsChats = true"
+          >
+            <LayoutPaveIcon name="arrowLeft" class="size-3" />
+            {{ PLAN_TO_CHATS }}
+          </button>
+          <div class="flex min-h-0 flex-1 flex-col pb-4 pl-5 pr-5.25 pt-3.5">
+            <PlanChatPanel v-if="chatPlan" :plan="chatPlan" />
+            <p v-else role="status" class="flex items-center gap-3.5 font-step text-sm font-semibold text-subtle">
+              <span class="size-5 animate-spin rounded-full border-2 border-step-ring border-t-brand motion-reduce:animate-none" aria-hidden="true" />
+              {{ PLAN_MAKING }}
+            </p>
+          </div>
+        </div>
+
+        <div v-else class="min-h-0 flex-1 space-y-5.25 overflow-y-auto px-5.5 pb-4" :class="chatPlan ? 'pt-3.5' : 'pt-9.5'">
+          <!-- Back to the steps of this chat's plan, in the same place as the pill to the chats. -->
+          <button
+            v-if="chatPlan"
+            type="button"
+            :aria-label="PLAN_TO_STEPS_LABEL(chatPlan.name)"
+            class="mx-auto flex h-6.5 items-center gap-2.5 rounded-pill px-3 font-heading text-pill font-semibold text-heading hover:bg-tint focus-visible:outline-2 focus-visible:outline-brand"
+            @click="showsChats = false"
+          >
+            {{ PLAN_TO_STEPS }}
+            <LayoutPaveIcon name="arrowLeft" class="size-3 rotate-180" />
+          </button>
           <p v-if="actionError" role="alert" class="text-sm text-danger">{{ actionError }}</p>
           <p v-if="status === 'loading' || status === 'idle'" class="text-sm text-subtle">{{ AYLA_CHATS_LOADING }}</p>
           <AylaNotice

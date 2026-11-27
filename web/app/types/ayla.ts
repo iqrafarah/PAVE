@@ -141,6 +141,31 @@ export interface AylaVaultItemProposal {
   attachments?: string[] | null;
 }
 
+/** With createPlan: the plan the user asked for in the chat. The app saves it and puts the chat in it. */
+export interface AylaNewPlan {
+  name: string;
+  goal: string;
+  steps: { title: string; summary: string; kind: string }[];
+}
+
+/** One change Ayla proposes to the plan of the chat; nothing changes before the user applies it. */
+export interface AylaPlanEditChange {
+  op: 'add' | 'remove' | 'move';
+  // The step removed or moved.
+  stepId?: string;
+  title: string;
+  kind?: string;
+  // The step it comes after; null at the start. Not for remove.
+  afterStepId?: string | null;
+  why: string;
+}
+
+export interface AylaPlanEdit {
+  id: string;
+  planId: string;
+  changes: AylaPlanEditChange[];
+}
+
 export interface AylaReply {
   version: 1;
   id: string;
@@ -150,12 +175,16 @@ export interface AylaReply {
   accessRequest?: { id: string; purpose: string; categories: VaultCategory[] };
   proposedAction?: {
     id: string;
-    kind: 'addVaultItem' | 'updatePlan' | 'draftProfile' | 'requestValidation';
+    kind: 'addVaultItem' | 'updatePlan' | 'createPlan' | 'draftProfile' | 'requestValidation';
     summary: string;
     expiresAt: string;
     // With addVaultItem: what Ayla knows from the chat, to put in the vault once the user confirms.
     vaultItem?: AylaVaultItemProposal;
+    // With updatePlan: the step Ayla changed; already saved on the server.
+    planStep?: { planId: string; stepId: string; status: 'upcoming' | 'active' | 'done' | 'skipped' };
+    newPlan?: AylaNewPlan;
   };
+  planEdit?: AylaPlanEdit;
   blocks: AylaBlock[];
   navigation?: { screen: AylaScreen; itemId?: string };
   memories?: MemorySuggestion[];

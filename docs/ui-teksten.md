@@ -270,6 +270,17 @@ Voltooid, Nieuw plan met dezelfde sjablonen (Leeg plan, Stappen van Ayla, …), 
 Afronden, Hier verder, Nog te doen, Overslaan, Open je kluis/profiel/Meldingen, Omhoog/Omlaag, Stap aanpassen), Project,
 Gesprekken met Ayla, en "Maak een plan voor deze vacature" op een vacature. Niet op web: toegangsscherm en Dynamic Bar.
 
+In plaats van de Dynamic Bar staan op web de stappen van het plan in het chatpaneel, op de plek van de chats. Vraag je Ayla om een plan, dan maakt ze het meteen, zoals op iOS (geen kaart, geen extra vraag).
+
+| Onderdeel | Tekst |
+| --- | --- |
+| Pil boven de stappen | Chats (VoiceOver: Naar je chats) — in de chats terug: Stappen (VoiceOver: Naar de stappen van {plannaam}) |
+| Terwijl Ayla het plan maakt | Ayla maakt je plan… |
+| Per stap | {datum, als de stap klaar is: 15 jan 2024, 09:00} / {titel} / {omschrijving, of de soort stap} — zonder stappen: Dit plan heeft nog geen stappen. |
+| Rondje (VoiceOver en tooltip) | {titel}: nog te doen / nu bezig / afgerond / overgeslagen — Afronden of Nog te doen |
+| Stap klaar (voorgelezen) | Stap afgerond: {stap} |
+| Voorstel van Ayla onder haar antwoord | Zo haal je je doel beter · {plannaam} — Nieuwe stap · na {stap} / aan het begin, Kan weg, Verplaatsen — Nog niet / Pas plan aan — daarna: Plan aangepast · Open plan |
+| Plan toevoegen (plusje en de rij onder het tekstveld) | Kies een plan — Ayla helpt je in deze chat met de stappen van het plan. — Nu in deze chat — Nieuw plan (het formulier van Plan) — Uit plan halen |
 ### E-mail in Meldingen (web)
 
 Zoals iOS: je eigen iCloud Mail, gesprekken als chat in Meldingen. Een browser kan geen IMAP of SMTP, dus de webserver

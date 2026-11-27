@@ -7,7 +7,7 @@ import { cleanMemories, type Memory, type MemorySuggestion, usedNotes } from './
 import type { ContentPart, ChatMessage, Complete, Effort } from './openrouter.ts'
 import { buildSystemPrompt, contextNote, MATCH_OUTPUT_SCHEMA } from './prompt.ts'
 import { vaultProposal } from './proposal.ts'
-import { newPlanProposal, type PlanContext, planChange, PLAN_EDIT_SCHEMA, planEditProposal, planProposal, type PlanStepStatus } from './plan.ts'
+import { makesPlans, newPlanProposal, type PlanContext, planChange, PLAN_EDIT_SCHEMA, planEditProposal, planProposal, type PlanStepStatus } from './plan.ts'
 import { type FoundVacancy, logoUrl, mergeFound, type SearchVacancies } from './vacancies.ts'
 
 /** A message so far. An Ayla turn says whether it asked to look in the vault, for the consent of this conversation. */
@@ -90,7 +90,11 @@ function madePlanNote(reply: Partial<AylaReply> | null | undefined): string | nu
 /** "Maak een plan", "een nieuw plan", "stappenplan", "opnieuw beginnen": the user asks for a plan in so many words. */
 const ASKS_PLAN = /\b(stappenplan|plan\w*)\b/i
 const MAKES_PLAN = /\b(maak|maken|start|begin|zet)\w*\b[^.?!]{0,40}\b(stappen)?plan\b|\b(stappen)?plan\b[^.?!]{0,40}\b(maken|starten|beginnen|opzetten)\b/i
-const ASKS_NEW_PLAN = /\bplan\b[^.?!]{0,60}\bnieuwe?\b|\b(nieuwe?|ander|tweede|nog een|extra)\b[^.?!]{0,20}\bplan|\bopnieuw\b|\bplan\b[^.?!]{0,30}\b(opnieuw|overnieuw)\b|\b(new|another) plan\b/i
+/** "Stappenplan" alone already asks for one: "een stappenplan voor een stage", "ik wil een stappenplan". */
+const STEP_PLAN = /\bstappenplan\b/i
+/** A plan the user already has: "mijn plan", "dit plan". */
+const OWN_PLAN = /\b(mijn|dit|dat|het|je|jouw) (stappen)?plan\b/i
+const ASKS_NEW_PLAN =/\bplan\b[^.?!]{0,60}\bnieuwe?\b|\b(nieuwe?|ander|tweede|nog een|extra)\b[^.?!]{0,20}\bplan|\bopnieuw\b|\bplan\b[^.?!]{0,30}\b(opnieuw|overnieuw)\b|\b(new|another) plan\b/i
 
 /**
  * Whether a plan the model wants to make may be made. The model fills newPlan too easily, turn after turn: a plan with
@@ -214,7 +218,12 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   const aboutShown = asksAboutShown(request.text, input.history, request.context)
   // A search nobody asked for ("wat staat er in mijn kluis?" after talking about vacancies) does not start.
   const lastAylaText = input.history.at(-1)?.role === 'ayla' ? input.history.at(-1)!.text : ''
-  const searchWanted = !task && (!!request.results?.length || asksForWork(request.text) || (saysYes(request.text) && asksForWork(lastAylaText))
+  // "Maak een stappenplan om een stage te vinden" asks for a plan, not for vacancies: the plan comes first, and she may
+  // offer a search after it. Only where the app makes the plan; elsewhere she writes the steps in her answer.
+  // "Zet stap 2 van mijn plan op klaar" is about a plan that is there; in a plan's chat only a new plan counts.
+  const asksForPlan = makesPlans(request.device) && !request.results?.length && !OWN_PLAN.test(request.text)
+    && (MAKES_PLAN.test(request.text) || STEP_PLAN.test(request.text)) && (!input.plan || ASKS_NEW_PLAN.test(request.text))
+  const searchWanted = !task && !asksForPlan && (!!request.results?.length || asksForWork(request.text) || (saysYes(request.text) && asksForWork(lastAylaText))
     || !!request.context?.itemIds?.length || grantsWholeVault(request.text))
   const noSearch = aboutShown || !searchWanted
   const hasFiles = !!request.attachments?.length || input.history.some((turn) => turn.role === 'user' && turn.text.includes('(bijlagen: '))
@@ -285,7 +294,7 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   const aboutWork = WORK.test(request.text) || (WORK.test(lastAyla) && saysYes(request.text))
   // A task never searches: a search the model wants anyway is dropped without asking it again.
   if (task) output.vacancySearch = null
-  const nudge = request.results?.length || task ? null : nudgeFor(output, { searches: !!deps.searchVacancies, aboutWork, mayAsk, device: request.device, aboutShown, searchWanted })
+  const nudge = request.results?.length || task ? null : nudgeFor(output, { searches: !!deps.searchVacancies, aboutWork, mayAsk, device: request.device, aboutShown, searchWanted, asksForPlan })
   if (nudge) {
     const told: ChatMessage[] = [{ role: 'assistant', content: JSON.stringify(output) }, { role: 'system', content: nudge.says }]
     try {
@@ -298,6 +307,8 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
       if (input.signal?.aborted) throw error
     }
   }
+  // Asked for a plan, she never searches in that turn, also when telling her so did not help.
+  if (asksForPlan) output.vacancySearch = null
   // The cards of a search open by themselves: an action that opens or saves one of them comes too soon.
   if (output.vacancySearch && Array.isArray(output.actions)) {
     output.actions = (output.actions as Record<string, unknown>[]).filter((action) => !['openVacancy', 'saveVacancy', 'openSavedVacancies'].includes(String(action?.do)))
@@ -354,8 +365,8 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
     }
   }
 
-  // In a plan on the iPhone, what she finds can change the plan: the round about it may propose that too.
-  const editsPlan = !!input.plan && request.device === 'phone'
+  // In a plan on the iPhone or the web, what she finds can change the plan: the round about it may propose that too.
+  const editsPlan = !!input.plan && makesPlans(request.device)
   // Studies and courses: the cards come from the search, her words about them from a second, short answer. Not on the
   // Watch, which has no room for cards; and a vacancy search in the same answer goes first.
   if (decided.educationSearch && !decided.vacancySearch && request.device !== 'watch' && !task) {
@@ -486,8 +497,8 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   // A step of the plan she marked: saved at once, as the user said it. While PAVE asks a question of its own, nothing
   // changes. The apps hear it through updatePlan, unless a proposal for the vault already takes that place: then they
   // pick it up when they load the plan again.
-  // A plan the user asked for: the iPhone saves it with the user's own session and puts this chat in it.
-  const proposed = purpose || sure || pointsAtNothing || request.device !== 'phone' ? undefined : newPlanProposal(decided.newPlan, deps.newId(), new Date())
+  // A plan the user asked for: the iPhone and the web save it with the user's own session and put this chat in it.
+  const proposed = purpose || sure || pointsAtNothing || !makesPlans(request.device) ? undefined : newPlanProposal(decided.newPlan, deps.newId(), new Date())
   const created = proposed && mayMakePlan(proposed.newPlan?.name, request.text, input.history, request.app?.plans, !!input.plan) ? proposed : undefined
   if (created) reply.proposedAction ??= created
   // Asked for a plan that is already there: this chat goes on with that plan instead of a second one beside it.
@@ -501,8 +512,8 @@ export async function answer(input: BrainInput, deps: BrainDeps): Promise<AylaRe
   if (change && input.plan && deps.updatePlanStep && await deps.updatePlanStep(change.step.id, change.status)) {
     reply.proposedAction ??= planProposal(input.plan, change, deps.newId(), new Date())
   }
-  // Changes to the plan she proposes: only on the iPhone, which shows the card, and not right after a no.
-  const edit = purpose || sure || pointsAtNothing || request.device !== 'phone' || declinedOffer(input.history, request.text) || declinedPlanEdit(input.history, request.text)
+  // Changes to the plan she proposes: only where the app shows the card (iPhone, web), and not right after a no.
+  const edit = purpose || sure || pointsAtNothing || !makesPlans(request.device) || declinedOffer(input.history, request.text) || declinedPlanEdit(input.history, request.text)
     ? undefined
     : planEditProposal(output.planEdit, input.plan, deps.newId())
   // Only when it is about the plan now: asked for, after a step that is done, or after she looked something up.
@@ -626,7 +637,17 @@ const WORK = /\b(vacatures?|banen|bijbaan|stageplek\w*|solliciteren|sollicitatie
 interface Nudge { says: string; fixedBy: (again: ModelOutput) => boolean }
 
 /** What to tell the model when its answer promises something the answer does not carry; null when it holds together. */
-function nudgeFor(output: ModelOutput, turn: { searches: boolean; aboutWork: boolean; mayAsk: boolean; device: Device; aboutShown?: boolean; searchWanted?: boolean }): Nudge | null {
+function nudgeFor(output: ModelOutput, turn: { searches: boolean; aboutWork: boolean; mayAsk: boolean; device: Device; aboutShown?: boolean; searchWanted?: boolean; asksForPlan?: boolean }): Nudge | null {
+  // Asked for a plan, she makes it (unless she first asks what it should be about); a search waits for after it. An
+  // action already makes or opens it on the iPhone ("maak een plan voor deze vacature" is makeVacancyPlan): that stays.
+  const asksBack = !!output.question || output.text.trim().endsWith('?')
+  const acts = list(output.actions).length > 0
+  if (turn.asksForPlan && !acts && (!output.newPlan || output.vacancySearch) && !asksBack) {
+    return {
+      says: 'De gebruiker vraagt om een plan. Vul newPlan (name, goal en 3 tot 6 steps) met wat je weet, zet vacancySearch op null en zeg in text kort dat het plan klaarstaat en wat de eerste stap is. Vacatures zoeken mag je daarna aanbieden.',
+      fixedBy: (again) => !!again.newPlan && !again.vacancySearch,
+    }
+  }
   if (turn.searchWanted === false && output.vacancySearch) {
     return {
       says: 'De gebruiker vraagt nu niet om vacatures. Beantwoord de vraag die gesteld is en zet vacancySearch op null; je mag zoeken daarna aanbieden.',

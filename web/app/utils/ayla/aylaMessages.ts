@@ -74,7 +74,6 @@ export const AYLA_ADD_PLAN_LABEL = 'Plan toevoegen';
 export const AYLA_NOT_AVAILABLE_YET = 'Nog niet beschikbaar';
 export const AYLA_ADD_TO_MESSAGE_LABEL = 'Toevoegen aan je bericht';
 export const AYLA_VAULT_EMPTY_NOTE = 'Je kluis is nog leeg';
-export const AYLA_NO_PLAN_NOTE = 'Je hebt nog geen plan';
 export const AYLA_COPY_LABEL = 'Kopiëren';
 export const AYLA_NEW_ANSWER_LABEL = 'Nieuw antwoord';
 export const AYLA_EDIT_QUESTION_LABEL = 'Aanpassen';

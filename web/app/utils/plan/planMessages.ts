@@ -103,6 +103,29 @@ export const PLAN_CONVERSATION_COUNT = (count: number) => (count === 1 ? '1 gesp
 export const PLAN_STEP_PROMPT = (title: string) => `Help me met de stap "${title}".`;
 export const PLAN_UNTITLED_CONVERSATION = (index: number) => `Gesprek ${index}`;
 
+// The plan of the open chat, in the chat panel in the place of the chats (on iOS the Dynamic Bar).
+export const PLAN_STEP_FINISHED = 'Stap afgerond';
+
+// "Plan toevoegen" with the plus button (iOS PlanPickerSheet).
+export const PLAN_CHOOSE = 'Kies een plan';
+export const PLAN_CHOOSE_HINT = 'Ayla helpt je in deze chat met de stappen van het plan.';
+export const PLAN_CURRENT = 'Nu in deze chat';
+export const PLAN_MAKING = 'Ayla maakt je plan…';
+// The pill above the steps in the chat panel, to the chats and back.
+export const PLAN_TO_CHATS = 'Chats';
+export const PLAN_TO_CHATS_LABEL = 'Naar je chats';
+export const PLAN_TO_STEPS = 'Stappen';
+export const PLAN_TO_STEPS_LABEL = (name: string) => `Naar de stappen van ${name}`;
+
+// Ayla's proposal to change the plan, under her answer (iOS AylaPlanEditCard).
+export const PLAN_EDIT_TITLE = 'Zo haal je je doel beter';
+export const PLAN_EDIT_APPLY = 'Pas plan aan';
+export const PLAN_EDIT_DONE = 'Plan aangepast';
+export const PLAN_EDIT_NOT_YET = 'Nog niet';
+export const PLAN_EDIT_OPS = { add: 'Nieuwe stap', remove: 'Kan weg', move: 'Verplaatsen' } as const;
+export const PLAN_EDIT_AT_START = 'aan het begin';
+export const PLAN_EDIT_AFTER = (title: string) => `na ${title}`;
+
 export const PLAN_STATUS: Record<PlanStepStatus, string> = {
   upcoming: 'nog te doen',
   active: 'nu bezig',

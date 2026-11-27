@@ -1,58 +1,99 @@
 # Web en iOS gelijktrekken
 
-Stand van 2026-11-24. Een vergelijking van de code van `web/` en `ios/` liet zien waar de twee apps verschillen. Daaf besliste over de open punten; dit is wat het webteam (Yassine, Iqra) nog moet aanpassen, met per punt waar het op iOS staat. Teksten staan in [`ui-teksten.md`](ui-teksten.md); gebruik die woorden letterlijk.
+Stand van 2026-11-27. Een vergelijking van de code van `web/` en `ios/` op `dev` (4f3f6c2), met alle documenten in `docs/`. Dit is wat het webteam nog moet aanpassen, met per punt waar het op iOS staat. Teksten staan in [`ui-teksten.md`](ui-teksten.md); gebruik die woorden letterlijk.
 
 ## Besluiten
 
 | Punt | Besluit |
 | --- | --- |
-| Bewijs toevoegen vanuit de chat | Combineren: de conceptkaart van iOS met de keuzes van web. iOS heeft dit al (zie hieronder); web neemt de kaart over. |
-| "Gebaseerd op" onder Ayla's antwoord (gebruikte herinneringen en kluis) | Tonen, zoals iOS. Web verborg het op verzoek van de product owner: eerst met de product owner afstemmen, dan tonen. |
+| Plan in de chat | Op web geen Dynamic Bar, maar de stappen van het plan op de plek van de chats in het chatpaneel, met een pil "Chats" erboven (Figma FEDDIES 1173-18657). |
+| Serverwijzigingen voor web | Het webteam past `shared/supabase/functions/ayla` zelf aan, in dezelfde pull request, en het iOS-team keurt die goed. |
+| Bewijs toevoegen vanuit de chat | Combineren: de conceptkaart van iOS met de keuzes van web. |
+| "Gebaseerd op" onder Ayla's antwoord | Tonen, zoals iOS, na afstemming met de product owner. Staat op web nog uit (`AylaCanvas.vue`). |
 | Filter in de kluis | Vorm per platform houden (iOS één Filter-menu, web chips). Alleen de woorden gelijk: "Volgorde" in plaats van "Datum". |
-| Privacypagina in Instellingen | Zo laten; het verschil hoort bij het platform (vergrendelen en Spotlight bestaan alleen op de iPhone). |
+| Privacypagina in Instellingen | Zo laten; vergrendelen en Spotlight bestaan alleen op de iPhone. |
+
+## Sinds 24 november op web
+
+Meldingen (inbox, groepen, Recent verwijderd, beoordelen, beurs, seintje van de browser), een echte verificatieaanvraag via `vault-review` met de status van de aanvraag en de reden bij afwijzen, de pagina Plan (sjablonen, stappen van Ayla, plan voor een vacature, project), e-mail in Meldingen via de webserver, taal en lettertype, en de pagina's voor ontvangers (`/gedeeld`, `/werkgever`, `/inbox`, `/beurs`).
 
 ## Wat web moet aanpassen, belangrijkste eerst
 
-### 1. Vacatures
-- **Paneel over de chat** met tabs Gevonden en Bewaard, een vacature open met "Past bij jou", "Wat je nog mist" (met de regel uit de vacaturetekst), een stukje tekst en "Lees de hele vacature", en bovenaan wat Ayla zocht en welke gegevens ze gebruikte. iOS: `ios/PAVE/Features/Ayla/Cards/Vacancies/` (`AylaVacancyShelf`, `VacancyList`, `VacancyDetail`, `VacancySearchSummary`). Web toont nu alleen een raster kaarten in `components/ayla/chat/AylaCanvas.vue`.
-- **Bewaren** in de tabel `saved_vacancies` (migratie is al uitgevoerd). iOS: `AylaService.swift` (`savedVacancies`, `saveVacancy`, `removeSavedVacancy`), knop `VacancySaveButton`.
-- **De vier knoppen** Wat mis ik? / Solliciteren / Oefen gesprek / Vergelijk (2 of 3). Ze sturen `context.task` (`compare`, `gaps`, `prepare`, `interview`) met `context.vacancy` of `context.compare`; tijdens het oefenen gaat `task: 'interview'` met elke vraag mee tot je stopt. De server accepteert dit al van elk apparaat (`shared/ayla/reply.schema.json`). iOS: `VacancyActions`, `VacancyCompareBar`, `VacancyPracticeBar`, en `AylaChatModel.question(for:about:)`.
-- **Logo's**: zonder logo vraagt iOS de functie `company-logo` (POST `{ company, city }`, antwoord `{ logoUrl? }`), één keer per bedrijf; anders een icoon van een gebouw, nooit een letter. iOS: `CompanyLogo.swift`.
-- **Wat Ayla doet tijdens het zoeken**: de stream stuurt `status`-gebeurtenissen (`vacancySearch`, `vacancyMatch`); iOS toont "Ayla zoekt vacatures: …" en "Ayla vergelijkt {n} vacatures met je kluis…". Web negeert ze in `useAyla.ts`.
-- **Typen**: `Vacancy` mist `summary` en `postedAt`; het vacatureblok mist `search`.
-- **Woorden**: "Skill-gap" → "Wat je nog mist"; "Bekijk vacature" → "Lees de hele vacature"; lege lijst "Nog geen vacatures". Zie "Vacatures in de Ayla-chat" in `ui-teksten.md`.
+### 1. Plan in de chat (branch `feat/web/plan-in-chat`)
+- **Gebouwd:**
+  - Vraag je Ayla om een (stappen)plan, dan maakt ze het en zoekt ze in die beurt geen vacatures.
+  - Het plan wordt meteen bewaard met de chat erin, zoals op iOS. Stuurt de server (nog) geen `createPlan`, dan maakt web het uit de genummerde stappen van haar antwoord (`createFromAnswer` in `usePlans`).
+  - De stappen staan op de plek van de chats, met boven de stappen een pil "Chats" (en in de chats een pil "Stappen" terug). Terwijl Ayla het plan maakt staat daar "Ayla maakt je plan…".
+  - "Plan toevoegen" met het plusje en onder het tekstveld: een bestaand plan kiezen of een nieuw plan maken zoals bij Plan (`PlanPickerDialog`).
+  - De stappen als tijdlijn, zoals Figma FEDDIES 1363:2656 (`PlanChatPanel`, `PlanStepMark`): een rondje per stap (klaar, bezig, nog te doen) met een lijntje naar de volgende, de datum waarop een stap klaar was, de titel en een regel eronder. Een klik op het rondje rondt de stap af of zet hem terug.
+  - Ayla's antwoord wordt gevolgd: een plan dat ze maakt (`createPlan`), een stap die ze afvinkt (`updatePlan`) en de kaart "Pas plan aan" (`planEdit`, `PlanEditCard`).
+  - De server stuurt `newPlan` en `planEdit` nu ook naar `web` (`makesPlans` in `plan.ts`).
+- **Nog te doen:**
+  - "Laat Ayla nakijken" op de pagina van een plan (iOS `PlanMessages.reviewPlan`).
+  - De keuze bij een voorstel naar het account (`account_state`, `planEdit/decisions`) zodra die tabel er is; nu blijft die in de browser.
 
-### 2. Meldingen
-- iOS heeft een echte inbox op `vault-review`: soorten Gesprek / Verificatie / Afgewezen bewijs / Verificatie aanvraag, Vandaag / Gisteren / Eerder, zoeken, filter, ongelezen, vegen om te verwijderen, "Recent verwijderd" (7 dagen), en als beoordelaar "Verifieer document" / "Aanvraag afwijzen" met een reden. iOS: `ios/PAVE/Features/Notifications/`, `PAVECore/.../NotificationsService.swift`. Web `pages/meldingen.vue` is nog leeg.
+### 2. Profiel en delen
+- `pages/profiel.vue` is nog een lege staat. iOS heeft Snel delen, selecties, beheren (pauzeren, verlengen, intrekken), "Wie keek er" en Mijn beursdag.
+- Web heeft de kant van de ontvanger al, de kant van de eigenaar nog niet. Volgens [`gap-analyse.md`](gap-analyse.md) is dit het grootste gat.
+- iOS: `ios/PAVE/Features/Profile/Sharing/`.
 
-### 3. Kluis: verificatie
-- **Echte aanvraag**: op iOS kies je via de vertrouwde lijst organisatie → locatie → afdeling → contactpersoon en gaat de aanvraag via `vault-review`. Web `components/vault/add/VaultRequestDialog.vue` is een formulier dat niets verstuurt. iOS: `ios/PAVE/Features/Vault/RequestConfirmation/`.
-- **"In afwachting" en de reden bij afwijzen**: iOS leest `vault_validation_requests` en toont het label met klok, de uitleg, en "Reden van {organisatie}"; tijdens een open aanvraag verdwijnt de knop om te vragen. Het web-type `VaultItem` heeft nog geen velden voor de aanvraag.
-- **Statuswoorden**: web zegt "Bevestigd", iOS "Geverifieerd". Op de branch `feat/ios/wallet-demo` (nog niet in `dev`) worden het vier woorden: Niet geverifieerd / Wordt geverifieerd / Geverifieerd / Afgewezen, met een uitleg als je op het label tikt en de knop "Laten verifiëren". Neem die over zodra die branch in `dev` staat.
-- **Wallet** ("Haal bewijs uit je wallet", demo voor Npuls) staat op dezelfde branch.
+### 3. Vacatures
+- Web toont alleen een raster kaarten (`AylaCanvas.vue`). Op web ontbreekt nog:
+  - de tabs Gevonden, Bewaard en Sollicitaties, en het detail met "Past bij jou" en "Wat je nog mist";
+  - bewaren in `saved_vacancies`;
+  - de vier knoppen (`context.task`);
+  - de statusregels `vacancySearch` en `vacancyMatch`;
+  - logo's (`company-logo`), filters, Skill-kompas en "Over {bedrijf}".
+- Vorm op web: het detail opent in het middenvlak, waar de kaarten nu staan, niet in een paneel van onderen.
+- iOS: `ios/PAVE/Features/Ayla/Cards/Vacancies/`, `ios/PAVE/Features/Vacancies/`.
 
-### 4. Ayla doet dingen in de app
-- Op iOS verandert Ayla zelf instellingen, opent ze mappen en pagina's en bewaart ze vacatures (`AylaReply.actions`, `continues`; in de vraag `app` en `results`), met een balk die haar stappen laat zien. iOS: `AylaAppAction.swift`, `AylaAppCommand.swift`, `AylaActivityPill`, `AylaPageDriver`.
-- **Serverwijziging nodig**: de functie `ayla` geeft acties en de keuze "Kies zelf" nu alleen aan `device === 'phone'` (`brain.ts` `cleanActions`, `consent.ts` `consentChoices`). Dat zetten we open voor web zodra web ze kan uitvoeren; zeg het als je zover bent, dan doet het iOS-team de serverkant.
-- **"Kies zelf"** bij Ayla's vraag om de kluis: web heeft de kiezer al (`AylaVaultPicker`), alleen de keuze ontbreekt door de server.
+### 4. Sollicitaties: cv, brief en Mijn sollicitatie
+- Staat nog niet op web (`application_drafts`).
+- Eerst beslissen of web de cv-maker zelf bouwt (vraag 2 in [`voorstel-concepten-in-account.md`](voorstel-concepten-in-account.md)).
+- Voorstel: begin met de lijst en Mijn sollicitatie (status, deadline, notitie), de editor later.
+- iOS: `ios/PAVE/Features/Apply/`.
 
-### 5. Kleinere punten
-- **Bewijs toevoegen vanuit de chat**: de conceptkaart "Bewijs in opbouw" overnemen (velden, bestanden aan en uit, "Zet in de kluis", "Zelf invullen"). De stap "Logo kiezen / Omslag kiezen / Klaar" heeft web al; iOS heeft hem nu ook. iOS: `AylaEvidenceConceptCard`, `AylaChatScreen` (`addEvidenceForUser`, `fillMyself`, `LookStep`).
-- **Pagina's over de chat**: Kluis, Plan, Profiel, Instellingen, Meldingen en Vacatures openen op iOS over de chat. Op web alleen de kluis; `SCREEN_ROUTES` stuurt `settings` naar het geheugen en kent geen `vacancies`, `notifications`, `vaultItem` en `addEvidence`.
-- **Chatlijst**: meerdere chats selecteren en in één keer verwijderen (iOS `AylaChatList.swift`).
-- **Bijlagen**: plakken (foto of pdf) en slepen in de chat.
-- **Filter in de kluis**: "Datum" → "Volgorde".
-- **Weergave**: dezelfde volgorde als iOS: Themakleur, Licht of donker, Weergave kluis, Tekstgrootte, Animaties uitzetten.
-- **Sessie elders beëindigd** (wachtwoord op een ander apparaat veranderd): iOS heeft hier een eigen scherm (`SessionEndedView`); web lijkt dat niet te hebben. Controleren.
+### 5. Ayla doet dingen in de app
+- De server geeft web geen acties (`brain.ts` `cleanActions`, `prompt.ts` `NO_ACTIONS_PROMPT`) en geen "Kies zelf" (`consent.ts` `consentChoices`).
+- De kiezer staat op web al klaar (`AylaVaultPicker`). Zet het op de server open als web de acties kan uitvoeren.
+- iOS: `AylaAppAction.swift`, `AylaActivityPill`, `AylaPageDriver`.
 
-### 6. Vacatures en sollicitaties (nieuw op iOS, 2026-11-24)
-- **Menu Vacatures**, onder Kluis: Gevonden (Ayla's laatste zoekopdracht), Bewaard en Sollicitaties. iOS: `ios/PAVE/Features/Vacancies/VacanciesScreen.swift`.
-- **Cv en motivatiebrief** per vacature met galerij, "Wat komt erin?", dekking per eis, Ayla die doorvraagt en een vinkje bij geverifieerd bewijs; **Mijn sollicitatie** met status, deadline, herinneringen en geschiedenis. Alles staat nog alleen op het toestel; zie [`voorstel-concepten-in-account.md`](voorstel-concepten-in-account.md) voor bewaren in het account. iOS: `ios/PAVE/Features/Apply/`.
+### 6. Kluis
+- **Statuswoorden:** web zegt nog "Bevestigd" en "Niet bevestigd" (`vaultMessages.ts`) en "In afwachting" (`verificationMessages.ts`).
+  - Wordt: Niet geverifieerd, Wordt geverifieerd, Geverifieerd, Afgewezen.
+  - Met de uitleg bij een klik op het label en de knop "Laten verifiëren".
+- **Wallet-demo:** staat sinds PR #77 in `dev`, nog niet op web (iOS `Vault/Wallet/`, functie `vault-wallet`).
+
+### 7. Ayla in de chat
+- **Opleidingen en bronnen worden weggegooid:**
+  - De server zoekt op web wel opleidingen (`educationSearch`) en feiten (`webLookup`).
+  - Maar `aylaReply.ts` kent de kaarten `educations` en `sources` niet en laat ze weg. Ayla zegt dan dat ze iets vond, terwijl er niets te zien is.
+- **Ook nog niet op web:**
+  - het verslag van een oefengesprek;
+  - een afspraak in je agenda zetten;
+  - de conceptkaart "Bewijs in opbouw".
+
+### 8. Kleinere punten
+- **Chatlijst:** meerdere chats selecteren en in één keer verwijderen (iOS `AylaChatList.swift`).
+- **Bijlagen:** plakken (foto of pdf) en slepen in het tekstveld van de chat.
+- **Schermroutes:** in `aylaScreens.ts` ontbreken Meldingen en Vacatures, en `settings` stuurt naar het geheugen.
+- **Sessie elders beëindigd:** iOS heeft een eigen scherm (`SessionEndedView`), web niet.
+- **E-mail:** vastzetten, dempen, vergrendelen, doorsturen en hulp van Ayla (zie "E-mail in Meldingen (web)" in `ui-teksten.md`).
+- **Filter en weergave:** "Datum" wordt "Volgorde"; Weergave in dezelfde volgorde als iOS.
+- **`account_state`:** wacht op akkoord van het webteam ([`supabase-account-state.md`](supabase-account-state.md)).
+
+## Waar web bewust anders is
+
+| iOS | Web |
+| --- | --- |
+| Dynamic Bar en Dynamic Island voor het plan | De stappen op de plek van de chats, met een pil "Chats" erboven |
+| Paneel van onderen (vacatures, kluis) | Middenvlak of eigen pagina; lijst links en detail rechts, zoals Meldingen |
+| Vegen en lang indrukken | Menu bij hover of rechtsklik, selecteren met vinkjes |
 
 ## Alleen op iOS, met opzet
 
-Face ID en de pincode van de app, Camera Control, Apple Watch, Dynamic Island, Spotlight, de documentscanner, knikken met AirPods, de vacaturekaarten tijdens praten, de indeling voor iPhone Duo en trillingen. Die hoeven niet op web.
+Face ID en de pincode van de app, Camera Control, Apple Watch, Dynamic Island, het toegangsscherm, Spotlight, de documentscanner, knikken met AirPods, de vacaturekaarten tijdens praten, de indeling voor iPhone Duo en trillingen. Die hoeven niet op web.
 
 ## Al gelijk
 
-Streaming van antwoorden, herinneringen, projecten met bronnen, de zoektabs, vastzetten / archiveren / vergrendelen / verval van chats, bewijs toevoegen in stappen met "Laat Ayla invullen", mappen, archief, raster en lijst, account, apparaten, "Gegevens bewaren", inloggen met tweestapsverificatie, wachtwoord vergeten, en de lege pagina's Plan en Profiel.
+Streaming van antwoorden, herinneringen, projecten met bronnen, de zoektabs, vastzetten, archiveren, vergrendelen en verval van chats, bewijs toevoegen in stappen met "Laat Ayla invullen", mappen, archief, raster en lijst, account, apparaten, "Gegevens bewaren", inloggen met tweestapsverificatie, wachtwoord vergeten, Meldingen, verificatie aanvragen en de pagina Plan.

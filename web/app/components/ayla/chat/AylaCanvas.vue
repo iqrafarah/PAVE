@@ -15,11 +15,12 @@ const vacancyBlocks = computed(() => getVacancyBlocks(reply.value));
 const vacancies = computed(() => vacancyBlocks.value.flatMap((block) => block.items));
 const hasEmptySearch = computed(() => vacancyBlocks.value.length > 0 && vacancies.value.length === 0);
 const memorySuggestions = computed(() => reply.value?.memories ?? []);
-// When Ayla offers to add evidence, the Ja/Nee bar under her answer is the way in, not a button in the middle.
+// Ayla proposes changes to the plan of this chat; the card asks before anything changes.
+const planEdit = computed(() => (reply.value?.planEdit?.changes.length ? reply.value.planEdit : null));// When Ayla offers to add evidence, the Ja/Nee bar under her answer is the way in, not a button in the middle.
 const navigation = computed(() => (offersToAddEvidence(reply.value) ? null : (reply.value?.navigation ?? null)));
 // "Gebaseerd op" (AylaUsedMemories) is not shown for now, at the product owner's request.
 const hasExtras = computed(
-  () => memorySuggestions.value.length > 0 || Boolean(navigation.value),
+  () => memorySuggestions.value.length > 0 || Boolean(navigation.value) || Boolean(planEdit.value),
 );
 </script>
 
@@ -36,8 +37,8 @@ const hasExtras = computed(
           <AylaVacancyCard :vacancy="vacancy" />
         </li>
       </ul>
-      <div v-if="hasExtras" class="mx-auto mt-6 max-w-135">
-        <AylaNavigationButton v-if="navigation" :screen="navigation.screen" />
+      <div v-if="hasExtras" class="mx-auto mt-6 flex max-w-135 flex-col gap-4">
+        <PlanEditCard v-if="planEdit" :key="planEdit.id" :edit="planEdit" />        <AylaNavigationButton v-if="navigation" :screen="navigation.screen" />
         <AylaMemorySuggestion
           v-if="memorySuggestions.length"
           :suggestions="memorySuggestions"

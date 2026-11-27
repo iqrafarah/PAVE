@@ -294,7 +294,7 @@
         },
         "planEdit": {
           "type": "object",
-          "description": "Changes to the conversation's plan Ayla proposes so it reaches its goal. Nothing is saved: the app shows a card and the user applies what they keep. iPhone only.",
+          "description": "Changes to the conversation's plan Ayla proposes so it reaches its goal. Nothing is saved: the app shows a card and the user applies what they keep. iPhone and web, not the Watch.",
           "required": ["id", "planId", "changes"],
           "additionalProperties": false,
           "properties": {

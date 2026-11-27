@@ -24,6 +24,8 @@
     --color-heading: #2b2b2b;
     --color-subtle: #696969;
     --color-rail-line: #eaeaea;
+    /* The ring of a step still to do in the plan of a chat (Figma 1363:2842). */
+    --color-step-ring: #c5c5c5;
     --color-tile: #f1f1f1;
     --color-bubble: #efefef;
     --color-skeleton: #d9d9d9;
@@ -38,6 +40,9 @@
     --color-card-tint-rose: #f7c8cc;
     --color-card-tint-apricot: #ffe4c1;
     --text-folder: 0.9375rem;
+    /* The plan of a chat (Figma 1363:2656): the date above a step and the pill to the chats. */
+    --text-step-date: 0.5625rem;
+    --text-pill: 0.625rem;
     /* iOS OrbShade0-6: Ayla's orb in voice mode, light to dark */
     --color-orb-0: #eef4f0;
     --color-orb-1: #d6e8dc;
@@ -158,6 +163,7 @@
     --color-ink-soft: #a6a6a6;
     --color-line: #3a3a3a;
     --color-rail-line: #1f1f1f;
+    --color-step-ring: #4a4a4a;
     --color-card-line: #2c2c2c;
     --color-card-border: #2c2c2c;
     --color-toolbar-line: #3a3a3a;

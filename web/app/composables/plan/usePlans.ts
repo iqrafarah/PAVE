@@ -1,4 +1,13 @@
+import type { AylaNewPlan, AylaPlanEdit, AylaPlanEditChange, AylaReply } from '~/types/ayla';
 import type { Plan, PlanConversation, PlanStep, PlanStepStatus, PlanTemplate, PlanTemplateStep } from '~/types/plan';
+
+/** What the user did with a proposal of Ayla to change a plan; none yet means the card still asks. */
+export type PlanEditDecision = 'applied' | 'declined';
+
+// Kept in this browser until account_state is there (docs/supabase-account-state.md, planEdit/decisions on iOS).
+const EDIT_DECISIONS_KEY = 'pave-plan-edit-decisions';
+// Proposals of Ayla being saved as a plan right now, so a second look at the same answer never makes it twice.
+const makingFromAyla = new Set<string>();
 
 // The user's plans (iOS PlanModel and SupabasePlanService): plans and plan_steps with the user's own session, so row
 // level security decides. Every change shows at once and is saved right after with save_plan; when saving fails the
@@ -14,6 +23,8 @@ interface PlansState {
   newChat: { planId: string; stepId: string | null; prompt: string | null } | null;
   /** The plan whose page should open Ayla's proposal at once: a plan just made "with Ayla". */
   proposesStepsFor: string | null;
+  /** The chat whose plan is being saved from Ayla's answer right now. */
+  makingPlanFor: string | null;
 }
 
 interface StepRow {
@@ -108,6 +119,7 @@ export function usePlans() {
     problem: null,
     newChat: null,
     proposesStepsFor: null,
+    makingPlanFor: null,
   }));
 
   /** Plans still going, the most recently changed first. */
@@ -257,6 +269,142 @@ export function usePlans() {
     return { steps, error: null };
   }
 
+  /** The plan a chat belongs to. */
+  function planOfConversation(conversationId: string | null | undefined) {
+    if (!conversationId) return null;
+    return state.value.plans.find((plan) => plan.conversations.some((chat) => chat.id === conversationId)) ?? null;
+  }
+
+  /** The plan of the open chat, or of the new chat that is about to start in a plan (iOS PlanModel.activePlan). */
+  function planOfChat(conversationId: string | null | undefined) {
+    return conversationId ? planOfConversation(conversationId) : find(state.value.newChat?.planId);
+  }
+
+  const completeStep = (planId: string) => change(planId, completeCurrentStep);
+
+  /**
+   * The plan the user asked Ayla for, with the chat in it, once per answer. A plan with the same name that is still
+   * going is the plan she means: the chat joins it instead of a second plan beside it. Asked for a new plan in a plan's
+   * chat, the chat moves to the new one.
+   */
+  async function createFromAyla(proposalId: string, made: AylaNewPlan, conversationId: string | null) {
+    const name = cleanPlanName(made.name);
+    if (!name || makingFromAyla.has(proposalId) || state.value.plans.some((plan) => isPlanFromProposal(plan, proposalId))) return;
+    const same = state.value.plans.find((plan) => !isPlanFinished(plan) && isSamePlanName(plan.name, name));
+    if (same) {
+      if (conversationId && !planOfConversation(conversationId)) await change(same.id, (plan) => attachConversation(plan, conversationId));
+      return;
+    }
+    const fromAyla = planFromAyla(made, proposalId);
+    if (!fromAyla) return;
+    makingFromAyla.add(proposalId);
+    await saveWithChat(fromAyla, conversationId);
+    makingFromAyla.delete(proposalId);
+  }
+
+  /** A new plan with the chat in it; a chat belongs to one plan, so it leaves the plan it was in. */
+  async function saveWithChat(fresh: Plan, conversationId: string | null) {
+    const plan = conversationId ? attachConversation(fresh, conversationId) : fresh;
+    const old = planOfConversation(conversationId);
+    state.value.problem = null;
+    state.value.plans = [plan, ...state.value.plans];
+    if (!(await persist(plan))) {
+      state.value.plans = state.value.plans.filter((entry) => entry.id !== plan.id);
+      return null;
+    }
+    if (old && conversationId) await change(old.id, (entry) => detachConversation(entry, conversationId));
+    return plan;
+  }
+
+  /** A plan from the chat with these steps, with this chat in it. */
+  function createForChat(name: string, goal: string, steps: PlanTemplateStep[], conversationId: string | null) {
+    const cleanName = cleanPlanName(name);
+    if (!cleanName) return Promise.resolve(null);
+    const template: PlanTemplate = { id: WITH_AYLA_TEMPLATE.id, name: cleanName, summary: '', goal: '', steps };
+    return saveWithChat(planFromTemplate(template, cleanName, cleanPlanGoal(goal)), conversationId);
+  }
+
+  /**
+   * Asked for a plan while the server sent no createPlan (an Ayla function from before the web made plans): the
+   * numbered steps of her answer become the plan, at once and with this chat in it, as createPlan would. Not for a chat
+   * that already has a plan, nor for an answer without steps.
+   */
+  async function createFromAnswer(reply: AylaReply, conversationId: string | null, question: string) {
+    if (!conversationId || planOfConversation(conversationId) || !asksForNewPlan(question)) return false;
+    const steps = stepsFromAnswer(reply.text);
+    if (!steps.length) return false;
+    const name = planNameFromQuestion(question) || PLAN_TITLE;
+    return Boolean(await createForChat(name, question, steps, conversationId));
+  }
+
+  /** "Plan toevoegen" in the chat: the chat goes into this plan, and out of the plan it was in. */
+  async function addChatToPlan(planId: string, conversationId: string) {
+    const old = planOfConversation(conversationId);
+    if (old?.id === planId) return true;
+    if (!(await change(planId, (plan) => attachConversation(plan, conversationId)))) return false;
+    if (old) await change(old.id, (plan) => detachConversation(plan, conversationId));
+    return true;
+  }
+
+  /**
+   * After an answer of Ayla that just came in (iOS followsPlans): the plan she made, the step she changed at once, and
+   * the plan of the chat loaded again, since the server may have changed it.
+   */
+  async function followReply(reply: AylaReply, conversationId: string | null, question: string) {
+    if (state.value.status === 'idle') await load(true);
+    if (state.value.status === 'unavailable') return;
+    const action = reply.proposedAction;
+    const makesPlan = (action?.kind === 'createPlan' && action.newPlan) || asksForNewPlan(question);
+    if (makesPlan) state.value.makingPlanFor = conversationId;
+    try {
+      if (action?.kind === 'createPlan' && action.newPlan) {
+        await createFromAyla(action.id, action.newPlan, conversationId);
+        return;
+      }
+      if (await createFromAnswer(reply, conversationId, question)) return;
+    } finally {
+      if (makesPlan) state.value.makingPlanFor = null;
+    }
+    const changed = action?.kind === 'updatePlan' ? action.planStep : undefined;
+    if (changed) {
+      state.value.plans = state.value.plans.map((plan) => (plan.id === changed.planId ? setStepStatus(plan, changed.stepId, changed.status) : plan));
+    }
+    if (changed || planOfConversation(conversationId)) await load(true);
+  }
+
+  const editDecisions = useState<Record<string, PlanEditDecision>>('pave-plan-edit-decisions', () => ({}));
+
+  function loadEditDecisions() {
+    try {
+      const saved: unknown = JSON.parse(localStorage.getItem(EDIT_DECISIONS_KEY) ?? '{}');
+      if (saved && typeof saved === 'object') {
+        const entries = Object.entries(saved).filter((entry): entry is [string, PlanEditDecision] => entry[1] === 'applied' || entry[1] === 'declined');
+        editDecisions.value = { ...Object.fromEntries(entries), ...editDecisions.value };
+      }
+    } catch {
+      // Not remembered: the card asks again after a reload.
+    }
+  }
+
+  function decideEdit(editId: string, decision: PlanEditDecision | null) {
+    const next = { ...editDecisions.value };
+    if (decision) next[editId] = decision;
+    else delete next[editId];
+    editDecisions.value = next;
+    try {
+      localStorage.setItem(EDIT_DECISIONS_KEY, JSON.stringify(next));
+    } catch {
+      // Kept for this visit only.
+    }
+  }
+
+  /** "Pas plan aan" with the changes the user kept; when saving fails, the card asks again. */
+  async function applyEdit(edit: AylaPlanEdit, changes: AylaPlanEditChange[]) {
+    decideEdit(edit.id, 'applied');
+    const isSaved = await change(edit.planId, (plan) => applyPlanEdit(plan, changes));
+    if (!isSaved) decideEdit(edit.id, null);
+  }
+
   /**
    * A new chat with Ayla for this plan (and step): the start page opens with the plan's chip and, for a step, the
    * question ready. In a plan of a project, the chat starts in that project.
@@ -292,5 +440,15 @@ export function usePlans() {
     proposalRequest,
     proposeSteps,
     startChat,
+    planOfConversation,
+    planOfChat,
+    completeStep,
+    createForChat,
+    addChatToPlan,
+    followReply,
+    editDecisions,
+    loadEditDecisions,
+    decideEdit,
+    applyEdit,
   };
 }

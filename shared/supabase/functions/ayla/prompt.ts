@@ -3,7 +3,7 @@ import type { VaultConsent } from './consent.ts'
 import { ACTIONS, type AppState, type Context, type Device, type Screen, type VacancyContext } from './contract.ts'
 import { MEMORY_CATEGORIES, type Memory, memoryPrompt } from './memory.ts'
 import { VAULT_ITEM_SCHEMA } from './proposal.ts'
-import { NEW_PLAN_RULE, NEW_PLAN_SCHEMA, NO_NEW_PLAN_RULE, NO_PLAN_EDIT_RULE, NO_PLAN_RULE, PLAN_EDIT_RULE, PLAN_EDIT_SCHEMA, PLAN_STEP_SCHEMA, type PlanContext, planLayer } from './plan.ts'
+import { makesPlans, NEW_PLAN_LISTED_RULE, NEW_PLAN_RULE, NEW_PLAN_SCHEMA, NO_NEW_PLAN_RULE, NO_PLAN_EDIT_RULE, NO_PLAN_RULE, PLAN_EDIT_RULE, PLAN_EDIT_SCHEMA, PLAN_STEP_SCHEMA, type PlanContext, planLayer } from './plan.ts'
 
 // Layer 1: who Ayla is and her rules. Adapted from the voice demo, without
 // the demo parts and without privacy claims that are not true for this setup.
@@ -201,7 +201,7 @@ function recapPrompt(vault: 'mayAsk' | 'mayNotAsk' | 'declined', inPlan = false,
   const actRule = device === 'phone'
     ? '\n7. Vraagt de gebruiker iets te doen wat bij je acties staat (een stap, de agenda, delen, een uitnodiging, een mail), zet het dan meteen in actions en vraag het niet eerst in text: PAVE vraagt zelf Ja of Nee waar dat moet. Een plan maak je met newPlan; een plan of stappen zet je nooit in de kluis.'
     : ''
-  const planRule = inPlan ? `\n${actRule ? 8 : 7}. Dit gesprek hoort bij een plan: wat het doel vraagt, wat de kluis al heeft (bij titel), wat ontbreekt en één handeling met termijn.${device === 'phone' ? ' Haalt het plan zo het doel niet, of valt er door wat je net weet een stap weg of bij, stel dat dan voor met planEdit.' : ''}` : ''
+  const planRule = inPlan ? `\n${actRule ? 8 : 7}. Dit gesprek hoort bij een plan: wat het doel vraagt, wat de kluis al heeft (bij titel), wat ontbreekt en één handeling met termijn.${makesPlans(device) ? ' Haalt het plan zo het doel niet, of valt er door wat je net weet een stap weg of bij, stel dat dan voor met planEdit.' : ''}` : ''
   const rule = {
     mayAsk: 'Gebruik uit de kluis alleen wat je bij "De kluis" ziet. Heb je meer nodig, vraag het dan met askVault en doe niet alsof je het al ziet.',
     mayNotAsk: 'Gebruik uit de kluis alleen wat je bij "De kluis" ziet; askVault is null.',
@@ -267,8 +267,9 @@ export function buildSystemPrompt(input: PromptInput): string {
   if (input.device === 'phone') layers.push(APP_PHONE_PROMPT)
   layers.push(DEVICE_PROMPTS[input.device], DATA_PROMPT, OUTPUT_PROMPT)
   layers.push(input.device === 'phone' ? ACTIONS_PROMPT : input.device === 'watch' ? WATCH_ACTIONS_PROMPT : NO_ACTIONS_PROMPT)
-  // Only the iPhone makes a plan from her answer; elsewhere she offers none.
-  layers.push(input.device === 'phone' ? NEW_PLAN_RULE : NO_NEW_PLAN_RULE)
+  // The iPhone and the web make a plan from her answer; on the Watch she offers none.
+  layers.push(makesPlans(input.device) ? NEW_PLAN_RULE : NO_NEW_PLAN_RULE)
+  if (input.device === 'phone') layers.push(NEW_PLAN_LISTED_RULE)
   if (input.hasFiles !== false) layers.push(FILES_PROMPT)
   layers.push(vaultPrompt(input.vault, input.vaultConsent, input.vaultPart), memoryPrompt(input.memory ?? { status: 'unavailable' }))
   if (input.input === 'voice' && input.device !== 'watch') layers.push(VOICE_PROMPT)
@@ -279,8 +280,8 @@ export function buildSystemPrompt(input: PromptInput): string {
   const sources = projectSourcesLayer(input.project, input.vault, input.vaultConsent)
   if (sources) layers.push(sources)
   layers.push(planLayer(input.plan, input.device) ?? NO_PLAN_RULE)
-  // Only the iPhone shows the card with changes to a plan.
-  layers.push(input.plan && input.device === 'phone' ? PLAN_EDIT_RULE : NO_PLAN_EDIT_RULE)
+  // The iPhone and the web show the card with changes to a plan.
+  layers.push(input.plan && makesPlans(input.device) ? PLAN_EDIT_RULE : NO_PLAN_EDIT_RULE)
   const app = input.device === 'phone' ? appLayer(input.app) : null
   if (app) layers.push(app)
   // Where the user is comes late, close to the answer: it is what "dit" and "hiermee" are about.

@@ -136,10 +136,65 @@ test('no new plan on the Watch, without a name, or with fewer than two steps', a
   assert.equal(newPlanProposal(null, 'x', new Date()), undefined)
 })
 
-test('only the iPhone is told it can make a plan', () => {
+test('the iPhone and the web are told they can make a plan, the Watch is not', () => {
   assert.match(buildSystemPrompt({ device: 'phone' }), /newPlan: vraagt de gebruiker/)
+  assert.match(buildSystemPrompt({ device: 'web' }), /newPlan: vraagt de gebruiker/)
   assert.match(buildSystemPrompt({ device: 'watch' }), /newPlan is altijd null/)
   assert.ok(MODEL_OUTPUT_SCHEMA.required.includes('newPlan'))
+})
+
+test('the web gets the plan the user asked for, as the iPhone does', async () => {
+  const web = await answer(
+    { request: { ...request, device: 'web' as const, text: 'Maak een plan om een stage te vinden' }, conversationId: 'c', history: [] },
+    { ...model(say('Ik heb een plan gemaakt. Begin met je cv.', { intent: 'act', newPlan: madePlan })), newId: ids() },
+  )
+  assert.equal(web.proposedAction?.kind, 'createPlan')
+  assert.equal(web.proposedAction?.newPlan?.name, 'Stage vinden in Utrecht')
+  // The web sends no list of plans and has no deletePlan: that part of the rule is for the iPhone only.
+  assert.doesNotMatch(buildSystemPrompt({ device: 'web' }), /Zo staat de app nu|deletePlan/)
+})
+
+test('asked for a stappenplan she makes the plan and does not search vacancies', async () => {
+  const outputs = [
+    say('Ik zoek stages voor je.', { intent: 'search', vacancySearch: { what: 'stage zorg', where: 'Utrecht', also: null }, newPlan: null }),
+    say('Je plan staat klaar. Begin met je cv.', { intent: 'act', vacancySearch: null, newPlan: madePlan }),
+  ]
+  let searched = 0
+  const reply = await answer(
+    { request: { ...request, device: 'web' as const, text: 'Maak een stappenplan om een stage in de zorg te vinden' }, conversationId: 'c', history: [] },
+    {
+      complete: async () => ({ model: 'fake', content: JSON.stringify(outputs.shift() ?? outputs.at(-1)) }),
+      searchVacancies: async () => { searched++; return { items: [], source: 'jooble' } },
+      newId: ids(),
+    } as unknown as Parameters<typeof answer>[1],
+  )
+  assert.equal(searched, 0)
+  assert.equal(reply.proposedAction?.kind, 'createPlan')
+  assert.equal(reply.blocks.length, 0)
+})
+
+test('a plan for a vacancy stays the iPhone\'s own plan: asked for a plan, an action is not overruled', async () => {
+  let calls = 0
+  const reply = await answer(
+    { request: { ...request, text: 'Maak een plan voor deze vacature' }, conversationId: 'c', history: [] },
+    {
+      complete: async () => {
+        calls++
+        return { model: 'fake', content: JSON.stringify(say('Je plan staat klaar bij Plan.', { intent: 'act', newPlan: null, actions: [{ do: 'makeVacancyPlan', target: null, value: null }] })) }
+      },
+      newId: ids(),
+    },
+  )
+  assert.equal(calls, 1)
+  assert.equal(reply.actions?.[0]?.do, 'makeVacancyPlan')
+})
+
+test('a step of the plan you have is not a request for a new plan', async () => {
+  const reply = await answer(
+    { request: { ...request, device: 'web' as const, text: 'Zet de stap van mijn plan op klaar' }, conversationId: 'c', history: [], plan },
+    { ...model(say('Dat heb ik bijgewerkt.', { newPlan: null })), newId: ids() },
+  )
+  assert.notEqual(reply.proposedAction?.kind, 'createPlan')
 })
 
 test('a plan made for a vacancy tells her which one, what is missing, and where each kind of step is done', () => {
@@ -183,11 +238,14 @@ test('a proposed change to the plan keeps only real changes to steps that are no
   assert.equal(planEditProposal({ changes: [] }, undefined, 'e'), undefined)
 })
 
-test('the plan card goes to the iPhone in a plan, never to the Watch or right after a no', async () => {
+test('the plan card goes to the iPhone and the web in a plan, never to the Watch or right after a no', async () => {
   const output = say('Ik stel een aanpassing van je plan voor.', { planStep: null, planEdit: { changes: [{ op: 'add', step: 0, title: 'Proefsollicitatie doen', kind: 'conversation', after: 2, why: 'Zo oefen je voor het echte gesprek.' }] } })
   const phone = await answer({ request: { ...request, text: 'kijk mijn plan na' }, conversationId: 'c', history: [], plan }, { ...model(output), newId: ids() })
   assert.equal(phone.planEdit?.planId, 'plan')
   assert.equal(phone.planEdit?.changes[0].afterStepId, 's2')
+  const web = await answer({ request: { ...request, device: 'web', text: 'kijk mijn plan na' }, conversationId: 'c', history: [], plan }, { ...model(output), newId: ids() })
+  assert.equal(web.planEdit?.planId, 'plan')
+  assert.match(buildSystemPrompt({ device: 'web', plan }), /planEdit: stel wijzigingen aan het plan voor/)
   const watch = await answer({ request: { ...request, device: 'watch', text: 'kijk mijn plan na' }, conversationId: 'c', history: [], plan }, { ...model(output), newId: ids() })
   assert.equal(watch.planEdit, undefined)
   const proposed = [{ role: 'ayla' as const, text: 'Ik stel een aanpassing van je plan voor. Zal ik het plan zo aanpassen?' }]

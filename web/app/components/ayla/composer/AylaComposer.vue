@@ -29,6 +29,8 @@ const emit = defineEmits<{
   readingFiles: [isReading: boolean];
   // "Item uit je kluis" in the plus menu: the chat opens its picker.
   pickItem: [];
+  // "Plan toevoegen": the chat opens its list of plans.
+  pickPlan: [];
 }>();
 
 const text = defineModel<string>('text', { required: true });
@@ -173,7 +175,12 @@ defineExpose({ openFilePicker, focus });
     <!-- Figma Start: white card (591 x 109) on a grey card that shows the actions row. -->
     <div v-else-if="isHome" class="relative w-full max-w-147.75 pb-9.25">
       <div class="absolute inset-x-6 bottom-0 top-9.25 rounded-composer bg-bubble shadow-composer sm:inset-x-12.5">
-        <AylaHomeActions class="absolute inset-x-0 bottom-0 h-9.25" @add-file="openFilePicker" />
+        <AylaHomeActions
+          class="absolute inset-x-0 bottom-0 h-9.25"
+          @add-file="openFilePicker"
+          @pick-item="emit('pickItem')"
+          @pick-plan="emit('pickPlan')"
+        />
       </div>
       <div class="relative flex min-h-27.25 flex-col rounded-composer bg-white px-4.5 pb-2.75 pt-4.25 shadow-composer">
         <div class="flex flex-1 gap-2">
@@ -232,7 +239,7 @@ defineExpose({ openFilePicker, focus });
         />
       </template>
       <div class="flex min-h-13.25 items-center gap-3 rounded-composer bg-white py-2 pl-4.5 pr-2.75">
-        <AylaAttachMenu @add-file="openFilePicker" @add-photo="openPhotoPicker" @pick-item="emit('pickItem')" />
+        <AylaAttachMenu @add-file="openFilePicker" @add-photo="openPhotoPicker" @pick-item="emit('pickItem')" @pick-plan="emit('pickPlan')" />
         <AylaSlashIcon :blocks="4" class="h-4.25 w-2.75" />
         <textarea
           id="ayla-question"
