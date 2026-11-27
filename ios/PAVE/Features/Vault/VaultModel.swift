@@ -20,6 +20,9 @@ final class VaultModel {
     var problem: String?
     /// An item to open in the vault, for example from Ayla's "Open Eindstage".
     var itemToOpen: String?
+    /// An item whose verification result just came in, opened from its notification: its status turns from "In
+    /// afwachting" into the result once, then this is cleared.
+    var statusNews: String?
 
     private let service: (any VaultService)?
     /// "Bewijs toevoegen" closed before it was saved: for half a minute it comes back as it was, in case that was by
@@ -259,6 +262,36 @@ final class VaultModel {
         return look
     }
 
+    // MARK: Uit je wallet (demo)
+
+    /// The credentials in this account's demo wallet.
+    func walletCredentials() async throws -> [VaultWalletCredential] {
+        guard let service else { throw VaultError.unavailable }
+        return try await service.walletCredentials()
+    }
+
+    /// Puts the chosen credentials in the vault, confirmed, with the issuer's logo when there is one, each in the folder
+    /// of its kind when you have one, and in the folder you started from. Returns the new items.
+    func importFromWallet(_ credentials: [VaultWalletCredential], folderID: String?) async throws -> [String] {
+        guard let service else { throw VaultError.unavailable }
+        let made = try await service.importFromWallet(credentials.map(\.id))
+        let itemIDs = credentials.compactMap { made[$0.id] }
+        for credential in credentials {
+            guard let logo = credential.logo, let itemID = made[credential.id] else { continue }
+            try? await service.attach(VaultUpload(data: logo.data, fileName: logo.fileName, mimeType: logo.mimeType, role: .logo), to: itemID)
+        }
+        if let refreshed = try? await service.contents() { contents = ordered(refreshed) }
+        for item in items where itemIDs.contains(item.id) {
+            var folderIDs: [String] = []
+            for id in [folderID, VaultExampleFolders.folder(for: item.category, in: folders)?.id].compactMap({ $0 }) where !folderIDs.contains(id) {
+                folderIDs.append(id)
+            }
+            if !folderIDs.isEmpty { try? await service.setFolders(folderIDs, itemID: item.id) }
+        }
+        await load()
+        return itemIDs
+    }
+
     // MARK: Bewijs toevoegen
 
     /// The steps of adding evidence report their own errors, so these throw instead of setting `problem`.
@@ -454,7 +487,7 @@ final class VaultModel {
             problem = nil
             PaveHaptics.success()
             PlanProgress.report(.verificationRequested(itemID: item.id))
-            // So the item shows "In afwachting" straight away.
+            // So the item shows "Wordt geverifieerd" straight away.
             await load()
             return nil
         } catch {

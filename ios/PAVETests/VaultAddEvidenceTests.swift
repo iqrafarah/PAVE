@@ -5,6 +5,9 @@ import UIKit
 @testable import PAVE
 
 @MainActor
+// One at a time: several tests keep the vault's order in the same place on the device, and in parallel one saw the
+// order another had just written.
+@Suite(.serialized)
 struct VaultAddEvidenceTests {
     /// Records what the flow sends and fails where a test asks it to.
     private actor FakeVault: VaultService {
@@ -128,6 +131,8 @@ struct VaultAddEvidenceTests {
         let (flow, service) = await aylaFilled([certificate], uploads: [pdf])
         #expect(flow.aylaFill == .filled)
         #expect(flow.page == .details)
+        // Her fields come in one by one the first time the details show.
+        #expect(flow.revealsAylaFill)
         #expect(flow.draft.title == "Professional Scrum Master I")
         #expect(flow.draft.category == .certificates)
         #expect(flow.draft.organisationName == "Scrum.org")
@@ -175,6 +180,7 @@ struct VaultAddEvidenceTests {
         let flow = VaultAddEvidenceModel.proposed(by: reply, vault: VaultModel(service: service), documents: [pdf], analysis: analysis)
         #expect(flow.page == .details)
         #expect(flow.aylaFill == .filled)
+        #expect(flow.revealsAylaFill)
         #expect(flow.draft.title == "PSM I")
         #expect(flow.draft.organisationName == "Scrum.org")
         #expect(flow.skills == ["Scrum"])
@@ -184,6 +190,7 @@ struct VaultAddEvidenceTests {
     @Test func nothingFoundLeavesTheFormToYou() async {
         let (flow, _) = await aylaFilled([], uploads: [pdf])
         #expect(flow.aylaFill == .failed(VaultMessages.aylaFillEmpty))
+        #expect(!flow.revealsAylaFill)
         #expect(flow.page == .source)
         #expect(flow.aylaProposal == nil)
     }
@@ -372,6 +379,9 @@ struct VaultAddEvidenceTests {
             items: [VaultItem(id: "i", folderIDs: ["a", "c"], category: .projects, title: "App")],
             folders: [VaultFolder(id: "a", name: "A"), VaultFolder(id: "b", name: "B"), VaultFolder(id: "c", name: "C")]
         ))
+        // No order left behind by another test.
+        UserDefaults.standard.removeObject(forKey: PaveAccount.key("vaultFolderOrder"))
+        UserDefaults.standard.removeObject(forKey: PaveAccount.key("vaultItemOrder"))
         let model = VaultModel(service: service)
         await model.load()
         return model

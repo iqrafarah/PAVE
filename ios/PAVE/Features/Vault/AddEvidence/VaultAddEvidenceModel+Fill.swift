@@ -63,6 +63,7 @@ extension VaultAddEvidenceModel {
         nextEvidence = []
         apply(first, documents: uploads, pictures: pictures)
         aylaFill = .filled
+        revealsAylaFill = true
         PaveHaptics.success()
         AccessibilityNotification.Announcement(VaultMessages.aylaFilledAnnouncement).post()
         go(to: .details)
@@ -148,6 +149,7 @@ extension VaultAddEvidenceModel {
         flow.aylaDocuments = next.documents
         flow.apply(next.proposal, documents: next.documents)
         flow.aylaFill = .filled
+        flow.revealsAylaFill = true
         flow.nextEvidence = Array(nextEvidence.dropFirst())
         flow.go(to: .details)
         return flow

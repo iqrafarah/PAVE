@@ -16,6 +16,8 @@ struct VaultAddEvidenceSheet: View {
     /// While you type, the buttons step aside: return closes the keyboard and brings them back.
     @State private var isTyping = false
     @State private var isScanning = false
+    /// "Haal bewijs uit je wallet" (demo): its own way through this sheet, with its own steps.
+    @State private var wallet: VaultWalletModel?
     @Environment(PaveCameraControl.self) private var cameraControl: PaveCameraControl?
     /// The evidence is in and the sheet is closing: its id, and whether the user asked to have it verified.
     var onAdded: ((_ itemID: String, _ requestsVerification: Bool) -> Void)?
@@ -53,21 +55,17 @@ struct VaultAddEvidenceSheet: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            ZStack(alignment: .top) {
-                page
-                    .id(flow.page)
-                    .transition(pageTransition)
-            }
-            .environment(\.isShortSheet, isShort)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .clipped()
-            if showsFooter {
-                footer
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+        ZStack {
+            if let wallet {
+                VaultWalletFlow(wallet: wallet, onBack: closeWallet, onDone: { dismiss() })
+                    .environment(\.isShortSheet, isShort)
+                    .transition(reduceMotion ? .opacity : .push(from: .trailing))
+            } else {
+                steps
+                    .transition(reduceMotion ? .opacity : .push(from: .leading))
             }
         }
+        .animation(pageAnimation, value: wallet == nil)
         .frame(maxWidth: 600)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.panel.ignoresSafeArea())
@@ -78,11 +76,11 @@ struct VaultAddEvidenceSheet: View {
         .onGeometryChange(for: Bool.self) { $0.safeAreaInsets.trailing > 0 || $0.safeAreaInsets.leading > 0 } action: { hasSideColumn = $0 }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in isTyping = true }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in isTyping = false }
-        .presentationDetents(flow.page == .done && !hasSideColumn ? [.custom(AddedDetent.self)] : [.large])
+        .presentationDetents(flow.page == .done && wallet == nil && !hasSideColumn ? [.custom(AddedDetent.self)] : [.large])
         .presentationDragIndicator(.visible)
         // Swipe down to close, like every sheet; with something filled in it first asks whether to stop.
-        .sheetDismissGuard(isBlocked: flow.hasChanges || flow.isSaving) {
-            if !flow.isSaving { confirmsDiscard = true }
+        .sheetDismissGuard(isBlocked: flow.hasChanges || flow.isSaving || wallet?.isChecking == true) {
+            if !flow.isSaving, wallet == nil { confirmsDiscard = true }
         }
         .vaultFilePicker(source: $source, role: .document) { result in
             withAnimation(pageAnimation) { flow.pick(result) }
@@ -116,6 +114,34 @@ struct VaultAddEvidenceSheet: View {
         }
     }
 
+    /// The four steps of adding evidence yourself.
+    private var steps: some View {
+        VStack(spacing: 0) {
+            header
+            ZStack(alignment: .top) {
+                page
+                    .id(flow.page)
+                    .transition(pageTransition)
+            }
+            .environment(\.isShortSheet, isShort)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .clipped()
+            if showsFooter {
+                footer
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+    }
+
+    private func openWallet() {
+        PaveHaptics.selection()
+        wallet = VaultWalletModel(vault: flow.vault, folderID: flow.startFolderID)
+    }
+
+    private func closeWallet() {
+        wallet = nil
+    }
+
     // MARK: Camera Control
 
     /// Knopmodus while adding evidence: a full press is the main button of the page; the menus hold the other
@@ -128,6 +154,7 @@ struct VaultAddEvidenceSheet: View {
             ways.append(("Foto", { source = .photos }))
             ways.append(("Bestand", { source = .files }))
             ways.append(("Zonder bestand", { withAnimation(pageAnimation) { flow.withoutFile() } }))
+            ways.append(("Uit je wallet", openWallet))
             menus.append(CameraMenu(id: "add-ways", title: "Toevoegen", symbol: "plus.circle", items: ways.map(\.0), onPress: { index in
                 if ways.indices.contains(index) { ways[index].1() }
             }))
@@ -307,8 +334,11 @@ struct VaultAddEvidenceSheet: View {
                 } ?? (flow.kindFolderMissing
                     ? VaultEvidenceForm.NewFolder(name: flow.draft.category.title, isOn: false) { flow.setMakesKindFolder($0) }
                     : nil),
-                aylaNotes: flow.aylaNotes
+                aylaNotes: flow.aylaNotes,
+                revealsAylaFill: flow.revealsAylaFill
             )
+            // Only the first time after she filled it: going back and forth shows the fields at once.
+            .onDisappear { flow.revealsAylaFill = false }
         }
         .animation(.snappy(duration: 0.3), value: flow.documents)
         .onChange(of: flow.draft.category) { flow.categoryChanged() }
@@ -339,6 +369,7 @@ struct VaultAddEvidenceSheet: View {
                 VaultChoiceCard(title: VaultMessages.withoutFileTitle, message: VaultMessages.withoutFileMessage) {
                     flow.withoutFile()
                 }
+                VaultChoiceCard(title: VaultMessages.walletChoiceTitle, message: VaultMessages.walletChoiceMessage, action: openWallet)
             }
         }
         .animation(.snappy(duration: 0.3), value: flow.documents)

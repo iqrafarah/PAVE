@@ -15,6 +15,19 @@ struct VaultEvidenceForm: View {
     var newFolder: NewFolder?
     /// The fields Ayla filled in and that are still as she left them, with where she found them.
     var aylaNotes: [VaultItemDraft.Field: String] = [:]
+    /// Ayla just filled the form: her fields come in one after the other.
+    var revealsAylaFill = false
+
+    /// The place of a field among the ones Ayla filled, in reading order; nil when she did not fill it.
+    private func revealOrder(_ field: VaultItemDraft.Field) -> Int? {
+        let filled: [VaultItemDraft.Field] = [.title, .organisation, .period, .description].filter { aylaNotes[$0] != nil }
+        return filled.firstIndex(of: field)
+    }
+
+    private func reveal(_ field: VaultItemDraft.Field) -> (order: Int, isActive: Bool) {
+        let order = revealOrder(field)
+        return (order ?? 0, revealsAylaFill && order != nil)
+    }
 
     struct NewFolder {
         let name: String
@@ -44,6 +57,7 @@ struct VaultEvidenceForm: View {
                         .submitLabel(.done)
                         .onSubmit { focus = nil }
                 }
+                .vaultFillReveal(order: reveal(.title).order, isActive: reveal(.title).isActive)
                 VaultFormField(title: "Soort bewijs") {
                     category
                 }
@@ -56,9 +70,11 @@ struct VaultEvidenceForm: View {
                         .submitLabel(.done)
                         .onSubmit { focus = nil }
                 }
+                .vaultFillReveal(order: reveal(.organisation).order, isActive: reveal(.organisation).isActive)
                 VaultFormField(title: "Periode", error: error(.period), note: aylaNotes[.period]) {
                     period
                 }
+                .vaultFillReveal(order: reveal(.period).order, isActive: reveal(.period).isActive)
             }
             if !folders.isEmpty || newFolder != nil {
                 VaultFormField(title: "Mappen", isRequired: false) {
@@ -81,6 +97,7 @@ struct VaultEvidenceForm: View {
                     .padding(.vertical, 12)
                     .frame(maxHeight: .infinity, alignment: .top)
             }
+            .vaultFillReveal(order: reveal(.description).order, isActive: reveal(.description).isActive)
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .background {

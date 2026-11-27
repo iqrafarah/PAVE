@@ -5,6 +5,10 @@ import SwiftUI
 struct VaultAylaConsentCard: View {
     @Binding var isOn: Bool
     let hasFile: Bool
+    /// Another sentence than the one for a single document or piece of evidence, such as for several at once.
+    var title: String?
+
+    private var text: String { title ?? VaultMessages.aylaConsent(hasFile: hasFile) }
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
@@ -12,7 +16,7 @@ struct VaultAylaConsentCard: View {
                 .paveIconFrame(36)
                 .background(Color.paveAccentFill, in: .rect(cornerRadius: 9))
             VStack(alignment: .leading, spacing: 4) {
-                Text(VaultMessages.aylaConsent(hasFile: hasFile))
+                Text(text)
                     .textStyle(.label)
                     .foregroundStyle(Color.ink)
                     .fixedSize(horizontal: false, vertical: true)
@@ -38,7 +42,7 @@ struct VaultAylaConsentCard: View {
             withAnimation(.snappy(duration: 0.25)) { isOn.toggle() }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(VaultMessages.aylaConsent(hasFile: hasFile))
+        .accessibilityLabel(text)
         .accessibilityHint(VaultMessages.aylaConsentMeaning)
         .accessibilityValue(isOn ? "Aan" : "Uit")
         .accessibilityAddTraits(.isToggle)

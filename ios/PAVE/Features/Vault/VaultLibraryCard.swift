@@ -7,7 +7,7 @@ import SwiftUI
 struct VaultLibraryCard: View {
     let item: VaultItem
     let isGrid: Bool
-    /// When choosing items (for Ayla): a checkbox instead of the status, and the outline of a chosen card.
+    /// When choosing items (for Ayla): a checkbox next to the title, and the outline of a chosen card.
     var isSelected: Bool?
     @Environment(VaultModel.self) private var model: VaultModel?
     @State private var logoLook: VaultLogoLook?
@@ -72,16 +72,14 @@ struct VaultLibraryCard: View {
                         .padding(.leading, 12)
                         .offset(y: 22)
                 }
-                .overlay(alignment: .topTrailing) {
-                    VaultStatusBadge(item: item)
-                        .padding(8)
-                }
             VStack(alignment: .leading, spacing: 8) {
                 Text(item.title)
                     .textStyle(.bodyMedium)
                     .foregroundStyle(Color.ink)
                     .lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                // Under the title rather than in the band: "Wordt geverifieerd" ran into the avatar on a phone.
+                VaultStatusBadge(item: item)
                 details(lineLimit: 2)
                 if !item.skills.isEmpty {
                     skills(limit: 1)
@@ -107,10 +105,10 @@ struct VaultLibraryCard: View {
                         .layoutPriority(1)
                     if let isSelected {
                         PaveCheckbox(isOn: isSelected)
-                    } else {
-                        VaultStatusBadge(item: item)
                     }
                 }
+                // A line of its own, so the title keeps the width of the card.
+                VaultStatusBadge(item: item)
                 details(lineLimit: 1)
                 if !item.skills.isEmpty {
                     skills(limit: 2)

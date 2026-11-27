@@ -348,6 +348,7 @@ struct AylaChatScreen: View {
                         onMarkRead: { await notifications.markRead($0) },
                         onOpenConversation: openChatFromNotification,
                         onOpenVerifiedEvidence: { id in
+                            vault?.statusNews = id
                             vault?.itemToOpen = id
                             openShelf(.vault)
                         },

@@ -55,7 +55,7 @@ struct AppStateTests {
         let state = try signedInState()
         let away = Date(timeIntervalSince1970: 1_000)
         state.didEnterBackground(at: away)
-        state.didBecomeActive(at: away.addingTimeInterval(TimeInterval(AppState.defaultLockAfter)))
+        state.didReturn(at: away.addingTimeInterval(TimeInterval(AppState.defaultLockAfter)))
         #expect(state.isRelocked)
         #expect(state.phase == .main)
         #expect(!state.isOpen)
@@ -69,7 +69,7 @@ struct AppStateTests {
         let state = try signedInState()
         let away = Date(timeIntervalSince1970: 1_000)
         state.didEnterBackground(at: away)
-        state.didBecomeActive(at: away.addingTimeInterval(30))
+        state.didReturn(at: away.addingTimeInterval(30))
         #expect(!state.isRelocked)
     }
 
@@ -78,7 +78,7 @@ struct AppStateTests {
         defaults.set(0, forKey: AppState.lockAfterKey)
         let away = Date(timeIntervalSince1970: 1_000)
         state.didEnterBackground(at: away)
-        state.didBecomeActive(at: away.addingTimeInterval(1))
+        state.didReturn(at: away.addingTimeInterval(1))
         #expect(state.isRelocked)
     }
 
@@ -89,7 +89,7 @@ struct AppStateTests {
         try state.completePinSetup(pin: pin, useBiometrics: true)
         let away = Date(timeIntervalSince1970: 1_000)
         state.didEnterBackground(at: away)
-        state.didBecomeActive(at: away.addingTimeInterval(3_600))
+        state.didReturn(at: away.addingTimeInterval(3_600))
         #expect(await state.unlockWithBiometrics())
         #expect(state.isOpen)
     }

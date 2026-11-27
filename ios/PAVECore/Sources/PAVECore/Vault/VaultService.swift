@@ -76,6 +76,11 @@ public protocol VaultService: Sendable {
         contactID: String,
         message: String?
     ) async throws
+    /// "Uit je wallet": the credentials in the demo wallet of this account, made up by the `vault-wallet` function.
+    func walletCredentials() async throws -> [VaultWalletCredential]
+    /// Puts these credentials of the demo wallet in the vault, confirmed. Returns which credential became which new
+    /// item; a credential that is already in the vault is skipped.
+    func importFromWallet(_ credentialIDs: [String]) async throws -> [String: String]
 }
 
 public extension VaultService {
@@ -104,6 +109,9 @@ public extension VaultService {
     func setFolderOrder(_ folderIDs: [String]) async throws {
         throw VaultError.missingColumn
     }
+
+    func walletCredentials() async throws -> [VaultWalletCredential] { throw VaultError.notSetUp }
+    func importFromWallet(_ credentialIDs: [String]) async throws -> [String: String] { throw VaultError.notSetUp }
 
     func setItemOrder(_ itemIDs: [String]) async throws {
         throw VaultError.missingColumn
@@ -179,7 +187,7 @@ public struct SupabaseVaultService: VaultService {
         do {
             return try await contents(select: base + ",vault_validation_requests(status,organisation_name,requested_at,response,organization_id,location_id)")
         } catch VaultError.missingColumn {
-            // Without the requests the vault still loads; only "In afwachting" and the reason are missing.
+            // Without the requests the vault still loads; only "Wordt geverifieerd" and the reason are missing.
         }
         do {
             return try await contents(select: base)
@@ -661,6 +669,26 @@ public struct SupabaseVaultService: VaultService {
         ]
         let urlRequest = try await request(functionsURL.appending(path: "vault-review"), method: "POST", json: body)
         _ = try await sendFunction(urlRequest)
+    }
+
+    public func walletCredentials() async throws -> [VaultWalletCredential] {
+        let urlRequest = try await request(functionsURL.appending(path: "vault-wallet"), method: "POST", json: ["action": "list"])
+        let data = try await sendFunction(urlRequest)
+        struct Reply: Decodable { let credentials: [VaultWalletCredential] }
+        do {
+            return try JSONDecoder().decode(Reply.self, from: data).credentials
+        } catch {
+            throw VaultError.unavailable
+        }
+    }
+
+    public func importFromWallet(_ credentialIDs: [String]) async throws -> [String: String] {
+        let urlRequest = try await request(functionsURL.appending(path: "vault-wallet"), method: "POST", json: ["action": "import", "ids": credentialIDs])
+        let data = try await sendFunction(urlRequest)
+        struct Made: Decodable { let id: String?; let itemId: String }
+        struct Reply: Decodable { let items: [Made] }
+        let made = (try? JSONDecoder().decode(Reply.self, from: data).items) ?? []
+        return Dictionary(made.compactMap { entry in entry.id.map { ($0, entry.itemId) } }, uniquingKeysWith: { first, _ in first })
     }
 
     private func insertFile(_ row: [String: Any]) async throws {

@@ -13,7 +13,7 @@ struct VaultEvidenceAddedView: View {
     var body: some View {
         VStack(spacing: isShort ? 14 : 22) {
             Spacer(minLength: 0)
-            tick
+            VaultAddedTick(landed: landed)
             VStack(spacing: 8) {
                 Text(VaultMessages.added)
                     .textStyle(isShort ? .emptyTitle : .welcomeTitle)
@@ -49,22 +49,6 @@ struct VaultEvidenceAddedView: View {
             try? await Task.sleep(for: .milliseconds(320))
             withAnimation(.spring(duration: 0.5, bounce: 0.2)) { consentShown = true }
         }
-    }
-
-    private var tick: some View {
-        let size: CGFloat = isShort ? 76 : 104
-        return Image(.iconCheck)
-            .renderingMode(.template)
-            .resizable()
-            .scaledToFit()
-            .frame(width: size * 0.42, height: size * 0.42)
-            .foregroundStyle(.white)
-            .scaleEffect(landed ? 1 : 0.4)
-            .frame(width: size, height: size)
-            .background(Color.paveAccentFill, in: .circle)
-            .scaleEffect(landed ? 1 : 0.6)
-            .opacity(landed ? 1 : 0)
-            .accessibilityHidden(true)
     }
 }
 

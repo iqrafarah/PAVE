@@ -53,11 +53,14 @@ extension VaultConfirmationRequest.Recipient {
     }
 }
 
+/// Each status its own look, so they cannot be mixed up (feedback from a test round): "Niet geverifieerd" is quiet
+/// grey with an empty seal, because nothing is happening yet; only "Wordt geverifieerd" has the orange clock of waiting
+/// (`VaultStatusBadge`); "Geverifieerd" the full green seal, "Afgewezen" red.
 extension VaultItem.Status {
     var icon: ImageResource {
         switch self {
         case .verified: .iconCheckBadgeSolid
-        case .toVerify: .iconClockSolid
+        case .toVerify: .iconCheckBadgeOutline
         case .rejected: .iconExclamationCircleSolid
         }
     }
@@ -65,7 +68,7 @@ extension VaultItem.Status {
     var foreground: Color {
         switch self {
         case .verified: .paveAccent
-        case .toVerify: .statusPending
+        case .toVerify: .inkMuted
         case .rejected: .statusRejected
         }
     }
@@ -73,7 +76,7 @@ extension VaultItem.Status {
     var background: Color {
         switch self {
         case .verified: .paveVerifiedSurface
-        case .toVerify: .statusPendingSurface
+        case .toVerify: .tileFill
         case .rejected: .statusRejectedSurface
         }
     }

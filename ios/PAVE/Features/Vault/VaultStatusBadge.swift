@@ -1,7 +1,7 @@
 import PAVECore
 import SwiftUI
 
-/// Whether an item is confirmed, with the colours from the design. "In afwachting" while a request is open.
+/// Whether an item is verified, with the colours from the design. "Wordt geverifieerd" while a request is open.
 struct VaultStatusBadge: View {
     let status: VaultItem.Status
     var isAwaitingReview = false
@@ -30,13 +30,14 @@ struct VaultStatusBadge: View {
             Text(title)
                 .textStyle(.caption)
                 .lineLimit(1)
+                .minimumScaleFactor(0.85)
         }
-        .foregroundStyle(status.foreground)
+        .foregroundStyle(isAwaitingReview ? Color.statusPending : status.foreground)
         .padding(.leading, 4)
         .padding(.trailing, 6)
         .frame(minHeight: 24)
-        .background(status.background, in: .rect(cornerRadius: 6))
-        .fixedSize()
+        .background(isAwaitingReview ? Color.statusPendingSurface : status.background, in: .rect(cornerRadius: 6))
+        .fixedSize(horizontal: false, vertical: true)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Status: \(title)")
     }
