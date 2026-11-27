@@ -16,6 +16,18 @@ nonisolated enum PaveTranslator {
         return table(for: language).translate(text)
     }
 
+    /// A short Dutch text with values, such as `format("%@ op %@", "Safari", "iPhone")`, in the chosen language. Use it
+    /// when the text has fewer than 3 letters of its own: `translate` does not fill in such keys.
+    static func format(_ key: String, _ values: String...) -> String {
+        let language = Thread.isMainThread ? MainActor.assumeIsolated { PaveLanguageStore.shared.language } : PaveLanguageStore.current
+        return format(key, values, into: language)
+    }
+
+    static func format(_ key: String, _ values: [String], into language: PaveLanguage) -> String {
+        guard language != .dutch else { return TranslationTable.fill(key, with: values) }
+        return table(for: language).format(key, with: values)
+    }
+
     private static let tables = OSAllocatedUnfairLock<[PaveLanguage: TranslationTable]>(initialState: [:])
 
     private static func table(for language: PaveLanguage) -> TranslationTable {

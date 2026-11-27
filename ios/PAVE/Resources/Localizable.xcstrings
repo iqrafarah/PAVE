@@ -116,6 +116,23 @@
         }
       }
     },
+    "%@ afgerond": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ completed"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ kompletá"
+          }
+        }
+      }
+    },
     "%@ afgerond%@": {
       "extractionState": "manual",
       "localizations": {
@@ -11912,6 +11929,23 @@
         }
       }
     },
+    "Dit account": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This account"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E kuenta aki"
+          }
+        }
+      }
+    },
     "Dit antwoord steunt op": {
       "extractionState": "manual",
       "localizations": {
@@ -16213,6 +16247,23 @@
         }
       }
     },
+    "Gesprek verwijderen?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete conversation?"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kita kombersashon?"
+          }
+        }
+      }
+    },
     "Gesprek-coach": {
       "extractionState": "manual",
       "localizations": {
@@ -17059,6 +17110,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "No por a kita e kombersashon. Purba atrobe."
+          }
+        }
+      }
+    },
+    "Het gesprek met Ayla verdwijnt. Bewijs in je kluis blijft altijd bewaard.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The conversation with Ayla disappears. Evidence in your vault is always kept."
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E kombersashon ku Ayla ta disparsé. Prueba den bo kaha fuerte ta keda wardá semper."
           }
         }
       }
@@ -20136,6 +20204,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bo ta kompartí ku %@, %@ wak"
+          }
+        }
+      }
+    },
+    "Je deelt met %@, %@ keer bekeken": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You're sharing with %@, viewed %@ times"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bo ta kompartí ku %@, wak %@ biaha"
+          }
+        }
+      }
+    },
+    "Je deelt met %@, 1 keer bekeken": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You're sharing with %@, viewed once"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bo ta kompartí ku %@, wak un biaha"
           }
         }
       }
@@ -35304,6 +35406,23 @@
         }
       }
     },
+    "Terug naar alle chats": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back to all chats"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bèk na tur chats"
+          }
+        }
+      }
+    },
     "Terug naar antwoorden aan iedereen": {
       "extractionState": "manual",
       "localizations": {
@@ -44212,6 +44331,23 @@
         }
       }
     },
+    "alleen bekijken": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "view only"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "wak so"
+          }
+        }
+      }
+    },
     "bezig": {
       "extractionState": "manual",
       "localizations": {
@@ -44259,6 +44395,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "e %@ kombersashonnan"
+          }
+        }
+      }
+    },
+    "de contactpersoon": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "the contact person"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "e persona di kontakto"
+          }
+        }
+      }
+    },
+    "de organisatie": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "the organisation"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "e organisashon"
           }
         }
       }
@@ -44582,6 +44752,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "lu"
+          }
+        }
+      }
+    },
+    "mag downloaden": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "may download"
+          }
+        },
+        "pap": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "por baha"
           }
         }
       }
