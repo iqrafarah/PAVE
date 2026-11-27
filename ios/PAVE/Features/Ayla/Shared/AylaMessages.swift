@@ -42,6 +42,9 @@ enum AylaMessages {
     // What the app says when something Ayla set out to do could not be done, or was done after your Ja.
     static func actionNoFolder(_ name: String) -> String { "Ik kon de map \(name) niet vinden." }
     static func actionNoItem(_ name: String) -> String { "Ik kon \(name) niet vinden in je kluis." }
+    static func actionNoFiles(_ title: String) -> String { "Bij \(title) staan geen bestanden om in te kijken." }
+    static func actionFilesUnreadable(_ title: String) -> String { "Ik kon de bestanden van \(title) nu niet lezen." }
+    static func actionReadsFiles(_ title: String) -> String { "Ik kijk in de bestanden van \(title)." }
     static func actionNoChat(_ name: String) -> String { "Ik kon geen gesprek vinden over \(name)." }
     static let actionNoCurrentChat = "Dit gesprek staat nog niet in je lijst, dus dat lukt nu nog niet. Probeer het zo opnieuw."
     static let actionUnknownValue = "Dat kon ik niet instellen: die keuze ken ik niet."

@@ -388,8 +388,8 @@ struct VaultAddEvidenceTests {
     }
 
     @Test func aDroppedFolderTakesThePlaceOfTheOther() async {
-        UserDefaults.standard.removeObject(forKey: "vaultFolderOrder")
-        defer { UserDefaults.standard.removeObject(forKey: "vaultFolderOrder") }
+        UserDefaults.standard.removeObject(forKey: PaveAccount.key("vaultFolderOrder"))
+        defer { UserDefaults.standard.removeObject(forKey: PaveAccount.key("vaultFolderOrder")) }
         let service = FakeVault()
         let model = await vaultWithFolders(service)
         await model.moveFolder("c", onto: "a")
@@ -404,8 +404,8 @@ struct VaultAddEvidenceTests {
     }
 
     @Test func draggedCardsKeepTheirOrderAroundTheOthers() async {
-        UserDefaults.standard.removeObject(forKey: "vaultItemOrder")
-        defer { UserDefaults.standard.removeObject(forKey: "vaultItemOrder") }
+        UserDefaults.standard.removeObject(forKey: PaveAccount.key("vaultItemOrder"))
+        defer { UserDefaults.standard.removeObject(forKey: PaveAccount.key("vaultItemOrder")) }
         let service = FakeVault()
         let day = { (d: Int) in VaultDay(year: 2025, month: 1, day: d) }
         await service.store(VaultContents(items: [

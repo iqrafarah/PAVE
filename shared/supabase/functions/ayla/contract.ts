@@ -62,6 +62,8 @@ export interface AppState {
   plans?: string[]
   /** The names of the user's projects in Ayla. At most 12. */
   projects?: string[]
+  /** The titles of the evidence whose files the user let Ayla read in this conversation: she need not ask again. At most 8. */
+  readFiles?: string[]
   /** Invitations from employers at the fair, one line each as the app writes it: who, for what, when, answered or not. At most 6. */
   invitations?: string[]
   /** The user's applications: "functie bij bedrijf · status · deadline". */
@@ -114,12 +116,12 @@ export const ACTIONS = [
   'shareWith', 'stopSharing', 'showShares',
   'editEvidence', 'restoreEvidence', 'addSkill', 'linkEvidenceToStep', 'setStepDue', 'moveStep',
   'setApplicationStatus', 'startPractice', 'setLanguage', 'attachToEvidence', 'makeSelection', 'workOnPlan',
-  'deleteChat', 'deleteEvidence', 'signOut', 'forgetAll', 'removePlanStep', 'deletePlan', 'answerInvitation', 'addProjectSource',
+  'deleteChat', 'deleteEvidence', 'signOut', 'forgetAll', 'removePlanStep', 'deletePlan', 'answerInvitation', 'addProjectSource', 'readEvidence',
 ] as const
 export type ActionKind = (typeof ACTIONS)[number]
 
 /** What cannot be undone: PAVE asks Ja or Nee first, and the app only acts after Ja. */
-export const CONFIRMED_ACTIONS: readonly ActionKind[] = ['deleteChat', 'deleteEvidence', 'signOut', 'forgetAll', 'removePlanStep', 'deletePlan', 'answerInvitation', 'addProjectSource', 'attachToEvidence']
+export const CONFIRMED_ACTIONS: readonly ActionKind[] = ['deleteChat', 'deleteEvidence', 'signOut', 'forgetAll', 'removePlanStep', 'deletePlan', 'answerInvitation', 'addProjectSource', 'attachToEvidence', 'readEvidence']
 
 export interface AppAction { do: ActionKind; value?: string; target?: string; confirm?: true }
 
@@ -352,7 +354,7 @@ export function parseRequest(body: unknown): AylaRequest | string {
 }
 
 const APP_WORDS = ['theme', 'textSize', 'displayMode', 'vaultLayout', 'chatTitle', 'seeing', 'font'] as const
-const APP_LISTS = { plans: { count: 8, length: 200 }, projects: { count: 12, length: 80 }, invitations: { count: 6, length: 200 }, applications: { count: 10, length: 200 } } as const
+const APP_LISTS = { plans: { count: 8, length: 200 }, projects: { count: 12, length: 80 }, invitations: { count: 6, length: 200 }, applications: { count: 10, length: 200 }, readFiles: { count: 8, length: 200 } } as const
 const APP_SWITCHES = ['voiceText', 'animations', 'memory', 'chatPinned'] as const
 
 function parseAppState(raw: unknown): AppState | null {

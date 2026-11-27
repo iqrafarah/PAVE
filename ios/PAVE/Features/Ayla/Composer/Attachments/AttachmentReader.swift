@@ -80,6 +80,20 @@ nonisolated enum AttachmentReader {
         return attachment
     }
 
+    /// A file of evidence in the vault, fetched from the private bucket: read on the device as a file in the chat
+    /// would be, for Ayla's next round only. The copy is gone again once it is read.
+    @concurrent
+    static func read(data: Data, name: String, mimeType: String) async throws -> AylaAttachment {
+        let type = UTType(mimeType: mimeType) ?? UTType(filenameExtension: (name as NSString).pathExtension) ?? .data
+        let fileName = (name as NSString).pathExtension.isEmpty ? name + "." + (type.preferredFilenameExtension ?? "bin") : name
+        let folder = URL.temporaryDirectory.appending(path: "evidence-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appending(path: fileName)
+        try data.write(to: url, options: .completeFileProtection)
+        return try await read(url)
+    }
+
     /// A file that was dragged in or pasted: the first kind PAVE can read, copied before it is read, because iOS
     /// only lends the original for a moment. Runs where it is called from (the provider may not travel); reading
     /// the copy happens in the background.
